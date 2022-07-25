@@ -61,7 +61,7 @@ extern "C" {
  * @param pInput           a pointer to the input data; cannot be
  *                         NULL unless inputLengthBytes is zero.
  * @param inputLengthBytes the length of the input data.
- * @param pOutput          a pointer to at least 32 bytes of space
+ * @param[out] pOutput     a pointer to at least 32 bytes of space
  *                         to which the output will be written.
  * @return                 zero on success else negative error code;
  *                         the error code is returned directly
@@ -77,10 +77,10 @@ int32_t uPortCryptoSha256(const char *pInput,
  *
  * @param pKey             a pointer to the key; cannot be NULL.
  * @param keyLengthBytes   the length of the key.
- * @param pInput           a pointer to the input data; cannot be
+ * @param[in] pInput       a pointer to the input data; cannot be
  *                         NULL.
  * @param inputLengthBytes the length of the input data.
- * @param pOutput          a pointer to at least 32 bytes of space
+ * @param[out] pOutput     a pointer to at least 32 bytes of space
  *                         to which the output will be written.
  * @return                 zero on success else negative error code;
  *                         the error code is returned directly
@@ -96,24 +96,24 @@ int32_t uPortCryptoHmacSha256(const char *pKey,
 
 /** Perform AES 128 CBC encryption of a block of data.
  *
- * @param pKey             a pointer to the key; cannot be NULL.
- * @param keyLengthBytes   the length of the key; must be 16, 24
- *                         or 32 bytes.
- * @param pInitVector      a pointer to the 16 byte initialisation
- *                         vector; cannot be NULL, must be writeable
- *                         and WILL be modified by this function.
- * @param pInput           a pointer to the input data; cannot be
- *                         NULL.
- * @param lengthBytes      the length of the input data; must be
- *                         a multiple of 16 bytes.
- * @param pOutput          a pointer to at least lengthBytes
- *                         bytes of space to which the output will
- *                         be written.
- * @return                 zero on success else negative error code;
- *                         the error code is returned directly
- *                         from the underlying cryptographic library,
- *                         for the given platform, it is not one from
- *                         the U_ERROR_COMMON_xxx enumeration.
+ * @param pKey                a pointer to the key; cannot be NULL.
+ * @param keyLengthBytes      the length of the key; must be 16, 24
+ *                            or 32 bytes.
+ * @param[in,out] pInitVector a pointer to the 16 byte initialisation
+ *                            vector; cannot be NULL, must be writeable
+ *                            and WILL be modified by this function.
+ * @param[in] pInput          a pointer to the input data; cannot be
+ *                            NULL.
+ * @param lengthBytes         the length of the input data; must be
+ *                            a multiple of 16 bytes.
+ * @param[out] pOutput        a pointer to at least lengthBytes
+ *                            bytes of space to which the output will
+ *                            be written.
+ * @return                    zero on success else negative error code;
+ *                            the error code is returned directly
+ *                            from the underlying cryptographic library,
+ *                            for the given platform, it is not one from
+ *                            the U_ERROR_COMMON_xxx enumeration.
  */
 int32_t uPortCryptoAes128CbcEncrypt(const char *pKey,
                                     size_t keyLengthBytes,
@@ -124,24 +124,24 @@ int32_t uPortCryptoAes128CbcEncrypt(const char *pKey,
 
 /** Perform AES 128 CBC decryption of a block of data.
  *
- * @param pKey             a pointer to the key; cannot be NULL.
- * @param keyLengthBytes   the length of the key; must be 16, 24
- *                         or 32 bytes.
- * @param pInitVector      a pointer to the 16 byte initialisation
- *                         vector; cannot be NULL, must be writeable
- *                         and WILL be modified by this function.
- * @param pInput           a pointer to the input data; cannot be
- *                         NULL.
- * @param lengthBytes      the length of the input data; must be
- *                         a multiple of 16 bytes.
- * @param pOutput          a pointer to at least lengthBytes
- *                         bytes of space to which the output will
- *                         be written.
- * @return                 zero on success else negative error code;
- *                         the error code is returned directly
- *                         from the underlying cryptographic library,
- *                         for the given platform, it is not one from
- *                         the U_ERROR_COMMON_xxx enumeration.
+ * @param pKey                a pointer to the key; cannot be NULL.
+ * @param keyLengthBytes      the length of the key; must be 16, 24
+ *                            or 32 bytes.
+ * @param[in,out] pInitVector a pointer to the 16 byte initialisation
+ *                            vector; cannot be NULL, must be writeable
+ *                            and WILL be modified by this function.
+ * @param[in] pInput          a pointer to the input data; cannot be
+ *                            NULL.
+ * @param lengthBytes         the length of the input data; must be
+ *                            a multiple of 16 bytes.
+ * @param[out] pOutput        a pointer to at least lengthBytes
+ *                            bytes of space to which the output will
+ *                            be written.
+ * @return                    zero on success else negative error code;
+ *                            the error code is returned directly
+ *                            from the underlying cryptographic library,
+ *                            for the given platform, it is not one from
+ *                            the U_ERROR_COMMON_xxx enumeration.
  */
 int32_t uPortCryptoAes128CbcDecrypt(const char *pKey,
                                     size_t keyLengthBytes,

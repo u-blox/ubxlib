@@ -145,10 +145,10 @@ typedef enum {
 
 /** Connection status change callback.
  *
- * @param connHandle      handle for GAP connection.
- * @param status          new status of connection.
- * @param pCallbackParam  pointer to context given when setting callback
- *                        in uPortGattSetGapConnStatusCallback().
+ * @param connHandle              handle for GAP connection.
+ * @param status                  new status of connection.
+ * @param[in,out] pCallbackParam  pointer to context given when setting callback
+ *                                in uPortGattSetGapConnStatusCallback().
  */
 typedef void (*uPortGattGapConnStatusCallback_t)(int32_t connHandle,
                                                  uPortGattGapConnStatus_t status,
@@ -164,7 +164,7 @@ typedef void (*mtuXchangeRespCallback_t)(int32_t connHandle, uint8_t err);
 /** GATT attribute write callback type.
  *
  * @param connHandle handle for GAP connection.
- * @param pBuf       pointer to buffer with values to write.
+ * @param[in] pBuf   pointer to buffer with values to write.
  * @param len        number of bytes to write.
  * @param offset     where to start to write.
  * @param flags      indicates if this is a prepare write (bit 0,
@@ -177,7 +177,7 @@ typedef int32_t (*uPortGattAttWriteCallback_t)(int32_t connHandle, const void *p
 /** GATT read callback type.
  *
  * @param connHandle handle for GAP connection.
- * @param pBuf       pointer to buffer where to put read values.
+ * @param[in] pBuf   pointer to buffer where to put read values.
  * @param len        number of bytes to read.
  * @param offset     where to start to read.
  */
@@ -256,11 +256,11 @@ typedef enum {
 
 /** GATT notify callback.
  *
- * @param connHandle connection handle.
- * @param pParams    pointer to subscription parameters.
- * @param pData      pointer to notification data.
- * @param length     size of notification data.
- * @return           returning #U_PORT_GATT_ITER_STOP will stop subscription.
+ * @param connHandle     connection handle.
+ * @param[in] pParams    pointer to subscription parameters.
+ * @param[in] pData      pointer to notification data.
+ * @param length         size of notification data.
+ * @return               returning #U_PORT_GATT_ITER_STOP will stop subscription.
  */
 struct uPortGattSubscribeParams_s;
 typedef uPortGattIter_t (*uPortGattNotifyFunc_t)(int32_t connHandle,
@@ -294,13 +294,13 @@ typedef struct uPortGattSubscribeParams_s {
 
 /** GATT discovery callback.
  *
- * @param connHandle  connection handle.
- * @param pUuid       pointer to UUID for discovered attribute;
- *                    NULL if no more services were found.
- * @param attrHandle  service attribute handle;
- *                    0 if no more services were found.
- * @param endHandle   end attribute handle for discovered service.
- * @return            #U_PORT_GATT_ITER_STOP to stop current discovery.
+ * @param connHandle   connection handle.
+ * @param[in] pUuid    pointer to UUID for discovered attribute;
+ *                     NULL if no more services were found.
+ * @param attrHandle   service attribute handle;
+ *                     0 if no more services were found.
+ * @param endHandle    end attribute handle for discovered service.
+ * @return             #U_PORT_GATT_ITER_STOP to stop current discovery.
  */
 typedef uPortGattIter_t (*uPortGattServiceDiscoveryCallback_t)(
     int32_t connHandle,
@@ -330,7 +330,7 @@ typedef uPortGattIter_t (*uPortGattCharDiscoveryCallback_t)(
 /** GATT descriptor discovery callback.
  *
  * @param connHandle connection handle.
- * @param pUuid      pointer to UUID for discovered attribute;
+ * @param[in] pUuid  pointer to UUID for discovered attribute;
  *                   NULL if no more descriptors were found.
  * @param attrHandle attribute handle for discovered attribute;
  *                   0 if no more descriptors were found.
@@ -364,9 +364,9 @@ int32_t uPortGattAdd(void);
 
 /** Add primary GATT service.
  *
- * @param pService the struct defining the service.
- * @return         a service handle if successful
- *                 otherwise negative error code.
+ * @param[in] pService the struct defining the service.
+ * @return             a service handle if successful
+ *                     otherwise negative error code.
  */
 int32_t uPortGattAddPrimaryService(const uPortGattService_t *pService);
 
@@ -396,9 +396,9 @@ void uPortGattDown(void);
 
 /** Set connection status callback.
  *
- * @param pCallback       callback.
- * @param pCallbackParam  context pointer that will be sent as
- *                        argument when callback is called.
+ * @param[in] pCallback       callback.
+ * @param[in] pCallbackParam  context pointer that will be sent as
+ *                            argument when callback is called.
  */
 void uPortGattSetGapConnStatusCallback(uPortGattGapConnStatusCallback_t pCallback,
                                        void *pCallbackParam);
@@ -421,10 +421,10 @@ int32_t uPortGattExchangeMtu(int32_t connHandle,
 
 /** Send characteristic notification.
  *
- * @param connHandle connection handle.
- * @param pChar      pointer to characteristic.
- * @param data       pointer to notification data to send.
- * @param len        length of data to send.
+ * @param connHandle     connection handle.
+ * @param[in] pChar      pointer to characteristic.
+ * @param[in] data       pointer to notification data to send.
+ * @param len            length of data to send.
  */
 int32_t uPortGattNotify(int32_t connHandle,
                         const uPortGattCharacteristic_t *pChar,
@@ -432,10 +432,10 @@ int32_t uPortGattNotify(int32_t connHandle,
 
 /** Connect GAP.
  *
- * @param pAddress    pointer to array with address (6 bytes).
- * @param addressType public or random address.
- * @param pGapParams  GAP connection parameters; use NULL for default values.
- * @return            connection handle.
+ * @param[in] pAddress    pointer to array with address (6 bytes).
+ * @param addressType     public or random address.
+ * @param[in] pGapParams  GAP connection parameters; use NULL for default values.
+ * @return               connection handle.
  */
 int32_t uPortGattConnectGap(uint8_t *pAddress,
                             uPortBtLeAddressType_t addressType,
@@ -450,10 +450,10 @@ int32_t uPortGattDisconnectGap(int32_t connHandle);
 
 /** Read remote address.
  *
- * @param connHandle  connection handle.
- * @param pAddr       buffer where to write address, should be 6 bytes.
- * @param pAddrType   address type.
- * @return            zero on success else negative error code.
+ * @param connHandle     connection handle.
+ * @param[out] pAddr     buffer where to write address, should be 6 bytes.
+ * @param[out] pAddrType address type.
+ * @return               zero on success else negative error code.
  */
 int32_t uPortGattGetRemoteAddress(int32_t connHandle, uint8_t *pAddr,
                                   uPortBtLeAddressType_t *pAddrType);
@@ -462,7 +462,7 @@ int32_t uPortGattGetRemoteAddress(int32_t connHandle, uint8_t *pAddr,
  *
  * @param connHandle  connection handle.
  * @param handle      characteristics handle.
- * @param pData       data to write.
+ * @param[in] pData   data to write.
  * @param len         length of data.
  * @return            zero on success else negative error code.
  */
@@ -473,7 +473,7 @@ int32_t uPortGattWriteAttribute(int32_t connHandle, uint16_t handle, const void 
  * from characteristic.
  *
  * @param connHandle  connection handle.
- * @param pParams     pointer to subscription parameters; the subscription
+ * @param[in] pParams pointer to subscription parameters; the subscription
  *                    parameters must be valid during whole subscription.
  * @return            zero on success else negative error code.
  */
@@ -482,7 +482,7 @@ int32_t uPortGattSubscribe(int32_t connHandle, uPortGattSubscribeParams_t *pPara
 /** Start discovery of primary GATT service.
  *
  * @param connHandle  connection handle.
- * @param pUuid       pointer to UUID of service to discover.
+ * @param[in] pUuid   pointer to UUID of service to discover.
  * @param callback    callback that will be called in discovery.
  * @return            zero on success else negative error code.
  */
@@ -493,7 +493,7 @@ int32_t uPortGattStartPrimaryServiceDiscovery(int32_t connHandle,
 /** Start discovery of GATT characteristic.
  *
  * @param connHandle  connection handle.
- * @param pUuid       pointer to UUID of characteristic to discover.
+ * @param[in] pUuid   pointer to UUID of characteristic to discover.
  * @param startHandle search from this handle and onwards.
  * @param callback    callback that will be called in discovery.
  * @return            zero on success else negative error code.

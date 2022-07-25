@@ -61,8 +61,8 @@ extern "C" {
  * please call the uPortLog() macro instead so that
  * #U_CFG_ENABLE_LOGGING controls whether logging is on or off.
  *
- * @param pFormat a printf() style format string.
- * @param ...     variable argument list.
+ * @param[in] pFormat a printf() style format string.
+ * @param ...        variable argument list.
  */
 void uPortLogF(const char *pFormat, ...);
 

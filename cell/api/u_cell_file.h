@@ -77,7 +77,7 @@ typedef struct uCellFileListContainer_t {
  * be read in blocks.
  *
  * @param cellHandle the handle of the cellular instance.
- * @param pTag       the null-terminated string that is the name of the
+ * @param[in] pTag   the null-terminated string that is the name of the
  *                   tag to use - this tag name will apply until the
  *                   cellular API is deinitialised; use NULL to return
  *                   to default operation (where no specific tag is
@@ -104,14 +104,14 @@ const char *pUCellFileGetTag(uDeviceHandle_t cellHandle);
  * character loss it is recommended that flow control lines are
  * connected on the interface to the module.
  *
- * @param cellHandle the handle of the cellular instance.
- * @param pFileName  a pointer to file name to be stored on file system.
- *                   File name cannot contain these characters:
- *                   / * : % | " < > ?.
- * @param pData      a pointer to the data to write into the file.
- * @param dataSize   number of data bytes to write into the file.
- * @return           on success return number of bytes written into
- *                   the file or negative error code on failure.
+ * @param cellHandle     the handle of the cellular instance.
+ * @param[in] pFileName  a pointer to file name to be stored on file
+ *                       system. File name cannot contain these
+ *                       characters: / * : % | " < > ?.
+ * @param[in] pData      a pointer to the data to write into the file.
+ * @param dataSize       number of data bytes to write into the file.
+ * @return               on success return number of bytes written into
+ *                       the file or negative error code on failure.
  */
 int32_t uCellFileWrite(uDeviceHandle_t cellHandle,
                        const char *pFileName,
@@ -122,14 +122,14 @@ int32_t uCellFileWrite(uDeviceHandle_t cellHandle,
  * error will be return. In order to avoid character loss it is recommended
  * that flow control lines are connected on the interface to the module.
  *
- * @param cellHandle the handle of the cellular instance.
- * @param pFileName  a pointer to file name to read file contents from the
- *                   file system. File name cannot contain these characters:
- *                   / * : % | " < > ?.
- * @param pData      a pointer to stream of data bytes to be read.
- * @param dataSize   number of data bytes to read.
- * @return           on success return number of bytes read from file
- *                   or negative error code on failure.
+ * @param cellHandle     the handle of the cellular instance.
+ * @param[in] pFileName  a pointer to file name to read file contents from the
+ *                       file system. File name cannot contain these characters:
+ *                       / * : % | " < > ?.
+ * @param[out] pData     a pointer to a place to store the stream of bytes.
+ * @param dataSize       number of data bytes to read.
+ * @return               on success return number of bytes read from file
+ *                       or negative error code on failure.
  */
 int32_t uCellFileRead(uDeviceHandle_t cellHandle,
                       const char *pFileName,
@@ -143,16 +143,15 @@ int32_t uCellFileRead(uDeviceHandle_t cellHandle,
  * functions does NOT support use of tags, i.e. only files from the
  * default "USER" area of the file system can be read in blocks.
  *
- * @param cellHandle the handle of the cellular instance.
- * @param pFileName  a pointer to file name to read file contents from
- *                   the file system. File name cannot contain these
- *                   characters:
- *                   / * : % | " < > ?.
- * @param pData      a pointer to stream of data bytes to be read.
- * @param offset     offset in bytes from the beginning of the file.
- * @param dataSize   number of data bytes to read.
- * @return           on success return number of bytes read from file
- *                   or negative error code on failure.
+ * @param cellHandle     the handle of the cellular instance.
+ * @param[in] pFileName  a pointer to file name to read file contents
+ *                       from the file system. File name cannot contain
+ *                       these characters: / * : % | " < > ?.
+ * @param[out] pData     a pointer to a place to store the read data.
+ * @param offset         offset in bytes from the beginning of the file.
+ * @param dataSize       number of data bytes to read.
+ * @return               on success return number of bytes read from file
+ *                       or negative error code on failure.
  */
 int32_t uCellFileBlockRead(uDeviceHandle_t cellHandle,
                            const char *pFileName,
@@ -163,12 +162,12 @@ int32_t uCellFileBlockRead(uDeviceHandle_t cellHandle,
 /** Read size of file on the file system. If the file does not exists,
  * error will be return.
  *
- * @param cellHandle the handle of the cellular instance.
- * @param pFileName  a pointer to file name to read file size.
- *                   File name cannot contain these characters,
- *                   / : % | " < >.
- * @return           on success return file size or negative error
- *                   code on failure.
+ * @param cellHandle     the handle of the cellular instance.
+ * @param[in] pFileName  a pointer to the file name to read the size of.
+ *                       File name cannot contain these characters:
+ *                       / : % | " < >.
+ * @return               on success return file size or negative error
+ *                       code on failure.
  */
 int32_t uCellFileSize(uDeviceHandle_t cellHandle,
                       const char *pFileName);
@@ -176,11 +175,11 @@ int32_t uCellFileSize(uDeviceHandle_t cellHandle,
 /** Delete a file from the file system. If the file does not exist,
  * error will be return.
  *
- * @param cellHandle the handle of the cellular instance.
- * @param pFileName  a pointer to file name to delete from file system.
- *                   File name cannot contain these characters:
- *                   / * : % | " < > ?.
- * @return           zero on success or negative error code on failure.
+ * @param cellHandle     the handle of the cellular instance.
+ * @param[in] pFileName  a pointer to the file name to delete from the
+ *                       file system. File names cannot contain these
+ *                       characters: / * : % | " < > ?.
+ * @return               zero on success or negative error code on failure.
  */
 int32_t uCellFileDelete(uDeviceHandle_t cellHandle,
                         const char *pFileName);
@@ -205,12 +204,12 @@ int32_t uCellFileDelete(uDeviceHandle_t cellHandle,
  * If a tag has been set using uCellFileSetTag() then only
  * files from the tagged area of the file system will be listed.
  *
- * @param cellHandle the handle of the cellular instance.
- * @param pFileName  pointer to somewhere to store the result;
- *                   at least #U_CELL_FILE_NAME_MAX_LENGTH + 1 bytes
- *                   of storage must be provided.
- * @return           the total number of file names in the list
- *                   or negative error code.
+ * @param cellHandle      the handle of the cellular instance.
+ * @param[out] pFileName  pointer to somewhere to store the result;
+ *                        at least #U_CELL_FILE_NAME_MAX_LENGTH + 1 bytes
+ *                        of storage must be provided.
+ * @return                the total number of file names in the list
+ *                        or negative error code.
  */
 int32_t uCellFileListFirst(uDeviceHandle_t cellHandle,
                            char *pFileName);
@@ -226,13 +225,13 @@ int32_t uCellFileListFirst(uDeviceHandle_t cellHandle,
  * If a tag has been set using uCellFileSetTag() then only
  * files from the tagged area of the file system will be listed.
  *
- * @param cellHandle the handle of the cellular instance.
- * @param pFileName  pointer to somewhere to store the result;
- *                   at least #U_CELL_FILE_NAME_MAX_LENGTH + 1 bytes
- *                   of storage must be provided..
- * @return           the number of entries remaining *after*
- *                   this one has been read or negative error
- *                   code.
+ * @param cellHandle      the handle of the cellular instance.
+ * @param[out] pFileName  pointer to somewhere to store the result;
+ *                        at least #U_CELL_FILE_NAME_MAX_LENGTH + 1
+ *                        bytes of storage must be provided..
+ * @return                the number of entries remaining *after*
+ *                        this one has been read or negative error
+ *                        code.
  */
 int32_t uCellFileListNext(uDeviceHandle_t cellHandle,
                           char *pFileName);

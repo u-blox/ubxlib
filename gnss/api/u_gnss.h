@@ -109,12 +109,12 @@ void uGnssRemove(uDeviceHandle_t gnssHandle);
 /** Get the type and handle of the transport used by the given
  * GNSS instance.
  *
- * @param gnssHandle        the handle of the GNSS instance.
- * @param pTransportType    a place to put the transport type,
- *                          may be NULL.
- * @param pTransportHandle  a place to put the transport handle,
- *                          may be NULL.
- * @return                  zero on success, else negative error code.
+ * @param gnssHandle            the handle of the GNSS instance.
+ * @param[out] pTransportType   a place to put the transport type,
+ *                              may be NULL.
+ * @param[out] pTransportHandle a place to put the transport handle,
+ *                              may be NULL.
+ * @return                      zero on success, else negative error code.
  */
 int32_t uGnssGetTransportHandle(uDeviceHandle_t gnssHandle,
                                 uGnssTransportType_t *pTransportType,

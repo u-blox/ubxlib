@@ -135,15 +135,15 @@ int32_t uCellSockCreate(uDeviceHandle_t cellHandle,
 
 /** Connect to a server.
  *
- * @param cellHandle     the handle of the cellular instance.
- * @param sockHandle     the handle of the socket.
- * @param pRemoteAddress the address of the server to
- *                       connect to, possibly established
- *                       via a call to uCellSockGetHostByName(),
- *                       including port number.
- * @return               zero on success else negated
- *                       value of U_SOCK_Exxx from
- *                       u_sock_errno.h.
+ * @param cellHandle         the handle of the cellular instance.
+ * @param sockHandle         the handle of the socket.
+ * @param[in] pRemoteAddress the address of the server to
+ *                           connect to, possibly established
+ *                           via a call to uCellSockGetHostByName(),
+ *                           including port number.
+ * @return                   zero on success else negated
+ *                           value of U_SOCK_Exxx from
+ *                           u_sock_errno.h.
  */
 int32_t uCellSockConnect(uDeviceHandle_t cellHandle,
                          int32_t sockHandle,
@@ -151,22 +151,22 @@ int32_t uCellSockConnect(uDeviceHandle_t cellHandle,
 
 /** Close a socket.
  *
- * @param cellHandle  the handle of the cellular instance.
- * @param sockHandle  the handle of the socket.
- * @param pCallback   sometimes closure of a TCP socket
- *                    can take many seconds due to the
- *                    requirement to wait for remaining
- *                    data and acknowledgements. This
- *                    call will block while closure is
- *                    completed unless pCallback is non-
- *                    NULL, in which case this function
- *                    will return and will call pCallback,
- *                    with the first parameter the cellHandle
- *                    and the second parameter the sockHandle,
- *                    when the socket is eventually closed.
- * @return            zero on success else negated
- *                    value of U_SOCK_Exxx from
- *                    u_sock_errno.h.
+ * @param cellHandle     the handle of the cellular instance.
+ * @param sockHandle     the handle of the socket.
+ * @param[in] pCallback  sometimes closure of a TCP socket
+ *                       can take many seconds due to the
+ *                       requirement to wait for remaining
+ *                       data and acknowledgements. This
+ *                       call will block while closure is
+ *                       completed unless pCallback is non-
+ *                       NULL, in which case this function
+ *                       will return and will call pCallback,
+ *                       with the first parameter the cellHandle
+ *                       and the second parameter the sockHandle,
+ *                       when the socket is eventually closed.
+ * @return               zero on success else negated
+ *                       value of U_SOCK_Exxx from
+ *                       u_sock_errno.h.
  */
 int32_t uCellSockClose(uDeviceHandle_t cellHandle,
                        int32_t sockHandle,
@@ -221,7 +221,7 @@ bool uCellSockBlockingGet(uDeviceHandle_t cellHandle,
  * @param level             the option level
  *                          (see U_SOCK_OPT_LEVEL_xxx in u_sock.h).
  * @param option            the option (see U_SOCK_OPT_xxx in u_sock.h).
- * @param pOptionValue      a pointer to the option value to set.
+ * @param[in] pOptionValue  a pointer to the option value to set.
  * @param optionValueLength the length of the data at pOptionValue.
  * @return                  zero on success else negated
  *                          value of U_SOCK_Exxx from
@@ -236,23 +236,23 @@ int32_t uCellSockOptionSet(uDeviceHandle_t cellHandle,
 
 /** Get socket option.
  *
- * @param cellHandle         the handle of the cellular instance.
- * @param sockHandle         the handle of the socket.
- * @param level              the option level (see
- *                           U_SOCK_OPT_LEVEL_xxx in u_sock.h).
- * @param option             the option (see U_SOCK_OPT_xxx in u_sock.h).
- * @param pOptionValue       a pointer to a place to put the option
- *                           value. May be NULL in which case
- *                           pOptionValueLength still returns the
- *                           length that would have been written.
- * @param pOptionValueLength when called, the length of the space
- *                           pointed to by pOptionValue, on return
- *                           the length of data in bytes that would
- *                           be written in pOptionValue if it were
- *                           not NULL.
- * @return                   zero on success else negated
- *                           value of U_SOCK_Exxx from
- *                           u_sock_errno.h.
+ * @param cellHandle                 the handle of the cellular instance.
+ * @param sockHandle                 the handle of the socket.
+ * @param level                      the option level (see
+ *                                   U_SOCK_OPT_LEVEL_xxx in u_sock.h).
+ * @param option                     the option (see U_SOCK_OPT_xxx in u_sock.h).
+ * @param[out] pOptionValue          a pointer to a place to put the option
+ *                                   value. May be NULL in which case
+ *                                   pOptionValueLength still returns the
+ *                                   length that would have been written.
+ * @param[in,out] pOptionValueLength when called, the length of the space
+ *                                   pointed to by pOptionValue, on return
+ *                                   the length of data in bytes that would
+ *                                   be written in pOptionValue if it were
+ *                                   not NULL.
+ * @return                           zero on success else negated
+ *                                   value of U_SOCK_Exxx from
+ *                                   u_sock_errno.h.
  */
 int32_t uCellSockOptionGet(uDeviceHandle_t cellHandle,
                            int32_t sockHandle,
@@ -329,20 +329,20 @@ bool uCellSockHexModeIsOn(uDeviceHandle_t cellHandle);
  * Note that not all modules support use of uCellSockSendTo() on a
  * connected socket (e.g. SARA-R422 does not).
  *
- * @param cellHandle     the handle of the cellular instance.
- * @param sockHandle     the handle of the socket.
- * @param pRemoteAddress the address of the server to
- *                       send the datagram to, possibly
- *                       established via a call to
- *                       uCellSockGetHostByName(),
- *                       plus port number.  Cannot be NULL.
- * @param pData          the data to send, may be NULL, in which
- *                       case this function does nothing.
- * @param dataSizeBytes  the number of bytes of data to send;
- *                       must be zero if pData is NULL.
- * @return               the number of bytes sent on
- *                       success else negated value
- *                       of U_SOCK_Exxx from u_sock_errno.h.
+ * @param cellHandle         the handle of the cellular instance.
+ * @param sockHandle         the handle of the socket.
+ * @param[in] pRemoteAddress the address of the server to
+ *                           send the datagram to, possibly
+ *                           established via a call to
+ *                           uCellSockGetHostByName(),
+ *                           plus port number.  Cannot be NULL.
+ * @param[in] pData          the data to send, may be NULL, in which
+ *                           case this function does nothing.
+ * @param dataSizeBytes      the number of bytes of data to send;
+ *                           must be zero if pData is NULL.
+ * @return                   the number of bytes sent on
+ *                           success else negated value
+ *                           of U_SOCK_Exxx from u_sock_errno.h.
  */
 int32_t uCellSockSendTo(uDeviceHandle_t cellHandle,
                         int32_t sockHandle,
@@ -351,25 +351,25 @@ int32_t uCellSockSendTo(uDeviceHandle_t cellHandle,
 
 /** Receive a datagram.
  *
- * @param cellHandle     the handle of the cellular instance.
- * @param sockHandle     the handle of the socket.
- * @param pRemoteAddress a place to put the address of the remote
- *                       host from which the datagram was received;
- *                       may be NULL.
- * @param pData          a buffer in which to store the arriving
- *                       datagram.
- * @param dataSizeBytes  the number of bytes of storage available
- *                       at pData.  Each call receives a single
- *                       datagram of up to
- *                       #U_CELL_SOCK_MAX_SEGMENT_SIZE_BYTES (or
- *                       half that if in hex mode); if dataSizeBytes
- *                       is less than this the remainder will be
- *                       thrown away.  To ensure no loss always
- *                       allocate a buffer of at least
- *                       #U_CELL_SOCK_MAX_SEGMENT_SIZE_BYTES  (or
- *                       half that if in hex mode).
- * @return               the number of bytes received else negated
- *                       value of U_SOCK_Exxx from u_sock_errno.h.
+ * @param cellHandle          the handle of the cellular instance.
+ * @param sockHandle          the handle of the socket.
+ * @param[out] pRemoteAddress a place to put the address of the remote
+ *                            host from which the datagram was received;
+ *                            may be NULL.
+ * @param[out] pData          a buffer in which to store the arriving
+ *                            datagram.
+ * @param dataSizeBytes       the number of bytes of storage available
+ *                            at pData.  Each call receives a single
+ *                            datagram of up to
+ *                            #U_CELL_SOCK_MAX_SEGMENT_SIZE_BYTES (or
+ *                            half that if in hex mode); if dataSizeBytes
+ *                            is less than this the remainder will be
+ *                            thrown away.  To ensure no loss always
+ *                            allocate a buffer of at least
+ *                            #U_CELL_SOCK_MAX_SEGMENT_SIZE_BYTES  (or
+ *                            half that if in hex mode).
+ * @return                    the number of bytes received else negated
+ *                            value of U_SOCK_Exxx from u_sock_errno.h.
  */
 int32_t uCellSockReceiveFrom(uDeviceHandle_t cellHandle,
                              int32_t sockHandle,
@@ -384,7 +384,7 @@ int32_t uCellSockReceiveFrom(uDeviceHandle_t cellHandle,
  *
  * @param cellHandle     the handle of the cellular instance.
  * @param sockHandle     the handle of the socket.
- * @param pData          the data to send, may be NULL, in which
+ * @param[in] pData      the data to send, may be NULL, in which
  *                       case this function does nothing.
  * @param dataSizeBytes  the number of bytes of data to send;
  *                       must be zero if pData is NULL.
@@ -400,7 +400,7 @@ int32_t uCellSockWrite(uDeviceHandle_t cellHandle,
  *
  * @param cellHandle     the handle of the cellular instance.
  * @param sockHandle     the handle of the socket.
- * @param pData          a buffer in which to store the received
+ * @param[out] pData     a buffer in which to store the received
  *                       bytes.
  * @param dataSizeBytes  the number of bytes of storage available
  *                       at pData.
@@ -417,13 +417,13 @@ int32_t uCellSockRead(uDeviceHandle_t cellHandle,
 
 /** Register a callback on data being received.
  *
- * @param cellHandle  the handle of the cellular instance.
- * @param sockHandle  the handle of the socket.
- * @param pCallback   the callback to be called, or
- *                    NULL to cancel a previous callback.
- *                    The first parameter passed to the
- *                    callback will be cellHandle, the
- *                    second sockHandle.
+ * @param cellHandle    the handle of the cellular instance.
+ * @param sockHandle    the handle of the socket.
+ * @param[in] pCallback the callback to be called, or
+ *                      NULL to cancel a previous callback.
+ *                      The first parameter passed to the
+ *                      callback will be cellHandle, the
+ *                      second sockHandle.
  */
 void uCellSockRegisterCallbackData(uDeviceHandle_t cellHandle,
                                    int32_t sockHandle,
@@ -432,13 +432,13 @@ void uCellSockRegisterCallbackData(uDeviceHandle_t cellHandle,
 
 /** Register a callback on a socket being closed.
  *
- * @param cellHandle  the handle of the cellular instance.
- * @param sockHandle  the handle of the socket.
- * @param pCallback   the callback to be called, or
- *                    NULL to cancel a previous callback.
- *                    The first parameter passed to the
- *                    callback will be cellHandle, the
- *                    second sockHandle.
+ * @param cellHandle    the handle of the cellular instance.
+ * @param sockHandle    the handle of the socket.
+ * @param[in] pCallback the callback to be called, or
+ *                      NULL to cancel a previous callback.
+ *                      The first parameter passed to the
+ *                      callback will be cellHandle, the
+ *                      second sockHandle.
  */
 void uCellSockRegisterCallbackClosed(uDeviceHandle_t cellHandle,
                                      int32_t sockHandle,
@@ -452,12 +452,12 @@ void uCellSockRegisterCallbackClosed(uDeviceHandle_t cellHandle,
 /** Bind a socket to a local address for receiving
  * incoming TCP connections (required for a TCP server only).
  *
- * @param cellHandle    the handle of the cellular instance.
- * @param sockHandle    the handle of the socket.
- * @param pLocalAddress the local address to bind to.
- * @return              zero on success else negated
- *                      value of U_SOCK_Exxx from
- *                      u_sock_errno.h.
+ * @param cellHandle        the handle of the cellular instance.
+ * @param sockHandle        the handle of the socket.
+ * @param[in] pLocalAddress the local address to bind to.
+ * @return                  zero on success else negated
+ *                          value of U_SOCK_Exxx from
+ *                          u_sock_errno.h.
  */
 int32_t uCellSockBind(uDeviceHandle_t cellHandle,
                       int32_t sockHandle,
@@ -479,15 +479,15 @@ int32_t uCellSockListen(uDeviceHandle_t cellHandle,
 /** Accept an incoming TCP connection (required for TCP
  * server only).
  *
- * @param cellHandle      the handle of the cellular instance.
- * @param sockHandle      the handle of the socket.
- * @param pRemoteAddress  a pointer to a place to put the
- *                        address of the thing from which the
- *                        connection has been accepted.
- * @return                the sockHandle to be used with this
- *                        connection from now on else negated
- *                        value of U_SOCK_Exxx from
- *                        u_sock_errno.h.
+ * @param cellHandle          the handle of the cellular instance.
+ * @param sockHandle          the handle of the socket.
+ * @param[out] pRemoteAddress a pointer to a place to put the
+ *                            address of the thing from which the
+ *                            connection has been accepted.
+ * @return                    the sockHandle to be used with this
+ *                            connection from now on else negated
+ *                            value of U_SOCK_Exxx from
+ *                            u_sock_errno.h.
  */
 int32_t uCellSockAccept(uDeviceHandle_t cellHandle,
                         int32_t sockHandle,
@@ -499,14 +499,14 @@ int32_t uCellSockAccept(uDeviceHandle_t cellHandle,
 
 /** Perform a DNS look-up.
  *
- * @param cellHandle     the handle of the cellular instance.
- * @param pHostName      the host name to look up, for example
- *                       "google.com".
- * @param pHostIpAddress a place to put the IP address
- *                       of the host.
- * @return               zero on success else negated
- *                       value of U_SOCK_Exxx from
- *                       u_sock_errno.h.
+ * @param cellHandle          the handle of the cellular instance.
+ * @param[in] pHostName       the host name to look up, for example
+ *                            "google.com".
+ * @param[out] pHostIpAddress a place to put the IP address
+ *                            of the host.
+ * @return                    zero on success else negated
+ *                            value of U_SOCK_Exxx from
+ *                            u_sock_errno.h.
  */
 int32_t uCellSockGetHostByName(uDeviceHandle_t cellHandle,
                                const char *pHostName,
@@ -514,13 +514,13 @@ int32_t uCellSockGetHostByName(uDeviceHandle_t cellHandle,
 
 /** Get the local address of a socket.
  *
- * @param cellHandle    the handle of the cellular instance.
- * @param sockHandle    the handle of the socket.
- * @param pLocalAddress a place to put the local IP address
- *                      of the socket.
- * @return              zero on success else negated
- *                      value of U_SOCK_Exxx from
- *                      u_sock_errno.h.
+ * @param cellHandle         the handle of the cellular instance.
+ * @param sockHandle         the handle of the socket.
+ * @param[out] pLocalAddress a place to put the local IP address
+ *                           of the socket.
+ * @return                   zero on success else negated
+ *                           value of U_SOCK_Exxx from
+ *                           u_sock_errno.h.
  */
 int32_t uCellSockGetLocalAddress(uDeviceHandle_t cellHandle,
                                  int32_t sockHandle,

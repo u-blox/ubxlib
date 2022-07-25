@@ -67,10 +67,10 @@ extern "C" {
  * two dummy bytes to the message.
  *
  * @param gnssHandle             the handle of the GNSS instance.
- * @param pCommand               the command to send; may be NULL.
+ * @param[in] pCommand           the command to send; may be NULL.
  * @param commandLengthBytes     the amount of data at pCommand; must
  *                               be non-zero if pCommand is non-NULL.
- * @param pResponse              a pointer to somewhere to store the
+ * @param[out] pResponse         a pointer to somewhere to store the
  *                               response, if one is expected; may
  *                               be NULL.
  * @param maxResponseLengthBytes the amount of storage at pResponse;

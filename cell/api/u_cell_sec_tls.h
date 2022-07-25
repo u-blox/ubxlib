@@ -113,7 +113,7 @@ uCellSecTlsContext_t *pUCellSecSecTlsAdd(uDeviceHandle_t cellHandle);
  * (common/security/api/u_security_tls.h) when a secure connection
  * is closed by one of the common protocol APIs (e.g. common/sock).
  *
- * @param pContext a pointer to the TLS security context.
+ * @param[in] pContext a pointer to the TLS security context.
  */
 void uCellSecTlsRemove(uCellSecTlsContext_t *pContext);
 
@@ -133,11 +133,11 @@ int32_t uCellSecTlsResetLastError();
  * The X.509 certificate must have been stored in the module
  * using uSecurityCredentialStore().
  *
- * @param pContext    a pointer to the security context.
- * @param pName       the null-terminated name of the root CA
- *                    X.509 certificate, as stored using
- *                    uSecurityCredentialStore().
- * @return            zero on success else negative error code.
+ * @param[in] pContext a pointer to the security context.
+ * @param pName        the null-terminated name of the root CA
+ *                     X.509 certificate, as stored using
+ *                     uSecurityCredentialStore().
+ * @return             zero on success else negative error code.
  */
 int32_t uCellSecTlsRootCaCertificateNameSet(const uCellSecTlsContext_t *pContext,
                                             const char *pName);
@@ -146,8 +146,8 @@ int32_t uCellSecTlsRootCaCertificateNameSet(const uCellSecTlsContext_t *pContext
  * The X.509 certificate must have been stored in the module
  * using uSecurityCredentialStore().
  *
- * @param pContext        a pointer to the security context.
- * @param pName           a pointer to a place to store the name of
+ * @param[in] pContext    a pointer to the security context.
+ * @param[out] pName      a pointer to a place to store the name of
  *                        the root CA X.509 certificate; the name
  *                        will be a null-terminated string.
  * @param size            the number of bytes of storage at
@@ -167,11 +167,11 @@ int32_t uCellSecTlsRootCaCertificateNameGet(const uCellSecTlsContext_t *pContext
  * using uSecurityCredentialStore().  See also
  * uCellSecTlsUseDeviceCertificateSet() below.
  *
- * @param pContext    a pointer to the security context.
- * @param pName       the null-terminated name of the client
- *                    X.509 certificate, as stored using
- *                    uSecurityCredentialStore().
- * @return            zero on success else negative error code.
+ * @param[in] pContext a pointer to the security context.
+ * @param[in] pName    the null-terminated name of the client
+ *                     X.509 certificate, as stored using
+ *                     uSecurityCredentialStore().
+ * @return             zero on success else negative error code.
  */
 int32_t uCellSecTlsClientCertificateNameSet(const uCellSecTlsContext_t *pContext,
                                             const char *pName);
@@ -180,8 +180,8 @@ int32_t uCellSecTlsClientCertificateNameSet(const uCellSecTlsContext_t *pContext
  * The X.509 certificate must have been stored in the module
  * using uSecurityCredentialStore().
  *
- * @param pContext        a pointer to the security context.
- * @param pName           a pointer to a place to store the name of
+ * @param[in] pContext    a pointer to the security context.
+ * @param[out] pName      a pointer to a place to store the name of
  *                        the client X.509 certificate; the name
  *                        will be a null-terminated string.
  * @param size            the number of bytes of storage at
@@ -200,13 +200,13 @@ int32_t uCellSecTlsClientCertificateNameGet(const uCellSecTlsContext_t *pContext
  * the associated password.  The key must have been stored in the
  * module using uSecurityCredentialStore().
  *
- * @param pContext    a pointer to the security context.
- * @param pName       the null-terminated name of the client private
- *                    key, as stored using uSecurityCredentialStore().
- * @param pPassword   the null-terminated password for the client
- *                    private key; use NULL if the key is not
- *                    password-protected.
- * @return            zero on success else negative error code.
+ * @param[in] pContext  a pointer to the security context.
+ * @param[in] pName     the null-terminated name of the client private
+ *                      key, as stored using uSecurityCredentialStore().
+ * @param[in] pPassword the null-terminated password for the client
+ *                      private key; use NULL if the key is not
+ *                      password-protected.
+ * @return              zero on success else negative error code.
  */
 int32_t uCellSecTlsClientPrivateKeyNameSet(const uCellSecTlsContext_t *pContext,
                                            const char *pName,
@@ -215,8 +215,8 @@ int32_t uCellSecTlsClientPrivateKeyNameSet(const uCellSecTlsContext_t *pContext,
 /** Get the name of the client private key in use.  The key
  * must have been stored in the module using uSecurityCredentialStore().
  *
- * @param pContext        a pointer to the security context.
- * @param pName           a pointer to a place to store the name of
+ * @param[in] pContext    a pointer to the security context.
+ * @param[out] pName      a pointer to a place to store the name of
  *                        the client private key; the name
  *                        will be a null-terminated string.
  * @param size            the number of bytes of storage at
@@ -235,13 +235,13 @@ int32_t uCellSecTlsClientPrivateKeyNameGet(const uCellSecTlsContext_t *pContext,
  * IMPORTANT: on all currently supported modules the PSK and
  * PSK ID must include no ASCII control characters.
  *
- * @param pContext         a pointer to the security context.
- * @param pPsk             the pre-shared key to use, encoded as binary,
+ * @param[in] pContext     a pointer to the security context.
+ * @param[in] pPsk         the pre-shared key to use, encoded as binary,
  *                         for example [0x0a, 0x04, 0xf0, 0x08... etc],
  *                         *not* hex encoded in ASCII; cannot be NULL.
  * @param pskLengthBytes   the amount of data at pPsk, must be no
  *                         more than #U_SECURITY_TLS_PSK_MAX_LENGTH_BYTES.
- * @param pPskId           the pre-shared key ID to use, encoded as binary,
+ * @param[in] pPskId       the pre-shared key ID to use, encoded as binary,
  *                         for example [0x0a, 0x04, 0xf0, 0x08... etc],
  *                         *not* hex encoded in ASCII; cannot be NULL.
  * @param pskIdLengthBytes the amount of data at pPskId, must be no
@@ -263,7 +263,7 @@ int32_t uCellSecTlsClientPskSet(const uCellSecTlsContext_t *pContext,
  * that was generated at security sealing will be used as the client
  * certificate.
  *
- * @param pContext               a pointer to the security context.
+ * @param[in] pContext           a pointer to the security context.
  * @param includeCaCertificates  if set to true then the CA X.509 certificates
  *                               that were used to sign the device
  *                               certificate during the security sealing
@@ -276,16 +276,16 @@ int32_t uCellSecTlsUseDeviceCertificateSet(const uCellSecTlsContext_t *pContext,
 /** Get whether the device public X.509 certificate that was generated at
  * security sealing is being used as the client certificate.
  *
- * @param pContext                a pointer to the security context.
- * @param pIncludeCaCertificates  a place to store whether the CA X.509
- *                                certificates that were used to sign the device
- *                                certificate during the security sealing
- *                                process are also being included; may be NULL.
- * @return                        true if the device public X.509 certificate
- *                                is being usd as the cient certificate, else
- *                                false (and the name set with the call to
- *                                uCellSecTlsClientCertificateNameSet() is being
- *                                used instead).
+ * @param[in] pContext                a pointer to the security context.
+ * @param[out] pIncludeCaCertificates a place to store whether the CA X.509
+ *                                    certificates that were used to sign the device
+ *                                    certificate during the security sealing
+ *                                    process are also being included; may be NULL.
+ * @return                            true if the device public X.509 certificate
+ *                                    is being usd as the cient certificate, else
+ *                                    false (and the name set with the call to
+ *                                    uCellSecTlsClientCertificateNameSet() is being
+ *                                    used instead).
  */
 bool uCellSecTlsIsUsingDeviceCertificate(const uCellSecTlsContext_t *pContext,
                                          bool *pIncludeCaCertificates);
@@ -301,9 +301,9 @@ bool uCellSecTlsIsUsingDeviceCertificate(const uCellSecTlsContext_t *pContext,
  * single configurable cipher suite and adding a new one will
  * overwrite the previous.
  *
- * @param pContext    a pointer to the security context.
- * @param ianaNumber  the IANA number of the cipher suite to add.
- * @return            zero on success else negative error code.
+ * @param[in] pContext a pointer to the security context.
+ * @param ianaNumber   the IANA number of the cipher suite to add.
+ * @return             zero on success else negative error code.
  */
 int32_t uCellSecTlsCipherSuiteAdd(const uCellSecTlsContext_t *pContext,
                                   int32_t ianaNumber);
@@ -314,9 +314,9 @@ int32_t uCellSecTlsCipherSuiteAdd(const uCellSecTlsContext_t *pContext,
  * cipher suite, whatever the value of ianaNumber; effectively
  * a "reset to default" call.
  *
- * @param pContext    a pointer to the security context.
- * @param ianaNumber  the IANA number of the cipher suite to remove.
- * @return            zero on success else negative error code.
+ * @param[in] pContext a pointer to the security context.
+ * @param ianaNumber   the IANA number of the cipher suite to remove.
+ * @return             zero on success else negative error code.
  */
 int32_t uCellSecTlsCipherSuiteRemove(const uCellSecTlsContext_t *pContext,
                                      int32_t ianaNumber);
@@ -337,9 +337,9 @@ int32_t uCellSecTlsCipherSuiteRemove(const uCellSecTlsContext_t *pContext,
  * }
  * ```
  *
- * @param pContext    a pointer to the security context.
- * @return            the IANA number of the cipher suite or
- *                    negative error code.
+ * @param[in] pContext a pointer to the security context.
+ * @return             the IANA number of the cipher suite or
+ *                     negative error code.
  */
 int32_t uCellSecTlsCipherSuiteListFirst(uCellSecTlsContext_t *pContext);
 
@@ -355,9 +355,9 @@ int32_t uCellSecTlsCipherSuiteListFirst(uCellSecTlsContext_t *pContext);
  * security context.
  * The SARA-U201 and SARA-R4xx modules do not support this feature.
  *
- * @param pContext    a pointer to the security context.
- * @return            the IANA number of the cipher suite or
- *                    negative error code.
+ * @param[in] pContext a pointer to the security context.
+ * @return             the IANA number of the cipher suite or
+ *                     negative error code.
  */
 int32_t uCellSecTlsCipherSuiteListNext(uCellSecTlsContext_t *pContext);
 
@@ -366,7 +366,7 @@ int32_t uCellSecTlsCipherSuiteListNext(uCellSecTlsContext_t *pContext);
  * iterate through the whole list with
  * uCellSecTlsCipherSuiteListNext().
  *
- * @param pContext    a pointer to the security context.
+ * @param[in] pContext a pointer to the security context.
  */
 void uCellSecTlsCipherSuiteListLast(uCellSecTlsContext_t *pContext);
 
@@ -377,7 +377,7 @@ void uCellSecTlsCipherSuiteListLast(uCellSecTlsContext_t *pContext);
 /** Set the minimum [D]TLS version to use. If this is not called
  * the version will be "any".
  *
- * @param pContext       a pointer to the security context.
+ * @param[in] pContext   a pointer to the security context.
  * @param tlsVersionMin  the [D]TLS version encoded as an integer
  *                       where 0 = any, 10 = 1.0, 11 = 1.1 and
  *                       12 = 1.2.
@@ -388,10 +388,10 @@ int32_t uCellSecTlsVersionSet(const uCellSecTlsContext_t *pContext,
 
 /** Get the minimum [D]TLS version in use.
  *
- * @param pContext    a pointer to the security context.
- * @return            on success the [D]TLS version (see
- *                    uCellSecTlsVersionSet() for encoding), else
- *                    negative error code.
+ * @param[in] pContext a pointer to the security context.
+ * @return             on success the [D]TLS version (see
+ *                     uCellSecTlsVersionSet() for encoding), else
+ *                     negative error code.
  */
 int32_t uCellSecTlsVersionGet(const uCellSecTlsContext_t *pContext);
 
@@ -401,16 +401,16 @@ int32_t uCellSecTlsVersionGet(const uCellSecTlsContext_t *pContext);
  * and SARA-R422 root CA checking is conducted, on all other cellular
  * modules no checking is conducted.
  *
- * @param pContext    a pointer to the security context.
- * @param check       the certificate checks to perform.
- * @param pUrl        if URL checking is included this must
- *                    be the null-terminated server URL
- *                    to check against, else it must be NULL;
- *                    should be no longer than
- *                    #U_SECURITY_TLS_EXPECTED_SERVER_URL_MAX_LENGTH_BYTES
- *                    bytes long, excluding the terminator.
- * @return            zero on success else negative error
- *                    code.
+ * @param[in] pContext a pointer to the security context.
+ * @param check        the certificate checks to perform.
+ * @param[in] pUrl     if URL checking is included this must
+ *                     be the null-terminated server URL
+ *                     to check against, else it must be NULL;
+ *                     should be no longer than
+ *                     #U_SECURITY_TLS_EXPECTED_SERVER_URL_MAX_LENGTH_BYTES
+ *                     bytes long, excluding the terminator.
+ * @return             zero on success else negative error
+ *                     code.
  */
 int32_t uCellSecTlsCertificateCheckSet(const uCellSecTlsContext_t *pContext,
                                        uCellSecTlsCertficateCheck_t check,
@@ -419,17 +419,17 @@ int32_t uCellSecTlsCertificateCheckSet(const uCellSecTlsContext_t *pContext,
 /** Get the type of checking being performed on certificates
  * received from the server.
  *
- * @param pContext   a pointer to the security context.
- * @param pUrl       a pointer to a place to store the
- *                   null-terminated server URL being checked
- *                   against; only populated if URL-checking
- *                   is included, may be NULL.
- * @param size       the amount of storage at pUrl. To ensure
- *                   no loss
- *                   #U_SECURITY_TLS_EXPECTED_SERVER_URL_MAX_LENGTH_BYTES + 1
- *                   bytes should be allowed.
- * @return           the certificate check being performed
- *                   or negative error code.
+ * @param[in] pContext a pointer to the security context.
+ * @param[out] pUrl    a pointer to a place to store the
+ *                     null-terminated server URL being checked
+ *                     against; only populated if URL-checking
+ *                     is included, may be NULL.
+ * @param size         the amount of storage at pUrl. To ensure
+ *                     no loss
+ *                     #U_SECURITY_TLS_EXPECTED_SERVER_URL_MAX_LENGTH_BYTES + 1
+ *                     bytes should be allowed.
+ * @return             the certificate check being performed
+ *                     or negative error code.
  */
 int32_t uCellSecTlsCertificateCheckGet(const uCellSecTlsContext_t *pContext,
                                        char *pUrl, size_t size);
@@ -439,16 +439,16 @@ int32_t uCellSecTlsCertificateCheckGet(const uCellSecTlsContext_t *pContext,
  * Server Name Indication checking will be carried out.
  * The SARA-U201 and SARA-R4xx modules do not support this feature.
  *
- * @param pContext    a pointer to the security context.
- * @param pSni        the null-terminated server name
- *                    indication string to check against,
- *                    should be no longer than
- *                    #U_SECURITY_TLS_SNI_MAX_LENGTH_BYTES
- *                    bytes long, excluding the terminator;
- *                    use NULL to cancel any existing Server
- *                    Name Indication checking.
- * @return            zero on success else negative error
- *                    code.
+ * @param[in] pContext a pointer to the security context.
+ * @param[in] pSni     the null-terminated server name
+ *                     indication string to check against,
+ *                     should be no longer than
+ *                     #U_SECURITY_TLS_SNI_MAX_LENGTH_BYTES
+ *                     bytes long, excluding the terminator;
+ *                     use NULL to cancel any existing Server
+ *                     Name Indication checking.
+ * @return             zero on success else negative error
+ *                     code.
  */
 int32_t uCellSecTlsSniSet(const uCellSecTlsContext_t *pContext,
                           const char *pSni);
@@ -458,7 +458,7 @@ int32_t uCellSecTlsSniSet(const uCellSecTlsContext_t *pContext,
  * The SARA-U201 and SARA-R4xx modules do not support this feature.
  *
  * @param pContext   a pointer to the security context.
- * @param pSni       a pointer to a place to store the
+ * @param[out] pSni  a pointer to a place to store the
  *                   null-terminated Server Name Indication
  *                   string.
  * @param size       the amount of storage at pSni; to ensure

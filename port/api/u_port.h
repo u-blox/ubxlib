@@ -69,18 +69,18 @@ extern "C" {
  * code execution ends up in pEntryPoint, which should
  * never return.
  *
- * @param pEntryPoint    the function to run.
- * @param pParameter     a pointer that will be passed to pEntryPoint
- *                       when it is called. Usually NULL.
- * @param stackSizeBytes the number of bytes of memory to dynamically
- *                       allocate for stack; ignored if the RTOS
- *                       has already been started and no new
- *                       task needs to be created for the entry point.
- * @param priority       the priority at which to run a task that
- *                       is pEntryPoint; ignored if the RTOS
- *                       has already been started and no new
- *                       task needs to be created for the entry point.
- * @return               negative error code.
+ * @param[in] pEntryPoint the function to run.
+ * @param[in] pParameter  a pointer that will be passed to pEntryPoint
+ *                        when it is called. Usually NULL.
+ * @param stackSizeBytes  the number of bytes of memory to dynamically
+ *                        allocate for stack; ignored if the RTOS
+ *                        has already been started and no new
+ *                        task needs to be created for the entry point.
+ * @param priority        the priority at which to run a task that
+ *                        is pEntryPoint; ignored if the RTOS
+ *                        has already been started and no new
+ *                        task needs to be created for the entry point.
+ * @return                negative error code.
  */
 int32_t uPortPlatformStart(void (*pEntryPoint)(void *),
                            void *pParameter,

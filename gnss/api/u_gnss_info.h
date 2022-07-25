@@ -53,7 +53,7 @@ extern "C" {
 /** Get the version string from the GNSS chip.
  *
  * @param gnssHandle  the handle of the GNSS instance.
- * @param pStr        a pointer to size bytes of storage into which
+ * @param[out] pStr   a pointer to size bytes of storage into which
  *                    the firmware version string will be copied.
  *                    Room should be allowed for a null terminator,
  *                    which will be added to terminate the string.
@@ -75,7 +75,7 @@ int32_t uGnssInfoGetFirmwareVersionStr(uDeviceHandle_t gnssHandle,
 /** Get the chip ID from the GNSS chip.
  *
  * @param gnssHandle  the handle of the GNSS instance.
- * @param pStr        a pointer to size bytes of storage into which
+ * @param[out] pStr   a pointer to size bytes of storage into which
  *                    the chip ID string will be copied.
  *                    Room should be allowed for a null terminator,
  *                    which will be added to terminate the string.

@@ -123,9 +123,9 @@ typedef struct {
 
 /** Configure a GPIO pin.
  *
- * @param pConfig a pointer to the configuration to set, cannot be
- *                NULL.
- * @return        zero on success else negative error code.
+ * @param[in] pConfig a pointer to the configuration to set, cannot be
+ *                    NULL.
+ * @return            zero on success else negative error code.
  */
 int32_t uPortGpioConfig(uPortGpioConfig_t *pConfig);
 

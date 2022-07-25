@@ -262,9 +262,9 @@ void uCellRemove(uDeviceHandle_t cellHandle);
 /** Get the handle of the AT client used by the given
  * cellular instance.
  *
- * @param cellHandle  the handle of the cellular instance.
- * @param pAtHandle   a place to put the AT client handle.
- * @return            zero on success else negative error code.
+ * @param cellHandle      the handle of the cellular instance.
+ * @param[out] pAtHandle  a place to put the AT client handle.
+ * @return                zero on success else negative error code.
  */
 int32_t uCellAtClientHandleGet(uDeviceHandle_t cellHandle,
                                uAtClientHandle_t *pAtHandle);

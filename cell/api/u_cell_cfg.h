@@ -93,17 +93,17 @@ int32_t uCellCfgSetBandMask(uDeviceHandle_t cellHandle,
 /** Get the bands being used by the cellular module.
  * The module must be powered on for this to work.
  *
- * @param cellHandle  the handle of the cellular instance.
- * @param rat         the radio access technology to obtain the
- *                    band mask for; only #U_CELL_NET_RAT_CATM1 and
- *                    #U_CELL_NET_RAT_NB1 are permitted.
- * @param pBandMask1  pointer to a place to store band mask 1,
- *                    where bit 0 is band 1 and bit 63 is band 64,
- *                    cannot be NULL.
- * @param pBandMask2  pointer to a place to store band mask 2,
- *                    where bit 0 is band 65 and bit 63 is
- *                    band 128, cannot be NULL.
- * @return            zero on succese else negative error code.
+ * @param cellHandle      the handle of the cellular instance.
+ * @param rat             the radio access technology to obtain the
+ *                        band mask for; only #U_CELL_NET_RAT_CATM1 and
+ *                        #U_CELL_NET_RAT_NB1 are permitted.
+ * @param[out] pBandMask1 pointer to a place to store band mask 1,
+ *                        where bit 0 is band 1 and bit 63 is band 64,
+ *                        cannot be NULL.
+ * @param[out] pBandMask2 pointer to a place to store band mask 2,
+ *                        where bit 0 is band 65 and bit 63 is
+ *                        band 128, cannot be NULL.
+ * @return                zero on succese else negative error code.
  */
 int32_t uCellCfgGetBandMask(uDeviceHandle_t cellHandle,
                             uCellNetRat_t rat,
@@ -317,7 +317,7 @@ int32_t uCellCfgFactoryReset(uDeviceHandle_t cellHandle, int32_t fsRestoreType,
  * and SARA-U201.
  *
  * @param cellHandle   the handle of the cellular instance.
- * @param pStr         the null-terminated greeting message; use NULL
+ * @param[in] pStr     the null-terminated greeting message; use NULL
  *                     to remove an existing greeting message.
  * @return             zero on success or negative error code on
  *                     failure.
@@ -327,7 +327,7 @@ int32_t uCellCfgSetGreeting(uDeviceHandle_t cellHandle, const char *pStr);
 /** Get the current greeting message.
  *
  * @param cellHandle  the handle of the cellular instance.
- * @param pStr        a place to put the greeting message.  Room
+ * @param[out] pStr   a place to put the greeting message.  Room
  *                    should be allowed for a null terminator, which
  *                    will be added to terminate the string.  This
  *                    pointer cannot be NULL.

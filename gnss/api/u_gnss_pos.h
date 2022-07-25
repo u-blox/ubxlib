@@ -78,62 +78,62 @@ extern "C" {
 /** Get the current position, returning on success or when
  * pKeepGoingCallback returns false.
  *
- * @param gnssHandle                  the handle of the GNSS instance
- *                                    to use.
- * @param pLatitudeX1e7               a place to put latitude (in ten
- *                                    millionths of a degree); may
- *                                    be NULL.
- * @param pLongitudeX1e7              a place to put longitude (in ten
- *                                    millionths of a degree); may be
- *                                    NULL.
- * @param pAltitudeMillimetres        a place to put the altitude (in
- *                                    millimetres); may be NULL.
- * @param pRadiusMillimetres          a place to put the radius of
- *                                    position (in millimetres); may
- *                                    be NULL.  If the radius is
- *                                    unknown -1 will be returned.
- * @param pSpeedMillimetresPerSecond  a place to put the speed (in
- *                                    millimetres per second); may be
- *                                    NULL.  If the speed is unknown
- *                                    -1 will be returned.
- * @param pSvs                        a place to store the number of
- *                                    space vehicles used in the
- *                                    solution; may be NULL. If the
- *                                    number of space vehicles is
- *                                    unknown or irrelevant -1 will
- *                                    be returned.
- * @param pTimeUtc                    a place to put the UTC time;
- *                                    may be NULL. If the time is
- *                                    unknown -1 will be returned.
- *                                    Note that this is the time of
- *                                    the fix and, by the time the
- *                                    fix is returned, it may not
- *                                    represent the *current* time.
- *                                    Note that this value may be
- *                                    populated even if the return
- *                                    value of the function is not
- *                                    success, since time may be
- *                                    available even if a position
- *                                    fix is not.
- * @param pKeepGoingCallback          a callback function that governs
- *                                    how long position-fixing is
- *                                    allowed to take. This function
- *                                    is called while waiting for
- *                                    position establishment to complete;
- *                                    position establishment will only
- *                                    continue while it returns true.
- *                                    This allows the caller to terminate
- *                                    the locating process at their
- *                                    convenience. This function may
- *                                    also be used to feed any watchdog
- *                                    timer that might be running. May
- *                                    be NULL, in which case position
- *                                    establishment will stop when
- *                                    #U_GNSS_POS_TIMEOUT_SECONDS have
- *                                    elapsed.  The single int32_t
- *                                    parameter is the GNSS handle.
- * @return                            zero on success or negative error
- *                                    code on failure.
+ * @param gnssHandle                       the handle of the GNSS instance
+ *                                         to use.
+ * @param[out] pLatitudeX1e7               a place to put latitude (in ten
+ *                                         millionths of a degree); may
+ *                                         be NULL.
+ * @param[out] pLongitudeX1e7              a place to put longitude (in ten
+ *                                         millionths of a degree); may be
+ *                                         NULL.
+ * @param[out] pAltitudeMillimetres        a place to put the altitude (in
+ *                                         millimetres); may be NULL.
+ * @param[out] pRadiusMillimetres          a place to put the radius of
+ *                                         position (in millimetres); may
+ *                                         be NULL.  If the radius is
+ *                                         unknown -1 will be returned.
+ * @param[out] pSpeedMillimetresPerSecond  a place to put the speed (in
+ *                                         millimetres per second); may be
+ *                                         NULL.  If the speed is unknown
+ *                                         -1 will be returned.
+ * @param[out] pSvs                        a place to store the number of
+ *                                         space vehicles used in the
+ *                                         solution; may be NULL. If the
+ *                                         number of space vehicles is
+ *                                         unknown or irrelevant -1 will
+ *                                         be returned.
+ * @param[out] pTimeUtc                    a place to put the UTC time;
+ *                                         may be NULL. If the time is
+ *                                         unknown -1 will be returned.
+ *                                         Note that this is the time of
+ *                                         the fix and, by the time the
+ *                                         fix is returned, it may not
+ *                                         represent the *current* time.
+ *                                         Note that this value may be
+ *                                         populated even if the return
+ *                                         value of the function is not
+ *                                         success, since time may be
+ *                                         available even if a position
+ *                                         fix is not.
+ * @param[in] pKeepGoingCallback           a callback function that governs
+ *                                         how long position-fixing is
+ *                                         allowed to take. This function
+ *                                         is called while waiting for
+ *                                         position establishment to complete;
+ *                                         position establishment will only
+ *                                         continue while it returns true.
+ *                                         This allows the caller to terminate
+ *                                         the locating process at their
+ *                                         convenience. This function may
+ *                                         also be used to feed any watchdog
+ *                                         timer that might be running. May
+ *                                         be NULL, in which case position
+ *                                         establishment will stop when
+ *                                         #U_GNSS_POS_TIMEOUT_SECONDS have
+ *                                         elapsed.  The single int32_t
+ *                                         parameter is the GNSS handle.
+ * @return                                 zero on success or negative error
+ *                                         code on failure.
  */
 int32_t uGnssPosGet(uDeviceHandle_t gnssHandle,
                     int32_t *pLatitudeX1e7, int32_t *pLongitudeX1e7,
@@ -153,19 +153,19 @@ int32_t uGnssPosGet(uDeviceHandle_t gnssHandle,
  * you wish to free the memory occupied by the mutex then calling
  * uGnssPosGetStop() will also do that.
  *
- * @param gnssHandle the handle of the GNSS instance to use.
- * @param pCallback  a callback that will be called when a fix has been
- *                   obtained.  The parameters to the callback are as
- *                   described in uGnssPosGet() except that they are
- *                   not pointers.  The position fix is only valid
- *                   if the second int32_t, errorCode, is zero but
- *                   a timeUtc value may still be included even
- *                   if a position fix has failed (timeUtc will be
- *                   set to -1 if the UTC time is not valid).
- *                   Note: don't call back into this API from your
- *                   pCallback, it could lead to recursion.
- * @return           zero on success or negative error code on
- *                   failure.
+ * @param gnssHandle     the handle of the GNSS instance to use.
+ * @param[in] pCallback  a callback that will be called when a fix has been
+ *                       obtained.  The parameters to the callback are as
+ *                       described in uGnssPosGet() except that they are
+ *                       not pointers.  The position fix is only valid
+ *                       if the second int32_t, errorCode, is zero but
+ *                       a timeUtc value may still be included even
+ *                       if a position fix has failed (timeUtc will be
+ *                       set to -1 if the UTC time is not valid).
+ *                       Note: don't call back into this API from your
+ *                       pCallback, it could lead to recursion.
+ * @return               zero on success or negative error code on
+ *                       failure.
  */
 int32_t uGnssPosGetStart(uDeviceHandle_t gnssHandle,
                          void (*pCallback) (uDeviceHandle_t gnssHandle,
@@ -233,7 +233,7 @@ void uGnssPosGetStop(uDeviceHandle_t gnssHandle);
  *                                      must be met to return the RRLP information;
  *                                      specify -1 for "don't care".  The recommended
  *                                      value for the Cloud Locate service is 3.
- * @param pKeepGoingCallback            a callback function that governs the wait. This
+ * @param[in] pKeepGoingCallback        a callback function that governs the wait. This
  *                                      This function is called while waiting for RRLP
  *                                      data that meets the criteria; the API will
  *                                      only continue to wait while the callback function

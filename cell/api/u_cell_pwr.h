@@ -223,42 +223,42 @@ bool uCellPwrIsAlive(uDeviceHandle_t cellHandle);
  * is responsive and then configure it for correct operation
  * with this driver.
  *
- * @param cellHandle         the handle of the cellular instance.
- * @param pSimPinCode        pointer to a string giving the PIN of
- *                           the SIM. It is module dependent as to
- *                           whether this can be non-NULL; if it is
- *                           non-NULL and the module does not support
- *                           PIN entry (e.g. because it must always
- *                           be able to power-save and returning from
- *                           power saving mode requires the SIM to
- *                           power up without asking for a PIN)
- *                           then an error code will be returned.
- * @param pKeepGoingCallback power on usually takes between 5 and
- *                           15 seconds but it is possible for it
- *                           to take longer.  If this callback
- *                           function is non-NULL then it will
- *                           be called during the power-on
- *                           process and may be used to feed a
- *                           watchdog timer.  The callback
- *                           function should return true to
- *                           allow the power-on process to
- *                           be completed normally.  If the
- *                           callback function returns false
- *                           then the power-on process will
- *                           be abandoned.  Even when
- *                           this callback returns false
- *                           this function may still take some
- *                           10's of seconds to return in order
- *                           to ensure that the module is in a
- *                           cleanly powered (or not) state.
- *                           If this function is forced to return
- *                           it is advisable to call
- *                           uCellPwrIsAlive() to confirm
- *                           the final state of the module. The
- *                           single int32_t parameter is the
- *                           cell handle.
- * @return                   zero on success or negative error
- *                           code on failure.
+ * @param cellHandle             the handle of the cellular instance.
+ * @param[in] pSimPinCode        pointer to a string giving the PIN of
+ *                               the SIM. It is module dependent as to
+ *                               whether this can be non-NULL; if it is
+ *                               non-NULL and the module does not support
+ *                               PIN entry (e.g. because it must always
+ *                               be able to power-save and returning from
+ *                               power saving mode requires the SIM to
+ *                               power up without asking for a PIN)
+ *                               then an error code will be returned.
+ * @param[in] pKeepGoingCallback power on usually takes between 5 and
+ *                               15 seconds but it is possible for it
+ *                               to take longer.  If this callback
+ *                               function is non-NULL then it will
+ *                               be called during the power-on
+ *                               process and may be used to feed a
+ *                               watchdog timer.  The callback
+ *                               function should return true to
+ *                               allow the power-on process to
+ *                               be completed normally.  If the
+ *                               callback function returns false
+ *                               then the power-on process will
+ *                               be abandoned.  Even when
+ *                               this callback returns false
+ *                               this function may still take some
+ *                               10's of seconds to return in order
+ *                               to ensure that the module is in a
+ *                               cleanly powered (or not) state.
+ *                               If this function is forced to return
+ *                               it is advisable to call
+ *                               uCellPwrIsAlive() to confirm
+ *                               the final state of the module. The
+ *                               single int32_t parameter is the
+ *                               cell handle.
+ * @return                       zero on success or negative error
+ *                               code on failure.
  */
 int32_t uCellPwrOn(uDeviceHandle_t cellHandle,
                    const char *pSimPinCode,
@@ -266,27 +266,27 @@ int32_t uCellPwrOn(uDeviceHandle_t cellHandle,
 
 /** Power the cellular module off.
  *
- * @param cellHandle         the handle of the cellular instance.
- * @param pKeepGoingCallback it is possible for power off to
- *                           take some time.  If this callback
- *                           function is non-NULL then it will
- *                           be called during the power-off
- *                           process and may be used to feed a
- *                           watchdog timer.  The callback
- *                           function should return true to
- *                           allow the power-off process to
- *                           be completed normally.  If the
- *                           callback function returns false
- *                           then the power-off process will
- *                           be forced to completion immediately
- *                           and this function will return.
- *                           It is advisable for the callback
- *                           function to always return true,
- *                           allowing the cellular module to
- *                           power off cleanly. The single int32_t
- *                           parameter is the cell handle.
- * @return                   zero on success or negative error
- *                           code on failure.
+ * @param cellHandle             the handle of the cellular instance.
+ * @param[in] pKeepGoingCallback it is possible for power off to
+ *                               take some time.  If this callback
+ *                               function is non-NULL then it will
+ *                               be called during the power-off
+ *                               process and may be used to feed a
+ *                               watchdog timer.  The callback
+ *                               function should return true to
+ *                               allow the power-off process to
+ *                               be completed normally.  If the
+ *                               callback function returns false
+ *                               then the power-off process will
+ *                               be forced to completion immediately
+ *                               and this function will return.
+ *                               It is advisable for the callback
+ *                               function to always return true,
+ *                               allowing the cellular module to
+ *                               power off cleanly. The single int32_t
+ *                               parameter is the cell handle.
+ * @return                       zero on success or negative error
+ *                               code on failure.
  */
 int32_t uCellPwrOff(uDeviceHandle_t cellHandle,
                     bool (*pKeepGoingCallback) (uDeviceHandle_t));
@@ -297,39 +297,39 @@ int32_t uCellPwrOff(uDeviceHandle_t cellHandle,
  * being controlled and there is no way to disable the power
  * supply to the module, then this function will return an error.
  *
- * @param cellHandle         the handle of the cellular instance.
- * @param trulyHard          if this is set to true and a
- *                           non-negative value for pinEnablePower
- *                           was supplied to uCellInit()
- *                           then just pull the power to the
- *                           cellular module.  ONLY USE IN
- *                           EMERGENCIES, IF THE CELLULAR MODULE
- *                           HAS BECOME COMPLETELY UNRESPONSIVE.
- *                           If a negative value for pinEnablePower
- *                           was supplied this value is treated
- *                           as false.
- * @param pKeepGoingCallback even with HW lines powering the
- *                           cellular module off it is possible
- *                           for power off to take some time.
- *                           If this callback function is
- *                           non-NULL then it will be called
- *                           during the power-off process and
- *                           may be used to feed a watchdog
- *                           timer.  The callback function
- *                           should return true to allow the
- *                           power-off process to be completed
- *                           normally.  If the callback function
- *                           returns false then the power-off process
- *                           will be forced to completion immediately
- *                           and this function will return.
- *                           It is advisable for the callback
- *                           function to always return true,
- *                           allowing the cellular module to
- *                           power off cleanly. The single int32_t
- *                           parameter is the cell handle.
- *                           Ignored if trulyHard is true.
- * @return                   zero on success or negative error
- *                           code on failure.
+ * @param cellHandle             the handle of the cellular instance.
+ * @param trulyHard              if this is set to true and a
+ *                               non-negative value for pinEnablePower
+ *                               was supplied to uCellInit()
+ *                               then just pull the power to the
+ *                               cellular module.  ONLY USE IN
+ *                               EMERGENCIES, IF THE CELLULAR MODULE
+ *                               HAS BECOME COMPLETELY UNRESPONSIVE.
+ *                               If a negative value for pinEnablePower
+ *                               was supplied this value is treated
+ *                               as false.
+ * @param[in] pKeepGoingCallback even with HW lines powering the
+ *                               cellular module off it is possible
+ *                               for power off to take some time.
+ *                               If this callback function is
+ *                               non-NULL then it will be called
+ *                               during the power-off process and
+ *                               may be used to feed a watchdog
+ *                               timer.  The callback function
+ *                               should return true to allow the
+ *                               power-off process to be completed
+ *                               normally.  If the callback function
+ *                               returns false then the power-off process
+ *                               will be forced to completion immediately
+ *                               and this function will return.
+ *                               It is advisable for the callback
+ *                               function to always return true,
+ *                               allowing the cellular module to
+ *                               power off cleanly. The single int32_t
+ *                               parameter is the cell handle.
+ *                               Ignored if trulyHard is true.
+ * @return                       zero on success or negative error
+ *                               code on failure.
  */
 int32_t uCellPwrOffHard(uDeviceHandle_t cellHandle, bool trulyHard,
                         bool (*pKeepGoingCallback) (uDeviceHandle_t));
@@ -351,33 +351,33 @@ bool uCellPwrRebootIsRequired(uDeviceHandle_t cellHandle);
  * is required (since the SIM is not reset by a reboot).
  * TODO: is the bit about the SIM above true in all cases?
  *
- * @param cellHandle         the handle of the cellular instance.
- * @param pKeepGoingCallback rebooting usually takes between 5 and
- *                           15 seconds but it is possible for it
- *                           to take longer.  If this callback
- *                           function is non-NULL then it will
- *                           be called during the re-boot
- *                           process and may be used to feed a
- *                           watchdog timer.  The callback
- *                           function should return true to
- *                           allow the re-boot process to
- *                           be completed normally.  If the
- *                           callback function returns false
- *                           then the re-boot process will
- *                           be abandoned.  Even when
- *                           this callback returns false this
- *                           function may still take some
- *                           10's of seconds to return in order
- *                           to ensure that the module is in a
- *                           cleanly powered (or not) state.
- *                           If this function is forced to return
- *                           it is advisable to call
- *                           uCellPwrIsAlive() to confirm
- *                           the final state of the module. The
- *                           single int32_t parameter is the
- *                           cell handle.
- * @return                   zero on success or negative error
- *                           code on failure.
+ * @param cellHandle             the handle of the cellular instance.
+ * @param[in] pKeepGoingCallback rebooting usually takes between 5 and
+ *                               15 seconds but it is possible for it
+ *                               to take longer.  If this callback
+ *                               function is non-NULL then it will
+ *                               be called during the re-boot
+ *                               process and may be used to feed a
+ *                               watchdog timer.  The callback
+ *                               function should return true to
+ *                               allow the re-boot process to
+ *                               be completed normally.  If the
+ *                               callback function returns false
+ *                               then the re-boot process will
+ *                               be abandoned.  Even when
+ *                               this callback returns false this
+ *                               function may still take some
+ *                               10's of seconds to return in order
+ *                               to ensure that the module is in a
+ *                               cleanly powered (or not) state.
+ *                               If this function is forced to return
+ *                               it is advisable to call
+ *                               uCellPwrIsAlive() to confirm
+ *                               the final state of the module. The
+ *                               single int32_t parameter is the
+ *                               cell handle.
+ * @return                       zero on success or negative error
+ *                               code on failure.
  */
 int32_t uCellPwrReboot(uDeviceHandle_t cellHandle,
                        bool (*pKeepGoingCallback) (uDeviceHandle_t));
@@ -533,21 +533,21 @@ int32_t  uCellPwrSetRequested3gppPowerSaving(uDeviceHandle_t cellHandle,
 /** Get the currently requested parameters for 3GPP power saving
  * for the current RAT.
  *
- * @param cellHandle             the handle of the cellular
- *                               instance.
- * @param pOnNotOff              a place to put whether 3GPP power
- *                               saving is on or off, may be NULL.
- * @param pActiveTimeSeconds     a place to put the period of
- *                               inactivity after which the module
- *                               may go to 3GPP power saving
- *                               mode; may be NULL.
- * @param pPeriodicWakeupSeconds a place to put the period at
- *                               which the module wishes to
- *                               wake-up to inform the cellular
- *                               network that it is still
- *                               connected; may be NULL.
- * @return                       zero on success or negative
- *                               error code on failure.
+ * @param cellHandle                  the handle of the cellular
+ *                                    instance.
+ * @param[out] pOnNotOff              a place to put whether 3GPP power
+ *                                    saving is on or off, may be NULL.
+ * @param[out] pActiveTimeSeconds     a place to put the period of
+ *                                    inactivity after which the module
+ *                                    may go to 3GPP power saving
+ *                                    mode; may be NULL.
+ * @param[out] pPeriodicWakeupSeconds a place to put the period at
+ *                                    which the module wishes to
+ *                                    wake-up to inform the cellular
+ *                                    network that it is still
+ *                                    connected; may be NULL.
+ * @return                            zero on success or negative
+ *                                    error code on failure.
  */
 int32_t uCellPwrGetRequested3gppPowerSaving(uDeviceHandle_t cellHandle,
                                             bool *pOnNotOff,
@@ -557,21 +557,21 @@ int32_t uCellPwrGetRequested3gppPowerSaving(uDeviceHandle_t cellHandle,
 /** Get the 3GPP power saving parameters as agreed with the cellular
  * network for the current RAT.
  *
- * @param cellHandle             the handle of the cellular
- *                               instance.
- * @param pOnNotOff              a place to put whether 3GPP power
- *                               saving is on or off, may be NULL.
- * @param pActiveTimeSeconds     a place to put the period of
- *                               inactivity after which the module
- *                               may go to 3GPP power saving
- *                               mode; may be NULL.
- * @param pPeriodicWakeupSeconds a place to put the period at
- *                               which the module wishes to
- *                               wake-up to inform the cellular
- *                               network that it is still
- *                               connected; may be NULL.
- * @return                       zero on success or negative
- *                               error code on failure.
+ * @param cellHandle                  the handle of the cellular
+ *                                    instance.
+ * @param[out] pOnNotOff              a place to put whether 3GPP power
+ *                                    saving is on or off, may be NULL.
+ * @param[out] pActiveTimeSeconds     a place to put the period of
+ *                                    inactivity after which the module
+ *                                    may go to 3GPP power saving
+ *                                    mode; may be NULL.
+ * @param[out] pPeriodicWakeupSeconds a place to put the period at
+ *                                    which the module wishes to
+ *                                    wake-up to inform the cellular
+ *                                    network that it is still
+ *                                    connected; may be NULL.
+ * @return                            zero on success or negative
+ *                                    error code on failure.
  */
 int32_t uCellPwrGet3gppPowerSaving(uDeviceHandle_t cellHandle,
                                    bool *pOnNotOff,
@@ -588,7 +588,7 @@ int32_t uCellPwrGet3gppPowerSaving(uDeviceHandle_t cellHandle,
  * to URCs sent by the module will be adversely affected.
  *
  * @param cellHandle          the handle of the cellular instance.
- * @param pCallback           a callback which will be called when
+ * @param[in] pCallback       a callback which will be called when
  *                            the assigned 3GPP power saving parameters
  *                            are changed by the network; the first
  *                            parameter will be cellHandle, the second
@@ -599,7 +599,7 @@ int32_t uCellPwrGet3gppPowerSaving(uDeviceHandle_t cellHandle,
  *                            in seconds and the fifth will be
  *                            pCallbackParam. Use NULL to remove a
  *                            previous callback.
- * @param pCallbackParam      a parameter that will be passed
+ * @param[in] pCallbackParam  a parameter that will be passed
  *                            to pCallback as its last parameter
  *                            when it is called; may be NULL.
  * @return                    zero on success or negative error
@@ -699,29 +699,29 @@ int32_t uCellPwrSetRequestedEDrx(uDeviceHandle_t cellHandle,
 
 /** Get the requested E-DRX parameters for the given RAT.
  *
- * @param cellHandle             the handle of the cellular
- *                               instance.
- * @param rat                    the radio access technology
- *                               for example #U_CELL_NET_RAT_CATM1 or
- *                               #U_CELL_NET_RAT_NB1 or the
- *                               return value of
- *                               uCellNetGetActiveRat() if
- *                               registered with the network.
- * @param pOnNotOff              a place to put whether E-DRX
- *                               has been requested to be on or
- *                               off, may be NULL.
- * @param pEDrxSeconds           a place to put the requested
- *                               E-DRX value in seconds; may be
- *                               NULL.
- * @param pPagingWindowSeconds   a place to put the requested
- *                               paging window value in seconds;
- *                               may be NULL. IMPORTANT: not all
- *                               platforms support reading this
- *                               parameter, even if they support
- *                               setting it, in which case -1 will
- *                               be returned for this value.
- * @return                       zero on success or negative
- *                               error code on failure.
+ * @param cellHandle                  the handle of the cellular
+ *                                    instance.
+ * @param rat                         the radio access technology
+ *                                    for example #U_CELL_NET_RAT_CATM1 or
+ *                                    #U_CELL_NET_RAT_NB1 or the
+ *                                    return value of
+ *                                    uCellNetGetActiveRat() if
+ *                                    registered with the network.
+ * @param[out] pOnNotOff              a place to put whether E-DRX
+ *                                    has been requested to be on or
+ *                                    off, may be NULL.
+ * @param[out] pEDrxSeconds           a place to put the requested
+ *                                    E-DRX value in seconds; may be
+ *                                    NULL.
+ * @param[out] pPagingWindowSeconds   a place to put the requested
+ *                                    paging window value in seconds;
+ *                                    may be NULL. IMPORTANT: not all
+ *                                    platforms support reading this
+ *                                    parameter, even if they support
+ *                                    setting it, in which case -1 will
+ *                                    be returned for this value.
+ * @return                            zero on success or negative
+ *                                    error code on failure.
  */
 int32_t uCellPwrGetRequestedEDrx(uDeviceHandle_t cellHandle,
                                  uCellNetRat_t rat,
@@ -733,22 +733,22 @@ int32_t uCellPwrGetRequestedEDrx(uDeviceHandle_t cellHandle,
  * for the given RAT.  The module must be connected to the cellular
  * network for this to work.
  *
- * @param cellHandle             the handle of the cellular
- *                               instance.
- * @param rat                    the radio access technology
- *                               for example #U_CELL_NET_RAT_CATM1 or
- *                               #U_CELL_NET_RAT_NB1 or the
- *                               return value of
- *                               uCellNetGetActiveRat() if
- *                               registered with the network.
- * @param pOnNotOff              a place to put whether E-DRX
- *                               is on or off, may be NULL.
- * @param pEDrxSeconds           a place to put the E-DRX value
- *                               in seconds; may be NULL.
- * @param pPagingWindowSeconds   a place to put the paging window
- *                               vaue in seconds; may be NULL.
- * @return                       zero on success or negative error
- *                               code on failure.
+ * @param cellHandle                  the handle of the cellular
+ *                                    instance.
+ * @param rat                         the radio access technology
+ *                                    for example #U_CELL_NET_RAT_CATM1 or
+ *                                    #U_CELL_NET_RAT_NB1 or the
+ *                                    return value of
+ *                                    uCellNetGetActiveRat() if
+ *                                    registered with the network.
+ * @param[out] pOnNotOff              a place to put whether E-DRX
+ *                                    is on or off, may be NULL.
+ * @param[out] pEDrxSeconds           a place to put the E-DRX value
+ *                                    in seconds; may be NULL.
+ * @param[out] pPagingWindowSeconds   a place to put the paging window
+ *                                    vaue in seconds; may be NULL.
+ * @return                            zero on success or negative error
+ *                                    code on failure.
  */
 int32_t uCellPwrGetEDrx(uDeviceHandle_t cellHandle,
                         uCellNetRat_t rat,
@@ -769,7 +769,7 @@ int32_t uCellPwrGetEDrx(uDeviceHandle_t cellHandle,
  * to URCs sent by the module will be adversely affected.
  *
  * @param cellHandle          the handle of the cellular instance.
- * @param pCallback           a callback which will be called when
+ * @param[in] pCallback       a callback which will be called when
  *                            the E-DRX parameters change; the first
  *                            parameter will be cellHandle, the
  *                            second the RAT to which the E-DRX
@@ -781,7 +781,7 @@ int32_t uCellPwrGetEDrx(uDeviceHandle_t cellHandle,
  *                            paging window value in seconds and the
  *                            seventh pCallbackParam. Use NULL to
  *                            remove a previous callback.
- * @param pCallbackParam      a parameter that will be passed
+ * @param[in] pCallbackParam  a parameter that will be passed
  *                            to pCallback as its last parameter
  *                            when it is called; may be NULL.
  * @return                    zero on success or negative error
@@ -810,13 +810,13 @@ int32_t uCellPwrSetEDrxCallback(uDeviceHandle_t cellHandle,
  * adversely affected.
  *
  * @param cellHandle           the handle of the cellular instance.
- * @param pCallback            a callback which will be called when
+ * @param[in] pCallback        a callback which will be called when
  *                             the module leaves deep sleep; use
  *                             NULL to remove a previous wake-up
  *                             callback; the first parameter to the
  *                             callback will be cellHandle, the
  *                             second will be pCallbackParam.
- * @param pCallbackParam       a parameter that will be passed
+ * @param[in] pCallbackParam   a parameter that will be passed
  *                             to pCallbackParam as its second
  *                             parameter when it is called; may be
  *                             NULL.
@@ -833,15 +833,15 @@ int32_t uCellPwrSetDeepSleepWakeUpCallback(uDeviceHandle_t cellHandle,
  * in the uCellAdd() then pSleepActive will be set to true if the
  * module is actually in deep sleep.
  *
- * @param cellHandle   the handle of the cellular instance.
- * @param pSleepActive a place to put whether deep sleep is active
- *                     or not (true IF SLEEP IS ACTIVE, the
- *                     module is effectively off, else false); may
- *                     be NULL (for example if you just want to find out
- *                     if the callback is supported).
- * @return             zero on success else negative error code
- *                     if the module does not support indicating
- *                     its sleep state.
+ * @param cellHandle        the handle of the cellular instance.
+ * @param[out] pSleepActive a place to put whether deep sleep is active
+ *                          or not (true IF SLEEP IS ACTIVE, the
+ *                          module is effectively off, else false); may
+ *                          be NULL (for example if you just want to find out
+ *                          if the callback is supported).
+ * @return                  zero on success else negative error code
+ *                          if the module does not support indicating
+ *                          its sleep state.
  */
 int32_t uCellPwrGetDeepSleepActive(uDeviceHandle_t cellHandle,
                                    bool *pSleepActive);
@@ -851,33 +851,33 @@ int32_t uCellPwrGetDeepSleepActive(uDeviceHandle_t cellHandle,
  * the AT client if it needs to do something after the module
  * has entered deep sleep.
  *
- * @param cellHandle         the handle of the cellular instance.
- * @param pKeepGoingCallback waking from deep sleep usually takes
- *                           between 5 and 15 seconds but it is
- *                           possible for it to take longer.  If
- *                           this callback function is non-NULL
- *                           then it will be called during the
- *                           wake-up process and may be used to
- *                           feed a watchdog timer.  The callback
- *                           function should return true to
- *                           allow the wake-up process to
- *                           be completed normally.  If the
- *                           callback function returns false
- *                           then the wake-up process will
- *                           be abandoned.  Even when
- *                           this callback returns false it
- *                           this function may still take some
- *                           10's of seconds to return in order
- *                           to ensure that the module is in a
- *                           cleanly powered (or not) state.
- *                           If this function is forced to return
- *                           it is advisable to call
- *                           uCellPwrIsAlive() to confirm
- *                           the final state of the module. The
- *                           single int32_t parameter is the
- *                           cell handle.
- * @return                   zero on success or negative error
- *                           code on failure.
+ * @param cellHandle             the handle of the cellular instance.
+ * @param[in] pKeepGoingCallback waking from deep sleep usually takes
+ *                               between 5 and 15 seconds but it is
+ *                               possible for it to take longer.  If
+ *                               this callback function is non-NULL
+ *                               then it will be called during the
+ *                               wake-up process and may be used to
+ *                               feed a watchdog timer.  The callback
+ *                               function should return true to
+ *                               allow the wake-up process to
+ *                               be completed normally.  If the
+ *                               callback function returns false
+ *                               then the wake-up process will
+ *                               be abandoned.  Even when
+ *                               this callback returns false it
+ *                               this function may still take some
+ *                               10's of seconds to return in order
+ *                               to ensure that the module is in a
+ *                               cleanly powered (or not) state.
+ *                               If this function is forced to return
+ *                               it is advisable to call
+ *                               uCellPwrIsAlive() to confirm
+ *                               the final state of the module. The
+ *                               single int32_t parameter is the
+ *                               cell handle.
+ * @return                       zero on success or negative error
+ *                               code on failure.
  */
 int32_t uCellPwrWakeUpFromDeepSleep(uDeviceHandle_t cellHandle,
                                     bool (*pKeepGoingCallback) (uDeviceHandle_t));

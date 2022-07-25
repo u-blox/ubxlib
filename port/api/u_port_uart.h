@@ -102,7 +102,7 @@ void uPortUartDeinit();
  *
  * @param uart                   the UART HW block to use.
  * @param baudRate               the baud rate to use.
- * @param pReceiveBuffer         a receive buffer to use,
+ * @param[in] pReceiveBuffer     a receive buffer to use,
  *                               should be NULL and a buffer
  *                               will be allocated by the driver.
  *                               If non-NULL then the given buffer
@@ -168,12 +168,12 @@ int32_t uPortUartGetReceiveSize(int32_t handle);
  * up to sizeBytes of data already in the UART buffer will
  * be returned.
  *
- * @param handle    the handle of the UART instance.
- * @param pBuffer   a pointer to a buffer in which to store
- *                  received bytes.
- * @param sizeBytes the size of buffer pointed to by pBuffer.
- * @return          the number of bytes received else negative
- *                  error code.
+ * @param handle       the handle of the UART instance.
+ * @param[out] pBuffer a pointer to a buffer in which to store
+ *                     received bytes.
+ * @param sizeBytes    the size of buffer pointed to by pBuffer.
+ * @return             the number of bytes received else negative
+ *                     error code.
  */
 int32_t uPortUartRead(int32_t handle, void *pBuffer,
                       size_t sizeBytes);
@@ -181,11 +181,11 @@ int32_t uPortUartRead(int32_t handle, void *pBuffer,
 /** Write to the given UART interface.  Will block until
  * all of the data has been written or an error has occurred.
  *
- * @param handle    the handle of the UART instance.
- * @param pBuffer   a pointer to a buffer of data to send.
- * @param sizeBytes the number of bytes in pBuffer.
- * @return          the number of bytes sent or negative
- *                  error code.
+ * @param handle      the handle of the UART instance.
+ * @param[in] pBuffer a pointer to a buffer of data to send.
+ * @param sizeBytes   the number of bytes in pBuffer.
+ * @return            the number of bytes sent or negative
+ *                    error code.
  */
 int32_t uPortUartWrite(int32_t handle, const void *pBuffer,
                        size_t sizeBytes);
@@ -208,9 +208,9 @@ int32_t uPortUartWrite(int32_t handle, const void *pBuffer,
  *                         from one or more of
  *                         U_PORT_UART_EVENT_BITMASK_xxx or
  *                         set all bits to enable everything.
- * @param pFunction        the function to call, cannot be
+ * @param[in] pFunction    the function to call, cannot be
  *                         NULL.
- * @param pParam           a parameter which will be passed
+ * @param[in] pParam       a parameter which will be passed
  *                         to pFunction as its last parameter
  *                         when it is called.
  * @param stackSizeBytes   the number of bytes of stack for

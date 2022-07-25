@@ -441,30 +441,30 @@ int32_t uCellMqttSetWill(uDeviceHandle_t cellHandle,
  * by the broker on an uncommanded disconnect of the MQTT
  * client.  Note that SARA-R4 does not support "will"s.
  *
- * @param cellHandle               the handle of the cellular instance
- *                                 to be used.
- * @param[out] pTopicNameStr       a place to put the null-terminated
- *                                 topic string used with the "will"
- *                                 message; may be NULL.
- * @param topicNameSizeBytes       the number of bytes of storage
- *                                 at pTopicNameStr.  Ignored if
- *                                 pTopicNameStr is NULL.
- * @param[out] pMessage            a place to put the "will" message;
- *                                 may be NULL.
- * @param[inout] pMessageSizeBytes on entry this should point to the
- *                                 number of bytes of storage at
- *                                 pMessage. On return, if pMessage
- *                                 is not NULL, this will be updated
- *                                 to the number of bytes written
- *                                 to pMessage.  Must be non-NULL if
- *                                 pMessage is not NULL.
- * @param[out] pQos                a place to put the MQTT QoS that is
- *                                 used for the "will" message. May
- *                                 be NULL.
- * @param pRetain                  a place to put the status of "will"
- *                                 message retention. May be NULL.
- * @return                         zero on success else negative error
- *                                 code.
+ * @param cellHandle                the handle of the cellular instance
+ *                                  to be used.
+ * @param[out] pTopicNameStr        a place to put the null-terminated
+ *                                  topic string used with the "will"
+ *                                  message; may be NULL.
+ * @param topicNameSizeBytes        the number of bytes of storage
+ *                                  at pTopicNameStr.  Ignored if
+ *                                  pTopicNameStr is NULL.
+ * @param[out] pMessage             a place to put the "will" message;
+ *                                  may be NULL.
+ * @param[in,out] pMessageSizeBytes on entry this should point to the
+ *                                  number of bytes of storage at
+ *                                  pMessage. On return, if pMessage
+ *                                  is not NULL, this will be updated
+ *                                  to the number of bytes written
+ *                                  to pMessage.  Must be non-NULL if
+ *                                  pMessage is not NULL.
+ * @param[out] pQos                 a place to put the MQTT QoS that is
+ *                                  used for the "will" message. May
+ *                                  be NULL.
+ * @param pRetain                   a place to put the status of "will"
+ *                                  message retention. May be NULL.
+ * @return                          zero on success else negative error
+ *                                  code.
  */
 int32_t uCellMqttGetWill(uDeviceHandle_t cellHandle, char *pTopicNameStr,
                          size_t topicNameSizeBytes,
@@ -667,7 +667,7 @@ int32_t uCellMqttUnsubscribe(uDeviceHandle_t cellHandle,
  * @param topicNameSizeBytes         the number of bytes of storage
  *                                   at pTopicNameStr.
  * @param[out] pMessage              a place to put the message; may be NULL.
- * @param[inout] pMessageSizeBytes   on entry this should point to the
+ * @param[in,out] pMessageSizeBytes  on entry this should point to the
  *                                   number of bytes of storage at
  *                                   pMessage. On return, this will be
  *                                   updated to the number of bytes written
@@ -843,7 +843,7 @@ int32_t uCellMqttSnUnsubscribeNormalTopic(uDeviceHandle_t cellHandle,
  * @param[out] pTopicName           a place to put the MQTT-SN topic name;
  *                                  cannot be NULL.
  * @param[out] pMessage             a place to put the message; may be NULL.
- * @param[inout] pMessageSizeBytes  on entry this should point to the
+ * @param[in,out] pMessageSizeBytes on entry this should point to the
  *                                  number of bytes of storage at
  *                                  pMessage. On return, this will be
  *                                  updated to the number of bytes written

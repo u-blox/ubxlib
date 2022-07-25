@@ -250,23 +250,23 @@ int32_t uCellLocSetPinGnssDataReady(uDeviceHandle_t cellHandle, int32_t pin);
  * If the cellular module is powered off this setting will be
  * forgotten.
  *
- * @param cellHandle              the handle of the cellular instance.
- * @param pAuthenticationTokenStr a pointer to the null-terminated
- *                                authentication token for the Cell
- *                                Locate server. May be NULL, in which
- *                                case pPrimaryServerStr and
- *                                pSecondaryServerStr are ignored.
- * @param pPrimaryServerStr       a pointer to the null-terminated
- *                                primary server string, for example
- *                                "celllive1.services.u-blox.com".
- *                                May be NULL, in which case the default
- *                                is used.
- * @param pSecondaryServerStr     a pointer to the null-terminated
- *                                secondary server string, for example
- *                                "celllive2.services.u-blox.com".
- *                                May be NULL, in which case the default
- *                                is used.
- * @return                        zero on success or negative error code.
+ * @param cellHandle                  the handle of the cellular instance.
+ * @param[in] pAuthenticationTokenStr a pointer to the null-terminated
+ *                                    authentication token for the Cell
+ *                                    Locate server. May be NULL, in which
+ *                                    case pPrimaryServerStr and
+ *                                    pSecondaryServerStr are ignored.
+ * @param[in] pPrimaryServerStr       a pointer to the null-terminated
+ *                                    primary server string, for example
+ *                                    "celllive1.services.u-blox.com".
+ *                                    May be NULL, in which case the default
+ *                                    is used.
+ * @param[in] pSecondaryServerStr     a pointer to the null-terminated
+ *                                    secondary server string, for example
+ *                                    "celllive2.services.u-blox.com".
+ *                                    May be NULL, in which case the default
+ *                                    is used.
+ * @return                            zero on success or negative error code.
  */
 int32_t uCellLocSetServer(uDeviceHandle_t cellHandle,
                           const char *pAuthenticationTokenStr,
@@ -305,49 +305,49 @@ bool uCellLocGnssInsideCell(uDeviceHandle_t cellHandle);
  * but with a very large radius (e.g. 200 km), hence it is always
  * wise to check the radius.
  *
- * @param cellHandle                  the handle of the cellular instance.
- * @param pLatitudeX1e7               a place to put latitude (in ten
- *                                    millionths of a degree); may be NULL.
- * @param pLongitudeX1e7              a place to put longitude (in ten millionths
- *                                    of a degree); may be NULL.
- * @param pAltitudeMillimetres        a place to put the altitude (in
- *                                    millimetres); may be NULL.
- * @param pRadiusMillimetres          a place to put the radius of position
- *                                    (in millimetres); may be NULL.  Radius may
- *                                    be absent even when a location is
- *                                    established; should this be the case this
- *                                    variable will point to INT_MIN.
- * @param pSpeedMillimetresPerSecond  a place to put the speed (in
- *                                    millimetres per second); may be
- *                                    NULL.  This field is only populated if
- *                                    there is a GNSS chip attached to the cellular
- *                                    module which is used in the Cell Locate
- *                                    location establishment process, otherwise
-  *                                   zero will be returned.
- * @param pSvs                        a place to store the number of
- *                                    space vehicles used in the
- *                                    solution; may be NULL. This field is only
- *                                    populated if there is a GNSS chip attached
- *                                    to the cellular module which is used in the
- *                                    Cell Locate location establishment process,
- *                                    otherwise zero will be returned.
- * @param pTimeUtc                    a place to put the UTC time; may be NULL.
- * @param pKeepGoingCallback          a callback function that governs how
- *                                    long a location establishment may continue
- *                                    for. This function is called once a second
- *                                    while waiting for a location fix; the
- *                                    location establishment attempt will only
- *                                    continue while it returns true.  This allows
- *                                    the caller to terminate the establishment
- *                                    attempt at their convenience. This function
- *                                    may also be used to feed any watchdog timer
- *                                    that may be running.  The single int32_t
- *                                    parameter is the cell handle. May be NULL,
- *                                    in which case the location establishment
- *                                    attempt will time-out after
- *                                    #U_CELL_LOC_TIMEOUT_SECONDS seconds.
- * @return                            zero on success or negative error code on
- *                                    failure.
+ * @param cellHandle                       the handle of the cellular instance.
+ * @param[out] pLatitudeX1e7               a place to put latitude (in ten
+ *                                         millionths of a degree); may be NULL.
+ * @param[out] pLongitudeX1e7              a place to put longitude (in ten millionths
+ *                                         of a degree); may be NULL.
+ * @param[out] pAltitudeMillimetres        a place to put the altitude (in
+ *                                         millimetres); may be NULL.
+ * @param[out] pRadiusMillimetres          a place to put the radius of position
+ *                                         (in millimetres); may be NULL.  Radius may
+ *                                         be absent even when a location is
+ *                                         established; should this be the case this
+ *                                         variable will point to INT_MIN.
+ * @param[out] pSpeedMillimetresPerSecond  a place to put the speed (in
+ *                                         millimetres per second); may be
+ *                                         NULL.  This field is only populated if
+ *                                         there is a GNSS chip attached to the cellular
+ *                                         module which is used in the Cell Locate
+ *                                         location establishment process, otherwise
+  *                                        zero will be returned.
+ * @param[out] pSvs                        a place to store the number of
+ *                                         space vehicles used in the
+ *                                         solution; may be NULL. This field is only
+ *                                         populated if there is a GNSS chip attached
+ *                                         to the cellular module which is used in the
+ *                                         Cell Locate location establishment process,
+ *                                         otherwise zero will be returned.
+ * @param[out] pTimeUtc                    a place to put the UTC time; may be NULL.
+ * @param[in] pKeepGoingCallback           a callback function that governs how
+ *                                         long a location establishment may continue
+ *                                         for. This function is called once a second
+ *                                         while waiting for a location fix; the
+ *                                         location establishment attempt will only
+ *                                         continue while it returns true.  This allows
+ *                                         the caller to terminate the establishment
+ *                                         attempt at their convenience. This function
+ *                                         may also be used to feed any watchdog timer
+ *                                         that may be running.  The single int32_t
+ *                                         parameter is the cell handle. May be NULL,
+ *                                         in which case the location establishment
+ *                                         attempt will time-out after
+ *                                         #U_CELL_LOC_TIMEOUT_SECONDS seconds.
+ * @return                                 zero on success or negative error code on
+ *                                         failure.
  */
 int32_t uCellLocGet(uDeviceHandle_t cellHandle,
                     int32_t *pLatitudeX1e7, int32_t *pLongitudeX1e7,
@@ -362,16 +362,16 @@ int32_t uCellLocGet(uDeviceHandle_t cellHandle,
  * called). The location establishment attempt will time-out after
  * #U_CELL_LOC_TIMEOUT_SECONDS.
  *
- * @param cellHandle  the handle of the cellular instance.
- * @param pCallback   a callback that will be called when a fix has been
- *                    obtained.  The position fix is only valid
- *                    if the second int32_t, errorCode, is zero.
- *                    The first parameter to the callback is the
- *                    cellular handle, the parameters after errorCode
- *                    are as described in uCellLocGet() except that
- *                    they are not pointers.
- * @return            zero on success or negative error code on
- *                    failure.
+ * @param cellHandle     the handle of the cellular instance.
+ * @param[in] pCallback  a callback that will be called when a fix has
+ *                       been obtained.  The position fix is only valid
+ *                       if the second int32_t, errorCode, is zero.
+ *                       The first parameter to the callback is the
+ *                       cellular handle, the parameters after errorCode
+ *                       are as described in uCellLocGet() except that
+ *                       they are not pointers.
+ * @return               zero on success or negative error code on
+ *                       failure.
  */
 int32_t uCellLocGetStart(uDeviceHandle_t cellHandle,
                          void (*pCallback) (uDeviceHandle_t cellHandle,

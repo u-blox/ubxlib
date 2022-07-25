@@ -141,7 +141,7 @@ int32_t uCellInfoGetRxQual(uDeviceHandle_t cellHandle);
  * registered with the cellular network.
  *
  * @param cellHandle  the handle of the cellular instance.
- * @param pSnrDb      a place to put the SNR measurement.  Must
+ * @param[out] pSnrDb a place to put the SNR measurement.  Must
  *                    not be NULL.
  * @return            zero on success, negative error code on
  *                    failure.
@@ -170,7 +170,7 @@ int32_t uCellInfoGetEarfcn(uDeviceHandle_t cellHandle);
 /** Get the IMEI of the cellular module.
  *
  * @param cellHandle  the handle of the cellular instance.
- * @param pImei       a pointer to #U_CELL_INFO_IMEI_SIZE bytes
+ * @param[out] pImei  a pointer to #U_CELL_INFO_IMEI_SIZE bytes
  *                    of storage into which the IMEI will be
  *                    copied; no terminator is added as the
  *                    IMEI is of fixed length. This pointer
@@ -184,7 +184,7 @@ int32_t uCellInfoGetImei(uDeviceHandle_t cellHandle,
 /** Get the IMSI of the SIM in the cellular module.
  *
  * @param cellHandle  the handle of the cellular instance.
- * @param pImsi       a pointer to #U_CELL_INFO_IMSI_SIZE bytes
+ * @param[out] pImsi  a pointer to #U_CELL_INFO_IMSI_SIZE bytes
  *                    of storage into which the IMSI will be
  *                    copied; no terminator is added as the IMSI
  *                    is of fixed length. This pointer cannot be
@@ -202,7 +202,7 @@ int32_t uCellInfoGetImsi(uDeviceHandle_t cellHandle,
  * length.
  *
  * @param cellHandle  the handle of the cellular instance.
- * @param pStr        a pointer to size bytes of storage into which
+ * @param[out] pStr   a pointer to size bytes of storage into which
  *                    the ICCID string will be copied.  Room
  *                    should be allowed for a null terminator, which
  *                    will be added to terminate the string.  This
@@ -222,7 +222,7 @@ int32_t uCellInfoGetIccidStr(uDeviceHandle_t cellHandle,
  * module.
  *
  * @param cellHandle  the handle of the cellular instance.
- * @param pStr        a pointer to size bytes of storage into which
+ * @param[out] pStr   a pointer to size bytes of storage into which
  *                    the manufacturer string will be copied.  Room
  *                    should be allowed for a null terminator, which
  *                    will be added to terminate the string.  This
@@ -240,7 +240,7 @@ int32_t uCellInfoGetManufacturerStr(uDeviceHandle_t cellHandle,
 /** Get the model identification string from the cellular module.
  *
  * @param cellHandle  the handle of the cellular instance.
- * @param pStr        a pointer to size bytes of storage into which
+ * @param[out] pStr   a pointer to size bytes of storage into which
  *                    the model string will be copied.  Room should
  *                    be allowed for a null terminator, which will be
  *                    added to terminate the string.  This pointer
@@ -258,7 +258,7 @@ int32_t uCellInfoGetModelStr(uDeviceHandle_t cellHandle,
 /** Get the firmware version string from the cellular module.
  *
  * @param cellHandle  the handle of the cellular instance.
- * @param pStr        a pointer to size bytes of storage into which
+ * @param[out] pStr   a pointer to size bytes of storage into which
  *                    the firmware version string will be copied.
  *                    Room should be allowed for a null terminator,
  *                    which will be added to terminate the string.
@@ -288,7 +288,7 @@ int64_t uCellInfoGetTimeUtc(uDeviceHandle_t cellHandle);
  * is optional in the cellular network.
  *
  * @param cellHandle  the handle of the cellular instance.
- * @param pStr        a pointer to size bytes of storage into which
+ * @param[out] pStr   a pointer to size bytes of storage into which
  *                    the UTC time string will be copied.
  *                    Room should be allowed for a null terminator,
  *                    which will be added to terminate the string.

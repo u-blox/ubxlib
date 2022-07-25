@@ -111,21 +111,21 @@ typedef void (pTimerCallback_t) (const uPortTimerHandle_t, void *);
 
 /** Create, and start, a task.
  *
- * @param pFunction      the function that forms the task.
- * @param pName          a null-terminated string naming the task,
- *                       may be NULL.
- * @param stackSizeBytes the number of bytes of memory to dynamically
- *                       allocate for stack.
- * @param pParameter     a pointer that will be passed to pFunction
- *                       when the task is started.
- *                       The thing at the end of this pointer must be
- *                       there for the lifetime of the task, it is
- *                       not copied.  May be NULL.
- * @param priority       the priority at which to run the task,
- *                       the meaning of which is platform dependent.
- * @param pTaskHandle    a place to put the handle of the created
- *                       task.
- * @return               zero on success else negative error code.
+ * @param[in] pFunction    the function that forms the task.
+ * @param[in] pName        a null-terminated string naming the task,
+ *                         may be NULL.
+ * @param stackSizeBytes   the number of bytes of memory to dynamically
+ *                         allocate for stack.
+ * @param[in] pParameter   a pointer that will be passed to pFunction
+ *                         when the task is started.
+ *                         The thing at the end of this pointer must be
+ *                         there for the lifetime of the task, it is
+ *                         not copied.  May be NULL.
+ * @param priority         the priority at which to run the task,
+ *                         the meaning of which is platform dependent.
+ * @param[out] pTaskHandle a place to put the handle of the created
+ *                         task.
+ * @return                 zero on success else negative error code.
  */
 int32_t uPortTaskCreate(void (*pFunction)(void *),
                         const char *pName,
@@ -185,9 +185,9 @@ int32_t uPortTaskStackMinFree(const uPortTaskHandle_t taskHandle);
  * where it is not implemented #U_ERROR_COMMON_NOT_IMPLEMENTED
  * should be returned.
  *
- * @param pTaskHandle    a place to put the task handle; cannot
- *                       be NULL.
- * @return               zero on success else negative error code.
+ * @param[out] pTaskHandle a place to put the task handle; cannot
+ *                         be NULL.
+ * @return                 zero on success else negative error code.
  */
 int32_t uPortTaskGetHandle(uPortTaskHandle_t *pTaskHandle);
 
@@ -197,11 +197,11 @@ int32_t uPortTaskGetHandle(uPortTaskHandle_t *pTaskHandle);
 
 /** Create a queue.
  *
- * @param queueLength    the maximum length of the queue in units
- *                       of itemSizeBytes.
- * @param itemSizeBytes  the size of each item on the queue.
- * @param pQueueHandle   a place to put the handle of the queue.
- * @return               zero on success else negative error code.
+ * @param queueLength       the maximum length of the queue in units
+ *                          of itemSizeBytes.
+ * @param itemSizeBytes     the size of each item on the queue.
+ * @param[out] pQueueHandle a place to put the handle of the queue.
+ * @return                  zero on success else negative error code.
  */
 int32_t uPortQueueCreate(size_t queueLength,
                          size_t itemSizeBytes,
@@ -217,12 +217,12 @@ int32_t uPortQueueDelete(const uPortQueueHandle_t queueHandle);
 /** Send to the given queue.  If the queue is full this function
  * will block until room is available.
  *
- * @param queueHandle  the handle of the queue.
- * @param pEventData   pointer to the data to send.  The data will
- *                     be copied into the queue and hence can be
- *                     destroyed by the caller once this functions
- *                     returns.
- * @return             zero on success else negative error code.
+ * @param queueHandle    the handle of the queue.
+ * @param[in] pEventData pointer to the data to send.  The data will
+ *                       be copied into the queue and hence can be
+ *                       destroyed by the caller once this functions
+ *                       returns.
+ * @return               zero on success else negative error code.
  */
 int32_t uPortQueueSend(const uPortQueueHandle_t queueHandle,
                        const void *pEventData);
@@ -231,12 +231,12 @@ int32_t uPortQueueSend(const uPortQueueHandle_t queueHandle,
  * full this function will return an error.  Note that not all
  * platforms support this function (e.g. Windows doesn't).
  *
- * @param queueHandle  the handle of the queue.
- * @param pEventData   pointer to the data to send.  The data will
- *                     be copied into the queue and hence can be
- *                     destroyed by the caller once this functions
- *                     returns.
- * @return             zero on success else negative error code.
+ * @param queueHandle    the handle of the queue.
+ * @param[in] pEventData pointer to the data to send.  The data will
+ *                       be copied into the queue and hence can be
+ *                       destroyed by the caller once this functions
+ *                       returns.
+ * @return               zero on success else negative error code.
  */
 int32_t uPortQueueSendIrq(const uPortQueueHandle_t queueHandle,
                           const void *pEventData);
@@ -244,9 +244,9 @@ int32_t uPortQueueSendIrq(const uPortQueueHandle_t queueHandle,
 /** Receive from the given queue, blocking until something is
  * received.
  *
- * @param queueHandle the handle of the queue.
- * @param pEventData  pointer to a place to put incoming data.
- * @return            zero on success else negative error code.
+ * @param queueHandle     the handle of the queue.
+ * @param[out] pEventData pointer to a place to put incoming data.
+ * @return                zero on success else negative error code.
  */
 int32_t uPortQueueReceive(const uPortQueueHandle_t queueHandle,
                           void *pEventData);
@@ -254,9 +254,9 @@ int32_t uPortQueueReceive(const uPortQueueHandle_t queueHandle,
 /** Receive from the given queue from ISR.  Note that not all
  * platforms support this function (e.g. Windows doesn't).
  *
- * @param queueHandle the handle of the queue.
- * @param pEventData  pointer to a place to put incoming data.
- * @return            zero on success else negative error code.
+ * @param queueHandle     the handle of the queue.
+ * @param[out] pEventData pointer to a place to put incoming data.
+ * @return                zero on success else negative error code.
  */
 int32_t uPortQueueReceiveIrq(const uPortQueueHandle_t queueHandle,
                              void *pEventData);
@@ -265,11 +265,11 @@ int32_t uPortQueueReceiveIrq(const uPortQueueHandle_t queueHandle,
 /** Try to receive from the given queue, waiting for the given
  * time for something to arrive.
  *
- * @param queueHandle the handle of the queue.
- * @param waitMs      the amount of time to wait in milliseconds.
- * @param pEventData  pointer to a place to put incoming data.
- * @return            zero if someting is received else negative
- *                    error code.
+ * @param queueHandle     the handle of the queue.
+ * @param waitMs          the amount of time to wait in milliseconds.
+ * @param[out] pEventData pointer to a place to put incoming data.
+ * @return                zero if someting is received else negative
+ *                        error code.
  */
 int32_t uPortQueueTryReceive(const uPortQueueHandle_t queueHandle,
                              int32_t waitMs, void *pEventData);
@@ -280,9 +280,9 @@ int32_t uPortQueueTryReceive(const uPortQueueHandle_t queueHandle,
  * that this API is implemented: where it is not implemented
  * #U_ERROR_COMMON_NOT_IMPLEMENTED should be returned.
  *
- * @param queueHandle the handle of the queue.
- * @param pEventData  pointer to a place to put incoming data.
- * @return            zero on success else negative error code.
+ * @param queueHandle     the handle of the queue.
+ * @param[out] pEventData pointer to a place to put incoming data.
+ * @return                zero on success else negative error code.
  */
 int32_t uPortQueuePeek(const uPortQueueHandle_t queueHandle,
                        void *pEventData);
@@ -305,8 +305,8 @@ int32_t uPortQueueGetFree(const uPortQueueHandle_t queueHandle);
 /** Create a mutex.  Note that the mutex created is NOT a recursive
  * mutex, a task may only lock it once.
  *
- * @param pMutexHandle a place to put the mutex handle.
- * @return             zero on success else negative error code.
+ * @param[out] pMutexHandle a place to put the mutex handle.
+ * @return                  zero on success else negative error code.
  */
 int32_t uPortMutexCreate(uPortMutexHandle_t *pMutexHandle);
 
@@ -355,10 +355,10 @@ int32_t uPortMutexUnlock(const uPortMutexHandle_t mutexHandle);
 
 /** Create a semaphore.
  *
- * @param pSemaphoreHandle a place to put the semaphore handle.
- * @param initialCount     initial semaphore count
- * @param limit            maximum permitted semaphore count
- * @return                 zero on success else negative error code
+ * @param[out] pSemaphoreHandle a place to put the semaphore handle.
+ * @param initialCount          initial semaphore count
+ * @param limit                 maximum permitted semaphore count
+ * @return                      zero on success else negative error code
  */
 int32_t uPortSemaphoreCreate(uPortSemaphoreHandle_t *pSemaphoreHandle,
                              uint32_t initialCount,
@@ -425,16 +425,16 @@ int32_t uPortSemaphoreGiveIrq(const uPortSemaphoreHandle_t semaphoreHandle);
  * It is NOT currently a requirement that this API is implemented: where
  * it is not implemented #U_ERROR_COMMON_NOT_IMPLEMENTED should be returned.
  *
- * @param pTimerHandle              a place to put the timer handle.
- * @param pName                     a name for the timer, used for debug
+ * @param[out] pTimerHandle         a place to put the timer handle.
+ * @param[in] pName                 a name for the timer, used for debug
  *                                  purposes only; should be a null-terminated
  *                                  string, may be NULL.  The value will be
  *                                  copied.
- * @param pCallback                 the timer callback routine.  The stack size
+ * @param[in] pCallback             the timer callback routine.  The stack size
  *                                  of the context within which the callback
  *                                  is called will be specific to your OS and
  *                                  configured in your OS; should not be NULL.
- * @param pCallbackParam            a parameter that will be provided to the
+ * @param[in] pCallbackParam        a parameter that will be provided to the
  *                                  timer callback routine as its second parameter
  *                                  when it is called; may be NULL.
  * @param intervalMs                the time interval in milliseconds.
@@ -500,23 +500,23 @@ int32_t uPortTimerChange(const uPortTimerHandle_t timerHandle,
 /** Create or prepare a chunk of RAM for executing for example a
  *  library loaded by lib_common functionality.
  *
- * @param pChunkToMakeExecutable for implementations where a chunk's
- *                               permissions can be dynamically changed.
- *                               Set to NULL if not used.
- * @param pSize                  for implementations where a chunk's
- *                               size needs to be given.
- *                               For all implementations returns size of
- *                               chunk.
- * @param flags                  for implementations where a chunk's
- *                               MPU flags can be set at runtime.
- *                               Set to #U_PORT_EXECUTABLE_CHUNK_NO_FLAGS
- *                               if not used.
- * @param index                  for implementations where a chunk
- *                               can only be specified at compile time.
- *                               Index allows the user to specify several
- *                               chunks at compile time.
- *                               Set to #U_PORT_NO_EXECUTABLE_CHUNK if not used.
- * @return                       pointer to memory area or NULL if failed
+ * @param[in] pChunkToMakeExecutable for implementations where a chunk's
+ *                                   permissions can be dynamically changed.
+ *                                   Set to NULL if not used.
+ * @param[in,out] pSize              for implementations where a chunk's
+ *                                   size needs to be given.
+ *                                   For all implementations returns size of
+ *                                   chunk.
+ * @param flags                      for implementations where a chunk's
+ *                                   MPU flags can be set at runtime.
+ *                                   Set to #U_PORT_EXECUTABLE_CHUNK_NO_FLAGS
+ *                                   if not used.
+ * @param index                      for implementations where a chunk
+ *                                   can only be specified at compile time.
+ *                                   Index allows the user to specify several
+ *                                   chunks at compile time.
+ *                                   Set to #U_PORT_NO_EXECUTABLE_CHUNK if not used.
+ * @return                           pointer to memory area or NULL if failed
  */
 void *uPortAcquireExecutableChunk(void *pChunkToMakeExecutable,
                                   size_t *pSize,

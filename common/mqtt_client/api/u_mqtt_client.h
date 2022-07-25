@@ -425,23 +425,23 @@ int32_t uMqttClientUnsubscribe(const uMqttClientContext_t *pContext,
 
 /** MQTT only: read an MQTT message.
  *
- * @param[in] pContext             a pointer to the internal MQTT context
- *                                 structure that was originally returned
- *                                 by pUMqttClientOpen().
- * @param[out] pTopicNameStr       a place to put the null-terminated
- *                                 topic string of the message; cannot
- *                                 be NULL.
- * @param topicNameSizeBytes       the number of bytes of storage at
- *                                 pTopicNameStr.
- * @param[out] pMessage            a place to put the message; may be NULL.
- * @param[inout] pMessageSizeBytes on entry this should point to the
- *                                 number of bytes of storage at
- *                                 pMessage. On return, this will be
- *                                 updated to the number of bytes written
- *                                 to pMessage.  Ignored if pMessge is NULL.
- * @param[out] pQos                a place to put the QoS of the message;
- *                                 may be NULL.
- * @return                         zero on success else negative error code.
+ * @param[in] pContext              a pointer to the internal MQTT context
+ *                                  structure that was originally returned
+ *                                  by pUMqttClientOpen().
+ * @param[out] pTopicNameStr        a place to put the null-terminated
+ *                                  topic string of the message; cannot
+ *                                  be NULL.
+ * @param topicNameSizeBytes        the number of bytes of storage at
+ *                                  pTopicNameStr.
+ * @param[out] pMessage             a place to put the message; may be NULL.
+ * @param[in,out] pMessageSizeBytes on entry this should point to the
+ *                                  number of bytes of storage at
+ *                                  pMessage. On return, this will be
+ *                                  updated to the number of bytes written
+ *                                  to pMessage.  Ignored if pMessge is NULL.
+ * @param[out] pQos                 a place to put the QoS of the message;
+ *                                  may be NULL.
+ * @return                          zero on success else negative error code.
  */
 int32_t uMqttClientMessageRead(uMqttClientContext_t *pContext,
                                char *pTopicNameStr,
@@ -685,20 +685,20 @@ int32_t uMqttClientSnUnsubscribeNormalTopic(const uMqttClientContext_t *pContext
  * you called uMqttClientSnSubscribeNormalTopic().
  * Must be connected to an MQTT-SN broker for this to work.
  *
- * @param[in] pContext             a pointer to the internal MQTT context
- *                                 structure that was originally returned
- *                                 by pUMqttClientOpen().
- * @param[out] pTopicName          a place to put the MQTT-SN topic name;
- *                                 cannot be NULL.
- * @param[out] pMessage            a place to put the message; may be NULL.
- * @param[inout] pMessageSizeBytes on entry this should point to the
- *                                 number of bytes of storage at
- *                                 pMessage. On return, this will be
- *                                 updated to the number of bytes written
- *                                 to pMessage.  Ignored if pMessge is NULL.
- * @param[out] pQos                a place to put the QoS of the message;
- *                                 may be NULL.
- * @return                         zero on success else negative error code.
+ * @param[in] pContext              a pointer to the internal MQTT context
+ *                                  structure that was originally returned
+ *                                  by pUMqttClientOpen().
+ * @param[out] pTopicName           a place to put the MQTT-SN topic name;
+ *                                  cannot be NULL.
+ * @param[out] pMessage             a place to put the message; may be NULL.
+ * @param[in,out] pMessageSizeBytes on entry this should point to the
+ *                                  number of bytes of storage at
+ *                                  pMessage. On return, this will be
+ *                                  updated to the number of bytes written
+ *                                  to pMessage.  Ignored if pMessge is NULL.
+ * @param[out] pQos                 a place to put the QoS of the message;
+ *                                  may be NULL.
+ * @return                          zero on success else negative error code.
  */
 int32_t uMqttClientSnMessageRead(uMqttClientContext_t *pContext,
                                  uMqttSnTopicName_t *pTopicName,

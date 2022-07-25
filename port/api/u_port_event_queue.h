@@ -132,9 +132,9 @@ extern "C" {
 
 /** Open an event queue.
  *
- * @param pFunction            the function that will be called by
+ * @param[in] pFunction        the function that will be called by
  *                             the queue, cannot be NULL.
- * @param pName                a name to give the task that is
+ * @param[in] pName            a name to give the task that is
  *                             at the end of the event queue.  May
  *                             be NULL in which case a default name
  *                             will be used.
@@ -189,7 +189,7 @@ int32_t uPortEventQueueOpen(void (*pFunction) (void *, size_t),
  * while this function is in progress.
  *
  * @param handle            the handle for the event queue.
- * @param pParam            a pointer to the parameters structure
+ * @param[in] pParam        a pointer to the parameters structure
  *                          to send.  May be NULL, in which case
  *                          paramLengthBytes must be zero.
  * @param paramLengthBytes  the length of the parameters
@@ -211,7 +211,7 @@ int32_t uPortEventQueueSend(int32_t handle, const void *pParam,
  * progress.
  *
  * @param handle            the handle for the event queue.
- * @param pParam            a pointer to the parameters structure
+ * @param[in] pParam        a pointer to the parameters structure
  *                          to send.  May be NULL, in which case
  *                          paramLengthBytes must be zero.
  * @param paramLengthBytes  the length of the parameters

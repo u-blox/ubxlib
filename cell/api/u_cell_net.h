@@ -244,45 +244,45 @@ typedef enum {
  * deactivated (and potentially deregistration may occur) then
  * [registration will occur and] the new context will be activated.
  *
- * @param cellHandle         the handle of the cellular instance.
- * @param pMccMnc            pointer to a string giving the MCC and
- *                           MNC of the PLMN to use (for example "23410")
- *                           for manual connection; set to NULL if
- *                           automatic PLMN selection (AT+COPS=0)
- *                           is required.
- * @param pApn               pointer to a string giving the APN to
- *                           use; set to NULL if no APN is specified
- *                           by the service provider, in which
- *                           case the APN database in u_cell_apn_db.h
- *                           will be used to determine a default APN.
- *                           To force an empty APN to be used, specify
- *                           "" for pApn.
- * @param pUsername          pointer to a string giving the user name
- *                           for PPP authentication; may be set to
- *                           NULL if no user name or password is
- *                           required.
- * @param pPassword          pointer to a string giving the password
- *                           for PPP authentication; must be
- *                           non-NULL if pUsername is non-NULL, ignored
- *                           if pUsername is NULL.
- * @param pKeepGoingCallback a callback function that governs how
- *                           long a connection attempt will continue
- *                           for. This function is called once a second
- *                           while waiting for a connection attempt
- *                           to complete; the connection attempt
- *                           will only continue while it returns
- *                           true.  This allows the caller to
- *                           terminate the connection attempt at their
- *                           convenience. This function may also be
- *                           used to feed any watchdog timer that
- *                           might be running during longer cat-M1/NB1
- *                           network search periods.  The single
- *                           int32_t parameter is the cell handle.
- *                           May be NULL, in which case the connection
- *                           attempt will eventually time out on
- *                           failure.
- * @return                   zero on success or negative error code on
- *                           failure.
+ * @param cellHandle             the handle of the cellular instance.
+ * @param[in] pMccMnc            pointer to a string giving the MCC and
+ *                               MNC of the PLMN to use (for example "23410")
+ *                               for manual connection; set to NULL if
+ *                               automatic PLMN selection (AT+COPS=0)
+ *                               is required.
+ * @param[in] pApn               pointer to a string giving the APN to
+ *                               use; set to NULL if no APN is specified
+ *                               by the service provider, in which
+ *                               case the APN database in u_cell_apn_db.h
+ *                               will be used to determine a default APN.
+ *                               To force an empty APN to be used, specify
+ *                               "" for pApn.
+ * @param[in] pUsername          pointer to a string giving the user name
+ *                               for PPP authentication; may be set to
+ *                               NULL if no user name or password is
+ *                               required.
+ * @param[in] pPassword          pointer to a string giving the password
+ *                               for PPP authentication; must be
+ *                               non-NULL if pUsername is non-NULL, ignored
+ *                               if pUsername is NULL.
+ * @param[in] pKeepGoingCallback a callback function that governs how
+ *                               long a connection attempt will continue
+ *                               for. This function is called once a second
+ *                               while waiting for a connection attempt
+ *                               to complete; the connection attempt
+ *                               will only continue while it returns
+ *                               true.  This allows the caller to
+ *                               terminate the connection attempt at their
+ *                               convenience. This function may also be
+ *                               used to feed any watchdog timer that
+ *                               might be running during longer cat-M1/NB1
+ *                               network search periods.  The single
+ *                               int32_t parameter is the cell handle.
+ *                               May be NULL, in which case the connection
+ *                               attempt will eventually time out on
+ *                               failure.
+ * @return                       zero on success or negative error code on
+ *                               failure.
  */
 int32_t uCellNetConnect(uDeviceHandle_t cellHandle,
                         const char *pMccMnc,
@@ -296,28 +296,28 @@ int32_t uCellNetConnect(uDeviceHandle_t cellHandle,
  * on the default APN provided by the network, you should use
  * uCellConnect() instead.
  *
- * @param cellHandle         the handle of the cellular instance.
- * @param pMccMnc            pointer to a string giving the MCC and
- *                           MNC of the PLMN to use (for example "23410")
- *                           for manual connection; set to NULL if
- *                           automatic PLMN selection (AT+COPS=0)
- *                           is required.
- * @param pKeepGoingCallback a callback function that governs how
- *                           long registration will continue for.
- *                           This function is called once a second
- *                           while waiting for registration to finish;
- *                           registration will only continue while it
- *                           returns true.  This allows the caller to
- *                           terminate registration at their convenience.
- *                           This function may also be used to feed
- *                           any watchdog timer that might be running
- *                           during longer cat-M1/NB1 network search
- *                           periods.  The single int32_t parameter
- *                           is the cell handle. May be NULL, in which
- *                           case the registration attempt will
- *                           eventually time-out on failure.
- * @return                   zero on success or negative error code on
- *                           failure.
+ * @param cellHandle             the handle of the cellular instance.
+ * @param[in] pMccMnc            pointer to a string giving the MCC and
+ *                               MNC of the PLMN to use (for example "23410")
+ *                               for manual connection; set to NULL if
+ *                               automatic PLMN selection (AT+COPS=0)
+ *                               is required.
+ * @param[in] pKeepGoingCallback a callback function that governs how
+ *                               long registration will continue for.
+ *                               This function is called once a second
+ *                               while waiting for registration to finish;
+ *                               registration will only continue while it
+ *                               returns true.  This allows the caller to
+ *                               terminate registration at their convenience.
+ *                               This function may also be used to feed
+ *                               any watchdog timer that might be running
+ *                               during longer cat-M1/NB1 network search
+ *                               periods.  The single int32_t parameter
+ *                               is the cell handle. May be NULL, in which
+ *                               case the registration attempt will
+ *                               eventually time-out on failure.
+ * @return                       zero on success or negative error code on
+ *                               failure.
  */
 int32_t uCellNetRegister(uDeviceHandle_t cellHandle,
                          const char *pMccMnc,
@@ -332,38 +332,38 @@ int32_t uCellNetRegister(uDeviceHandle_t cellHandle,
  * this will result in de-registration and re-registration with the
  * network.
  *
- * @param cellHandle         the handle of the cellular instance.
- * @param pApn               pointer to a string giving the APN to
- *                           use; set to NULL if no APN is specified
- *                           by the service provider, in which
- *                           case the APN database in u_cell_apn_db.h
- *                           will be used to determine a default APN.
- *                           To force an empty APN to be used, specify
- *                           "" for pApn.
- * @param pUsername          pointer to a string giving the user name
- *                           for PPP authentication; may be set to
- *                           NULL if no user name or password is
- *                           required.
- * @param pPassword          pointer to a string giving the password
- *                           for PPP authentication; ignored if pUsername
- *                           is NULL, must be non-NULL if pUsername is
- *                           non-NULL.
- * @param pKeepGoingCallback a callback function that governs how
- *                           long an activation attempt will continue
- *                           for. This function is called once a second
- *                           while waiting for an activation attempt
- *                           to complete; the activation attempt
- *                           will only continue while it returns
- *                           true.  This allows the caller to
- *                           terminate the activation attempt at their
- *                           convenience. This function may also be
- *                           used to feed any watchdog timer that
- *                           might be running during longer cat-M1/NB1
- *                           network search periods.  May be NULL,
- *                           in which case the activation attempt
- *                           will eventually time out on failure.
- * @return                   zero on success or negative error code on
- *                           failure.
+ * @param cellHandle             the handle of the cellular instance.
+ * @param[in] pApn               pointer to a string giving the APN to
+ *                               use; set to NULL if no APN is specified
+ *                               by the service provider, in which
+ *                               case the APN database in u_cell_apn_db.h
+ *                               will be used to determine a default APN.
+ *                               To force an empty APN to be used, specify
+ *                               "" for pApn.
+ * @param[in] pUsername          pointer to a string giving the user name
+ *                               for PPP authentication; may be set to
+ *                               NULL if no user name or password is
+ *                               required.
+ * @param[in] pPassword          pointer to a string giving the password
+ *                               for PPP authentication; ignored if pUsername
+ *                               is NULL, must be non-NULL if pUsername is
+ *                               non-NULL.
+ * @param[in] pKeepGoingCallback a callback function that governs how
+ *                               long an activation attempt will continue
+ *                               for. This function is called once a second
+ *                               while waiting for an activation attempt
+ *                               to complete; the activation attempt
+ *                               will only continue while it returns
+ *                               true.  This allows the caller to
+ *                               terminate the activation attempt at their
+ *                               convenience. This function may also be
+ *                               used to feed any watchdog timer that
+ *                               might be running during longer cat-M1/NB1
+ *                               network search periods.  May be NULL,
+ *                               in which case the activation attempt
+ *                               will eventually time out on failure.
+ * @return                       zero on success or negative error code on
+ *                               failure.
  */
 int32_t uCellNetActivate(uDeviceHandle_t cellHandle,
                          const char *pApn, const char *pUsername,
@@ -375,19 +375,19 @@ int32_t uCellNetActivate(uDeviceHandle_t cellHandle,
  * not permitted to have no context and therefore this function
  * will also result in deregistration from the network.
  *
- * @param cellHandle         the handle of the cellular instance.
- * @param pKeepGoingCallback a call-back function that governs how
- *                           long deactivation will continue for.
- *                           This function is called once a second
- *                           while waiting for deactivation to
- *                           finish; deactivation will only
- *                           continue while it returns true. This
- *                           allows the caller to terminate
- *                           activation at their convenience.
- *                           May be NULL.  The single int32_t
- *                           parameter is the cell handle.
- * @return                   zero on success or negative error code
- *                           on failure.
+ * @param cellHandle             the handle of the cellular instance.
+ * @param[in] pKeepGoingCallback a call-back function that governs how
+ *                               long deactivation will continue for.
+ *                               This function is called once a second
+ *                               while waiting for deactivation to
+ *                               finish; deactivation will only
+ *                               continue while it returns true. This
+ *                               allows the caller to terminate
+ *                               activation at their convenience.
+ *                               May be NULL.  The single int32_t
+ *                               parameter is the cell handle.
+ * @return                       zero on success or negative error code
+ *                               on failure.
  */
 int32_t uCellNetDeactivate(uDeviceHandle_t cellHandle,
                            bool (*pKeepGoingCallback) (uDeviceHandle_t));
@@ -396,19 +396,19 @@ int32_t uCellNetDeactivate(uDeviceHandle_t cellHandle,
  * will be deactivated. The state of the module will be that the
  * radio is in airplane mode (AT+CFUN=4).
  *
- * @param cellHandle         the handle of the cellular instance.
- * @param pKeepGoingCallback a call-back function that governs how
- *                           long de-registration will continue for.
- *                           This function is called once a second
- *                           while waiting for de-registration to
- *                           finish; de-registration will only
- *                           continue while it returns true. This
- *                           allows the caller to terminate
- *                           registration at their convenience.
- *                           May be NULL.  The single int32_t
- *                           parameter is the cell handle.
- * @return                   zero on success or negative error code on
- *                           failure.
+ * @param cellHandle             the handle of the cellular instance.
+ * @param[in] pKeepGoingCallback a call-back function that governs how
+ *                               long de-registration will continue for.
+ *                               This function is called once a second
+ *                               while waiting for de-registration to
+ *                               finish; de-registration will only
+ *                               continue while it returns true. This
+ *                               allows the caller to terminate
+ *                               registration at their convenience.
+ *                               May be NULL.  The single int32_t
+ *                               parameter is the cell handle.
+ * @return                       zero on success or negative error code on
+ *                               failure.
  */
 int32_t uCellNetDisconnect(uDeviceHandle_t cellHandle,
                            bool (*pKeepGoingCallback) (uDeviceHandle_t));
@@ -433,38 +433,38 @@ int32_t uCellNetDisconnect(uDeviceHandle_t cellHandle,
  * }
  * ```
  *
- * @param cellHandle         the handle of the cellular instance.
- * @param pName              a place to put the name of the first
- *                           network found; may be NULL.
- * @param nameSize           the amount of storage at pName, must
- *                           be non-zero if pName is non-NULL.
- *                           No more than #U_CELL_NET_MAX_NAME_LENGTH_BYTES
- *                           (which includes room for a terminator)
- *                           are required.
- * @param pMccMnc            a pointer to #U_CELL_NET_MCC_MNC_LENGTH_BYTES
- *                           of storage in which the MCC/MNC
- *                           string representing the first network
- *                           will be stored; may be NULL.
- * @param pRat               pointer to a place to put the radio
- *                           access technology of the network;
- *                           may be NULL.
- * @param pKeepGoingCallback network scanning can take some time,
- *                           this call-back is called once a second
- *                           during the scan, allowing a watch-dog
- *                           function to be called if required; may
- *                           be NULL.  The function should return
- *                           true; if it returns false the network
- *                           scan will be aborted.  The single
- *                           int32_t parameter is the cell handle.
- * @return                   the number of networks found or negative
- *                           error code.  If
- *                           #U_CELL_ERROR_TEMPORARY_FAILURE is returned
- *                           then the module is currently in a state
- *                           where it is unable to perform a network
- *                           search (e.g. if it is already doing one
- *                           for other reasons) and in this case it
- *                           is worth waiting a little while (e.g. 10
- *                           seconds) and trying again.
+ * @param cellHandle             the handle of the cellular instance.
+ * @param[out] pName             a place to put the name of the first
+ *                               network found; may be NULL.
+ * @param nameSize               the amount of storage at pName, must
+ *                               be non-zero if pName is non-NULL.
+ *                               No more than #U_CELL_NET_MAX_NAME_LENGTH_BYTES
+ *                               (which includes room for a terminator)
+ *                               are required.
+ * @param[out] pMccMnc           a pointer to #U_CELL_NET_MCC_MNC_LENGTH_BYTES
+ *                               of storage in which the MCC/MNC
+ *                               string representing the first network
+ *                               will be stored; may be NULL.
+ * @param[out] pRat              pointer to a place to put the radio
+ *                               access technology of the network;
+ *                               may be NULL.
+ * @param[in] pKeepGoingCallback network scanning can take some time,
+ *                               this call-back is called once a second
+ *                               during the scan, allowing a watch-dog
+ *                               function to be called if required; may
+ *                               be NULL.  The function should return
+ *                               true; if it returns false the network
+ *                               scan will be aborted.  The single
+ *                               int32_t parameter is the cell handle.
+ * @return                       the number of networks found or negative
+ *                               error code.  If
+ *                               #U_CELL_ERROR_TEMPORARY_FAILURE is returned
+ *                               then the module is currently in a state
+ *                               where it is unable to perform a network
+ *                               search (e.g. if it is already doing one
+ *                               for other reasons) and in this case it
+ *                               is worth waiting a little while (e.g. 10
+ *                               seconds) and trying again.
  */
 int32_t uCellNetScanGetFirst(uDeviceHandle_t cellHandle,
                              char *pName, size_t nameSize,
@@ -483,24 +483,24 @@ int32_t uCellNetScanGetFirst(uDeviceHandle_t cellHandle,
  * This function is not thread-safe in that there is a
  * single scan list for all threads.
  *
- * @param cellHandle  the handle of the cellular instance.
- * @param pName       a place to put the name of the next
- *                    network found; may be NULL.
- * @param nameSize    the amount of storage at pName, must
- *                    be non-zero if pName is non-NULL.
- *                    No more than #U_CELL_NET_MAX_NAME_LENGTH_BYTES
- *                    (which includes room for a terminator)
- *                    are required.
- * @param pMccMnc     a pointer to #U_CELL_NET_MCC_MNC_LENGTH_BYTES
- *                    of storage in which the MCC/MNC
- *                    string representing the next network
- *                    will be stored; may be NULL.
- * @param pRat        pointer to a place to put the radio
- *                    access technology of the network;
- *                    may be NULL.
- * @return            the number of networks remaining *after*
- *                    this one has been read or negative error
- *                    code.
+ * @param cellHandle   the handle of the cellular instance.
+ * @param[out] pName   a place to put the name of the next
+ *                     network found; may be NULL.
+ * @param nameSize     the amount of storage at pName, must
+ *                     be non-zero if pName is non-NULL.
+ *                     No more than #U_CELL_NET_MAX_NAME_LENGTH_BYTES
+ *                     (which includes room for a terminator)
+ *                     are required.
+ * @param[out] pMccMnc a pointer to #U_CELL_NET_MCC_MNC_LENGTH_BYTES
+ *                     of storage in which the MCC/MNC
+ *                     string representing the next network
+ *                     will be stored; may be NULL.
+ * @param[out] pRat    pointer to a place to put the radio
+ *                     access technology of the network;
+ *                     may be NULL.
+ * @return             the number of networks remaining *after*
+ *                     this one has been read or negative error
+ *                     code.
  */
 int32_t uCellNetScanGetNext(uDeviceHandle_t cellHandle,
                             char *pName, size_t nameSize,
@@ -525,13 +525,13 @@ void uCellNetScanGetLast(uDeviceHandle_t cellHandle);
  *
  * @param cellHandle                  the handle of the cellular
  *                                    instance.
- * @param pCallback                   pointer to the function to
+ * @param[in] pCallback               pointer to the function to
  *                                    handle any registration
  *                                    state changes. Use NULL to
  *                                    deactivate a previously
  *                                    active registration status
  *                                    callback.
- * @param pCallbackParameter          a pointer to be passed to
+ * @param[in] pCallbackParameter      a pointer to be passed to
  *                                    the call-back as its third
  *                                    parameter; may be NULL.
  * @return                            zero on success or negative
@@ -561,14 +561,14 @@ int32_t uCellNetSetRegistrationStatusCallback(uDeviceHandle_t cellHandle,
  *
  * @param cellHandle                the handle of the
  *                                  cellular instance.
- * @param pCallback                 pointer to the
+ * @param[in] pCallback             pointer to the
  *                                  function to handle
  *                                  any connection state
  *                                  changes.  Use NULL
  *                                  to deactivate a previously
  *                                  active connection status
  *                                  call-back.
- * @param pCallbackParameter        a pointer to be passed
+ * @param[in] pCallbackParameter    a pointer to be passed
  *                                  to the call-back as its
  *                                  second parameter; may be
  *                                  NULL.
@@ -624,7 +624,7 @@ uCellNetRat_t uCellNetGetActiveRat(uDeviceHandle_t cellHandle);
  * registered on the network at the time this is called.
  *
  * @param cellHandle  the handle of the cellular instance.
- * @param pStr        a pointer to size bytes of storage into which
+ * @param[out] pStr   a pointer to size bytes of storage into which
  *                    the operator name will be copied.  Room
  *                    should be allowed for a null terminator, which
  *                    will be added to terminate the string.  This
@@ -648,9 +648,9 @@ int32_t uCellNetGetOperatorStr(uDeviceHandle_t cellHandle,
  * the formatter "%03d%02d".
  *
  * @param cellHandle  the handle of the cellular instance.
- * @param pMcc        pointer to a place to store the MCC; cannot
+ * @param[out] pMcc   pointer to a place to store the MCC; cannot
  *                    be NULL.
- * @param pMnc        pointer to a place to store the MNC; cannot
+ * @param[out] pMnc   pointer to a place to store the MNC; cannot
  *                    be NULL.
  * @return            zero on success else negative error code.
  */
@@ -660,7 +660,7 @@ int32_t uCellNetGetMccMnc(uDeviceHandle_t cellHandle,
 /** Return the IP address of the currently active connection.
  *
  * @param cellHandle  the handle of the cellular instance.
- * @param pStr        should point to storage of length at least
+ * @param[out] pStr   should point to storage of length at least
  *                    #U_CELL_NET_IP_ADDRESS_SIZE bytes in size.
  *                    On return the IP address will be written to
  *                    pStr as a string and a null terminator will
@@ -678,33 +678,33 @@ int32_t uCellNetGetIpAddressStr(uDeviceHandle_t cellHandle, char *pStr);
  * by the network.  Without a DNS the module is unable to
  * use hostnames in these API functions, only IP addresses.
  *
- * @param cellHandle  the handle of the cellular instance.
- * @param v6          set this to true if IPV6 DNS addresses
- *                    should be returned, else IPV4 addresses
- *                    will be returned.  In some cases it is
- *                    not possible to return IPV6 addresses
- *                    (e.g. the IP stack inside SARA-U201 is
- *                    IPV4 only), in which case IPV4 addresses
- *                    may be returned even when IPV6 addresses
- *                    have been requested: the user should
- *                    expect either.
- * @param pStrDns1    a pointer to storage of length at least
- *                    #U_CELL_NET_IP_ADDRESS_SIZE bytes in size.
- *                    On return the primary DNS address will be
- *                    written to pStr as a string and a null
- *                    terminator will be added.
- *                    May be set to NULL for a simple test as to
- *                    whether a DNS address has been allocated or
- *                    not.
- * @param pStrDns2    a pointer to storage of length at least
- *                    #U_CELL_NET_IP_ADDRESS_SIZE bytes in size.
- *                    On return the secondary DNS address will be
- *                    written to pStr as a string and a null
- *                    terminator will be added.  May be set to NULL.
- * @return            zero if at least one DNS address has been
- *                    assigned (either v4 or v6, irrespective
- *                    of the setting of the v6 parameter) else
- *                    negative error code.
+ * @param cellHandle    the handle of the cellular instance.
+ * @param v6            set this to true if IPV6 DNS addresses
+ *                      should be returned, else IPV4 addresses
+ *                      will be returned.  In some cases it is
+ *                      not possible to return IPV6 addresses
+ *                      (e.g. the IP stack inside SARA-U201 is
+ *                      IPV4 only), in which case IPV4 addresses
+ *                      may be returned even when IPV6 addresses
+ *                      have been requested: the user should
+ *                      expect either.
+ * @param[out] pStrDns1 a pointer to storage of length at least
+ *                      #U_CELL_NET_IP_ADDRESS_SIZE bytes in size.
+ *                      On return the primary DNS address will be
+ *                      written to pStr as a string and a null
+ *                      terminator will be added.
+ *                      May be set to NULL for a simple test as to
+ *                      whether a DNS address has been allocated or
+ *                      not.
+ * @param[out] pStrDns2 a pointer to storage of length at least
+ *                      #U_CELL_NET_IP_ADDRESS_SIZE bytes in size.
+ *                      On return the secondary DNS address will be
+ *                      written to pStr as a string and a null
+ *                      terminator will be added.  May be set to NULL.
+ * @return              zero if at least one DNS address has been
+ *                      assigned (either v4 or v6, irrespective
+ *                      of the setting of the v6 parameter) else
+ *                      negative error code.
  */
 int32_t uCellNetGetDnsStr(uDeviceHandle_t cellHandle, bool v6,
                           char *pStrDns1, char *pStrDns2);
@@ -712,7 +712,7 @@ int32_t uCellNetGetDnsStr(uDeviceHandle_t cellHandle, bool v6,
 /** Get the APN currently in use.
  *
  * @param cellHandle  the handle of the cellular instance.
- * @param pStr        a pointer to size bytes of storage into which
+ * @param[out] pStr   a pointer to size bytes of storage into which
  *                    the APN string will be copied.  Room should be
  *                    allowed for a null terminator, which will be
  *                    added to terminate the string; to ensure
