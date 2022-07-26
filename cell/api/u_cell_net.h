@@ -107,8 +107,18 @@ extern "C" {
 # define U_CELL_NET_UPSD_CONTEXT_ACTIVATION_TIME_SECONDS 30
 #endif
 
+#ifndef U_CELL_NET_SCAN_RETRIES
+/** How many times to retry a network scan if there is no
+ * response at all within #U_CELL_NET_SCAN_TIME_SECONDS.
+ */
+# define U_CELL_NET_SCAN_RETRIES 2
+#endif
+
 #ifndef U_CELL_NET_SCAN_TIME_SECONDS
-/** How long to allow for a network scan.
+/** How long to allow for a network scan; note that this is
+ * the scan time but the uCellNetScanGetFirst() function
+ * may retry up to #U_CELL_NET_SCAN_RETRIES times if the module
+ * offers no response at all within this time.
  */
 # define U_CELL_NET_SCAN_TIME_SECONDS (60 * 3)
 #endif

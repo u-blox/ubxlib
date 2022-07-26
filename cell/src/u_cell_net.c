@@ -2500,12 +2500,8 @@ int32_t uCellNetScanGetFirst(uDeviceHandle_t cellHandle,
                 // it will be at longer than that hence we set
                 // a threshold for readBytes of > 12 characters.
                 pInstance->startTimeMs = uPortGetTickTimeMs();
-                // Note: if you change the initial value of x then
-                // also change the divisor in the while() loop below.
-                for (size_t x = 3;
+                for (size_t x = U_CELL_NET_SCAN_RETRIES + 1;
                      (x > 0) && (errorCodeOrNumber <= 0) &&
-                     (uPortGetTickTimeMs() < pInstance->startTimeMs +
-                      (U_CELL_NET_SCAN_TIME_SECONDS * 1000)) &&
                      ((pKeepGoingCallback == NULL) || (pKeepGoingCallback(cellHandle)));
                      x--) {
                     uAtClientLock(atHandle);
@@ -2521,13 +2517,11 @@ int32_t uCellNetScanGetFirst(uDeviceHandle_t cellHandle,
                     // ...plus some other stuff on the end.
                     // Sit in a loop waiting for a response
                     // of some form to arrive
-                    // Note the "/ 3" below: if you change the initial value
-                    // or x above you should change this also.
                     bytesRead = -1;
                     innerStartTimeMs = uPortGetTickTimeMs();
                     while ((bytesRead <= 0) &&
                            (uPortGetTickTimeMs() < innerStartTimeMs +
-                            (U_CELL_NET_SCAN_TIME_SECONDS * 1000 / 3)) &&
+                            (U_CELL_NET_SCAN_TIME_SECONDS * 1000)) &&
                            ((pKeepGoingCallback == NULL) || (pKeepGoingCallback(cellHandle)))) {
                         uAtClientResponseStart(atHandle, "+COPS:");
                         // We use uAtClientReadBytes() here because the
