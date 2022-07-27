@@ -551,6 +551,58 @@ int32_t uGnssPrivateSendOnlyUartUbxMessage(const uGnssPrivateInstance_t *pInstan
     return errorCodeOrSentLength;
 }
 
+// Send a message that has no acknowledgement and check that it was received.
+int32_t uGnssPrivateSendOnlyCheckUartUbxMessage(const uGnssPrivateInstance_t *pInstance,
+                                                int32_t messageClass,
+                                                int32_t messageId,
+                                                const char *pMessageBody,
+                                                size_t messageBodyLengthBytes)
+{
+    int32_t errorCodeOrLength = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    int32_t userMessageSentLength;
+    // Message buffer for the 120-byte UBX-MON-MSGPP message
+    char message[120] = {0};
+    uint64_t y;
+
+    if ((pInstance != NULL) &&
+        ((pInstance->transportType == U_GNSS_TRANSPORT_UBX_UART) ||
+         (pInstance->transportType == U_GNSS_TRANSPORT_NMEA_UART))) {
+        // Send UBX-MON-MSGPP to get the number of messages received
+        errorCodeOrLength = uGnssPrivateSendReceiveUbxMessage(pInstance,
+                                                              0x0a, 0x06,
+                                                              NULL, 0,
+                                                              message,
+                                                              sizeof(message));
+        if (errorCodeOrLength == sizeof(message)) {
+            // Derive the number of messages received on the port
+            y = uUbxProtocolUint64Decode(message + ((size_t) (unsigned) pInstance->portNumber * 16));
+            // Now send the message
+            errorCodeOrLength = uGnssPrivateSendOnlyUartUbxMessage(pInstance, messageClass, messageId,
+                                                                   pMessageBody, messageBodyLengthBytes);
+            if (errorCodeOrLength == messageBodyLengthBytes + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES) {
+                userMessageSentLength = errorCodeOrLength;
+                // Get the number of received messages again
+                errorCodeOrLength = uGnssPrivateSendReceiveUbxMessage(pInstance,
+                                                                      0x0a, 0x06,
+                                                                      NULL, 0,
+                                                                      message,
+                                                                      sizeof(message));
+                if (errorCodeOrLength == sizeof(message)) {
+                    errorCodeOrLength = (int32_t) U_ERROR_COMMON_PLATFORM;
+                    y = uUbxProtocolUint64Decode(message + ((size_t) (unsigned) pInstance->portNumber * 16)) - y;
+                    // Should be two: UBX-MON-MSGPP and then the send done by
+                    // uGnssPrivateSendReceiveUbxMessage().
+                    if (y == 2) {
+                        errorCodeOrLength = userMessageSentLength;
+                    }
+                }
+            }
+        }
+    }
+
+    return errorCodeOrLength;
+}
+
 // Receive a ubx format message over UART.
 int32_t uGnssPrivateReceiveOnlyUartUbxMessage(const uGnssPrivateInstance_t *pInstance,
                                               int32_t messageClass,

@@ -192,7 +192,7 @@ void uGnssPrivatePrintBuffer(const char *pBuffer,
  *                                   NULL.
  * @param messageBodyLengthBytes     the amount of data at pMessageBody; must
  *                                   be non-zero if pMessageBody is non-NULL.
- * @return                           the number of bytes sent, including
+ * @return                           the number of bytes sent, INCLUDING
  *                                   ubx protocol coding overhead, else negative
  *                                   error code.
  */
@@ -201,6 +201,29 @@ int32_t uGnssPrivateSendOnlyUartUbxMessage(const uGnssPrivateInstance_t *pInstan
                                            int32_t messageId,
                                            const char *pMessageBody,
                                            size_t messageBodyLengthBytes);
+
+/** Send a ubx format message over the UART that does not have an
+ * acknowledgement and check that it was accepted by the GNSS chip
+ * by querying the GNSS chip's message count.
+ * Note: gUGnssPrivateMutex should be locked before this is called.
+ *
+ * @param pInstance                  a pointer to the GNSS instance, cannot
+ *                                   be NULL.
+ * @param messageClass               the ubx message class to send with.
+ * @param messageId                  the ubx message ID to end with.
+ * @param pMessageBody               the body of the message to send; may be
+ *                                   NULL.
+ * @param messageBodyLengthBytes     the amount of data at pMessageBody; must
+ *                                   be non-zero if pMessageBody is non-NULL.
+ * @return                           the number of bytes sent, INCLUDING
+ *                                   ubx protocol coding overhead, else negative
+ *                                   error code.
+ */
+int32_t uGnssPrivateSendOnlyCheckUartUbxMessage(const uGnssPrivateInstance_t *pInstance,
+                                                int32_t messageClass,
+                                                int32_t messageId,
+                                                const char *pMessageBody,
+                                                size_t messageBodyLengthBytes);
 
 /** Wait for a ubx format message with the given message class and ID to
  * arrive on a UART.
