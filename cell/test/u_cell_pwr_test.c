@@ -344,10 +344,6 @@ static void testPowerAliveVInt(uCellTestPrivate_t *pHandles,
             gStopTimeMs = uPortGetTickTimeMs() +
                           (((int64_t) pModule->powerDownWaitSeconds) * 1000);
         }
-        // Give the module time to sort itself out
-        U_TEST_PRINT_LINE("waiting %d second(s) before powering off...",
-                          pModule->minAwakeTimeSeconds);
-        uPortTaskBlock(pModule->minAwakeTimeSeconds * 1000);
 #  if U_CFG_APP_PIN_CELL_VINT < 0
         timeMs = uPortGetTickTimeMs();
 #  endif
