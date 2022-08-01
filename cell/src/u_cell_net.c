@@ -413,17 +413,17 @@ static void setNetworkStatus(uCellPrivateInstance_t *pInstance,
 // Note: there are cases where the RAT value is not signalled as part
 // of the AT response: e.g. LARA-R6 can just send:
 // +CEREG: 4,5,,,,,,,"00000000","01100000"
-// ...in response to an AT+CEREG? query. For these cases assumedRat
+// ...in response to an AT+CEREG? query. For these cases assumed3gppRat
 // must be provided so that this function can do something useful.
 static inline uCellNetStatus_t CXREG_urc(uCellPrivateInstance_t *pInstance,
                                          uCellNetRegDomain_t domain,
-                                         uCellNetRat_t assumedRat)
+                                         int32_t assumed3gppRat)
 {
     uAtClientHandle_t atHandle = pInstance->atHandle;
     int32_t status3gpp;
     uCellNetStatus_t status = U_CELL_NET_STATUS_UNKNOWN;
     int32_t secondInt;
-    int32_t rat = (int32_t) U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED;
+    int32_t rat = -1;
     int32_t skippedParameters = 1;
     bool responseToCommandNotUrc = false;
 
@@ -488,9 +488,9 @@ static inline uCellNetStatus_t CXREG_urc(uCellPrivateInstance_t *pInstance,
         uAtClientSkipParameters(atHandle, skippedParameters);
         // Read the RAT that we're on
         rat = uAtClientReadInt(atHandle);
-        // Use the assumed RAT if no RAT is included
+        // Use the assumed 3GPP RAT if no RAT is included
         if (rat < 0) {
-            rat = (int32_t) assumedRat;
+            rat = assumed3gppRat;
         }
     }
     setNetworkStatus(pInstance, status, rat, domain, true);
@@ -504,11 +504,10 @@ static void CREG_urc(uAtClientHandle_t atHandle,
                      void *pParameter)
 {
     (void) atHandle;
-    // Doesn't really matter what the assumedRat parameter
+    // Doesn't really matter what the assumed3gppRat parameter
     // is here, it is only used in the LTE/Cat-M1 case
     CXREG_urc((uCellPrivateInstance_t *) pParameter,
-              U_CELL_NET_REG_DOMAIN_CS,
-              U_CELL_NET_RAT_GSM_GPRS_EGPRS);
+              U_CELL_NET_REG_DOMAIN_CS, -1);
 }
 
 // Registration on a network in the packet-switched
@@ -517,11 +516,10 @@ static void CGREG_urc(uAtClientHandle_t atHandle,
                       void *pParameter)
 {
     (void) atHandle;
-    // Doesn't really matter what the assumedRat parameter
+    // Doesn't really matter what the assumed3gppRat parameter
     // is here, it is only used in the LTE/Cat-M1 case
     CXREG_urc((uCellPrivateInstance_t *) pParameter,
-              U_CELL_NET_REG_DOMAIN_PS,
-              U_CELL_NET_RAT_GSM_GPRS_EGPRS);
+              U_CELL_NET_REG_DOMAIN_PS, -1);
 }
 
 // Registration on an EUTRAN (LTE) network (AT+CEREG)
@@ -538,15 +536,15 @@ static void CEREG_urc(uAtClientHandle_t atHandle,
     bool onNotOff;
     int32_t activeTimeSeconds = -1;
     int32_t periodicWakeupSeconds = -1;
-    uCellNetRat_t assumedRat = U_CELL_NET_RAT_LTE;
+    int32_t assumed3gppRat = 7; // LTE
 
     if (!(pInstance->pModule->supportedRatsBitmap & (1UL << (int32_t) U_CELL_NET_RAT_LTE)) &&
         (pInstance->pModule->supportedRatsBitmap & (1UL << (int32_t) U_CELL_NET_RAT_CATM1))) {
         // Assumed RAT has to be Cat-M1 if we don't support LTE
-        assumedRat = U_CELL_NET_RAT_CATM1;
+        assumed3gppRat = 8; // Cat-M1
     }
 
-    status = CXREG_urc(pInstance, U_CELL_NET_REG_DOMAIN_PS, assumedRat);
+    status = CXREG_urc(pInstance, U_CELL_NET_REG_DOMAIN_PS, assumed3gppRat);
     if (U_CELL_NET_STATUS_MEANS_REGISTERED(status) &&
         (pSleepContext != NULL)) {
         // If we have a sleep context, try to read the
@@ -1164,6 +1162,11 @@ static int32_t registerNetwork(uCellPrivateInstance_t *pInstance,
                     uAtClientSkipParameters(atHandle, skippedParameters);
                     // Read the RAT that we're on
                     rat = uAtClientReadInt(atHandle);
+                    if ((rat < 0) && (regType == 2 /* CEREG */)) {
+                        // LARA-R6 sometime misses out the RAT in the +CEREG
+                        // response; we need something...
+                        rat = 7; // LTE
+                    }
                 }
                 // Set the status
                 setNetworkStatus(pInstance, status, rat,
@@ -1266,8 +1269,7 @@ static int32_t disconnectNetwork(uCellPrivateInstance_t *pInstance,
                                                  sizeof(g3gppStatusToCellStatus[0])))) {
                         setNetworkStatus(pInstance,
                                          g3gppStatusToCellStatus[status3gpp],
-                                         (int32_t) U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED,
-                                         gRegTypes[x].domain, false);
+                                         -1, gRegTypes[x].domain, false);
                     }
                     uAtClientResponseStop(atHandle);
                     uAtClientUnlock(atHandle);
@@ -1290,8 +1292,7 @@ static int32_t disconnectNetwork(uCellPrivateInstance_t *pInstance,
             if (uAtClientReadInt(atHandle) == 0) {
                 setNetworkStatus(pInstance,
                                  U_CELL_NET_STATUS_NOT_REGISTERED,
-                                 (int32_t) U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED,
-                                 U_CELL_NET_REG_DOMAIN_PS, false);
+                                 -1, U_CELL_NET_REG_DOMAIN_PS, false);
             }
             uAtClientResponseStop(atHandle);
             uAtClientUnlock(atHandle);
