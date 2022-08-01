@@ -1,14 +1,21 @@
 config UBXLIB
         bool "u-blox ubxlib support"
         default n
-        select MBEDTLS
-        select MBEDTLS_MAC_SHA256_ENABLED
-        select MBEDTLS_CIPHER_AES_ENABLED
-
         help
           Enable ubxlib for use with u-blox modules
 
 if UBXLIB
+
+if !NRF_SECURITY
+config UBXLIB_CRYPTO
+        bool "Crypto libraries required for some parts of ubxlib"
+        default y
+        select MBEDTLS
+        select MBEDTLS_MAC_SHA256_ENABLED
+        select MBEDTLS_CIPHER_AES_ENABLED
+        help
+          Bring in TLS libraries required by some parts of ubxlib
+endif # !NRF_SECURITY
 
 config UBXLIB_CELL
         bool "Cellular support"
