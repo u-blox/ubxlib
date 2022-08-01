@@ -247,7 +247,7 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
     {
         U_CELL_MODULE_TYPE_LARA_R6, 300 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
         10 /* Boot wait */, 30 /* Min awake */, 35 /* Pwr down wait */, 10 /* Reboot wait */, 10 /* AT timeout */,
-        100 /* Cmd wait ms */, 3000 /* Resp max wait ms */, 4 /* radioOffCfun */,  12000 /* resetHoldMilliseconds */,
+        100 /* Cmd wait ms */, 3000 /* Resp max wait ms */, 4 /* radioOffCfun */,  150 /* resetHoldMilliseconds */,
         3 /* Simultaneous RATs */,
         ((1UL << (int32_t) U_CELL_NET_RAT_GSM_GPRS_EGPRS) |
          (1UL << (int32_t) U_CELL_NET_RAT_LTE)            |
