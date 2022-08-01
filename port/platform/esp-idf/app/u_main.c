@@ -36,6 +36,7 @@
 #include "u_port.h"
 #include "u_port_os.h"
 #include "u_port_debug.h"
+#include "u_port_gpio.h"
 
 #include "u_debug_utils.h"
 
@@ -66,6 +67,9 @@ extern volatile int32_t gStdoutCounter;
 static void appTask(void *pParam)
 {
     (void) pParam;
+#if U_CFG_APP_PIN_CELL_RESET >= 0
+    uPortGpioConfig_t gpioConfig = U_PORT_GPIO_CONFIG_DEFAULT;
+#endif
 
 #if U_CFG_TEST_ENABLE_INACTIVITY_DETECTOR
     uDebugUtilsInitInactivityDetector(&gStdoutCounter);
@@ -84,6 +88,16 @@ static void appTask(void *pParam)
     // to do filtering
 
     uPortInit();
+
+#if U_CFG_APP_PIN_CELL_RESET >= 0
+    // Set reset high (i.e. not reset) if it is connected (this for the
+    // HPG Solution board) we use in the ubxlib test farm
+    gpioConfig.pin = U_CFG_APP_PIN_CELL_RESET;
+    gpioConfig.driveMode = U_PORT_GPIO_DRIVE_MODE_NORMAL;
+    gpioConfig.direction = U_PORT_GPIO_DIRECTION_OUTPUT;
+    uPortGpioConfig(&gpioConfig);
+    uPortGpioSet(U_CFG_APP_PIN_CELL_RESET, 1);
+#endif
 
     UNITY_BEGIN();
 
