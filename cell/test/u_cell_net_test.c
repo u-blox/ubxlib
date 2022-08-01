@@ -302,8 +302,7 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetConnectDisconnectPlus")
     U_PORT_TEST_ASSERT((rat > U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED) &&
                        (rat < U_CELL_NET_RAT_MAX_NUM));
 
-    if (U_CELL_PRIVATE_RAT_IS_EUTRAN(rat) &&
-        U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_CSCON)) {
+    if (U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_CSCON)) {
         // Check that the connect status callback has been called.
         U_PORT_TEST_ASSERT(gConnectCallbackCalled);
         U_PORT_TEST_ASSERT(gHasBeenConnected);
@@ -399,30 +398,34 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetConnectDisconnectPlus")
     U_PORT_TEST_ASSERT(x > 0);
     U_PORT_TEST_ASSERT(strlen(buffer) == x);
 
+#ifndef U_CELL_TEST_NO_INVALID_APN
+    // The compilation switch is for live networks which may just ignore
+    // invalid APNs and employ the correct default, resulting in successful
+    // registration
     if (pModule->moduleType != U_CELL_MODULE_TYPE_SARA_U201) {
         // Don't try using an invalid APN with SARA-U201 as it
         // upsets it too much
         U_TEST_PRINT_LINE("connecting with different (invalid) APN...");
         gStopTimeMs = uPortGetTickTimeMs() + 10000;
         x = uCellNetConnect(cellHandle, NULL, "flibble",
-#ifdef U_CELL_TEST_CFG_USERNAME
+# ifdef U_CELL_TEST_CFG_USERNAME
                             U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_USERNAME),
-#else
+# else
                             NULL,
-#endif
-#ifdef U_CELL_TEST_CFG_PASSWORD
+# endif
+# ifdef U_CELL_TEST_CFG_PASSWORD
                             U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_PASSWORD),
-#else
+# else
                             NULL,
-#endif
+# endif
                             keepGoingCallback);
         U_PORT_TEST_ASSERT(x < 0);
-
         // Get the IP address: should now have none since the above
         // will have deactivated what we had and been unable to
         // activate the new one
         U_PORT_TEST_ASSERT(uCellNetGetIpAddressStr(cellHandle, buffer) < 0);
     }
+#endif
 
     // Disconnect
     U_PORT_TEST_ASSERT(uCellNetDisconnect(cellHandle, NULL) == 0);
@@ -657,6 +660,10 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetScanRegActDeact")
     U_PORT_TEST_ASSERT(y > 0);
     U_PORT_TEST_ASSERT(strlen(buffer) == y);
 
+#ifndef U_CELL_TEST_NO_INVALID_APN
+    // The compilation switch is for live networks which may just ignore
+    // invalid APNs and employ the correct default, resulting in successful
+    // registration
     if (pModule->moduleType != U_CELL_MODULE_TYPE_SARA_U201) {
         // Try to activate a PDP context with a different, invalid, APN
         // Don't do this for SARA-U201 as it upsets it rather a lot
@@ -665,21 +672,22 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetScanRegActDeact")
         gStopTimeMs = uPortGetTickTimeMs() +
                       (U_CELL_TEST_CFG_CONTEXT_ACTIVATION_TIMEOUT_SECONDS * 1000);
         y = uCellNetActivate(cellHandle, "flibble",
-#ifdef U_CELL_TEST_CFG_USERNAME
+# ifdef U_CELL_TEST_CFG_USERNAME
                              U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_USERNAME),
-#else
+# else
                              NULL,
-#endif
-#ifdef U_CELL_TEST_CFG_PASSWORD
+# endif
+# ifdef U_CELL_TEST_CFG_PASSWORD
                              U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_PASSWORD),
-#else
+# else
                              NULL,
-#endif
+# endif
                              keepGoingCallback);
-        U_PORT_TEST_ASSERT( y < 0);
+        U_PORT_TEST_ASSERT(y < 0);
         // Get the IP address.
         U_PORT_TEST_ASSERT(uCellNetGetIpAddressStr(cellHandle, buffer) < 0);
     }
+#endif
 
     // Disconnect
     U_TEST_PRINT_LINE("disconnecting...");

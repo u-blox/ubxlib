@@ -227,6 +227,10 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgBandMask")
     testBandMask(gHandles.cellHandle, U_CELL_NET_RAT_NB1, "NB1",
                  pModule->supportedRatsBitmap);
 
+    // Test LTE
+    testBandMask(gHandles.cellHandle, U_CELL_NET_RAT_LTE, "LTE",
+                 pModule->supportedRatsBitmap);
+
     // Do the standard postamble, leaving the module on for the next
     // test to speed things up
     uCellTestPrivatePostamble(&gHandles, false);
@@ -602,11 +606,17 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgGetSetMnoProfile")
     // as well.  0 is usually the default one and 100
     // is Europe.
     if (readMnoProfile != 100) {
-        mnoProfile = 100;
+        if (pModule->moduleType == U_CELL_MODULE_TYPE_LARA_R6) {
+            // LARA-R6 doesn't support 100 (Europe) so use
+            // 201 (GCF-PTCRB) instead
+            mnoProfile = 201;
+        } else {
+            mnoProfile = 100;
+        }
     } else {
         if (pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R422) {
-            // Just to be awkward, SARA-R422 doesn't support setting
-            // MNO profile 0 so in this case use 90 (global)
+            // SARA-R422 doesn't support setting MNO profile 0
+            // so in this case use 90 (global)
             mnoProfile = 90;
         } else {
             mnoProfile = 0;

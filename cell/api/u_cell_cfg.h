@@ -75,9 +75,7 @@ extern "C" {
  * take effect.
  *
  * @param cellHandle  the handle of the cellular instance.
- * @param rat         the RAT to set the band mask for;
- *                    only #U_CELL_NET_RAT_CATM1 and
- *                    #U_CELL_NET_RAT_NB1 are permitted.
+ * @param rat         the RAT to set the band mask for.
  * @param bandMask1   the first band mask where bit 0 is band 1
  *                    and bit 63 is band 64.
  * @param bandMask2   the second band mask where bit 0 is band 65
@@ -95,8 +93,7 @@ int32_t uCellCfgSetBandMask(uDeviceHandle_t cellHandle,
  *
  * @param cellHandle      the handle of the cellular instance.
  * @param rat             the radio access technology to obtain the
- *                        band mask for; only #U_CELL_NET_RAT_CATM1 and
- *                        #U_CELL_NET_RAT_NB1 are permitted.
+ *                        band mask for.
  * @param[out] pBandMask1 pointer to a place to store band mask 1,
  *                        where bit 0 is band 1 and bit 63 is band 64,
  *                        cannot be NULL.

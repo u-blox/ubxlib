@@ -217,11 +217,7 @@ typedef enum {
                                          but cannot be individually configured
                                          using uCellCfgSetRat() or
                                          uCellCfgSetRatRank(). */
-    U_CELL_NET_RAT_LTE = 8, /**< this RAT is not supported
-                                 by any of the supported
-                                 u-blox modules (though
-                                 #U_CELL_NET_RAT_CATM1 and
-                                 #U_CELL_NET_RAT_NB1 are). */
+    U_CELL_NET_RAT_LTE = 8, /**< supported by LARA-R6. */
     U_CELL_NET_RAT_EC_GSM = 9, /**< this RAT is not supported
                                     by any of the supported
                                     u-blox modules. */

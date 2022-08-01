@@ -79,6 +79,7 @@ typedef enum {
                                                 SARA_R4 x2B module mixed up though,
                                                 the "3" is significant. */
     U_CELL_MODULE_TYPE_SARA_R422 = 6,
+    U_CELL_MODULE_TYPE_LARA_R6 = 7,
     U_CELL_MODULE_TYPE_MAX_NUM
 } uCellModuleType_t;
 

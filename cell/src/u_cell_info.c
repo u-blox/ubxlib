@@ -111,6 +111,27 @@ static int32_t rsrqToDb(int32_t rsrq)
     return rsrqDb;
 }
 
+// Convert the UTRAN RSSI number in 3GPP TS 25.133 format to dBm.
+// Returns 0x7FFFFFFF if the number is not known.
+// 0:     less than -100 dBm
+// 1..75: from -100 to -25 dBm with 1 dBm steps
+// 76:    -25 dBm or greater
+// 255:   not known or not detectable
+static int32_t rssiUtranToDbm(int32_t rssi)
+{
+    int32_t rssiDbm = 0x7FFFFFFF;
+
+    if ((rssi >= 0) && (rssi <= 76)) {
+        rssiDbm = (rssi - 100);
+        if (rssiDbm < -25) {
+            rssiDbm = -25;
+        }
+    }
+
+    return rssiDbm;
+}
+
+
 // Get an ID string from the cellular module.
 static int32_t getString(uAtClientHandle_t atHandle,
                          const char *pCmd, char *pBuffer,
@@ -272,6 +293,112 @@ static int32_t getRadioParamsUcged2SaraR422(uAtClientHandle_t atHandle,
     return uAtClientUnlock(atHandle);
 }
 
+// Fill in the radio parameters the AT+UCGED=2 way, LARA-R6 flavour
+static int32_t getRadioParamsUcged2LaraR6(uAtClientHandle_t atHandle,
+                                          uCellPrivateRadioParameters_t *pRadioParameters)
+{
+    int32_t rat;
+    int32_t skipParameters = 2;
+    int32_t x;
+    int32_t y;
+
+    // The formats are RAT dependent as follows:
+    //
+    // 2G:
+    //
+    // +UCGED: 2
+    // 2,<MCC>,<MNC>
+    // <arfcn>,<band1900>,<GcellId>,<BSIC>,<Glac>,<Grac>,<RxLev>,<t_adv>,<C1>,<C2>,<NMO>,<channel_type>
+    // (lines may follow with neighbour cell information in them, which we will ignore)
+    // e.g.
+    // 2,222,1
+    // 1009,0,5265,11,d5bd,00,36,-1,30,30,1,1
+    //
+    // 3G:
+    //
+    // +UCGED: 2
+    // 3,<svc>,<MCC>,<MNC>
+    // <uarfcn>,<Wband>,<WcellId>,<Wlac>,<Wrac>,<scrambling_code>,<Wrrc>,<rssi>,<ecn0_lev>,<Wspeech_mode>
+    // e.g.
+    // 3,4,001,01
+    // 4400,5,0000000,0000,80,9,4,62,42,255
+    //
+    // LTE:
+    //
+    // +UCGED: 2
+    // 4,<svc>,<MCC>,<MNC>
+    // <EARFCN>,<Lband>,<ul_BW>,<dl_BW>,<TAC>,<LcellId>,<P-CID>,<mTmsi>,<mmeGrId>,<mmeCode>,<RSRP>,<RSRQ>... etc.
+    // e.g.
+    // 4,0,001,01
+    // 2525,5,25,50,2b67,69f6bc7,111,00000000,ffff,ff,67,19,0.00,255,255,255,67,11,255,0,255,255,0,0
+    uAtClientLock(atHandle);
+    uAtClientCommandStart(atHandle, "AT+UCGED?");
+    uAtClientCommandStop(atHandle);
+    // The line with just "+UCGED: 2" on it
+    uAtClientResponseStart(atHandle, "+UCGED:");
+    uAtClientSkipParameters(atHandle, 1);
+    // Read the RAT from the next line and skip the rest
+    uAtClientResponseStart(atHandle, NULL);
+    rat = uAtClientReadInt(atHandle);
+    if (rat > 2) {
+        skipParameters = 3;
+    }
+    uAtClientSkipParameters(atHandle, skipParameters);
+    // Now the main line of interest
+    uAtClientResponseStart(atHandle, NULL);
+    switch (rat) {
+        case 2:
+            // ARFCN is the first integer
+            pRadioParameters->earfcn = uAtClientReadInt(atHandle);
+            // Skip <band1900>
+            uAtClientSkipParameters(atHandle, 1);
+            // Read <GcellId>
+            pRadioParameters->cellId = uAtClientReadInt(atHandle);
+            // Ignore the rest; rssiDbm will have come in via CSQ
+            break;
+        case 3:
+            // UARFCN is the first integer
+            pRadioParameters->earfcn = uAtClientReadInt(atHandle);
+            // Skip <Wband>
+            uAtClientSkipParameters(atHandle, 1);
+            // Read <WcellId>
+            pRadioParameters->cellId = uAtClientReadInt(atHandle);
+            // Skip <Wlac>, <Wrac>, <scrambling_code> and <Wrrc>
+            uAtClientSkipParameters(atHandle, 4);
+            // Read <rssi> and convert it to dBm
+            pRadioParameters->rssiDbm = rssiUtranToDbm(uAtClientReadInt(atHandle));
+            // Ignore the rest
+            break;
+        case 4:
+            // EARFCN is the first integer
+            pRadioParameters->earfcn = uAtClientReadInt(atHandle);
+            // Skip <Lband>, <ul_BW>, <dl_BW>, <TAC> and <LcellId>
+            uAtClientSkipParameters(atHandle, 5);
+            // Read <P-CID>
+            pRadioParameters->cellId = uAtClientReadInt(atHandle);
+            // Skip <mTmsi>, <mmeGrId> and <mmeCode>
+            uAtClientSkipParameters(atHandle, 3);
+            // RSRP is element 11, as a plain-old dBm value
+            x = uAtClientReadInt(atHandle);
+            // RSRQ is element 12, as a plain-old dB value.
+            y = uAtClientReadInt(atHandle);
+            if (uAtClientErrorGet(atHandle) == 0) {
+                // Note that these last two are usually negative
+                // integers, hence we check for errors here so as
+                // not to mix up what might be a negative error
+                // code with a negative return value.
+                pRadioParameters->rsrpDbm = x;
+                pRadioParameters->rsrqDb = y;
+            }
+            break;
+        default:
+            break;
+    }
+    uAtClientResponseStop(atHandle);
+
+    return uAtClientUnlock(atHandle);
+}
+
 // Turn a string such as "-104.20", i.e. a signed
 // decimal floating point number, into an int32_t.
 static int32_t strToInt32(const char *pString)
@@ -374,6 +501,9 @@ int32_t uCellInfoRefreshRadioParameters(uDeviceHandle_t cellHandle)
                             break;
                         case U_CELL_MODULE_TYPE_SARA_R422:
                             errorCode = getRadioParamsUcged2SaraR422(atHandle, pRadioParameters);
+                            break;
+                        case U_CELL_MODULE_TYPE_LARA_R6:
+                            errorCode = getRadioParamsUcged2LaraR6(atHandle, pRadioParameters);
                             break;
                         default:
                             break;

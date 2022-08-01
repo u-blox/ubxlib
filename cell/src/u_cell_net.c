@@ -146,7 +146,7 @@ static const uCellNetRat_t g3gppRatToCellRat[] = {
     U_CELL_NET_RAT_HSDPA,          // 4: UTRAN with HSDPA
     U_CELL_NET_RAT_HSUPA,          // 5: UTRAN with HSUPA
     U_CELL_NET_RAT_HSDPA_HSUPA,    // 6: UTRAN with HSDPA and HSUPA
-    U_CELL_NET_RAT_CATM1,          // 7: LTE, which in our case means cat-M1
+    U_CELL_NET_RAT_LTE,            // 7: LTE, which includes cat-M1
     U_CELL_NET_RAT_EC_GSM,         // 8: EC-GSM
     U_CELL_NET_RAT_NB1             // 9: E-UTRAN (NB-S1 mode)
 };
@@ -175,7 +175,7 @@ static const uCellNetRegTypes_t gRegTypes[] = {
     {U_CELL_NET_REG_DOMAIN_PS, "AT+CGREG=", "AT+CGREG?", "+CGREG:", U_CELL_NET_CREG_OR_CGREG_TYPE, INT_MAX /* All RATs */},
     {
         U_CELL_NET_REG_DOMAIN_PS, "AT+CEREG=", "AT+CEREG?", "+CEREG:", U_CELL_NET_CEREG_TYPE,
-        (1UL << (int32_t) U_CELL_NET_RAT_CATM1) | (1UL << (int32_t) U_CELL_NET_RAT_NB1)
+        (1UL << (int32_t) U_CELL_NET_RAT_LTE) | (1UL << (int32_t) U_CELL_NET_RAT_CATM1) | (1UL << (int32_t) U_CELL_NET_RAT_NB1)
     },
 };
 
@@ -360,6 +360,14 @@ static void setNetworkStatus(uCellPrivateInstance_t *pInstance,
         (rat < (int32_t) (sizeof(g3gppRatToCellRat) /
                           sizeof(g3gppRatToCellRat[0])))) {
         pInstance->rat[domain] = (uCellNetRat_t) g3gppRatToCellRat[rat];
+        if ((pInstance->rat[domain] == U_CELL_NET_RAT_LTE) &&
+            !(pInstance->pModule->supportedRatsBitmap & (1UL << (int32_t) U_CELL_NET_RAT_LTE)) &&
+            (pInstance->pModule->supportedRatsBitmap & (1UL << (int32_t) U_CELL_NET_RAT_CATM1))) {
+            // The RAT on the end of the network status indication doesn't
+            // differentiate between LTE and Cat-M1 so, if the device doesn't
+            // support LTE but does support Cat-M1, switch it
+            pInstance->rat[domain] = U_CELL_NET_RAT_CATM1;
+        }
         if (pInstance->profileState == U_CELL_PRIVATE_PROFILE_STATE_REQUIRES_REACTIVATION) {
             // This flag will be set if we had been knocked out
             // of our PDP context by a network outage and need
@@ -402,30 +410,29 @@ static void setNetworkStatus(uCellPrivateInstance_t *pInstance,
 }
 
 // Registration on a network (AT+CREG/CGREG/CEREG).
-// Note: this used to be simple but a combination of 3GPP power saving
-// and SARA-R4xx-02B has made it complex.  After having dealt with the
-// first two integers of the URC, there is a parameter that has to be
-// skipped before the RAT can be read.  However, in the specific case
-// of CEREG type 4 (so not for CREG or CGREG) and on SARA-R4xx-02B only,
-// an additional parameter is inserted (not added on the end, inserted)
-// which has to be skipped before the RAT can be read.  Hence this
-// function gets passed the "skippedParameters" value.
+// Note: there are cases where the RAT value is not signalled as part
+// of the AT response: e.g. LARA-R6 can just send:
+// +CEREG: 4,5,,,,,,,"00000000","01100000"
+// ...in response to an AT+CEREG? query. For these cases assumedRat
+// must be provided so that this function can do something useful.
 static inline uCellNetStatus_t CXREG_urc(uCellPrivateInstance_t *pInstance,
                                          uCellNetRegDomain_t domain,
-                                         int32_t skippedParameters)
+                                         uCellNetRat_t assumedRat)
 {
     uAtClientHandle_t atHandle = pInstance->atHandle;
     int32_t status3gpp;
     uCellNetStatus_t status = U_CELL_NET_STATUS_UNKNOWN;
     int32_t secondInt;
     int32_t rat = (int32_t) U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED;
+    int32_t skippedParameters = 1;
+    bool responseToCommandNotUrc = false;
 
     // As described in registerNetwork(), it is possible
     // for this URC handler to capture the response to
     // an AT+CxREG? command instead of the URC, so
     // do some dodging here to avoid it.
     // The first integer might either by the mode we set, <n>,
-    //  sent back to us or it might be the <status> value of the
+    // sent back to us or it might be the <status> value of the
     // URC.  The dodge to distinguish the two is based on the
     // fact that our values for <n> match status values that mean
     // "not registered", so we can do this:
@@ -451,6 +458,7 @@ static inline uCellNetStatus_t CXREG_urc(uCellPrivateInstance_t *pInstance,
         } else {
             // case (a.i)
             status3gpp = secondInt;
+            responseToCommandNotUrc = true;
         }
     }
     if ((status3gpp >= 0) &&
@@ -459,13 +467,31 @@ static inline uCellNetStatus_t CXREG_urc(uCellPrivateInstance_t *pInstance,
         status = g3gppStatusToCellStatus[status3gpp];
     }
     if (U_CELL_NET_STATUS_MEANS_REGISTERED(status)) {
+        // Note: this used to be simple but a combination of 3GPP power saving
+        // and SARA-R4xx-02B/LARA-R6 has made it complex.  After having dealt
+        // with the first two integers of the URC, there is a parameter that has
+        // to be skipped before the RAT can be read.  However, in the specific case
+        // of CEREG type 4 (so not for CREG or CGREG) and on SARA-R4xx-02B in
+        // all cases and on LARA-R6 JUST in the "response to AT+CEREG" case (the
+        // URC is different), an additional parameter is inserted (not added on
+        // the end, inserted)/ which has to be skipped before the RAT can be read.
+        if ((gRegTypes[2 /* CEREG */].type == 4) &&
+            (((pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R410M_02B) ||
+              (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R412M_02B)) ||
+             ((pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_LARA_R6) &&
+               responseToCommandNotUrc))) {
+            skippedParameters++;
+        }
         // Skip <ci> (<lac> already absorbed by the
         // read of secondInt above) and potentially
-        // <rac_or_mme> also if this was a CEREG response and
-        // SARA-R41x-02B
+        // <rac_or_mme>
         uAtClientSkipParameters(atHandle, skippedParameters);
         // Read the RAT that we're on
         rat = uAtClientReadInt(atHandle);
+        // Use the assumed RAT if no RAT is included
+        if (rat < 0) {
+            rat = (int32_t) assumedRat;
+        }
     }
     setNetworkStatus(pInstance, status, rat, domain, true);
 
@@ -478,8 +504,11 @@ static void CREG_urc(uAtClientHandle_t atHandle,
                      void *pParameter)
 {
     (void) atHandle;
+    // Doesn't really matter what the assumedRat parameter
+    // is here, it is only used in the LTE/Cat-M1 case
     CXREG_urc((uCellPrivateInstance_t *) pParameter,
-              U_CELL_NET_REG_DOMAIN_CS, 1);
+              U_CELL_NET_REG_DOMAIN_CS,
+              U_CELL_NET_RAT_GSM_GPRS_EGPRS);
 }
 
 // Registration on a network in the packet-switched
@@ -488,8 +517,11 @@ static void CGREG_urc(uAtClientHandle_t atHandle,
                       void *pParameter)
 {
     (void) atHandle;
+    // Doesn't really matter what the assumedRat parameter
+    // is here, it is only used in the LTE/Cat-M1 case
     CXREG_urc((uCellPrivateInstance_t *) pParameter,
-              U_CELL_NET_REG_DOMAIN_PS, 1);
+              U_CELL_NET_REG_DOMAIN_PS,
+              U_CELL_NET_RAT_GSM_GPRS_EGPRS);
 }
 
 // Registration on an EUTRAN (LTE) network (AT+CEREG)
@@ -498,7 +530,6 @@ static void CEREG_urc(uAtClientHandle_t atHandle,
                       void *pParameter)
 {
     uCellNetStatus_t status;
-    int32_t skippedParameters = 1;
     uCellPrivateInstance_t *pInstance = (uCellPrivateInstance_t *) pParameter;
     uCellPrivateSleep_t *pSleepContext = pInstance->pSleepContext;
     uCellNet3gppPowerSavingCallback_t *pCallback;
@@ -507,17 +538,15 @@ static void CEREG_urc(uAtClientHandle_t atHandle,
     bool onNotOff;
     int32_t activeTimeSeconds = -1;
     int32_t periodicWakeupSeconds = -1;
+    uCellNetRat_t assumedRat = U_CELL_NET_RAT_LTE;
 
-    if ((gRegTypes[2 /* CEREG */].type == 4) &&
-        ((pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R410M_02B) ||
-         (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R412M_02B))) {
-        // SARA-R41x-02B modules sneak an extra <rac_or_mme>
-        // parameter in when CEREG is in mode 4 so we need to
-        // tell CXREG_urc() to skip an additional parameter
-        skippedParameters++;
+    if (!(pInstance->pModule->supportedRatsBitmap & (1UL << (int32_t) U_CELL_NET_RAT_LTE)) &&
+        (pInstance->pModule->supportedRatsBitmap & (1UL << (int32_t) U_CELL_NET_RAT_CATM1))) {
+        // Assumed RAT has to be Cat-M1 if we don't support LTE
+        assumedRat = U_CELL_NET_RAT_CATM1;
     }
 
-    status = CXREG_urc(pInstance, U_CELL_NET_REG_DOMAIN_PS, skippedParameters);
+    status = CXREG_urc(pInstance, U_CELL_NET_REG_DOMAIN_PS, assumedRat);
     if (U_CELL_NET_STATUS_MEANS_REGISTERED(status) &&
         (pSleepContext != NULL)) {
         // If we have a sleep context, try to read the
@@ -915,6 +944,14 @@ static int32_t storeNextScanItem(uCellPrivateInstance_t *pInstance,
                     (copsRat < (int32_t) (sizeof(g3gppRatToCellRat) /
                                           sizeof(g3gppRatToCellRat[0])))) {
                     pNet->rat = g3gppRatToCellRat[copsRat];
+                    if ((pNet->rat == U_CELL_NET_RAT_LTE) &&
+                        !(pInstance->pModule->supportedRatsBitmap & (1UL << (int32_t) U_CELL_NET_RAT_LTE)) &&
+                        (pInstance->pModule->supportedRatsBitmap & (1UL << (int32_t) U_CELL_NET_RAT_CATM1))) {
+                        // The RAT on the end of the network status indication doesn't
+                        // differentiate between LTE and Cat-M1 so, if the device doesn't
+                        // support LTE but does support Cat-M1, switch it
+                        pNet->rat = U_CELL_NET_RAT_CATM1;
+                    }
                 }
             }
         }
@@ -1114,11 +1151,14 @@ static int32_t registerNetwork(uCellPrivateInstance_t *pInstance,
                 if (U_CELL_NET_STATUS_MEANS_REGISTERED(status)) {
                     // Skip <lac>, <ci>
                     if ((regType == 2 /* CEREG */) && (gRegTypes[regType].type == 4) &&
-                        ((pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R410M_02B) ||
-                         (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R412M_02B))) {
-                        // SARA-R41x-02B modules sneak an extra <rac_or_mme>
-                        // parameter in when U_CELL_NET_CEREG_TYPE is 4 so we need
-                        // to skip an additional parameter
+                        (((pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R410M_02B) ||
+                          (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R412M_02B)) ||
+                         ((pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_LARA_R6) &&
+                           !gotUrc))) {
+                        // SARA-R41x-02B modules, and LARA-R6 modules but only in the
+                        // non-URC case, sneak an extra <rac_or_mme> parameter in when
+                        // U_CELL_NET_CEREG_TYPE is 4 so we need to skip an additional
+                        // parameter
                         skippedParameters++;
                     }
                     uAtClientSkipParameters(atHandle, skippedParameters);
@@ -1315,7 +1355,7 @@ static int32_t setAuthenticationMode(const uCellPrivateInstance_t *pInstance,
 }
 
 // Get the APN currently in use 3GPP commands, required
-// for SARA-R4/R5 and TOBY modules.
+// for SARA-R4/R5/R6 and TOBY modules.
 static int32_t getApnStr(const uCellPrivateInstance_t *pInstance,
                          char *pStr, size_t size)
 {
@@ -1380,7 +1420,7 @@ static int32_t getApnStrUpsd(const uCellPrivateInstance_t *pInstance,
 }
 
 // Activate context using 3GPP commands, required
-// for SARA-R4/R5 and TOBY modules.
+// for SARA-R4/R5/R6 and TOBY modules.
 static int32_t activateContext(const uCellPrivateInstance_t *pInstance,
                                int32_t contextId, int32_t profileId)
 {
@@ -1560,7 +1600,7 @@ static int32_t activateContextUpsd(const uCellPrivateInstance_t *pInstance,
 }
 
 // Check if a context is active using 3GPP commands, required
-// for SARA-R4/R5 and TOBY modules.
+// for SARA-R4/R5/R6 and TOBY modules.
 static bool isActive(const uCellPrivateInstance_t *pInstance,
                      int32_t contextId)
 {
@@ -1616,7 +1656,7 @@ static bool isActiveUpsd(const uCellPrivateInstance_t *pInstance,
 }
 
 // Deactivate context using 3GPP commands, required
-// for SARA-R4/R5 and TOBY modules.
+// for SARA-R4/R5/R6 and TOBY modules.
 static int32_t deactivate(uCellPrivateInstance_t *pInstance,
                           int32_t contextId)
 {
@@ -1749,7 +1789,7 @@ static int32_t handleExistingContext(uCellPrivateInstance_t *pInstance,
  * STATIC FUNCTIONS: MISC
  * -------------------------------------------------------------- */
 
-// Read DNS addresses SARA-R4/R5 style.
+// Read DNS addresses SARA-R4/R5/R6 style.
 static int32_t getDnsStr(const uCellPrivateInstance_t *pInstance,
                          bool v6, char *pStrDns1, char *pStrDns2)
 {
@@ -2384,7 +2424,7 @@ int32_t uCellNetDeactivate(uDeviceHandle_t cellHandle,
                         // with AT+UPSDA
                         errorCode = deactivateUpsd(pInstance, U_CELL_NET_PROFILE_ID);
                     } else {
-                        // SARA-R4/R5 style, with AT+CGACT
+                        // SARA-R4/R5/R6 style, with AT+CGACT
                         errorCode = deactivate(pInstance, U_CELL_NET_CONTEXT_ID);
                     }
                 }

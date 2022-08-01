@@ -243,6 +243,29 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_EDRX)                                  |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTTSN) /* features */
         )
+    },
+    {
+        U_CELL_MODULE_TYPE_LARA_R6, 300 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
+        10 /* Boot wait */, 30 /* Min awake */, 35 /* Pwr down wait */, 10 /* Reboot wait */, 10 /* AT timeout */,
+        100 /* Cmd wait ms */, 3000 /* Resp max wait ms */, 4 /* radioOffCfun */,  12000 /* resetHoldMilliseconds */,
+        3 /* Simultaneous RATs */,
+        ((1UL << (int32_t) U_CELL_NET_RAT_GSM_GPRS_EGPRS) |
+         (1UL << (int32_t) U_CELL_NET_RAT_LTE)            |
+         (1UL << (int32_t) U_CELL_NET_RAT_UTRAN)) /* RATs */,
+        ((1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE)                         |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CSCON)                               |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_ROOT_OF_TRUST)                       |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_IANA_NUMBERING)         |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_SERVER_NAME_INDICATION) |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT)                                |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_BINARY_PUBLISH)                 |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_WILL)                           |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_KEEP_ALIVE)                     |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SECURITY)                       |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_FILE_SYSTEM_TAG)                     |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_EDRX)                                |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTTSN) /* features */
+        )
     }
 };
 
@@ -288,6 +311,22 @@ static const uCellNetRat_t gModuleRatToCellRatR4R5[] = {
     U_CELL_NET_RAT_CATM1,               // 7: LTE cat-M1
     U_CELL_NET_RAT_NB1,                 // 8: LTE NB1
     U_CELL_NET_RAT_GSM_GPRS_EGPRS       // 9: 2G again
+};
+
+/** Table to convert the RAT values used in the
+ * module to uCellNetRat_t, R6 version.
+ */
+static const uCellNetRat_t gModuleRatToCellRatR6[] = {
+    U_CELL_NET_RAT_GSM_GPRS_EGPRS,      // 0: 2G
+    U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED, // 1: GSM compact
+    U_CELL_NET_RAT_UTRAN,               // 2: UTRAN
+    U_CELL_NET_RAT_LTE,                 // 3: LTE
+    U_CELL_NET_RAT_HSDPA,               // 4: UTRAN with HSDPA
+    U_CELL_NET_RAT_HSUPA,               // 5: UTRAN with HSUPA
+    U_CELL_NET_RAT_HSDPA_HSUPA,         // 6: UTRAN with HSDPA and HSUPA
+    U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED, // 7: LTE cat-M1
+    U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED, // 8: LTE NB1
+    U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED  // 9: 2G again
 };
 
 /* ----------------------------------------------------------------
@@ -560,14 +599,22 @@ uCellNetRat_t uCellPrivateModuleRatToCellRat(uCellModuleType_t moduleType,
     uCellNetRat_t cellRat = U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED;
 
     if (moduleRat >= 0) {
-        if (moduleType == U_CELL_MODULE_TYPE_SARA_U201) {
-            if (moduleRat < (int32_t) (sizeof(gModuleRatToCellRatU201) / sizeof(gModuleRatToCellRatU201[0]))) {
-                cellRat = gModuleRatToCellRatU201[moduleRat];
-            }
-        } else {
-            if (moduleRat < (int32_t) (sizeof(gModuleRatToCellRatR4R5) / sizeof(gModuleRatToCellRatR4R5[0]))) {
-                cellRat = gModuleRatToCellRatR4R5[moduleRat];
-            }
+        switch (moduleType) {
+            case U_CELL_MODULE_TYPE_SARA_U201:
+                if (moduleRat < (int32_t) (sizeof(gModuleRatToCellRatU201) / sizeof(gModuleRatToCellRatU201[0]))) {
+                    cellRat = gModuleRatToCellRatU201[moduleRat];
+                }
+                break;
+            case U_CELL_MODULE_TYPE_LARA_R6:
+                if (moduleRat < (int32_t) (sizeof(gModuleRatToCellRatR6) / sizeof(gModuleRatToCellRatR6[0]))) {
+                    cellRat = gModuleRatToCellRatR6[moduleRat];
+                }
+                break;
+            default:
+                if (moduleRat < (int32_t) (sizeof(gModuleRatToCellRatR4R5) / sizeof(gModuleRatToCellRatR4R5[0]))) {
+                    cellRat = gModuleRatToCellRatR4R5[moduleRat];
+                }
+                break;
         }
     }
 
