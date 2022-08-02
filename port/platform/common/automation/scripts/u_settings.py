@@ -144,8 +144,10 @@ __DEFAULT_SETTINGS["CONNECTION_INSTANCE_21" + __SETTINGS_POSTFIX_AGENT_SPECIFIC]
     {"serial_port":"COM51"}
 __DEFAULT_SETTINGS["CONNECTION_INSTANCE_22" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = \
     {"serial_port": "COM63"}
-__DEFAULT_SETTINGS["CONNECTION_INSTANCE_23" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = \
-    {"serial_port": "COM99"}
+# Don't need one for instance 23 [Windows] since there is nothing to program
+# Don't need one for instance 24 [Zephyr/Linux] since there is nothing to program
+__DEFAULT_SETTINGS["CONNECTION_INSTANCE_25" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = \
+    {"serial_port": "COM36"}
 # u_data.py
 __DEFAULT_SETTINGS["DATA_FILE"] = "DATABASE.md"
 __DEFAULT_SETTINGS["CELLULAR_MODULE_TYPE_PREFIX"] = "U_CELL_MODULE_TYPE_"

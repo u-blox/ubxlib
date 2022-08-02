@@ -34,7 +34,7 @@ from scripts import u_settings
 PROMPT = "u_data: "
 
 # The prefix(es) that identify a cellular module
-CELLULAR_MODULE_STARTS_WITH = ["SARA"]
+CELLULAR_MODULE_STARTS_WITH = ["SARA", "LARA"]
 
 # The prefix(es) that identify a short-range module
 SHORT_RANGE_MODULE_STARTS_WITH = ["NINA", "ANNA", "ODIN"]
@@ -324,6 +324,7 @@ def get_gnss_module_for_instance(database, instance):
 def get_defines_for_instance(database, instance):
     '''Return the defines that are required by the given instance'''
     defines = None
+    bandmaskAlreadyDefined = False
 
     for row in database:
         if instance == row["instance"]:
@@ -357,12 +358,17 @@ def get_defines_for_instance(database, instance):
     # under u_runner automation
     defines.append("U_RUNNER_TOP_STR=port")
 
-    # When running tests on cellular LTE modules, so
-    # SARA-R4 or SARA-R5, we need to set the RF band we
-    # are running in to NOT include the public network,
-    # since otherwise the modules can sometimes wander off
-    # onto it.
-    defines.append("U_CELL_TEST_CFG_BANDMASK1=0x000010ULL")
+    for define in defines:
+        if define.startswith("U_CELL_TEST_CFG_BANDMASK1"):
+            bandmaskAlreadyDefined = True;
+            break;
+    if not bandmaskAlreadyDefined:
+        # When running tests on cellular LTE modules, so
+        # SARA-R4 or SARA-R5, we need to set the RF band we
+        # are running in to NOT include the public network,
+        # since otherwise the modules can sometimes wander off
+        # onto it.
+        defines.append("U_CELL_TEST_CFG_BANDMASK1=0x000010ULL")
 
     return defines
 
