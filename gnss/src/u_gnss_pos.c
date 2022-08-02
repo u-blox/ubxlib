@@ -166,7 +166,10 @@ static int32_t posGet(const uGnssPrivateInstance_t *pInstance,
         // to suppress those warnings with -esym(690, message)
         // or even -e(690), hence do it the blunt way
         //lint -save -e690
-        if (message[21] & 0x01) {
+        // TODO: ZED-F9R will report a valid fix based on inertial
+        // measurement only; for now we don't accept that as a fix,
+        // need to decide what to do about this.
+        if ((message[21] & 0x01) && (message[20] > 1)) {
             if (printIt) {
                 uPortLog("U_GNSS_POS: %dD fix achieved.\n", message[20]);
             }
