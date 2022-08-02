@@ -125,11 +125,26 @@
  * COMPILE-TIME MACROS FOR A CELLULAR MODULE ON ZEPHYR/NRF5x: MISC
  * -------------------------------------------------------------- */
 
-#ifndef U_CFG_APP_CELL_UART
-/** The UARTE HW block to use inside the NRF5x chip when
- * to communicate with a cellular module.
+#if defined(CONFIG_BOARD_UBX_EVKNORAB1_NRF5340_CPUAPP) || \
+    defined(CONFIG_BOARD_NRF5340PDK_NRF5340_CPUAPP)    || \
+    defined(CONFIG_BOARD_NRF5340DK_NRF5340_CPUAPP)
+/** The UARTE HW block to use inside the NRF53 chip when
+ * communicating with a cellular module.
+ * NOTE: this used to be 1 however, with I2C added, which has to
+ * be on 1 because that's the only I2C port that has DMA, it was
+ * moved to 2 as you can't have I2C and UART on the same HW block
+ * and there are more UARTs available on NRF53.
  */
-# define U_CFG_APP_CELL_UART                  1
+# ifndef U_CFG_APP_CELL_UART
+#  define U_CFG_APP_CELL_UART       2
+# endif
+#else
+/** The UARTE HW block to use inside the NRF52 chip or on Linux
+ * when communicating with a cellular module.
+ */
+# ifndef U_CFG_APP_CELL_UART
+#  define U_CFG_APP_CELL_UART       1
+# endif
 #endif
 
 /* ----------------------------------------------------------------
@@ -256,6 +271,17 @@
 # define U_CFG_APP_GNSS_UART                  -1
 #endif
 
+#ifndef U_CFG_APP_GNSS_I2C
+/** The I2C HW block to use inside the NRF5x chip to communicate
+ * with a GNSS module.  If this is required, please use number 1
+ * as that is the one that the NRFx drivers used by Zephyr supports.
+ * You will also need to set the following in your prj.cnf file:
+ *
+ * CONFIG_I2C=y
+ */
+# define U_CFG_APP_GNSS_I2C                  -1
+#endif
+
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS FOR ZEPHYR/NRF5x: PINS FOR GNSS
  * -------------------------------------------------------------- */
@@ -267,7 +293,7 @@
 # define U_CFG_APP_PIN_GNSS_ENABLE_POWER       -1
 #endif
 
-/* IMPORTANT: the UART pins given here are required for compilation
+/* IMPORTANT: the UART/I2C pins given here are required for compilation
  * but make NO DIFFERENCE WHATSOEVER to how the world works.  On this
  * platform the Zephyr device tree dictates what pins are used
  * by the UART.
@@ -289,6 +315,14 @@
 #ifndef U_CFG_APP_PIN_GNSS_RTS
 /* u-blox GNSS modules do not use UART HW flow control. */
 # define U_CFG_APP_PIN_GNSS_RTS               -1
+#endif
+
+#ifndef U_CFG_APP_PIN_GNSS_SDA
+# define U_CFG_APP_PIN_GNSS_SDA               -1
+#endif
+
+#ifndef U_CFG_APP_PIN_GNSS_SCL
+# define U_CFG_APP_PIN_GNSS_SCL               -1
 #endif
 
 /* ----------------------------------------------------------------

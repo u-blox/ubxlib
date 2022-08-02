@@ -1,4 +1,4 @@
-&uart1 {
+&uart2 {
     status = "okay";
     current-speed = <115200>;
     tx-pin = <42>;
@@ -7,4 +7,8 @@
     rts-pin = <44>;
     cts-pin = <45>;
     hw-flow-control;
- };
+};
+&i2c1 {
+    status = "okay";
+    /* Otherwise board default settings are good. */
+};

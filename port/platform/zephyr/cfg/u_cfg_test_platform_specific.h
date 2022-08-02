@@ -136,10 +136,20 @@
 #include "u_cfg_test_platform_specific_native_posix.h"
 #endif
 
-/** UART HW block for UART driver loopback testing.
+#if defined(CONFIG_BOARD_UBX_EVKNORAB1_NRF5340_CPUAPP) || \
+    defined(CONFIG_BOARD_NRF5340PDK_NRF5340_CPUAPP)    || \
+    defined(CONFIG_BOARD_NRF5340DK_NRF5340_CPUAPP)
+/** UART HW block for UART driver loopback testing on nRF53.
  */
-#ifndef U_CFG_TEST_UART_A
-# define U_CFG_TEST_UART_A          1
+# ifndef U_CFG_TEST_UART_A
+#  define U_CFG_TEST_UART_A          2
+# endif
+#else
+/** UART HW block for UART driver loopback testing on everything else.
+ */
+# ifndef U_CFG_TEST_UART_A
+#  define U_CFG_TEST_UART_A          1
+# endif
 #endif
 
 /** UART HW block for UART driver loopback testing where

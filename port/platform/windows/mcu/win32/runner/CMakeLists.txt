@@ -77,6 +77,7 @@ if(${UBXLIB_PLATFORM} STREQUAL "windows")
         ${UBXLIB_BASE}/port/platform/${UBXLIB_PLATFORM}/src/u_port_os.c
         ${UBXLIB_BASE}/port/platform/${UBXLIB_PLATFORM}/src/u_port_gpio.c
         ${UBXLIB_BASE}/port/platform/${UBXLIB_PLATFORM}/src/u_port_uart.c
+        ${UBXLIB_BASE}/port/platform/${UBXLIB_PLATFORM}/src/u_port_i2c.c
         ${UBXLIB_BASE}/port/platform/${UBXLIB_PLATFORM}/src/u_port_crypto.c
         ${UBXLIB_BASE}/port/platform/${UBXLIB_PLATFORM}/src/u_port_private.c
         ${UBXLIB_BASE}/port/clib/u_port_clib_mktime64.c

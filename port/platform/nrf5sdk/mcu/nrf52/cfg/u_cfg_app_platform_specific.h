@@ -215,6 +215,16 @@
 # define U_CFG_APP_GNSS_UART                  -1
 #endif
 
+#ifndef U_CFG_APP_GNSS_I2C
+/** The I2C HW block to use inside the NRF52 chip to communicate
+ * with a GNSS module.  If this is required, please use number 1
+ * and don't forget to enable all of the right things in your
+ * sdk_config.h file (e.g. TWI_ENABLED, TWI1_ENABLED, TWI1_USE_EASY_DMA,
+ * NRFX_TWI_ENABLED, NRFX_TWIM_ENABLED and NRFX_TWIM1_ENABLED).
+ */
+# define U_CFG_APP_GNSS_I2C                  -1
+#endif
+
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS FOR A GNSS MODULE ON NRF52: PINS
  * -------------------------------------------------------------- */
@@ -258,6 +268,22 @@
  * UART HW flow control.
  */
 # define U_CFG_APP_PIN_GNSS_RTS              -1
+#endif
+
+#ifndef U_CFG_APP_PIN_GNSS_SDA
+/** The NRF52 GPIO input/output pin that is the I2C data pin;
+ * use -1 where there is no such connection.  This pin chosen
+ * as it is the default for the NRF52840 DK board.
+ */
+# define U_CFG_APP_PIN_GNSS_SDA               30 // AKA 0.30
+#endif
+
+#ifndef U_CFG_APP_PIN_GNSS_SCL
+/** The NRF52 GPIO output pin that is the I2C clock pin;
+ * use -1 where there is no such connection.  This pin chosen
+ * as it is the default for the NRF52840 DK board.
+ */
+# define U_CFG_APP_PIN_GNSS_SCL               31 // AKA 0.31
 #endif
 
 /* ----------------------------------------------------------------

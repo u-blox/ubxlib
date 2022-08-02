@@ -58,6 +58,7 @@
 #include <u_port_gpio.h>
 #include <u_port_os.h>
 #include <u_port_uart.h>
+#include <u_port_i2c.h>
 
 // Module types: used in common APIs hence must come first
 #include <u_ble_module_type.h>

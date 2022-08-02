@@ -158,6 +158,13 @@
 # define U_CFG_APP_GNSS_UART                  -1
 #endif
 
+#ifndef U_CFG_APP_GNSS_I2C
+/** Required for compilation of ubxlib tests/examples but not
+ * relevant to SARAR5UCPU and hence set to -1.
+ */
+# define U_CFG_APP_GNSS_I2C                   -1
+#endif
+
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS FOR A GNSS MODULE ON SARAR5UCPU: PINS
  * -------------------------------------------------------------- */
@@ -202,6 +209,20 @@
  * relevant to SARAR5UCPU and hence set to -1.
  */
 # define U_CFG_APP_PIN_GNSS_RTS              -1
+#endif
+
+#ifndef U_CFG_APP_PIN_GNSS_SDA
+/** Required for compilation of ubxlib tests/examples but not
+ * relevant to SARAR5UCPU and hence set to -1.
+ */
+# define U_CFG_APP_PIN_GNSS_SDA               -1
+#endif
+
+#ifndef U_CFG_APP_PIN_GNSS_SCL
+/** Required for compilation of ubxlib tests/examples but not
+ * relevant to SARAR5UCPU and hence set to -1.
+ */
+# define U_CFG_APP_PIN_GNSS_SCL               -1
 #endif
 
 /* ----------------------------------------------------------------

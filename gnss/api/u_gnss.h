@@ -40,6 +40,12 @@ extern "C" {
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+#ifndef U_GNSS_I2C_ADDRESS
+/** The usual I2C address for a u-blox GNSS device.
+ */
+# define U_GNSS_I2C_ADDRESS 0x42
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */

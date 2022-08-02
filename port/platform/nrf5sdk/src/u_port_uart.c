@@ -16,6 +16,19 @@
 
 /** @file
  * @brief Implementation of the port UART API for the NRF52 platform.
+ *
+ * Note: in order to implement the API we require, where receipt
+ * of data is signalled by an event queue and other things can
+ * send to that same event queue, this code is implemented on top of
+ * the nrf_uarte.h HAL and replaces the nrfx_uarte.h default driver
+ * from Nordic.  It steals from the code in nrfx_uarte.c, Nordic's
+ * implementation.
+ *
+ * So that users can continue to use the Nordic UARTE driver this
+ * code uses only the UART port that the Nordic UARTE driver is NOT
+ * using: for instance, to use UARTE1 in this driver then
+ * NRFX_UARTE1_ENABLED should be set to 0 in sdk_config to free it
+ * up.
  */
 
 #ifdef U_CFG_OVERRIDE
@@ -58,31 +71,18 @@
 #include "stdlib.h" // For malloc()/free()
 #include "string.h" // For memcpy()
 
-/* Note: in order to implement the API we require, where receipt
- * of data is signalled by an event queue and other things can
- * send to that same event queue, this code is implemented on top of
- * the nrf_uarte.h HAL and replaces the nrfx_uarte.h default driver
- * from Nordic.  It steals from the code in nrfx_uarte.c, Nordic's
- * implementation.
- *
- * So that users can continue to use the Nordic UARTE driver this
- * code uses only the UART port that the Nordic UARTE driver is NOT
- * using: for instance, to use UARTE1 in this driver then
- * NRFX_UARTE1_ENABLED should be set to 0 in sdk_config to free it
- * up.
- *
- * Design note: it took ages to get this to work.
+/* Design note: it took ages to get this to work.
  * Rx DMA length is set to 1 byte because UART H/W must notify the
  * driver for every byte received. If Rx DMA length > 1, then
- * UARTE H/W will not report ENDRX until the entire buffer is filled. But
- * for our use case we want the readers to be notified for whatever we received
- * immediately.
+ * UARTE H/W will not report ENDRX until the entire buffer is filled.
+ * But for our use case we want the readers to be notified for whatever
+ * we received immediately.
  *
  * We don't read from the Rx DMA buff until we get the ENDRX event from the
  * UARTE H/W. ENDRX event guarantees that the data is copied to Rx DMA buffer
  *
  * The key is NEVER to stop the UARTE HW, Any attempt to stop and restart the
- * UARTE ends up with character loss;
+ * UARTE ends up with character loss.
  */
 
 /* ----------------------------------------------------------------

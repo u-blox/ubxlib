@@ -29,6 +29,17 @@
  */
 
 /* ----------------------------------------------------------------
+ * COMPILE-TIME MACROS: HOW TO TELL IF WE'RE USING THE NRF5 SDK
+ * -------------------------------------------------------------- */
+
+/** The NRF5 SDK doesn't export a macro which allows us to tell that
+ * is what we're being compiled for; we define this value so that the
+ * u_port_test.c code can skip an I2C check that the NRFX drivers
+ * don't support.
+ */
+#define U_CFG_TEST_USING_NRF5SDK
+
+/* ----------------------------------------------------------------
  * COMPILE-TIME MACROS: UNITY RELATED
  * -------------------------------------------------------------- */
 

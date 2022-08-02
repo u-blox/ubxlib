@@ -188,6 +188,14 @@
 # define U_CFG_APP_GNSS_UART                  -1
 #endif
 
+#ifndef U_CFG_APP_GNSS_I2C
+/** The COM port that ends up as I2C to use for a GNSS module;
+ * e.g. to use COM1 set this to 1.  Specify -1 where there is no
+ * such connection.
+ */
+# define U_CFG_APP_GNSS_I2C                  -1
+#endif
+
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS FOR A GNSS MODULE ON WINDOWS: PINS
  * -------------------------------------------------------------- */
@@ -227,6 +235,20 @@
  * consistency: u-blox GNSS modules do not use HW flow control.
  */
 # define U_CFG_APP_PIN_GNSS_RTS              -1
+#endif
+
+#ifndef U_CFG_APP_PIN_GNSS_SDA
+/** The GPIO input/output pin that is the I2C data pin to the
+ * GNSS module; not relevant for Windows and so set to -1.
+ */
+# define U_CFG_APP_PIN_GNSS_SDA              -1
+#endif
+
+#ifndef U_CFG_APP_PIN_GNSS_SCL
+/** The GPIO output pin that is the I2C clock line for the GNSS
+ * module; not relevant for Windows and so set to -1.
+ */
+# define U_CFG_APP_PIN_GNSS_SCL              -1
 #endif
 
 /* ----------------------------------------------------------------

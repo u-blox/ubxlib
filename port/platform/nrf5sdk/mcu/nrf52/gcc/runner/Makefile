@@ -66,6 +66,7 @@ SRC_FILES += \
   $(NRF5_PATH)/modules/nrfx/drivers/src/nrfx_ppi.c \
   $(NRF5_PATH)/modules/nrfx/drivers/src/nrfx_timer.c \
   $(NRF5_PATH)/modules/nrfx/drivers/src/nrfx_clock.c \
+  $(NRF5_PATH)/modules/nrfx/drivers/src/nrfx_twim.c \
   $(NRF5_PATH)/external/fprintf/nrf_fprintf.c \
   $(NRF5_PATH)/external/fprintf/nrf_fprintf_format.c \
   $(NRF5_PATH)/integration/nrfx/legacy/nrf_drv_clock.c \
@@ -97,6 +98,7 @@ SRC_FILES += \
   $(NRF5_PORT_PATH)/src/u_port_gpio.c \
   $(NRF5_PORT_PATH)/src/u_port_os.c \
   $(NRF5_PORT_PATH)/src/u_port_uart.c \
+  $(NRF5_PORT_PATH)/src/u_port_i2c.c \
   $(NRF5_PORT_PATH)/src/u_port_private.c \
   $(NRF5_PORT_PATH)/src/u_exception_handler.c \
   $(NRF5_PORT_PATH)/src/heap_useNewlib.c \

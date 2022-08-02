@@ -250,6 +250,15 @@
 # define U_CFG_APP_GNSS_UART                  6
 #endif
 
+#ifndef U_CFG_APP_GNSS_I2C
+/** The I2C HW block to use inside the STM32F4 chip to communicate
+ * with a GNSS module.  Note that ST number their HW I2C blocks
+ * starting at 1 rather than 0.  If you have SDA on PB_7 and SCL
+ * on PB_6 then this should be I2C 1.
+ */
+# define U_CFG_APP_GNSS_I2C                  -1
+#endif
+
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS FOR A GNSS MODULE ON STM32F4: PINS
  * -------------------------------------------------------------- */
@@ -296,6 +305,20 @@
  * UART HW flow control.
  */
 # define U_CFG_APP_PIN_GNSS_RTS              -1
+#endif
+
+#ifndef U_CFG_APP_PIN_GNSS_SDA
+/** The STM32F4 GPIO input/output pin that is the I2C data pin;
+ * use -1 where there is no such connection.
+ */
+# define U_CFG_APP_PIN_GNSS_SDA               0x17  // AKA PB_7 (I2C 1)
+#endif
+
+#ifndef U_CFG_APP_PIN_GNSS_SCL
+/** The STM32F4 GPIO output pin that is the I2C clock pin;
+ * use -1 where there is no such connection.
+ */
+# define U_CFG_APP_PIN_GNSS_SCL               0x16  // AKA PB_6 (I2C 1)
 #endif
 
 /* ----------------------------------------------------------------

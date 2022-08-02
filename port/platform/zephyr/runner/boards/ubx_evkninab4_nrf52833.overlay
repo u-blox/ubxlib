@@ -7,5 +7,8 @@
     rts-pin = <4>;
     cts-pin = <30>;
     hw-flow-control;
- };
- 
+};
+&i2c1 {
+    status = "okay";
+    /* Otherwise board default settings are good. */
+};

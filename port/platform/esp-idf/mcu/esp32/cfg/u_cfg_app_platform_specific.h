@@ -207,6 +207,13 @@
 # define U_CFG_APP_GNSS_UART                  -1
 #endif
 
+#ifndef U_CFG_APP_GNSS_I2C
+/** The I2C HW block to use inside the ESP32 chip to communicate
+ * with a GNSS module.
+ */
+# define U_CFG_APP_GNSS_I2C                  -1
+#endif
+
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS FOR A GNSS MODULE ON ESP32: PINS
  * -------------------------------------------------------------- */
@@ -250,6 +257,20 @@
  * UART HW flow control.
  */
 # define U_CFG_APP_PIN_GNSS_RTS              -1
+#endif
+
+#ifndef U_CFG_APP_PIN_GNSS_SDA
+/** The ESP32 GPIO input/output pin that is the I2C data pin;
+ * use -1 where there is no such connection.
+ */
+# define U_CFG_APP_PIN_GNSS_SDA               21
+#endif
+
+#ifndef U_CFG_APP_PIN_GNSS_SCL
+/** The ESP32 GPIO output pin that is the I2C clock pin;
+ * use -1 where there is no such connection.
+ */
+# define U_CFG_APP_PIN_GNSS_SCL               22
 #endif
 
 /* ----------------------------------------------------------------

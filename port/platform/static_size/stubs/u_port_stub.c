@@ -30,6 +30,7 @@
 #include "u_port_os.h"
 #include "u_port_gpio.h"
 #include "u_port_uart.h"
+#include "u_port_i2c.h"
 #include "u_port_event_queue.h"
 #include "u_port_crypto.h"
 
@@ -428,6 +429,78 @@ int32_t uPortUartCtsSuspend(int32_t handle)
 void uPortUartCtsResume(int32_t handle)
 {
     (void) handle;
+}
+
+// From u_port_i2c.h
+int32_t uPortI2cInit()
+{
+    return 0;
+}
+void uPortI2cDeinit()
+{
+}
+int32_t uPortI2cOpen(int32_t i2c, int32_t pinSda, int32_t pinSdc,
+                     bool controller)
+{
+    (void) i2c;
+    (void) pinSda;
+    (void) pinSdc;
+    (void) controller;
+    return 0;
+}
+void uPortI2cClose(int32_t handle)
+{
+    (void) handle;
+}
+int32_t uPortI2cCloseRecoverBus(int32_t handle)
+{
+    (void) handle;
+    return 0;
+}
+int32_t uPortI2cSetClock(int32_t handle, int32_t clockHertz)
+{
+    (void) handle;
+    (void) clockHertz;
+    return 0;
+}
+int32_t uPortI2cGetClock(int32_t handle)
+{
+    (void) handle;
+    return 0;
+}
+int32_t uPortI2cSetTimeout(int32_t handle, int32_t timeoutMs)
+{
+    (void) handle;
+    (void) timeoutMs;
+    return 0;
+}
+int32_t uPortI2cGetTimeout(int32_t handle)
+{
+    (void) handle;
+    return 0;
+}
+int32_t uPortI2cControllerSendReceive(int32_t handle, uint16_t address,
+                                      const char *pSend, size_t bytesToSend,
+                                      char *pReceive, size_t bytesToReceive)
+{
+    (void) handle;
+    (void) address;
+    (void) pSend;
+    (void) bytesToSend;
+    (void) pReceive;
+    (void) bytesToReceive;
+    return 0;
+}
+int32_t uPortI2cControllerSend(int32_t handle, uint16_t address,
+                               const char *pSend, size_t bytesToSend,
+                               bool noStop)
+{
+    (void) handle;
+    (void) address;
+    (void) pSend;
+    (void) bytesToSend;
+    (void) noStop;
+    return 0;
 }
 
 // From u_port_crypto.h.

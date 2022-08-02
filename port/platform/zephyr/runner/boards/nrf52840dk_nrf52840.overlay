@@ -20,3 +20,7 @@
     /delete-property/ cts-pin; 
 /*    hw-flow-control; */
 };
+&i2c1 {
+    status = "okay";
+    /* Otherwise board default settings are good. */
+};
