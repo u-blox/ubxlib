@@ -193,8 +193,8 @@ int32_t uCellGpioSetCts(uDeviceHandle_t cellHandle, int32_t level)
         pInstance = pUCellPrivateGetInstance(cellHandle);
         if (pInstance != NULL) {
             errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
-            // SARA-R4 doesn't support this
-            if (!U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType)) {
+            if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                   U_CELL_PRIVATE_FEATURE_CTS_CONTROL)) {
                 atHandle = pInstance->atHandle;
                 uAtClientLock(atHandle);
                 uAtClientCommandStart(atHandle, "AT+UCTS=");
@@ -226,8 +226,8 @@ int32_t uCellGpioGetCts(uDeviceHandle_t cellHandle)
         pInstance = pUCellPrivateGetInstance(cellHandle);
         if (pInstance != NULL) {
             errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
-            // SARA-R4 doesn't support this
-            if (!U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType)) {
+            if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                   U_CELL_PRIVATE_FEATURE_CTS_CONTROL)) {
                 atHandle = pInstance->atHandle;
                 uAtClientLock(atHandle);
                 uAtClientCommandStart(atHandle, "AT+UCTS?");

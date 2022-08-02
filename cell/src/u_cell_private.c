@@ -92,7 +92,8 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          // have this in our regression test farm and hence it is not marked
          // as supported for now
          // (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_DTR_POWER_SAVING)
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_AT_PROFILES)  /* features */
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_AT_PROFILES)                 |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CTS_CONTROL) /* features */
         )
     },
     {
@@ -189,7 +190,8 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING)                   |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING_PAGING_WINDOW_SET) |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_EDRX)                                |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTTSN) /* features */
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTTSN)                              |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CTS_CONTROL) /* features */
         )
     },
     {
