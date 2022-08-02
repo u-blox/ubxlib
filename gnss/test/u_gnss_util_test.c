@@ -125,11 +125,14 @@ U_PORT_TEST_FUNCTION("[gnssUtil]", "gnssUtilTransparent")
     // Obtain the initial heap size
     heapUsed = uPortGetHeapFree();
 
-    // Repeat for all transport types except U_GNSS_TRANSPORT_NMEA_UART,
-    iterations = uGnssTestPrivateTransportTypesSet(transportTypes, U_CFG_APP_GNSS_UART);
+    // Repeat for all transport types except U_GNSS_TRANSPORT_NMEA_UART
+    // and U_GNSS_TRANSPORT_NMEA_I2C
+    iterations = uGnssTestPrivateTransportTypesSet(transportTypes, U_CFG_APP_GNSS_UART,
+                                                   U_CFG_APP_GNSS_I2C);
     for (size_t w = 0; w < iterations; w++) {
         // Can't do this when the NMEA stream is active, just too messy
-        if (transportTypes[w] != U_GNSS_TRANSPORT_NMEA_UART) {
+        if ((transportTypes[w] != U_GNSS_TRANSPORT_NMEA_UART) &&
+            (transportTypes[w] != U_GNSS_TRANSPORT_NMEA_I2C)) {
             // Do the standard preamble
             U_TEST_PRINT_LINE("testing on transport %s...",
                               pGnssTestPrivateTransportTypeName(transportTypes[w]));

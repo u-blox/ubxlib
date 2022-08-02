@@ -272,7 +272,8 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosPos")
     heapUsed = uPortGetHeapFree();
 
     // Repeat for all transport types
-    iterations = uGnssTestPrivateTransportTypesSet(transportTypes, U_CFG_APP_GNSS_UART);
+    iterations = uGnssTestPrivateTransportTypesSet(transportTypes, U_CFG_APP_GNSS_UART,
+                                                   U_CFG_APP_GNSS_I2C);
     for (size_t x = 0; x < iterations; x++) {
         // Do the standard preamble
         U_TEST_PRINT_LINE("testing position establishment on transport %s...",
@@ -414,7 +415,8 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosRrlp")
     // for pBuffer from now on
 
     // Repeat for all transport types
-    iterations = uGnssTestPrivateTransportTypesSet(transportTypes, U_CFG_APP_GNSS_UART);
+    iterations = uGnssTestPrivateTransportTypesSet(transportTypes, U_CFG_APP_GNSS_UART,
+                                                   U_CFG_APP_GNSS_I2C);
     for (size_t x = 0; x < iterations; x++) {
         // Do the standard preamble
         U_TEST_PRINT_LINE("testing RRLP retrieval on transport %s...",

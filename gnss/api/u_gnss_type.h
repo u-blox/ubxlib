@@ -93,7 +93,13 @@ typedef enum {
                                     handle over which ubx commands will be
                                     transferred. */
     U_GNSS_TRANSPORT_NMEA_UART, /**< the transport handle should be a UART handle
-                                     over which NMEA commands will be received;
+                                     over which NMEA commands may be received;
+                                     ubx commands will still be used by this code. */
+    U_GNSS_TRANSPORT_UBX_I2C,   /**< the transport handle should be an I2C handle
+                                     over which ubx commands will be transferred;
+                                     NMEA will be switched off. */
+    U_GNSS_TRANSPORT_NMEA_I2C,  /**< the transport handle should be an I2C handle
+                                     over which NMEA commands may be received;
                                      ubx commands will still be used by this code. */
     U_GNSS_TRANSPORT_MAX_NUM
 } uGnssTransportType_t;
@@ -104,6 +110,7 @@ typedef enum {
 typedef union {
     void *pAt;
     int32_t uart;
+    int32_t i2c;
 } uGnssTransportHandle_t;
 
 /** The types of dynamic platform model.

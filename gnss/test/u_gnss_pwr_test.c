@@ -111,7 +111,8 @@ U_PORT_TEST_FUNCTION("[gnssPwr]", "gnssPwrBasic")
     heapUsed = uPortGetHeapFree();
 
     // Repeat for all transport types
-    iterations = uGnssTestPrivateTransportTypesSet(transportTypes, U_CFG_APP_GNSS_UART);
+    iterations = uGnssTestPrivateTransportTypesSet(transportTypes, U_CFG_APP_GNSS_UART,
+                                                   U_CFG_APP_GNSS_I2C);
     for (size_t x = 0; x < iterations; x++) {
         // Do the standard preamble
         U_TEST_PRINT_LINE("testing on transport %s...",
@@ -131,17 +132,29 @@ U_PORT_TEST_FUNCTION("[gnssPwr]", "gnssPwrBasic")
         U_TEST_PRINT_LINE("powering off GNSS...");
         U_PORT_TEST_ASSERT(uGnssPwrOff(gnssHandle) == 0);
 
-        if ((transportTypes[x] == U_GNSS_TRANSPORT_UBX_UART) ||
-            (transportTypes[x] == U_GNSS_TRANSPORT_NMEA_UART)) {
-            // If we are communicating via UART we can also test the
-            // power-off-to-back-up version
-            U_TEST_PRINT_LINE("powering on GNSS...");
-            U_PORT_TEST_ASSERT(uGnssPwrOn(gnssHandle) == 0);
+        switch(transportTypes[x]) {
+            case U_GNSS_TRANSPORT_UBX_UART:
+            //lint -fallthrough
+            case U_GNSS_TRANSPORT_NMEA_UART:
+                // If we are communicating via UART we can also test the
+                // power-off-to-back-up version
+                U_TEST_PRINT_LINE("powering on GNSS...");
+                U_PORT_TEST_ASSERT(uGnssPwrOn(gnssHandle) == 0);
 
-            U_TEST_PRINT_LINE("powering off GNSS to back-up mode...");
-            U_PORT_TEST_ASSERT(uGnssPwrOffBackup(gnssHandle) == 0);
-        } else {
-            U_PORT_TEST_ASSERT(uGnssPwrOffBackup(gnssHandle) == U_ERROR_COMMON_NOT_SUPPORTED);
+                U_TEST_PRINT_LINE("powering off GNSS to back-up mode...");
+                U_PORT_TEST_ASSERT(uGnssPwrOffBackup(gnssHandle) == 0);
+                break;
+            case U_GNSS_TRANSPORT_UBX_I2C:
+            //lint -fallthrough
+            case U_GNSS_TRANSPORT_NMEA_I2C:
+                U_TEST_PRINT_LINE("not testing uGnssPwrOffBackup() 'cos we're on I2C...");
+                break;
+            case U_GNSS_TRANSPORT_UBX_AT:
+                U_PORT_TEST_ASSERT(uGnssPwrOffBackup(gnssHandle) == U_ERROR_COMMON_NOT_SUPPORTED);
+                break;
+            default:
+                U_PORT_TEST_ASSERT(false);
+                break;
         }
 
 #if U_CFG_APP_PIN_GNSS_ENABLE_POWER >= 0

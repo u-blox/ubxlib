@@ -42,6 +42,7 @@
 #include "u_port_debug.h"
 #include "u_port_os.h"
 #include "u_port_uart.h"
+#include "u_port_i2c.h"
 
 #include "u_at_client.h"
 
@@ -86,7 +87,8 @@
 /** The names of the transport types.
  */
 static const char *const gpTransportTypeString[] = {"none", "ubx UART",
-                                                    "ubx AT", "NMEA UART"
+                                                    "ubx AT", "NMEA UART",
+                                                    "ubx I2C", "NMEA I2C"
                                                    };
 
 /* ----------------------------------------------------------------
@@ -188,7 +190,7 @@ const char *pGnssTestPrivateTransportTypeName(uGnssTransportType_t transportType
 
 // Set the transport types to be tested.
 size_t uGnssTestPrivateTransportTypesSet(uGnssTransportType_t *pTransportTypes,
-                                         int32_t uart)
+                                         int32_t uart, int32_t i2c)
 {
     size_t numEntries = 0;
 
@@ -197,8 +199,17 @@ size_t uGnssTestPrivateTransportTypesSet(uGnssTransportType_t *pTransportTypes,
             *pTransportTypes = U_GNSS_TRANSPORT_NMEA_UART;
             pTransportTypes++;
             *pTransportTypes = U_GNSS_TRANSPORT_UBX_UART;
+            pTransportTypes++;
             numEntries += 2;
-        } else {
+        }
+        if (i2c >= 0) {
+            *pTransportTypes = U_GNSS_TRANSPORT_NMEA_I2C;
+            pTransportTypes++;
+            *pTransportTypes = U_GNSS_TRANSPORT_UBX_I2C;
+            pTransportTypes++;
+            numEntries += 2;
+        }
+        if (numEntries == 0) {
             *pTransportTypes = U_GNSS_TRANSPORT_UBX_AT;
             numEntries++;
         }
@@ -219,7 +230,8 @@ int32_t uGnssTestPrivatePreamble(uGnssModuleType_t moduleType,
     uGnssTransportHandle_t transportHandle;
 
     // Set some defaults
-    pParameters->uartHandle = -1;
+    pParameters->transportType = transportType;
+    pParameters->streamHandle = -1;
     pParameters->pAtClientHandle = NULL;
     pParameters->cellHandle = NULL;
     pParameters->gnssHandle = NULL;
@@ -245,8 +257,25 @@ int32_t uGnssTestPrivatePreamble(uGnssModuleType_t moduleType,
                                           U_CFG_APP_PIN_GNSS_CTS,
                                           U_CFG_APP_PIN_GNSS_RTS);
                 if (errorCode >= 0) {
-                    pParameters->uartHandle = errorCode;
-                    transportHandle.uart = pParameters->uartHandle;
+                    pParameters->streamHandle = errorCode;
+                    transportHandle.uart = pParameters->streamHandle;
+                }
+                break;
+            case U_GNSS_TRANSPORT_UBX_I2C:
+            //lint -fallthrough
+            case U_GNSS_TRANSPORT_NMEA_I2C:
+                U_TEST_PRINT_LINE("opening GNSS I2C %d...", U_CFG_APP_GNSS_I2C);
+                errorCode = uPortI2cInit();
+                if (errorCode == 0) {
+                    // Open the I2C bus with the standard parameters
+                    errorCode = uPortI2cOpen(U_CFG_APP_GNSS_I2C,
+                                             U_CFG_APP_PIN_GNSS_SDA,
+                                             U_CFG_APP_PIN_GNSS_SCL,
+                                             true);
+                    if (errorCode >= 0) {
+                        pParameters->streamHandle = errorCode;
+                        transportHandle.i2c = pParameters->streamHandle;
+                    }
                 }
                 break;
             case U_GNSS_TRANSPORT_UBX_AT:
@@ -258,7 +287,7 @@ int32_t uGnssTestPrivatePreamble(uGnssModuleType_t moduleType,
                 // the GNSS chip
                 errorCode = uCellTestPrivatePreamble(U_CFG_TEST_CELL_MODULE_TYPE,
                                                      &parameters, true);
-                pParameters->uartHandle = parameters.uartHandle;
+                pParameters->streamHandle = parameters.uartHandle;
                 pParameters->pAtClientHandle = (void *) parameters.atClientHandle;
                 pParameters->cellHandle = parameters.cellHandle;
                 transportHandle.pAt = pParameters->pAtClientHandle;
@@ -324,15 +353,30 @@ void uGnssTestPrivatePostamble(uGnssTestPrivate_t *pParameters,
     if (pParameters->cellHandle != NULL) {
         // Cellular was in use, call the cellular test postamble
         uCellTestPrivate_t parameters = U_CELL_TEST_PRIVATE_DEFAULTS;
-        parameters.uartHandle = pParameters->uartHandle;
+        parameters.uartHandle = pParameters->streamHandle;
         parameters.atClientHandle = (uAtClientHandle_t) pParameters->pAtClientHandle;
         parameters.cellHandle = pParameters->cellHandle;
         uCellTestPrivatePostamble(&parameters, powerOff);
         pParameters->cellHandle = NULL;
     } else {
-        uPortUartClose(pParameters->uartHandle);
+        if (pParameters->streamHandle >= 0) {
+            switch (pParameters->transportType) {
+                case U_GNSS_TRANSPORT_UBX_UART:
+                //lint -fallthrough
+                case U_GNSS_TRANSPORT_NMEA_UART:
+                    uPortUartClose(pParameters->streamHandle);
+                    break;
+                case U_GNSS_TRANSPORT_UBX_I2C:
+                //lint -fallthrough
+                case U_GNSS_TRANSPORT_NMEA_I2C:
+                    uPortI2cClose(pParameters->streamHandle);
+                    uPortI2cDeinit();
+                default:
+                    break;
+            }
+        }
     }
-    pParameters->uartHandle = -1;
+    pParameters->streamHandle = -1;
 
     uPortDeinit();
 }
@@ -346,17 +390,30 @@ void uGnssTestPrivateCleanup(uGnssTestPrivate_t *pParameters)
     if (pParameters->cellHandle != NULL) {
         // Cellular was in use, call the cellular test clean-up
         uCellTestPrivate_t parameters = U_CELL_TEST_PRIVATE_DEFAULTS;
-        parameters.uartHandle = pParameters->uartHandle;
+        parameters.uartHandle = pParameters->streamHandle;
         parameters.atClientHandle = (uAtClientHandle_t) pParameters->pAtClientHandle;
         parameters.cellHandle = pParameters->cellHandle;
         uCellTestPrivateCleanup(&parameters);
         pParameters->cellHandle = NULL;
     } else {
-        if (pParameters->uartHandle >= 0) {
-            uPortUartClose(pParameters->uartHandle);
+        if (pParameters->streamHandle >= 0) {
+            switch (pParameters->transportType) {
+                case U_GNSS_TRANSPORT_UBX_UART:
+                //lint -fallthrough
+                case U_GNSS_TRANSPORT_NMEA_UART:
+                    uPortUartClose(pParameters->streamHandle);
+                    break;
+                case U_GNSS_TRANSPORT_UBX_I2C:
+                //lint -fallthrough
+                case U_GNSS_TRANSPORT_NMEA_I2C:
+                    uPortI2cClose(pParameters->streamHandle);
+                    uPortI2cDeinit();
+                default:
+                    break;
+            }
         }
     }
-    pParameters->uartHandle = -1;
+    pParameters->streamHandle = -1;
 }
 
 // End of file

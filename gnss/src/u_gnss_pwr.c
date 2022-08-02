@@ -196,32 +196,36 @@ int32_t uGnssPwrOn(uDeviceHandle_t gnssHandle)
                     errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
                     // Make sure GNSS is on with UBX-CFG-RST
                     // The message is not acknowledged, so must use
-                    // uGnssPrivateSendOnlyCheckUartUbxMessage()
+                    // uGnssPrivateSendOnlyCheckStreamUbxMessage()
                     message[2] = 0x09; // Controlled GNSS hot start
-                    if (uGnssPrivateSendOnlyCheckUartUbxMessage(pInstance,
-                                                                0x06, 0x04,
-                                                                message, 4) > 0) {
-                        // From the M8 receiver description, a HW reset is also
-                        // required at this point if Galileo is enabled,
-                        // so find out if it is by polling UBX-MON-GNSS
-                        if (uGnssPrivateSendReceiveUbxMessage(pInstance,
-                                                              0x0a, 0x28,
-                                                              NULL, 0,
-                                                              message, 8) == 8) {
-                            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-                            // Byte 3 is the enabled flags and bit 3 of that is Galileo
-                            if (message[3] & 0x08) {
-                                // Setting the message to all zeroes effects a HW reset
-                                memset(message, 0, sizeof(message));
-                                // Nothing we can do here to check that the message
-                                // has been accepted as the reset removes all evidence
-                                errorCode = uGnssPrivateSendReceiveUbxMessage(pInstance,
-                                                                              0x06, 0x04,
-                                                                              message, 4,
-                                                                              NULL, 0);
-                                if (errorCode == 0) {
-                                    // Wait for the reset to complete
-                                    uPortTaskBlock(U_GNSS_POWER_UP_TIME_SECONDS * 1000);
+                    if (uGnssPrivateSendOnlyCheckStreamUbxMessage(pInstance,
+                                                                  0x06, 0x04,
+                                                                  message, 4) > 0) {
+                        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                        if (pInstance->pModule->moduleType == U_GNSS_MODULE_TYPE_M8) {
+                            errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
+                            // From the M8 receiver description, a HW reset is also
+                            // required at this point if Galileo is enabled,
+                            // so find out if it is by polling UBX-MON-GNSS
+                            if (uGnssPrivateSendReceiveUbxMessage(pInstance,
+                                                                  0x0a, 0x28,
+                                                                  NULL, 0,
+                                                                  message, 8) == 8) {
+                                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                                // Byte 3 is the enabled flags and bit 3 of that is Galileo
+                                if (message[3] & 0x08) {
+                                    // Setting the message to all zeroes effects a HW reset
+                                    memset(message, 0, sizeof(message));
+                                    // Nothing we can do here to check that the message
+                                    // has been accepted as the reset removes all evidence
+                                    errorCode = uGnssPrivateSendReceiveUbxMessage(pInstance,
+                                                                                  0x06, 0x04,
+                                                                                  message, 4,
+                                                                                  NULL, 0);
+                                    if (errorCode == 0) {
+                                        // Wait for the reset to complete
+                                        uPortTaskBlock(U_GNSS_POWER_UP_TIME_SECONDS * 1000);
+                                    }
                                 }
                             }
                         }
@@ -230,7 +234,8 @@ int32_t uGnssPwrOn(uDeviceHandle_t gnssHandle)
             }
 
             if ((errorCode == 0) &&
-                (pInstance->transportType == U_GNSS_TRANSPORT_UBX_UART)) {
+                ((pInstance->transportType == U_GNSS_TRANSPORT_UBX_UART) ||
+                 (pInstance->transportType == U_GNSS_TRANSPORT_UBX_I2C))) {
                 errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
                 // Switch off NMEA using UBX-CFG-PRT.
                 // Normally we would send the UBX-CFG-PRT message
@@ -376,12 +381,11 @@ int32_t uGnssPwrOff(uDeviceHandle_t gnssHandle)
                 errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
                 // Make sure GNSS is off with UBX-CFG-RST
                 // This message is not acknowledged, so we use
-                // uGnssPrivateSendOnlyCheckUartUbxMessage()
+                // uGnssPrivateSendOnlyCheckStreamUbxMessage()
                 message[2] = 0x08; // Controlled GNSS stop
-                if (uGnssPrivateSendOnlyCheckUartUbxMessage(pInstance,
-                                                            0x06, 0x04,
-                                                            message,
-                                                            sizeof(message)) > 0) {
+                if (uGnssPrivateSendOnlyCheckStreamUbxMessage(pInstance,
+                                                              0x06, 0x04,
+                                                              message, 4) > 0) {
                     errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
                 }
             }

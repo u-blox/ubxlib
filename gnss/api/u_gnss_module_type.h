@@ -49,6 +49,7 @@
 // Suppress not used within defaulted switch
 typedef enum {
     U_GNSS_MODULE_TYPE_M8 = 0,
+    U_GNSS_MODULE_TYPE_M9 = 1,
     U_GNSS_MODULE_TYPE_MAX_NUM
 } uGnssModuleType_t;
 

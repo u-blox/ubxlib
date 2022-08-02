@@ -65,11 +65,13 @@
  */
 //lint -esym(752, gpTransportTypeText) Suppress not referenced, which
 // it won't be if diagnostic prints are compiled out
-static const char *const gpTransportTypeText[] = {"None",        // U_GNSS_TRANSPORT_NONE
+static const char *const gpTransportTypeText[] = {"None",       // U_GNSS_TRANSPORT_NONE
                                                   "ubx UART",   // U_GNSS_TRANSPORT_UBX_UART
                                                   "ubx AT",     // U_GNSS_TRANSPORT_UBX_AT
-                                                  "NMEA UART"
-                                                 }; // U_GNSS_TRANSPORT_NMEA_UART
+                                                  "NMEA UART",  // U_GNSS_TRANSPORT_NMEA_UART
+                                                  "ubx I2C",    // U_GNSS_TRANSPORT_UBX_I2C
+                                                  "NMEA I2C"    // U_GNSS_TRANSPORT_NMEA_I2C
+                                                 };
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -95,6 +97,11 @@ static uGnssPrivateInstance_t *pGetGnssInstanceTransportHandle(uGnssTransportTyp
                     break;
                 case U_GNSS_TRANSPORT_UBX_AT:
                     match = (pInstance->transportHandle.pAt == transportHandle.pAt);
+                    break;
+                case U_GNSS_TRANSPORT_UBX_I2C:
+                //lint -fallthrough
+                case U_GNSS_TRANSPORT_NMEA_I2C:
+                    match = (pInstance->transportHandle.i2c == transportHandle.i2c);
                     break;
                 default:
                     break;
@@ -258,7 +265,11 @@ int32_t uGnssAdd(uGnssModuleType_t moduleType,
                         pInstance->pinGnssEnablePower = pinGnssEnablePower;
                         pInstance->atModulePinPwr = -1;
                         pInstance->atModulePinDataReady = -1;
-                        pInstance->portNumber = 0x01; // This is the UART port number inside the GNSS chip
+                        pInstance->portNumber = 0; // This is the I2C port number inside the GNSS chip
+                        if ((transportType == U_GNSS_TRANSPORT_UBX_UART) ||
+                            (transportType == U_GNSS_TRANSPORT_NMEA_UART)) {
+                            pInstance->portNumber = 1; // This is the UART port number inside the GNSS chip
+                        }
                         pInstance->posTask = NULL;
                         pInstance->posMutex = NULL;
                         pInstance->posTaskFlags = 0;

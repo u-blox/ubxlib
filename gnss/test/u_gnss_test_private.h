@@ -39,7 +39,7 @@ extern "C" {
  */
 //lint -esym(755, U_GNSS_TEST_PRIVATE_DEFAULTS) Suppress not referenced,
 // which it might not be if U_CFG_TEST_GNSS_MODULE_TYPE is not defined.
-#define U_GNSS_TEST_PRIVATE_DEFAULTS {-1, NULL, NULL, NULL}
+#define U_GNSS_TEST_PRIVATE_DEFAULTS {U_GNSS_TRANSPORT_NONE, -1, NULL, NULL, NULL}
 
 /* ----------------------------------------------------------------
  * TYPES
@@ -48,7 +48,8 @@ extern "C" {
 /** Struct to contain all the stuff needed by the common functions.
  */
 typedef struct {
-    int32_t uartHandle; /**< The handle returned by uPortUartOpen(). */
+    uGnssTransportType_t transportType;
+    int32_t streamHandle; /**< The handle returned by uPortUartOpen()/uPortI2cOpen(). */
     void *pAtClientHandle; /**< The handle returned by uAtClientAdd(). */
     uDeviceHandle_t cellHandle;  /**< The handle returned by uCellAdd(). */
     uDeviceHandle_t gnssHandle;  /**< The handle returned by uGnssAdd(). */
@@ -87,12 +88,17 @@ const char *pGnssTestPrivateTransportTypeName(uGnssTransportType_t transportType
  *                         on which the GNSS chip is connected or -1
  *                         if there is no direct UART connection to the
  *                         GNSS chip (i.e. if the GNSS chip is connected
- *                         via a cellular module).
+ *                         via a cellular module or via I2C).
+ * @param i2c              the value of U_CFG_APP_GNSS_I2C, the I2C bus
+ *                         on which the GNSS chip is connected or -1
+ *                         if there is no direct I2C connection to the
+ *                         GNSS chip (i.e. if the GNSS chip is connected
+ *                         via a cellular module or via UART).
  * @return                 the number of entries that have been populated in
  *                         pTransportTypes by this function.
  */
 size_t uGnssTestPrivateTransportTypesSet(uGnssTransportType_t *pTransportTypes,
-                                         int32_t uart);
+                                         int32_t uart, int32_t i2c);
 
 /** The standard preamble for a GNSS test.  Creates all the necessary
  * instances and powers the module on if requested.

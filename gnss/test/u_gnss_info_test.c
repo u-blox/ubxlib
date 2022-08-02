@@ -132,7 +132,8 @@ U_PORT_TEST_FUNCTION("[gnssInfo]", "gnssInfoStatic")
     heapUsed = uPortGetHeapFree();
 
     // Repeat for all transport types
-    iterations = uGnssTestPrivateTransportTypesSet(transportTypes, U_CFG_APP_GNSS_UART);
+    iterations = uGnssTestPrivateTransportTypesSet(transportTypes, U_CFG_APP_GNSS_UART,
+                                                   U_CFG_APP_GNSS_I2C);
     for (size_t w = 0; w < iterations; w++) {
         // Do the standard preamble
         U_TEST_PRINT_LINE("testing on transport %s...",
@@ -245,7 +246,8 @@ U_PORT_TEST_FUNCTION("[gnssInfo]", "gnssInfoTime")
     heapUsed = uPortGetHeapFree();
 
     // Repeat for all transport types
-    iterations = uGnssTestPrivateTransportTypesSet(transportTypes, U_CFG_APP_GNSS_UART);
+    iterations = uGnssTestPrivateTransportTypesSet(transportTypes, U_CFG_APP_GNSS_UART,
+                                                   U_CFG_APP_GNSS_I2C);
     for (size_t w = 0; w < iterations; w++) {
         // Do the standard preamble
         U_TEST_PRINT_LINE("testing on transport %s...",

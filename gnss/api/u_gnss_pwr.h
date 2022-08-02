@@ -134,13 +134,16 @@ int32_t uGnssPwrOff(uDeviceHandle_t gnssHandle);
 
 /** Power a GNSS chip off and put it into back-up mode.  All of the
  * possible HW wake-up lines (UART RXD, SPI CS, EXTINT 0 and 1) will
- * wake the module up from this state.
+ * wake the module up from this state but note that none of these
+ * lines are I2C and hence, if you call this function when talking to
+ * a GNSS module via I2C, the ONLY WAY back again is to have wired
+ * the GNSS module's RESET_N line to this MCU and to toggle it low and
+ * high again to wake the GNSS module up again. Or you can power-cycle
+ * the GNSS chip of course.
  *
  * IMPORTANT: this function will return an error if the GNSS chip
  * is connected via an intermediate [e.g. cellular] module; this is
- * because the module will be communicating with the GNSS chip over
- * I2C and none of the HW wake-up lines are relevant to I2C, hence
- * the GNSS module would never wake-up again.
+ * because the module will be communicating with the GNSS chip over I2C.
  *
  * @param gnssHandle  the handle of the GNSS instance to power on.
  */

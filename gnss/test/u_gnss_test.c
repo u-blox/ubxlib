@@ -48,6 +48,7 @@
 #include "u_port_debug.h"
 #include "u_port_os.h"
 #include "u_port_uart.h"
+#include "u_port_i2c.h"
 
 #include "u_gnss_module_type.h"
 #include "u_gnss_type.h"
@@ -73,9 +74,13 @@
  * VARIABLES
  * -------------------------------------------------------------- */
 
-/** UART handle for one GNSS module.
+/** Streaming handle for one GNSS module (could be UART or I2C).
  */
-static int32_t gUartAHandle = -1;
+static int32_t gStreamAHandle = -1;
+
+/** The type of streaming handle A.
+ */
+static uGnssTransportType_t gTransportTypeA = U_GNSS_TRANSPORT_NONE;
 
 /** UART handle for another GNSS module.
  */
@@ -103,10 +108,11 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssInitialisation")
     uPortDeinit();
 }
 
-#if (U_CFG_TEST_UART_A >= 0)
-/** Add a GNSS instance on a UART and remove it again.
+#if (U_CFG_TEST_UART_A >= 0) || (U_CFG_APP_GNSS_I2C >= 0)
+/** Add a straaming GNSS instance, e.g. UART or I2C,
+ * and remove it again.
  */
-U_PORT_TEST_FUNCTION("[gnss]", "gnssAddUart")
+U_PORT_TEST_FUNCTION("[gnss]", "gnssAddStream")
 {
     uDeviceHandle_t gnssHandleA;
     uDeviceHandle_t dummyHandle;
@@ -129,31 +135,55 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssAddUart")
 
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
-    gUartAHandle = uPortUartOpen(U_CFG_TEST_UART_A,
-                                 U_CFG_TEST_BAUD_RATE,
-                                 NULL,
-                                 U_GNSS_UART_BUFFER_LENGTH_BYTES,
-                                 U_CFG_TEST_PIN_UART_A_TXD,
-                                 U_CFG_TEST_PIN_UART_A_RXD,
-                                 U_CFG_TEST_PIN_UART_A_CTS,
-                                 U_CFG_TEST_PIN_UART_A_RTS);
-    U_PORT_TEST_ASSERT(gUartAHandle >= 0);
-    transportHandleA.uart = gUartAHandle;
+# if (U_CFG_APP_GNSS_I2C >= 0)
+    U_PORT_TEST_ASSERT(uPortI2cInit() == 0);
+
+    gStreamAHandle = uPortI2cOpen(U_CFG_APP_GNSS_I2C,
+                                  U_CFG_APP_PIN_GNSS_SDA,
+                                  U_CFG_APP_PIN_GNSS_SCL,
+                                  true);
+    U_PORT_TEST_ASSERT(gStreamAHandle >= 0);
+    gTransportTypeA = U_GNSS_TRANSPORT_UBX_I2C;
+    transportHandleA.i2c = gStreamAHandle;
+# else
+    gStreamAHandle = uPortUartOpen(U_CFG_TEST_UART_A,
+                                   U_CFG_TEST_BAUD_RATE,
+                                   NULL,
+                                   U_GNSS_UART_BUFFER_LENGTH_BYTES,
+                                   U_CFG_TEST_PIN_UART_A_TXD,
+                                   U_CFG_TEST_PIN_UART_A_RXD,
+                                   U_CFG_TEST_PIN_UART_A_CTS,
+                                   U_CFG_TEST_PIN_UART_A_RTS);
+    U_PORT_TEST_ASSERT(gStreamAHandle >= 0);
+    gTransportTypeA = U_GNSS_TRANSPORT_UBX_UART;
+    transportHandleA.uart = gStreamAHandle;
+# endif
 
     U_PORT_TEST_ASSERT(uGnssInit() == 0);
 
-    U_TEST_PRINT_LINE("adding a GNSS instance on UART %d...", U_CFG_TEST_UART_A);
+    U_TEST_PRINT_LINE("adding a GNSS instance on streaming port...");
     errorCode = uGnssAdd(U_GNSS_MODULE_TYPE_M8,
-                         U_GNSS_TRANSPORT_UBX_UART,
-                         transportHandleA,
+                         gTransportTypeA, transportHandleA,
                          -1, false, &gnssHandleA);
     U_PORT_TEST_ASSERT_EQUAL((int32_t) U_ERROR_COMMON_SUCCESS, errorCode);
     transportHandle.uart = -1;
+    transportHandle.i2c = -1;
     U_PORT_TEST_ASSERT(uGnssGetTransportHandle(gnssHandleA,
                                                &transportType,
                                                &transportHandle) == 0);
-    U_PORT_TEST_ASSERT(transportType == U_GNSS_TRANSPORT_UBX_UART);
-    U_PORT_TEST_ASSERT(transportHandle.uart == transportHandleA.uart);
+    switch (gTransportTypeA) {
+        case U_GNSS_TRANSPORT_UBX_UART:
+            U_PORT_TEST_ASSERT(transportType == U_GNSS_TRANSPORT_UBX_UART);
+            U_PORT_TEST_ASSERT(transportHandle.uart == transportHandleA.uart);
+            break;
+        case U_GNSS_TRANSPORT_UBX_I2C:
+            U_PORT_TEST_ASSERT(transportType == U_GNSS_TRANSPORT_UBX_I2C);
+            U_PORT_TEST_ASSERT(transportHandle.i2c == transportHandleA.i2c);
+            break;
+        default:
+            U_PORT_TEST_ASSERT(false);
+            break;
+    }
 
     printUbxMessagesDefault = uGnssGetUbxMessagePrint(gnssHandleA);
     uGnssSetUbxMessagePrint(gnssHandleA, !printUbxMessagesDefault);
@@ -163,11 +193,19 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssAddUart")
         U_PORT_TEST_ASSERT(uGnssGetUbxMessagePrint(gnssHandleA));
     }
 
-    U_TEST_PRINT_LINE("adding another instance on the same UART, should fail...");
+    U_TEST_PRINT_LINE("adding another instance on the same streaming"
+                      " port, should fail...");
+# if (U_CFG_APP_GNSS_I2C >= 0)
+    U_PORT_TEST_ASSERT(uGnssAdd(U_GNSS_MODULE_TYPE_M8,
+                                U_GNSS_TRANSPORT_UBX_I2C,
+                                transportHandleA,
+                                -1, false, &dummyHandle) < 0);
+# else
     U_PORT_TEST_ASSERT(uGnssAdd(U_GNSS_MODULE_TYPE_M8,
                                 U_GNSS_TRANSPORT_UBX_UART,
                                 transportHandleA,
                                 -1, false, &dummyHandle) < 0);
+# endif
 
 # if (U_CFG_TEST_UART_B >= 0)
     // If we have a second UART port, add a second GNSS API on it
@@ -215,34 +253,65 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssAddUart")
 
     U_TEST_PRINT_LINE("adding it again...");
     // Use NMEA this time for the sake of variety
+    if (gTransportTypeA == U_GNSS_TRANSPORT_UBX_UART) {
+        gTransportTypeA = U_GNSS_TRANSPORT_NMEA_UART;
+    } else if (gTransportTypeA == U_GNSS_TRANSPORT_UBX_I2C) {
+        gTransportTypeA = U_GNSS_TRANSPORT_NMEA_I2C;
+    }
     errorCode = uGnssAdd(U_GNSS_MODULE_TYPE_M8,
-                         U_GNSS_TRANSPORT_NMEA_UART,
+                         gTransportTypeA,
                          transportHandleA,
                          -1, false, &gnssHandleA);
     U_PORT_TEST_ASSERT_EQUAL((int32_t) U_ERROR_COMMON_SUCCESS, errorCode);
     transportType = U_GNSS_TRANSPORT_NONE;
     transportHandle.uart = -1;
+    transportHandle.i2c = -1;
     U_PORT_TEST_ASSERT(uGnssGetTransportHandle(gnssHandleA,
                                                &transportType,
                                                &transportHandle) == 0);
-    U_PORT_TEST_ASSERT(transportType == U_GNSS_TRANSPORT_NMEA_UART);
-    U_PORT_TEST_ASSERT(transportHandle.uart == transportHandleA.uart);
+    switch (gTransportTypeA) {
+        case U_GNSS_TRANSPORT_NMEA_UART:
+            U_PORT_TEST_ASSERT(transportType == U_GNSS_TRANSPORT_NMEA_UART);
+            U_PORT_TEST_ASSERT(transportHandle.uart == transportHandleA.uart);
+            break;
+        case U_GNSS_TRANSPORT_NMEA_I2C:
+            U_PORT_TEST_ASSERT(transportType == U_GNSS_TRANSPORT_NMEA_I2C);
+            U_PORT_TEST_ASSERT(transportHandle.i2c == transportHandleA.i2c);
+            break;
+        default:
+            U_PORT_TEST_ASSERT(false);
+            break;
+    }
 
     U_TEST_PRINT_LINE("deinitialising GNSS API...");
     uGnssDeinit();
 
-    U_TEST_PRINT_LINE("removing UART...");
-    uPortUartClose(gUartAHandle);
-    gUartAHandle = -1;
+    U_TEST_PRINT_LINE("removing stream...");
+    switch (gTransportTypeA) {
+        case U_GNSS_TRANSPORT_UBX_UART:
+        //lint -fallthrough
+        case U_GNSS_TRANSPORT_NMEA_UART:
+            uPortUartClose(gStreamAHandle);
+            break;
+        case U_GNSS_TRANSPORT_UBX_I2C:
+        //lint -fallthrough
+        case U_GNSS_TRANSPORT_NMEA_I2C:
+            uPortI2cClose(gStreamAHandle);
+            break;
+        default:
+            break;
+    }
+    gStreamAHandle = -1;
 
 # if (U_CFG_TEST_UART_B >= 0)
     uPortUartClose(gUartBHandle);
     gUartBHandle = -1;
 # endif
 
+    uPortI2cDeinit();
     uPortDeinit();
 
-#ifndef __XTENSA__
+# ifndef __XTENSA__
     // Check for memory leaks
     // TODO: this if'ed out for ESP32 (xtensa compiler) at
     // the moment as there is an issue with ESP32 hanging
@@ -253,9 +322,9 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssAddUart")
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
-#else
+# else
     (void) heapUsed;
-#endif
+# endif
 }
 #endif
 
@@ -268,8 +337,21 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssCleanUp")
     int32_t x;
 
     uGnssDeinit();
-    if (gUartAHandle >= 0) {
-        uPortUartClose(gUartAHandle);
+    if (gStreamAHandle >= 0) {
+        switch (gTransportTypeA) {
+            case U_GNSS_TRANSPORT_UBX_UART:
+            //lint -fallthrough
+            case U_GNSS_TRANSPORT_NMEA_UART:
+                uPortUartClose(gStreamAHandle);
+                break;
+            case U_GNSS_TRANSPORT_UBX_I2C:
+            //lint -fallthrough
+            case U_GNSS_TRANSPORT_NMEA_I2C:
+                uPortI2cClose(gStreamAHandle);
+                break;
+            default:
+                break;
+        }
     }
     if (gUartBHandle >= 0) {
         uPortUartClose(gUartBHandle);
@@ -282,6 +364,7 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssCleanUp")
         U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
     }
 
+    uPortI2cDeinit();
     uPortDeinit();
 
     x = uPortGetHeapMinFree();

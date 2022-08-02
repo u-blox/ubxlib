@@ -185,6 +185,13 @@ int32_t uPortI2cGetTimeout(int32_t handle);
 /** Send and/or receive over the I2C interface as a controller.
  * Note that the NRF52 and NRF53 chips require all buffers to
  * be in RAM.
+ * Note that the uPortI2cSetTimeout() (or the equivalent set
+ * by a platform at compile-time) applies for the whole of this
+ * transaction, i.e. the peripheral must begin responding within
+ * that time; if you wish to allow the peripheral longer to respond
+ * you should take control of the time allowed yourself by calling
+ * uPortI2cControllerSend() and then, after the appropriate time,
+ * this function with only the receive buffer set.
  *
  * @param handle         the handle of the I2C instance.
  * @param address        the I2C address to send to; only the lower
@@ -211,6 +218,10 @@ int32_t uPortI2cGetTimeout(int32_t handle);
  * @return               if pReceive is not NULL the number of bytes
  *                       received or negative error code; if pReceive is
  *                       NULL then zero on success else negative error code.
+ *                       Note that the underlying platform drivers often
+ *                       do not report the number of bytes received and
+ *                       hence the return value may just be either an
+ *                       error code or bytesToReceive copied back to you.
  */
 int32_t uPortI2cControllerSendReceive(int32_t handle, uint16_t address,
                                       const char *pSend, size_t bytesToSend,

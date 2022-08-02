@@ -66,7 +66,7 @@
 // for the module is likely different that from the MCU: check
 // the data sheet for the module to determine the mapping.
 
-#if defined(U_CFG_TEST_GNSS_MODULE_TYPE) && !defined(U_CFG_TEST_GNSS_OVER_AT)
+#if defined(U_CFG_TEST_GNSS_MODULE_TYPE) && ((U_CFG_APP_GNSS_UART >= 0) || (U_CFG_APP_GNSS_I2C >= 0))
 // DEVICE i.e. module/chip configuration: in this case a GNSS
 // module connected via UART
 static const uDeviceCfg_t gDeviceCfg = {
@@ -78,6 +78,16 @@ static const uDeviceCfg_t gDeviceCfg = {
             .pinDataReady = -1 // Not used
         },
     },
+# if (U_CFG_APP_GNSS_I2C >= 0)
+    .transportType = U_DEVICE_TRANSPORT_TYPE_I2C,
+    .transportCfg = {
+        .cfgI2c = {
+            .i2c = U_CFG_APP_GNSS_I2C,
+            .pinSda = U_CFG_APP_PIN_GNSS_SDA,
+            .pinScl = U_CFG_APP_PIN_GNSS_SCL
+        },
+    },
+# else
     .transportType = U_DEVICE_TRANSPORT_TYPE_UART,
     .transportCfg = {
         .cfgUart = {
@@ -89,6 +99,7 @@ static const uDeviceCfg_t gDeviceCfg = {
             .pinRts = U_CFG_APP_PIN_GNSS_RTS
         },
     },
+# endif
 };
 // NETWORK configuration for GNSS
 static const uNetworkCfgGnss_t gNetworkCfg = {
@@ -156,6 +167,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocGnss")
 
     // Initialise the APIs we will need
     uPortInit();
+    uPortI2cInit(); // You only need this if an I2C interface is used
     uDeviceInit();
 
     // Open the device
@@ -197,11 +209,12 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocGnss")
 
     // Tidy up
     uDeviceDeinit();
+    uPortI2cDeinit(); // You only need this if an I2C interface is used
     uPortDeinit();
 
     uPortLog("Done.\n");
 
-#if defined(U_CFG_TEST_GNSS_MODULE_TYPE) && (U_CFG_APP_GNSS_UART >= 0)
+#if defined(U_CFG_TEST_GNSS_MODULE_TYPE) && ((U_CFG_APP_GNSS_UART >= 0) || (U_CFG_APP_GNSS_I2C >= 0))
     // For u-blox internal testing only
     EXAMPLE_FINAL_STATE(location.timeUtc > 0);
 #endif

@@ -135,6 +135,7 @@ typedef struct {
     uDeviceVersion_t version;  /**< Version of this structure; allow your
                                     compiler to initialise this to zero
                                     unless otherwise specified below. */
+    int32_t i2c;               /**< The I2C HW block to use. */
     int32_t pinSda;            /**< I2C data pin. */
     int32_t pinScl;            /**< I2C clock pin. */
     /* This is the end of version 0 of this structure:

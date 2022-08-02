@@ -33,6 +33,7 @@
 #include "u_error_common.h"
 
 #include "u_port_uart.h"
+#include "u_port_i2c.h"
 
 #include "u_device.h"
 #include "u_device_shared.h"
@@ -83,9 +84,6 @@ static int32_t removeDevice(uDeviceHandle_t devHandle, bool powerOff)
             if (errorCode == 0) {
                 // This will destroy the instance
                 uGnssRemove(devHandle);
-                if (pContext->transportHandle >= 0) {
-                    uPortUartClose(pContext->transportHandle);
-                }
                 free(pContext);
             }
         } else {
@@ -97,7 +95,8 @@ static int32_t removeDevice(uDeviceHandle_t devHandle, bool powerOff)
 }
 
 // Do all the leg-work to add a GNSS device.
-static int32_t addDevice(const uDeviceCfgUart_t *pCfgUart,
+static int32_t addDevice(int32_t transportHandle,
+                         uDeviceTransportType_t transportType,
                          const uDeviceCfgGnss_t *pCfgGnss,
                          uDeviceHandle_t *pDeviceHandle)
 {
@@ -106,53 +105,45 @@ static int32_t addDevice(const uDeviceCfgUart_t *pCfgUart,
     uGnssTransportType_t gnssTransportType = U_GNSS_TRANSPORT_UBX_UART;
     uDeviceGnssInstance_t *pContext;
 
-    if (pCfgGnss->includeNmea) {
-        gnssTransportType = U_GNSS_TRANSPORT_NMEA_UART;
+    // Populate gnssTransportHandle/gnssTransportType
+    if (transportType == U_DEVICE_TRANSPORT_TYPE_I2C) {
+        gnssTransportHandle.i2c = transportHandle;
+        gnssTransportType = U_GNSS_TRANSPORT_UBX_I2C;
+        if (pCfgGnss->includeNmea) {
+            gnssTransportType = U_GNSS_TRANSPORT_NMEA_I2C;
+        }
+    } else {
+        gnssTransportHandle.uart = transportHandle;
+        if (pCfgGnss->includeNmea) {
+            gnssTransportType = U_GNSS_TRANSPORT_NMEA_UART;
+        }
     }
 
     pContext = (uDeviceGnssInstance_t *) malloc(sizeof(uDeviceGnssInstance_t));
     if (pContext != NULL) {
-        // Open a UART with the recommended buffer length
-        // and default baud rate.
-        errorCodeOrHandle = uPortUartOpen(pCfgUart->uart,
-                                          pCfgUart->baudRate, NULL,
-                                          U_GNSS_UART_BUFFER_LENGTH_BYTES,
-                                          pCfgUart->pinTxd,
-                                          pCfgUart->pinRxd,
-                                          pCfgUart->pinCts,
-                                          pCfgUart->pinRts);
-        if (errorCodeOrHandle >= 0) {
-            pContext->transportHandle = errorCodeOrHandle;
-            gnssTransportHandle.uart = errorCodeOrHandle;
-            // Add the GNSS instance, which actually creates pDeviceHandle
-            errorCodeOrHandle = uGnssAdd((uGnssModuleType_t) pCfgGnss->moduleType,
-                                         gnssTransportType, gnssTransportHandle,
-                                         pCfgGnss->pinEnablePower, false,
-                                         pDeviceHandle);
-            if (errorCodeOrHandle == 0) {
+        pContext->transportHandle = transportHandle;
+        pContext->transportType = transportType;
+        // Add the GNSS instance, which actually creates pDeviceHandle
+        errorCodeOrHandle = uGnssAdd((uGnssModuleType_t) pCfgGnss->moduleType,
+                                     gnssTransportType, gnssTransportHandle,
+                                     pCfgGnss->pinEnablePower, false,
+                                     pDeviceHandle);
+        if (errorCodeOrHandle == 0) {
 #if !U_CFG_OS_CLIB_LEAKS
-                // Set printing of commands sent to the GNSS chip,
-                // which can be useful while debugging, but
-                // only if the C library doesn't leak.
-                uGnssSetUbxMessagePrint(*pDeviceHandle, true);
+            // Set printing of commands sent to the GNSS chip,
+            // which can be useful while debugging, but
+            // only if the C library doesn't leak.
+            uGnssSetUbxMessagePrint(*pDeviceHandle, true);
 #endif
-                // Attach the context
-                U_DEVICE_INSTANCE(*pDeviceHandle)->pContext = pContext;
-                // Power on the GNSS chip
-                errorCodeOrHandle = uGnssPwrOn(*pDeviceHandle);
-                if (errorCodeOrHandle != 0) {
-                    // If we failed to power on, clean up
-                    removeDevice(*pDeviceHandle, false);
-                }
-            } else {
-                if (pContext->transportHandle >= 0) {
-                    // If we failed to add, close the UART again
-                    uPortUartClose(pContext->transportHandle);
-                }
-                free(pContext);
+            // Attach the context
+            U_DEVICE_INSTANCE(*pDeviceHandle)->pContext = pContext;
+            // Power on the GNSS chip
+            errorCodeOrHandle = uGnssPwrOn(*pDeviceHandle);
+            if (errorCodeOrHandle != 0) {
+                // If we failed to power on, clean up
+                removeDevice(*pDeviceHandle, false);
             }
         } else {
-            // Failed to setup transport, clear context
             free(pContext);
         }
     }
@@ -181,16 +172,56 @@ int32_t uDevicePrivateGnssAdd(const uDeviceCfg_t *pDevCfg,
                               uDeviceHandle_t *pDeviceHandle)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    int32_t transportHandle;
     const uDeviceCfgUart_t *pCfgUart;
+    const uDeviceCfgI2c_t *pCfgI2c;
     const uDeviceCfgGnss_t *pCfgGnss;
 
     if ((pDevCfg != NULL) && (pDeviceHandle != NULL)) {
-        pCfgUart = &(pDevCfg->transportCfg.cfgUart);
         pCfgGnss = &(pDevCfg->deviceCfg.cfgGnss);
-        // Only UART transport supported at the moment
-        if ((pCfgGnss->version == 0) &&
-            (pDevCfg->transportType == U_DEVICE_TRANSPORT_TYPE_UART)) {
-            errorCode = addDevice(pCfgUart, pCfgGnss, pDeviceHandle);
+        if (pCfgGnss->version == 0) {
+            switch (pDevCfg->transportType) {
+                case U_DEVICE_TRANSPORT_TYPE_UART:
+                    pCfgUart = &(pDevCfg->transportCfg.cfgUart);
+                    // Open a UART with the recommended buffer length
+                    // and default baud rate.
+                    errorCode = uPortUartOpen(pCfgUart->uart,
+                                              pCfgUart->baudRate, NULL,
+                                              U_GNSS_UART_BUFFER_LENGTH_BYTES,
+                                              pCfgUart->pinTxd,
+                                              pCfgUart->pinRxd,
+                                              pCfgUart->pinCts,
+                                              pCfgUart->pinRts);
+                    if (errorCode >= 0) {
+                        transportHandle = errorCode;
+                        errorCode = addDevice(transportHandle,
+                                              pDevCfg->transportType,
+                                              pCfgGnss, pDeviceHandle);
+                        if (errorCode < 0) {
+                            // Clean up on error
+                            uPortUartClose(transportHandle);
+                        }
+                    }
+                    break;
+                case U_DEVICE_TRANSPORT_TYPE_I2C:
+                    pCfgI2c = &(pDevCfg->transportCfg.cfgI2c);
+                    // Open an I2C instance.
+                    errorCode = uPortI2cOpen(pCfgI2c->i2c, pCfgI2c->pinSda,
+                                             pCfgI2c->pinScl, true);
+                    if (errorCode >= 0) {
+                        transportHandle = errorCode;
+                        errorCode = addDevice(transportHandle,
+                                              pDevCfg->transportType,
+                                              pCfgGnss, pDeviceHandle);
+                        if (errorCode < 0) {
+                            // Clean up on error
+                            uPortI2cClose(transportHandle);
+                        }
+                    }
+                    break;
+                default:
+                    break;
+            }
         }
     }
 
@@ -201,7 +232,31 @@ int32_t uDevicePrivateGnssAdd(const uDeviceCfg_t *pDevCfg,
 int32_t uDevicePrivateGnssRemove(uDeviceHandle_t devHandle,
                                  bool powerOff)
 {
-    return removeDevice(devHandle, powerOff);
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    uDeviceGnssInstance_t *pContext = (uDeviceGnssInstance_t *) U_DEVICE_INSTANCE(devHandle)->pContext;
+    int32_t transportHandle;
+    uDeviceTransportType_t transportType;
+
+    if (pContext != NULL) {
+        transportHandle = pContext->transportHandle;
+        transportType = pContext->transportType;
+        errorCode = removeDevice(devHandle, powerOff);
+        if (errorCode == 0) {
+            // Having removed the device, close the transport
+            switch (transportType) {
+                case U_DEVICE_TRANSPORT_TYPE_UART:
+                    uPortUartClose(transportHandle);
+                    break;
+                case U_DEVICE_TRANSPORT_TYPE_I2C:
+                    uPortI2cClose(transportHandle);
+                    break;
+                default:
+                    break;
+            }
+        }
+    }
+
+    return errorCode;
 }
 
 // End of file

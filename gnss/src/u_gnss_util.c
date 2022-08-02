@@ -40,6 +40,7 @@
 #include "u_port_os.h"  // Required by u_gnss_private.h
 #include "u_port_debug.h"
 #include "u_port_uart.h"
+#include "u_port_i2c.h"
 
 #include "u_at_client.h"
 
@@ -88,6 +89,8 @@ int32_t uGnssUtilUbxTransparentSendReceive(uDeviceHandle_t gnssHandle,
 {
     int32_t errorCodeOrResponseLength = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
     uGnssPrivateInstance_t *pInstance;
+    int32_t streamType;
+    int32_t streamHandle = -1;
     int64_t startTime;
     int32_t x = 0;
     int32_t bytesRead = 0;
@@ -108,116 +111,150 @@ int32_t uGnssUtilUbxTransparentSendReceive(uDeviceHandle_t gnssHandle,
              (maxResponseLengthBytes > 0))) {
 
             errorCodeOrResponseLength = (int32_t) U_GNSS_ERROR_TRANSPORT;
+            streamType = uGnssPrivateGetStreamType(pInstance->transportType);
+
             U_PORT_MUTEX_LOCK(pInstance->transportMutex);
 
-            switch (pInstance->transportType) {
-                case U_GNSS_TRANSPORT_UBX_UART:
-                //lint -fallthrough
-                case U_GNSS_TRANSPORT_NMEA_UART:
-                    errorCodeOrResponseLength = uPortUartWrite(pInstance->transportHandle.uart,
-                                                               pCommand,
-                                                               commandLengthBytes);
-                    if (errorCodeOrResponseLength == commandLengthBytes) {
-                        if (pInstance->printUbxMessages) {
-                            uPortLog("U_GNSS: sent command");
-                            uGnssPrivatePrintBuffer(pCommand, commandLengthBytes);
+            switch (streamType) {
+                case U_GNSS_PRIVATE_STREAM_TYPE_UART:
+                    streamHandle = pInstance->transportHandle.uart;
+                    break;
+                case U_GNSS_PRIVATE_STREAM_TYPE_I2C:
+                    streamHandle = pInstance->transportHandle.i2c;
+                    break;
+                default:
+                    break;
+            }
+
+            if (streamHandle >= 0) {
+                // Streaming transport
+                switch (streamType) {
+                    case U_GNSS_PRIVATE_STREAM_TYPE_UART:
+                        errorCodeOrResponseLength = uPortUartWrite(streamHandle,
+                                                                   pCommand,
+                                                                   commandLengthBytes);
+                        break;
+                    case U_GNSS_PRIVATE_STREAM_TYPE_I2C:
+                        errorCodeOrResponseLength = uPortI2cControllerSend(streamHandle, U_GNSS_I2C_ADDRESS,
+                                                                           pCommand, commandLengthBytes, false);
+                        if (errorCodeOrResponseLength == 0) {
+                            errorCodeOrResponseLength = commandLengthBytes;
+                        }
+                        break;
+                    default:
+                        break;
+                }
+                if (errorCodeOrResponseLength == commandLengthBytes) {
+                    if (pInstance->printUbxMessages) {
+                        uPortLog("U_GNSS: sent command");
+                        uGnssPrivatePrintBuffer(pCommand, commandLengthBytes);
+                        uPortLog(".\n");
+                    }
+                    errorCodeOrResponseLength = (int32_t) U_ERROR_COMMON_SUCCESS;
+                    if (pResponse != NULL) {
+                        errorCodeOrResponseLength = (int32_t) U_GNSS_ERROR_TRANSPORT;
+                        startTime = uPortGetTickTimeMs();
+                        // Wait for something to start coming back
+                        while ((bytesRead < (int32_t) maxResponseLengthBytes) &&
+                               ((x = uGnssPrivateStreamGetReceiveSize(streamHandle, streamType)) <= 0) &&
+                               (uPortGetTickTimeMs() < startTime + pInstance->timeoutMs)) {
+                            // Relax a little
+                            uPortTaskBlock(U_GNSS_UTIL_TRANSPARENT_RECEIVE_DELAY_MS);
+                        }
+                        if (x > 0) {
+                            // Got something; continue receiving until nothing arrives for
+                            // U_GNSS_UTIL_TRANSPARENT_RECEIVE_DELAY_MS
+                            while ((bytesRead < (int32_t) maxResponseLengthBytes) &&
+                                   ((x = uGnssPrivateStreamGetReceiveSize(streamHandle, streamType)) > 0) &&
+                                   (uPortGetTickTimeMs() < startTime + pInstance->timeoutMs)) {
+                                if (x > 0) {
+                                    if (x > ((int32_t) maxResponseLengthBytes) - bytesRead) {
+                                        x = maxResponseLengthBytes - bytesRead;
+                                    }
+                                    // Read the response into pResponse
+                                    switch (streamType) {
+                                        case U_GNSS_PRIVATE_STREAM_TYPE_UART:
+                                            x = uPortUartRead(streamHandle, pResponse + bytesRead, x);
+                                            break;
+                                        case U_GNSS_PRIVATE_STREAM_TYPE_I2C:
+                                            x = uPortI2cControllerSendReceive(streamHandle, U_GNSS_I2C_ADDRESS,
+                                                                              NULL, 0, pResponse + bytesRead, x);
+                                            break;
+                                        default:
+                                            break;
+                                    }
+                                    if (x > 0) {
+                                        bytesRead += x;
+                                    }
+                                } else {
+                                    // Relax a little
+                                    uPortTaskBlock(U_GNSS_UTIL_TRANSPARENT_RECEIVE_DELAY_MS);
+                                }
+                            }
+                            if (bytesRead > 0) {
+                                errorCodeOrResponseLength = bytesRead;
+                            }
+                        }
+                        if (pInstance->printUbxMessages &&
+                            (errorCodeOrResponseLength >= 0)) {
+                            uPortLog("U_GNSS: received response");
+                            uGnssPrivatePrintBuffer(pResponse, errorCodeOrResponseLength);
                             uPortLog(".\n");
                         }
-                        errorCodeOrResponseLength = (int32_t) U_ERROR_COMMON_SUCCESS;
-                        if (pResponse != NULL) {
-                            errorCodeOrResponseLength = (int32_t) U_GNSS_ERROR_TRANSPORT;
-                            startTime = uPortGetTickTimeMs();
-                            // Wait for something to start coming back
-                            while (((x = uPortUartGetReceiveSize(pInstance->transportHandle.uart)) <= 0) &&
-                                   (uPortGetTickTimeMs() < startTime + pInstance->timeoutMs)) {
-                                // Relax a little
-                                uPortTaskBlock(U_GNSS_UTIL_TRANSPARENT_RECEIVE_DELAY_MS);
-                            }
-                            if (x > 0) {
-                                // Got something; continue receiving until nothing arrives for
-                                // U_GNSS_UTIL_TRANSPARENT_RECEIVE_DELAY_MS
-                                while (((x = uPortUartGetReceiveSize(pInstance->transportHandle.uart)) > 0) &&
-                                       (uPortGetTickTimeMs() < startTime + pInstance->timeoutMs)) {
-                                    if (x > 0) {
-                                        // Read the response into pResponse
-                                        x = uPortUartRead(pInstance->transportHandle.uart,
-                                                          pResponse + bytesRead,
-                                                          maxResponseLengthBytes - bytesRead);
-                                        if (x > 0) {
-                                            bytesRead += x;
-                                        }
-                                    } else {
-                                        // Relax a little
-                                        uPortTaskBlock(U_GNSS_UTIL_TRANSPARENT_RECEIVE_DELAY_MS);
-                                    }
-                                }
-                                if (bytesRead > 0) {
-                                    errorCodeOrResponseLength = bytesRead;
-                                }
-                            }
-                            if (pInstance->printUbxMessages &&
-                                (errorCodeOrResponseLength >= 0)) {
+                    }
+                }
+            } else {
+                // AT transport
+                errorCodeOrResponseLength = (int32_t) U_ERROR_COMMON_NO_MEMORY;
+                pTmp = NULL;
+                atHandle = pInstance->transportHandle.pAt;
+                // Need a buffer to hex encode the message into
+                // and receive the hex-encoded response into
+                bufferLengthBytes = (commandLengthBytes * 2) + 1; // +1 for terminator
+                if (bufferLengthBytes < (maxResponseLengthBytes * 2) + 1) {
+                    bufferLengthBytes = (maxResponseLengthBytes * 2) + 1;
+                }
+                pBuffer = (char *) malloc(bufferLengthBytes);
+                if (pBuffer != NULL) {
+                    errorCodeOrResponseLength = (int32_t) U_GNSS_ERROR_TRANSPORT;
+                    if (pCommand != NULL) {
+                        x = (int32_t) uBinToHex(pCommand, commandLengthBytes, pBuffer);
+                    }
+                    // Add terminator
+                    *(pBuffer + x) = 0;
+                    uAtClientLock(atHandle);
+                    uAtClientTimeoutSet(atHandle, pInstance->timeoutMs);
+                    // Send the command
+                    uAtClientCommandStart(atHandle, "AT+UGUBX=");
+                    uAtClientWriteString(atHandle, pBuffer, true);
+                    uAtClientCommandStop(atHandle);
+                    // Read the hex-coded response back into pTmp,
+                    // which may be NULL to throw the response away
+                    uAtClientResponseStart(atHandle, "+UGUBX:");
+                    if (pResponse != NULL) {
+                        pTmp = pBuffer;
+                    }
+                    bytesRead = uAtClientReadString(atHandle, pTmp,
+                                                    bufferLengthBytes, false);
+                    uAtClientResponseStop(atHandle);
+                    if ((uAtClientUnlock(atHandle) == 0) && (bytesRead >= 0)) {
+                        if (bytesRead > (int32_t) maxResponseLengthBytes) {
+                            bytesRead = (int32_t) maxResponseLengthBytes;
+                        }
+                        errorCodeOrResponseLength = 0;
+                        if (pTmp != NULL) {
+                            // Decode the hex into pResponse
+                            errorCodeOrResponseLength = (int32_t) uHexToBin(pTmp, bytesRead, pResponse);
+                            if (pInstance->printUbxMessages) {
                                 uPortLog("U_GNSS: received response");
                                 uGnssPrivatePrintBuffer(pResponse, errorCodeOrResponseLength);
                                 uPortLog(".\n");
                             }
                         }
                     }
-                    break;
-                case U_GNSS_TRANSPORT_UBX_AT:
-                    errorCodeOrResponseLength = (int32_t) U_ERROR_COMMON_NO_MEMORY;
-                    pTmp = NULL;
-                    atHandle = pInstance->transportHandle.pAt;
-                    // Need a buffer to hex encode the message into
-                    // and receive the hex-encoded response into
-                    bufferLengthBytes = (commandLengthBytes * 2) + 1; // +1 for terminator
-                    if (bufferLengthBytes < (maxResponseLengthBytes * 2) + 1) {
-                        bufferLengthBytes = (maxResponseLengthBytes * 2) + 1;
-                    }
-                    pBuffer = (char *) malloc(bufferLengthBytes);
-                    if (pBuffer != NULL) {
-                        errorCodeOrResponseLength = (int32_t) U_GNSS_ERROR_TRANSPORT;
-                        if (pCommand != NULL) {
-                            x = (int32_t) uBinToHex(pCommand, commandLengthBytes, pBuffer);
-                        }
-                        // Add terminator
-                        *(pBuffer + x) = 0;
-                        uAtClientLock(atHandle);
-                        uAtClientTimeoutSet(atHandle, pInstance->timeoutMs);
-                        // Send the command
-                        uAtClientCommandStart(atHandle, "AT+UGUBX=");
-                        uAtClientWriteString(atHandle, pBuffer, true);
-                        uAtClientCommandStop(atHandle);
-                        // Read the hex-coded response back into pTmp,
-                        // which may be NULL to throw the response away
-                        uAtClientResponseStart(atHandle, "+UGUBX:");
-                        if (pResponse != NULL) {
-                            pTmp = pBuffer;
-                        }
-                        bytesRead = uAtClientReadString(atHandle, pTmp,
-                                                        bufferLengthBytes, false);
-                        uAtClientResponseStop(atHandle);
-                        if ((uAtClientUnlock(atHandle) == 0) && (bytesRead >= 0)) {
-                            if (bytesRead > (int32_t) maxResponseLengthBytes) {
-                                bytesRead = (int32_t) maxResponseLengthBytes;
-                            }
-                            errorCodeOrResponseLength = 0;
-                            if (pTmp != NULL) {
-                                // Decode the hex into pResponse
-                                errorCodeOrResponseLength = (int32_t) uHexToBin(pTmp, bytesRead, pResponse);
-                                if (pInstance->printUbxMessages) {
-                                    uPortLog("U_GNSS: received response");
-                                    uGnssPrivatePrintBuffer(pResponse, errorCodeOrResponseLength);
-                                    uPortLog(".\n");
-                                }
-                            }
-                        }
-                        // Free memory
-                        free(pBuffer);
-                    }
-                    break;
-                default:
-                    break;
+                    // Free memory
+                    free(pBuffer);
+                }
             }
 
             U_PORT_MUTEX_UNLOCK(pInstance->transportMutex);

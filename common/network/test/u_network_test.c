@@ -54,6 +54,7 @@
 #include "u_port.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"
+#include "u_port_i2c.h"
 
 #ifdef U_CFG_TEST_CELL_MODULE_TYPE
 # include "u_cell_module_type.h"
@@ -836,6 +837,8 @@ U_PORT_TEST_FUNCTION("[network]", "networkLoc")
     heapUsed = uPortGetHeapFree();
 
     U_PORT_TEST_ASSERT(uPortInit() == 0);
+    // Don't check this for success as not all platforms support I2C
+    uPortI2cInit();
     U_PORT_TEST_ASSERT(uDeviceInit() == 0);
 
     // Get a list of all things
@@ -925,6 +928,7 @@ U_PORT_TEST_FUNCTION("[network]", "networkLoc")
     uNetworkTestListFree();
 
     uDeviceDeinit();
+    uPortI2cDeinit();
     uPortDeinit();
 
 #ifndef __XTENSA__
@@ -1402,6 +1406,7 @@ U_PORT_TEST_FUNCTION("[network]", "networkCleanUp")
         U_PORT_TEST_ASSERT(y >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
     }
 
+    uPortI2cDeinit();
     uPortDeinit();
 
     y = uPortGetHeapMinFree();

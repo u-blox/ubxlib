@@ -221,7 +221,7 @@ static const uNetworkCfgBle_t gNetworkCfgBle = {
  */
 static const uDeviceCfg_t gDeviceCfgGnss = {
     // Deliberately don't set version to test that the compiler zeroes the field
-#if defined(U_CFG_TEST_GNSS_MODULE_TYPE) && !defined(U_CFG_TEST_GNSS_OVER_AT)
+#if defined(U_CFG_TEST_GNSS_MODULE_TYPE) && ((U_CFG_APP_GNSS_UART >= 0) || (U_CFG_APP_GNSS_I2C >= 0))
     .deviceType = U_DEVICE_TYPE_GNSS,
     .deviceCfg = {
         .cfgGnss = {
@@ -231,6 +231,16 @@ static const uDeviceCfg_t gDeviceCfgGnss = {
             .includeNmea = true
         }
     },
+# if (U_CFG_APP_GNSS_I2C >= 0)
+    .transportType = U_DEVICE_TRANSPORT_TYPE_I2C,
+    .transportCfg = {
+        .cfgI2c = {
+            .i2c = U_CFG_APP_GNSS_I2C,
+            .pinSda = U_CFG_APP_PIN_GNSS_SDA,
+            .pinScl = U_CFG_APP_PIN_GNSS_SCL
+        }
+    }
+# else
     .transportType = U_DEVICE_TRANSPORT_TYPE_UART,
     .transportCfg = {
         .cfgUart = {
@@ -242,6 +252,7 @@ static const uDeviceCfg_t gDeviceCfgGnss = {
             .pinRts = U_CFG_APP_PIN_GNSS_RTS
         }
     }
+# endif
 #else
     .deviceType = U_DEVICE_TYPE_NONE
 #endif
@@ -280,7 +291,7 @@ static uNetworkTestDevice_t gUNetworkTest[] = {
         .network =
         {
             {.type = U_NETWORK_TYPE_CELL, .pCfg = (const void *) &gNetworkCfgCell},
-#ifdef U_CFG_TEST_GNSS_OVER_AT
+#if defined(U_CFG_TEST_GNSS_MODULE_TYPE) && (U_CFG_APP_GNSS_UART < 0) && (U_CFG_APP_GNSS_I2C < 0)
             {.type = U_NETWORK_TYPE_GNSS, .pCfg = (const void *) &gNetworkCfgGnss}
 #else
             {.type = U_NETWORK_TYPE_NONE, .pCfg = NULL}

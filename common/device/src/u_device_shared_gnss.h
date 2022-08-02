@@ -45,6 +45,7 @@ extern "C" {
  */
 typedef struct {
     int32_t transportHandle;
+    uDeviceTransportType_t transportType;
 } uDeviceGnssInstance_t;
 
 #ifdef __cplusplus

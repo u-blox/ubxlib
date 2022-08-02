@@ -95,14 +95,14 @@ static int32_t gFixMode = -1;
 */
 static int32_t gUtcStandard = -1;
 
-/** Array of UTC standard values to check.
+/** Array of UTC standard values to check (ones that are supported by
+ * all module types).
  */
 static const uGnssUtcStandard_t gUtcStandardValues[] = {U_GNSS_UTC_STANDARD_AUTOMATIC,
                                                         U_GNSS_UTC_STANDARD_USNO,
                                                         U_GNSS_UTC_STANDARD_GALILEO,
                                                         U_GNSS_UTC_STANDARD_GLONASS,
-                                                        U_GNSS_UTC_STANDARD_NTSC,
-                                                        U_GNSS_UTC_STANDARD_NPLI
+                                                        U_GNSS_UTC_STANDARD_NTSC
                                                        };
 
 /* ----------------------------------------------------------------
@@ -130,7 +130,8 @@ U_PORT_TEST_FUNCTION("[gnssCfg]", "gnssCfgBasic")
     heapUsed = uPortGetHeapFree();
 
     // Repeat for all transport types
-    iterations = uGnssTestPrivateTransportTypesSet(transportTypes, U_CFG_APP_GNSS_UART);
+    iterations = uGnssTestPrivateTransportTypesSet(transportTypes, U_CFG_APP_GNSS_UART,
+                                                   U_CFG_APP_GNSS_I2C);
     for (size_t x = 0; x < iterations; x++) {
         // Do the standard preamble
         U_TEST_PRINT_LINE("testing on transport %s...",

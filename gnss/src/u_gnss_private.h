@@ -96,6 +96,15 @@ typedef struct {
                                   characteristics of this module. */
 } uGnssPrivateModule_t;
 
+/** The stream types.
+ */
+typedef enum {
+    U_GNSS_PRIVATE_STREAM_TYPE_NONE,
+    U_GNSS_PRIVATE_STREAM_TYPE_UART,
+    U_GNSS_PRIVATE_STREAM_TYPE_I2C,
+    U_GNSS_PRIVATE_STREAM_TYPE_MAX_NUM
+} uGnssPrivateStreamType_t;
+
 /** Definition of a GNSS instance.
  * Note: a pointer to this structure is passed to the asynchronous
  * "get position" function (posGetTask()) which does NOT lock the
@@ -181,7 +190,26 @@ const uGnssPrivateModule_t *pUGnssPrivateGetModule(uDeviceHandle_t gnssHandle);
 void uGnssPrivatePrintBuffer(const char *pBuffer,
                              size_t bufferLengthBytes);
 
-/** Send a ubx format message over the UART (do not wait for the response).
+/** Get the stream type from a given GNSS transport type.
+ *
+ * @param transportType the GNSS transport type.
+ * @return              the stream type or negative error
+ *                      code if transportType is not a streaming transport type.
+ */
+int32_t uGnssPrivateGetStreamType(uGnssTransportType_t transportType);
+
+/** Get the number of bytes waiting for us from the GNSS chip when using
+ * a streaming transport (e.g. UART or I2C).
+ *
+ * @param streamHandle  the handle of the streaming transport.
+ * @param streamType    the streaming transport type.
+ * @return              the number of bytes available to be received,
+ *                      else negative error code.
+ */
+int32_t uGnssPrivateStreamGetReceiveSize(int32_t streamHandle,
+                                         uGnssPrivateStreamType_t streamType);
+
+/** Send a ubx format message over UART or I2C (do not wait for the response).
  * Note: gUGnssPrivateMutex should be locked before this is called.
  *
  * @param pInstance                  a pointer to the GNSS instance, cannot
@@ -196,14 +224,14 @@ void uGnssPrivatePrintBuffer(const char *pBuffer,
  *                                   ubx protocol coding overhead, else negative
  *                                   error code.
  */
-int32_t uGnssPrivateSendOnlyUartUbxMessage(const uGnssPrivateInstance_t *pInstance,
-                                           int32_t messageClass,
-                                           int32_t messageId,
-                                           const char *pMessageBody,
-                                           size_t messageBodyLengthBytes);
+int32_t uGnssPrivateSendOnlyStreamUbxMessage(const uGnssPrivateInstance_t *pInstance,
+                                             int32_t messageClass,
+                                             int32_t messageId,
+                                             const char *pMessageBody,
+                                             size_t messageBodyLengthBytes);
 
-/** Send a ubx format message over the UART that does not have an
- * acknowledgement and check that it was accepted by the GNSS chip
+/** Send a ubx format message that does not have an acknowledgement
+ * over a stream and check that it was accepted by the GNSS chip
  * by querying the GNSS chip's message count.
  * Note: gUGnssPrivateMutex should be locked before this is called.
  *
@@ -219,14 +247,14 @@ int32_t uGnssPrivateSendOnlyUartUbxMessage(const uGnssPrivateInstance_t *pInstan
  *                                   ubx protocol coding overhead, else negative
  *                                   error code.
  */
-int32_t uGnssPrivateSendOnlyCheckUartUbxMessage(const uGnssPrivateInstance_t *pInstance,
-                                                int32_t messageClass,
-                                                int32_t messageId,
-                                                const char *pMessageBody,
-                                                size_t messageBodyLengthBytes);
+int32_t uGnssPrivateSendOnlyCheckStreamUbxMessage(const uGnssPrivateInstance_t *pInstance,
+                                                  int32_t messageClass,
+                                                  int32_t messageId,
+                                                  const char *pMessageBody,
+                                                  size_t messageBodyLengthBytes);
 
 /** Wait for a ubx format message with the given message class and ID to
- * arrive on a UART.
+ * arrive on a UART or I2C.
  * Note: gUGnssPrivateMutex should be locked before this is called.
  *
  * @param pInstance             a pointer to the GNSS instance, cannot
@@ -240,11 +268,11 @@ int32_t uGnssPrivateSendOnlyCheckUartUbxMessage(const uGnssPrivateInstance_t *pI
  * @return                      the number of bytes copied into pMessageBody,
  *                              else negative error code.
  */
-int32_t uGnssPrivateReceiveOnlyUartUbxMessage(const uGnssPrivateInstance_t *pInstance,
-                                              int32_t messageClass,
-                                              int32_t messageId,
-                                              char *pMessageBody,
-                                              size_t maxBodyLengthBytes);
+int32_t uGnssPrivateReceiveOnlyStreamUbxMessage(const uGnssPrivateInstance_t *pInstance,
+                                                int32_t messageClass,
+                                                int32_t messageId,
+                                                char *pMessageBody,
+                                                size_t maxBodyLengthBytes);
 
 /** Send a ubx format message to the GNSS module and, optionally, receive
  * the response.  If the message only illicites a simple Ack/Nack from the
