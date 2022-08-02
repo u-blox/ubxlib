@@ -359,13 +359,6 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosPos")
         U_PORT_TEST_ASSERT(gErrorCode == 0);
         U_TEST_PRINT_LINE("position establishment took %d second(s).",
                           (int32_t) (uPortGetTickTimeMs() - startTime) / 1000);
-        U_PORT_TEST_ASSERT(gLatitudeX1e7 > INT_MIN);
-        U_PORT_TEST_ASSERT(gLongitudeX1e7 > INT_MIN);
-        // Don't test altitude as we may only have a 2D fix
-        U_PORT_TEST_ASSERT(gRadiusMillimetres > INT_MIN);
-        U_PORT_TEST_ASSERT(gSpeedMillimetresPerSecond > INT_MIN);
-        U_PORT_TEST_ASSERT(gSvs > 0);
-        U_PORT_TEST_ASSERT(gTimeUtc > 0);
 
         prefix[0] = latLongToBits(gLatitudeX1e7, &(whole[0]), &(fraction[0]));
         prefix[1] = latLongToBits(gLongitudeX1e7, &(whole[1]), &(fraction[1]));
@@ -376,6 +369,14 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosPos")
                           gSpeedMillimetresPerSecond / 1000, gSvs, (int32_t) gTimeUtc);
         U_TEST_PRINT_LINE("paste this into a browser https://maps.google.com/?q=%c%d.%07d,%c%d.%07d",
                           prefix[0], whole[0], fraction[0], prefix[1], whole[1], fraction[1]);
+
+        U_PORT_TEST_ASSERT(gLatitudeX1e7 > INT_MIN);
+        U_PORT_TEST_ASSERT(gLongitudeX1e7 > INT_MIN);
+        // Don't test altitude as we may only have a 2D fix
+        U_PORT_TEST_ASSERT(gRadiusMillimetres > INT_MIN);
+        U_PORT_TEST_ASSERT(gSpeedMillimetresPerSecond > INT_MIN);
+        U_PORT_TEST_ASSERT(gSvs > 0);
+        U_PORT_TEST_ASSERT(gTimeUtc > 0);
 
         // Do the standard postamble, leaving the module on for the next
         // test to speed things up
