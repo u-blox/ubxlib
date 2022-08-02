@@ -1343,11 +1343,12 @@ static int32_t setAuthenticationMode(const uCellPrivateInstance_t *pInstance,
     uAtClientCommandStart(atHandle, "AT+UAUTHREQ=");
     uAtClientWriteInt(atHandle, contextId);
     uAtClientWriteInt(atHandle, 3); // Automatic choice of authentication type
-    if (!U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType)) {
+    if (!U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType) &&
+        (pInstance->pModule->moduleType != U_CELL_MODULE_TYPE_LARA_R6)) {
         uAtClientWriteString(atHandle, pUsername, true);
         uAtClientWriteString(atHandle, pPassword, true);
     } else {
-        // For SARA-R4 modules the parameters are reversed
+        // For SARA-R4 and LARA-R6 modules the parameters are reversed
         uAtClientWriteString(atHandle, pPassword, true);
         uAtClientWriteString(atHandle, pUsername, true);
     }
