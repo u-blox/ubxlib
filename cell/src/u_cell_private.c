@@ -265,7 +265,7 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_KEEP_ALIVE)                     |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SECURITY)                       |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_FILE_SYSTEM_TAG)                     |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_EDRX)                                |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_DTR_POWER_SAVING)                    |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTTSN) /* features */
         )
     }

@@ -68,7 +68,9 @@
  * "AT+UPSV": this command permits the module to enter "32 kHz sleep"
  * after a given amount of inactivity.  This code enables AT+UPSV power
  * saving automatically with a timer of 6 seconds and wakes the module
- * up again as required by the application.  You need do nothing.
+ * up again as required by the application.  You need do nothing unless
+ * you have a LARA-R6 module, which requires the DTR pin to be employed,
+ * see uCellPwrSetDtrPowerSavingPin().
  *
  * "E-DRX": this is 3GPP-defined and forms an agreement with the network
  * that the module will be out of contact for short periods (think 10's
@@ -406,16 +408,18 @@ int32_t uCellPwrResetHard(uDeviceHandle_t cellHandle, int32_t pinReset);
 
 /** Set the DTR power-saving pin.  "UPSV" or UART power saving is
  * normally handled automatically, using activity on the UART transmit
- * data line to wake-up the module but there is a specific case with
- * the SARA-R5 module that needs to be handled differently: when
- * the UART flow control lines are connected and UART power saving
- * is entered the CTS line of the SARA-R5 module floats high and this
- * prevents "AT" being sent to the module to wake it up again. This
- * can be avoided by temporarily suspending CTS operation through
- * the uPortUartCtsSuspend() API but there are some RTOSs (e.g.
- * Zephyr) that do not support temporary suspension of CTS.  For
- * these cases, and only for SARA-R5 modules, the DTR pin can
- * be used to control UART power saving instead by calling this function.
+ * data line to wake-up the module, however this is not supported on
+ * LARA-R6.
+ * There is also a specific case with the SARA-R5 module that
+ * needs to be handled differently: when the UART flow control lines
+ * are connected and UART power saving is entered the CTS line of the
+ * SARA-R5 module floats high and this prevents "AT" being sent to the
+ * module to wake it up again. This can be avoided by temporarily
+ * suspending CTS operation through the uPortUartCtsSuspend() API but
+ * there are some RTOSs (e.g. Zephyr) that do not support temporary
+ * suspension of CTS.  For these cases, for SARA-R5 modules, the DTR pin
+ * can be used to control UART power saving instead by calling this
+ * function.
  * This must be called BEFORE the module is first powered-on, e.g.
  * just after uCellAdd() or, in the common network API, by defining
  * the structure member pinDtrPowerSaving to be the MCU pin that is

@@ -1316,6 +1316,7 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSavingEDrx")
 {
     int32_t heapUsed;
     int32_t heapClibLossOffset = (int32_t) gSystemHeapLost;
+    const uCellPrivateModule_t *pModule;
     uDeviceHandle_t cellHandle;
     int32_t x;
     uCellNetRat_t rat;
@@ -1345,162 +1346,172 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSavingEDrx")
                                                 &gHandles, true) == 0);
     cellHandle = gHandles.cellHandle;
 
-    // Also in case a previous test failed
-    if (gSockHandle >= 0) {
-        disconnectFromEchoServer(cellHandle, &gSockHandle);
-    }
+    // Get the private module data as we need it for testing
+    pModule = pUCellPrivateGetModule(gHandles.cellHandle);
+    U_PORT_TEST_ASSERT(pModule != NULL);
+    //lint -esym(613, pModule) Suppress possible use of NULL pointer
+    // for pModule from now on
 
-    // Set a callback for when E-DRX parameters are changed
-    U_PORT_TEST_ASSERT(uCellPwrSetEDrxCallback(cellHandle, eDrxCallback,
-                                               cellHandle) == 0);
+    if (U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_EDRX)) {
+        U_TEST_PRINT_LINE("testing EDRX...");
 
-    // Use a callback to track our connectivity state, if we can
-    //lint -e(1773) Suppress complaints about
-    // passing the pointer as non-volatile
-    if (uCellNetSetBaseStationConnectionStatusCallback(cellHandle,
-                                                       connectCallback,
-                                                       (void *) &connectionCallbackParameter) == 0) {
-        connectionCallbackParameter = 0;
-    }
-
-    // Make a cellular connection
-    U_PORT_TEST_ASSERT(connectNetwork(cellHandle) == 0);
-
-    // Now we can tell which RAT we're on
-    rat = uCellNetGetActiveRat(cellHandle);
-
-    // Connect to an echo server so that we can exchange data during the test
-    gSockHandle = connectToEchoServer(cellHandle, &echoServerAddress);
-    U_PORT_TEST_ASSERT(gSockHandle >= 0);
-
-    // Read out the original E-DRX settings
-    x = uCellPwrGetRequestedEDrx(cellHandle, rat,
-                                 &onNotOffEDrxSaved,
-                                 &eDrxSecondsSaved,
-                                 &pagingWindowSecondsSaved);
-    if (x == 0) {
-        // Also read out the original 3GPP power saving settings and switch
-        // if off, as if 3GPP power saving is active it will mess us up
-        uCellPwrGetRequested3gppPowerSaving(cellHandle,
-                                            &onNotOff3gppSleepSaved,
-                                            &activeTimeSecondsSaved,
-                                            &periodicWakeupSecondsSaved);
-        if (onNotOff3gppSleepSaved) {
-            U_PORT_TEST_ASSERT(uCellPwrSetRequested3gppPowerSaving(cellHandle, rat,
-                                                                   false, -1, -1) == 0);
-            if (uCellPwrRebootIsRequired(cellHandle)) {
-                // If necessary reboot and remake the cellular connection
-                U_PORT_TEST_ASSERT(uCellPwrReboot(cellHandle, NULL) == 0);
-                U_PORT_TEST_ASSERT(connectNetwork(cellHandle) == 0);
-                gSockHandle = connectToEchoServer(cellHandle, &echoServerAddress);
-            }
-        }
-
-        // First, try to set the E-DRX settings to what they are already
-        // as a check to see if the module we're using permits E-DRX
-        // to be set while it is connected
-        x = uCellPwrSetRequestedEDrx(cellHandle, rat, onNotOffEDrxSaved,
-                                     eDrxSecondsSaved, pagingWindowSecondsSaved);
-        if (x == (int32_t) U_CELL_ERROR_CONNECTED) {
-            // Setting E-DRX while connected is not supported, disconnect
-            // from the network
-            U_TEST_PRINT_LINE("setting E-DRX while connected to the"
-                              " network is not supported by this module.");
-            U_PORT_TEST_ASSERT(uCellNetDisconnect(cellHandle, NULL) == 0);
-            if (connectionCallbackParameter >= 0) {
-                uCellNetSetBaseStationConnectionStatusCallback(cellHandle, NULL, NULL);
-                connectionCallbackParameter = -1;
-            }
-        } else {
-            U_PORT_TEST_ASSERT(x == 0);
-        }
-
-        // Start with E-DRX off
-        onNotOff = true;
-        eDrxSeconds = U_CELL_PWR_TEST_EDRX_SECONDS;
-        // Can't reliably set paging window as some modules have it fixed
-        pagingWindowSeconds = -1;
-        rebooted = setEdrx(cellHandle, &gSockHandle, &echoServerAddress,
-                           rat, onNotOff, U_CELL_PWR_TEST_EDRX_SECONDS,
-                           U_CELL_PWR_TEST_PAGING_WINDOW_SECONDS,
-                           &onNotOff, &eDrxSeconds, &pagingWindowSeconds);
-
+        // Also in case a previous test failed
         if (gSockHandle >= 0) {
-            // Send something to prove we're connected
-            U_PORT_TEST_ASSERT(echoData(cellHandle, gSockHandle) == 0);
+            disconnectFromEchoServer(cellHandle, &gSockHandle);
         }
 
-        U_TEST_PRINT_LINE("waiting for idle...",
-                          U_CELL_PWR_TEST_RRC_DISCONNECT_SECONDS);
-        // Wait us to return to idle
-        if (connectionCallbackParameter >= 0) {
-            for (x = 0; (connectionCallbackParameter > 0) &&
-                 (x < U_CELL_PWR_TEST_RRC_DISCONNECT_SECONDS); x++) {
-                uPortTaskBlock(1000);
-            }
-        } else {
-            // No callback, just have to wait
-            uPortTaskBlock(U_CELL_PWR_TEST_RRC_DISCONNECT_SECONDS * 1000);
+        // Set a callback for when E-DRX parameters are changed
+        U_PORT_TEST_ASSERT(uCellPwrSetEDrxCallback(cellHandle, eDrxCallback,
+                                                   cellHandle) == 0);
+
+        // Use a callback to track our connectivity state, if we can
+        //lint -e(1773) Suppress complaints about
+        // passing the pointer as non-volatile
+        if (uCellNetSetBaseStationConnectionStatusCallback(cellHandle,
+                                                           connectCallback,
+                                                           (void *) &connectionCallbackParameter) == 0) {
+            connectionCallbackParameter = 0;
         }
-        U_TEST_PRINT_LINE("waiting up to %d second(s) so that we likely"
-                          " enter E-DRX...", pagingWindowSeconds +
-                          U_CELL_PWR_TEST_EDRX_MARGIN_SECONDS);
-        uPortTaskBlock((pagingWindowSeconds + U_CELL_PWR_TEST_EDRX_MARGIN_SECONDS) * 1000);
 
-        // Send something again to prove that we can still connect
-        U_PORT_TEST_ASSERT(echoData(cellHandle, gSockHandle) == 0);
+        // Make a cellular connection
+        U_PORT_TEST_ASSERT(connectNetwork(cellHandle) == 0);
 
-        // Test getting the E-DRX parameters with all NULL variables
-        U_PORT_TEST_ASSERT(uCellPwrGetRequestedEDrx(cellHandle, rat,
-                                                    NULL, NULL, NULL) == 0);
+        // Now we can tell which RAT we're on
+        rat = uCellNetGetActiveRat(cellHandle);
 
-        if (!rebooted) {
-            // Spot-check some E-DRX values, but only if we don't have to
-            // reboot between each one as then the test takes ages
-            // TODO NB1
-            if (rat == U_CELL_NET_RAT_CATM1) {
-                pTestEdrx = gEDrxSecondsCatM1;
-                testEdrxLength = sizeof(gEDrxSecondsCatM1) / sizeof(gEDrxSecondsCatM1[0]);
-            }
-            if ((pTestEdrx != NULL) && (testEdrxLength > 0)) {
-                for (size_t y = 0; y < testEdrxLength; y++) {
-                    onNotOff = true;
-                    eDrxSeconds = (pTestEdrx + y)->eDrxSecondsExpected;
-                    pagingWindowSeconds = -1;
-                    setEdrx(cellHandle,  &gSockHandle, &echoServerAddress, rat,
-                            onNotOff, (pTestEdrx + y)->eDrxSecondsRequested, -1,
-                            &onNotOff, &eDrxSeconds, &pagingWindowSeconds);
+        // Connect to an echo server so that we can exchange data during the test
+        gSockHandle = connectToEchoServer(cellHandle, &echoServerAddress);
+        U_PORT_TEST_ASSERT(gSockHandle >= 0);
+
+        // Read out the original E-DRX settings
+        x = uCellPwrGetRequestedEDrx(cellHandle, rat,
+                                     &onNotOffEDrxSaved,
+                                     &eDrxSecondsSaved,
+                                     &pagingWindowSecondsSaved);
+        if (x == 0) {
+            // Also read out the original 3GPP power saving settings and switch
+            // if off, as if 3GPP power saving is active it will mess us up
+            uCellPwrGetRequested3gppPowerSaving(cellHandle,
+                                                &onNotOff3gppSleepSaved,
+                                                &activeTimeSecondsSaved,
+                                                &periodicWakeupSecondsSaved);
+            if (onNotOff3gppSleepSaved) {
+                U_PORT_TEST_ASSERT(uCellPwrSetRequested3gppPowerSaving(cellHandle, rat,
+                                                                       false, -1, -1) == 0);
+                if (uCellPwrRebootIsRequired(cellHandle)) {
+                    // If necessary reboot and remake the cellular connection
+                    U_PORT_TEST_ASSERT(uCellPwrReboot(cellHandle, NULL) == 0);
+                    U_PORT_TEST_ASSERT(connectNetwork(cellHandle) == 0);
+                    gSockHandle = connectToEchoServer(cellHandle, &echoServerAddress);
                 }
             }
+
+            // First, try to set the E-DRX settings to what they are already
+            // as a check to see if the module we're using permits E-DRX
+            // to be set while it is connected
+            x = uCellPwrSetRequestedEDrx(cellHandle, rat, onNotOffEDrxSaved,
+                                         eDrxSecondsSaved, pagingWindowSecondsSaved);
+            if (x == (int32_t) U_CELL_ERROR_CONNECTED) {
+                // Setting E-DRX while connected is not supported, disconnect
+                // from the network
+                U_TEST_PRINT_LINE("setting E-DRX while connected to the"
+                                  " network is not supported by this module.");
+                U_PORT_TEST_ASSERT(uCellNetDisconnect(cellHandle, NULL) == 0);
+                if (connectionCallbackParameter >= 0) {
+                    uCellNetSetBaseStationConnectionStatusCallback(cellHandle, NULL, NULL);
+                    connectionCallbackParameter = -1;
+                }
+            } else {
+                U_PORT_TEST_ASSERT(x == 0);
+            }
+
+            // Start with E-DRX off
+            onNotOff = true;
+            eDrxSeconds = U_CELL_PWR_TEST_EDRX_SECONDS;
+            // Can't reliably set paging window as some modules have it fixed
+            pagingWindowSeconds = -1;
+            rebooted = setEdrx(cellHandle, &gSockHandle, &echoServerAddress,
+                               rat, onNotOff, U_CELL_PWR_TEST_EDRX_SECONDS,
+                               U_CELL_PWR_TEST_PAGING_WINDOW_SECONDS,
+                               &onNotOff, &eDrxSeconds, &pagingWindowSeconds);
+
+            if (gSockHandle >= 0) {
+                // Send something to prove we're connected
+                U_PORT_TEST_ASSERT(echoData(cellHandle, gSockHandle) == 0);
+            }
+
+            U_TEST_PRINT_LINE("waiting for idle...",
+                              U_CELL_PWR_TEST_RRC_DISCONNECT_SECONDS);
+            // Wait us to return to idle
+            if (connectionCallbackParameter >= 0) {
+                for (x = 0; (connectionCallbackParameter > 0) &&
+                     (x < U_CELL_PWR_TEST_RRC_DISCONNECT_SECONDS); x++) {
+                    uPortTaskBlock(1000);
+                }
+            } else {
+                // No callback, just have to wait
+                uPortTaskBlock(U_CELL_PWR_TEST_RRC_DISCONNECT_SECONDS * 1000);
+            }
+            U_TEST_PRINT_LINE("waiting up to %d second(s) so that we likely"
+                              " enter E-DRX...", pagingWindowSeconds +
+                              U_CELL_PWR_TEST_EDRX_MARGIN_SECONDS);
+            uPortTaskBlock((pagingWindowSeconds + U_CELL_PWR_TEST_EDRX_MARGIN_SECONDS) * 1000);
+
+            // Send something again to prove that we can still connect
+            U_PORT_TEST_ASSERT(echoData(cellHandle, gSockHandle) == 0);
+
+            // Test getting the E-DRX parameters with all NULL variables
+            U_PORT_TEST_ASSERT(uCellPwrGetRequestedEDrx(cellHandle, rat,
+                                                        NULL, NULL, NULL) == 0);
+
+            if (!rebooted) {
+                // Spot-check some E-DRX values, but only if we don't have to
+                // reboot between each one as then the test takes ages
+                // TODO NB1
+                if (rat == U_CELL_NET_RAT_CATM1) {
+                    pTestEdrx = gEDrxSecondsCatM1;
+                    testEdrxLength = sizeof(gEDrxSecondsCatM1) / sizeof(gEDrxSecondsCatM1[0]);
+                }
+                if ((pTestEdrx != NULL) && (testEdrxLength > 0)) {
+                    for (size_t y = 0; y < testEdrxLength; y++) {
+                        onNotOff = true;
+                        eDrxSeconds = (pTestEdrx + y)->eDrxSecondsExpected;
+                        pagingWindowSeconds = -1;
+                        setEdrx(cellHandle,  &gSockHandle, &echoServerAddress, rat,
+                                onNotOff, (pTestEdrx + y)->eDrxSecondsRequested, -1,
+                                &onNotOff, &eDrxSeconds, &pagingWindowSeconds);
+                    }
+                }
+            }
+
+            // Send something to prove we're still connected
+            U_PORT_TEST_ASSERT(echoData(cellHandle, gSockHandle) == 0);
+            // Disconnect from the echo server and then the network
+            disconnectFromEchoServer(cellHandle, &gSockHandle);
+            U_PORT_TEST_ASSERT(uCellNetDisconnect(cellHandle, NULL) == 0);
+
+            // Put the original saved settings back again
+            U_PORT_TEST_ASSERT(uCellPwrSetRequestedEDrx(cellHandle, rat,
+                                                        onNotOffEDrxSaved,
+                                                        eDrxSecondsSaved,
+                                                        pagingWindowSecondsSaved) == 0);
+            if (onNotOff3gppSleepSaved) {
+                U_PORT_TEST_ASSERT(uCellPwrSetRequested3gppPowerSaving(cellHandle, rat,
+                                                                       onNotOff3gppSleepSaved,
+                                                                       activeTimeSecondsSaved,
+                                                                       periodicWakeupSecondsSaved) == 0);
+            }
+            if (uCellPwrRebootIsRequired(cellHandle)) {
+                U_PORT_TEST_ASSERT(uCellPwrReboot(cellHandle, NULL) == 0);
+            }
+        } else {
+            U_TEST_PRINT_LINE("looks like E-DRX is not supported"
+                              " (uCellPwrGetRequestedEDrx() returned %d).", x);
+            U_PORT_TEST_ASSERT(x == U_ERROR_COMMON_NOT_SUPPORTED);
         }
 
-        // Send something to prove we're still connected
-        U_PORT_TEST_ASSERT(echoData(cellHandle, gSockHandle) == 0);
-        // Disconnect from the echo server and then the network
-        disconnectFromEchoServer(cellHandle, &gSockHandle);
-        U_PORT_TEST_ASSERT(uCellNetDisconnect(cellHandle, NULL) == 0);
-
-        // Put the original saved settings back again
-        U_PORT_TEST_ASSERT(uCellPwrSetRequestedEDrx(cellHandle, rat,
-                                                    onNotOffEDrxSaved,
-                                                    eDrxSecondsSaved,
-                                                    pagingWindowSecondsSaved) == 0);
-        if (onNotOff3gppSleepSaved) {
-            U_PORT_TEST_ASSERT(uCellPwrSetRequested3gppPowerSaving(cellHandle, rat,
-                                                                   onNotOff3gppSleepSaved,
-                                                                   activeTimeSecondsSaved,
-                                                                   periodicWakeupSecondsSaved) == 0);
-        }
-        if (uCellPwrRebootIsRequired(cellHandle)) {
-            U_PORT_TEST_ASSERT(uCellPwrReboot(cellHandle, NULL) == 0);
-        }
-    } else {
-        U_TEST_PRINT_LINE("looks like E-DRX is not supported"
-                          " (uCellPwrGetRequestedEDrx() returned %d).", x);
-        U_PORT_TEST_ASSERT(x == U_ERROR_COMMON_NOT_SUPPORTED);
+        // Don't remove the callbacks this time
     }
-
-    // Don't remove the callbacks this time
 
     // Do the standard postamble, leaving the module on for the next
     // test to speed things up
