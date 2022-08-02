@@ -421,7 +421,7 @@ static void powerSaving3gppCallback(uDeviceHandle_t cellHandle, bool onNotOff,
                                     int32_t periodicWakeupSeconds,
                                     void *pParameter)
 {
-    if (cellHandle != *((int32_t *) pParameter)) {
+    if (cellHandle != *((uDeviceHandle_t *) pParameter)) {
         gCallbackErrorCode = 2;
     }
 
