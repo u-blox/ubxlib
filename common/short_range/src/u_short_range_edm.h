@@ -131,9 +131,11 @@ void uShortRangeEdmResetParser(void);
  *             An event is created when the last character in a EDM packet
  *             is parsed and the packet is valid.
  *
+ * @param[out] pMemAvailable Pointer to a boolean that indicates if memory was allocated successfully.
+ *
  * @return True when input character c is consumed else false.
  */
-bool uShortRangeEdmParse(char c, uShortRangeEdmEvent_t **ppResultEvent);
+bool uShortRangeEdmParse(char c, uShortRangeEdmEvent_t **ppResultEvent, bool *pMemAvailable);
 
 /**
  *

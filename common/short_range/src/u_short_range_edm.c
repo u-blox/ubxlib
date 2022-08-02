@@ -336,7 +336,7 @@ void uShortRangeEdmResetParser(void)
     gEdmParserState = EDM_PARSER_STATE_PARSE_START_BYTE;
 }
 
-bool uShortRangeEdmParse(char c, uShortRangeEdmEvent_t **ppResultEvent)
+bool uShortRangeEdmParse(char c, uShortRangeEdmEvent_t **ppResultEvent, bool *pMemAvailable)
 {
     edmParserState_t newState = gEdmParserState;
     static uint16_t payloadLength;
@@ -349,6 +349,7 @@ bool uShortRangeEdmParse(char c, uShortRangeEdmEvent_t **ppResultEvent)
     bool charConsumed = false;
     int32_t result;
 
+    *pMemAvailable = true;
     switch (gEdmParserState) {
 
         case EDM_PARSER_STATE_PARSE_START_BYTE:
@@ -419,6 +420,8 @@ bool uShortRangeEdmParse(char c, uShortRangeEdmEvent_t **ppResultEvent)
             if (gCurPBufList != NULL) {
                 gCurPBufList->edmChannel = channel;
                 newState = EDM_PARSER_STATE_ALLOCATE_PAYLOAD;
+            } else {
+                *pMemAvailable = false; // remain at same state, try again later
             }
             // we dont consume the input char in this state
             charConsumed = false;
@@ -432,6 +435,8 @@ bool uShortRangeEdmParse(char c, uShortRangeEdmEvent_t **ppResultEvent)
             if (pBufSize > 0) {
                 headerIndex = 0;
                 newState = EDM_PARSER_STATE_ACCUMULATE_PAYLOAD;
+            } else {
+                *pMemAvailable = false; // remain at same state, try again later
             }
             // we dont consume the input char in this state
             charConsumed = false;

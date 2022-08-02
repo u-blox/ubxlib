@@ -770,6 +770,8 @@ static void uartCallback(int32_t uartHandle, uint32_t eventBitmask,
                          void *pParameters)
 {
     (void)pParameters;
+    bool memAvailable = true;
+
     if ((gEdmStream.uartHandle == uartHandle) &&
         !gEdmStream.ignoreUartCallback &&
         (eventBitmask == U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED)) {
@@ -783,22 +785,23 @@ static void uartCallback(int32_t uartHandle, uint32_t eventBitmask,
         // We thus need a static buffer, and if there are unparsed characters left in it we move
         // them to the beginning of the buffer befor leaving (instead of using a ring buffer).
         U_PORT_MUTEX_LOCK(gMutex);
-        while (!uartEmpty && uShortRangeEdmParserReady()) {
+        while (!uartEmpty && uShortRangeEdmParserReady() && memAvailable) {
             // Loop until we couldn't read any more characters from uart
             // or EDM parser is unavailable
+            // or no pbuf memory is available
             static char buffer[128];
             static size_t charsInBuffer = 0;
             size_t consumed = 0;
 
             // Check if there are any existing characters in the buffer and parse them
-            while (uShortRangeEdmParserReady() && (consumed < charsInBuffer)) {
+            while (uShortRangeEdmParserReady() && (consumed < charsInBuffer) && memAvailable) {
                 //lint -esym(727, buffer)
                 uShortRangeEdmEvent_t *pEvent = NULL;
                 // when there is no memory available in the pool to intake
                 // the data, this call would return false.In such
                 // cases hardware flow control will be triggered if
                 // UART H/W Rx FIFO is full.
-                if (uShortRangeEdmParse(buffer[consumed], &pEvent)) {
+                if (uShortRangeEdmParse(buffer[consumed], &pEvent, &memAvailable)) {
                     consumed++;
                 }
                 if (pEvent != NULL) {
