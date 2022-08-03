@@ -531,7 +531,7 @@ int32_t uGnssPosGetRrlp(uDeviceHandle_t gnssHandle, char *pBuffer,
                 numBytes = uGnssPrivateSendReceiveUbxMessage(pInstance,
                                                              0x02, 0x14, NULL, 0,
                                                              pBuffer + U_GNSS_POS_RRLP_HEADER_SIZE_BYTES,
-                                                             sizeBytes - U_GNSS_POS_RRLP_HEADER_SIZE_BYTES);
+                                                             sizeBytes - U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES);
                 if (numBytes > 0) {
                     // Got something, is it good enough?
                     // 34 since that's the furthest we need to read to check on the number of satellites
