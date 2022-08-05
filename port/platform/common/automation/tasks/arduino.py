@@ -130,6 +130,7 @@ def build(ctx, sketch_path=DEFAULT_SKETCH_PATH,
             f"--build-path {sketch_build_dir} --build-cache-path {sketch_build_dir} " \
             f"--build-property \"compiler.c.extra_flags={cflags}\" " \
             f"--build-property \"compiler.cpp.extra_flags={cflags}\" " \
+            f"--build-property \"compiler.warning_flags=-Wall -Werror -Wno-missing-field-initializers -Wno-format\" " \
             f"--build-property build.partitions=minimal"
         ctx.run(f"{cmd} {sketch}")
 

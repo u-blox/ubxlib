@@ -109,7 +109,7 @@ def main(source_files, include_paths, platform_type, ubxlib_dir,
     return_value = u_arduino_common.copy_files(source_list, include_list, ubxlib_dir,
                                                forced, include_files)
 
-    if return_value == 0:
+    if return_value >= 0:
         # Add the examples
         print("Adding examples...")
         return_value = add_examples(os.path.join(ubxlib_dir, EXAMPLE_UBXLIB_SUBDIR), forced)

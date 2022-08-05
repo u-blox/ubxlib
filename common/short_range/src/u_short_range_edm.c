@@ -142,7 +142,7 @@ static uShortRangeEdmEvent_t *parseConnectBtEvent(uint8_t channel, char *pBuffer
                                                   uint16_t payloadLength)
 {
     uShortRangeEdmEvent_t *pEvent = NULL;
-    uShortRangeBtProfile_t profile;
+    uShortRangeBtProfile_t profile = 0;
     int32_t result = getBtProfile(pBuffer[1], &profile);
 
     if ((payloadLength == 10) && (result == U_SHORT_RANGE_EDM_OK)) {
@@ -164,7 +164,7 @@ static uShortRangeEdmEvent_t *parseConnectIpv4Event(uint8_t channel, char *pBuff
                                                     uint16_t payloadLength)
 {
     uShortRangeEdmEvent_t *pEvent = NULL;
-    uShortRangeIpProtocol_t protocol;
+    uShortRangeIpProtocol_t protocol = 0;
     int32_t result = getIpProtocol(pBuffer[1], &protocol);
 
     if ((payloadLength == 14) && (result == U_SHORT_RANGE_EDM_OK)) {
@@ -191,7 +191,7 @@ static uShortRangeEdmEvent_t *parseConnectIpv6Event(uint8_t channel, char *pBuff
                                                     uint16_t payloadLength)
 {
     uShortRangeEdmEvent_t *pEvent = NULL;
-    uShortRangeIpProtocol_t protocol;
+    uShortRangeIpProtocol_t protocol = 0;
     uint32_t result = getIpProtocol(pBuffer[1], &protocol);
 
     if ((payloadLength == 38) && (result == U_SHORT_RANGE_EDM_OK)) {
