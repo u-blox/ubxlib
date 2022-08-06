@@ -132,7 +132,7 @@ U_PORT_TEST_FUNCTION("[gnssPwr]", "gnssPwrBasic")
         U_TEST_PRINT_LINE("powering off GNSS...");
         U_PORT_TEST_ASSERT(uGnssPwrOff(gnssHandle) == 0);
 
-        switch(transportTypes[x]) {
+        switch (transportTypes[x]) {
             case U_GNSS_TRANSPORT_UBX_UART:
             //lint -fallthrough
             case U_GNSS_TRANSPORT_NMEA_UART:

@@ -479,7 +479,7 @@ static inline uCellNetStatus_t CXREG_urc(uCellPrivateInstance_t *pInstance,
             (((pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R410M_02B) ||
               (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R412M_02B)) ||
              ((pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_LARA_R6) &&
-               responseToCommandNotUrc))) {
+              responseToCommandNotUrc))) {
             skippedParameters++;
         }
         // Skip <ci> (<lac> already absorbed by the
@@ -1154,7 +1154,7 @@ static int32_t registerNetwork(uCellPrivateInstance_t *pInstance,
                         (((pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R410M_02B) ||
                           (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R412M_02B)) ||
                          ((pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_LARA_R6) &&
-                           !gotUrc))) {
+                          !gotUrc))) {
                         // SARA-R41x-02B modules, and LARA-R6 modules but only in the
                         // non-URC case, sneak an extra <rac_or_mme> parameter in when
                         // U_CELL_NET_CEREG_TYPE is 4 so we need to skip an additional
