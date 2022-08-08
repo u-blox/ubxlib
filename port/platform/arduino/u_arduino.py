@@ -119,7 +119,7 @@ def main(source_files, include_paths, platform_type, ubxlib_dir,
         print("Writing metadata file...")
         return_value = u_arduino_common.create_metadata(u_arduino_common.LIBRARY_NAME,
                                                         version_string, SENTENCE, PARAGRAPH,
-                                                        True, platform_type, [UBXLIB_HEADER_FILE])
+                                                        False, platform_type, [UBXLIB_HEADER_FILE])
 
     if return_value == 0:
         print("Done.")
