@@ -237,6 +237,15 @@
  */
 #define U_CFG_TEST_PIN_UART_B_RTS_GET U_CFG_TEST_PIN_UART_B_RTS
 
+/** Reset pin for a GNSS module, required when such a module is
+ * connected via I2C and needs resetting before it is used for
+ * testing the I2C port layer; should be connected to the RESET_N
+ * pin of the GNSS module.
+ */
+#ifndef U_CFG_TEST_PIN_GNSS_RESET_N
+# define U_CFG_TEST_PIN_GNSS_RESET_N   -1
+#endif
+
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS: DEBUG RELATED
  * -------------------------------------------------------------- */

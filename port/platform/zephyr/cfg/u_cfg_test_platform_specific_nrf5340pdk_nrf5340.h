@@ -37,11 +37,21 @@
 #ifndef U_CFG_TEST_PIN_B
 # define U_CFG_TEST_PIN_B         39 // AKA 1.07
 #endif
+
 /** Pin C for GPIO testing: must be connected to pin B,
  * will be used as an input only.
  */
 #ifndef U_CFG_TEST_PIN_C
 # define U_CFG_TEST_PIN_C         40 // AKA 1.08
+#endif
+
+/** Reset pin for a GNSS module, required when such a module is
+ * connected via I2C and needs resetting before it is used for
+ * testing the I2C port layer; should be connected to the RESET_N
+ * pin of the GNSS module.
+ */
+#ifndef U_CFG_TEST_PIN_GNSS_RESET_N
+# define U_CFG_TEST_PIN_GNSS_RESET_N   -1
 #endif
 
 #endif // _U_CFG_TEST_PLATFORM_SPECIFIC_NRF5340PDK_NRF5340_H_

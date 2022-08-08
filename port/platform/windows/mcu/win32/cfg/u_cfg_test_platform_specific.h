@@ -230,6 +230,14 @@
 # define U_CFG_TEST_PIN_UART_B_RTS   0
 #endif
 
+/** Reset pin for a GNSS module, not relevant on Windows
+ * since it is only used for testing of I2C, which Windows doesn't
+ * have.
+ */
+#ifndef U_CFG_TEST_PIN_GNSS_RESET_N
+# define U_CFG_TEST_PIN_GNSS_RESET_N   -1
+#endif
+
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS: DEBUG RELATED
  * -------------------------------------------------------------- */

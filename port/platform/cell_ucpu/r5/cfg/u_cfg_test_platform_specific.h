@@ -197,6 +197,13 @@
 # define U_CFG_TEST_PIN_UART_B_RTS   -1
 #endif
 
+/** Required for compilation of ubxlib tests/examples but not
+ * relevant to SARAR5UCPU and hence set to -1.
+ */
+#ifndef U_CFG_TEST_PIN_GNSS_RESET_N
+# define U_CFG_TEST_PIN_GNSS_RESET_N   -1
+#endif
+
 #endif // _U_CFG_TEST_PLATFORM_SPECIFIC_H_
 
 // End of file

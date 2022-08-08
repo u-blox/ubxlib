@@ -28,10 +28,19 @@
 #ifndef U_CFG_TEST_PIN_B
 # define U_CFG_TEST_PIN_B         -1
 #endif
+
 /** Pin C for GPIO testing:  not supported on Linux so set to -1.
  */
 #ifndef U_CFG_TEST_PIN_C
 # define U_CFG_TEST_PIN_C         -1
+#endif
+
+/** Reset pin for a GNSS module, not relevant on Linux
+ * since it is only used for testing of I2C, which Linux doesn't
+ * have.
+ */
+#ifndef U_CFG_TEST_PIN_GNSS_RESET_N
+# define U_CFG_TEST_PIN_GNSS_RESET_N   -1
 #endif
 
 #endif // _U_CFG_TEST_PLATFORM_SPECIFIC_NATIVE_POSIX_H_

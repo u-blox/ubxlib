@@ -44,6 +44,15 @@
 # define U_CFG_TEST_PIN_C         41 // AKA 1.09, GPIO_33, D8
 #endif
 
+/** Reset pin for a GNSS module, required when such a module is
+ * connected via I2C and needs resetting before it is used for
+ * testing the I2C port layer; should be connected to the RESET_N
+ * pin of the GNSS module.
+ */
+#ifndef U_CFG_TEST_PIN_GNSS_RESET_N
+# define U_CFG_TEST_PIN_GNSS_RESET_N   -1
+#endif
+
 #endif // _U_CFG_TEST_PLATFORM_SPECIFIC_UBX_EVKNINAB4_NRF52833_H_
 
 // End of file

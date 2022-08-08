@@ -51,6 +51,9 @@
 #include "u_port.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"
+#if defined(U_CFG_TEST_PIN_GNSS_RESET_N) && (U_CFG_TEST_PIN_GNSS_RESET_N >= 0)
+#include "u_port_gpio.h"
+#endif
 #include "u_port_uart.h"
 #include "u_port_crypto.h"
 
@@ -72,6 +75,14 @@
     !defined(_REENT_GLOBAL_STDIO_STREAMS) && !defined(_UNBUF_STREAM_OPT)
 # define PRE_ALLOCATE_FILE_COUNT 16
 #endif
+
+/** The string to put at the start of all prints from this test.
+ */
+#define U_TEST_PREFIX "U_PREAMBLE_TEST: "
+
+/** Print a whole line, with terminator, prefixed for this test file.
+ */
+#define U_TEST_PRINT_LINE(format, ...) uPortLog(U_TEST_PREFIX format "\n", ##__VA_ARGS__)
 
 /* ----------------------------------------------------------------
  * TYPES
@@ -118,6 +129,9 @@ U_PORT_TEST_FUNCTION("[preamble]", "preambleHeapDefence")
 #endif
     char buffer[64];
     struct tm tmStruct = {0,  0, 0,  1, 0,  70,  0, 0, 0};
+# if defined(U_CFG_TEST_PIN_GNSS_RESET_N) && (U_CFG_TEST_PIN_GNSS_RESET_N >= 0)
+    uPortGpioConfig_t gpioConfig = U_PORT_GPIO_CONFIG_DEFAULT;
+# endif
 
     // Whatever called us likely initialised the
     // port so deinitialise it here to obtain the
@@ -126,12 +140,12 @@ U_PORT_TEST_FUNCTION("[preamble]", "preambleHeapDefence")
 
     // Print out the heap and stack usage before we've done
     // anything: useful information for RAM usage calculations
-    uPortLog("U_PREAMBLE_TEST: at start(ish) of day main task"
-             " stack had a minimum of %d byte(s) free.\n",
-             uPortTaskStackMinFree(NULL));
-    uPortLog("U_PREAMBLE_TEST: at start(ish) of day heap had a"
-             " minimum of %d byte(s) free.\n",
-             uPortGetHeapMinFree());
+    U_TEST_PRINT_LINE("at start(ish) of day main task"
+                      " stack had a minimum of %d byte(s) free.",
+                      uPortTaskStackMinFree(NULL));
+    U_TEST_PRINT_LINE("at start(ish) of day heap had a"
+                      " minimum of %d byte(s) free.",
+                      uPortGetHeapMinFree());
 
 #if U_CFG_ENABLE_LOGGING
     heapPlatformLoss = uPortGetHeapFree();
@@ -140,8 +154,8 @@ U_PORT_TEST_FUNCTION("[preamble]", "preambleHeapDefence")
     uPortInit();
 
     // Call the things that allocate memory
-    uPortLog("U_PREAMBLE_TEST: calling platform APIs that"
-             " might allocate memory when first called...\n");
+    U_TEST_PRINT_LINE("calling platform APIs that"
+                      " might allocate memory when first called...");
     rand();
     mktime(&tmStruct);
 
@@ -171,6 +185,25 @@ U_PORT_TEST_FUNCTION("[preamble]", "preambleHeapDefence")
     uPortCryptoSha256(gSha256Input, sizeof(gSha256Input) - 1,
                       buffer);
 
+#if defined(U_CFG_TEST_PIN_GNSS_RESET_N) && (U_CFG_TEST_PIN_GNSS_RESET_N >= 0)
+    // If there is a GNSS module attached that has a RESET_N line
+    // wired to it then pull that line low to reset the GNSS module,
+    // nice and clean
+    U_TEST_PRINT_LINE("resetting GNSS module by toggling pin %d (0x%0x) low.",
+                      U_CFG_TEST_PIN_GNSS_RESET_N, U_CFG_TEST_PIN_GNSS_RESET_N);
+    // Make the pin an open-drain output, and low
+    U_PORT_TEST_ASSERT(uPortGpioSet(U_CFG_TEST_PIN_GNSS_RESET_N, 0) == 0);
+    gpioConfig.pin = U_CFG_TEST_PIN_GNSS_RESET_N;
+    gpioConfig.direction = U_PORT_GPIO_DIRECTION_OUTPUT;
+    gpioConfig.driveMode = U_PORT_GPIO_DRIVE_MODE_OPEN_DRAIN;
+    U_PORT_TEST_ASSERT(uPortGpioConfig(&gpioConfig) == 0);
+    // Leave it low for half a second and release
+    uPortTaskBlock(500);
+    U_PORT_TEST_ASSERT(uPortGpioSet(U_CFG_TEST_PIN_GNSS_RESET_N, 1) == 0);
+    // Let the chip recover
+    uPortTaskBlock(2000);
+#endif
+
     uPortDeinit();
 
 #ifdef PRE_ALLOCATE_FILE_COUNT
@@ -188,7 +221,7 @@ U_PORT_TEST_FUNCTION("[preamble]", "preambleHeapDefence")
     static bool files_allocated = false;
     extern FILE *__sfp (struct _reent *);
     if (!files_allocated) {
-        uPortLog("U_PREAMBLE_TEST: Pre-allocating FILE pointers\n");
+        U_TEST_PRINT_LINE("pre-allocating FILE pointers.");
         FILE *f[PRE_ALLOCATE_FILE_COUNT];
         for (int i = 0; i < PRE_ALLOCATE_FILE_COUNT; i++) {
             f[i] = __sfp(_REENT);
@@ -202,8 +235,8 @@ U_PORT_TEST_FUNCTION("[preamble]", "preambleHeapDefence")
 
 #if U_CFG_ENABLE_LOGGING
     heapPlatformLoss -= uPortGetHeapFree();
-    uPortLog("U_PREAMBLE_TEST: %d byte(s) of heap were lost to"
-             " the platform.\n",  heapPlatformLoss);
+    U_TEST_PRINT_LINE("%d byte(s) of heap were lost to"
+                      " the platform.",  heapPlatformLoss);
 #endif
 }
 
@@ -235,8 +268,8 @@ U_PORT_TEST_FUNCTION("[preamble]", "preambleCleanUp")
 
     x = uPortTaskStackMinFree(NULL);
     if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-        uPortLog("U_PREAMBLE_TEST: main task stack had a minimum of %d"
-                 " byte(s) free at the end of the preamble.\n", x);
+        U_TEST_PRINT_LINE("main task stack had a minimum of %d"
+                          " byte(s) free at the end of the preamble.", x);
         U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
     }
 
@@ -244,8 +277,8 @@ U_PORT_TEST_FUNCTION("[preamble]", "preambleCleanUp")
 
     x = uPortGetHeapMinFree();
     if (x >= 0) {
-        uPortLog("U_PREAMBLE_TEST: heap had a minimum of %d"
-                 " byte(s) free at the end of the preamble.\n", x);
+        U_TEST_PRINT_LINE("heap had a minimum of %d"
+                          " byte(s) free at the end of the preamble.", x);
         U_PORT_TEST_ASSERT(x >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
     }
 }
