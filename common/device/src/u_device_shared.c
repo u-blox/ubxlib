@@ -154,21 +154,26 @@ U_INLINE bool uDeviceIsValidInstance(const uDeviceInstance_t *pInstance)
 U_INLINE int32_t uDeviceGetInstance(uDeviceHandle_t devHandle,
                                     uDeviceInstance_t **ppInstance)
 {
-    *ppInstance = U_DEVICE_INSTANCE(devHandle);
-    bool isValid = uDeviceIsValidInstance(*ppInstance);
+    bool isValid = false;
+
+    if (devHandle != NULL) {
+        *ppInstance = U_DEVICE_INSTANCE(devHandle);
+        isValid = uDeviceIsValidInstance(*ppInstance);
+    }
+
     return isValid ? (int32_t) U_ERROR_COMMON_SUCCESS : (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
 }
 
 U_INLINE int32_t uDeviceGetDeviceType(uDeviceHandle_t devHandle)
 {
     uDeviceInstance_t *pInstance;
-    int32_t errorCode = uDeviceGetInstance(devHandle, &pInstance);
+    int32_t errorCodeOrType = uDeviceGetInstance(devHandle, &pInstance);
 
-    if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
-        errorCode = (int32_t) pInstance->deviceType;
+    if (errorCodeOrType == (int32_t) U_ERROR_COMMON_SUCCESS) {
+        errorCodeOrType = (int32_t) pInstance->deviceType;
     }
 
-    return errorCode;
+    return errorCodeOrType;
 }
 
 // End of file
