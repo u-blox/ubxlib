@@ -322,7 +322,8 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosPos")
         // Don't test altitude as we may only have a 2D fix
         U_PORT_TEST_ASSERT(radiusMillimetres > INT_MIN);
         U_PORT_TEST_ASSERT(speedMillimetresPerSecond > INT_MIN);
-        U_PORT_TEST_ASSERT(svs > 0);
+        // Inertial fixes will be reported with no satellites, hence >= 0
+        U_PORT_TEST_ASSERT(svs >= 0);
         U_PORT_TEST_ASSERT(timeUtc > 0);
 
 #if U_CFG_OS_CLIB_LEAKS
@@ -375,7 +376,8 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosPos")
         // Don't test altitude as we may only have a 2D fix
         U_PORT_TEST_ASSERT(gRadiusMillimetres > INT_MIN);
         U_PORT_TEST_ASSERT(gSpeedMillimetresPerSecond > INT_MIN);
-        U_PORT_TEST_ASSERT(gSvs > 0);
+        // Inertial fixes will be reported with no satellites, hence >= 0
+        U_PORT_TEST_ASSERT(gSvs >= 0);
         U_PORT_TEST_ASSERT(gTimeUtc > 0);
 
         // Do the standard postamble, leaving the module on for the next
