@@ -670,7 +670,7 @@ static size_t sendTcp(uSockDescriptor_t descriptor,
 {
     int32_t x;
     size_t sentSizeBytes = 0;
-    int64_t startTimeMs;
+    int32_t startTimeMs;
 
     U_TEST_PRINT_LINE("sending %d byte(s) of TCP data...", sizeBytes);
     startTimeMs = uPortGetTickTimeMs();
@@ -1097,7 +1097,7 @@ U_PORT_TEST_FUNCTION("[sock]", "sockBasicTcp")
     size_t offset;
     int32_t y;
     char *pDataReceived;
-    int64_t startTimeMs;
+    int32_t startTimeMs;
     int32_t heapUsed;
     int32_t heapSockInitLoss = 0;
     int32_t heapXxxSockInitLoss = 0;
@@ -1475,9 +1475,9 @@ U_PORT_TEST_FUNCTION("[sock]", "sockOptionsSetGet")
     size_t *pLength;
     struct timeval timeout;
     char *pData[1];
-    int64_t startTimeMs;
-    int64_t timeoutMs;
-    int64_t elapsedMs;
+    int32_t startTimeMs;
+    int32_t timeoutMs;
+    int32_t elapsedMs;
     int32_t heapUsed;
     int32_t heapSockInitLoss = 0;
     int32_t heapXxxSockInitLoss = 0;
@@ -1546,7 +1546,7 @@ U_PORT_TEST_FUNCTION("[sock]", "sockOptionsSetGet")
                                           U_SOCK_OPT_RCVTIMEO,
                                           (void *) &timeout,
                                           pLength) == 0);
-        timeoutMs = ((int64_t) timeout.tv_sec) * 1000 + timeout.tv_usec / 1000;
+        timeoutMs = ((int32_t) timeout.tv_sec) * 1000 + timeout.tv_usec / 1000;
         U_PORT_TEST_ASSERT(timeoutMs == U_SOCK_RECEIVE_TIMEOUT_DEFAULT_MS);
         startTimeMs = uPortGetTickTimeMs();
         U_PORT_TEST_ASSERT(uSockReceiveFrom(descriptor, NULL,
@@ -1562,7 +1562,7 @@ U_PORT_TEST_FUNCTION("[sock]", "sockOptionsSetGet")
                            U_SOCK_TEST_TIME_MARGIN_PLUS_MS);
         timeout.tv_sec = 0;
         timeout.tv_usec = 500000;
-        timeoutMs = (((int64_t) timeout.tv_sec) * 1000) +
+        timeoutMs = (((int32_t) timeout.tv_sec) * 1000) +
                     (timeout.tv_usec / 1000);
         U_TEST_PRINT_LINE("setting timeout to %d millisecond(s)...",
                           (int32_t) timeoutMs);
@@ -1625,9 +1625,9 @@ U_PORT_TEST_FUNCTION("[sock]", "sockNonBlocking")
     bool isBlocking;
     struct timeval timeout;
     char *pData[1];
-    int64_t startTimeMs;
-    int64_t timeoutMs;
-    int64_t elapsedMs;
+    int32_t startTimeMs;
+    int32_t timeoutMs;
+    int32_t elapsedMs;
     int32_t heapUsed;
     int32_t heapSockInitLoss = 0;
     int32_t heapXxxSockInitLoss = 0;
@@ -1709,7 +1709,7 @@ U_PORT_TEST_FUNCTION("[sock]", "sockNonBlocking")
         U_TEST_PRINT_LINE("setting a short socket timeout to save time...");
         timeout.tv_sec = 2;
         timeout.tv_usec = 0;
-        timeoutMs = ((int64_t) timeout.tv_sec) * 1000 + timeout.tv_usec / 1000;
+        timeoutMs = ((int32_t) timeout.tv_sec) * 1000 + timeout.tv_usec / 1000;
         U_PORT_TEST_ASSERT(uSockOptionSet(descriptor,
                                           U_SOCK_OPT_LEVEL_SOCK,
                                           U_SOCK_OPT_RCVTIMEO,
@@ -1857,7 +1857,7 @@ U_PORT_TEST_FUNCTION("[sock]", "sockUdpEchoNonPingPong")
     int32_t y;
     int32_t z;
     char *pDataReceived;
-    int64_t startTimeMs;
+    int32_t startTimeMs;
     int32_t heapUsed;
     int32_t heapSockInitLoss = 0;
     int32_t heapXxxSockInitLoss = 0;

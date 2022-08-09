@@ -1083,7 +1083,7 @@ static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance,
         if (andRadioOff) {
             // Switch the radio off until commanded to connect
             // Wait for flip time to expire
-            while (uPortGetTickTimeMs() < pInstance->lastCfunFlipTimeMs +
+            while (uPortGetTickTimeMs() - pInstance->lastCfunFlipTimeMs <
                    (U_CELL_PRIVATE_AT_CFUN_FLIP_DELAY_SECONDS * 1000)) {
                 uPortTaskBlock(1000);
             }
@@ -1110,10 +1110,10 @@ static void waitForPowerOff(uCellPrivateInstance_t *pInstance,
 {
     uAtClientHandle_t atHandle = pInstance->atHandle;
     bool moduleIsOff = false;
-    int64_t endTimeMs = uPortGetTickTimeMs() +
-                        (((int64_t) pInstance->pModule->powerDownWaitSeconds) * 1000);
+    int32_t startTimeMs = uPortGetTickTimeMs();
 
-    while (!moduleIsOff && (uPortGetTickTimeMs() < endTimeMs) &&
+    while (!moduleIsOff &&
+           (uPortGetTickTimeMs() - startTimeMs < pInstance->pModule->powerDownWaitSeconds * 1000) &&
            ((pKeepGoingCallback == NULL) || pKeepGoingCallback(pInstance->cellHandle))) {
         if (pInstance->pinVInt >= 0) {
             // If we have a VInt pin then wait until that
@@ -1877,7 +1877,7 @@ int32_t uCellPwrReboot(uDeviceHandle_t cellHandle,
             atHandle = pInstance->atHandle;
             uPortLog("U_CELL_PWR: rebooting.\n");
             // Wait for flip time to expire
-            while (uPortGetTickTimeMs() < pInstance->lastCfunFlipTimeMs +
+            while (uPortGetTickTimeMs() - pInstance->lastCfunFlipTimeMs <
                    (U_CELL_PRIVATE_AT_CFUN_FLIP_DELAY_SECONDS * 1000)) {
                 uPortTaskBlock(1000);
             }
@@ -2041,7 +2041,7 @@ int32_t uCellPwrResetHard(uDeviceHandle_t cellHandle, int32_t pinReset)
                     // We have rebooted
                     pInstance->rebootIsRequired = false;
                     startTime = uPortGetTickTimeMs();
-                    while (uPortGetTickTimeMs() < startTime + resetHoldMilliseconds) {
+                    while (uPortGetTickTimeMs() - startTime < resetHoldMilliseconds) {
                         uPortTaskBlock(100);
                     }
                     // Set the pin back to the "non RESET" state

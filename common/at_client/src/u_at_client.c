@@ -1987,7 +1987,7 @@ static size_t write(uAtClientInstance_t *pClient,
            (pClient->error == U_ERROR_COMMON_SUCCESS)) {
         lengthToWrite = length - (pData - pDataStart);
         if ((pClient->pWakeUp != NULL) && (pClient->lastTxTimeMs >= 0) &&
-            (uPortGetTickTimeMs() > pClient->lastTxTimeMs + pClient->pWakeUp->inactivityTimeoutMs) &&
+            (uPortGetTickTimeMs() - pClient->lastTxTimeMs > pClient->pWakeUp->inactivityTimeoutMs) &&
             (uPortMutexTryLock(pClient->pWakeUp->inWakeUpHandlerMutex, 0) == 0)) {
             // We have a wake-up handler, the inactivity timeout
             // has expired and we've managed to lock the wake-up

@@ -682,7 +682,7 @@ static bool keepGoingLocalCb(const uCellPrivateInstance_t *pInstance)
         keepGoing = pInstance->pKeepGoingCallback(pInstance->cellHandle);
     } else {
         if ((pInstance->startTimeMs > 0) &&
-            (uPortGetTickTimeMs() > pInstance->startTimeMs +
+            (uPortGetTickTimeMs() - pInstance->startTimeMs >
              (U_CELL_NET_CONNECT_TIMEOUT_SECONDS * 1000))) {
             keepGoing = false;
         }
@@ -703,7 +703,7 @@ static int32_t radioOff(uCellPrivateInstance_t *pInstance)
     pInstance->profileState = U_CELL_PRIVATE_PROFILE_STATE_SHOULD_BE_DOWN;
     for (size_t x = 3; (x > 0) && (errorCode < 0); x--) {
         // Wait for flip time to expire
-        while (uPortGetTickTimeMs() < pInstance->lastCfunFlipTimeMs +
+        while (uPortGetTickTimeMs() - pInstance->lastCfunFlipTimeMs <
                (U_CELL_PRIVATE_AT_CFUN_FLIP_DELAY_SECONDS * 1000)) {
             uPortTaskBlock(1000);
         }
@@ -1031,7 +1031,7 @@ static int32_t registerNetwork(uCellPrivateInstance_t *pInstance,
 
     // Come out of airplane mode and try to register
     // Wait for flip time to expire first though
-    while (uPortGetTickTimeMs() < pInstance->lastCfunFlipTimeMs +
+    while (uPortGetTickTimeMs() - pInstance->lastCfunFlipTimeMs <
            (U_CELL_PRIVATE_AT_CFUN_FLIP_DELAY_SECONDS * 1000)) {
         uPortTaskBlock(1000);
     }
@@ -1490,7 +1490,7 @@ static int32_t activateContextUpsd(const uCellPrivateInstance_t *pInstance,
     int32_t errorCode;
     uAtClientHandle_t atHandle = pInstance->atHandle;
     uAtClientDeviceError_t deviceError;
-    int64_t startTimeMs;
+    int32_t startTimeMs;
     bool activated = false;
 
     // SARA-U2 pattern: everything is done through AT+UPSD
@@ -1573,7 +1573,7 @@ static int32_t activateContextUpsd(const uCellPrivateInstance_t *pInstance,
         deviceError.type = U_AT_CLIENT_DEVICE_ERROR_TYPE_NO_ERROR;
         while (!activated && keepGoingLocalCb(pInstance) &&
                (deviceError.type == U_AT_CLIENT_DEVICE_ERROR_TYPE_NO_ERROR) &&
-               (uPortGetTickTimeMs() < startTimeMs +
+               (uPortGetTickTimeMs() - startTimeMs <
                 (U_CELL_NET_UPSD_CONTEXT_ACTIVATION_TIME_SECONDS * 1000))) {
             uAtClientClearError(atHandle);
             uAtClientResponseStart(atHandle, NULL);
@@ -2562,7 +2562,7 @@ int32_t uCellNetScanGetFirst(uDeviceHandle_t cellHandle,
                     bytesRead = -1;
                     innerStartTimeMs = uPortGetTickTimeMs();
                     while ((bytesRead <= 0) &&
-                           (uPortGetTickTimeMs() < innerStartTimeMs +
+                           (uPortGetTickTimeMs() - innerStartTimeMs <
                             (U_CELL_NET_SCAN_TIME_SECONDS * 1000)) &&
                            ((pKeepGoingCallback == NULL) || (pKeepGoingCallback(cellHandle)))) {
                         uAtClientResponseStart(atHandle, "+COPS:");

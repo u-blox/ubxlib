@@ -188,7 +188,7 @@ static size_t sendTcp(uSockDescriptor_t descriptor,
 {
     int32_t x;
     size_t sentSizeBytes = 0;
-    int64_t startTimeMs;
+    int32_t startTimeMs;
 
     U_TEST_PRINT_LINE("sending %d byte(s) of TCP data...", sizeBytes);
     startTimeMs = uPortGetTickTimeMs();
@@ -239,7 +239,7 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
     uSockDescriptor_t descriptor = -1;
     uSockAddress_t remoteAddress;
     char *pDataReceived;
-    int64_t startTimeMs;
+    int32_t startTimeMs;
     size_t sizeBytes;
     size_t offset;
     int32_t y;

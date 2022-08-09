@@ -778,7 +778,7 @@ int32_t uPortUartEventTrySend(int32_t handle, uint32_t eventBitMap,
                                                    &event, sizeof(event));
                 uPortTaskBlock(U_CFG_OS_YIELD_MS);
             } while ((errorCode != 0) &&
-                     (uPortGetTickTimeMs() < startTime + delayMs));
+                     (uPortGetTickTimeMs() - startTime < delayMs));
         }
 
         U_PORT_MUTEX_UNLOCK(gMutex);

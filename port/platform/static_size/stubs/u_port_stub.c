@@ -53,7 +53,7 @@ int32_t uPortInit()
 void uPortDeinit()
 {
 }
-int64_t uPortGetTickTimeMs()
+int32_t uPortGetTickTimeMs()
 {
     return 0;
 }

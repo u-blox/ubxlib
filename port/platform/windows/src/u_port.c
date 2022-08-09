@@ -143,9 +143,9 @@ void uPortDeinit()
 }
 
 // Get the current tick in milliseconds.
-int64_t uPortGetTickTimeMs()
+int32_t uPortGetTickTimeMs()
 {
-    return GetTickCount64();
+    return GetTickCount();
 }
 
 // Get the minimum amount of heap free, ever, in bytes.

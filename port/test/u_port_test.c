@@ -1343,8 +1343,8 @@ U_PORT_TEST_FUNCTION("[port]", "portOs")
 //lint -esym(838, startTimeMs) Suppress value not used/ referenced
 //lint -esym(438, startTimeMs, timeNowMs) will be the case if we're not
 //lint -esym(550, startTimeMs, timeNowMs) measuring time delays
-    int64_t startTimeMs;
-    int64_t timeNowMs;
+    int32_t startTimeMs;
+    int32_t timeNowMs;
     int32_t stackMinFreeBytes;
     int32_t y = -1;
     int32_t z;
@@ -1546,9 +1546,9 @@ static void osTestTaskSemaphoreGiveFromIsr(const void *pParameters)
 U_PORT_TEST_FUNCTION("[port]", "portOsSemaphore")
 {
     int32_t errorCode;
-    int64_t startTimeTestMs;
-    int64_t startTimeMs;
-    int64_t timeNowMs;
+    int32_t startTimeTestMs;
+    int32_t startTimeMs;
+    int32_t timeNowMs;
     int32_t heapUsed;
     int32_t heapClibLossOffset = (int32_t) gSystemHeapLost;
 
@@ -1731,9 +1731,9 @@ U_PORT_TEST_FUNCTION("[port]", "portOsSemaphore")
  */
 U_PORT_TEST_FUNCTION("[port]", "portOsExtended")
 {
-    int64_t startTimeMs;
-    int64_t timeNowMs;
-    int64_t timeDelta;
+    int32_t startTimeMs;
+    int32_t timeNowMs;
+    int32_t timeDelta;
     int32_t uartHandle;
     int32_t heapUsed;
 
@@ -2660,7 +2660,7 @@ U_PORT_TEST_FUNCTION("[port]", "portTimers")
         // values however their relative values should still be correct
         startTime = uPortGetTickTimeMs();
         while ((gTimerParameterValue[2] == 0) &&
-               (startTime + 10000 > uPortGetTickTimeMs())) {
+               (uPortGetTickTimeMs() - startTime < 10000)) {
             uPortTaskBlock(100);
         }
         U_PORT_TEST_ASSERT((gTimerParameterValue[2] == 1) && (gTimerParameterValue[3] == 3));
@@ -2678,7 +2678,7 @@ U_PORT_TEST_FUNCTION("[port]", "portTimers")
         // Wait for the periodic timer to expire one more time
         startTime = uPortGetTickTimeMs();
         while ((gTimerParameterValue[3] < 4) &&
-               (startTime + 5000 > uPortGetTickTimeMs())) {
+               (uPortGetTickTimeMs() - startTime < 5000)) {
             uPortTaskBlock(100);
         }
         U_PORT_TEST_ASSERT(gTimerParameterValue[3] == 4);
@@ -2730,7 +2730,7 @@ U_PORT_TEST_FUNCTION("[port]", "portCriticalSection")
     int32_t errorCode;
     int32_t heapUsed;
     uint32_t y;
-    int64_t startTimeMs;
+    int32_t startTimeMs;
     int32_t errorFlag = 0x00;
 
     // Whatever called us likely initialised the

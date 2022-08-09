@@ -1886,7 +1886,7 @@ int32_t uCellSockGetHostByName(uDeviceHandle_t cellHandle,
     int32_t bytesRead = 0;
     char buffer[U_SOCK_ADDRESS_STRING_MAX_LENGTH_BYTES];
     uSockAddress_t address;
-    int64_t startTimeMs;
+    int32_t startTimeMs;
 
     memset(&address, 0, sizeof(address));
     buffer[0] = 0;
@@ -1903,7 +1903,7 @@ int32_t uCellSockGetHostByName(uDeviceHandle_t cellHandle,
         // and try again
         startTimeMs = uPortGetTickTimeMs();
         while ((atError < 0) &&
-               (uPortGetTickTimeMs() < startTimeMs +
+               (uPortGetTickTimeMs() - startTimeMs <
                 U_CELL_SOCK_DNS_SHOULD_RETRY_MS)) {
             if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R422) {
                 // SARA-R422 can get upset if UDNSRN is sent very quickly

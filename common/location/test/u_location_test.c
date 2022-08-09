@@ -259,6 +259,7 @@ static void testNonBlocking(uDeviceHandle_t devHandle,
     }
     startTime = uPortGetTickTimeMs();
     gStopTimeMs = startTime + U_LOCATION_TEST_CFG_TIMEOUT_SECONDS * 1000;
+
     uLocationTestResetLocation(&gLocation);
     if (pLocationCfg != NULL) {
         // Try this a few times as the Cell Locate AT command can sometimes

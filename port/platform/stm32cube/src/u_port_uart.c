@@ -1313,7 +1313,7 @@ int32_t uPortUartWrite(int32_t handle,
     uPortUartData_t *pUartData;
     USART_TypeDef *pReg;
     bool txOk = true;
-    int64_t startTimeMs;
+    int32_t startTimeMs;
 
     if (gMutex != NULL) {
 
@@ -1541,7 +1541,7 @@ int32_t uPortUartEventTrySend(int32_t handle, uint32_t eventBitMap,
                                                    &event, sizeof(event));
                 uPortTaskBlock(U_CFG_OS_YIELD_MS);
             } while ((errorCode != 0) &&
-                     (uPortGetTickTimeMs() < startTime + delayMs));
+                     (uPortGetTickTimeMs() - startTime < delayMs));
         }
 
         U_PORT_MUTEX_UNLOCK(gMutex);

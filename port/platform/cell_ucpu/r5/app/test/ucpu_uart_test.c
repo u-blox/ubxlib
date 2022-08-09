@@ -213,7 +213,7 @@ static void mqttThread(void *thread_input)
     char pubMessage[MEG_SIZE];
     char readBuffer[MEG_SIZE];
     size_t readBufferSize;
-    int64_t startTimeMs;
+    int32_t startTimeMs;
     uint32_t count = 0;
     uint32_t result = 0;
     volatile bool messagesAvailable = false;
@@ -282,7 +282,7 @@ static void mqttThread(void *thread_input)
                 // Wait for us to be notified that our new
                 // message is available on the broker
                 while (!messagesAvailable &&
-                       (uPortGetTickTimeMs() < startTimeMs + 20000)) {
+                       (uPortGetTickTimeMs() - startTimeMs < 20000)) {
                     uPortTaskBlock(1000);
                 }
 

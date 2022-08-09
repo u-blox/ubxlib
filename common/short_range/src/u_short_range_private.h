@@ -103,8 +103,8 @@ typedef struct uShortRangePrivateInstance_t {
     uAtClientHandle_t atHandle; /**< the AT client handle to use. */
     int32_t streamHandle; /**< handle to the underlaying stream. */
     uAtClientStream_t streamType; /**< stream type. */
-    int64_t startTimeMs;     /**< used while restarting. */
-    int64_t ticksLastRestart;
+    int32_t startTimeMs;     /**< used while restarting. */
+    int32_t ticksLastRestart;
     bool urcConHandlerSet;
     uShortRangePrivateConnection_t connections[U_SHORT_RANGE_MAX_CONNECTIONS];
     uShortRangeBtConnectionStatusCallback_t pBtConnectionStatusCallback;

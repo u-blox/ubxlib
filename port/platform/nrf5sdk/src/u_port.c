@@ -159,7 +159,7 @@ void uPortDeinit()
 }
 
 // Get the current tick converted to a time in milliseconds.
-int64_t uPortGetTickTimeMs()
+int32_t uPortGetTickTimeMs()
 {
     int32_t tickTime = 0;
 

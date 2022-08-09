@@ -196,7 +196,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleMqttClient")
     char buffer[64];
     size_t bufferSize;
     volatile bool messagesAvailable = false;
-    int64_t startTimeMs;
+    int32_t startTimeMs;
     int32_t returnCode;
 
     // Initialise the APIs we will need
@@ -292,7 +292,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleMqttClient")
                         // Wait for us to be notified that our new
                         // message is available on the broker
                         while (!messagesAvailable &&
-                               (uPortGetTickTimeMs() < startTimeMs + 10000)) {
+                               (uPortGetTickTimeMs() - startTimeMs < 10000)) {
                             uPortTaskBlock(1000);
                         }
 

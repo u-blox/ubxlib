@@ -473,7 +473,7 @@ int32_t  uCellPrivateCFunOne(uCellPrivateInstance_t *pInstance)
     // Set powered-up mode if it wasn't already
     if (errorCodeOrMode != 1) {
         // Wait for flip time to expire
-        while (uPortGetTickTimeMs() < pInstance->lastCfunFlipTimeMs +
+        while (uPortGetTickTimeMs() - pInstance->lastCfunFlipTimeMs <
                (U_CELL_PRIVATE_AT_CFUN_FLIP_DELAY_SECONDS * 1000)) {
             uPortTaskBlock(1000);
         }
@@ -498,7 +498,7 @@ void uCellPrivateCFunMode(uCellPrivateInstance_t *pInstance,
     uAtClientHandle_t atHandle = pInstance->atHandle;
 
     // Wait for flip time to expire
-    while (uPortGetTickTimeMs() < pInstance->lastCfunFlipTimeMs +
+    while (uPortGetTickTimeMs() - pInstance->lastCfunFlipTimeMs <
            (U_CELL_PRIVATE_AT_CFUN_FLIP_DELAY_SECONDS * 1000)) {
         uPortTaskBlock(1000);
     }

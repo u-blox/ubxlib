@@ -346,7 +346,7 @@ int32_t uLocationPrivateCloudLocate(uDeviceHandle_t devHandle,
     char topicBuffer[U_LOCATION_PRIVATE_CLOUD_LOCATE_SUBSCRIBE_TOPIC_LENGTH_BYTES];
     char *pTopicBufferRead;
     char *pMessageRead;
-    int64_t startTimeMs = uPortGetTickTimeMs();
+    int32_t startTimeMs = uPortGetTickTimeMs();
     bool subscribed = false;
     size_t z;
 

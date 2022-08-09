@@ -267,7 +267,7 @@ static size_t sendTcp(uSockDescriptor_t descriptor,
 {
     int32_t x;
     size_t sentSizeBytes = 0;
-    int64_t startTimeMs;
+    int32_t startTimeMs;
 
     U_TEST_PRINT_LINE("sending %d byte(s) of TCP data...", sizeBytes);
     startTimeMs = uPortGetTickTimeMs();
@@ -461,7 +461,7 @@ U_PORT_TEST_FUNCTION("[security]", "securityC2cSock")
     size_t offset;
     int32_t y;
     char *pDataReceived;
-    int64_t startTimeMs;
+    int32_t startTimeMs;
     int32_t heapUsed;
     int32_t heapSockInitLoss = 0;
     int32_t heapXxxSockInitLoss = 0;
@@ -669,7 +669,7 @@ U_PORT_TEST_FUNCTION("[security]", "securityC2cSockAsync")
     size_t sizeBytesReceive = 0;
     size_t offset;
     int32_t y;
-    int64_t startTimeMs;
+    int32_t startTimeMs;
     int32_t heapUsed;
     int32_t heapSockInitLoss = 0;
     int32_t heapXxxSockInitLoss = 0;

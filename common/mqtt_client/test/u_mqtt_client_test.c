@@ -274,7 +274,7 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClient")
     int32_t y;
     int32_t z;
     size_t s;
-    int64_t startTimeMs;
+    int32_t startTimeMs;
     char *pTopicOut;
     char *pTopicIn;
     char *pMessageOut;
@@ -590,7 +590,7 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClientSn")
     int32_t y;
     int32_t z;
     size_t s;
-    int64_t startTimeMs;
+    int32_t startTimeMs;
     char *pTopicNameOutMqtt;
     uMqttSnTopicName_t topicNameOut;
     uMqttSnTopicName_t topicNameIn;
@@ -768,7 +768,7 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClientSn")
                     U_TEST_PRINT_LINE_MQTTSN("waiting for an unread message indication...");
                     startTimeMs = uPortGetTickTimeMs();
                     while ((gNumUnread == 0) &&
-                           (uPortGetTickTimeMs() < startTimeMs +
+                           (uPortGetTickTimeMs() - startTimeMs <
                             (U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000))) {
                         uPortTaskBlock(1000);
                     }

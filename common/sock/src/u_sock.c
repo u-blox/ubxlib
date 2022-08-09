@@ -1060,7 +1060,7 @@ static int32_t receive(const uSockContainer_t *pContainer,
     uDeviceHandle_t devHandle = pContainer->socket.devHandle;
     int32_t sockHandle = pContainer->socket.sockHandle;
     int32_t negErrnoOrSize = -U_SOCK_ENOSYS;
-    int64_t startTimeMs = uPortGetTickTimeMs();
+    int32_t startTimeMs = uPortGetTickTimeMs();
     int32_t devType = uDeviceGetDeviceType(devHandle);
 
     // Run around the loop until a packet of data turns up
@@ -1101,7 +1101,7 @@ static int32_t receive(const uSockContainer_t *pContainer,
         }
     } while ((negErrnoOrSize < 0) &&
              (pContainer->socket.blocking) &&
-             (uPortGetTickTimeMs() < startTimeMs +
+             (uPortGetTickTimeMs() - startTimeMs <
               pContainer->socket.receiveTimeoutMs));
 
     return negErrnoOrSize;

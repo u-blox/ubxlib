@@ -111,7 +111,7 @@ void uPortDeinit();
  *
  * @return the current OS tick converted to milliseconds.
  */
-int64_t uPortGetTickTimeMs();
+int32_t uPortGetTickTimeMs();
 
 /** Get the heap high watermark, the minimum amount of heap
  * free, ever.

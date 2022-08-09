@@ -235,7 +235,7 @@ U_PORT_TEST_FUNCTION("[gnssInfo]", "gnssInfoTime")
     uDeviceHandle_t gnssHandle;
     int32_t heapUsed;
     int64_t y = -1;
-    int64_t startTimeMs;
+    int32_t startTimeMs;
     size_t iterations;
     uGnssTransportType_t transportTypes[U_GNSS_TRANSPORT_MAX_NUM];
 
@@ -271,7 +271,7 @@ U_PORT_TEST_FUNCTION("[gnssInfo]", "gnssInfoTime")
                           U_GNSS_TIME_TEST_TIMEOUT_SECONDS);
         startTimeMs = uPortGetTickTimeMs();
         while ((y < 0) &&
-               (uPortGetTickTimeMs() < startTimeMs + (U_GNSS_TIME_TEST_TIMEOUT_SECONDS * 1000))) {
+               (uPortGetTickTimeMs() - startTimeMs < (U_GNSS_TIME_TEST_TIMEOUT_SECONDS * 1000))) {
             y = uGnssInfoGetTimeUtc(gnssHandle);
         }
         if (y > 0) {
