@@ -41,6 +41,7 @@ UBXLIB_INC += ${UBXLIB_BASE}/common/network/api
 UBXLIB_PRIVATE_INC += ${UBXLIB_BASE}/common/network/src
 UBXLIB_SRC += ${UBXLIB_BASE}/common/device/src/u_device.c
 UBXLIB_SRC += ${UBXLIB_BASE}/common/device/src/u_device_shared.c
+UBXLIB_SRC += ${UBXLIB_BASE}/common/device/src/u_device_private.c
 UBXLIB_INC += ${UBXLIB_BASE}/common/device/api
 UBXLIB_PRIVATE_INC += ${UBXLIB_BASE}/common/device/src
 

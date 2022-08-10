@@ -76,6 +76,16 @@ static const uDeviceCfg_t gDeviceCfg = {
             .moduleType = U_CFG_TEST_GNSS_MODULE_TYPE,
             .pinEnablePower = U_CFG_APP_PIN_GNSS_ENABLE_POWER,
             .pinDataReady = -1 // Not used
+            // There is an additional field here
+            // "i2cAddress", which we do NOT set,
+            // we allow the compiler to set it to 0
+            // and all will be fine. You may set the
+            // field to the I2C address of your GNSS
+            // device if you have modified the I2C
+            // address of your GNSS device to something
+            // other than the default value of 0x42,
+            // for example:
+            // .i2cAddress = 0x43
         },
     },
 # if (U_CFG_APP_GNSS_I2C >= 0)
@@ -85,6 +95,27 @@ static const uDeviceCfg_t gDeviceCfg = {
             .i2c = U_CFG_APP_GNSS_I2C,
             .pinSda = U_CFG_APP_PIN_GNSS_SDA,
             .pinScl = U_CFG_APP_PIN_GNSS_SCL
+            // There two additional fields here
+            // "clockHertz" amd "alreadyOpen", which
+            // we do NOT set, we allow the compiler
+            // to set them to 0 and all will be fine.
+            // You may set clockHertz if you want the
+            // I2C bus to use a different clock frequency
+            // to the default of
+            // #U_PORT_I2C_CLOCK_FREQUENCY_HERTZ, for
+            // example:
+            // .clockHertz = 400000
+            // You may set alreadyOpen to true if you
+            // are already using this I2C HW block,
+            // with the native platform APIs,
+            // elsewhere in your application code,
+            // and you would like the ubxlib code
+            // to use the I2C HW block WITHOUT
+            // [re]configuring it, for example:
+            // .alreadyOpen = true
+            // if alreadyOpen is set to true then
+            // pinSda, pinScl and clockHertz will
+            // be ignored.
         },
     },
 # else

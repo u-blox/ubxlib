@@ -117,6 +117,7 @@ list(APPEND UBXLIB_INC ${UBXLIB_BASE}/common/network/api)
 list(APPEND UBXLIB_PRIVATE_INC ${UBXLIB_BASE}/common/network/src)
 list(APPEND UBXLIB_SRC ${UBXLIB_BASE}/common/device/src/u_device.c)
 list(APPEND UBXLIB_SRC ${UBXLIB_BASE}/common/device/src/u_device_shared.c)
+list(APPEND UBXLIB_SRC ${UBXLIB_BASE}/common/device/src/u_device_private.c)
 list(APPEND UBXLIB_INC ${UBXLIB_BASE}/common/device/api)
 list(APPEND UBXLIB_PRIVATE_INC ${UBXLIB_BASE}/common/device/src)
 

@@ -68,6 +68,15 @@ int32_t uPortI2cOpen(int32_t i2c, int32_t pinSda, int32_t pinSdc,
     return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
 }
 
+// Adopt an I2C instance.
+int32_t uPortI2cAdopt(int32_t i2c, bool controller)
+{
+    (void) i2c;
+    (void) controller;
+
+    return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+}
+
 // Close an I2C instance.
 void uPortI2cClose(int32_t handle)
 {

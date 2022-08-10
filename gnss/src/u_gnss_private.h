@@ -118,6 +118,7 @@ typedef struct uGnssPrivateInstance_t {
     const uGnssPrivateModule_t *pModule; /**< pointer to the module type. */
     uGnssTransportType_t transportType; /**< the type of transport to use. */
     uGnssTransportHandle_t transportHandle; /**< the handle of the transport to use. */
+    uint16_t i2cAddress; /**< the I2C address of the GNSS chip, only relevant if the transport is I2C. */
     int32_t timeoutMs; /**< the timeout for responses from the GNSS chip in milliseconds. */
     bool printUbxMessages; /**< whether debug printing of ubx messages is on or off. */
     int32_t pinGnssEnablePower; /**< the pin of the MCU that enables power to the GNSS module. */
@@ -203,11 +204,15 @@ int32_t uGnssPrivateGetStreamType(uGnssTransportType_t transportType);
  *
  * @param streamHandle  the handle of the streaming transport.
  * @param streamType    the streaming transport type.
+ * @param i2cAddress    the I2C address of the GNSS device, must be
+ *                      populated if streamType is
+ *                      #U_GNSS_PRIVATE_STREAM_TYPE_I2C.
  * @return              the number of bytes available to be received,
  *                      else negative error code.
  */
 int32_t uGnssPrivateStreamGetReceiveSize(int32_t streamHandle,
-                                         uGnssPrivateStreamType_t streamType);
+                                         uGnssPrivateStreamType_t streamType,
+                                         uint16_t i2cAddress);
 
 /** Send a ubx format message over UART or I2C (do not wait for the response).
  * Note: gUGnssPrivateMutex should be locked before this is called.

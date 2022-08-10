@@ -36,6 +36,7 @@
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
+#include "string.h"    // memcmp()
 
 #include "u_cfg_sw.h"
 #include "u_cfg_os_platform_specific.h"
@@ -54,6 +55,13 @@
 #include "u_gnss_type.h"
 #include "u_gnss.h"
 
+#if (U_CFG_APP_GNSS_I2C >= 0) && defined(U_GNSS_TEST_I2C_ADDRESS_EXTRA)
+#include "u_gnss_pwr.h" // So that we can do something with the extra address
+#include "u_gnss_info.h" // So that we can print something GNSS-module specific,
+// to show that we're not accidentally using address
+// 0x42
+#endif
+
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
@@ -65,6 +73,14 @@
 /** Print a whole line, with terminator, prefixed for this test file.
  */
 #define U_TEST_PRINT_LINE(format, ...) uPortLog(U_TEST_PREFIX format "\n", ##__VA_ARGS__)
+
+#if (U_CFG_APP_GNSS_I2C >= 0) && defined(U_GNSS_TEST_I2C_ADDRESS_EXTRA)
+# ifndef U_GNSS_TEST_BUFFER_SIZE_BYTES
+/** The buffer to use when comparing version strings
+ */
+#  define U_GNSS_TEST_BUFFER_SIZE_BYTES 1024
+# endif
+#endif
 
 /* ----------------------------------------------------------------
  * TYPES
@@ -109,13 +125,15 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssInitialisation")
 }
 
 #if (U_CFG_TEST_UART_A >= 0) || (U_CFG_APP_GNSS_I2C >= 0)
-/** Add a straaming GNSS instance, e.g. UART or I2C,
+/** Add a streaming GNSS instance, e.g. UART or I2C,
  * and remove it again.
  */
 U_PORT_TEST_FUNCTION("[gnss]", "gnssAddStream")
 {
     uDeviceHandle_t gnssHandleA;
+# if (U_CFG_APP_GNSS_I2C < 0) || (U_CFG_TEST_UART_B >= 0)
     uDeviceHandle_t dummyHandle;
+# endif
     uGnssTransportHandle_t transportHandleA;
 # if (U_CFG_TEST_UART_B >= 0)
     uDeviceHandle_t gnssHandleB;
@@ -193,14 +211,9 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssAddStream")
         U_PORT_TEST_ASSERT(uGnssGetUbxMessagePrint(gnssHandleA));
     }
 
-    U_TEST_PRINT_LINE("adding another instance on the same streaming"
+# if (U_CFG_APP_GNSS_I2C < 0)
+    U_TEST_PRINT_LINE("adding another instance on the same UART"
                       " port, should fail...");
-# if (U_CFG_APP_GNSS_I2C >= 0)
-    U_PORT_TEST_ASSERT(uGnssAdd(U_GNSS_MODULE_TYPE_M8,
-                                U_GNSS_TRANSPORT_UBX_I2C,
-                                transportHandleA,
-                                -1, false, &dummyHandle) < 0);
-# else
     U_PORT_TEST_ASSERT(uGnssAdd(U_GNSS_MODULE_TYPE_M8,
                                 U_GNSS_TRANSPORT_UBX_UART,
                                 transportHandleA,
@@ -307,6 +320,140 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssAddStream")
     uPortUartClose(gUartBHandle);
     gUartBHandle = -1;
 # endif
+
+    uPortI2cDeinit();
+    uPortDeinit();
+
+# ifndef __XTENSA__
+    // Check for memory leaks
+    // TODO: this if'ed out for ESP32 (xtensa compiler) at
+    // the moment as there is an issue with ESP32 hanging
+    // on to memory in the UART drivers that can't easily be
+    // accounted for.
+    heapUsed -= uPortGetHeapFree();
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
+    // heapUsed < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT(heapUsed <= 0);
+# else
+    (void) heapUsed;
+# endif
+}
+#endif
+
+#if (U_CFG_APP_GNSS_I2C >= 0) && defined(U_GNSS_TEST_I2C_ADDRESS_EXTRA)
+/** Test using an alternate I2C address.
+ */
+U_PORT_TEST_FUNCTION("[gnss]", "gnssI2cAddress")
+{
+    uGnssTransportHandle_t transportHandle;
+    uDeviceHandle_t gnssHandle[2];
+    char *buffer[2];
+    int32_t size[2];
+    char *pTmp;
+    int32_t y;
+    int32_t errorCode;
+    int32_t heapUsed;
+
+    // Whatever called us likely initialised the
+    // port so deinitialise it here to obtain the
+    // correct initial heap size
+    uPortDeinit();
+    heapUsed = uPortGetHeapFree();
+
+    U_PORT_TEST_ASSERT(uPortInit() == 0);
+    U_PORT_TEST_ASSERT(uPortI2cInit() == 0);
+
+    U_TEST_PRINT_LINE("testing using an alternate I2C address (0x%02x).",
+                      U_GNSS_TEST_I2C_ADDRESS_EXTRA);
+    gStreamAHandle = uPortI2cOpen(U_CFG_APP_GNSS_I2C,
+                                  U_CFG_APP_PIN_GNSS_SDA,
+                                  U_CFG_APP_PIN_GNSS_SCL,
+                                  true);
+    U_PORT_TEST_ASSERT(gStreamAHandle >= 0);
+    gTransportTypeA = U_GNSS_TRANSPORT_UBX_I2C;
+    transportHandle.i2c = gStreamAHandle;
+
+    U_PORT_TEST_ASSERT(uGnssInit() == 0);
+
+    U_TEST_PRINT_LINE("adding a first GNSS instance on I2C port %d,"
+                      " I2C address 0x%02x...", U_CFG_APP_GNSS_I2C,
+                      U_GNSS_I2C_ADDRESS);
+    errorCode = uGnssAdd(U_GNSS_MODULE_TYPE_M8,
+                         U_GNSS_TRANSPORT_UBX_I2C, transportHandle,
+                         -1, false, &gnssHandle[0]);
+    U_PORT_TEST_ASSERT_EQUAL((int32_t) U_ERROR_COMMON_SUCCESS, errorCode);
+
+    uGnssSetUbxMessagePrint(gnssHandle[0], true);
+    U_PORT_TEST_ASSERT(uGnssGetI2cAddress(gnssHandle[0]) == U_GNSS_I2C_ADDRESS);
+
+    // Power-up the first device
+    U_TEST_PRINT_LINE("powering on first GNSS at I2C address 0x%02x...", U_GNSS_I2C_ADDRESS);
+    U_PORT_TEST_ASSERT(uGnssPwrOn(gnssHandle[0]) == 0);
+
+    U_TEST_PRINT_LINE("adding a second GNSS instance at I2C address 0x%02x...",
+                      U_GNSS_TEST_I2C_ADDRESS_EXTRA);
+    errorCode = uGnssAdd(U_GNSS_MODULE_TYPE_M8,
+                         U_GNSS_TRANSPORT_UBX_I2C, transportHandle,
+                         -1, false, &gnssHandle[1]);
+    U_PORT_TEST_ASSERT_EQUAL((int32_t) U_ERROR_COMMON_SUCCESS, errorCode);
+
+    uGnssSetUbxMessagePrint(gnssHandle[1], true);
+
+    // Get/set the I2C address
+    U_PORT_TEST_ASSERT(uGnssGetI2cAddress(gnssHandle[1]) == U_GNSS_I2C_ADDRESS);
+    U_PORT_TEST_ASSERT(uGnssSetI2cAddress(gnssHandle[1], U_GNSS_TEST_I2C_ADDRESS_EXTRA) == 0);
+    U_PORT_TEST_ASSERT(uGnssGetI2cAddress(gnssHandle[1]) == U_GNSS_TEST_I2C_ADDRESS_EXTRA);
+
+    // Now power the second device up
+    U_TEST_PRINT_LINE("powering on second GNSS at I2C address 0x%02x...",
+                      U_GNSS_TEST_I2C_ADDRESS_EXTRA);
+    U_PORT_TEST_ASSERT(uGnssPwrOn(gnssHandle[1]) == 0);
+
+    U_TEST_PRINT_LINE("making sure the version strings are different...");
+    // Get the firmware version strings of both and diff them, just to
+    // make sure we are talking to different chips
+    buffer[0] = (char *) malloc(U_GNSS_TEST_BUFFER_SIZE_BYTES);
+    buffer[1] = (char *) malloc(U_GNSS_TEST_BUFFER_SIZE_BYTES);
+    U_PORT_TEST_ASSERT(buffer[0] != NULL);
+    U_PORT_TEST_ASSERT(buffer[1] != NULL);
+    size[0] = uGnssInfoGetFirmwareVersionStr(gnssHandle[0], buffer[0], U_GNSS_TEST_BUFFER_SIZE_BYTES);
+    size[1] = uGnssInfoGetFirmwareVersionStr(gnssHandle[1], buffer[1], U_GNSS_TEST_BUFFER_SIZE_BYTES);
+    U_PORT_TEST_ASSERT(size[0] > 0);
+    U_PORT_TEST_ASSERT(size[1] > 0);
+    for (size_t x = 0; x < sizeof(buffer) / sizeof(buffer[0]); x++) {
+        U_TEST_PRINT_LINE("GNSS chip %d version string is:", x + 1);
+        pTmp = buffer[x];
+        while (pTmp < buffer[x] + size[x]) {
+            y = strlen(pTmp);
+            if (y > 0) {
+                U_TEST_PRINT_LINE("\"%s\".", pTmp);
+                pTmp += y;
+            } else {
+                pTmp++;
+            }
+        }
+    }
+    y = size[0];
+    if (y > size[1]) {
+        y = size[1];
+    }
+    U_PORT_TEST_ASSERT(memcmp(buffer[0], buffer[1], y) != 0);
+
+    U_TEST_PRINT_LINE("powering off both GNSS chips...");
+    U_PORT_TEST_ASSERT(uGnssPwrOff(gnssHandle[1]) == 0);
+    U_PORT_TEST_ASSERT(uGnssPwrOff(gnssHandle[0]) == 0);
+
+    // Free memory
+    free(buffer[0]);
+    free(buffer[1]);
+
+    U_TEST_PRINT_LINE("deinitialising GNSS API...");
+    uGnssDeinit();
+
+    U_TEST_PRINT_LINE("removing stream...");
+    uPortI2cClose(gStreamAHandle);
+    gStreamAHandle = -1;
 
     uPortI2cDeinit();
     uPortDeinit();

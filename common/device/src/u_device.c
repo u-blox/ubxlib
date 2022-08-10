@@ -36,6 +36,7 @@
 #include "u_location.h"
 #include "u_location_shared.h"
 
+#include "u_device_private.h"
 #include "u_device_private_cell.h"
 #include "u_device_private_gnss.h"
 #include "u_device_private_short_range.h"
@@ -65,6 +66,7 @@ int32_t uDeviceInit()
     int32_t errorCode = uDeviceMutexCreate();
 
     if (errorCode == 0) {
+        uDevicePrivateInit();
         errorCode = uDevicePrivateCellInit();
         if (errorCode == (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED) {
             errorCode = 0;

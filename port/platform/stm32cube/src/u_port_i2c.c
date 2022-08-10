@@ -101,6 +101,7 @@ typedef struct {
     int32_t pinSda; // Need to remember these in order to perform
     int32_t pinSdc; // bus recovery
     bool ignoreBusy;
+    bool adopted;
 } uPortI2cData_t;
 
 /* ----------------------------------------------------------------
@@ -506,15 +507,17 @@ static int32_t receive(I2C_TypeDef *pReg, uint16_t address,
 }
 
 // Close an I2C instance.
-static void closeI2c(I2C_TypeDef **ppReg)
+static void closeI2c(uPortI2cData_t *pInstance)
 {
-    if ((ppReg != NULL) && (*ppReg != NULL)) {
-        // Disable the I2C block
-        CLEAR_BIT((*ppReg)->CR1, I2C_CR1_PE);
-        // Stop the bus
-        clockDisable(*ppReg);
+    if ((pInstance != NULL) && (pInstance->pReg != NULL)) {
+        if (!pInstance->adopted) {
+            // Disable the I2C block
+            CLEAR_BIT(pInstance->pReg->CR1, I2C_CR1_PE);
+            // Stop the bus
+            clockDisable(pInstance->pReg);
+        }
         // Set the register to NULL to indicate that it is no longer in use
-        *ppReg = NULL;
+        pInstance->pReg = NULL;
     }
 }
 
@@ -569,6 +572,74 @@ static int32_t busRecover(int32_t pinSda, int32_t pinSdc)
     return errorCode;
 }
 
+// Open an I2C instance; unlike the other static functions
+// this does all the mutex locking etc.
+static int32_t openI2c(int32_t i2c, int32_t pinSda, int32_t pinSdc,
+                       bool controller, bool adopt)
+{
+    int32_t handleOrErrorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    LL_GPIO_InitTypeDef gpioInitStruct = {0};
+    I2C_TypeDef *pReg;
+    bool configurationOk = true;
+
+    if (gMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gMutex);
+
+        handleOrErrorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        // > 0 rather than >= 0 below 'cos ST number their UARTs from 1
+        if ((i2c > 0) && (i2c < sizeof(gI2cData) / sizeof(gI2cData[0])) &&
+            (gI2cData[i2c].pReg == NULL) && controller &&
+            (adopt || ((pinSda >= 0) && (pinSdc >= 0)))) {
+            pReg = gpI2cReg[i2c];
+            // Enable the clocks to the bus
+            handleOrErrorCode = clockEnable(pReg);
+            if (handleOrErrorCode >= 0) {
+                handleOrErrorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
+                if (!adopt) {
+                    // Enable clock to the registers for the pins
+                    uPortPrivateGpioEnableClock(pinSda);
+                    uPortPrivateGpioEnableClock(pinSdc);
+                    // The Pin field is a bitmap so we can do SDA and SCL
+                    // at the same time as they are always on the same port
+                    gpioInitStruct.Pin = (1U << U_PORT_STM32F4_GPIO_PIN(pinSda)) |
+                                         (1U << U_PORT_STM32F4_GPIO_PIN(pinSdc));
+                    gpioInitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
+                    gpioInitStruct.Speed = LL_GPIO_SPEED_FREQ_VERY_HIGH;
+                    gpioInitStruct.OutputType = LL_GPIO_OUTPUT_OPENDRAIN;
+                    gpioInitStruct.Pull = LL_GPIO_PULL_UP;
+                    // AF4 from the data sheet for the STM32F437VG
+                    gpioInitStruct.Alternate = LL_GPIO_AF_4;
+                    if ((LL_GPIO_Init(pUPortPrivateGpioGetReg(pinSda),
+                                      &gpioInitStruct) != SUCCESS) ||
+                        (configureHw(pReg, U_PORT_I2C_CLOCK_FREQUENCY_HERTZ) != 0)) {
+                        configurationOk = false;
+                    }
+                }
+                if (configurationOk) {
+                    gI2cData[i2c].clockHertz = U_PORT_I2C_CLOCK_FREQUENCY_HERTZ;
+                    gI2cData[i2c].timeoutMs = U_PORT_I2C_TIMEOUT_MILLISECONDS;
+                    gI2cData[i2c].pinSda = pinSda;
+                    gI2cData[i2c].pinSdc = pinSdc;
+                    gI2cData[i2c].pReg = pReg;
+                    gI2cData[i2c].adopted = adopt;
+                    // Return the I2C HW block number as the handle
+                    handleOrErrorCode = i2c;
+                } else {
+                    if (!adopt) {
+                        // Put the bus back to sleep on error
+                        clockDisable(pReg);
+                    }
+                }
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gMutex);
+    }
+
+    return handleOrErrorCode;
+}
+
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -602,7 +673,7 @@ void uPortI2cDeinit()
 
         // Shut down any open instances
         for (size_t x = 0; x < sizeof(gI2cData) / sizeof(gI2cData[0]); x++) {
-            closeI2c(&gI2cData[x].pReg);
+            closeI2c(&gI2cData[x]);
         }
 
         // Free the mutex so that we can delete it
@@ -616,58 +687,13 @@ void uPortI2cDeinit()
 int32_t uPortI2cOpen(int32_t i2c, int32_t pinSda, int32_t pinSdc,
                      bool controller)
 {
-    int32_t handleOrErrorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
-    LL_GPIO_InitTypeDef gpioInitStruct = {0};
-    I2C_TypeDef *pReg;
+    return openI2c(i2c, pinSda, pinSdc, controller, false);
+}
 
-    if (gMutex != NULL) {
-
-        U_PORT_MUTEX_LOCK(gMutex);
-
-        handleOrErrorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-        // > 0 rather than >= 0 below 'cos ST number their UARTs from 1
-        if ((i2c > 0) && (i2c < sizeof(gI2cData) / sizeof(gI2cData[0])) &&
-            (gI2cData[i2c].pReg == NULL) && controller &&
-            (pinSda >= 0) && (pinSdc >= 0)) {
-            pReg = gpI2cReg[i2c];
-            // Enable the clocks to the bus
-            handleOrErrorCode = clockEnable(pReg);
-            if (handleOrErrorCode >= 0) {
-                handleOrErrorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
-                // Enable clock to the registers for the pins
-                uPortPrivateGpioEnableClock(pinSda);
-                uPortPrivateGpioEnableClock(pinSdc);
-                // The Pin field is a bitmap so we can do SDA and SCL
-                // at the same time as they are always on the same port
-                gpioInitStruct.Pin = (1U << U_PORT_STM32F4_GPIO_PIN(pinSda)) |
-                                     (1U << U_PORT_STM32F4_GPIO_PIN(pinSdc));
-                gpioInitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
-                gpioInitStruct.Speed = LL_GPIO_SPEED_FREQ_VERY_HIGH;
-                gpioInitStruct.OutputType = LL_GPIO_OUTPUT_OPENDRAIN;
-                gpioInitStruct.Pull = LL_GPIO_PULL_UP;
-                // AF4 from the data sheet for the STM32F437VG
-                gpioInitStruct.Alternate = LL_GPIO_AF_4;
-                if ((LL_GPIO_Init(pUPortPrivateGpioGetReg(pinSda),
-                                  &gpioInitStruct) == SUCCESS) &&
-                    (configureHw(pReg, U_PORT_I2C_CLOCK_FREQUENCY_HERTZ) == 0)) {
-                    gI2cData[i2c].clockHertz = U_PORT_I2C_CLOCK_FREQUENCY_HERTZ;
-                    gI2cData[i2c].timeoutMs = U_PORT_I2C_TIMEOUT_MILLISECONDS;
-                    gI2cData[i2c].pinSda = pinSdc;
-                    gI2cData[i2c].pinSdc = pinSda;
-                    gI2cData[i2c].pReg = pReg;
-                    // Return the I2C HW block number as the handle
-                    handleOrErrorCode = i2c;
-                } else {
-                    // Put the bus back to sleep on error
-                    clockDisable(pReg);
-                }
-            }
-        }
-
-        U_PORT_MUTEX_UNLOCK(gMutex);
-    }
-
-    return handleOrErrorCode;
+// Adopt an I2C instance.
+int32_t uPortI2cAdopt(int32_t i2c, bool controller)
+{
+    return openI2c(i2c, -1, -1, controller, true);
 }
 
 // Close an I2C instance.
@@ -679,7 +705,7 @@ void uPortI2cClose(int32_t handle)
 
         U_PORT_MUTEX_LOCK(gMutex);
 
-        closeI2c(&gI2cData[handle].pReg);
+        closeI2c(&gI2cData[handle]);
 
         U_PORT_MUTEX_UNLOCK(gMutex);
     }
@@ -700,10 +726,15 @@ int32_t uPortI2cCloseRecoverBus(int32_t handle)
         // > 0 rather than >= 0 below 'cos ST number their UARTs from 1
         if ((handle > 0) && (handle < sizeof(gI2cData) / sizeof(gI2cData[0])) &&
             (gI2cData[handle].pReg != NULL)) {
-            pinSda = gI2cData[handle].pinSda;
-            pinSdc = gI2cData[handle].pinSdc;
-            closeI2c(&gI2cData[handle].pReg);
-            errorCode = busRecover(pinSda, pinSdc);
+            errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+            if (!gI2cData[handle].adopted) {
+                pinSda = gI2cData[handle].pinSda;
+                pinSdc = gI2cData[handle].pinSdc;
+                // No longer adopted, we've been asked to fiddle
+                gI2cData[handle].adopted = false;
+                closeI2c(&gI2cData[handle]);
+                errorCode = busRecover(pinSda, pinSdc);
+            }
         }
 
         U_PORT_MUTEX_UNLOCK(gMutex);
@@ -725,10 +756,13 @@ int32_t uPortI2cSetClock(int32_t handle, int32_t clockHertz)
         // > 0 rather than >= 0 below 'cos ST number their UARTs from 1
         if ((handle > 0) && (handle < sizeof(gI2cData) / sizeof(gI2cData[0])) &&
             (gI2cData[handle].pReg != NULL)) {
-            errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
-            if (configureHw(gI2cData[handle].pReg, clockHertz) == 0) {
-                gI2cData[handle].clockHertz = clockHertz;
-                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+            errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+            if (!gI2cData[handle].adopted) {
+                errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
+                if (configureHw(gI2cData[handle].pReg, clockHertz) == 0) {
+                    gI2cData[handle].clockHertz = clockHertz;
+                    errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                }
             }
         }
 
@@ -751,7 +785,10 @@ int32_t uPortI2cGetClock(int32_t handle)
         // > 0 rather than >= 0 below 'cos ST number their UARTs from 1
         if ((handle > 0) && (handle < sizeof(gI2cData) / sizeof(gI2cData[0])) &&
             (gI2cData[handle].pReg != NULL)) {
-            errorCodeOrClock = gI2cData[handle].clockHertz;
+            errorCodeOrClock = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+            if (!gI2cData[handle].adopted) {
+                errorCodeOrClock = gI2cData[handle].clockHertz;
+            }
         }
 
         U_PORT_MUTEX_UNLOCK(gMutex);

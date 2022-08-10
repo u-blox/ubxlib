@@ -48,6 +48,13 @@ extern "C" {
 # define U_GNSS_POWER_UP_TIME_SECONDS 2
 #endif
 
+#ifndef U_GNSS_RESET_TIME_SECONDS
+/** How long to wait for a GNSS chip to be available after it has
+ * been asked to reset.
+ */
+# define U_GNSS_RESET_TIME_SECONDS 5
+#endif
+
 #ifndef U_GNSS_AT_POWER_UP_TIME_SECONDS
 /** How long to wait for the response to AT+UGPS=1.  If you
  * change this and you also use the cell locate API then you

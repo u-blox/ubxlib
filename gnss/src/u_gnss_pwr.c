@@ -224,7 +224,7 @@ int32_t uGnssPwrOn(uDeviceHandle_t gnssHandle)
                                                                                   NULL, 0);
                                     if (errorCode == 0) {
                                         // Wait for the reset to complete
-                                        uPortTaskBlock(U_GNSS_POWER_UP_TIME_SECONDS * 1000);
+                                        uPortTaskBlock(U_GNSS_RESET_TIME_SECONDS * 1000);
                                     }
                                 }
                             }

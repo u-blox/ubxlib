@@ -196,10 +196,10 @@ U_PORT_TEST_FUNCTION("[gnssUtil]", "gnssUtilTransparent")
             U_PORT_TEST_ASSERT(memcmp(pBuffer1, pBuffer2 + 6,
                                       x - U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES) == 0);
 
-            // Repeat but throw the body away this time
+            // Repeat but ignore the body this time
             x = uUbxProtocolEncode(0x0a, 0x04, NULL, 0, command);
             U_PORT_TEST_ASSERT(x == sizeof(command));
-            U_TEST_PRINT_LINE("get version string and throw it away with the transparent API...");
+            U_TEST_PRINT_LINE("get version string and ignore response with the transparent API...");
             x = uGnssUtilUbxTransparentSendReceive(gnssHandle,
                                                    command, sizeof(command),
                                                    NULL, 0);
@@ -210,9 +210,11 @@ U_PORT_TEST_FUNCTION("[gnssUtil]", "gnssUtilTransparent")
             free(pBuffer2);
             free(pBuffer1);
 
-            // Do the standard postamble, leaving the module on for the next
-            // test to speed things up
-            uGnssTestPrivatePostamble(&gHandles, false);
+            // Do the standard postamble, but this time power the
+            // module off as otherwise the response to the last
+            // version string request will still be sitting in the
+            // GNSS chip's buffer when the next test starts.
+            uGnssTestPrivatePostamble(&gHandles, true);
         }
     }
 

@@ -78,9 +78,10 @@
 /** Structure of the things we need to keep track of per I2C instance.
  */
 typedef struct {
-    int32_t pinSda; // This also used as a flag to indicate "in use"
+    int32_t pinSda;
     int32_t pinSdc;
-    int32_t clockHertz;
+    int32_t clockHertz; // This also used as a flag to indicate "in use"
+    bool adopted;
 } uPortI2cData_t;
 
 /* ----------------------------------------------------------------
@@ -102,9 +103,11 @@ static uPortI2cData_t gI2cData[U_PORT_I2C_MAX_NUM];
 // Close an I2C instance.
 static void closeI2c(int32_t index)
 {
-    if (gI2cData[index].pinSda >= 0) {
-        i2c_driver_delete(index);
-        gI2cData[index].pinSda = -1;
+    if (gI2cData[index].clockHertz > 0) {
+        if (!gI2cData[index].adopted) {
+            i2c_driver_delete(index);
+        }
+        gI2cData[index].clockHertz = -1;
     }
 }
 
@@ -181,6 +184,51 @@ static int32_t receive(int32_t handle, uint16_t address, char *pData, size_t siz
     return errorCodeOrLength;
 }
 
+// Open an I2C instance; unlike the other static functions
+// this does all the mutex locking etc.
+static int32_t openI2c(int32_t i2c, int32_t pinSda, int32_t pinSdc,
+                       bool controller, bool adopt)
+{
+    int32_t handleOrErrorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    i2c_config_t cfg = {0};
+
+    if (gMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gMutex);
+
+        handleOrErrorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        if ((i2c >= 0) && (i2c < sizeof(gI2cData) / sizeof(gI2cData[0])) &&
+            (gI2cData[i2c].clockHertz < 0) && controller &&
+            (adopt || ((pinSda >= 0) && (pinSdc >= 0)))) {
+            handleOrErrorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
+            cfg.mode = I2C_MODE_MASTER;
+            cfg.sda_io_num = pinSda;
+            cfg.scl_io_num = pinSdc;
+            cfg.sda_pullup_en = true;
+            cfg.scl_pullup_en = true;
+            cfg.master.clk_speed = U_PORT_I2C_CLOCK_FREQUENCY_HERTZ;
+            if (adopt ||
+                ((i2c_param_config(i2c, &cfg) == ESP_OK) &&
+                 (i2c_set_timeout(i2c, U_PORT_I2C_TIMEOUT_MS_TO_ESP32(U_PORT_I2C_TIMEOUT_MILLISECONDS)) == ESP_OK) &&
+                 (i2c_driver_install(i2c, I2C_MODE_MASTER, 0, 0, 0) == ESP_OK))) {
+                // We need to remember the configuration in this case
+                // as the only way to change the clock is to reconfigure
+                // the instance entirely
+                gI2cData[i2c].pinSda = pinSda;
+                gI2cData[i2c].pinSdc = pinSdc;
+                gI2cData[i2c].clockHertz = cfg.master.clk_speed;
+                gI2cData[i2c].adopted = adopt;
+                // Return the I2C HW block number as the handle
+                handleOrErrorCode = i2c;
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gMutex);
+    }
+
+    return handleOrErrorCode;
+}
+
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -196,6 +244,7 @@ int32_t uPortI2cInit()
             for (size_t x = 0; x < sizeof(gI2cData) / sizeof(gI2cData[0]); x++) {
                 gI2cData[x].pinSda = -1;
                 gI2cData[x].pinSdc = -1;
+                gI2cData[x].clockHertz = -1;
             }
         }
     }
@@ -225,42 +274,13 @@ void uPortI2cDeinit()
 int32_t uPortI2cOpen(int32_t i2c, int32_t pinSda, int32_t pinSdc,
                      bool controller)
 {
-    int32_t handleOrErrorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
-    i2c_config_t cfg = {0};
+    return openI2c(i2c, pinSda, pinSdc, controller, false);
+}
 
-    if (gMutex != NULL) {
-
-        U_PORT_MUTEX_LOCK(gMutex);
-
-        handleOrErrorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-        if ((i2c >= 0) && (i2c < sizeof(gI2cData) / sizeof(gI2cData[0])) &&
-            (gI2cData[i2c].pinSda < 0) && controller &&
-            (pinSda >= 0) && (pinSdc >= 0)) {
-            handleOrErrorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
-            cfg.mode = I2C_MODE_MASTER;
-            cfg.sda_io_num = pinSda;
-            cfg.scl_io_num = pinSdc;
-            cfg.sda_pullup_en = true;
-            cfg.scl_pullup_en = true;
-            cfg.master.clk_speed = U_PORT_I2C_CLOCK_FREQUENCY_HERTZ;
-            if ((i2c_param_config(i2c, &cfg) == ESP_OK) &&
-                (i2c_set_timeout(i2c, U_PORT_I2C_TIMEOUT_MS_TO_ESP32(U_PORT_I2C_TIMEOUT_MILLISECONDS)) == ESP_OK) &&
-                (i2c_driver_install(i2c, I2C_MODE_MASTER, 0, 0, 0) == ESP_OK)) {
-                // We need to remember the configuration in this case
-                // as the only way to change the clock is to reconfigure
-                // the instance entirely
-                gI2cData[i2c].pinSda = pinSda;
-                gI2cData[i2c].pinSdc = pinSdc;
-                gI2cData[i2c].clockHertz = cfg.master.clk_speed;
-                // Return the I2C HW block number as the handle
-                handleOrErrorCode = i2c;
-            }
-        }
-
-        U_PORT_MUTEX_UNLOCK(gMutex);
-    }
-
-    return handleOrErrorCode;
+// Adopt an I2C instance.
+int32_t uPortI2cAdopt(int32_t i2c, bool controller)
+{
+    return openI2c(i2c, -1, -1, controller, true);
 }
 
 // Close an I2C instance.
@@ -288,11 +308,14 @@ int32_t uPortI2cCloseRecoverBus(int32_t handle)
 
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if ((handle >= 0) && (handle < sizeof(gI2cData) / sizeof(gI2cData[0])) &&
-            (gI2cData[handle].pinSda >= 0)) {
-            closeI2c(handle);
-            // Nothing to do - bus recovery is done as required
-            // on ESP-IDF; return "not supported" to indicate this
+            (gI2cData[handle].clockHertz > 0)) {
             errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+            if (!gI2cData[handle].adopted) {
+                closeI2c(handle);
+                // Nothing to do - bus recovery is done as required
+                // on ESP-IDF; return "not supported" to indicate this
+                errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+            }
         }
 
         U_PORT_MUTEX_UNLOCK(gMutex);
@@ -314,29 +337,32 @@ int32_t uPortI2cSetClock(int32_t handle, int32_t clockHertz)
 
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if ((handle >= 0) && (handle < sizeof(gI2cData) / sizeof(gI2cData[0])) &&
-            (gI2cData[handle].pinSda >= 0) && (clockHertz > 0)) {
-            errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
-            // The only way to configure the clock is to do a full
-            // reconfiguration of the instance
-            if (i2c_get_timeout(handle, &timeoutEsp32) == ESP_OK) {
-                cfg.mode = I2C_MODE_MASTER;
-                cfg.sda_io_num = gI2cData[handle].pinSda;
-                cfg.scl_io_num = gI2cData[handle].pinSdc;
-                cfg.sda_pullup_en = true;
-                cfg.scl_pullup_en = true;
-                cfg.master.clk_speed = clockHertz;
+            (gI2cData[handle].clockHertz > 0) && (clockHertz > 0)) {
+            errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+            if (!gI2cData[handle].adopted) {
+                errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
+                // The only way to configure the clock is to do a full
+                // reconfiguration of the instance
+                if (i2c_get_timeout(handle, &timeoutEsp32) == ESP_OK) {
+                    cfg.mode = I2C_MODE_MASTER;
+                    cfg.sda_io_num = gI2cData[handle].pinSda;
+                    cfg.scl_io_num = gI2cData[handle].pinSdc;
+                    cfg.sda_pullup_en = true;
+                    cfg.scl_pullup_en = true;
+                    cfg.master.clk_speed = clockHertz;
 
-                if (i2c_driver_delete(handle) == ESP_OK) {
-                    // Mark the instance as not in use in case reconfiguring
-                    // it doesn't work
-                    gI2cData[handle].pinSda = -1;
-                    if ((i2c_param_config(handle, &cfg) == ESP_OK) &&
-                        (i2c_set_timeout(handle, timeoutEsp32) == ESP_OK) &&
-                        (i2c_driver_install(handle, I2C_MODE_MASTER, 0, 0, 0) == ESP_OK)) {
-                        // All is good
-                        gI2cData[handle].pinSda = cfg.sda_io_num;
-                        gI2cData[handle].clockHertz = clockHertz;
-                        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                    if (i2c_driver_delete(handle) == ESP_OK) {
+                        // Mark the instance as not in use in case reconfiguring
+                        // it doesn't work
+                        gI2cData[handle].clockHertz = -1;
+                        if ((i2c_param_config(handle, &cfg) == ESP_OK) &&
+                            (i2c_set_timeout(handle, timeoutEsp32) == ESP_OK) &&
+                            (i2c_driver_install(handle, I2C_MODE_MASTER, 0, 0, 0) == ESP_OK)) {
+                            // All is good
+                            gI2cData[handle].pinSda = cfg.sda_io_num;
+                            gI2cData[handle].clockHertz = clockHertz;
+                            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                        }
                     }
                 }
             }
@@ -359,8 +385,11 @@ int32_t uPortI2cGetClock(int32_t handle)
 
         errorCodeOrClock = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if ((handle >= 0) && (handle < sizeof(gI2cData) / sizeof(gI2cData[0])) &&
-            (gI2cData[handle].pinSda >= 0)) {
-            errorCodeOrClock = gI2cData[handle].clockHertz;
+            (gI2cData[handle].clockHertz > 0)) {
+            errorCodeOrClock = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+            if (!gI2cData[handle].adopted) {
+                errorCodeOrClock = gI2cData[handle].clockHertz;
+            }
         }
 
         U_PORT_MUTEX_UNLOCK(gMutex);
@@ -380,10 +409,13 @@ int32_t uPortI2cSetTimeout(int32_t handle, int32_t timeoutMs)
 
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if ((handle >= 0) && (handle < sizeof(gI2cData) / sizeof(gI2cData[0])) &&
-            (gI2cData[handle].pinSda >= 0) && (timeoutMs > 0)) {
-            errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
-            if (i2c_set_timeout(handle, U_PORT_I2C_TIMEOUT_MS_TO_ESP32(timeoutMs)) == ESP_OK) {
-                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+            (gI2cData[handle].clockHertz > 0) && (timeoutMs > 0)) {
+            errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+            if (!gI2cData[handle].adopted) {
+                errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
+                if (i2c_set_timeout(handle, U_PORT_I2C_TIMEOUT_MS_TO_ESP32(timeoutMs)) == ESP_OK) {
+                    errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                }
             }
         }
 
@@ -405,7 +437,7 @@ int32_t uPortI2cGetTimeout(int32_t handle)
 
         errorCodeOrTimeout = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if ((handle >= 0) && (handle < sizeof(gI2cData) / sizeof(gI2cData[0])) &&
-            (gI2cData[handle].pinSda >= 0)) {
+            (gI2cData[handle].clockHertz > 0)) {
             errorCodeOrTimeout = (int32_t) U_ERROR_COMMON_PLATFORM;
             if (i2c_get_timeout(handle, &timeoutEsp32) == ESP_OK) {
                 errorCodeOrTimeout = U_PORT_I2C_TIMEOUT_ESP32_TO_MS(timeoutEsp32);
@@ -431,7 +463,7 @@ int32_t uPortI2cControllerSendReceive(int32_t handle, uint16_t address,
 
         errorCodeOrLength = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if ((handle >= 0) && (handle < sizeof(gI2cData) / sizeof(gI2cData[0])) &&
-            (gI2cData[handle].pinSda >= 0) &&
+            (gI2cData[handle].clockHertz > 0) &&
             ((pSend != NULL) || (bytesToSend == 0)) &&
             ((pReceive != NULL) || (bytesToReceive == 0))) {
             errorCodeOrLength = (int32_t) U_ERROR_COMMON_SUCCESS;
@@ -463,7 +495,7 @@ int32_t uPortI2cControllerSend(int32_t handle, uint16_t address,
 
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if ((handle >= 0) && (handle < sizeof(gI2cData) / sizeof(gI2cData[0])) &&
-            (gI2cData[handle].pinSda >= 0) &&
+            (gI2cData[handle].clockHertz > 0) &&
             ((pSend != NULL) || (bytesToSend == 0))) {
             errorCode = send(handle, address, pSend, bytesToSend, noStop);
         }

@@ -60,6 +60,7 @@
 typedef struct {
     const struct device *pDevice;
     int32_t clockHertz;
+    bool adopted;
 } uPortI2cData_t;
 
 /* ----------------------------------------------------------------
@@ -105,6 +106,55 @@ static int32_t clockHertzToIndex(int32_t clockHertz)
     return index;
 }
 
+// Open an I2C instance; unlike the other static functions
+// this does all the mutex locking etc.
+static int32_t openI2c(int32_t i2c, int32_t pinSda, int32_t pinSdc,
+                       bool controller, bool adopt)
+{
+    int32_t handleOrErrorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    const struct device *pDevice = NULL;
+    uint32_t i2cDeviceCfg;
+
+    if (gMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gMutex);
+
+        handleOrErrorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        // On Zephyr the pins are set at compile time so those passed
+        // into here must be non-valid
+        if ((i2c >= 0) && (i2c < sizeof(gI2cData) / sizeof(gI2cData[0])) &&
+            (gI2cData[i2c].pDevice == NULL) && controller &&
+            (pinSda < 0) && (pinSdc < 0)) {
+            handleOrErrorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
+            switch (i2c) {
+                case 0:
+                    pDevice = device_get_binding("I2C_0");
+                    break;
+                case 1:
+                    pDevice = device_get_binding("I2C_1");
+                    break;
+                default:
+                    break;
+            }
+            i2cDeviceCfg = I2C_SPEED_SET(clockHertzToIndex(U_PORT_I2C_CLOCK_FREQUENCY_HERTZ)) | I2C_MODE_MASTER;
+            if ((pDevice != NULL) &&
+                (!adopt || (i2c_configure(pDevice, i2cDeviceCfg) == 0))) {
+                gI2cData[i2c].clockHertz = U_PORT_I2C_CLOCK_FREQUENCY_HERTZ;
+                // Hook the device data structure into the entry
+                // to flag that it is in use
+                gI2cData[i2c].pDevice = pDevice;
+                gI2cData[i2c].adopted = adopt;
+                // Return the I2C HW block number as the handle
+                handleOrErrorCode = i2c;
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gMutex);
+    }
+
+    return handleOrErrorCode;
+}
+
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -144,46 +194,13 @@ void uPortI2cDeinit()
 int32_t uPortI2cOpen(int32_t i2c, int32_t pinSda, int32_t pinSdc,
                      bool controller)
 {
-    int32_t handleOrErrorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
-    const struct device *pDevice = NULL;
-    uint32_t i2cDeviceCfg;
+    return openI2c(i2c, pinSda, pinSdc, controller, false);
+}
 
-    if (gMutex != NULL) {
-
-        U_PORT_MUTEX_LOCK(gMutex);
-
-        handleOrErrorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-        // On Zephyr the pins are set at compile time so those passed
-        // into here must be non-valid
-        if ((i2c >= 0) && (i2c < sizeof(gI2cData) / sizeof(gI2cData[0])) &&
-            (gI2cData[i2c].pDevice == NULL) && controller &&
-            (pinSda < 0) && (pinSdc < 0)) {
-            handleOrErrorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
-            switch (i2c) {
-                case 0:
-                    pDevice = device_get_binding("I2C_0");
-                    break;
-                case 1:
-                    pDevice = device_get_binding("I2C_1");
-                    break;
-                default:
-                    break;
-            }
-            i2cDeviceCfg = I2C_SPEED_SET(clockHertzToIndex(U_PORT_I2C_CLOCK_FREQUENCY_HERTZ)) | I2C_MODE_MASTER;
-            if ((pDevice != NULL) && (i2c_configure(pDevice, i2cDeviceCfg) == 0)) {
-                gI2cData[i2c].clockHertz = U_PORT_I2C_CLOCK_FREQUENCY_HERTZ;
-                // Hook the device data structure into the entry
-                // to flag that it is in use
-                gI2cData[i2c].pDevice = pDevice;
-                // Return the I2C HW block number as the handle
-                handleOrErrorCode = i2c;
-            }
-        }
-
-        U_PORT_MUTEX_UNLOCK(gMutex);
-    }
-
-    return handleOrErrorCode;
+// Adopt an I2C instance.
+int32_t uPortI2cAdopt(int32_t i2c, bool controller)
+{
+    return openI2c(i2c, -1, -1, controller, true);
 }
 
 // Close an I2C instance.
@@ -215,15 +232,19 @@ int32_t uPortI2cCloseRecoverBus(int32_t handle)
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if ((handle >= 0) && (handle < sizeof(gI2cData) / sizeof(gI2cData[0])) &&
             (gI2cData[handle].pDevice != NULL)) {
-            errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
-            pDevice = gI2cData[handle].pDevice;
-            // Mark the device as closed
-            gI2cData[handle].pDevice = NULL;
-            x = i2c_recover_bus(pDevice);
-            if (x == -ENOSYS) {
-                errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
-            } else if (x == 0) {
-                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+            errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+            if (!gI2cData[handle].adopted) {
+                errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
+                pDevice = gI2cData[handle].pDevice;
+                // Mark the device as closed; adopt is not a factor
+                // here, we've been asked to fiddle
+                gI2cData[handle].pDevice = NULL;
+                x = i2c_recover_bus(pDevice);
+                if (x == -ENOSYS) {
+                    errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+                } else if (x == 0) {
+                    errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                }
             }
         }
 
@@ -248,12 +269,15 @@ int32_t uPortI2cSetClock(int32_t handle, int32_t clockHertz)
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if ((handle >= 0) && (handle < sizeof(gI2cData) / sizeof(gI2cData[0])) &&
             (gI2cData[handle].pDevice != NULL) && (clockIndex >= 0)) {
-            pDevice = gI2cData[handle].pDevice;
-            i2cDeviceCfg = I2C_SPEED_SET(clockIndex) | I2C_MODE_MASTER;
-            errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
-            if (i2c_configure(pDevice, i2cDeviceCfg) == 0) {
-                gI2cData[handle].clockHertz = clockHertz;
-                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+            errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+            if (!gI2cData[handle].adopted) {
+                pDevice = gI2cData[handle].pDevice;
+                i2cDeviceCfg = I2C_SPEED_SET(clockIndex) | I2C_MODE_MASTER;
+                errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
+                if (i2c_configure(pDevice, i2cDeviceCfg) == 0) {
+                    gI2cData[handle].clockHertz = clockHertz;
+                    errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                }
             }
         }
 
@@ -275,7 +299,10 @@ int32_t uPortI2cGetClock(int32_t handle)
         errorCodeOrClock = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if ((handle >= 0) && (handle < sizeof(gI2cData) / sizeof(gI2cData[0])) &&
             (gI2cData[handle].pDevice != NULL)) {
-            errorCodeOrClock = gI2cData[handle].clockHertz;
+            errorCodeOrClock = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+            if (!gI2cData[handle].adopted) {
+                errorCodeOrClock = gI2cData[handle].clockHertz;
+            }
         }
 
         U_PORT_MUTEX_UNLOCK(gMutex);

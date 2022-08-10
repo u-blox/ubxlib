@@ -104,6 +104,27 @@ int32_t uGnssAdd(uGnssModuleType_t moduleType,
                  bool leavePowerAlone,
                  uDeviceHandle_t *pGnssHandle);
 
+/** Set the I2C address at which the GNSS device can be expected to
+ * be found.  If not called the default #U_GNSS_I2C_ADDRESS is assumed.
+ * Note that this does not _configure_ the I2C address inside the GNSS
+ * device, that must have already been set by other means.  Obviously this
+ * only makes a difference if the transport type is I2C.
+ *
+ * @param gnssHandle  the handle of the GNSS.
+ * @param i2cAddress  the I2C address of the GNSS device.
+ * @return            zero on success else negative error code.
+ */
+int32_t uGnssSetI2cAddress(uDeviceHandle_t gnssHandle, int32_t i2cAddress);
+
+/** Get the I2C address which this code is using to talk to a GNSS
+ * device.
+ *
+ * @param gnssHandle  the handle of the GNSS instance.
+ * @return            on success the I2C address being used for the GNSS
+ *                    device, else negative error code.
+ */
+int32_t uGnssGetI2cAddress(uDeviceHandle_t gnssHandle);
+
 /** Remove a GNSS instance.  It is up to the caller to ensure
  * that the GNSS module for the given instance has been powered down etc.;
  * all this function does is remove the logical instance.

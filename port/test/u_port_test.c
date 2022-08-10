@@ -2372,6 +2372,9 @@ U_PORT_TEST_FUNCTION("[port]", "portI2cRequiresSpecificWiring")
     gI2cHandle = uPortI2cOpen(U_CFG_APP_GNSS_I2C, U_CFG_APP_PIN_GNSS_SDA, U_CFG_APP_PIN_GNSS_SCL, true);
     U_PORT_TEST_ASSERT(gI2cHandle >= 0);
 
+    // Note: no real way of testing uPortI2cAdopt() here since
+    // it would require platform specific test code.
+
     // Close again and deinit I2C, using the bus-recovery version in case of
     // previous test failures
     uPortI2cCloseRecoverBus(gI2cHandle);

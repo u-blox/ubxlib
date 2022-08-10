@@ -146,6 +146,7 @@ const uGnssPrivateStreamType_t gGnssPrivateTransportTypeToStream[] = {
 // Send a ubx format message over UART or I2C.
 static int32_t sendUbxMessageStream(int32_t streamHandle,
                                     uGnssPrivateStreamType_t streamType,
+                                    uint16_t i2cAddress,
                                     const char *pMessage,
                                     size_t messageLengthBytes, bool printIt)
 {
@@ -156,7 +157,7 @@ static int32_t sendUbxMessageStream(int32_t streamHandle,
             errorCodeOrSentLength = uPortUartWrite(streamHandle, pMessage, messageLengthBytes);
             break;
         case U_GNSS_PRIVATE_STREAM_TYPE_I2C:
-            errorCodeOrSentLength = uPortI2cControllerSend(streamHandle, U_GNSS_I2C_ADDRESS,
+            errorCodeOrSentLength = uPortI2cControllerSend(streamHandle, i2cAddress,
                                                            pMessage, messageLengthBytes, false);
             if (errorCodeOrSentLength == 0) {
                 errorCodeOrSentLength = messageLengthBytes;
@@ -190,6 +191,7 @@ static int32_t sendUbxMessageStream(int32_t streamHandle,
 // uPortUartRead()/whatever() after the wanted message.
 static int32_t receiveUbxMessageStream(int32_t streamHandle,
                                        uGnssPrivateStreamType_t streamType,
+                                       uint16_t i2cAddress,
                                        uGnssPrivateUbxMessage_t *pResponse,
                                        int32_t timeoutMs, bool printIt)
 {
@@ -219,11 +221,12 @@ static int32_t receiveUbxMessageStream(int32_t streamHandle,
             // Wait for something to start coming back
             while ((errorCodeOrResponseBodyLength < 0) &&
                    (uPortGetTickTimeMs() - startTime < timeoutMs)) {
-                if (uGnssPrivateStreamGetReceiveSize(streamHandle, streamType) > 0) {
+                if (uGnssPrivateStreamGetReceiveSize(streamHandle, streamType, i2cAddress) > 0) {
                     // Got something, read what we can in and check if
                     // it contains the ubx message we want (could also
                     // be NMEA stuff or unwanted ubx messages)
-                    while (((receiveSize = uGnssPrivateStreamGetReceiveSize(streamHandle, streamType)) > 0) &&
+                    while (((receiveSize = uGnssPrivateStreamGetReceiveSize(streamHandle, streamType,
+                                                                            i2cAddress)) > 0) &&
                            (bytesKept < U_GNSS_TEMPORARY_BUFFER_LENGTH_BYTES) &&
                            (errorCodeOrResponseBodyLength < 0)) {
                         if (receiveSize > U_GNSS_TEMPORARY_BUFFER_LENGTH_BYTES - bytesKept) {
@@ -236,7 +239,7 @@ static int32_t receiveUbxMessageStream(int32_t streamHandle,
                                                   (size_t) (unsigned) (U_GNSS_TEMPORARY_BUFFER_LENGTH_BYTES - bytesKept));
                                 break;
                             case U_GNSS_PRIVATE_STREAM_TYPE_I2C:
-                                x = uPortI2cControllerSendReceive(streamHandle, U_GNSS_I2C_ADDRESS,
+                                x = uPortI2cControllerSendReceive(streamHandle, i2cAddress,
                                                                   NULL, 0, pBuffer + bytesKept,
                                                                   (size_t) receiveSize);
                                 break;
@@ -469,11 +472,13 @@ static int32_t sendReceiveUbxMessage(const uGnssPrivateInstance_t *pInstance,
                     case U_GNSS_TRANSPORT_NMEA_UART:
                         errorCodeOrResponseBodyLength = sendUbxMessageStream(pInstance->transportHandle.uart,
                                                                              U_GNSS_PRIVATE_STREAM_TYPE_UART,
+                                                                             pInstance->i2cAddress,
                                                                              pBuffer, bytesToSend,
                                                                              pInstance->printUbxMessages);
                         if (errorCodeOrResponseBodyLength >= 0) {
                             errorCodeOrResponseBodyLength = receiveUbxMessageStream(pInstance->transportHandle.uart,
                                                                                     U_GNSS_PRIVATE_STREAM_TYPE_UART,
+                                                                                    pInstance->i2cAddress,
                                                                                     pResponse, pInstance->timeoutMs,
                                                                                     pInstance->printUbxMessages);
                         }
@@ -483,11 +488,13 @@ static int32_t sendReceiveUbxMessage(const uGnssPrivateInstance_t *pInstance,
                     case U_GNSS_TRANSPORT_NMEA_I2C:
                         errorCodeOrResponseBodyLength = sendUbxMessageStream(pInstance->transportHandle.i2c,
                                                                              U_GNSS_PRIVATE_STREAM_TYPE_I2C,
+                                                                             pInstance->i2cAddress,
                                                                              pBuffer, bytesToSend,
                                                                              pInstance->printUbxMessages);
                         if (errorCodeOrResponseBodyLength >= 0) {
                             errorCodeOrResponseBodyLength = receiveUbxMessageStream(pInstance->transportHandle.i2c,
                                                                                     U_GNSS_PRIVATE_STREAM_TYPE_I2C,
+                                                                                    pInstance->i2cAddress,
                                                                                     pResponse, pInstance->timeoutMs,
                                                                                     pInstance->printUbxMessages);
                         }
@@ -589,7 +596,8 @@ int32_t uGnssPrivateGetStreamType(uGnssTransportType_t transportType)
 
 // Get the number of bytes waiting for us when using a streaming transport.
 int32_t uGnssPrivateStreamGetReceiveSize(int32_t streamHandle,
-                                         uGnssPrivateStreamType_t streamType)
+                                         uGnssPrivateStreamType_t streamType,
+                                         uint16_t i2cAddress)
 {
     int32_t errorCodeOrReceiveSize = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
     char buffer[2];
@@ -605,10 +613,10 @@ int32_t uGnssPrivateStreamGetReceiveSize(int32_t streamHandle,
             // 0xFD, with no stop bit, and then a read request for two bytes
             // should get us the [big-endian] length
             buffer[0] = 0xFD;
-            errorCodeOrReceiveSize = uPortI2cControllerSend(streamHandle, U_GNSS_I2C_ADDRESS,
+            errorCodeOrReceiveSize = uPortI2cControllerSend(streamHandle, i2cAddress,
                                                             buffer, 1, true);
             if (errorCodeOrReceiveSize == 0) {
-                errorCodeOrReceiveSize = uPortI2cControllerSendReceive(streamHandle, U_GNSS_I2C_ADDRESS,
+                errorCodeOrReceiveSize = uPortI2cControllerSendReceive(streamHandle, i2cAddress,
                                                                        NULL, 0, buffer, sizeof(buffer));
                 if (errorCodeOrReceiveSize == sizeof(buffer)) {
                     errorCodeOrReceiveSize = (int32_t) ((((uint32_t) buffer[0]) << 8) + (uint32_t) buffer[1]);
@@ -664,6 +672,7 @@ int32_t uGnssPrivateSendOnlyStreamUbxMessage(const uGnssPrivateInstance_t *pInst
 
                 errorCodeOrSentLength = sendUbxMessageStream(streamHandle,
                                                              (uGnssPrivateStreamType_t) transportTypeStream,
+                                                             pInstance->i2cAddress,
                                                              pBuffer, bytesToSend,
                                                              pInstance->printUbxMessages);
 
@@ -769,6 +778,7 @@ int32_t uGnssPrivateReceiveOnlyStreamUbxMessage(const uGnssPrivateInstance_t *pI
 
             errorCodeOrResponseBodyLength = receiveUbxMessageStream(streamHandle,
                                                                     (uGnssPrivateStreamType_t) transportTypeStream,
+                                                                    pInstance->i2cAddress,
                                                                     &response, pInstance->timeoutMs,
                                                                     pInstance->printUbxMessages);
 

@@ -448,6 +448,12 @@ int32_t uPortI2cOpen(int32_t i2c, int32_t pinSda, int32_t pinSdc,
     (void) controller;
     return 0;
 }
+int32_t uPortI2cAdopt(int32_t i2c, bool controller)
+{
+    (void) i2c;
+    (void) controller;
+    return 0;
+}
 void uPortI2cClose(int32_t handle)
 {
     (void) handle;

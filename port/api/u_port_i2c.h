@@ -106,7 +106,22 @@ void uPortI2cDeinit();
 int32_t uPortI2cOpen(int32_t i2c, int32_t pinSda, int32_t pinSdc,
                      bool controller);
 
-/** Close an I2C instance.
+/** This is like uPortI2cOpen() but it does NOT modify any of the
+ * platform HW; use this if you have ALREADY opened/configured the I2C
+ * port and you simply want to allow the port API to access it.
+ *
+ * @param i2c            the I2C HW block to adopt.
+ * @param controller     set to true for an I2C controller; this is for
+ *                       forwards-compatibility only, it must currently
+ *                       always be set to true since target/peripheral/
+ *                       slave mode is not supported.
+ * @return               an I2C handle else negative error code.
+ */
+int32_t uPortI2cAdopt(int32_t i2c, bool controller);
+
+/** Close an I2C instance; if the I2C interface was adopted rather
+ * than opened this will only free memory etc., it will do nothing
+ * to the I2C HW.
  *
  * @param handle the handle of the I2C instance to close.
  */
@@ -127,6 +142,8 @@ void uPortI2cClose(int32_t handle);
  * method is out-of-band, i.e. wire the reset pins of your I2C
  * devices together and hang them off a GPIO pin of this MCU that
  * you can reset them all with.
+ * Note that if the I2C interface was adopted rather than
+ * opened this will return #U_ERROR_COMMON_NOT_SUPPORTED.
  *
  * @param handle the handle of the I2C instance.
  * @return       zero on success else negative error code.
@@ -144,6 +161,8 @@ int32_t uPortI2cCloseRecoverBus(int32_t handle);
  * back up again, hence if this function returns an error the
  * I2C instance should be closed and re-opened to ensure
  * that all is good.
+ * Note that if the I2C interface was adopted rather than
+ * opened this will return #U_ERROR_COMMON_NOT_SUPPORTED.
  *
  * @param handle      the handle of the I2C instance.
  * @param clockHertz  the clock frequency in Hertz.
@@ -152,6 +171,8 @@ int32_t uPortI2cCloseRecoverBus(int32_t handle);
 int32_t uPortI2cSetClock(int32_t handle, int32_t clockHertz);
 
 /** Get the I2C clock frequency.
+ * Note that if the I2C interface was adopted rather than
+ * opened this will return #U_ERROR_COMMON_NOT_SUPPORTED.
  *
  * @param handle     the handle of the I2C instance.
  * @return           the clock frequency in Hertz, else negative
@@ -166,6 +187,8 @@ int32_t uPortI2cGetClock(int32_t handle);
  * called, #U_PORT_I2C_TIMEOUT_MILLISECONDS will be used.  It is
  * best to call this once after opening the I2C instance since
  * setting the timeout may reset the I2C HW.
+ * Note that on some platforms, if the I2C interface was adopted
+ * rather than opened, this will return #U_ERROR_COMMON_NOT_SUPPORTED.
  *
  * @param handle     the handle of the I2C instance.
  * @param timeoutMs  the timeout in milliseconds.
@@ -175,6 +198,8 @@ int32_t uPortI2cSetTimeout(int32_t handle, int32_t timeoutMs);
 
 /** Get the timeout for an I2C instance.  Not all platforms support
  * getting the I2C timeout through an API (e.g. Zephyr doesn't).
+ * Note that on some platforms, if the I2C interface was adopted
+ * rather than opened, this will return #U_ERROR_COMMON_NOT_SUPPORTED.
  *
  * @param handle     the handle of the I2C instance.
  * @return           the timeout in milliseconds, else negative

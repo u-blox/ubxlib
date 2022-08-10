@@ -45,14 +45,10 @@ extern "C" {
  * TYPES
  * -------------------------------------------------------------- */
 
-/** Forward declaration for the compiler.
- */
-struct uDeviceCfg_t;
-
 /** The u-blox device handle; this is intended to be anonymous,
  * the contents should never be referenced by the application.
  */
-typedef struct uDeviceCfg_t *uDeviceHandle_t;
+typedef void *uDeviceHandle_t;
 
 /** Device types.
  */
@@ -138,6 +134,21 @@ typedef struct {
     int32_t i2c;               /**< The I2C HW block to use. */
     int32_t pinSda;            /**< I2C data pin. */
     int32_t pinScl;            /**< I2C clock pin. */
+    int32_t clockHertz;        /**< To use the default I2C clock frequency
+                                    of #U_PORT_I2C_CLOCK_FREQUENCY_HERTZ
+                                    then do NOT set this field, simply
+                                    let the compiler initialise it to zero,
+                                    and the default clock frequence will be
+                                    employed; however, if you wish to set a
+                                    different clock frequency you may set it
+                                    here.  Note that it alreadyOpen is set
+                                    to true then this will be IGNORED. */
+    bool alreadyOpen;          /**< Set this to true if the application code
+                                    has already opened the I2C port and
+                                    hence the device layer should not touch
+                                    the I2C HW configuration; if this is
+                                    true then pinSda, pinScl and clockHertz
+                                    will be ignored. */
     /* This is the end of version 0 of this structure:
        should any fields be added to this structure in
        future they must be added AFTER this point and
@@ -217,6 +228,11 @@ typedef struct {
                                       ubx protocol commands), and hence this
                                       should normally be left to false to
                                       reduce noise on the interface. */
+    uint16_t i2cAddress;         /**< Only required if the GNSS device is
+                                      connected via I2C and the I2C address that
+                                      the GNSS device is using is NOT the default
+                                      #U_GNSS_I2C_ADDRESS; otherwise let the
+                                      compiler initialise this to 0. */
     /* This is the end of version 0 of this structure:
        should any fields be added to this structure in
        future they must be added AFTER this point and
@@ -252,7 +268,7 @@ typedef struct {
 
 /** The complete device configuration.
  */
-typedef struct uDeviceCfg_t {
+typedef struct {
     uDeviceVersion_t version; /**< Version of this structure; allow your
                                    compiler to initialise this to zero
                                    unless otherwise specified below. */

@@ -244,7 +244,9 @@ int32_t uGnssAdd(uGnssModuleType_t moduleType,
             if (((size_t) moduleType < gUGnssPrivateModuleListSize) &&
                 ((transportType > U_GNSS_TRANSPORT_NONE) &&
                  (transportType < U_GNSS_TRANSPORT_MAX_NUM)) &&
-                (pGetGnssInstanceTransportHandle(transportType, transportHandle) == NULL)) {
+                ((transportType == U_GNSS_TRANSPORT_UBX_I2C) ||
+                 (transportType == U_GNSS_TRANSPORT_NMEA_I2C) ||
+                 (pGetGnssInstanceTransportHandle(transportType, transportHandle) == NULL))) {
                 errorCodeOrHandle = (int32_t) U_ERROR_COMMON_NO_MEMORY;
                 // Allocate memory for the instance
                 pInstance = (uGnssPrivateInstance_t *) malloc(sizeof(uGnssPrivateInstance_t));
@@ -260,6 +262,7 @@ int32_t uGnssAdd(uGnssModuleType_t moduleType,
                         pInstance->transportType = transportType;
                         pInstance->pModule = &(gUGnssPrivateModuleList[moduleType]);
                         pInstance->transportHandle = transportHandle;
+                        pInstance->i2cAddress = U_GNSS_I2C_ADDRESS;
                         pInstance->timeoutMs = U_GNSS_DEFAULT_TIMEOUT_MS;
                         pInstance->printUbxMessages = false;
                         pInstance->pinGnssEnablePower = pinGnssEnablePower;
@@ -340,6 +343,51 @@ int32_t uGnssAdd(uGnssModuleType_t moduleType,
     }
 
     return (int32_t) errorCodeOrHandle;
+}
+
+// Set the I2C address of the GNSS device.
+int32_t uGnssSetI2cAddress(uDeviceHandle_t gnssHandle, int32_t i2cAddress)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uGnssPrivateInstance_t *pInstance;
+
+    if (gUGnssPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
+
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        pInstance = pUGnssPrivateGetInstance(gnssHandle);
+        if ((pInstance != NULL) && (i2cAddress > 0)) {
+            pInstance->i2cAddress = i2cAddress;
+            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
+    }
+
+    return errorCode;
+}
+
+// Get the I2C address being used for the GNSS device.
+int32_t uGnssGetI2cAddress(uDeviceHandle_t gnssHandle)
+{
+    int32_t errorCodeOrI2cAddress = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uGnssPrivateInstance_t *pInstance;
+
+    if (gUGnssPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
+
+        errorCodeOrI2cAddress = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        pInstance = pUGnssPrivateGetInstance(gnssHandle);
+        if (pInstance != NULL) {
+            errorCodeOrI2cAddress = pInstance->i2cAddress;
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
+    }
+
+    return errorCodeOrI2cAddress;
 }
 
 // Remove a GNSS instance.

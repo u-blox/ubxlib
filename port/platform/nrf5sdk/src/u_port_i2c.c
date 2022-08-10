@@ -69,6 +69,7 @@ typedef struct {
     int32_t pinSdc; // bus recovery
     volatile int32_t xferErrorCode;
     uPortSemaphoreHandle_t completionSemaphore;
+    bool adopted;
 } uPortI2cData_t;
 
 /* ----------------------------------------------------------------
@@ -113,7 +114,9 @@ static int32_t clockHertzToEnum(int32_t clockHertz)
 static void closeI2c(uPortI2cData_t *pI2c)
 {
     if ((pI2c != NULL) && (pI2c->instance.p_twim != NULL)) {
-        nrfx_twim_uninit(&pI2c->instance);
+        if (!pI2c->adopted) {
+            nrfx_twim_uninit(&pI2c->instance);
+        }
         uPortSemaphoreDelete(pI2c->completionSemaphore);
         // Zero the instance to indicate that it is no longer in use
         memset(&pI2c->instance, 0, sizeof(pI2c->instance));
@@ -191,6 +194,67 @@ static int32_t busRecover(int32_t pinSda, int32_t pinSdc)
     return errorCode;
 }
 
+// Open an I2C instance; unlike the other static functions
+// this does all the mutex locking etc.
+static int32_t openI2c(int32_t i2c, int32_t pinSda, int32_t pinSdc,
+                       bool controller, bool adopt)
+{
+    int32_t handleOrErrorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    nrfx_twim_t instance = {0};
+    nrfx_twim_config_t cfg = NRFX_TWIM_DEFAULT_CONFIG;
+
+    if (gMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gMutex);
+
+        handleOrErrorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        if ((i2c >= 0) && (i2c < sizeof(gI2cData) / sizeof(gI2cData[0])) &&
+            (gI2cData[i2c].instance.p_twim == NULL) && controller &&
+            (adopt || ((pinSda >= 0) && (pinSdc >= 0)))) {
+            handleOrErrorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
+            switch (i2c) {
+                case 0:
+#if NRFX_TWIM0_ENABLED
+                    instance.p_twim       = NRF_TWIM0;
+                    instance.drv_inst_idx = NRFX_TWIM0_INST_IDX;
+#endif
+                    break;
+                case 1:
+#if NRFX_TWIM1_ENABLED
+                    instance.p_twim       = NRF_TWIM1;
+                    instance.drv_inst_idx = NRFX_TWIM1_INST_IDX;
+#endif
+                    break;
+                default:
+                    break;
+            }
+            if (instance.p_twim != NULL) {
+                handleOrErrorCode = uPortSemaphoreCreate(&(gI2cData[i2c].completionSemaphore), 0, 1);
+                if (handleOrErrorCode == 0) {
+                    cfg.scl = pinSdc;
+                    cfg.sda = pinSda;
+                    cfg.frequency = clockHertzToEnum(U_PORT_I2C_CLOCK_FREQUENCY_HERTZ);
+                    if (adopt ||
+                        (nrfx_twim_init(&instance, &cfg, eventHandlerIrq, &(gI2cData[i2c])) == NRFX_SUCCESS)) {
+                        gI2cData[i2c].clockHertz = U_PORT_I2C_CLOCK_FREQUENCY_HERTZ;
+                        gI2cData[i2c].timeoutMs = U_PORT_I2C_TIMEOUT_MILLISECONDS;
+                        gI2cData[i2c].pinSda = pinSda;
+                        gI2cData[i2c].pinSdc = pinSdc;
+                        gI2cData[i2c].adopted = adopt;
+                        gI2cData[i2c].instance = instance;
+                        // Return the I2C HW block number as the handle
+                        handleOrErrorCode = i2c;
+                    }
+                }
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gMutex);
+    }
+
+    return handleOrErrorCode;
+}
+
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -241,58 +305,13 @@ void uPortI2cDeinit()
 int32_t uPortI2cOpen(int32_t i2c, int32_t pinSda, int32_t pinSdc,
                      bool controller)
 {
-    int32_t handleOrErrorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
-    nrfx_twim_t instance = {0};
-    nrfx_twim_config_t cfg = NRFX_TWIM_DEFAULT_CONFIG;
+    return openI2c(i2c, pinSda, pinSdc, controller, false);
+}
 
-    if (gMutex != NULL) {
-
-        U_PORT_MUTEX_LOCK(gMutex);
-
-        handleOrErrorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-        if ((i2c >= 0) && (i2c < sizeof(gI2cData) / sizeof(gI2cData[0])) &&
-            (gI2cData[i2c].instance.p_twim == NULL) && controller &&
-            (pinSda >= 0) && (pinSdc >= 0)) {
-            handleOrErrorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
-            switch (i2c) {
-                case 0:
-#if NRFX_TWIM0_ENABLED
-                    instance.p_twim       = NRF_TWIM0;
-                    instance.drv_inst_idx = NRFX_TWIM0_INST_IDX;
-#endif
-                    break;
-                case 1:
-#if NRFX_TWIM1_ENABLED
-                    instance.p_twim       = NRF_TWIM1;
-                    instance.drv_inst_idx = NRFX_TWIM1_INST_IDX;
-#endif
-                    break;
-                default:
-                    break;
-            }
-            if (instance.p_twim != NULL) {
-                handleOrErrorCode = uPortSemaphoreCreate(&(gI2cData[i2c].completionSemaphore), 0, 1);
-                if (handleOrErrorCode == 0) {
-                    cfg.scl = pinSdc;
-                    cfg.sda = pinSda;
-                    cfg.frequency = clockHertzToEnum(U_PORT_I2C_CLOCK_FREQUENCY_HERTZ);
-                    if (nrfx_twim_init(&instance, &cfg, eventHandlerIrq, &(gI2cData[i2c])) == NRFX_SUCCESS) {
-                        gI2cData[i2c].clockHertz = U_PORT_I2C_CLOCK_FREQUENCY_HERTZ;
-                        gI2cData[i2c].timeoutMs = U_PORT_I2C_TIMEOUT_MILLISECONDS;
-                        gI2cData[i2c].pinSda = pinSdc;
-                        gI2cData[i2c].pinSdc = pinSda;
-                        gI2cData[i2c].instance = instance;
-                        // Return the I2C HW block number as the handle
-                        handleOrErrorCode = i2c;
-                    }
-                }
-            }
-        }
-
-        U_PORT_MUTEX_UNLOCK(gMutex);
-    }
-
-    return handleOrErrorCode;
+// Adopt an I2C instance.
+int32_t uPortI2cAdopt(int32_t i2c, bool controller)
+{
+    return openI2c(i2c, -1, -1, controller, true);
 }
 
 // Close an I2C instance.
@@ -323,11 +342,13 @@ int32_t uPortI2cCloseRecoverBus(int32_t handle)
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if ((handle >= 0) && (handle < sizeof(gI2cData) / sizeof(gI2cData[0])) &&
             (gI2cData[handle].instance.p_twim != NULL)) {
-            errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
-            pinSda = gI2cData[handle].pinSda;
-            pinSdc = gI2cData[handle].pinSdc;
-            closeI2c(&(gI2cData[handle]));
-            errorCode = busRecover(pinSda, pinSdc);
+            errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+            if (!gI2cData[handle].adopted) {
+                pinSda = gI2cData[handle].pinSda;
+                pinSdc = gI2cData[handle].pinSdc;
+                closeI2c(&(gI2cData[handle]));
+                errorCode = busRecover(pinSda, pinSdc);
+            }
         }
 
         U_PORT_MUTEX_UNLOCK(gMutex);
@@ -349,9 +370,12 @@ int32_t uPortI2cSetClock(int32_t handle, int32_t clockHertz)
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if ((handle >= 0) && (handle < sizeof(gI2cData) / sizeof(gI2cData[0])) &&
             (gI2cData[handle].instance.p_twim != NULL) && (clockEnumValue >= 0)) {
-            nrf_twim_frequency_set(gI2cData[handle].instance.p_twim, clockEnumValue);
-            gI2cData[handle].clockHertz = clockHertz;
-            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+            errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+            if (!gI2cData[handle].adopted) {
+                nrf_twim_frequency_set(gI2cData[handle].instance.p_twim, clockEnumValue);
+                gI2cData[handle].clockHertz = clockHertz;
+                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+            }
         }
 
         U_PORT_MUTEX_UNLOCK(gMutex);
@@ -372,7 +396,10 @@ int32_t uPortI2cGetClock(int32_t handle)
         errorCodeOrClock = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if ((handle >= 0) && (handle < sizeof(gI2cData) / sizeof(gI2cData[0])) &&
             (gI2cData[handle].instance.p_twim != NULL)) {
-            errorCodeOrClock = gI2cData[handle].clockHertz;
+            errorCodeOrClock = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+            if (!gI2cData[handle].adopted) {
+                errorCodeOrClock = gI2cData[handle].clockHertz;
+            }
         }
 
         U_PORT_MUTEX_UNLOCK(gMutex);
