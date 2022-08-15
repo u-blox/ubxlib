@@ -19,7 +19,9 @@
 
 /* Only bring in #includes specifically related to running applications. */
 
-#include "u_runner.h"
+#ifdef U_RUNNER_TOP_STR
+# include "u_runner.h"
+#endif
 
 /* Thes inclusion is required to get the UART CTS/RTS pin assignments
  * from the Zephyr device tree.

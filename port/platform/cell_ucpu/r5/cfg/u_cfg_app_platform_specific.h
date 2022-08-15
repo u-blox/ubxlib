@@ -19,7 +19,9 @@
 
 /* Only bring in #includes specifically related to running applications. */
 
-#include "u_runner.h"
+#ifdef U_RUNNER_TOP_STR
+# include "u_runner.h"
+#endif
 
 /** @file
  * @brief Most of the parameters in this header file are required only to permit
