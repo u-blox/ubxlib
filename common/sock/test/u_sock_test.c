@@ -680,6 +680,7 @@ static size_t sendTcp(uSockDescriptor_t descriptor,
                        sizeBytes - sentSizeBytes);
         if (x > 0) {
             sentSizeBytes += x;
+            pData++;
             U_TEST_PRINT_LINE("sent %d byte(s) of TCP data @%d ms.",
                               sentSizeBytes, (int32_t) uPortGetTickTimeMs());
         }
