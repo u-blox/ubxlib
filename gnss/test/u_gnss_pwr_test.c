@@ -59,6 +59,7 @@
 #include "u_gnss_type.h"
 #include "u_gnss.h"
 #include "u_gnss_pwr.h"
+#include "u_gnss_msg.h" // uGnssMsgReceiveStatStreamLoss()
 #include "u_gnss_private.h"
 
 #include "u_gnss_test_private.h"
@@ -103,6 +104,7 @@ U_PORT_TEST_FUNCTION("[gnssPwr]", "gnssPwrBasic")
     int32_t heapUsed;
     size_t iterations;
     uGnssTransportType_t transportTypes[U_GNSS_TRANSPORT_MAX_NUM];
+    int32_t y;
 
     // Whatever called us likely initialised the
     // port so deinitialise it here to obtain the
@@ -161,6 +163,11 @@ U_PORT_TEST_FUNCTION("[gnssPwr]", "gnssPwrBasic")
         U_TEST_PRINT_LINE("checking that GNSS is no longer alive...");
         U_PORT_TEST_ASSERT(!uGnssPwrIsAlive(gnssHandle));
 #endif
+
+        // Check that we haven't dropped any incoming data
+        y = uGnssMsgReceiveStatStreamLoss(gnssHandle);
+        U_TEST_PRINT_LINE("%d byte(s) lost from the message stream during that test.", y);
+        U_PORT_TEST_ASSERT(y == 0);
 
         // Do the standard postamble
         uGnssTestPrivatePostamble(&gHandles, false);

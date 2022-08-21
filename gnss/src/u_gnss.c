@@ -37,6 +37,7 @@
 #include "u_cfg_sw.h"
 
 #include "u_error_common.h"
+#include "u_ringbuffer.h"
 
 #include "u_device_shared.h"
 
@@ -47,6 +48,7 @@
 #include "u_gnss_module_type.h"
 #include "u_gnss_type.h"
 #include "u_gnss.h"
+#include "u_gnss_msg.h"
 #include "u_gnss_private.h"
 
 /* ----------------------------------------------------------------
@@ -136,6 +138,15 @@ static void deleteGnssInstance(uGnssPrivateInstance_t *pInstance)
         if (pInstance == pCurrent) {
             // Stop any asynchronous position establishment task
             uGnssPrivateCleanUpPosTask(pInstance);
+            // Stop asynchronus message receive from happening
+            uGnssPrivateStopMsgReceive(pInstance);
+            if (pInstance->pLinearBuffer != NULL) {
+                // Free the streaming buffer
+                uRingBufferDelete(&(pInstance->ringBuffer));
+                free(pInstance->pLinearBuffer);
+            }
+            // This can go now too (it is legal C to free a NULL pointer)
+            free(pInstance->pTemporaryBuffer);
             // Delete the transport mutex
             uPortMutexDelete(pInstance->transportMutex);
             // Deallocate the uDevice instance
@@ -202,7 +213,7 @@ int32_t uGnssAdd(uGnssModuleType_t moduleType,
                  bool leavePowerAlone,
                  uDeviceHandle_t *pGnssHandle)
 {
-    int32_t errorCodeOrHandle = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uGnssPrivateInstance_t *pInstance = NULL;
     uPortGpioConfig_t gpioConfig;
     int32_t platformError = 0;
@@ -232,7 +243,7 @@ int32_t uGnssAdd(uGnssModuleType_t moduleType,
     if (gUGnssPrivateMutex != NULL) {
         uDeviceInstance_t *pDevInstance;
 
-        errorCodeOrHandle = (int32_t) U_ERROR_COMMON_NO_MEMORY;
+        errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
         pDevInstance = pUDeviceCreateInstance(U_DEVICE_TYPE_GNSS);
 
         if (pDevInstance != NULL) {
@@ -240,14 +251,14 @@ int32_t uGnssAdd(uGnssModuleType_t moduleType,
             U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
 
             // Check parameters
-            errorCodeOrHandle = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+            errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
             if (((size_t) moduleType < gUGnssPrivateModuleListSize) &&
                 ((transportType > U_GNSS_TRANSPORT_NONE) &&
                  (transportType < U_GNSS_TRANSPORT_MAX_NUM)) &&
                 ((transportType == U_GNSS_TRANSPORT_UBX_I2C) ||
                  (transportType == U_GNSS_TRANSPORT_NMEA_I2C) ||
                  (pGetGnssInstanceTransportHandle(transportType, transportHandle) == NULL))) {
-                errorCodeOrHandle = (int32_t) U_ERROR_COMMON_NO_MEMORY;
+                errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
                 // Allocate memory for the instance
                 pInstance = (uGnssPrivateInstance_t *) malloc(sizeof(uGnssPrivateInstance_t));
                 if (pInstance != NULL) {
@@ -257,9 +268,13 @@ int32_t uGnssAdd(uGnssModuleType_t moduleType,
                     // Create a transport mutex
                     pInstance->gnssHandle = (uDeviceHandle_t)pDevInstance;
                     pInstance->transportMutex = NULL;
-                    errorCodeOrHandle = uPortMutexCreate(&pInstance->transportMutex);
-                    if (errorCodeOrHandle == 0) {
+                    errorCode = uPortMutexCreate(&pInstance->transportMutex);
+                    if (errorCode == 0) {
                         pInstance->transportType = transportType;
+                        pInstance->pLinearBuffer = NULL;
+                        pInstance->pTemporaryBuffer = NULL;
+                        pInstance->ringBufferReadHandlePrivate = -1;
+                        pInstance->ringBufferReadHandleMsgReceive = -1;
                         pInstance->pModule = &(gUGnssPrivateModuleList[moduleType]);
                         pInstance->transportHandle = transportHandle;
                         pInstance->i2cAddress = U_GNSS_I2C_ADDRESS;
@@ -273,9 +288,17 @@ int32_t uGnssAdd(uGnssModuleType_t moduleType,
                             (transportType == U_GNSS_TRANSPORT_NMEA_UART)) {
                             pInstance->portNumber = 1; // This is the UART port number inside the GNSS chip
                         }
+#ifdef U_CFG_GNSS_PORT_NUMBER
+                        // A hack for use during development testing where
+                        // we can force the port number, e.g. to 3, which is
+                        // the USB port, so that we can drive a GNSS board
+                        // directly from a PC
+                        pInstance->portNumber = U_CFG_GNSS_PORT_NUMBER;
+#endif
                         pInstance->posTask = NULL;
                         pInstance->posMutex = NULL;
                         pInstance->posTaskFlags = 0;
+                        pInstance->pMsgReceive = NULL;
                         pInstance->pNext = NULL;
 
                         // Now set up the pins
@@ -318,13 +341,62 @@ int32_t uGnssAdd(uGnssModuleType_t moduleType,
                         }
                     }
 
-                    if ((errorCodeOrHandle == 0) && (platformError == 0)) {
-                        // Add it to the list
-                        addGnssInstance(pInstance);
-                        errorCodeOrHandle = (int32_t) U_ERROR_COMMON_SUCCESS;
-                        *pGnssHandle = pInstance->gnssHandle;
-                    } else {
+                    if ((errorCode == 0) && (platformError == 0)) {
+                        if (pInstance->transportType != U_GNSS_TRANSPORT_UBX_AT) {
+                            errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
+                            // Provided we're not on AT transport, i.e. we're on
+                            // a streaming transport, then set up the buffer into
+                            // which we stream messages received from the module
+                            pInstance->pLinearBuffer = (char *) malloc(U_GNSS_MSG_RING_BUFFER_LENGTH_BYTES);
+                            if (pInstance->pLinearBuffer != NULL) {
+                                // Also need a temporary buffer to get stuff out
+                                // of the UART/I2C in the first place
+                                pInstance->pTemporaryBuffer = (char *) malloc(U_GNSS_MSG_TEMPORARY_BUFFER_LENGTH_BYTES);
+                                if (pInstance->pTemporaryBuffer != NULL) {
+                                    // +2 below to keep one for ourselves and one for the
+                                    // blocking transparent receive function
+                                    errorCode = uRingBufferCreateWithReadHandle(&(pInstance->ringBuffer),
+                                                                                pInstance->pLinearBuffer,
+                                                                                U_GNSS_MSG_RING_BUFFER_LENGTH_BYTES,
+                                                                                U_GNSS_MSG_RECEIVER_MAX_NUM + 2);
+                                    if (errorCode == 0) {
+                                        // No sneaky uRingBufferRead()'s allowed
+                                        uRingBufferSetReadRequiresHandle(&(pInstance->ringBuffer), true);
+                                        // Reserve a handle for us
+                                        errorCode = uRingBufferTakeReadHandle(&(pInstance->ringBuffer));
+                                        if (errorCode >= 0) {
+                                            pInstance->ringBufferReadHandlePrivate = errorCode;
+                                            // ...and one for uGnssMsgReceive()
+                                            errorCode = uRingBufferTakeReadHandle(&(pInstance->ringBuffer));
+                                            if (errorCode >= 0) {
+                                                pInstance->ringBufferReadHandleMsgReceive = errorCode;
+                                                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                                            } else {
+                                                uRingBufferDelete(&(pInstance->ringBuffer));
+                                            }
+                                        } else {
+                                            uRingBufferDelete(&(pInstance->ringBuffer));
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        if (errorCode == 0) {
+                            // Add it to the list
+                            addGnssInstance(pInstance);
+                            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                            *pGnssHandle = pInstance->gnssHandle;
+                        }
+                    }
+                    if ((errorCode != 0) || (platformError != 0)) {
                         // If we hit an error, free memory again
+                        if (pInstance->pLinearBuffer != NULL) {
+                            uRingBufferDelete(&(pInstance->ringBuffer));
+                            free(pInstance->pLinearBuffer);
+                        }
+                        if (pInstance->pTemporaryBuffer != NULL) {
+                            free(pInstance->pTemporaryBuffer);
+                        }
                         if (pInstance->transportMutex != NULL) {
                             uPortMutexDelete(pInstance->transportMutex);
                         }
@@ -333,7 +405,7 @@ int32_t uGnssAdd(uGnssModuleType_t moduleType,
                 }
             }
 
-            if (errorCodeOrHandle != (int32_t) U_ERROR_COMMON_SUCCESS) {
+            if (errorCode != 0) {
                 // Don't forget to deallocate device instance on failure
                 uDeviceDestroyInstance(pDevInstance);
             }
@@ -342,7 +414,7 @@ int32_t uGnssAdd(uGnssModuleType_t moduleType,
         }
     }
 
-    return (int32_t) errorCodeOrHandle;
+    return errorCode;
 }
 
 // Set the I2C address of the GNSS device.

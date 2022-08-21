@@ -60,6 +60,7 @@
 #include "u_gnss.h"
 #include "u_gnss_cfg.h"
 #include "u_gnss_pwr.h"
+#include "u_gnss_msg.h" // uGnssMsgReceiveStatStreamLoss()
 #include "u_gnss_pos.h"
 #include "u_gnss_private.h"
 
@@ -380,6 +381,11 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosPos")
         U_PORT_TEST_ASSERT(gSvs >= 0);
         U_PORT_TEST_ASSERT(gTimeUtc > 0);
 
+        // Check that we haven't dropped any incoming data
+        y = uGnssMsgReceiveStatStreamLoss(gnssHandle);
+        U_TEST_PRINT_LINE("%d byte(s) lost at the input to the ring-buffer during that test.", y);
+        U_PORT_TEST_ASSERT(y == 0);
+
         // Do the standard postamble, leaving the module on for the next
         // test to speed things up
         uGnssTestPrivatePostamble(&gHandles, false);
@@ -457,6 +463,11 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosRrlp")
         // Must contain at least 6 bytes for the header
         U_PORT_TEST_ASSERT(y >= 6);
         U_PORT_TEST_ASSERT(y <= U_GNSS_POS_RRLP_SIZE_BYTES);
+
+        // Check that we haven't dropped any incoming data
+        y = uGnssMsgReceiveStatStreamLoss(gnssHandle);
+        U_TEST_PRINT_LINE("%d byte(s) lost at the input to the ring-buffer during that test.", y);
+        U_PORT_TEST_ASSERT(y == 0);
 
         // Do the standard postamble, leaving the module on for the next
         // test to speed things up

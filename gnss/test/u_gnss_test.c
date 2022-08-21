@@ -56,10 +56,9 @@
 #include "u_gnss.h"
 
 #if (U_CFG_APP_GNSS_I2C >= 0) && defined(U_GNSS_TEST_I2C_ADDRESS_EXTRA)
-#include "u_gnss_pwr.h" // So that we can do something with the extra address
-#include "u_gnss_info.h" // So that we can print something GNSS-module specific,
-// to show that we're not accidentally using address
-// 0x42
+#include "u_gnss_pwr.h"  // So that we can do something with the extra address
+#include "u_gnss_info.h" // To print something GNSS-module specific, show that we're not accidentally using address 0x42
+#include "u_gnss_msg.h"  // uGnssMsgReceiveStatStreamLoss()
 #endif
 
 /* ----------------------------------------------------------------
@@ -388,7 +387,7 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssI2cAddress")
     U_PORT_TEST_ASSERT(uGnssGetI2cAddress(gnssHandle[0]) == U_GNSS_I2C_ADDRESS);
 
     // Power-up the first device
-    U_TEST_PRINT_LINE("powering on first GNSS at I2C address 0x%02x...", U_GNSS_I2C_ADDRESS);
+    U_TEST_PRINT_LINE("powering on first GNSS device at I2C address 0x%02x...", U_GNSS_I2C_ADDRESS);
     U_PORT_TEST_ASSERT(uGnssPwrOn(gnssHandle[0]) == 0);
 
     U_TEST_PRINT_LINE("adding a second GNSS instance at I2C address 0x%02x...",
@@ -406,7 +405,7 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssI2cAddress")
     U_PORT_TEST_ASSERT(uGnssGetI2cAddress(gnssHandle[1]) == U_GNSS_TEST_I2C_ADDRESS_EXTRA);
 
     // Now power the second device up
-    U_TEST_PRINT_LINE("powering on second GNSS at I2C address 0x%02x...",
+    U_TEST_PRINT_LINE("powering on second GNSS device at I2C address 0x%02x...",
                       U_GNSS_TEST_I2C_ADDRESS_EXTRA);
     U_PORT_TEST_ASSERT(uGnssPwrOn(gnssHandle[1]) == 0);
 
@@ -447,6 +446,11 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssI2cAddress")
     // Free memory
     free(buffer[0]);
     free(buffer[1]);
+
+    // Check that we haven't dropped any incoming data
+    y = uGnssMsgReceiveStatStreamLoss(gnssHandle);
+    U_TEST_PRINT_LINE("%d byte(s) lost at the input to the ring-buffer during that test.", y);
+    U_PORT_TEST_ASSERT(y == 0);
 
     U_TEST_PRINT_LINE("deinitialising GNSS API...");
     uGnssDeinit();

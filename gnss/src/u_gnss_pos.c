@@ -114,7 +114,7 @@ typedef struct {
  * -------------------------------------------------------------- */
 
 // Establish position.
-static int32_t posGet(const uGnssPrivateInstance_t *pInstance,
+static int32_t posGet(uGnssPrivateInstance_t *pInstance,
                       int32_t *pLatitudeX1e7, int32_t *pLongitudeX1e7,
                       int32_t *pAltitudeMillimetres,
                       int32_t *pRadiusMillimetres,

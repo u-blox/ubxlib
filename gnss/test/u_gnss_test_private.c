@@ -61,6 +61,7 @@
 #include "u_gnss_private.h"
 #include "u_gnss.h"
 #include "u_gnss_pwr.h"
+#include "u_gnss_util.h"
 
 #include "u_gnss_test_private.h"
 

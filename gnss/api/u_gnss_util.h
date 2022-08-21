@@ -22,6 +22,8 @@
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
 
+#include "u_ringbuffer.h"
+
 /** \addtogroup _GNSS
  *  @{
  */
@@ -46,25 +48,47 @@ extern "C" {
  * FUNCTIONS
  * -------------------------------------------------------------- */
 
-/** Send a ubx command of your choosing to the GNSS chip and,
- * optionally, wait for the response.  You must encode the
- * message correctly (e.g. using the encode/decode functions
- * of the ubx protocol API).  If you are expecting a response then
- * it is up to you to parse that response; in particular, if you
- * are sending a ubx format message and the transport type is
- * #U_GNSS_TRANSPORT_NMEA_UART then you will need to pick the
- * ubx message out from any NMEA data that happens to be
- * emitted by the GNSS chip at around the same time.  Given
- * the asynchronous nature of NMEA transmission you may
- * prefer to set the transport type to #U_GNSS_TRANSPORT_UBX_UART.
+/** Send a command of your choosing to the GNSS chip and, optionally,
+ * wait for the response; THIS FUNCTION SHOULD ONLY BE USED IF
+ * YOUR GNSS CHIP IS CONNECTED VIA AN INTERMEDIATE (e.g. CELLULAR)
+ * MODULE.  While it _will_ work for the directly-connected case
+ * for sending, for the receive direction, for the UART/I2C
+ * transport case, it internally pulls data directly from the UART/I2C
+ * port layer rather than going via the ring buffer and hence could
+ * end up reading and potentially discarding data that other bits
+ * of this system probably wanted.  So if your GNSS device is connected
+ * directly to this MCU using a streaming transport (e.g. UART or I2C)
+ * you should use uGnssMsgSend() in conjunction with uGnssMsgReceive()
+ * or uGnssMsgReceiveStart() instead.
  *
- * Note: the message contents are not touched by this code and
- * hence could be anything at all *except* that in the case of
- * the AT transport the intermediate AT (e.g. cellular) module
- * will overwrite the last two bytes of the message with a
- * ubx message checksum.  Hence, to send a non-ubx message
- * transparently to the GNSS chip in this case, you should add
- * two dummy bytes to the message.
+ * You must encode the message correctly (e.g. using the encode/decode
+ * functions of the ubx protocol API if you are using ubx format).
+ * Since this code knows nothing of the outgoing message format,
+ * it can know nothing of the response format either, so pResponse
+ * is just the stream of output from the GNSS chip that came after
+ * the sent message.  It is up to you to pick the exact response
+ * message out of the stream and parse it; if you are only using ubx
+ * format messages you may prefer to set the transport type to
+ * #U_GNSS_TRANSPORT_UBX_UART or #U_GNSS_TRANSPORT_UBX_I2C as
+ * appropriate to avoid NMEA messages getting in the way.
+ *
+ * IMPORTANT: when the GNSS chip is connected via an intermediate
+ * [e.g. cellular] module (i.e. you are using #U_GNSS_TRANSPORT_UBX_AT)
+ * then responses will only be returned by this function if UBX FORMAT
+ * is used; that is why this function has "ubx" in the name. However,
+ * the message contents are not touched by this code and hence could
+ * be anything at all *except* that in the case of the AT transport
+ * the intermediate AT (e.g. cellular) module will overwrite the
+ * last two bytes of the message with a ubx message checksum.
+ * Hence, you _can_ send a non-ubx-format message transparently
+ * to the GNSS chip with this function when using
+ * #U_GNSS_TRANSPORT_UBX_AT but be sure to add two dummy bytes
+ * to the outgoing message buffer.
+ *
+ * It is planned, in future, to make transport via an intermediate
+ * cellular module work in the same way as the UART and I2C streaming
+ * interfaces (by implementing support for 3GPP TS 27.010 +CMUX in this
+ * code), at which point this function will be deprecated.
  *
  * @param gnssHandle             the handle of the GNSS instance.
  * @param[in] pCommand           the command to send; may be NULL.

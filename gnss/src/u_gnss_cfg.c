@@ -43,6 +43,7 @@
 #include "u_gnss_module_type.h"
 #include "u_gnss_type.h"
 #include "u_gnss_private.h"
+#include "u_gnss_msg.h" // uGnssMsgReceiveStatStreamLoss()
 #include "u_gnss_cfg.h"
 
 /* ----------------------------------------------------------------
@@ -206,6 +207,52 @@ int32_t uGnssCfgSetUtcStandard(uDeviceHandle_t gnssHandle,
                                  0x0400, /* Mask for UTC standard */
                                  (char *) &utcStandard,
                                  1, 30 /* One byte at offset 30 */);
+}
+
+// Get the protocol types output by the GNSS chip.
+int32_t uGnssCfgGetProtocolOut(uDeviceHandle_t gnssHandle)
+{
+    int32_t errorCodeOrBitMap = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uGnssPrivateInstance_t *pInstance;
+
+    if (gUGnssPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
+
+        pInstance = pUGnssPrivateGetInstance(gnssHandle);
+        if (pInstance != NULL) {
+            errorCodeOrBitMap = uGnssPrivateGetProtocolOut(pInstance);
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
+    }
+
+    return errorCodeOrBitMap;
+}
+
+// Set the protocol type output by the GNSS chip.
+int32_t uGnssCfgSetProtocolOut(uDeviceHandle_t gnssHandle,
+                               uGnssProtocol_t protocol,
+                               bool onNotOff)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uGnssPrivateInstance_t *pInstance;
+
+    if (gUGnssPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
+
+        pInstance = pUGnssPrivateGetInstance(gnssHandle);
+        if (pInstance != NULL) {
+            errorCode = uGnssPrivateSetProtocolOut(pInstance,
+                                                   protocol,
+                                                   onNotOff);
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
+    }
+
+    return errorCode;
 }
 
 // End of file
