@@ -40,12 +40,17 @@ extern "C" {
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+/** The length of the ubx protocol (header consisting of 0xB5,
+ * 0x62, class, ID and two bytes of length).
+ */
+#define U_UBX_PROTOCOL_HEADER_LENGTH_BYTES 6
+
 /** The overhead of the ubx protocol (header consisting of 0xB5,
  * 0x62, class, ID, two bytes of length and, at the end, two bytes
  * of CRC). Must be added to the encoded message length to obtain
  * the required encode buffer size.
  */
-#define U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES 8
+#define U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES (U_UBX_PROTOCOL_HEADER_LENGTH_BYTES + 2)
 
 /* ----------------------------------------------------------------
  * TYPES
