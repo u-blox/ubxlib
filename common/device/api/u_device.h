@@ -315,6 +315,22 @@ int32_t uDeviceInit();
  */
 int32_t uDeviceDeinit();
 
+/** Fill a device configuration with recommended defaults.
+ * These defaults come from the port specific settings or
+ * possible compile time external defines.
+ * This is a voluntary convenience routine.
+ * Please note that the module type field may have to be filled in
+ * manually after this call as there is currently no applicable default
+ * unless it has been specified externally via U_CFG_..._MODULE_TYPE
+ *
+ * @param[in] deviceType      type of the device
+ * @param[in] pDeviceCfg      device configuration to be filled,
+ *                            cannot be NULL.
+ * @return                    zero on success else a negative error code.
+ */
+int32_t uDeviceGetDefaults(uDeviceType_t deviceType,
+                           uDeviceCfg_t *pDeviceCfg);
+
 /** Open a device instance.
  *
  * @param[in] pDeviceCfg      device configuration, cannot be NULL.

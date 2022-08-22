@@ -41,6 +41,22 @@
 #include "u_device_private_gnss.h"
 #include "u_device_private_short_range.h"
 
+// Includes needed for uDeviceGetDefaults
+#include "u_compiler.h"
+// This is a temporary *FIX* due to problems with esp32 builds.
+// Caused by a probably unnecessary include of u_runner.h in
+// u_cfg_app_platform_specific.h
+#ifdef U_RUNNER_TOP_STR
+# undef U_RUNNER_TOP_STR
+#endif
+#include "u_cfg_app_platform_specific.h"
+#include "u_at_client.h"
+#include "u_cell_module_type.h"
+#include "u_cell.h"
+#include "u_short_range.h"
+#include "u_gnss_type.h"
+
+
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
@@ -60,6 +76,31 @@
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
+
+/** This is a possible injection hook for the uDevice operations below.
+ * It is declared weak so that it can be overridden by source which is
+ * unique e.g. for a specific board. In this case, possible GPIO
+ * operations currently not handled by ubxlib can be executed when
+ * devices are opened or closed. It also enables filling in uDevice
+ * default settings values. The parameters are just void so that it
+ * can be used as a jack-of-all-trades.
+ * The implementation here does nothing
+ *
+ * @param[in] pOperationType   string specifying actual operation
+ * @param[in] pOperationParam1 operation specific parameter
+ * @param[in] pOperationParam2 operation specific parameter
+ * @return                     zero on success else a negative error code.
+ */
+U_WEAK
+int32_t uDeviceCallback(const char *pOperationType,
+                        void *pOperationParam1,
+                        void *pOperationParam2)
+{
+    (void)pOperationType;
+    (void)pOperationParam1;
+    (void)pOperationParam2;
+    return 0;
+}
 
 int32_t uDeviceInit()
 {
@@ -112,10 +153,98 @@ int32_t uDeviceDeinit()
     return (int32_t) U_ERROR_COMMON_SUCCESS;
 }
 
+int32_t uDeviceGetDefaults(uDeviceType_t deviceType,
+                           uDeviceCfg_t *pDeviceCfg)
+{
+    int32_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+
+    if (pDeviceCfg != NULL) {
+        errorCode = 0;
+        pDeviceCfg->deviceType = deviceType;
+        pDeviceCfg->transportType = U_DEVICE_TRANSPORT_TYPE_UART;
+        switch (deviceType) {
+            case U_DEVICE_TYPE_CELL:
+                pDeviceCfg->deviceCfg.cfgCell.moduleType =
+#ifdef U_CFG_CELL_MODULE_TYPE
+                    U_CFG_CELL_MODULE_TYPE;
+#else
+                    -1;
+#endif
+                pDeviceCfg->deviceCfg.cfgCell.pinDtrPowerSaving = U_CFG_APP_PIN_CELL_DTR;
+                pDeviceCfg->deviceCfg.cfgCell.pinEnablePower = U_CFG_APP_PIN_CELL_ENABLE_POWER;
+                pDeviceCfg->deviceCfg.cfgCell.pinPwrOn = U_CFG_APP_PIN_CELL_PWR_ON;
+                pDeviceCfg->deviceCfg.cfgCell.pinVInt = U_CFG_APP_PIN_CELL_VINT;
+
+                pDeviceCfg->transportCfg.cfgUart.uart = U_CFG_APP_CELL_UART;
+                pDeviceCfg->transportCfg.cfgUart.baudRate = U_CELL_UART_BAUD_RATE;
+                pDeviceCfg->transportCfg.cfgUart.pinCts = U_CFG_APP_PIN_CELL_CTS;
+                pDeviceCfg->transportCfg.cfgUart.pinRts = U_CFG_APP_PIN_CELL_RTS;
+                pDeviceCfg->transportCfg.cfgUart.pinRxd = U_CFG_APP_PIN_CELL_RXD;
+                pDeviceCfg->transportCfg.cfgUart.pinTxd = U_CFG_APP_PIN_CELL_TXD;
+                break;
+
+            case U_DEVICE_TYPE_SHORT_RANGE:
+                pDeviceCfg->deviceCfg.cfgSho.moduleType =
+#ifdef U_CFG_SHORT_RANGE_MODULE_TYPE
+                    U_CFG_SHORT_RANGE_MODULE_TYPE;
+#else
+                    -1;
+#endif
+                pDeviceCfg->transportCfg.cfgUart.uart = U_CFG_APP_SHORT_RANGE_UART;
+                pDeviceCfg->transportCfg.cfgUart.baudRate = U_SHORT_RANGE_UART_BAUD_RATE;
+                pDeviceCfg->transportCfg.cfgUart.pinCts = U_CFG_APP_PIN_SHORT_RANGE_CTS;
+                pDeviceCfg->transportCfg.cfgUart.pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS;
+                pDeviceCfg->transportCfg.cfgUart.pinRxd = U_CFG_APP_PIN_SHORT_RANGE_RXD;
+                pDeviceCfg->transportCfg.cfgUart.pinTxd = U_CFG_APP_PIN_SHORT_RANGE_TXD;
+                break;
+
+            case U_DEVICE_TYPE_GNSS:
+                pDeviceCfg->deviceCfg.cfgGnss.moduleType =
+#ifdef U_CFG_GNSS_MODULE_TYPE
+                    U_CFG_GNSS_MODULE_TYPE;
+#else
+                    -1;
+#endif
+                pDeviceCfg->deviceCfg.cfgGnss.pinDataReady =
+#ifdef U_CFG_APP_PIN_GNSS_DATA_READY
+                    U_CFG_APP_PIN_GNSS_DATA_READY;
+#else
+                    -1;
+#endif
+                pDeviceCfg->deviceCfg.cfgGnss.pinEnablePower =
+#ifdef U_CFG_APP_PIN_GNSS_ENABLE_POWER
+                    U_CFG_APP_PIN_GNSS_ENABLE_POWER;
+#else
+                    -1;
+#endif
+
+                pDeviceCfg->transportCfg.cfgUart.uart = U_CFG_APP_GNSS_UART;
+                pDeviceCfg->transportCfg.cfgUart.baudRate = U_GNSS_UART_BAUD_RATE;
+                pDeviceCfg->transportCfg.cfgUart.pinCts = U_CFG_APP_PIN_GNSS_CTS;
+                pDeviceCfg->transportCfg.cfgUart.pinRts = U_CFG_APP_PIN_GNSS_RTS;
+                pDeviceCfg->transportCfg.cfgUart.pinRxd = U_CFG_APP_PIN_GNSS_RXD;
+                pDeviceCfg->transportCfg.cfgUart.pinTxd = U_CFG_APP_PIN_GNSS_TXD;
+                break;
+
+            default:
+                errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+                break;
+        }
+        if (errorCode == 0) {
+            errorCode = uDeviceCallback("def", (void *)pDeviceCfg, NULL);
+        }
+    }
+    return errorCode;
+}
+
 int32_t uDeviceOpen(const uDeviceCfg_t *pDeviceCfg, uDeviceHandle_t *pDeviceHandle)
 {
     // Lock the API
     int32_t errorCode = uDeviceLock();
+
+    if (errorCode == 0 && pDeviceCfg != NULL) {
+        errorCode = uDeviceCallback("open", (void *)pDeviceCfg->deviceType, NULL);
+    }
 
     if (errorCode == 0) {
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
@@ -163,7 +292,6 @@ int32_t uDeviceClose(uDeviceHandle_t devHandle, bool powerOff)
     int32_t errorCode = uDeviceLock();
 
     if (errorCode == 0) {
-        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         switch (uDeviceGetDeviceType(devHandle)) {
             case U_DEVICE_TYPE_CELL:
                 errorCode = uDevicePrivateCellRemove(devHandle, powerOff);
@@ -182,7 +310,13 @@ int32_t uDeviceClose(uDeviceHandle_t devHandle, bool powerOff)
                 }
                 break;
             default:
+                errorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
                 break;
+        }
+
+        if (errorCode == 0) {
+            errorCode = uDeviceCallback("close", (void *)(U_DEVICE_INSTANCE(devHandle)->deviceType),
+                                        (void *)powerOff);
         }
 
         // ...and done
