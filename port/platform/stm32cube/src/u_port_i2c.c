@@ -233,11 +233,11 @@ static int32_t configureHw(I2C_TypeDef *pReg, int32_t clockHertz)
 static bool waitFlagOk(I2C_TypeDef *pReg, uint32_t flag,
                        FlagStatus status, int32_t timeoutMs)
 {
-    int64_t stopTimeMs = uPortGetTickTimeMs() + timeoutMs;
+    int32_t startTimeMs = uPortGetTickTimeMs() + timeoutMs;
     bool wait;
 
     while ((wait = (U_PORT_HAL_I2C_GET_FLAG(pReg, flag) != status)) &&
-           (stopTimeMs > uPortGetTickTimeMs())) {
+           (uPortGetTickTimeMs() - startTimeMs < timeoutMs)) {
     }
 
     return !wait;
@@ -250,12 +250,12 @@ static bool waitFlagOk(I2C_TypeDef *pReg, uint32_t flag,
 static bool waitTransmitOk(I2C_TypeDef *pReg, uint32_t flag,
                            int32_t timeoutMs)
 {
-    int64_t stopTimeMs = uPortGetTickTimeMs() + timeoutMs;
+    int32_t startTimeMs = uPortGetTickTimeMs() + timeoutMs;
     bool wait;
     bool ackFailed = false;
 
     while ((wait = (U_PORT_HAL_I2C_GET_FLAG(pReg, flag) == RESET)) &&
-           (stopTimeMs > uPortGetTickTimeMs()) && !ackFailed) {
+           (uPortGetTickTimeMs() - startTimeMs < timeoutMs) && !ackFailed) {
         if (U_PORT_HAL_I2C_GET_FLAG(pReg, I2C_FLAG_AF) == SET) {
             // If there's been an acknowledgement failure,
             // give up in an organised way
