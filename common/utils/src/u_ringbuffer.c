@@ -101,7 +101,7 @@ static U_INLINE const char *pPtrOffset(const char *pData, size_t offset,
                                        const char *pBuffer, size_t bufferSize)
 {
     pData += offset;
-    if (pData > pBuffer + bufferSize) {
+    if (pData >= pBuffer + bufferSize) {
         pData -= bufferSize;
     }
 
