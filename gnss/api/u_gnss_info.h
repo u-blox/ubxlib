@@ -46,6 +46,15 @@ extern "C" {
  * TYPES
  * -------------------------------------------------------------- */
 
+typedef struct {
+    char ver[31];   //!< Sofware Version
+    char hw[11];    //!< Hardware / Chip Version
+    char rom[22];   //!< Underlying ROM Version
+    char fw[25];    //!< Firmware Version
+    char prot[23];  //!< Protocol Version
+    char mod[27];   //<! Module  Variant
+} uGnssVersionType_t; //!< return structs with different information
+
 /* ----------------------------------------------------------------
  * FUNCTIONS
  * -------------------------------------------------------------- */
@@ -71,6 +80,16 @@ extern "C" {
  */
 int32_t uGnssInfoGetFirmwareVersionStr(uDeviceHandle_t gnssHandle,
                                        char *pStr, size_t size);
+
+/** Get the various information from the GNSS chip.
+ *
+ * @param gnssHandle  the handle of the GNSS instance.
+ * @param[out] pVer   a pointer to structure where information is copied.
+ *                    This pointer cannot be NULL.
+ * @return            on sucesss 0, else negative error code.
+ */
+int32_t uGnssInfoGetVersions(uDeviceHandle_t gnssHandle,
+                             uGnssVersionType_t *pVer);
 
 /** Get the chip ID from the GNSS chip.
  *

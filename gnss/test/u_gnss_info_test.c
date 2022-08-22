@@ -212,6 +212,16 @@ U_PORT_TEST_FUNCTION("[gnssInfo]", "gnssInfoStatic")
             U_PORT_TEST_ASSERT(*(pBuffer + x) == 0x66);
         }
 
+        uGnssVersionType_t version;
+        y = uGnssInfoGetVersions(gnssHandle, &version);
+        U_PORT_TEST_ASSERT(y == 0);
+        U_PORT_TEST_ASSERT(strlen(version.ver) > 0);
+        U_PORT_TEST_ASSERT(strlen(version.hw) > 0);
+        uPortLog(U_TEST_PREFIX "GNSS ver:\"%s\" hw:\"%s\" rom:\"%s\" fw:\"%s\" prot:\"%s\" mod:\"%s\"\n",
+                 version.ver, version.hw,
+                 version.rom, version.fw,
+                 version.prot, version.mod);
+
         // Free memory
         free(pBuffer);
 

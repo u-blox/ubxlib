@@ -22,3 +22,4 @@ u_flags.yml
 config.yml
 _build
 /port/platform/arduino/ubxlib
+.DS_Store

@@ -106,6 +106,60 @@ int32_t uGnssInfoGetFirmwareVersionStr(uDeviceHandle_t gnssHandle,
     return errorCodeOrLength;
 }
 
+int32_t uGnssInfoGetVersions(uDeviceHandle_t gnssHandle,
+                             uGnssVersionType_t *pVer)
+{
+    int32_t errorCodeOrLength = U_ERROR_COMMON_NOT_INITIALISED;
+    uGnssPrivateInstance_t *pInstance;
+
+    if (gUGnssPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
+
+        errorCodeOrLength = U_ERROR_COMMON_INVALID_PARAMETER;
+        pInstance = pUGnssPrivateGetInstance(gnssHandle);
+        if ((pInstance != NULL) && (NULL != pVer)) {
+            // Poll with the message class and ID of the UBX-MON-VER
+            // message and pass the message body directly back
+            struct {
+                char sw[30];
+                char hw[10];
+                char ext[10][30];
+            } message;
+            errorCodeOrLength = uGnssPrivateSendReceiveUbxMessage(pInstance,
+                                                                  0x0a, 0x04,
+                                                                  NULL, 0,
+                                                                  (char *)&message, sizeof(message));
+            // Add a terminator
+            if (errorCodeOrLength > sizeof(message.sw) + sizeof(message.hw)) {
+                memset(pVer, 0, sizeof(*pVer));
+                strncpy(pVer->ver, message.sw, sizeof(pVer->ver));
+                strncpy(pVer->hw, message.hw, sizeof(pVer->hw));
+                size_t n = (errorCodeOrLength - sizeof(message.sw) + sizeof(message.hw)) / sizeof(message.ext[0]);
+                for (size_t i = 0; i < n; i++) {
+                    if (0 == strncmp(message.ext[i], "ROM BASE ", 9)) {
+                        strncpy(pVer->rom, message.ext[i] + 9, sizeof(pVer->rom));
+                    } else if (0 == strncmp(message.ext[i], "FWVER=", 6)) {
+                        strncpy(pVer->fw, message.ext[i] + 6, sizeof(pVer->fw));
+                    } else if (0 == strncmp(message.ext[i], "PROTVER=", 8)) {
+                        strncpy(pVer->prot, message.ext[i] + 8, sizeof(pVer->prot));
+                    } else if (0 == strncmp(message.ext[i], "MOD=", 4)) {
+                        strncpy(pVer->mod, message.ext[i] + 4, sizeof(pVer->mod));
+                    }
+                }
+                errorCodeOrLength = U_ERROR_COMMON_SUCCESS;
+            } else if (errorCodeOrLength >= 0) {
+                errorCodeOrLength = U_ERROR_COMMON_NOT_RESPONDING;
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
+    }
+
+    return errorCodeOrLength;
+}
+
+
 // Get the chip ID from the GNSS chip.
 int32_t uGnssInfoGetIdStr(uDeviceHandle_t gnssHandle,
                           char *pStr, size_t size)
