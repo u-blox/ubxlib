@@ -679,8 +679,12 @@ static size_t sendTcp(uSockDescriptor_t descriptor,
         x = uSockWrite(descriptor, (const void *) pData,
                        sizeBytes - sentSizeBytes);
         if (x > 0) {
+            // Note: the underlying cellular/Wi-Fi layers
+            // chunk the data anyway but we do the recursive
+            // call here as it is standard sockets and future
+            // uSockWrite() implementations may not
             sentSizeBytes += x;
-            pData++;
+            pData += x;
             U_TEST_PRINT_LINE("sent %d byte(s) of TCP data @%d ms.",
                               sentSizeBytes, (int32_t) uPortGetTickTimeMs());
         }
