@@ -360,7 +360,7 @@ typedef struct {
     int32_t pin;
     int32_t readyMs;
     bool highIsOn;
-    int64_t lastToggleTime;
+    int32_t lastToggleTime;
     int32_t hysteresisMs;
 } uAtClientActivityPin_t;
 
@@ -395,9 +395,9 @@ typedef struct uAtClientInstance_t {
     uAtClientScope_t scope; /** The scope, where we're at in the AT command. */
     uAtClientTag_t stopTag; /** The stop tag for the current scope. */
     uAtClientUrc_t *pUrcList; /** Linked-list anchor for URC handlers. */
-    int64_t lastResponseStopMs; /** The time the last response ended in milliseconds. */
-    int64_t lockTimeMs; /** The time when the stream was locked. */
-    int64_t lastTxTimeMs; /** The time when the last transmit activity was carried out, set to -1 initially. */
+    int32_t lastResponseStopMs; /** The time the last response ended in milliseconds. */
+    int32_t lockTimeMs; /** The time when the stream was locked. */
+    int32_t lastTxTimeMs; /** The time when the last transmit activity was carried out, set to -1 initially. */
     size_t urcMaxStringLength; /** The longest URC string to monitor for. */
     size_t maxRespLength; /** The max length of OK, (CME) (CMS) ERROR and URCs. */
     bool delimiterRequired; /** Is a delimiter to be inserted before the next parameter or not. */
@@ -1027,13 +1027,13 @@ static void consecutiveTimeout(uAtClientInstance_t *pClient)
 // time and the AT timeout. Returns the time remaining for
 // polling in milliseconds.
 static int32_t pollTimeRemaining(int32_t atTimeoutMs,
-                                 int64_t lockTimeMs)
+                                 int32_t lockTimeMs)
 {
-    int64_t timeRemainingMs;
-    int64_t now = uPortGetTickTimeMs();
+    int32_t timeRemainingMs;
+    int32_t now = uPortGetTickTimeMs();
 
     if (atTimeoutMs >= 0) {
-        if (now > lockTimeMs + atTimeoutMs) {
+        if (now - lockTimeMs > atTimeoutMs) {
             timeRemainingMs = 0;
         } else if (lockTimeMs + atTimeoutMs - now > INT_MAX) {
             timeRemainingMs = INT_MAX;
@@ -1644,7 +1644,7 @@ static bool bufferMatchOneUrc(uAtClientInstance_t *pClient)
 {
     size_t prefixLength = 0;
     bool found = false;
-    int64_t now;
+    int32_t now;
     uErrorCode_t savedError;
 
     bufferRewind(pClient);
@@ -1671,7 +1671,9 @@ static bool bufferMatchOneUrc(uAtClientInstance_t *pClient)
                 // Put the error state back again
                 // Add the amount of time spent in the URC
                 // world to the start time
-                pClient->lockTimeMs += uPortGetTickTimeMs() - now;
+                if (uPortGetTickTimeMs() - now > 0) {
+                    pClient->lockTimeMs += uPortGetTickTimeMs() - now;
+                }
                 found = true;
             }
         }
@@ -1976,8 +1978,8 @@ static size_t write(uAtClientInstance_t *pClient,
     size_t lengthToWrite;
     const char *pDataStart = pData;
     const char *pDataToWrite = pData;
-    int64_t savedLockTimeMs;
-    int64_t wakeUpDurationMs = 0;
+    int32_t savedLockTimeMs;
+    int32_t wakeUpDurationMs = 0;
     uAtClientScope_t savedScope;
     uAtClientTag_t savedStopTag;
     bool savedDelimiterRequired;
@@ -2887,17 +2889,15 @@ void uAtClientCommandStart(uAtClientHandle_t atHandle,
                            const char *pCommand)
 {
     uAtClientInstance_t *pClient = (uAtClientInstance_t *) atHandle;
-    int64_t delayMs;
 
     U_AT_CLIENT_LOCK_CLIENT_MUTEX(pClient);
 
     if (pClient->error == U_ERROR_COMMON_SUCCESS) {
-        // Wait for delay period if required
+        // Wait for delay period if required, constructed this way
+        // to be safe if uPortGetTickTimeMs() wraps
         if (pClient->delayMs > 0) {
-            delayMs = pClient->lastResponseStopMs + pClient->delayMs -
-                      uPortGetTickTimeMs();
-            if (delayMs > 0) {
-                uPortTaskBlock((int32_t) delayMs);
+            while (uPortGetTickTimeMs() - pClient->lastResponseStopMs < pClient->delayMs) {
+                uPortTaskBlock(10);
             }
         }
 
@@ -3377,7 +3377,7 @@ int32_t uAtClientWaitCharacter(uAtClientHandle_t atHandle,
     uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
     uAtClientInstance_t *pClient = (uAtClientInstance_t *) atHandle;
     uAtClientReceiveBuffer_t *pReceiveBuffer = pClient->pReceiveBuffer;
-    int64_t stopTimeMs;
+    int32_t stopTimeMs;
     bool urcFound;
 
     // IMPORTANT: this can't lock pClient->mutex as it
