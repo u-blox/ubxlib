@@ -1671,9 +1671,7 @@ static bool bufferMatchOneUrc(uAtClientInstance_t *pClient)
                 // Put the error state back again
                 // Add the amount of time spent in the URC
                 // world to the start time
-                if (uPortGetTickTimeMs() - now > 0) {
-                    pClient->lockTimeMs += uPortGetTickTimeMs() - now;
-                }
+                pClient->lockTimeMs += uPortGetTickTimeMs() - now;
                 found = true;
             }
         }
