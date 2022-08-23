@@ -8,7 +8,7 @@
 import subprocess
 
 with subprocess.Popen("astyle --options=astyle.cfg --suffix=none --verbose " \
-                      "--errors-to-stdout --recursive *.c,*.h,*.cpp,*.hpp",
+                      "--errors-to-stdout --recursive \"*.c,*.h,*.cpp,*.hpp\"",
                       stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                       universal_newlines=True) as astyle:
     output = astyle.communicate()
