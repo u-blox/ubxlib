@@ -40,6 +40,7 @@
 #include "u_cfg_sw.h"
 #include "u_compiler.h" // for U_WEAK
 
+#include "u_port_clib_platform_specific.h" // rand()
 #include "u_port_debug.h"
 #include "u_port_crypto.h"
 
