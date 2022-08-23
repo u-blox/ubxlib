@@ -233,7 +233,7 @@ static int32_t configureHw(I2C_TypeDef *pReg, int32_t clockHertz)
 static bool waitFlagOk(I2C_TypeDef *pReg, uint32_t flag,
                        FlagStatus status, int32_t timeoutMs)
 {
-    int32_t startTimeMs = uPortGetTickTimeMs() + timeoutMs;
+    int32_t startTimeMs = uPortGetTickTimeMs();
     bool wait;
 
     while ((wait = (U_PORT_HAL_I2C_GET_FLAG(pReg, flag) != status)) &&
@@ -250,7 +250,7 @@ static bool waitFlagOk(I2C_TypeDef *pReg, uint32_t flag,
 static bool waitTransmitOk(I2C_TypeDef *pReg, uint32_t flag,
                            int32_t timeoutMs)
 {
-    int32_t startTimeMs = uPortGetTickTimeMs() + timeoutMs;
+    int32_t startTimeMs = uPortGetTickTimeMs();
     bool wait;
     bool ackFailed = false;
 
