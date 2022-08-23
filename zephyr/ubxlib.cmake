@@ -2,6 +2,7 @@
 # Append UBXLIB as a Zephyr module
 get_filename_component(UBXLIB_BASE "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
 list(APPEND ZEPHYR_EXTRA_MODULES ${UBXLIB_BASE})
+set(UBXLIB_USED 1)
 if(NOT UBXLIB_NO_DEF_CONF)
   # Add the UBXLIB default configuration variables
   list(APPEND CONF_FILE "${UBXLIB_BASE}/port/platform/zephyr/default.conf")

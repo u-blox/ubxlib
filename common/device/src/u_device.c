@@ -138,6 +138,8 @@ int32_t uDeviceInit()
         uDevicePrivateCellDeinit();
         uDevicePrivateGnssDeinit();
         uDeviceMutexDestroy();
+    } else {
+        errorCode = uDeviceCallback("init", NULL, NULL);
     }
 
     return errorCode;
@@ -150,6 +152,7 @@ int32_t uDeviceDeinit()
     uDevicePrivateGnssDeinit();
     uDevicePrivateCellDeinit();
     uDeviceMutexDestroy();
+    uDeviceCallback("deinit", NULL, NULL);
     return (int32_t) U_ERROR_COMMON_SUCCESS;
 }
 
