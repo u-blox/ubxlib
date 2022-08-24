@@ -173,7 +173,6 @@ U_PORT_TEST_FUNCTION("[ringbuffer]", "ringbufferBasic")
     U_PORT_TEST_ASSERT(bufferOut[0] == U_TEST_UTILS_RINGBUFFER_FILL_CHAR);
     U_PORT_TEST_ASSERT(bufferOut[sizeof(bufferOut) - 1] == U_TEST_UTILS_RINGBUFFER_FILL_CHAR);
     handle[0] = uRingBufferTakeReadHandle(&ringBuffer);
-    U_PORT_TEST_ASSERT(handle[0] >= 0);
     U_PORT_TEST_ASSERT(uRingBufferDataSizeHandle(&ringBuffer, handle[0]) == 0);
     memset(bufferOut, U_TEST_UTILS_RINGBUFFER_FILL_CHAR, sizeof(bufferOut));
     U_PORT_TEST_ASSERT(uRingBufferReadHandle(&ringBuffer, handle[0], bufferOut,
@@ -187,7 +186,6 @@ U_PORT_TEST_FUNCTION("[ringbuffer]", "ringbufferBasic")
     memset(bufferOut, U_TEST_UTILS_RINGBUFFER_FILL_CHAR, sizeof(bufferOut));
     printBuffer("  output buffer initially contains", bufferOut, sizeof(bufferOut));
     handle[0] = uRingBufferTakeReadHandle(&ringBuffer);
-    U_PORT_TEST_ASSERT(handle[0] >= 0);
     U_TEST_PRINT_LINE(" adding 1 byte of data, value 0x%02x.", b);
     U_PORT_TEST_ASSERT(uRingBufferAdd(&ringBuffer, &b, sizeof(b)));
     printBuffer("  ring buffer now contains", linearBuffer, sizeof(linearBuffer));
@@ -265,7 +263,6 @@ U_PORT_TEST_FUNCTION("[ringbuffer]", "ringbufferBasic")
     memset(bufferOut, U_TEST_UTILS_RINGBUFFER_FILL_CHAR, sizeof(bufferOut));
     printBuffer("  output buffer reset to", bufferOut, sizeof(bufferOut));
     handle[0] = uRingBufferTakeReadHandle(&ringBuffer);
-    U_PORT_TEST_ASSERT(handle[0] >= 0);
     U_TEST_PRINT_LINE(" adding %d byte(s).", sizeof(bufferIn) - 1);
     U_PORT_TEST_ASSERT(uRingBufferAdd(&ringBuffer, bufferIn, sizeof(bufferIn) - 1));
     // Should not be able to add any more (without forcing)
@@ -346,7 +343,6 @@ U_PORT_TEST_FUNCTION("[ringbuffer]", "ringbufferBasic")
     memset(bufferOut, U_TEST_UTILS_RINGBUFFER_FILL_CHAR, sizeof(bufferOut));
     printBuffer("  output buffer reset to", bufferOut, sizeof(bufferOut));
     handle[0] = uRingBufferTakeReadHandle(&ringBuffer);
-    U_PORT_TEST_ASSERT(handle[0] >= 0);
     U_PORT_TEST_ASSERT(!uRingBufferAdd(&ringBuffer, bufferIn, sizeof(bufferIn)));
     // This should show up as a loss on add
     addLoss += sizeof(bufferIn);
@@ -378,7 +374,6 @@ U_PORT_TEST_FUNCTION("[ringbuffer]", "ringbufferBasic")
     uRingBufferSetReadRequiresHandle(&ringBuffer, true);
     U_PORT_TEST_ASSERT(uRingBufferGetReadRequiresHandle(&ringBuffer));
     handle[0] = uRingBufferTakeReadHandle(&ringBuffer);
-    U_PORT_TEST_ASSERT(handle[0] >= 0);
     U_TEST_PRINT_LINE(" adding %d byte(s).", sizeof(bufferIn) - 1);
     U_PORT_TEST_ASSERT(uRingBufferAdd(&ringBuffer, bufferIn, sizeof(bufferIn) - 1));
     printBuffer("ring buffer now contains", linearBuffer, sizeof(linearBuffer));
@@ -429,9 +424,7 @@ U_PORT_TEST_FUNCTION("[ringbuffer]", "ringbufferBasic")
     memset(bufferOut, U_TEST_UTILS_RINGBUFFER_FILL_CHAR, sizeof(bufferOut));
     printBuffer("  output buffer reset to", bufferOut, sizeof(bufferOut));
     handle[0] = uRingBufferTakeReadHandle(&ringBuffer);
-    U_PORT_TEST_ASSERT(handle[0] >= 0);
     handle[1] = uRingBufferTakeReadHandle(&ringBuffer);
-    U_PORT_TEST_ASSERT(handle[1] >= 0);
     // Should not be able to obtain any more handles
     U_PORT_TEST_ASSERT(uRingBufferTakeReadHandle(&ringBuffer) < 0);
     U_TEST_PRINT_LINE(" adding %d byte(s).", sizeof(bufferIn) - 2);
@@ -551,7 +544,6 @@ U_PORT_TEST_FUNCTION("[ringbuffer]", "ringbufferBasic")
     U_TEST_PRINT_LINE("testing reset...");
     memset(bufferOut, U_TEST_UTILS_RINGBUFFER_FILL_CHAR, sizeof(bufferOut));
     handle[0] = uRingBufferTakeReadHandle(&ringBuffer);
-    U_PORT_TEST_ASSERT(handle[0] >= 0);
     U_PORT_TEST_ASSERT(uRingBufferAdd(&ringBuffer, &b, sizeof(b)));
     U_PORT_TEST_ASSERT(uRingBufferDataSize(&ringBuffer) == sizeof(b));
     U_PORT_TEST_ASSERT(uRingBufferAvailableSize(&ringBuffer) == sizeof(linearBuffer) - 1 - sizeof(b));
@@ -576,9 +568,7 @@ U_PORT_TEST_FUNCTION("[ringbuffer]", "ringbufferBasic")
     memset(bufferOut, U_TEST_UTILS_RINGBUFFER_FILL_CHAR, sizeof(bufferOut));
     printBuffer("  output buffer reset to", bufferOut, sizeof(bufferOut));
     handle[0] = uRingBufferTakeReadHandle(&ringBuffer);
-    U_PORT_TEST_ASSERT(handle[0] >= 0);
     handle[1] = uRingBufferTakeReadHandle(&ringBuffer);
-    U_PORT_TEST_ASSERT(handle[1] >= 0);
     // Should not be able to obtain any more handles
     U_PORT_TEST_ASSERT(uRingBufferTakeReadHandle(&ringBuffer) < 0);
     U_TEST_PRINT_LINE(" adding the maximum number of byte(s) (%d).", sizeof(bufferIn) - 1);
@@ -674,11 +664,9 @@ U_PORT_TEST_FUNCTION("[ringbuffer]", "ringbufferBasic")
     printBuffer("  output buffer reset to", bufferOut, sizeof(bufferOut));
     handle[0] = uRingBufferTakeReadHandle(&ringBuffer);
     readLossHandle[0] = 0;
-    U_PORT_TEST_ASSERT(handle[0] >= 0);
     U_PORT_TEST_ASSERT(!uRingBufferReadHandleIsLocked(&ringBuffer, handle[0]));
     handle[1] = uRingBufferTakeReadHandle(&ringBuffer);
     readLossHandle[1] = 0;
-    U_PORT_TEST_ASSERT(handle[1] >= 0);
     U_PORT_TEST_ASSERT(!uRingBufferReadHandleIsLocked(&ringBuffer, handle[1]));
     // Should not be able to obtain any more handles
     U_PORT_TEST_ASSERT(uRingBufferTakeReadHandle(&ringBuffer) < 0);
@@ -788,10 +776,8 @@ U_PORT_TEST_FUNCTION("[ringbuffer]", "ringbufferBasic")
     memset(bufferOut, U_TEST_UTILS_RINGBUFFER_FILL_CHAR, sizeof(bufferOut));
     handle[0] = uRingBufferTakeReadHandle(&ringBuffer);
     readLossHandle[0] = 0;
-    U_PORT_TEST_ASSERT(handle[0] >= 0);
     handle[1] = uRingBufferTakeReadHandle(&ringBuffer);
     readLossHandle[1] = 0;
-    U_PORT_TEST_ASSERT(handle[1] >= 0);
     U_PORT_TEST_ASSERT(uRingBufferAdd(&ringBuffer, bufferIn, sizeof(bufferIn) - 1));
     U_PORT_TEST_ASSERT(uRingBufferAvailableSize(&ringBuffer) == 0);
     U_PORT_TEST_ASSERT(uRingBufferAvailableSizeMax(&ringBuffer) == sizeof(linearBuffer) - 1);
