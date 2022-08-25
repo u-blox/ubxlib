@@ -143,6 +143,7 @@ static void msgReceiveTask(void *pParam)
     uGnssPrivateMsgReceive_t *pMsgReceive = pInstance->pMsgReceive;
     uGnssPrivateMsgReader_t *pReader;
     int32_t errorCodeOrLength;
+    size_t discardSize = 0;
     int32_t dataLength;
     uGnssMessageId_t messageId;
     uGnssPrivateMessageId_t privateMessageId;
@@ -163,6 +164,10 @@ static void msgReceiveTask(void *pParam)
 
         // Pull stuff into the ring buffer
         uGnssPrivateStreamFillRingBuffer(pInstance, 0, 0);
+        // Deal with any discard from a previous run around this loop
+        discardSize -= uRingBufferReadHandle(&(pInstance->ringBuffer),
+                                             pMsgReceive->ringBufferReadHandle,
+                                             NULL, discardSize);
         errorCodeOrLength = uRingBufferDataSizeHandle(&(pInstance->ringBuffer),
                                                       pMsgReceive->ringBufferReadHandle);
         dataLength = errorCodeOrLength;
@@ -171,7 +176,8 @@ static void msgReceiveTask(void *pParam)
             // Attempt to decode a message of any type from the ring buffer
             errorCodeOrLength = uGnssPrivateStreamDecodeRingBuffer(pInstance,
                                                                    pMsgReceive->ringBufferReadHandle,
-                                                                   &privateMessageId);
+                                                                   &privateMessageId,
+                                                                   &discardSize);
             if (errorCodeOrLength >= 0) {
 
                 // Remember how much data we have

@@ -290,10 +290,16 @@ static int32_t matchUbxMessageHeader(const char *pBuffer, size_t size,
                 }
                 errorCodeOrLength = messageBodyLength + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES;
             } else {
-                // Not an ID match, set pDiscard to the length that can be discarded
+                // Not an ID match, set pDiscard to the length that can be discarded,
+                // which includes the unwanted message body
                 if (pDiscard != NULL) {
                     *pDiscard = messageBodyLength + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES;
                 }
+            }
+        } else {
+            // Discard everything up to the start of the potential start of a message
+            if (pDiscard != NULL) {
+                *pDiscard = (pInput - (const uint8_t *) pBuffer) - overheadByteCount;
             }
         }
     } else {
@@ -413,6 +419,7 @@ static int32_t receiveUbxMessageStream(uGnssPrivateInstance_t *pInstance,
     int32_t receiveSize;
     size_t totalReceiveSize = 0;
     size_t totalCaptureSize = 0;
+    size_t discardSize = 0;
     uGnssPrivateMessageId_t privateMessageId;
     int32_t x;
     int32_t y = timeoutMs > U_GNSS_RING_BUFFER_MIN_FILL_TIME_MS * 10 ? timeoutMs / 10 :
@@ -430,6 +437,9 @@ static int32_t receiveUbxMessageStream(uGnssPrivateInstance_t *pInstance,
         if (pResponse->id >= 0) {
             privateMessageId.id.ubx = (privateMessageId.id.ubx & 0xff00) | pResponse->id;
         }
+        // Lock our read pointer while we look for stuff
+        uRingBufferLockReadHandle(&(pInstance->ringBuffer),
+                                  pInstance->ringBufferReadHandlePrivate);
         // This is constructed as a do()/while() so that it always has one go
         // even with a zero timeout
         do {
@@ -441,90 +451,87 @@ static int32_t receiveUbxMessageStream(uGnssPrivateInstance_t *pInstance,
             if (receiveSize < 0) {
                 errorCodeOrLength = receiveSize;
             } else if (receiveSize > 0) {
-                // There is some data: lock our read pointer so that we
-                // can check it out
-                uRingBufferLockReadHandle(&(pInstance->ringBuffer),
-                                          pInstance->ringBufferReadHandlePrivate);
-                // Attempt to decode the message from the ring buffer
-                errorCodeOrLength = uGnssPrivateStreamDecodeRingBuffer(pInstance,
-                                                                       pInstance->ringBufferReadHandlePrivate,
-                                                                       &privateMessageId);
-                if (errorCodeOrLength >= U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES) {
-                    readLength = errorCodeOrLength;
-                    captureLength = readLength;
-                    if (pResponse->bodyOnly) {
-                        // We want the message body, so throw away the header
-                        // and adjust the capture length so that we throw away the CRC
-                        uRingBufferReadHandle(&(pInstance->ringBuffer),
-                                              pInstance->ringBufferReadHandlePrivate,
-                                              NULL, U_UBX_PROTOCOL_HEADER_LENGTH_BYTES);
-                        readLength -= U_UBX_PROTOCOL_HEADER_LENGTH_BYTES;
-                        captureLength -= U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES;
-                    }
-                    // Deal with message buffer
-                    if (*(pResponse->ppBuffer) != NULL) {
-                        if (captureLength > pResponse->size) {
-                            captureLength = pResponse->size;
+                // Deal with any discard from a previous run around this loop
+                discardSize -= uRingBufferReadHandle(&(pInstance->ringBuffer),
+                                                     pInstance->ringBufferReadHandlePrivate,
+                                                     NULL, discardSize);
+                if (discardSize == 0) {
+                    // Attempt to decode the message from the ring buffer
+                    errorCodeOrLength = uGnssPrivateStreamDecodeRingBuffer(pInstance,
+                                                                           pInstance->ringBufferReadHandlePrivate,
+                                                                           &privateMessageId,
+                                                                           &discardSize);
+                    if (errorCodeOrLength >= U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES) {
+                        readLength = errorCodeOrLength;
+                        captureLength = readLength;
+                        if (pResponse->bodyOnly) {
+                            // We want the message body, so throw away the header
+                            // and adjust the capture length so that we throw away the CRC
+                            uRingBufferReadHandle(&(pInstance->ringBuffer),
+                                                  pInstance->ringBufferReadHandlePrivate,
+                                                  NULL, U_UBX_PROTOCOL_HEADER_LENGTH_BYTES);
+                            readLength -= U_UBX_PROTOCOL_HEADER_LENGTH_BYTES;
+                            captureLength -= U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES;
                         }
-                    } else {
-                        *(pResponse->ppBuffer) = (char *) malloc(captureLength);
-                        if (*(pResponse->ppBuffer) == NULL) {
-                            errorCodeOrLength = (int32_t) U_ERROR_COMMON_NO_MEMORY;
-                            captureLength = 0;
-                        }
-                    }
-                    do {
-                        // We want to read in the lot, irrespective of which
-                        // bits the caller wanted
-                        if (totalReceiveSize < captureLength) {
-                            // Read the bit the caller wanted
-                            receiveSize = (int32_t) uRingBufferReadHandle(&(pInstance->ringBuffer),
-                                                                          pInstance->ringBufferReadHandlePrivate,
-                                                                          *(pResponse->ppBuffer) + totalReceiveSize,
-                                                                          captureLength - totalReceiveSize);
-                            totalCaptureSize += receiveSize;
+                        // Deal with message buffer
+                        if (*(pResponse->ppBuffer) != NULL) {
+                            if (captureLength > pResponse->size) {
+                                captureLength = pResponse->size;
+                            }
                         } else {
-                            // Throw the rest away, or all of it away if we got no memory
-                            receiveSize = (int32_t) uRingBufferReadHandle(&(pInstance->ringBuffer),
-                                                                          pInstance->ringBufferReadHandlePrivate,
-                                                                          NULL, readLength - totalReceiveSize);
-                        }
-                        totalReceiveSize += receiveSize;
-                        if (receiveSize == 0) {
-                            x = uGnssPrivateStreamFillRingBuffer(pInstance, y, y);
-                            if (x < 0) {
-                                errorCodeOrLength = x;
+                            *(pResponse->ppBuffer) = (char *) malloc(captureLength);
+                            if (*(pResponse->ppBuffer) == NULL) {
+                                errorCodeOrLength = (int32_t) U_ERROR_COMMON_NO_MEMORY;
+                                captureLength = 0;
                             }
                         }
-                    } while ((totalReceiveSize < readLength) &&
-                             (uPortGetTickTimeMs() - startTimeMs < timeoutMs));
-                    if (errorCodeOrLength >= 0) {
-                        errorCodeOrLength = (int32_t) totalCaptureSize;
-                        if (printIt) {
-                            uPortLog("U_GNSS: decoded ubx response 0x%02x 0x%02x",
-                                     privateMessageId.id.ubx >> 8, privateMessageId.id.ubx & 0xff);
-                            if (errorCodeOrLength > 0) {
-                                uPortLog(":");
-                                uGnssPrivatePrintBuffer(*(pResponse->ppBuffer), errorCodeOrLength);
+                        do {
+                            // We want to read in the lot, irrespective of which
+                            // bits the caller wanted
+                            if (totalReceiveSize < captureLength) {
+                                // Read the bit the caller wanted
+                                receiveSize = (int32_t) uRingBufferReadHandle(&(pInstance->ringBuffer),
+                                                                              pInstance->ringBufferReadHandlePrivate,
+                                                                              *(pResponse->ppBuffer) + totalReceiveSize,
+                                                                              captureLength - totalReceiveSize);
+                                totalCaptureSize += receiveSize;
+                            } else {
+                                // Throw the rest away, or all of it away if we got no memory
+                                receiveSize = (int32_t) uRingBufferReadHandle(&(pInstance->ringBuffer),
+                                                                              pInstance->ringBufferReadHandlePrivate,
+                                                                              NULL, readLength - totalReceiveSize);
                             }
-                            uPortLog(" [body %d byte(s)].\n", errorCodeOrLength);
+                            totalReceiveSize += receiveSize;
+                            if (receiveSize == 0) {
+                                x = uGnssPrivateStreamFillRingBuffer(pInstance, y, y);
+                                if (x < 0) {
+                                    errorCodeOrLength = x;
+                                }
+                            }
+                        } while ((totalReceiveSize < readLength) &&
+                                 (uPortGetTickTimeMs() - startTimeMs < timeoutMs));
+                        if (errorCodeOrLength >= 0) {
+                            errorCodeOrLength = (int32_t) totalCaptureSize;
+                            if (printIt) {
+                                uPortLog("U_GNSS: decoded ubx response 0x%02x 0x%02x",
+                                         privateMessageId.id.ubx >> 8, privateMessageId.id.ubx & 0xff);
+                                if (errorCodeOrLength > 0) {
+                                    uPortLog(":");
+                                    uGnssPrivatePrintBuffer(*(pResponse->ppBuffer), errorCodeOrLength);
+                                }
+                                uPortLog(" [body %d byte(s)].\n", errorCodeOrLength);
+                            }
                         }
                     }
-                    // Got what we wanted, unlock the read pointer
-                    uRingBufferUnlockReadHandle(&(pInstance->ringBuffer),
-                                                pInstance->ringBufferReadHandlePrivate);
-                } else if (errorCodeOrLength != U_ERROR_COMMON_TIMEOUT) {
-                    // If we got an error that doesn't mean "there was a sniff of
-                    // a message, wait for more" then we can unlock the read pointer
-                    uRingBufferUnlockReadHandle(&(pInstance->ringBuffer),
-                                                pInstance->ringBufferReadHandlePrivate);
                 }
             }
-        } while ((errorCodeOrLength < 0) && (uPortGetTickTimeMs() - startTimeMs < timeoutMs));
+        } while (((errorCodeOrLength < 0) || (discardSize > 0)) &&
+                 (uPortGetTickTimeMs() - startTimeMs < timeoutMs));
 
-        // Make sure the read pointer is definitely unlocked
+        // Unlock the read pointer
         uRingBufferUnlockReadHandle(&(pInstance->ringBuffer),
                                     pInstance->ringBufferReadHandlePrivate);
+
         if (errorCodeOrLength >= 0) {
             // Convert uGnssPrivateMessageId_t into uGnssPrivateUbxReceiveMessage_t
             pResponse->cls = privateMessageId.id.ubx >> 8;
@@ -1323,7 +1330,8 @@ int32_t uGnssPrivateStreamGetReceiveSize(int32_t streamHandle,
 // the message receive task over in u_gnss_msg.c
 int32_t uGnssPrivateStreamDecodeRingBuffer(uGnssPrivateInstance_t *pInstance,
                                            int32_t readHandle,
-                                           uGnssPrivateMessageId_t *pPrivateMessageId)
+                                           uGnssPrivateMessageId_t *pPrivateMessageId,
+                                           size_t *pDiscard)
 {
     int32_t errorCodeOrLength = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
     char buffer[U_GNSS_NMEA_SENTENCE_MAX_LENGTH_BYTES * 2];  // * 2 so that we are more likely
@@ -1333,7 +1341,8 @@ int32_t uGnssPrivateStreamDecodeRingBuffer(uGnssPrivateInstance_t *pInstance,
     char nmeaStr[U_GNSS_NMEA_MESSAGE_MATCH_LENGTH_CHARACTERS + 1] = {0};
     uint16_t ubxId = (U_GNSS_UBX_MESSAGE_CLASS_ALL << 8) | U_GNSS_UBX_MESSAGE_ID_ALL;
 
-    if ((pInstance != NULL) && (pPrivateMessageId != NULL)) {
+    if ((pInstance != NULL) && (pPrivateMessageId != NULL) && (pDiscard != NULL)) {
+        *pDiscard = 0;
         // Prepare the ID
         switch (pPrivateMessageId->type) {
             case U_GNSS_PROTOCOL_UBX:
@@ -1388,8 +1397,10 @@ int32_t uGnssPrivateStreamDecodeRingBuffer(uGnssPrivateInstance_t *pInstance,
                 default:
                     break;
             }
-            // Discard from the ring buffer
-            uRingBufferReadHandle(&(pInstance->ringBuffer), readHandle, NULL, discardSize);
+            // Discard from the ring buffer, populating *pDiscard
+            // with any amount left over to be discarded by the caller
+            *pDiscard += uRingBufferReadHandle(&(pInstance->ringBuffer), readHandle, NULL,
+                                               discardSize) - discardSize;
             // Drop out of the loop if we succeed or if
             // we are no longer discarding anything; this
             // doesn't _actually_ need to be a loop, with
@@ -1674,7 +1685,7 @@ int32_t uGnssPrivateReceiveStreamMessage(uGnssPrivateInstance_t *pInstance,
 {
     int32_t errorCodeOrLength = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
     int32_t receiveSize;
-    int32_t discard = 0;
+    size_t discardSize = 0;
     int32_t startTimeMs;
     int32_t x = timeoutMs > U_GNSS_RING_BUFFER_MIN_FILL_TIME_MS * 10 ? timeoutMs / 10 :
                 U_GNSS_RING_BUFFER_MIN_FILL_TIME_MS;
@@ -1684,6 +1695,8 @@ int32_t uGnssPrivateReceiveStreamMessage(uGnssPrivateInstance_t *pInstance,
         (ppBuffer != NULL) && ((*ppBuffer == NULL) || (size > 0))) {
         errorCodeOrLength = (int32_t) U_ERROR_COMMON_TIMEOUT;
         startTimeMs = uPortGetTickTimeMs();
+        // Lock our read pointer while we look for stuff
+        uRingBufferLockReadHandle(&(pInstance->ringBuffer), readHandle);
         // This is constructed as a do()/while() so that it always has one go
         // even with a zero timeout
         do {
@@ -1695,56 +1708,53 @@ int32_t uGnssPrivateReceiveStreamMessage(uGnssPrivateInstance_t *pInstance,
             if (receiveSize < 0) {
                 errorCodeOrLength = receiveSize;
             } else if (receiveSize > 0) {
-                // There is some data: lock our read pointer so that we
-                // can check it out
-                uRingBufferLockReadHandle(&(pInstance->ringBuffer), readHandle);
-                // Attempt to decode a message/message header from the ring buffer
-                errorCodeOrLength = uGnssPrivateStreamDecodeRingBuffer(pInstance,
-                                                                       readHandle,
-                                                                       pPrivateMessageId);
-                if (errorCodeOrLength > 0) {
-                    if (*ppBuffer == NULL) {
-                        // The caller didn't give us any memory; allocate the right
-                        // amount; the caller must free this memory
-                        *ppBuffer = malloc(errorCodeOrLength);
-                    } else {
-                        // If the user gave us a buffer, limit the size
-                        if (errorCodeOrLength > (int32_t) size) {
-                            discard = errorCodeOrLength - size;
-                            errorCodeOrLength = size;
+                // Deal with any discard from a previous run around this loop
+                discardSize -= uRingBufferReadHandle(&(pInstance->ringBuffer),
+                                                     readHandle,
+                                                     NULL, discardSize);
+                if (discardSize == 0) {
+                    // Attempt to decode a message/message header from the ring buffer
+                    errorCodeOrLength = uGnssPrivateStreamDecodeRingBuffer(pInstance,
+                                                                           readHandle,
+                                                                           pPrivateMessageId,
+                                                                           &discardSize);
+                    if (errorCodeOrLength > 0) {
+                        if (*ppBuffer == NULL) {
+                            // The caller didn't give us any memory; allocate the right
+                            // amount; the caller must free this memory
+                            *ppBuffer = malloc(errorCodeOrLength);
+                        } else {
+                            // If the user gave us a buffer, limit the size
+                            if (errorCodeOrLength > (int32_t) size) {
+                                discardSize += errorCodeOrLength - size;
+                                errorCodeOrLength = size;
+                            }
+                        }
+                        if (*ppBuffer != NULL) {
+                            // Now read the message data into the buffer,
+                            // which will move our read pointer on
+                            y = timeoutMs - (uPortGetTickTimeMs() - startTimeMs);
+                            if (y < U_GNSS_RING_BUFFER_MIN_FILL_TIME_MS) {
+                                // Make sure we give ourselves time to read the messsage out
+                                y = U_GNSS_RING_BUFFER_MIN_FILL_TIME_MS;
+                            }
+                            errorCodeOrLength = uGnssPrivateStreamReadRingBuffer(pInstance,
+                                                                                 readHandle,
+                                                                                 *ppBuffer,
+                                                                                 errorCodeOrLength, y);
+                        } else {
+                            discardSize = errorCodeOrLength;
+                            errorCodeOrLength = (int32_t) U_ERROR_COMMON_NO_MEMORY;
                         }
                     }
-                    if (*ppBuffer != NULL) {
-                        // Now read the message data into the buffer,
-                        // which will move our read pointer on
-                        y = timeoutMs - (uPortGetTickTimeMs() - startTimeMs);
-                        if (y < U_GNSS_RING_BUFFER_MIN_FILL_TIME_MS) {
-                            // Make sure we give ourselves time to read the messsage out
-                            y = U_GNSS_RING_BUFFER_MIN_FILL_TIME_MS;
-                        }
-                        errorCodeOrLength = uGnssPrivateStreamReadRingBuffer(pInstance,
-                                                                             readHandle,
-                                                                             *ppBuffer,
-                                                                             errorCodeOrLength, y);
-                        if (discard > 0) {
-                            uGnssPrivateStreamReadRingBuffer(pInstance, readHandle,
-                                                             NULL, discard, y);
-                        }
-                    } else {
-                        errorCodeOrLength = (int32_t) U_ERROR_COMMON_NO_MEMORY;
-                    }
-                    // Got what we wanted, unlock the read pointer
-                    uRingBufferUnlockReadHandle(&(pInstance->ringBuffer), readHandle);
-                } else if (errorCodeOrLength != U_ERROR_COMMON_TIMEOUT) {
-                    // If we got an error that doesn't mean "there was a sniff of
-                    // a message, wait for more" then we can unlock the read pointer
-                    uRingBufferUnlockReadHandle(&(pInstance->ringBuffer), readHandle);
                 }
             }
-        } while ((errorCodeOrLength < 0) && (errorCodeOrLength != (int32_t) U_ERROR_COMMON_NO_MEMORY) &&
+        } while ((((errorCodeOrLength < 0) && (errorCodeOrLength != (int32_t) U_ERROR_COMMON_NO_MEMORY)) ||
+                  (discardSize > 0)) &&
                  (uPortGetTickTimeMs() - startTimeMs < timeoutMs) &&
                  ((pKeepGoingCallback == NULL) || pKeepGoingCallback(pInstance->gnssHandle)));
-        // Make sure the read pointer is unlocked
+
+        // Read pointer can be unlocked now
         uRingBufferUnlockReadHandle(&(pInstance->ringBuffer), readHandle);
     }
 

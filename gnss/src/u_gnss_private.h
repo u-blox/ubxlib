@@ -506,6 +506,17 @@ int32_t uGnssPrivateStreamFillRingBuffer(uGnssPrivateInstance_t *pInstance,
  *                                   On return, if a message has been found,
  *                                   this will be populated with the message
  *                                   ID that was found; cannot be NULL.
+ * @param[out] pDiscard              if a non-matching message is found it
+ *                                   needs to be discarded.  The message could,
+ *                                   potentially, be larger than the current
+ *                                   contents of the ring buffer (if it is
+ *                                   the body of an un-matching ubx-format message
+ *                                   that needs to be thrown away).  This
+ *                                   is a pointer to a place to store this
+ *                                   "over-hanging" discard amount; it is up
+ *                                   to the caller to discard this amount from
+ *                                   its ring buffer handle before continuing.
+ *                                   Cannot be NULL.
  * @return                           if the given message ID is detected then
  *                                   the number of bytes of data in it
  *                                   (including $, header, checksum, etc.)
@@ -517,7 +528,8 @@ int32_t uGnssPrivateStreamFillRingBuffer(uGnssPrivateInstance_t *pInstance,
  */
 int32_t uGnssPrivateStreamDecodeRingBuffer(uGnssPrivateInstance_t *pInstance,
                                            int32_t readHandle,
-                                           uGnssPrivateMessageId_t *pPrivateMessageId);
+                                           uGnssPrivateMessageId_t *pPrivateMessageId,
+                                           size_t *pDiscard);
 
 /** Read data from the internal ring buffer into the given linear buffer.
  * Note: gUGnssPrivateMutex should be locked before this is called, but
