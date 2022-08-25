@@ -54,6 +54,7 @@
 #include "u_gnss_module_type.h"
 #include "u_gnss_type.h"
 #include "u_gnss.h"
+#include "u_gnss_msg.h" // uGnssMsgReceiveStatStreamLoss()
 #include "u_gnss_cfg.h"
 #include "u_gnss_private.h"
 
@@ -121,6 +122,8 @@ U_PORT_TEST_FUNCTION("[gnssCfg]", "gnssCfgBasic")
     int32_t heapUsed;
     size_t iterations;
     int32_t y;
+    int32_t w;
+    bool onNotOff;
     uGnssTransportType_t transportTypes[U_GNSS_TRANSPORT_MAX_NUM];
 
     // In case a previous test failed
@@ -206,6 +209,43 @@ U_PORT_TEST_FUNCTION("[gnssCfg]", "gnssCfgBasic")
         }
         // Put the initial UTC standard back
         U_PORT_TEST_ASSERT(uGnssCfgSetUtcStandard(gnssHandle, (uGnssUtcStandard_t) gUtcStandard) == 0);
+
+        U_TEST_PRINT_LINE("getting/setting output protocols.");
+        if (transportTypes[x] == U_GNSS_TRANSPORT_UBX_AT) {
+            // Can't do protocol output control when there's an AT interface in the way
+            U_PORT_TEST_ASSERT(uGnssCfgGetProtocolOut(gnssHandle) < 0);
+            U_PORT_TEST_ASSERT(uGnssCfgSetProtocolOut(gnssHandle, U_GNSS_PROTOCOL_NMEA, true) < 0);
+        } else {
+            // Get the current output protocol bit-map
+            y = uGnssCfgGetProtocolOut(gnssHandle);
+            U_TEST_PRINT_LINE("output protocols are 0x%04x.", y);
+            U_PORT_TEST_ASSERT(y > 0);
+            // Try to set them all off; should fail
+            U_PORT_TEST_ASSERT(uGnssCfgSetProtocolOut(gnssHandle, U_GNSS_PROTOCOL_ALL, false) < 0);
+            // Try to set UBX protocol off; should fail
+            U_PORT_TEST_ASSERT(uGnssCfgSetProtocolOut(gnssHandle, U_GNSS_PROTOCOL_UBX, false) < 0);
+            // Set NMEA to the opposite of what it was before
+            onNotOff = true;
+            if (((uint32_t) y) & (1 << U_GNSS_PROTOCOL_NMEA)) {
+                onNotOff = false;
+            }
+            U_PORT_TEST_ASSERT(uGnssCfgSetProtocolOut(gnssHandle, U_GNSS_PROTOCOL_NMEA, onNotOff) == 0);
+            w = uGnssCfgGetProtocolOut(gnssHandle);
+            U_TEST_PRINT_LINE("output protocols are now 0x%04x.", w);
+            U_PORT_TEST_ASSERT(w > 0);
+            if (onNotOff) {
+                U_PORT_TEST_ASSERT(((uint32_t) w) & (1 << U_GNSS_PROTOCOL_NMEA));
+            } else {
+                U_PORT_TEST_ASSERT((((uint32_t) w) & (1 << U_GNSS_PROTOCOL_NMEA)) == 0);
+            }
+            // Put things back to where they were
+            U_PORT_TEST_ASSERT(uGnssCfgSetProtocolOut(gnssHandle, U_GNSS_PROTOCOL_NMEA, !onNotOff) == 0);
+        }
+
+        // Check that we haven't dropped any incoming data
+        y = uGnssMsgReceiveStatStreamLoss(gnssHandle);
+        U_TEST_PRINT_LINE("%d byte(s) lost at the input to the ring-buffer during that test.", y);
+        U_PORT_TEST_ASSERT(y == 0);
 
         // Do the standard postamble, leaving the module on for the next
         // test to speed things up

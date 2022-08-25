@@ -33,11 +33,13 @@
 #include "stdbool.h"
 #include "string.h"    // memset()
 
+#include "u_cfg_sw.h"
 #include "u_error_common.h"
 
 #include "u_port.h"
 #include "u_port_os.h"  // Required by u_gnss_private.h
 #include "u_port_gpio.h"
+#include "u_port_debug.h"
 
 #include "u_at_client.h"
 
@@ -236,63 +238,7 @@ int32_t uGnssPwrOn(uDeviceHandle_t gnssHandle)
             if ((errorCode == 0) &&
                 ((pInstance->transportType == U_GNSS_TRANSPORT_UBX_UART) ||
                  (pInstance->transportType == U_GNSS_TRANSPORT_UBX_I2C))) {
-                errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
-                // Switch off NMEA using UBX-CFG-PRT.
-                // Normally we would send the UBX-CFG-PRT message
-                // by calling uGnssPrivateSendUbxMessage() which
-                // would wait for an ack.  However, in this particular
-                // case, the other parameters in the message are
-                // serial port settings and, even though we are not
-                // changing them, the returned UBX-ACK-ACK message
-                // is often corrupted as a result.
-                // The workaround is to avoid waiting for the ack by
-                // using uGnssPrivateSendReceiveUbxMessage() with
-                // an empty response buffer but, before we do that,
-                // we send UBX-MON-MSGPP to determine the number of
-                // messages received by the GNSS chip on the UART port
-                // and then we check it again afterwards to be sure that
-                // our UBX-CFG-PRT messages really were received.
-                memset(message, 0, sizeof(message));
-                if (uGnssPrivateSendReceiveUbxMessage(pInstance,
-                                                      0x0a, 0x06,
-                                                      NULL, 0,
-                                                      message,
-                                                      sizeof(message)) == sizeof(message)) {
-                    // Get the number of messages received on the port
-                    y = uUbxProtocolUint64Decode(message + ((size_t) (unsigned) pInstance->portNumber * 16));
-                    // Now poll the GNSS chip for UBX-CFG-PRT to get the
-                    // existing configuration for the port we are connected on
-                    message[0] = (char) pInstance->portNumber;
-                    if (uGnssPrivateSendReceiveUbxMessage(pInstance,
-                                                          0x06, 0x00,
-                                                          message, 1,
-                                                          message, 20) == 20) {
-                        message[12] = 0x01; // ubx protocol in only
-                        message[13] = 0x00;
-                        message[14] = 0x01; // ubx protocol out only
-                        message[15] = 0x00;
-                        // Send message and don't wait for response or ack
-                        errorCode = uGnssPrivateSendReceiveUbxMessage(pInstance,
-                                                                      0x06, 0x00,
-                                                                      message, 20,
-                                                                      NULL, 0);
-                        // Skip any serial port perturbance at the far end
-                        uPortTaskBlock(100);
-                        // Get the number of received messages again
-                        if (uGnssPrivateSendReceiveUbxMessage(pInstance,
-                                                              0x0a, 0x06,
-                                                              NULL, 0,
-                                                              message,
-                                                              sizeof(message)) == sizeof(message)) {
-                            y = uUbxProtocolUint64Decode(message + ((size_t) (unsigned) pInstance->portNumber * 16)) - y;
-                            // Should be three: UBX-MON-MSGPP, the poll for UBX-CFG-PRT
-                            // and then the UBX-CFG-PRT setting command itself.
-                            if (y == 3) {
-                                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-                            }
-                        }
-                    }
-                }
+                errorCode = uGnssPrivateSetProtocolOut(pInstance, U_GNSS_PROTOCOL_NMEA, false);
             }
 
             if ((errorCode < 0) && (pInstance->pinGnssEnablePower >= 0)) {

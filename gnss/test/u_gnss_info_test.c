@@ -58,6 +58,7 @@
 #include "u_gnss.h"
 #include "u_gnss_info.h"
 #include "u_gnss_cfg.h" // uGnssCfgSetUtcStandard()
+#include "u_gnss_msg.h" // uGnssMsgReceiveStatStreamLoss()
 #include "u_gnss_private.h"
 
 #include "u_gnss_test_private.h"
@@ -224,6 +225,11 @@ U_PORT_TEST_FUNCTION("[gnssInfo]", "gnssInfoStatic")
 
         // Free memory
         free(pBuffer);
+
+        // Check that we haven't dropped any incoming data
+        y = uGnssMsgReceiveStatStreamLoss(gnssHandle);
+        U_TEST_PRINT_LINE("%d byte(s) lost at the input to the ring-buffer during that test.", y);
+        U_PORT_TEST_ASSERT(y == 0);
 
         // Do the standard postamble, leaving the module on for the next
         // test to speed things up

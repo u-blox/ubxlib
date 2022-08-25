@@ -40,6 +40,7 @@
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 #include "string.h"    // memset()
+#include "stdio.h"     // snprintf()
 
 #include "u_cfg_sw.h"
 #include "u_cfg_os_platform_specific.h"
@@ -48,6 +49,9 @@
 
 #include "u_error_common.h"
 
+#include "u_port_clib_platform_specific.h" /* Integer stdio, must be included
+                                              before the other port files if
+                                              any print or scan function is used. */
 #include "u_port.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"   // Required by u_gnss_private.h
@@ -58,7 +62,7 @@
 #include "u_gnss_module_type.h"
 #include "u_gnss_type.h"
 #include "u_gnss.h"
-#include "u_gnss_info.h"
+#include "u_gnss_info.h"  // For uGnssInfoGetFirmwareVersionStr()
 #include "u_gnss_util.h"
 #include "u_gnss_private.h"
 
@@ -125,8 +129,6 @@ U_PORT_TEST_FUNCTION("[gnssUtil]", "gnssUtilTransparent")
     // Obtain the initial heap size
     heapUsed = uPortGetHeapFree();
 
-    // Repeat for all transport types except U_GNSS_TRANSPORT_NMEA_UART
-    // and U_GNSS_TRANSPORT_NMEA_I2C
     iterations = uGnssTestPrivateTransportTypesSet(transportTypes, U_CFG_APP_GNSS_UART,
                                                    U_CFG_APP_GNSS_I2C);
     for (size_t w = 0; w < iterations; w++) {

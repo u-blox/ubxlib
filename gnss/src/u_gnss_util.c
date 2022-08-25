@@ -21,7 +21,8 @@
  */
 
 /** @file
- * @brief This header file defines the utility functions of the GNSS API.
+ * @brief This source file contains the implementation of the utility
+ * functions of the GNSS API.
  */
 
 #ifdef U_CFG_OVERRIDE
@@ -32,7 +33,9 @@
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
+#include "string.h"    // memset()
 
+#include "u_cfg_os_platform_specific.h"
 #include "u_cfg_sw.h"
 #include "u_error_common.h"
 
@@ -43,6 +46,8 @@
 #include "u_port_i2c.h"
 
 #include "u_at_client.h"
+
+#include "u_ubx_protocol.h"
 
 #include "u_hex_bin_convert.h"
 
@@ -57,9 +62,8 @@
  * -------------------------------------------------------------- */
 
 #ifndef U_GNSS_UTIL_TRANSPARENT_RECEIVE_DELAY_MS
-/** The amount of time to wait between lines received
- * from the GNSS chip to ensure we don't lose any
- * of a transparent message.
+/** The amount of time to wait between lines received from the GNSS
+ * chip to ensure we don't lose any of a transparent message.
  */
 # define U_GNSS_UTIL_TRANSPARENT_RECEIVE_DELAY_MS 500
 #endif
@@ -87,11 +91,11 @@ int32_t uGnssUtilUbxTransparentSendReceive(uDeviceHandle_t gnssHandle,
                                            char *pResponse,
                                            size_t maxResponseLengthBytes)
 {
-    int32_t errorCodeOrResponseLength = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    int32_t errorCodeOrResponseLength = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uGnssPrivateInstance_t *pInstance;
     int32_t streamType;
     int32_t streamHandle = -1;
-    int64_t startTime;
+    int32_t startTimeMs;
     int32_t x = 0;
     int32_t bytesRead = 0;
     char *pBuffer;
@@ -103,6 +107,7 @@ int32_t uGnssUtilUbxTransparentSendReceive(uDeviceHandle_t gnssHandle,
 
         U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
 
+        errorCodeOrResponseLength = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         pInstance = pUGnssPrivateGetInstance(gnssHandle);
         if ((pInstance != NULL) &&
             (((pCommand == NULL) && (commandLengthBytes == 0)) ||
@@ -153,12 +158,12 @@ int32_t uGnssUtilUbxTransparentSendReceive(uDeviceHandle_t gnssHandle,
                     errorCodeOrResponseLength = (int32_t) U_ERROR_COMMON_SUCCESS;
                     if (pResponse != NULL) {
                         errorCodeOrResponseLength = (int32_t) U_GNSS_ERROR_TRANSPORT;
-                        startTime = uPortGetTickTimeMs();
+                        startTimeMs = uPortGetTickTimeMs();
                         // Wait for something to start coming back
                         while ((bytesRead < (int32_t) maxResponseLengthBytes) &&
                                ((x = uGnssPrivateStreamGetReceiveSize(streamHandle, streamType,
                                                                       pInstance->i2cAddress)) <= 0) &&
-                               (uPortGetTickTimeMs() - startTime < pInstance->timeoutMs)) {
+                               (uPortGetTickTimeMs() - startTimeMs < pInstance->timeoutMs)) {
                             // Relax a little
                             uPortTaskBlock(U_GNSS_UTIL_TRANSPARENT_RECEIVE_DELAY_MS);
                         }
@@ -168,7 +173,7 @@ int32_t uGnssUtilUbxTransparentSendReceive(uDeviceHandle_t gnssHandle,
                             while ((bytesRead < (int32_t) maxResponseLengthBytes) &&
                                    ((x = uGnssPrivateStreamGetReceiveSize(streamHandle, streamType,
                                                                           pInstance->i2cAddress)) > 0) &&
-                                   (uPortGetTickTimeMs() - startTime < pInstance->timeoutMs)) {
+                                   (uPortGetTickTimeMs() - startTimeMs < pInstance->timeoutMs)) {
                                 if (x > 0) {
                                     if (x > ((int32_t) maxResponseLengthBytes) - bytesRead) {
                                         x = maxResponseLengthBytes - bytesRead;

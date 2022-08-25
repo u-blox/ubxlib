@@ -50,6 +50,7 @@
 #include "u_gnss_module_type.h"
 #include "u_gnss_type.h"
 #include "u_gnss_private.h"
+#include "u_gnss_msg.h" // uGnssMsgReceiveStatStreamLoss()
 #include "u_gnss_info.h"
 
 /* ----------------------------------------------------------------

@@ -96,13 +96,44 @@ int32_t uGnssCfgGetUtcStandard(uDeviceHandle_t gnssHandle);
  * @param utcStandard the UTC standard; the value is deliberately not
  *                    range-checked to allow future UTC standards to be
  *                    passed in without the requirement to modify
- *                    this code.  Use U_GNSS_UTC_STANDARD_AUTOMATIC
+ *                    this code.  Use #U_GNSS_UTC_STANDARD_AUTOMATIC
  *                    it you don't really care, you'd just like UTC
  *                    time please (which is the default).
  * @return            zero on succes or negative error code.
  */
 int32_t uGnssCfgSetUtcStandard(uDeviceHandle_t gnssHandle,
                                uGnssUtcStandard_t utcStandard);
+
+/** Get the protocol types output by the GNSS chip; not relevant
+ * where an AT transport is in use since only the ubx protocol is
+ * currently supported through that transport.
+ *
+ * @param gnssHandle the handle of the GNSS instance.
+ * @return           a bit-map of the protocol types that are
+ *                   being output else negative error code.
+ */
+int32_t uGnssCfgGetProtocolOut(uDeviceHandle_t gnssHandle);
+
+/** Set the protocol type output by the GNSS chip; not relevant
+ * where an AT transport is in use since only the ubx protocol is
+ * currently supported through that transport.
+ *
+ * @param gnssHandle the handle of the GNSS instance.
+ * @param protocol   the protocol type; #U_GNSS_PROTOCOL_ALL may
+ *                   be used to enable all of the output protocols
+ *                   supported by the GNSS chip (though using this
+ *                   with onNotOff set to false will return an error).
+ *                   ubx protocol output cannot be switched off
+ *                   since it is used by this code. The range of
+ *                   the parameter is NOT checked, hence you may set
+ *                   a value which is known to the GNSS chip but not
+ *                   to this code.
+ * @param onNotOff   whether the given protocol should be on or off.
+ * @return           zero on succes or negative error code.
+ */
+int32_t uGnssCfgSetProtocolOut(uDeviceHandle_t gnssHandle,
+                               uGnssProtocol_t protocol,
+                               bool onNotOff);
 
 #ifdef __cplusplus
 }

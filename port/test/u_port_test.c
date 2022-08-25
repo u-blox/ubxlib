@@ -2425,18 +2425,19 @@ U_PORT_TEST_FUNCTION("[port]", "portI2cRequiresSpecificWiring")
     // and means that any I2C read from the GNSS chip will get the next byte it wants to stream at us
     buffer1[0] = 0xFF;
     // First talk to an I2C address that is not present
-    U_TEST_PRINT_LINE("deliberately using an invalid address.");
+    U_TEST_PRINT_LINE("deliberately using an invalid address (0x%02x).", U_PORT_TEST_I2C_ADDRESS - 1);
     U_PORT_TEST_ASSERT(uPortI2cControllerSend(gI2cHandle, U_PORT_TEST_I2C_ADDRESS - 1, NULL, 0,
                                               false) < 0);
     U_PORT_TEST_ASSERT(uPortI2cControllerSendReceive(gI2cHandle, U_PORT_TEST_I2C_ADDRESS - 1,
                                                      buffer1, 1, NULL, 0) < 0);
+
     // The following should do nothing and return success
     U_PORT_TEST_ASSERT(uPortI2cControllerSendReceive(gI2cHandle, U_PORT_TEST_I2C_ADDRESS - 1,
                                                      NULL, 0, NULL, 0) == 0);
     U_TEST_PRINT_LINE("now using the valid address (0x%02x).", U_PORT_TEST_I2C_ADDRESS);
 # if !defined(U_CFG_TEST_USING_NRF5SDK) && !defined(__ZEPHYR__)
     // Now do a NULL send which will succeed only if the GNSS device is there;
-    // note that the NRFX drivers used on NRF52 and nRF53 don't support ending
+    // note that the NRFX drivers used on NRF52 and NRF53 don't support sending
     // only the address, data must follow
     U_PORT_TEST_ASSERT(uPortI2cControllerSend(gI2cHandle, U_PORT_TEST_I2C_ADDRESS, NULL, 0,
                                               false) == 0);

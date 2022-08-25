@@ -74,6 +74,28 @@
 # define U_GNSS_PIN_ENABLE_POWER_ON_STATE 1
 #endif
 
+#ifndef U_GNSS_UBX_MESSAGE_CLASS_ALL
+/** Value used in the most significant byte of the ubx field of
+ * uGnssMessageId_t to indicate "all classes".
+ */
+# define U_GNSS_UBX_MESSAGE_CLASS_ALL 0xFF
+#endif
+
+#ifndef U_GNSS_UBX_MESSAGE_ID_ALL
+/** Value used in the least significant byte of the ubx field of
+ * uGnssMessageId_t to indicate "all IDs".
+ */
+# define U_GNSS_UBX_MESSAGE_ID_ALL 0xFF
+#endif
+
+#ifndef U_GNSS_NMEA_MESSAGE_MATCH_LENGTH_CHARACTERS
+/** The maximum number of characters of an NMEA message header
+ * (i.e. talker/sentence) to include when performing a match
+ * against NMEA message types.
+  */
+# define U_GNSS_NMEA_MESSAGE_MATCH_LENGTH_CHARACTERS 8
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -112,6 +134,40 @@ typedef union {
     int32_t uart;
     int32_t i2c;
 } uGnssTransportHandle_t;
+
+/** The protocol types for exchanges with a GNSS chip,
+ * values chosen to match the bit-map used on the GNSS interface.
+ */
+typedef enum {
+    U_GNSS_PROTOCOL_UBX = 0,
+    U_GNSS_PROTOCOL_NMEA = 1,
+    U_GNSS_PROTOCOL_MAX_NUM,
+    U_GNSS_PROTOCOL_ALL
+} uGnssProtocol_t;
+
+/** Structure to hold a message ID.
+ * Note: if you change this structure then uGnssPrivateMessageId_t
+ * will probably need changing also
+ */
+typedef struct {
+    uGnssProtocol_t type;
+    union {
+        uint16_t ubx; /**< formed of the message class in the most significant byte
+                           and the message ID in the least significant byte; where
+                           this is employed for matching you may use
+                           #U_GNSS_UBX_MESSAGE_CLASS_ALL in the most significant byte
+                           for all classes, #U_GNSS_UBX_MESSAGE_ID_ALL in the least
+                           significant byte for all IDs. */
+        char *pNmea;  /**< "GPGGA", "GNZDA", etc. i.e. a null-terminated
+                           string; where this is used for matching it is done
+                           on a per character basis for up to the first
+                           #U_GNSS_NMEA_MESSAGE_MATCH_LENGTH_CHARACTERS: set
+                           this to NULL or an empty string to match all NMEA
+                           messages, "G" to match both "GPGGA" and "GNZDA",
+                           "GP" to match all sentences of the "GP" talker,
+                           etc.  Any matching is done in a case-sensitive way. */
+    } id;
+} uGnssMessageId_t;
 
 /** The types of dynamic platform model.
  */

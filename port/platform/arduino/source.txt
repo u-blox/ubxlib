@@ -31,6 +31,7 @@ gnss/src/u_gnss_pwr.c
 gnss/src/u_gnss_cfg.c
 gnss/src/u_gnss_info.c
 gnss/src/u_gnss_pos.c
+gnss/src/u_gnss_msg.c
 gnss/src/u_gnss_util.c
 gnss/src/u_gnss_private.c
 wifi/src/u_wifi.c
