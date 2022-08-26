@@ -156,7 +156,7 @@ __DEFAULT_SETTINGS["GNSS_MODULE_TYPE_PREFIX"] = "U_GNSS_MODULE_TYPE_"
 # u_run_astyle.py
 __DEFAULT_SETTINGS["ASTYLE_CONFIG_FILE"] = "astyle.cfg"
 __DEFAULT_SETTINGS["ASTYLE_FILE_EXTENSIONS"] = "*.c,*.cpp,*.h,*.hpp"
-__DEFAULT_SETTINGS["ASTYLE_DIRS"] = [".", "cfg", "port", "common"]
+__DEFAULT_SETTINGS["ASTYLE_DIRS"] = ["."]
 # u_run_doxygen.py
 __DEFAULT_SETTINGS["DOXYGEN_DOXYFILE"] = "Doxyfile"
 #u_run_static_size.py
