@@ -35,6 +35,7 @@
 #include "stdbool.h"
 #include "string.h"    // memset()
 #include "stdio.h"     // snprintf()
+#include "limits.h"    // UINT16_MAX
 
 #include "u_error_common.h"
 
@@ -96,7 +97,7 @@ typedef struct {
     bool connecting;
     bool closing;
     uSockAddress_t remoteAddress;
-    uint16_t localPort;
+    int32_t localPort;
     uShortRangePbufList_t *pTcpRxBuff;
     uShortRangePktList_t udpPktList;
     int32_t intOpts[WIFI_INT_OPT_MAX];
@@ -833,25 +834,30 @@ int32_t uWifiSockCreate(uDeviceHandle_t devHandle,
                         uSockProtocol_t protocol)
 {
     int32_t sockHandle = -U_SOCK_ENOMEM;
+    uShortRangePrivateInstance_t *pInstance = NULL;
     uWifiSockSocket_t *pSock;
 
     if (uShortRangeLock() != (int32_t) U_ERROR_COMMON_SUCCESS) {
         return -U_SOCK_EIO;
     }
 
-    pSock = pAllocateSocket(devHandle);
-
-    if (pSock != NULL) {
-        pSock->type = type;
-        pSock->protocol = protocol;
-        pSock->connected = false;
-        pSock->closing = false;
-        pSock->edmChannel = -1;
-        pSock->connHandle = -1;
-        memset(&pSock->remoteAddress, 0, sizeof(pSock->remoteAddress));
-        pSock->localPort = 0;
-        memset(pSock->intOpts, 0, sizeof(pSock->intOpts));
-        sockHandle = pSock->sockHandle;
+    // Find the instance
+    sockHandle = getInstance(devHandle, &pInstance);
+    if (sockHandle == U_SOCK_ENONE) {
+        pSock = pAllocateSocket(devHandle);
+        if (pSock != NULL) {
+            pSock->type = type;
+            pSock->protocol = protocol;
+            pSock->connected = false;
+            pSock->closing = false;
+            pSock->edmChannel = -1;
+            pSock->connHandle = -1;
+            memset(&pSock->remoteAddress, 0, sizeof(pSock->remoteAddress));
+            pSock->localPort = pInstance->sockNextLocalPort;
+            pInstance->sockNextLocalPort = -1;
+            memset(pSock->intOpts, 0, sizeof(pSock->intOpts));
+            sockHandle = pSock->sockHandle;
+        }
     }
 
     uShortRangeUnlock();
@@ -867,6 +873,7 @@ int32_t uWifiSockConnect(uDeviceHandle_t devHandle,
     bool udpAndConnected = false;
     uShortRangePrivateInstance_t *pInstance = NULL;
     uWifiSockSocket_t *pSock = NULL;
+    int32_t x = 0;
 
     errnoLocal = validateSockAddress(pRemoteAddress);
     if (errnoLocal != U_SOCK_ENONE) {
@@ -890,55 +897,64 @@ int32_t uWifiSockConnect(uDeviceHandle_t devHandle,
     }
 
     if (errnoLocal == U_SOCK_ENONE && !udpAndConnected) {
-        char flagStr[64] = {0};
+        char flagStr[96] = {0};
         volatile uAtClientHandle_t atHandle = pInstance->atHandle;
         volatile uPortSemaphoreHandle_t connectionSem = pSock->semaphore;
 
-        snprintf(flagStr, sizeof(flagStr), "flush_tx=%d&keepalive=%d+%d+%d",
-                 (int)pSock->intOpts[WIFI_INT_OPT_TCP_NODELAY],
-                 (int)pSock->intOpts[WIFI_INT_OPT_TCP_KEEPIDLE],
-                 (int)pSock->intOpts[WIFI_INT_OPT_TCP_KEEPINTVL],
-                 (int)pSock->intOpts[WIFI_INT_OPT_TCP_KEEPCNT]);
-
-        // We need to release the lock during connection phase
-        uShortRangeUnlock();
-
-        int32_t conPeerResult;
-        if (pSock->protocol == U_SOCK_PROTOCOL_TCP) {
-            conPeerResult = connectPeer(atHandle, connectionSem, "tcp", pRemoteAddress, flagStr);
-        } else {
-            conPeerResult = connectPeer(atHandle, connectionSem, "udp", pRemoteAddress, NULL);
+        errnoLocal = U_SOCK_ENOMEM;
+        if (pSock->localPort >= 0) {
+            x = snprintf(flagStr, sizeof(flagStr), "local_port=%d&",
+                         (int)pSock->localPort);
         }
 
-        // Reclaim the lock so we can continue working with the socket
-        if (uShortRangeLock() != (int32_t) U_ERROR_COMMON_SUCCESS) {
-            return -U_SOCK_EIO;
-        }
+        if (x >= 0) {
+            errnoLocal = U_SOCK_ENONE;
+            snprintf(flagStr + x, sizeof(flagStr) - x, "flush_tx=%d&keepalive=%d+%d+%d",
+                     (int)pSock->intOpts[WIFI_INT_OPT_TCP_NODELAY],
+                     (int)pSock->intOpts[WIFI_INT_OPT_TCP_KEEPIDLE],
+                     (int)pSock->intOpts[WIFI_INT_OPT_TCP_KEEPINTVL],
+                     (int)pSock->intOpts[WIFI_INT_OPT_TCP_KEEPCNT]);
 
-        // Make sure the socket is still valid
-        if (pSock->sockHandle != sockHandle) {
-            errnoLocal = -U_SOCK_EIO;
-        }
+            // We need to release the lock during connection phase
+            uShortRangeUnlock();
 
-        if (conPeerResult >= 0) {
-            if (errnoLocal == U_SOCK_ENONE) {
-                pSock->connHandle = conPeerResult;
-                // The connection attempt is finished but it might have failed
-                if (!pSock->connected) {
-                    errnoLocal = -U_SOCK_ECONNREFUSED;
-                } else if (pSock->edmChannel < 0) { // Make sure we got the EDM channel
-                    errnoLocal = -U_SOCK_EUNATCH;
+            int32_t conPeerResult;
+            if (pSock->protocol == U_SOCK_PROTOCOL_TCP) {
+                conPeerResult = connectPeer(atHandle, connectionSem, "tcp", pRemoteAddress, flagStr);
+            } else {
+                conPeerResult = connectPeer(atHandle, connectionSem, "udp", pRemoteAddress, NULL);
+            }
+
+            // Reclaim the lock so we can continue working with the socket
+            if (uShortRangeLock() != (int32_t) U_ERROR_COMMON_SUCCESS) {
+                return -U_SOCK_EIO;
+            }
+
+            // Make sure the socket is still valid
+            if (pSock->sockHandle != sockHandle) {
+                errnoLocal = -U_SOCK_EIO;
+            }
+
+            if (conPeerResult >= 0) {
+                if (errnoLocal == U_SOCK_ENONE) {
+                    pSock->connHandle = conPeerResult;
+                    // The connection attempt is finished but it might have failed
+                    if (!pSock->connected) {
+                        errnoLocal = -U_SOCK_ECONNREFUSED;
+                    } else if (pSock->edmChannel < 0) { // Make sure we got the EDM channel
+                        errnoLocal = -U_SOCK_EUNATCH;
+                    }
                 }
+                // On failure make sure that the peer is closed
+                if ((errnoLocal != U_SOCK_ENONE) && (pSock->connHandle >= 0)) {
+                    closePeer(pInstance->atHandle, pSock->connHandle);
+                    // Update socket state
+                    pSock->connHandle = -1;
+                    pSock->edmChannel = -1;
+                }
+            } else {
+                errnoLocal = conPeerResult;
             }
-            // On failure make sure that the peer is closed
-            if ((errnoLocal != U_SOCK_ENONE) && (pSock->connHandle >= 0)) {
-                closePeer(pInstance->atHandle, pSock->connHandle);
-                // Update socket state
-                pSock->connHandle = -1;
-                pSock->edmChannel = -1;
-            }
-        } else {
-            errnoLocal = conPeerResult;
         }
     }
 
@@ -1074,6 +1090,21 @@ int32_t uWifiSockOptionGet(uDeviceHandle_t devHandle,
     return errnoLocal;
 }
 
+int32_t uWifiSockSetNextLocalPort(uDeviceHandle_t devHandle, int32_t port)
+{
+    int32_t errnoLocal;
+    uShortRangePrivateInstance_t *pInstance = NULL;
+
+    // Find the instance
+    errnoLocal = getInstance(devHandle, &pInstance);
+    if ((errnoLocal == U_SOCK_ENONE) &&
+        ((port == -1) || ((port >= 0) && (port <= UINT16_MAX)))) {
+        pInstance->sockNextLocalPort = port;
+    }
+
+    return errnoLocal;
+}
+
 int32_t uWifiSockWrite(uDeviceHandle_t devHandle,
                        int32_t sockHandle,
                        const void *pData, size_t dataSizeBytes)
@@ -1188,15 +1219,23 @@ int32_t uWifiSockSendTo(uDeviceHandle_t devHandle,
     if (errnoLocal == U_SOCK_ENONE) {
         // Check if there are already a peer or if we need to setup a new one
         if (pSock->connHandle < 0) {
+            char flagStr[32] = {0};
+            char *pFlagStr = NULL;
             volatile uAtClientHandle_t atHandle = pInstance->atHandle;
             volatile uPortSemaphoreHandle_t connectionSem = pSock->semaphore;
             pSock->remoteAddress = *pRemoteAddress;
             pSock->connecting = true;
 
+            if (pSock->localPort >= 0) {
+                snprintf(flagStr, sizeof(flagStr), "local_port=%d",
+                         (int)pSock->localPort);
+                pFlagStr = flagStr;
+            }
+
             // We need to release the lock during connection phase
             uShortRangeUnlock();
 
-            int32_t conPeerResult = connectPeer(atHandle, connectionSem, "udp", pRemoteAddress, NULL);
+            int32_t conPeerResult = connectPeer(atHandle, connectionSem, "udp", pRemoteAddress, pFlagStr);
 
             // Reclaim the lock so we can continue working with the socket
             if (uShortRangeLock() != (int32_t) U_ERROR_COMMON_SUCCESS) {

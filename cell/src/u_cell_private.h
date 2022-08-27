@@ -103,7 +103,7 @@ extern "C" {
 //lint --emacro((774), U_CELL_PRIVATE_HAS) Suppress left side always
 // evaluates to True
 #define U_CELL_PRIVATE_HAS(pModule, feature) \
-    ((pModule != NULL) && ((pModule->featuresBitmap) & (1UL << (int32_t) (feature))))
+    ((pModule != NULL) && ((pModule->featuresBitmap) & (1ULL << (int32_t) (feature))))
 
 #ifndef U_CELL_PRIVATE_GREETING_STR
 /** A greeting string, a useful indication that the module
@@ -218,7 +218,8 @@ typedef enum {
     U_CELL_PRIVATE_FEATURE_DEEP_SLEEP_URC,
     U_CELL_PRIVATE_FEATURE_EDRX,
     U_CELL_PRIVATE_FEATURE_MQTTSN,
-    U_CELL_PRIVATE_FEATURE_CTS_CONTROL
+    U_CELL_PRIVATE_FEATURE_CTS_CONTROL,
+    U_CELL_PRIVATE_FEATURE_SOCK_SET_LOCAL_PORT
 } uCellPrivateFeature_t;
 
 /** The characteristics that may differ between cellular modules.
@@ -270,7 +271,7 @@ typedef struct {
     uint32_t supportedRatsBitmap; /**< A bit-map of the uCellNetRat_t
                                        values supported by the cellular
                                        module. */
-    uint32_t featuresBitmap; /**< a bit-map of the uCellPrivateFeature_t
+    uint64_t featuresBitmap; /**< a bit-map of the uCellPrivateFeature_t
                                   characteristics of this module. */
 } uCellPrivateModule_t;
 
@@ -401,6 +402,7 @@ typedef struct uCellPrivateInstance_t {
     void (*pConnectionStatusCallback) (bool, void *);
     void *pConnectionStatusCallbackParameter;
     uCellPrivateNet_t *pScanResults;    /**< Anchor for list of network scan results. */
+    int32_t sockNextLocalPort;
     void *pSecurityC2cContext;  /**< Hook for a chip to chip security context. */
     volatile void *pMqttContext; /**< Hook for MQTT context, volatile as it
                                       can be populared by a URC in a different thread. */

@@ -106,6 +106,7 @@ typedef struct uShortRangePrivateInstance_t {
     int32_t startTimeMs;     /**< used while restarting. */
     int32_t ticksLastRestart;
     bool urcConHandlerSet;
+    int32_t sockNextLocalPort;
     uShortRangePrivateConnection_t connections[U_SHORT_RANGE_MAX_CONNECTIONS];
     uShortRangeBtConnectionStatusCallback_t pBtConnectionStatusCallback;
     void *pBtConnectionStatusCallbackParameter;

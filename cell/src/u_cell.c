@@ -253,6 +253,7 @@ int32_t uCellAdd(uCellModuleType_t moduleType,
                     }
                     uCellPrivateClearRadioParameters(&(pInstance->radioParameters));
                     pInstance->pModule = &(gUCellPrivateModuleList[moduleType]);
+                    pInstance->sockNextLocalPort = -1;
                     pInstance->pSecurityC2cContext = NULL;
                     pInstance->pMqttContext = NULL;
                     pInstance->pLocContext = NULL;

@@ -89,9 +89,9 @@
 #endif
 
 #ifndef U_SOCK_TEST_LOCAL_PORT
-/** Local port number, used when testing binding.
+/** Local port number used when testing.
  */
-# define U_SOCK_TEST_LOCAL_PORT 65543
+# define U_SOCK_TEST_LOCAL_PORT 5000
 #endif
 
 #ifndef U_SOCK_TEST_UDP_RETRIES

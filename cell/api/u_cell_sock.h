@@ -119,7 +119,9 @@ void uCellSockDeinit();
  * FUNCTIONS: CREATE/OPEN/CLOSE/CLEAN-UP
  * -------------------------------------------------------------- */
 
-/** Create a socket.
+/** Create a socket.  The local port number employed will be
+ * assigned by the IP stack unless uCellSockSetNextLocalPort()
+ * has been called.
  *
  * @param cellHandle  the handle of the cellular instance.
  * @param type        the type of socket to create.
@@ -317,6 +319,28 @@ int32_t uCellSockHexModeOff(uDeviceHandle_t cellHandle);
  * @return            true if hex mode is on, else false.
  */
 bool uCellSockHexModeIsOn(uDeviceHandle_t cellHandle);
+
+/** Set a local port which will be used on the next
+ * uCellSockCreate(), otherwise the local port will be
+ * chosen by the IP stack.  Once uCellSockCreate() has
+ * been called, the local port will return to being
+ * IP-stack-assigned once more. Obviously this is not
+ * thread-safe, unless the caller makes it so through some
+ * form of mutex protection at application level.  Specify
+ * -1 to cancel a previously selected local port if you
+ * change your mind.
+ * NOTE: not all module types support setting the local
+ * port (e.g. SARA-R4 doesn't).
+ *
+ * @param cellHandle  the handle of the cellular instance.
+ * @param port        the uint16_t port number or -1 to
+ *                    cancel a previous
+ *                    uCellSockSetNextLocalPort() selection.
+ * @return            zero on success else negated value
+ *                    of U_SOCK_Exxx from u_sock_errno.h.
+ */
+int32_t uCellSockSetNextLocalPort(uDeviceHandle_t cellHandle,
+                                  int32_t port);
 
 /* ----------------------------------------------------------------
  * FUNCTIONS: UDP ONLY
