@@ -576,37 +576,70 @@ int32_t uGnssPrivateSendOnlyCheckStreamUbxMessage(uGnssPrivateInstance_t *pInsta
                                                   const char *pMessageBody,
                                                   size_t messageBodyLengthBytes);
 
-/** Wait for a ubx format message with the given message class and ID to
- * arrive on a UART or I2C.  This function will internally call
- * uGnssPrivateStreamFillRingBuffer() to fill the internal ring buffer with
- * data from the streaming source and then uGnssPrivateStreamReadRingBuffer()
- * to read it.
+/** Wait for the given message, which can be of any type (not just ubx-format)
+ * from the GNSS module; the WHOLE message is returned, i.e. header and CRC
+ * etc. are included.  This function will internally call
+ * uGnssPrivateStreamFillRingBuffer() to fill the ring buffer with data
+ * and then uGnssPrivateStreamReadRingBuffer() to read it.
  * Note: gUGnssPrivateMutex should be locked before this is called.
  *
- * @param[in] pInstance         a pointer to the GNSS instance, cannot
- *                              be NULL.
- * @param messageClass          the ubx message class expected.
- * @param messageId             the ubx message ID expected.
- * @param[out] pMessageBody     a place to put the body of the received
-  *                             message; may be NULL.
- * @param maxBodyLengthBytes    the amount of room at pMessageBody; must
- *                              be non-zero if pMessageBody is non-NULL.
- * @return                      the number of bytes copied into pMessageBody,
- *                              else negative error code.
+ * @param[in] pInstance              a pointer to the GNSS instance, cannot
+ *                                   be NULL.
+ * @param[in,out] pPrivateMessageId  on entry this should contain the
+ *                                   message ID to capture, wildcards
+ *                                   permitted.  If the message ID is
+ *                                   a wildcard then this function will
+ *                                   return on the first matching
+ *                                   message ID with this field populated
+ *                                   with the message ID that was found.
+ *                                   Cannot be NULL.
+ * @param readHandle                 the read handle.
+ * @param[in,out] ppBuffer           a pointer to a pointer to a buffer
+ *                                   in which the message will be placed,
+ *                                   cannot be NULL.  If ppBuffer points
+ *                                   to NULL (i.e *ppBuffer is NULL) then
+ *                                   this function will malloc() a buffer
+ *                                   of the correct size and populate
+ *                                   *ppBuffer with the malloc()ated buffer
+ *                                   pointer; in this case IT IS UP TO
+ *                                   THE CALLER TO free(*ppBuffer) WHEN
+ *                                   DONE.  The entire message, with
+ *                                   any header, $, CRC, etc. included,
+ *                                   will be written to the buffer.
+ * @param size                       the amount of storage at *ppBuffer,
+ *                                   zero if ppBuffer points to NULL.
+ * @param timeoutMs                  how long to wait for the [first]
+ *                                   message to arrive in milliseconds.
+ * @param[in] pKeepGoingCallback     a function that will be called
+ *                                   while waiting.  As long as
+ *                                   pKeepGoingCallback returns true this
+ *                                   function will continue to wait until
+ *                                   a matching message has arrived or
+ *                                   timeoutSeconds have elapsed. If
+ *                                   pKeepGoingCallback returns false
+ *                                   then this function will return.
+ *                                   pKeepGoingCallback can also be used to
+ *                                   feed any application watchdog timer that
+ *                                   might be running.  May be NULL, in
+ *                                   which case this function will wait
+ *                                   until the [first] message has arrived
+ *                                   or timeoutSeconds have elapsed.
+ * @return                           the number of bytes copied into
+ *                                   *ppBuffer else negative error code.
  */
-int32_t uGnssPrivateReceiveOnlyStreamUbxMessage(uGnssPrivateInstance_t *pInstance,
-                                                int32_t messageClass,
-                                                int32_t messageId,
-                                                char *pMessageBody,
-                                                size_t maxBodyLengthBytes);
+int32_t uGnssPrivateReceiveStreamMessage(uGnssPrivateInstance_t *pInstance,
+                                         uGnssPrivateMessageId_t *pPrivateMessageId,
+                                         int32_t readHandle,
+                                         char **ppBuffer, size_t size,
+                                         int32_t timeoutMs,
+                                         bool (*pKeepGoingCallback)(uDeviceHandle_t gnssHandle));
 
 /** Send a ubx format message to the GNSS module and, optionally, receive
  * the response.  If the message only illicites a simple Ack/Nack from the
  * module then uGnssPrivateSendUbxMessage() must be used instead.
- * May be used with any transport.  This function will internally call
- * uGnssPrivateStreamFillRingBuffer() to fill the internal ring buffer with
- * data from the streaming source and then uGnssPrivateStreamReadRingBuffer()
- * to read it.
+ * May be used with any transport.  For a streamed transport this function
+ * will internally call uGnssPrivateStreamFillRingBuffer() to fill the ring
+ * buffer with data and then uGnssPrivateStreamReadRingBuffer() to read it.
  * Note: gUGnssPrivateMutex should be locked before this is called.
  *
  * @param[in] pInstance              a pointer to the GNSS instance, cannot

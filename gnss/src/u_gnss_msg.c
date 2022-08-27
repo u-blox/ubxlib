@@ -418,13 +418,7 @@ int32_t uGnssMsgReceive(uDeviceHandle_t gnssHandle,
 {
     int32_t errorCodeOrLength = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uGnssPrivateInstance_t *pInstance;
-    int32_t receiveSize;
-    int32_t discard = 0;
-    int32_t startTimeMs;
     uGnssPrivateMessageId_t privateMessageId;
-    int32_t x = timeoutMs > U_GNSS_RING_BUFFER_MIN_FILL_TIME_MS * 10 ? timeoutMs / 10 :
-                U_GNSS_RING_BUFFER_MIN_FILL_TIME_MS;
-    int32_t y;
 
     if (gUGnssPrivateMutex != NULL) {
 
@@ -433,77 +427,13 @@ int32_t uGnssMsgReceive(uDeviceHandle_t gnssHandle,
         errorCodeOrLength = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         pInstance = pUGnssPrivateGetInstance(gnssHandle);
         if ((pInstance != NULL) && (pMessageId != NULL) &&
-            (ppBuffer != NULL) && ((*ppBuffer == NULL) || (size > 0))) {
-            errorCodeOrLength = (int32_t) U_ERROR_COMMON_TIMEOUT;
-            startTimeMs = uPortGetTickTimeMs();
-            uGnssPrivateMessageIdToPrivate(pMessageId, &privateMessageId);
-            // This is constructed as a do()/while() so that it always has one go
-            // even with a zero timeout
-            do {
-                // Try to pull some more data in
-                uGnssPrivateStreamFillRingBuffer(pInstance, x, x);
-                // Get the number of bytes waiting for us in the ring buffer
-                receiveSize = uRingBufferDataSizeHandle(&(pInstance->ringBuffer),
-                                                        pInstance->ringBufferReadHandleMsgReceive);
-                if (receiveSize < 0) {
-                    errorCodeOrLength = receiveSize;
-                } else if (receiveSize > 0) {
-                    // There is some data: lock our read pointer so that we
-                    // can check it out
-                    uRingBufferLockReadHandle(&(pInstance->ringBuffer),
-                                              pInstance->ringBufferReadHandleMsgReceive);
-                    // Attempt to decode a message/message header from the ring buffer
-                    errorCodeOrLength = uGnssPrivateStreamDecodeRingBuffer(pInstance,
-                                                                           pInstance->ringBufferReadHandleMsgReceive,
-                                                                           &privateMessageId);
-                    if (errorCodeOrLength > 0) {
-                        if (*ppBuffer == NULL) {
-                            // The caller didn't give us any memory; allocate the right
-                            // amount; the caller must free this memory
-                            *ppBuffer = malloc(errorCodeOrLength);
-                        } else {
-                            // If the user gave us a buffer, limit the size
-                            if (errorCodeOrLength > (int32_t) size) {
-                                discard = errorCodeOrLength - size;
-                                errorCodeOrLength = size;
-                            }
-                        }
-                        if (*ppBuffer != NULL) {
-                            // Now read the message data into the buffer,
-                            // which will move our read pointer on
-                            y = timeoutMs - (uPortGetTickTimeMs() - startTimeMs);
-                            if (y < U_GNSS_RING_BUFFER_MIN_FILL_TIME_MS) {
-                                // Make sure we give ourselves time to read the messsage out
-                                y = U_GNSS_RING_BUFFER_MIN_FILL_TIME_MS;
-                            }
-                            errorCodeOrLength = uGnssPrivateStreamReadRingBuffer(pInstance,
-                                                                                 pInstance->ringBufferReadHandleMsgReceive,
-                                                                                 *ppBuffer,
-                                                                                 errorCodeOrLength, y);
-                            if (discard > 0) {
-                                uGnssPrivateStreamReadRingBuffer(pInstance,
+            (uGnssPrivateMessageIdToPrivate(pMessageId, &privateMessageId) == 0)) {
+            errorCodeOrLength = uGnssPrivateReceiveStreamMessage(pInstance,
+                                                                 &privateMessageId,
                                                                  pInstance->ringBufferReadHandleMsgReceive,
-                                                                 NULL, discard, y);
-                            }
-                        } else {
-                            errorCodeOrLength = (int32_t) U_ERROR_COMMON_NO_MEMORY;
-                        }
-                        // Got what we wanted, unlock the read pointer
-                        uRingBufferUnlockReadHandle(&(pInstance->ringBuffer),
-                                                    pInstance->ringBufferReadHandleMsgReceive);
-                    } else if (errorCodeOrLength != U_ERROR_COMMON_TIMEOUT) {
-                        // If we got an error that doesn't mean "there was a sniff of
-                        // a message, wait for more" then we can unlock the read pointer
-                        uRingBufferUnlockReadHandle(&(pInstance->ringBuffer),
-                                                    pInstance->ringBufferReadHandleMsgReceive);
-                    }
-                }
-            } while ((errorCodeOrLength < 0) && (errorCodeOrLength != (int32_t) U_ERROR_COMMON_NO_MEMORY) &&
-                     (uPortGetTickTimeMs() - startTimeMs < timeoutMs) &&
-                     ((pKeepGoingCallback == NULL) || pKeepGoingCallback(gnssHandle)));
-            // Make sure the read pointer is unlocked
-            uRingBufferUnlockReadHandle(&(pInstance->ringBuffer),
-                                        pInstance->ringBufferReadHandleMsgReceive);
+                                                                 ppBuffer, size,
+                                                                 timeoutMs,
+                                                                 pKeepGoingCallback);
         }
 
         U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
