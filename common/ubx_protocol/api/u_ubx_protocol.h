@@ -199,7 +199,10 @@ int32_t uUbxProtocolEncode(int32_t messageClass, int32_t messageId,
  * @param[out] pMessageId            a pointer to somewher to store the
  *                                   decoded ubx message ID; may be NULL.
  * @param[out] pMessageBody          a pointer to somewhere to store
- *                                   the decoded message body; may be NULL.
+ *                                   the decoded message body; it is safe
+ *                                   to decode back into pBufferIn if you
+ *                                   don't mind over-writing the message.
+ *                                   May be NULL.
  * @param maxMessageBodyLengthBytes  the amount of storage at pMessageBody.
  * @param[out] ppBufferOut           a pointer to somewhere to store the
  *                                   buffer pointer after message decoding

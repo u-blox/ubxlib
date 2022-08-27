@@ -143,7 +143,7 @@ int32_t uGnssPosGet(uDeviceHandle_t gnssHandle,
                     int32_t *pSvs, int64_t *pTimeUtc,
                     bool (*pKeepGoingCallback) (uDeviceHandle_t));
 
-/** A non-blocking version of uGnssPosGet(),so this is still a
+/** A non-blocking version of uGnssPosGet(), so this is still a
  * one-shot operation but the answer arrives via a callback.  Should
  * you wish to cancel a request, or start a new request without waiting
  * for the answer to the previous request, then you must call

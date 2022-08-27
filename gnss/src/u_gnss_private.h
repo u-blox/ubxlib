@@ -673,10 +673,12 @@ int32_t uGnssPrivateReceiveStreamMessage(uGnssPrivateInstance_t *pInstance,
  * -------------------------------------------------------------- */
 
 /** Send a ubx format message to the GNSS module and, optionally, receive
- * the response.  If the message only illicites a simple Ack/Nack from the
- * module then uGnssPrivateSendUbxMessage() must be used instead.
- * May be used with any transport.  For a streamed transport this function
- * will internally call uGnssPrivateStreamFillRingBuffer() to fill the ring
+ * a response of known length.  If the message only illicites a simple
+ * Ack/Nack from the module then uGnssPrivateSendUbxMessage() must be used
+ * instead.  If the response is of unknown length
+ * uGnssPrivateSendReceiveUbxMessageAlloc() may be used instead.  Nay be
+ * used with any transport.  For a streamed transport this function will
+ * internally call uGnssPrivateStreamFillRingBuffer() to fill the ring
  * buffer with data and then uGnssPrivateStreamReadRingBuffer() to read it.
  * Note: gUGnssPrivateMutex should be locked before this is called.
  *
@@ -705,6 +707,36 @@ int32_t uGnssPrivateSendReceiveUbxMessage(uGnssPrivateInstance_t *pInstance,
                                           size_t messageBodyLengthBytes,
                                           char *pResponseBody,
                                           size_t maxResponseBodyLengthBytes);
+
+/** Send a ubx format message to the GNSS module and receive a response of
+ * unknown length, allocating memory to do so. IT IS UP TO THE CALLER TO
+ * FREE THIS MEMORY WHEN DONE.  May be used with any transport.  For a
+ * streamed transport this function will internally call
+ * uGnssPrivateStreamFillRingBuffer() to fill the ring buffer with data
+ * and then uGnssPrivateStreamReadRingBuffer() to read it.
+ * Note: gUGnssPrivateMutex should be locked before this is called.
+ *
+ * @param[in] pInstance              a pointer to the GNSS instance, cannot
+ *                                   be NULL.
+ * @param messageClass               the ubx message class.
+ * @param messageId                  the ubx message ID.
+ * @param[in] pMessageBody           the body of the message to send; may be
+ *                                   NULL.
+ * @param messageBodyLengthBytes     the amount of data at pMessageBody; must
+ *                                   be non-zero if pMessageBody is non-NULL.
+ * @param[out] ppResponseBody        a pointer to a pointer that will be
+ *                                   populated with the malloc()ated memory
+ *                                   containing the body of the response.
+ *                                   Cannot be NULL.
+ * @return                           the number of bytes of data at
+ *                                   ppResponseBody, else negative error code.
+ */
+int32_t uGnssPrivateSendReceiveUbxMessageAlloc(uGnssPrivateInstance_t *pInstance,
+                                               int32_t messageClass,
+                                               int32_t messageId,
+                                               const char *pMessageBody,
+                                               size_t messageBodyLengthBytes,
+                                               char **ppResponseBody);
 
 /** Send a ubx format message to the GNSS module that only has an Ack
  * response and check that it is Acked.  May be used with any transport.
