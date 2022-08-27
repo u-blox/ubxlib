@@ -254,7 +254,7 @@ extern uGnssPrivateInstance_t *gpUGnssPrivateInstanceList;
 extern uPortMutexHandle_t gUGnssPrivateMutex;
 
 /* ----------------------------------------------------------------
- * FUNCTIONS
+ * FUNCTIONS: MISC
  * -------------------------------------------------------------- */
 
 /** Find a GNSS instance in the list by instance handle.  Note
@@ -286,16 +286,6 @@ const uGnssPrivateModule_t *pUGnssPrivateGetModule(uDeviceHandle_t gnssHandle);
  */
 void uGnssPrivatePrintBuffer(const char *pBuffer,
                              size_t bufferLengthBytes);
-
-/** Determine if a private message ID is a wanted one.
- *
- * @param[in] pMessageId       the private message ID to check.
- * @param[in] pMessageIdWanted the wanted private message ID.
- *                             pMessageIdWanted, else false.
- * @return                     true if pMessageId is inside
- */
-bool uGnssPrivateMessageIdIsWanted(uGnssPrivateMessageId_t *pMessageId,
-                                   uGnssPrivateMessageId_t *pMessageIdWanted);
 
 /** Get the protocol types output by the GNSS chip; not relevant
  * where an AT transports is in use since only the ubx protocol is
@@ -329,6 +319,78 @@ int32_t uGnssPrivateGetProtocolOut(uGnssPrivateInstance_t *pInstance);
 int32_t uGnssPrivateSetProtocolOut(uGnssPrivateInstance_t *pInstance,
                                    uGnssProtocol_t protocol,
                                    bool onNotOff);
+
+/** Shut down and free memory from a [potentially] running pos task.
+ * Note: gUGnssPrivateMutex should be locked before this is called.
+ *
+ * @param[in] pInstance  a pointer to the GNSS instance, cannot  be NULL.
+ */
+void uGnssPrivateCleanUpPosTask(uGnssPrivateInstance_t *pInstance);
+
+/** Check whether a GNSS chip that we are using via a cellular module
+ * is on-board the cellular module, in which case the AT+GPIOC
+ * comands are not used.
+ * Note: gUGnssPrivateMutex should be locked before this is called.
+ *
+ * @param[in] pInstance  a pointer to the GNSS instance, cannot  be NULL.
+ * @return              true if there is a GNSS chip inside the cellular
+ *                      module, else false.
+*/
+bool uGnssPrivateIsInsideCell(const uGnssPrivateInstance_t *pInstance);
+
+/** Stop the asynchronous message receive task; kept here so that
+ * GNSS deinitialisation can call it.
+ * Note: gUGnssPrivateMutex should be locked before this is called.
+ *
+ * @param[in] pInstance  a pointer to the GNSS instance, cannot  be NULL.
+ */
+void uGnssPrivateStopMsgReceive(uGnssPrivateInstance_t *pInstance);
+
+/* ----------------------------------------------------------------
+ * FUNCTIONS: MESSAGE RELATED
+ * -------------------------------------------------------------- */
+
+/** Convert a public message ID to a private message ID.
+ *
+ * @param[in] pMessageId         the public message ID; cannot be NULL.
+ * @param[out] pPrivateMessageId a place to put the private message ID; cannot be NULL.
+ * @return                       zero on success else negative error code.
+ */
+int32_t uGnssPrivateMessageIdToPrivate(const uGnssMessageId_t *pMessageId,
+                                       uGnssPrivateMessageId_t *pPrivateMessageId);
+
+/** Convert a private message ID to a public message ID.  Since, for the
+ * NMEA case, the public message ID is just a char *, this function MUST
+ * be given storage for the NMEA sentence/talker ID in the last parameter.
+ *
+ * @param[in] pPrivateMessageId  the private message ID; cannot be NULL.
+ * @param[out] pNmea             a pointer to a buffer of size at least
+ *                               U_GNSS_NMEA_MESSAGE_MATCH_LENGTH_CHARACTERS + 1
+ *                               bytes (the +1 for the null terminator) into
+ *                               which the NMEA sentence/talker ID of an
+ *                               NMEA-type message can be stored: once
+ *                               it has been populated the pNmea field of
+ *                               pMessageId will be set to point to this
+ *                               buffer.  If the message ID type is NMEA
+ *                               and pNmea is NULL then this function will
+ *                               return an error.
+ * @param[in] pMessageId         a place to put the public message ID; cannot
+ *                               be NULL.
+ * @return                       zero on success else negative error code.
+ */
+int32_t uGnssPrivateMessageIdToPublic(const uGnssPrivateMessageId_t *pPrivateMessageId,
+                                      uGnssMessageId_t *pMessageId,
+                                      char *pNmea);
+
+/** Determine if a private message ID is a wanted one.
+ *
+ * @param[in] pMessageId       the private message ID to check.
+ * @param[in] pMessageIdWanted the wanted private message ID.
+ *                             pMessageIdWanted, else false.
+ * @return                     true if pMessageId is inside
+ */
+bool uGnssPrivateMessageIdIsWanted(uGnssPrivateMessageId_t *pMessageId,
+                                   uGnssPrivateMessageId_t *pMessageIdWanted);
 
 /** Find a valid NMEA-format message in the given buffer which
  * matches the given sentence/talker message ID string.
@@ -364,6 +426,10 @@ int32_t uGnssPrivateSetProtocolOut(uGnssPrivateInstance_t *pInstance,
  */
 int32_t uGnssPrivateDecodeNmea(const char *pBuffer, size_t size,
                                char *pMessageId, size_t *pDiscard);
+
+/* ----------------------------------------------------------------
+ * FUNCTIONS: STREAMING TRANSPORT ONLY
+ * -------------------------------------------------------------- */
 
 /** Get the stream type from a given GNSS transport type.
  *
@@ -452,38 +518,6 @@ int32_t uGnssPrivateStreamFillRingBuffer(uGnssPrivateInstance_t *pInstance,
 int32_t uGnssPrivateStreamDecodeRingBuffer(uGnssPrivateInstance_t *pInstance,
                                            int32_t readHandle,
                                            uGnssPrivateMessageId_t *pPrivateMessageId);
-
-/** Convert a public message ID to a private message ID.
- *
- * @param[in] pMessageId         the public message ID; cannot be NULL.
- * @param[out] pPrivateMessageId a place to put the private message ID; cannot be NULL.
- * @return                       zero on success else negative error code.
- */
-int32_t uGnssPrivateMessageIdToPrivate(const uGnssMessageId_t *pMessageId,
-                                       uGnssPrivateMessageId_t *pPrivateMessageId);
-
-/** Convert a private message ID to a public message ID.  Since, for the
- * NMEA case, the public message ID is just a char *, this function MUST
- * be given storage for the NMEA sentence/talker ID in the last parameter.
- *
- * @param[in] pPrivateMessageId  the private message ID; cannot be NULL.
- * @param[out] pNmea             a pointer to a buffer of size at least
- *                               U_GNSS_NMEA_MESSAGE_MATCH_LENGTH_CHARACTERS + 1
- *                               bytes (the +1 for the null terminator) into
- *                               which the NMEA sentence/talker ID of an
- *                               NMEA-type message can be stored: once
- *                               it has been populated the pNmea field of
- *                               pMessageId will be set to point to this
- *                               buffer.  If the message ID type is NMEA
- *                               and pNmea is NULL then this function will
- *                               return an error.
- * @param[in] pMessageId         a place to put the public message ID; cannot
- *                               be NULL.
- * @return                       zero on success else negative error code.
- */
-int32_t uGnssPrivateMessageIdToPublic(const uGnssPrivateMessageId_t *pPrivateMessageId,
-                                      uGnssMessageId_t *pMessageId,
-                                      char *pNmea);
 
 /** Read data from the internal ring buffer into the given linear buffer.
  * Note: gUGnssPrivateMutex should be locked before this is called, but
@@ -634,6 +668,10 @@ int32_t uGnssPrivateReceiveStreamMessage(uGnssPrivateInstance_t *pInstance,
                                          int32_t timeoutMs,
                                          bool (*pKeepGoingCallback)(uDeviceHandle_t gnssHandle));
 
+/* ----------------------------------------------------------------
+ * FUNCTIONS: ANY TRANSPORT
+ * -------------------------------------------------------------- */
+
 /** Send a ubx format message to the GNSS module and, optionally, receive
  * the response.  If the message only illicites a simple Ack/Nack from the
  * module then uGnssPrivateSendUbxMessage() must be used instead.
@@ -689,32 +727,6 @@ int32_t uGnssPrivateSendUbxMessage(uGnssPrivateInstance_t *pInstance,
                                    int32_t messageId,
                                    const char *pMessageBody,
                                    size_t messageBodyLengthBytes);
-
-/** Shut down and free memory from a [potentially] running pos task.
- * Note: gUGnssPrivateMutex should be locked before this is called.
- *
- * @param[in] pInstance  a pointer to the GNSS instance, cannot  be NULL.
- */
-void uGnssPrivateCleanUpPosTask(uGnssPrivateInstance_t *pInstance);
-
-/** Check whether a GNSS chip that we are using via a cellular module
- * is on-board the cellular module, in which case the AT+GPIOC
- * comands are not used.
- * Note: gUGnssPrivateMutex should be locked before this is called.
- *
- * @param[in] pInstance  a pointer to the GNSS instance, cannot  be NULL.
- * @return              true if there is a GNSS chip inside the cellular
- *                      module, else false.
-*/
-bool uGnssPrivateIsInsideCell(const uGnssPrivateInstance_t *pInstance);
-
-/** Stop the asynchronous message receive task; kept here so that
- * GNSS deinitialisation can call it.
- * Note: gUGnssPrivateMutex should be locked before this is called.
- *
- * @param[in] pInstance  a pointer to the GNSS instance, cannot  be NULL.
- */
-void uGnssPrivateStopMsgReceive(uGnssPrivateInstance_t *pInstance);
 
 #ifdef __cplusplus
 }
