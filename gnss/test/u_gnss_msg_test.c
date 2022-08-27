@@ -410,7 +410,7 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveBlocking")
     char command[U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES];
     uGnssMessageId_t messageId;
     size_t iterations;
-    uGnssTransportType_t transportTypes[U_GNSS_TRANSPORT_MAX_NUM];
+    uGnssTransportType_t transportTypes[U_GNSS_TRANSPORT_MAX_NUM_WITH_UBX];
 
     // In case a previous test failed
     uGnssTestPrivateCleanup(&gHandles);
@@ -418,13 +418,13 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveBlocking")
     // Obtain the initial heap size
     heapUsed = uPortGetHeapFree();
 
-    // Repeat for all transport types except U_GNSS_TRANSPORT_UBX_AT
+    // Repeat for all transport types except U_GNSS_TRANSPORT_AT
     iterations = uGnssTestPrivateTransportTypesSet(transportTypes, U_CFG_APP_GNSS_UART,
                                                    U_CFG_APP_GNSS_I2C);
     for (size_t w = 0; w < iterations; w++) {
-        // Only do this for NMEA transport since that is the worst case
-        if ((transportTypes[w] == U_GNSS_TRANSPORT_NMEA_UART) ||
-            (transportTypes[w] == U_GNSS_TRANSPORT_NMEA_I2C)) {
+        // Only do this for non-message-filtered transport since that is the worst case
+        if ((transportTypes[w] == U_GNSS_TRANSPORT_UART) ||
+            (transportTypes[w] == U_GNSS_TRANSPORT_I2C)) {
             // Do the standard preamble
             U_TEST_PRINT_LINE("testing on transport %s...",
                               pGnssTestPrivateTransportTypeName(transportTypes[w]));
@@ -542,7 +542,7 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveNonBlocking")
     // Enough room to poll UBX-RXM-MEASX
     char command[U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES];
     size_t iterations;
-    uGnssTransportType_t transportTypes[U_GNSS_TRANSPORT_MAX_NUM];
+    uGnssTransportType_t transportTypes[U_GNSS_TRANSPORT_MAX_NUM_WITH_UBX];
     int32_t startTimeMs;
     int32_t posStartTime = -1;
     char prefix[2];
@@ -555,13 +555,14 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveNonBlocking")
     // Obtain the initial heap size
     heapUsed = uPortGetHeapFree();
 
-    // Repeat for all transport types except U_GNSS_TRANSPORT_UBX_AT
+    // Repeat for all transport types except U_GNSS_TRANSPORT_AT
     iterations = uGnssTestPrivateTransportTypesSet(transportTypes, U_CFG_APP_GNSS_UART,
                                                    U_CFG_APP_GNSS_I2C);
     for (size_t w = 0; w < iterations; w++) {
-        // Only do this for NMEA transport since we need all protocol types for a stress test
-        if ((transportTypes[w] == U_GNSS_TRANSPORT_NMEA_UART) ||
-            (transportTypes[w] == U_GNSS_TRANSPORT_NMEA_I2C)) {
+        // Only do this for non-message-filtered transport since we need all
+        // protocol types for a stress test
+        if ((transportTypes[w] == U_GNSS_TRANSPORT_UART) ||
+            (transportTypes[w] == U_GNSS_TRANSPORT_I2C)) {
             // Do the standard preamble
             U_TEST_PRINT_LINE("testing on transport %s...",
                               pGnssTestPrivateTransportTypeName(transportTypes[w]));

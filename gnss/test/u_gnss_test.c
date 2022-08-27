@@ -160,7 +160,7 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssAddStream")
                                   U_CFG_APP_PIN_GNSS_SCL,
                                   true);
     U_PORT_TEST_ASSERT(gStreamAHandle >= 0);
-    gTransportTypeA = U_GNSS_TRANSPORT_UBX_I2C;
+    gTransportTypeA = U_GNSS_TRANSPORT_I2C;
     transportHandleA.i2c = gStreamAHandle;
 # else
     gStreamAHandle = uPortUartOpen(U_CFG_TEST_UART_A,
@@ -172,7 +172,7 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssAddStream")
                                    U_CFG_TEST_PIN_UART_A_CTS,
                                    U_CFG_TEST_PIN_UART_A_RTS);
     U_PORT_TEST_ASSERT(gStreamAHandle >= 0);
-    gTransportTypeA = U_GNSS_TRANSPORT_UBX_UART;
+    gTransportTypeA = U_GNSS_TRANSPORT_UART;
     transportHandleA.uart = gStreamAHandle;
 # endif
 
@@ -189,12 +189,12 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssAddStream")
                                                &transportType,
                                                &transportHandle) == 0);
     switch (gTransportTypeA) {
-        case U_GNSS_TRANSPORT_UBX_UART:
-            U_PORT_TEST_ASSERT(transportType == U_GNSS_TRANSPORT_UBX_UART);
+        case U_GNSS_TRANSPORT_UART:
+            U_PORT_TEST_ASSERT(transportType == U_GNSS_TRANSPORT_UART);
             U_PORT_TEST_ASSERT(transportHandle.uart == transportHandleA.uart);
             break;
-        case U_GNSS_TRANSPORT_UBX_I2C:
-            U_PORT_TEST_ASSERT(transportType == U_GNSS_TRANSPORT_UBX_I2C);
+        case U_GNSS_TRANSPORT_I2C:
+            U_PORT_TEST_ASSERT(transportType == U_GNSS_TRANSPORT_I2C);
             U_PORT_TEST_ASSERT(transportHandle.i2c == transportHandleA.i2c);
             break;
         default:
@@ -214,7 +214,7 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssAddStream")
     U_TEST_PRINT_LINE("adding another instance on the same UART"
                       " port, should fail...");
     U_PORT_TEST_ASSERT(uGnssAdd(U_GNSS_MODULE_TYPE_M8,
-                                U_GNSS_TRANSPORT_UBX_UART,
+                                U_GNSS_TRANSPORT_UART,
                                 transportHandleA,
                                 -1, false, &dummyHandle) < 0);
 # endif
@@ -234,7 +234,7 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssAddStream")
 
     U_TEST_PRINT_LINE("adding a GNSS instance on UART %d...", U_CFG_TEST_UART_B);
     errorCode = uGnssAdd(U_GNSS_MODULE_TYPE_M8,
-                         U_GNSS_TRANSPORT_UBX_UART,
+                         U_GNSS_TRANSPORT_UART,
                          transportHandleB,
                          -1, false, &gnssHandleB);
     U_PORT_TEST_ASSERT_EQUAL((int32_t) U_ERROR_COMMON_SUCCESS, errorCode);
@@ -243,7 +243,7 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssAddStream")
     U_PORT_TEST_ASSERT(uGnssGetTransportHandle(gnssHandleB,
                                                &transportType,
                                                &transportHandle) == 0);
-    U_PORT_TEST_ASSERT(transportType == U_GNSS_TRANSPORT_UBX_UART);
+    U_PORT_TEST_ASSERT(transportType == U_GNSS_TRANSPORT_UART);
     U_PORT_TEST_ASSERT(transportHandle.uart == transportHandleB.uart);
     if (printUbxMessagesDefault) {
         U_PORT_TEST_ASSERT(uGnssGetUbxMessagePrint(gnssHandleB));
@@ -253,7 +253,7 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssAddStream")
 
     U_TEST_PRINT_LINE("adding another instance on the same UART, should fail...");
     U_PORT_TEST_ASSERT(uGnssAdd(U_GNSS_MODULE_TYPE_M8,
-                                U_GNSS_TRANSPORT_UBX_UART,
+                                U_GNSS_TRANSPORT_UART,
                                 transportHandleB, -1, false,
                                 &dummyHandle) < 0);
 
@@ -264,11 +264,11 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssAddStream")
     uGnssRemove(gnssHandleA);
 
     U_TEST_PRINT_LINE("adding it again...");
-    // Use NMEA this time for the sake of variety
-    if (gTransportTypeA == U_GNSS_TRANSPORT_UBX_UART) {
-        gTransportTypeA = U_GNSS_TRANSPORT_NMEA_UART;
-    } else if (gTransportTypeA == U_GNSS_TRANSPORT_UBX_I2C) {
-        gTransportTypeA = U_GNSS_TRANSPORT_NMEA_I2C;
+    // Still need to test the UBX form until we remove it
+    if (gTransportTypeA == U_GNSS_TRANSPORT_UART) {
+        gTransportTypeA = U_GNSS_TRANSPORT_UBX_UART;
+    } else if (gTransportTypeA == U_GNSS_TRANSPORT_I2C) {
+        gTransportTypeA = U_GNSS_TRANSPORT_UBX_I2C;
     }
     errorCode = uGnssAdd(U_GNSS_MODULE_TYPE_M8,
                          gTransportTypeA,
@@ -282,12 +282,12 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssAddStream")
                                                &transportType,
                                                &transportHandle) == 0);
     switch (gTransportTypeA) {
-        case U_GNSS_TRANSPORT_NMEA_UART:
-            U_PORT_TEST_ASSERT(transportType == U_GNSS_TRANSPORT_NMEA_UART);
+        case U_GNSS_TRANSPORT_UBX_UART:
+            U_PORT_TEST_ASSERT(transportType == U_GNSS_TRANSPORT_UBX_UART);
             U_PORT_TEST_ASSERT(transportHandle.uart == transportHandleA.uart);
             break;
-        case U_GNSS_TRANSPORT_NMEA_I2C:
-            U_PORT_TEST_ASSERT(transportType == U_GNSS_TRANSPORT_NMEA_I2C);
+        case U_GNSS_TRANSPORT_UBX_I2C:
+            U_PORT_TEST_ASSERT(transportType == U_GNSS_TRANSPORT_UBX_I2C);
             U_PORT_TEST_ASSERT(transportHandle.i2c == transportHandleA.i2c);
             break;
         default:
@@ -300,14 +300,14 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssAddStream")
 
     U_TEST_PRINT_LINE("removing stream...");
     switch (gTransportTypeA) {
-        case U_GNSS_TRANSPORT_UBX_UART:
+        case U_GNSS_TRANSPORT_UART:
         //lint -fallthrough
-        case U_GNSS_TRANSPORT_NMEA_UART:
+        case U_GNSS_TRANSPORT_UBX_UART:
             uPortUartClose(gStreamAHandle);
             break;
-        case U_GNSS_TRANSPORT_UBX_I2C:
+        case U_GNSS_TRANSPORT_I2C:
         //lint -fallthrough
-        case U_GNSS_TRANSPORT_NMEA_I2C:
+        case U_GNSS_TRANSPORT_UBX_I2C:
             uPortI2cClose(gStreamAHandle);
             break;
         default:
@@ -370,7 +370,7 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssI2cAddress")
                                   U_CFG_APP_PIN_GNSS_SCL,
                                   true);
     U_PORT_TEST_ASSERT(gStreamAHandle >= 0);
-    gTransportTypeA = U_GNSS_TRANSPORT_UBX_I2C;
+    gTransportTypeA = U_GNSS_TRANSPORT_I2C;
     transportHandle.i2c = gStreamAHandle;
 
     U_PORT_TEST_ASSERT(uGnssInit() == 0);
@@ -379,7 +379,7 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssI2cAddress")
                       " I2C address 0x%02x...", U_CFG_APP_GNSS_I2C,
                       U_GNSS_I2C_ADDRESS);
     errorCode = uGnssAdd(U_GNSS_MODULE_TYPE_M8,
-                         U_GNSS_TRANSPORT_UBX_I2C, transportHandle,
+                         U_GNSS_TRANSPORT_I2C, transportHandle,
                          -1, false, &gnssHandle[0]);
     U_PORT_TEST_ASSERT_EQUAL((int32_t) U_ERROR_COMMON_SUCCESS, errorCode);
 
@@ -393,7 +393,7 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssI2cAddress")
     U_TEST_PRINT_LINE("adding a second GNSS instance at I2C address 0x%02x...",
                       U_GNSS_TEST_I2C_ADDRESS_EXTRA);
     errorCode = uGnssAdd(U_GNSS_MODULE_TYPE_M8,
-                         U_GNSS_TRANSPORT_UBX_I2C, transportHandle,
+                         U_GNSS_TRANSPORT_I2C, transportHandle,
                          -1, false, &gnssHandle[1]);
     U_PORT_TEST_ASSERT_EQUAL((int32_t) U_ERROR_COMMON_SUCCESS, errorCode);
 
@@ -490,14 +490,14 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssCleanUp")
     uGnssDeinit();
     if (gStreamAHandle >= 0) {
         switch (gTransportTypeA) {
-            case U_GNSS_TRANSPORT_UBX_UART:
+            case U_GNSS_TRANSPORT_UART:
             //lint -fallthrough
-            case U_GNSS_TRANSPORT_NMEA_UART:
+            case U_GNSS_TRANSPORT_UBX_UART:
                 uPortUartClose(gStreamAHandle);
                 break;
-            case U_GNSS_TRANSPORT_UBX_I2C:
+            case U_GNSS_TRANSPORT_I2C:
             //lint -fallthrough
-            case U_GNSS_TRANSPORT_NMEA_I2C:
+            case U_GNSS_TRANSPORT_UBX_I2C:
                 uPortI2cClose(gStreamAHandle);
                 break;
             default:

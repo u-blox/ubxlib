@@ -124,7 +124,7 @@ U_PORT_TEST_FUNCTION("[gnssInfo]", "gnssInfoStatic")
     size_t z;
     char *pTmp;
     size_t iterations;
-    uGnssTransportType_t transportTypes[U_GNSS_TRANSPORT_MAX_NUM];
+    uGnssTransportType_t transportTypes[U_GNSS_TRANSPORT_MAX_NUM_WITH_UBX];
 
     // In case a previous test failed
     uGnssTestPrivateCleanup(&gHandles);

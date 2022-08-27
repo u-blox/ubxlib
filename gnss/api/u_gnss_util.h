@@ -68,12 +68,11 @@ extern "C" {
  * is just the stream of output from the GNSS chip that came after
  * the sent message.  It is up to you to pick the exact response
  * message out of the stream and parse it; if you are only using ubx
- * format messages you may prefer to set the transport type to
- * #U_GNSS_TRANSPORT_UBX_UART or #U_GNSS_TRANSPORT_UBX_I2C as
- * appropriate to avoid NMEA messages getting in the way.
+ * format messages you may like to call uGnssCfgSetProtocolOut() to
+ * filter out NMEA messages.
  *
  * IMPORTANT: when the GNSS chip is connected via an intermediate
- * [e.g. cellular] module (i.e. you are using #U_GNSS_TRANSPORT_UBX_AT)
+ * [e.g. cellular] module (i.e. you are using #U_GNSS_TRANSPORT_AT)
  * then responses will only be returned by this function if UBX FORMAT
  * is used; that is why this function has "ubx" in the name. However,
  * the message contents are not touched by this code and hence could
@@ -82,7 +81,7 @@ extern "C" {
  * last two bytes of the message with a ubx message checksum.
  * Hence, you _can_ send a non-ubx-format message transparently
  * to the GNSS chip with this function when using
- * #U_GNSS_TRANSPORT_UBX_AT but be sure to add two dummy bytes
+ * #U_GNSS_TRANSPORT_AT but be sure to add two dummy bytes
  * to the outgoing message buffer.
  *
  * It is planned, in future, to make transport via an intermediate

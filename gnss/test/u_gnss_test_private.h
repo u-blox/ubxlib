@@ -83,7 +83,7 @@ const char *pGnssTestPrivateTransportTypeName(uGnssTransportType_t transportType
 /** Set the transport types to be tested.
  *
  * @param pTransportTypes  a pointer to the first entry in an array of
- *                         U_GNSS_TRANSPORT_MAX_NUM transport types.
+ *                         U_GNSS_TRANSPORT_MAX_NUM_WITH_UBX transport types.
  * @param uart             the value of U_CFG_APP_GNSS_UART, the UART
  *                         on which the GNSS chip is connected or -1
  *                         if there is no direct UART connection to the
@@ -112,13 +112,13 @@ size_t uGnssTestPrivateTransportTypesSet(uGnssTransportType_t *pTransportTypes,
  *                             the intermediate (for example cellular) module
  *                             which controls power to the cellular module,
  *                             only relevant if the transport type is
- *                             #U_GNSS_TRANSPORT_UBX_AT; use -1 if there is
+ *                             #U_GNSS_TRANSPORT_AT; use -1 if there is
  *                             no such connection.
  * @param atModulePinDataReady the pin (not GPIO number, the pin number) of
  *                             the intermediat (for example cellular) module
  *                             which is connected to the Data Ready output of
  *                             the GNSS, chip only relevant if the transport
- *                             type is #U_GNSS_TRANSPORT_UBX_AT; use -1 if
+ *                             type is #U_GNSS_TRANSPORT_AT; use -1 if
  *                             there is no such connection.
  * @return                     zero on success else negative error code.
  */

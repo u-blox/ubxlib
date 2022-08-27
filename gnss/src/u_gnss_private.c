@@ -162,11 +162,11 @@ const size_t gUGnssPrivateModuleListSize = sizeof(gUGnssPrivateModuleList) /
  */
 const uGnssPrivateStreamType_t gGnssPrivateTransportTypeToStream[] = {
     U_GNSS_PRIVATE_STREAM_TYPE_NONE, // U_GNSS_TRANSPORT_NONE
+    U_GNSS_PRIVATE_STREAM_TYPE_UART, // U_GNSS_TRANSPORT_UART
+    U_GNSS_PRIVATE_STREAM_TYPE_NONE, // U_GNSS_TRANSPORT_AT
+    U_GNSS_PRIVATE_STREAM_TYPE_I2C,  // U_GNSS_TRANSPORT_I2C
     U_GNSS_PRIVATE_STREAM_TYPE_UART, // U_GNSS_TRANSPORT_UBX_UART
-    U_GNSS_PRIVATE_STREAM_TYPE_NONE, // U_GNSS_TRANSPORT_UBX_AT
-    U_GNSS_PRIVATE_STREAM_TYPE_UART, // U_GNSS_TRANSPORT_NMEA_UART
-    U_GNSS_PRIVATE_STREAM_TYPE_I2C,  // U_GNSS_TRANSPORT_UBX_I2C
-    U_GNSS_PRIVATE_STREAM_TYPE_I2C   // U_GNSS_TRANSPORT_NMEA_I2C
+    U_GNSS_PRIVATE_STREAM_TYPE_I2C   // U_GNSS_TRANSPORT_UBX_I2C
 };
 
 /* ----------------------------------------------------------------
@@ -593,9 +593,9 @@ static int32_t sendReceiveUbxMessage(uGnssPrivateInstance_t *pInstance,
                                            pInstance->ringBufferReadHandlePrivate);
                 }
                 switch (pInstance->transportType) {
-                    case U_GNSS_TRANSPORT_UBX_UART:
+                    case U_GNSS_TRANSPORT_UART:
                     //lint -fallthrough
-                    case U_GNSS_TRANSPORT_NMEA_UART:
+                    case U_GNSS_TRANSPORT_UBX_UART:
                         errorCodeOrResponseBodyLength = sendUbxMessageStream(pInstance->transportHandle.uart,
                                                                              U_GNSS_PRIVATE_STREAM_TYPE_UART,
                                                                              pInstance->i2cAddress,
@@ -607,9 +607,9 @@ static int32_t sendReceiveUbxMessage(uGnssPrivateInstance_t *pInstance,
                                                                                     pInstance->printUbxMessages);
                         }
                         break;
-                    case U_GNSS_TRANSPORT_UBX_I2C:
+                    case U_GNSS_TRANSPORT_I2C:
                     //lint -fallthrough
-                    case U_GNSS_TRANSPORT_NMEA_I2C:
+                    case U_GNSS_TRANSPORT_UBX_I2C:
                         errorCodeOrResponseBodyLength = sendUbxMessageStream(pInstance->transportHandle.i2c,
                                                                              U_GNSS_PRIVATE_STREAM_TYPE_I2C,
                                                                              pInstance->i2cAddress,
@@ -621,7 +621,7 @@ static int32_t sendReceiveUbxMessage(uGnssPrivateInstance_t *pInstance,
                                                                                     pInstance->printUbxMessages);
                         }
                         break;
-                    case U_GNSS_TRANSPORT_UBX_AT:
+                    case U_GNSS_TRANSPORT_AT:
                         //lint -e{1773} Suppress attempt to cast away const: I'm not!
                         errorCodeOrResponseBodyLength = sendReceiveUbxMessageAt((const uAtClientHandle_t)
                                                                                 pInstance->transportHandle.pAt,
@@ -793,7 +793,7 @@ int32_t uGnssPrivateSetProtocolOut(uGnssPrivateInstance_t *pInstance,
     uint64_t x;
 
     if ((pInstance != NULL) &&
-        (pInstance->transportType != U_GNSS_TRANSPORT_UBX_AT) &&
+        (pInstance->transportType != U_GNSS_TRANSPORT_AT) &&
         (onNotOff || ((protocol != U_GNSS_PROTOCOL_ALL) &&
                       (protocol != U_GNSS_PROTOCOL_UBX)))) {
         errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
@@ -871,7 +871,7 @@ int32_t uGnssPrivateGetProtocolOut(uGnssPrivateInstance_t *pInstance)
     // Message buffer for the 20-byte UBX-CFG-PRT message
     char message[20] = {0};
 
-    if ((pInstance != NULL) && (pInstance->transportType != U_GNSS_TRANSPORT_UBX_AT)) {
+    if ((pInstance != NULL) && (pInstance->transportType != U_GNSS_TRANSPORT_AT)) {
         errorCodeOrBitMap = (int32_t) U_ERROR_COMMON_PLATFORM;
         // Poll the GNSS chip with UBX-CFG-PRT
         message[0] = (char) pInstance->portNumber;
@@ -1617,35 +1617,23 @@ bool uGnssPrivateIsInsideCell(const uGnssPrivateInstance_t *pInstance)
 
     if (pInstance != NULL) {
         atHandle = pInstance->transportHandle.pAt;
-        switch (pInstance->transportType) {
-            case U_GNSS_TRANSPORT_UBX_AT:
-                // Simplest way to check is to send ATI and see if
-                // it includes an "M8"
-                uAtClientLock(atHandle);
-                uAtClientCommandStart(atHandle, "ATI");
-                uAtClientCommandStop(atHandle);
-                uAtClientResponseStart(atHandle, NULL);
-                bytesRead = uAtClientReadBytes(atHandle, buffer,
-                                               sizeof(buffer) - 1, false);
-                uAtClientResponseStop(atHandle);
-                if ((uAtClientUnlock(atHandle) == 0) && (bytesRead > 0)) {
-                    // Add a terminator
-                    buffer[bytesRead] = 0;
-                    if (strstr("M8", buffer) != NULL) {
-                        isInside = true;
-                    }
+        if (pInstance->transportType == U_GNSS_TRANSPORT_AT) {
+            // Simplest way to check is to send ATI and see if
+            // it includes an "M8"
+            uAtClientLock(atHandle);
+            uAtClientCommandStart(atHandle, "ATI");
+            uAtClientCommandStop(atHandle);
+            uAtClientResponseStart(atHandle, NULL);
+            bytesRead = uAtClientReadBytes(atHandle, buffer,
+                                           sizeof(buffer) - 1, false);
+            uAtClientResponseStop(atHandle);
+            if ((uAtClientUnlock(atHandle) == 0) && (bytesRead > 0)) {
+                // Add a terminator
+                buffer[bytesRead] = 0;
+                if (strstr("M8", buffer) != NULL) {
+                    isInside = true;
                 }
-                break;
-            case U_GNSS_TRANSPORT_UBX_UART:
-            //lint -fallthrough
-            case U_GNSS_TRANSPORT_NMEA_UART:
-            //lint -fallthrough
-            case U_GNSS_TRANSPORT_UBX_I2C:
-            //lint -fallthrough
-            case U_GNSS_TRANSPORT_NMEA_I2C:
-            //lint -fallthrough
-            default:
-                break;
+            }
         }
     }
 

@@ -124,7 +124,7 @@ U_PORT_TEST_FUNCTION("[gnssCfg]", "gnssCfgBasic")
     int32_t y;
     int32_t w;
     bool onNotOff;
-    uGnssTransportType_t transportTypes[U_GNSS_TRANSPORT_MAX_NUM];
+    uGnssTransportType_t transportTypes[U_GNSS_TRANSPORT_MAX_NUM_WITH_UBX];
 
     // In case a previous test failed
     uGnssTestPrivateCleanup(&gHandles);
@@ -211,7 +211,7 @@ U_PORT_TEST_FUNCTION("[gnssCfg]", "gnssCfgBasic")
         U_PORT_TEST_ASSERT(uGnssCfgSetUtcStandard(gnssHandle, (uGnssUtcStandard_t) gUtcStandard) == 0);
 
         U_TEST_PRINT_LINE("getting/setting output protocols.");
-        if (transportTypes[x] == U_GNSS_TRANSPORT_UBX_AT) {
+        if (transportTypes[x] == U_GNSS_TRANSPORT_AT) {
             // Can't do protocol output control when there's an AT interface in the way
             U_PORT_TEST_ASSERT(uGnssCfgGetProtocolOut(gnssHandle) < 0);
             U_PORT_TEST_ASSERT(uGnssCfgSetProtocolOut(gnssHandle, U_GNSS_PROTOCOL_NMEA, true) < 0);

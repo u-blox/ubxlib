@@ -68,11 +68,11 @@
 //lint -esym(752, gpTransportTypeText) Suppress not referenced, which
 // it won't be if diagnostic prints are compiled out
 static const char *const gpTransportTypeText[] = {"None",       // U_GNSS_TRANSPORT_NONE
+                                                  "UART",       // U_GNSS_TRANSPORT_UART
+                                                  "AT",         // U_GNSS_TRANSPORT_AT
+                                                  "I2C",        // U_GNSS_TRANSPORT_I2C
                                                   "ubx UART",   // U_GNSS_TRANSPORT_UBX_UART
-                                                  "ubx AT",     // U_GNSS_TRANSPORT_UBX_AT
-                                                  "NMEA UART",  // U_GNSS_TRANSPORT_NMEA_UART
-                                                  "ubx I2C",    // U_GNSS_TRANSPORT_UBX_I2C
-                                                  "NMEA I2C"    // U_GNSS_TRANSPORT_NMEA_I2C
+                                                  "ubx I2C"     // U_GNSS_TRANSPORT_UBX_I2C
                                                  };
 
 /* ----------------------------------------------------------------
@@ -92,17 +92,17 @@ static uGnssPrivateInstance_t *pGetGnssInstanceTransportHandle(uGnssTransportTyp
     while ((pInstance != NULL) && !match) {
         if (pInstance->transportType == transportType) {
             switch (transportType) {
-                case U_GNSS_TRANSPORT_UBX_UART:
+                case U_GNSS_TRANSPORT_UART:
                 //lint -fallthrough
-                case U_GNSS_TRANSPORT_NMEA_UART:
+                case U_GNSS_TRANSPORT_UBX_UART:
                     match = (pInstance->transportHandle.uart == transportHandle.uart);
                     break;
-                case U_GNSS_TRANSPORT_UBX_AT:
+                case U_GNSS_TRANSPORT_AT:
                     match = (pInstance->transportHandle.pAt == transportHandle.pAt);
                     break;
-                case U_GNSS_TRANSPORT_UBX_I2C:
+                case U_GNSS_TRANSPORT_I2C:
                 //lint -fallthrough
-                case U_GNSS_TRANSPORT_NMEA_I2C:
+                case U_GNSS_TRANSPORT_UBX_I2C:
                     match = (pInstance->transportHandle.i2c == transportHandle.i2c);
                     break;
                 default:
@@ -254,9 +254,9 @@ int32_t uGnssAdd(uGnssModuleType_t moduleType,
             errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
             if (((size_t) moduleType < gUGnssPrivateModuleListSize) &&
                 ((transportType > U_GNSS_TRANSPORT_NONE) &&
-                 (transportType < U_GNSS_TRANSPORT_MAX_NUM)) &&
-                ((transportType == U_GNSS_TRANSPORT_UBX_I2C) ||
-                 (transportType == U_GNSS_TRANSPORT_NMEA_I2C) ||
+                 (transportType < U_GNSS_TRANSPORT_MAX_NUM_WITH_UBX)) &&
+                ((transportType == U_GNSS_TRANSPORT_I2C) ||
+                 (transportType == U_GNSS_TRANSPORT_UBX_I2C) ||
                  (pGetGnssInstanceTransportHandle(transportType, transportHandle) == NULL))) {
                 errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
                 // Allocate memory for the instance
@@ -284,8 +284,8 @@ int32_t uGnssAdd(uGnssModuleType_t moduleType,
                         pInstance->atModulePinPwr = -1;
                         pInstance->atModulePinDataReady = -1;
                         pInstance->portNumber = 0; // This is the I2C port number inside the GNSS chip
-                        if ((transportType == U_GNSS_TRANSPORT_UBX_UART) ||
-                            (transportType == U_GNSS_TRANSPORT_NMEA_UART)) {
+                        if ((transportType == U_GNSS_TRANSPORT_UART) ||
+                            (transportType == U_GNSS_TRANSPORT_UBX_UART)) {
                             pInstance->portNumber = 1; // This is the UART port number inside the GNSS chip
                         }
 #ifdef U_CFG_GNSS_PORT_NUMBER
@@ -342,7 +342,7 @@ int32_t uGnssAdd(uGnssModuleType_t moduleType,
                     }
 
                     if ((errorCode == 0) && (platformError == 0)) {
-                        if (pInstance->transportType != U_GNSS_TRANSPORT_UBX_AT) {
+                        if (pInstance->transportType != U_GNSS_TRANSPORT_AT) {
                             errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
                             // Provided we're not on AT transport, i.e. we're on
                             // a streaming transport, then set up the buffer into

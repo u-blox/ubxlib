@@ -306,7 +306,7 @@ int32_t uGnssPosGet(uDeviceHandle_t gnssHandle,
         pInstance = pUGnssPrivateGetInstance(gnssHandle);
         if (pInstance != NULL) {
 #ifdef U_CFG_SARA_R5_M8_WORKAROUND
-            if (pInstance->transportType == U_GNSS_TRANSPORT_UBX_AT) {
+            if (pInstance->transportType == U_GNSS_TRANSPORT_AT) {
                 // Temporary change: on prototype versions of the
                 // SARA-R10M8S module (production week (printed on the
                 // module label, upper right) earlier than 20/27)
@@ -388,7 +388,7 @@ int32_t uGnssPosGetStart(uDeviceHandle_t gnssHandle,
                     pParameters = (uGnssPosGetTaskParameters_t *) malloc(sizeof(*pParameters));
                     if (pParameters != NULL) {
 #ifdef U_CFG_SARA_R5_M8_WORKAROUND
-                        if (pInstance->transportType == U_GNSS_TRANSPORT_UBX_AT) {
+                        if (pInstance->transportType == U_GNSS_TRANSPORT_AT) {
                             // Temporary change: on prototype versions of the
                             // SARA-R10M8S module (production week (printed on the
                             // module label, upper right) earlier than 20/27)
@@ -501,7 +501,7 @@ int32_t uGnssPosGetRrlp(uDeviceHandle_t gnssHandle, char *pBuffer,
             (sizeBytes >= U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES)) {
 
 #ifdef U_CFG_SARA_R5_M8_WORKAROUND
-            if (pInstance->transportType == U_GNSS_TRANSPORT_UBX_AT) {
+            if (pInstance->transportType == U_GNSS_TRANSPORT_AT) {
                 // Temporary change: on prototype versions of the
                 // SARA-R10M8S module (production week (printed on the
                 // module label, upper right) earlier than 20/27)

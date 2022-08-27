@@ -22,11 +22,11 @@ int app_start() {
         .deviceCfg = {
             .cfgGnss = {
                 .moduleType = U_CFG_TEST_GNSS_MODULE_TYPE,
-                .transportType = U_GNSS_TRANSPORT_UBX_UART,
+                .transportType = U_GNSS_TRANSPORT_UART,
                 .pinGnssEnablePower = U_CFG_APP_PIN_GNSS_ENABLE_POWER,
-                .devHandleAt = NULL, // Only relevant for transport U_GNSS_TRANSPORT_UBX_AT
-                .gnssAtPinPwr = -1, // Only relevant for transport U_GNSS_TRANSPORT_UBX_AT
-                .gnssAtPinDataReady = -1 // Only relevant for transport U_GNSS_TRANSPORT_UBX_AT
+                .devHandleAt = NULL, // Only relevant for transport U_GNSS_TRANSPORT_AT
+                .gnssAtPinPwr = -1, // Only relevant for transport U_GNSS_TRANSPORT_AT
+                .gnssAtPinDataReady = -1 // Only relevant for transport U_GNSS_TRANSPORT_AT
             },
         },
         .transportType = U_DEVICE_TRANSPORT_TYPE_UART,

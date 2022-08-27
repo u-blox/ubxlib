@@ -55,7 +55,7 @@ int app_start() {
     // the pin that enables power to the GNSS module; use
     // -1 if there is no such pin.
     uGnssAdd(U_GNSS_MODULE_TYPE_M8,
-             U_GNSS_TRANSPORT_NMEA_UART, transportHandle,
+             U_GNSS_TRANSPORT_UART, transportHandle,
              U_CFG_APP_PIN_GNSS_ENABLE_POWER, false,
              &gnssHandle);
 

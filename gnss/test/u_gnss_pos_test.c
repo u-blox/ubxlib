@@ -264,7 +264,7 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosPos")
     int64_t startTime;
     int32_t heapUsed;
     size_t iterations;
-    uGnssTransportType_t transportTypes[U_GNSS_TRANSPORT_MAX_NUM];
+    uGnssTransportType_t transportTypes[U_GNSS_TRANSPORT_MAX_NUM_WITH_UBX];
 
     // In case a previous test failed
     uGnssTestPrivateCleanup(&gHandles);
@@ -409,7 +409,7 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosRrlp")
     int64_t startTime;
     int32_t heapUsed;
     size_t iterations;
-    uGnssTransportType_t transportTypes[U_GNSS_TRANSPORT_MAX_NUM];
+    uGnssTransportType_t transportTypes[U_GNSS_TRANSPORT_MAX_NUM_WITH_UBX];
 
     // In case a previous test failed
     uGnssTestPrivateCleanup(&gHandles);

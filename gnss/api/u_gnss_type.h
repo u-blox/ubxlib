@@ -108,21 +108,38 @@
 //  Suppress not used within defaulted switch
 typedef enum {
     U_GNSS_TRANSPORT_NONE,
-    U_GNSS_TRANSPORT_UBX_UART, /**< the transport handle should be a UART handle
-                                    over which ubx commands will be transferred;
-                                    NMEA will be switched off. */
-    U_GNSS_TRANSPORT_UBX_AT,   /**< the transport handle should be an AT client
-                                    handle over which ubx commands will be
-                                    transferred. */
-    U_GNSS_TRANSPORT_NMEA_UART, /**< the transport handle should be a UART handle
-                                     over which NMEA commands may be received;
-                                     ubx commands will still be used by this code. */
-    U_GNSS_TRANSPORT_UBX_I2C,   /**< the transport handle should be an I2C handle
+    U_GNSS_TRANSPORT_UART,      /**< the transport handle should be a UART handle. */
+    U_GNSS_TRANSPORT_AT,        /**< the transport handle should be an AT client
+                                     handle; currently only ubx-format messages may
+                                     be received when this transport type is in use. */
+    U_GNSS_TRANSPORT_I2C,       /**< the transport handle should be an I2C handle. */
+    U_GNSS_TRANSPORT_UBX_UART,  /**< \deprecated the transport handle should be a UART handle
                                      over which ubx commands will be transferred;
-                                     NMEA will be switched off. */
-    U_GNSS_TRANSPORT_NMEA_I2C,  /**< the transport handle should be an I2C handle
-                                     over which NMEA commands may be received;
-                                     ubx commands will still be used by this code. */
+                                     NMEA will be switched off; THIS IS DEPRECATED,
+                                     PLEASE USE #U_GNSS_TRANSPORT_UART instead
+                                     and use uGnssCfgSetProtocolOut() to switch
+                                     off NMEA message output if required. */
+    U_GNSS_TRANSPORT_UBX_I2C,   /**< \deprecated the transport handle should be an I2C handle
+                                     over which ubx commands will be transferred;
+                                     NMEA will be switched off; THIS IS DEPRECATED,
+                                     PLEASE USE #U_GNSS_TRANSPORT_I2C instead and
+                                     use uGnssCfgSetProtocolOut() to switch off NMEA
+                                     message output if required. */
+    U_GNSS_TRANSPORT_MAX_NUM_WITH_UBX,
+    U_GNSS_TRANSPORT_UBX_AT = U_GNSS_TRANSPORT_AT,      /**< \deprecated the transport handle should be an AT client
+                                                             handle over which ubx commands will be
+                                                             transferred; THIS IS DEPRECATED, PLEASE
+                                                             USE #U_GNSS_TRANSPORT_AT instead. */
+    U_GNSS_TRANSPORT_NMEA_UART = U_GNSS_TRANSPORT_UART, /**< \deprecated the transport handle should be a UART handle
+                                                             over which NMEA commands may be received;
+                                                             ubx commands will still be used by this code.
+                                                             THIS IS DEPRECATED, PLEASE USE
+                                                             #U_GNSS_TRANSPORT_UART. */
+    U_GNSS_TRANSPORT_NMEA_I2C = U_GNSS_TRANSPORT_I2C,   /**< \deprecated the transport handle should be an I2C handle
+                                                             over which NMEA commands may be received;
+                                                             ubx commands will still be used by this code.
+                                                             THIS IS DEPRECATED, PLEASE USE
+                                                             #U_GNSS_TRANSPORT_I2C. */
     U_GNSS_TRANSPORT_MAX_NUM
 } uGnssTransportType_t;
 
@@ -130,9 +147,9 @@ typedef enum {
  * uGnssTransportType_t.
  */
 typedef union {
-    void *pAt;
-    int32_t uart;
-    int32_t i2c;
+    void *pAt;      /**< for transport type #U_GNSS_TRANSPORT_AT. */
+    int32_t uart;   /**< for transport type #U_GNSS_TRANSPORT_UART. */
+    int32_t i2c;    /**< for transport type #U_GNSS_TRANSPORT_I2C. */
 } uGnssTransportHandle_t;
 
 /** The protocol types for exchanges with a GNSS chip,

@@ -51,6 +51,7 @@
 #include "u_gnss_type.h"
 #include "u_gnss.h"
 #include "u_gnss_pwr.h"
+#include "u_gnss_cfg.h" // For uGnssCfgSetProtocolOut()
 
 #include "u_device_private.h"
 #include "u_device_shared_gnss.h"
@@ -101,23 +102,17 @@ static int32_t addDevice(int32_t transportHandle,
                          const uDeviceCfgGnss_t *pCfgGnss,
                          uDeviceHandle_t *pDeviceHandle)
 {
-    int32_t errorCodeOrHandle = (int32_t) U_ERROR_COMMON_NO_MEMORY;
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
     uGnssTransportHandle_t gnssTransportHandle;
-    uGnssTransportType_t gnssTransportType = U_GNSS_TRANSPORT_UBX_UART;
+    uGnssTransportType_t gnssTransportType = U_GNSS_TRANSPORT_UART;
     uDeviceGnssInstance_t *pContext;
 
     // Populate gnssTransportHandle/gnssTransportType
     if (transportType == U_DEVICE_TRANSPORT_TYPE_I2C) {
         gnssTransportHandle.i2c = transportHandle;
-        gnssTransportType = U_GNSS_TRANSPORT_UBX_I2C;
-        if (pCfgGnss->includeNmea) {
-            gnssTransportType = U_GNSS_TRANSPORT_NMEA_I2C;
-        }
+        gnssTransportType = U_GNSS_TRANSPORT_I2C;
     } else {
         gnssTransportHandle.uart = transportHandle;
-        if (pCfgGnss->includeNmea) {
-            gnssTransportType = U_GNSS_TRANSPORT_NMEA_UART;
-        }
     }
 
     pContext = (uDeviceGnssInstance_t *) malloc(sizeof(uDeviceGnssInstance_t));
@@ -125,11 +120,11 @@ static int32_t addDevice(int32_t transportHandle,
         pContext->transportHandle = transportHandle;
         pContext->transportType = transportType;
         // Add the GNSS instance, which actually creates pDeviceHandle
-        errorCodeOrHandle = uGnssAdd((uGnssModuleType_t) pCfgGnss->moduleType,
-                                     gnssTransportType, gnssTransportHandle,
-                                     pCfgGnss->pinEnablePower, false,
-                                     pDeviceHandle);
-        if (errorCodeOrHandle == 0) {
+        errorCode = uGnssAdd((uGnssModuleType_t) pCfgGnss->moduleType,
+                             gnssTransportType, gnssTransportHandle,
+                             pCfgGnss->pinEnablePower, false,
+                             pDeviceHandle);
+        if (errorCode == 0) {
             if (pCfgGnss->i2cAddress > 0) {
                 uGnssSetI2cAddress(*pDeviceHandle, pCfgGnss->i2cAddress);
             }
@@ -142,8 +137,14 @@ static int32_t addDevice(int32_t transportHandle,
             // Attach the context
             U_DEVICE_INSTANCE(*pDeviceHandle)->pContext = pContext;
             // Power on the GNSS chip
-            errorCodeOrHandle = uGnssPwrOn(*pDeviceHandle);
-            if (errorCodeOrHandle != 0) {
+            errorCode = uGnssPwrOn(*pDeviceHandle);
+            if (errorCode == 0) {
+                if (!pCfgGnss->includeNmea) {
+                    // Not checking for errors here, this is "best effort"
+                    uGnssCfgSetProtocolOut(*pDeviceHandle,
+                                           U_GNSS_PROTOCOL_NMEA, false);
+                }
+            } else {
                 // If we failed to power on, clean up
                 removeDevice(*pDeviceHandle, false);
             }
@@ -152,7 +153,7 @@ static int32_t addDevice(int32_t transportHandle,
         }
     }
 
-    return errorCodeOrHandle;
+    return errorCode;
 }
 
 /* ----------------------------------------------------------------

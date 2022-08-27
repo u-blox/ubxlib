@@ -119,7 +119,7 @@ int32_t uGnssPwrOn(uDeviceHandle_t gnssHandle)
             }
 
             if (errorCode == 0) {
-                if (pInstance->transportType == U_GNSS_TRANSPORT_UBX_AT) {
+                if (pInstance->transportType == U_GNSS_TRANSPORT_AT) {
                     atHandle = (uAtClientHandle_t) pInstance->transportHandle.pAt;
                     // Switch on an indication which is useful when debugging
                     // aiding modes
@@ -310,7 +310,7 @@ int32_t uGnssPwrOff(uDeviceHandle_t gnssHandle)
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         pInstance = pUGnssPrivateGetInstance(gnssHandle);
         if (pInstance != NULL) {
-            if (pInstance->transportType == U_GNSS_TRANSPORT_UBX_AT) {
+            if (pInstance->transportType == U_GNSS_TRANSPORT_AT) {
                 // For the AT interface, need to ask the cellular module
                 // to power the GNSS module down
                 atHandle = (uAtClientHandle_t) pInstance->transportHandle.pAt;
@@ -365,7 +365,7 @@ int32_t uGnssPwrOffBackup(uDeviceHandle_t gnssHandle)
         pInstance = pUGnssPrivateGetInstance(gnssHandle);
         if (pInstance != NULL) {
             errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
-            if (pInstance->transportType != U_GNSS_TRANSPORT_UBX_AT) {
+            if (pInstance->transportType != U_GNSS_TRANSPORT_AT) {
                 // Put the GNSS chip into backup mode with UBX-RXM-PMREQ
                 // This message is not acknowledged and fiddling with the
                 // GNSS chip after this will wake it up again, so we just
