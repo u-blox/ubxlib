@@ -90,6 +90,18 @@ TX_BYTE_POOL *pThreadStack;
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
+void cell_ucpu_assert(const char *pFileStr, int32_t line)
+{
+    ucpu_sdk_assert(pFileStr, line);
+
+    // As the firmware works on message dispatching mechanism, so it takes
+    // a few millisecond to unload and stop the running the module. This
+    // causes the execution to continue which may result in a crash.
+    // So, staying in an infinite loop until the module is unloaded and stopped.
+    while (1) {
+        uPortTaskBlock(100);
+    }
+}
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -123,7 +135,7 @@ int32_t uPortInit()
     int32_t result = -1;
 
     // Register an assertFailed() callback.
-    uAssertHookSet(ucpu_sdk_assert);
+    uAssertHookSet(cell_ucpu_assert);
 
     if (!gInitialised) {
         errorCode = uPortEventQueuePrivateInit();
