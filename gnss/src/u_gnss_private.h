@@ -417,7 +417,7 @@ bool uGnssPrivateMessageIdIsWanted(uGnssPrivateMessageId_t *pMessageId,
  *                           of the message); if a matching NMEA
  *                           messsage is not found this will be
  *                           populated with the number of bytes
- *                           that can be discarded.  May be NULL.
+ *                           that can be discarded.  Cannot be NULL.
  * @return                   on success the total length of the NMEA
  *                           message found (i.e from the $ to the
  *                           end of the CRLF), else negative error
@@ -482,15 +482,23 @@ int32_t uGnssPrivateStreamGetReceiveSize(int32_t streamHandle,
 int32_t uGnssPrivateStreamFillRingBuffer(uGnssPrivateInstance_t *pInstance,
                                          int32_t timeoutMs, int32_t maxTimeMs);
 
-/** Examine the internal ring buffer of the given GNSS instance, for the
+/** Examine the ring buffer of the given GNSS instance, for the
  * given read handle, and determine if it contains the given message ID,
  * or even the sniff of a possibility of it.  If a message header is
  * matched the read pointer for the given handle will be moved
  * up to the start of the message header; if a sniff of a message is found
  * but it is not complete, the pointer will be moved forward somewhat,
  * discarding unwanted data, otherwise the read pointer will be
- * moved on to the write pointer, i.e. the unwanted data will be
- * discarded.
+ * moved on to the write pointer, i.e. the unwanted data that is in the
+ * ring buffer will be discarded.  This function does NOT pull any new
+ * data into the ring buffer, the caller must call
+ * uGnssPrivateStreamFillRingBuffer() to do that, it only parses data
+ * that is already in the ring buffer.  See the msgReceiveTask() asynchronous
+ * message receive function in u_gnss_msg.c for an example of how this
+ * might be done.
+ * Note: it is important that pDiscard (see below) is obeyed, i.e.
+ * always discard that many bytes of data from the ring-buffer at the
+ * given read handle before this function is called again.
  * Note: gUGnssPrivateMutex should be locked before this is called, but
  * it is also safe to call this from the task that is checking for
  * asynchronous messages, even though that doesn't lock gUGnssPrivateMutex,
@@ -516,6 +524,12 @@ int32_t uGnssPrivateStreamFillRingBuffer(uGnssPrivateInstance_t *pInstance,
  *                                   "over-hanging" discard amount; it is up
  *                                   to the caller to discard this amount from
  *                                   its ring buffer handle before continuing.
+ *                                   It is always safe to do something like
+ *                                   discard -= uRingBufferReadHandle(&ringBuffer, readHandle,
+ *                                   NULL, discard), after having pulled more
+ *                                   data into the ring buffer each time using
+ *                                   uGnssPrivateStreamFillRingBuffer(), until
+ *                                   discard is zero.
  *                                   Cannot be NULL.
  * @return                           if the given message ID is detected then
  *                                   the number of bytes of data in it

@@ -179,7 +179,8 @@ bool uGnssMsgIdIsWanted(uGnssMessageId_t *pMessageId,
 
 /** Check that the framing of the given protocol message is good.
  * The message can be any of the #uGnssProtocol_t types.  The body of
- * the message is not checked, just the header and the check-sum.
+ * the message is not checked, just that the message begins at the
+ * start of pBuffer and that the header and the check-sum are good.
  * It is safe to call this function from the message receive
  * pCallback.
  *

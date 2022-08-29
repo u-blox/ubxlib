@@ -96,14 +96,16 @@
 typedef struct {
     int32_t cls;
     int32_t id;
-    char **ppBody; /**< a pointer to a pointer that the received
+    char **ppBody;   /**< a pointer to a pointer that the received
                           message body will be written to. If *ppBody is NULL
                           memory will be allocated.  If ppBody is NULL
                           then the response is not captured (but this
                           structure may still be used for cls/id matching). */
-    size_t size;     /**< the number of bytes of storage at *ppBody;
+    size_t bodySize; /**< the number of bytes of storage at *ppBody;
                           must be zero if ppBody is NULL or
-                          *ppBody is NULL. */
+                          *ppBody is NULL.  If non-zero it MUST be
+                          large enough to fit the body in or the
+                          CRC calculation will fail. */
 } uGnssPrivateUbxReceiveMessage_t;
 
 /** Track state of NMEA message decode matching.
@@ -182,11 +184,12 @@ const uGnssPrivateStreamType_t gGnssPrivateTransportTypeToStream[] = {
 // Find the header of a ubx-format message in the given buffer,
 // returning the number of bytes in the entire message (header
 // and check-sum etc. included).  If a matching message is found
-// pDiscard will be populated with the distance into pBuffer that the
-// message begins; if a matching message is NOT found pDiscard will
-// be populated with the amount of data that can be discarded; NOTE
-// that this could be MORE than size, since we for a non-matching
-// message we can discard the length of body + CRC that is to come.
+// pDiscard (which cannot be NULL) will be populated with the distance
+// into pBuffer that the message begins; if a matching message is NOT
+// found pDiscard will be populated with the amount of data that can be
+// discarded; NOTE that this could be MORE than "size", since for a
+// non-matching message we can discard the length of body + CRC that is
+// to come.
 // On entry pMessageClassAndId should contain the required message class
 // (most significant byte) and ID (least significant byte), wildcards
 // permitted, on exit this will be populated with the message class
@@ -200,41 +203,41 @@ static int32_t matchUbxMessageHeader(const char *pBuffer, size_t size,
     int32_t errorCodeOrLength = (int32_t) U_ERROR_COMMON_NOT_FOUND;
     const uint8_t *pInput = (const uint8_t *) pBuffer;
     size_t x;
-    size_t overheadByteCount = 0;
+    size_t headerByteCount = 0;
     bool idMatch = false;
     uint16_t messageBodyLength = 0;
     uint8_t messageClass = U_GNSS_UBX_MESSAGE_CLASS_ALL;
     uint8_t messageId = U_GNSS_UBX_MESSAGE_ID_ALL;
 
+    U_ASSERT(pDiscard != NULL);
+
+    *pDiscard = 0;
     if (pMessageClassAndId != NULL) {
         messageClass = (uint8_t) (*pMessageClassAndId >> 8);
         messageId = (uint8_t) (*pMessageClassAndId & 0xff);
     }
-    if (pDiscard != NULL) {
-        *pDiscard = 0;
-    }
     for (x = 0; (x < size) &&
-         (overheadByteCount < U_UBX_PROTOCOL_HEADER_LENGTH_BYTES); x++) {
-        switch (overheadByteCount) {
+         (headerByteCount < U_UBX_PROTOCOL_HEADER_LENGTH_BYTES); x++) {
+        switch (headerByteCount) {
             case 0:
                 //lint -e{650} Suppress warning about 0xb5 being out of range for char
                 if (*pInput == 0xb5) {
                     // Got first byte of header, increment count
-                    overheadByteCount++;
+                    headerByteCount++;
                 }
                 break;
             case 1:
                 if (*pInput == 0x62) {
                     // Got second byte of header, increment count
-                    overheadByteCount++;
+                    headerByteCount++;
                 } else {
                     // Not a valid message, start again
-                    overheadByteCount = 0;
+                    headerByteCount = 0;
                 }
                 break;
             case 2:
                 // Got message class, store it
-                overheadByteCount++;
+                headerByteCount++;
                 if ((messageClass == U_GNSS_UBX_MESSAGE_CLASS_ALL) ||
                     (messageClass == *pInput)) {
                     messageClass = *pInput;
@@ -243,7 +246,7 @@ static int32_t matchUbxMessageHeader(const char *pBuffer, size_t size,
                 break;
             case 3:
                 // Got message ID, store it
-                overheadByteCount++;
+                headerByteCount++;
                 if ((messageId == U_GNSS_UBX_MESSAGE_ID_ALL) ||
                     (messageId == *pInput)) {
                     messageId = *pInput;
@@ -254,55 +257,46 @@ static int32_t matchUbxMessageHeader(const char *pBuffer, size_t size,
             case 4:
                 // Got first byte of length, store it
                 messageBodyLength = *pInput;
-                overheadByteCount++;
+                headerByteCount++;
                 break;
             case 5:
                 // Got second byte of length, add it to the first
                 messageBodyLength += ((size_t) *pInput) << 8; // *NOPAD*
-                overheadByteCount++;
+                headerByteCount++;
                 break;
             default:
-                overheadByteCount = 0;
+                headerByteCount = 0;
                 break;
         }
         // Next byte
         pInput++;
     }
 
-    if (overheadByteCount > 0) {
+    if (headerByteCount > 0) {
         // We got some parts of the message overhead, so
         // could be a message
         errorCodeOrLength = (int32_t) U_ERROR_COMMON_TIMEOUT;
-        if (overheadByteCount == U_UBX_PROTOCOL_HEADER_LENGTH_BYTES) {
+        // We can always discard the stuff up to the point where the
+        // potential message began
+        *pDiscard = (pInput - (const uint8_t *) pBuffer) - headerByteCount;
+        if (headerByteCount == U_UBX_PROTOCOL_HEADER_LENGTH_BYTES) {
             errorCodeOrLength = (int32_t) U_ERROR_COMMON_NOT_FOUND;
             if (idMatch) {
                 // Got a matching message, populate the message class/ID,
-                // and the amount to discard, return the message length
+                // and return the whole message length, including header
+                // and CRC
                 if (pMessageClassAndId != NULL) {
                     *pMessageClassAndId = (((uint16_t) messageClass) << 8) | messageId;
                 }
-                if (pDiscard != NULL) {
-                    *pDiscard = (pInput - (const uint8_t *) pBuffer) - overheadByteCount;
-                }
                 errorCodeOrLength = messageBodyLength + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES;
             } else {
-                // Not an ID match, set pDiscard to the length that can be discarded,
-                // which includes the unwanted message body
-                if (pDiscard != NULL) {
-                    *pDiscard = messageBodyLength + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES;
-                }
-            }
-        } else {
-            // Discard everything up to the start of the potential start of a message
-            if (pDiscard != NULL) {
-                *pDiscard = (pInput - (const uint8_t *) pBuffer) - overheadByteCount;
+                // Not an ID match, add to pDiscard the length of the unwanted message body plus overhead
+                *pDiscard += messageBodyLength + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES;
             }
         }
     } else {
         // Nothing; put into pDiscard all that we've processed
-        if (pDiscard != NULL) {
-            *pDiscard = size;
-        }
+        *pDiscard = size;
     }
 
     return errorCodeOrLength;
@@ -408,28 +402,11 @@ static int32_t receiveUbxMessageStream(uGnssPrivateInstance_t *pInstance,
                                        uGnssPrivateUbxReceiveMessage_t *pResponse,
                                        int32_t timeoutMs, bool printIt)
 {
-    int32_t errorCodeOrLength = 0;  // Deliberate choice to return 0 if pResponse
-    size_t messageLength = 0;       // indicates that no response is required
-    size_t captureLength = 0;
-    int32_t startTimeMs;
-    int32_t receiveSize;
-    size_t totalReceiveSize = 0;
-    size_t totalCaptureSize = 0;
-    size_t discardSize = 0;
-    size_t crcSize = 0;
-    bool bufferWasMalloced = false;
-    uGnssPrivateMessageId_t privateMessageId;
-    int32_t ca = 0;
-    int32_t cb = 0;
-    uint8_t header[U_UBX_PROTOCOL_HEADER_LENGTH_BYTES];
-    uint8_t crc[U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES - U_UBX_PROTOCOL_HEADER_LENGTH_BYTES];
-    uint8_t *pCrc;
-    int32_t y = timeoutMs > U_GNSS_RING_BUFFER_MIN_FILL_TIME_MS * 10 ? timeoutMs / 10 :
-                U_GNSS_RING_BUFFER_MIN_FILL_TIME_MS;
+    int32_t errorCodeOrLength = 0;            // Deliberate choice to return 0 if pResponse
+    uGnssPrivateMessageId_t privateMessageId; // indicates that no response is required
+    char *pBuffer = NULL;
 
     if ((pInstance != NULL) && (pResponse != NULL) && (pResponse->ppBody != NULL)) {
-        errorCodeOrLength = (int32_t) U_ERROR_COMMON_TIMEOUT;
-        startTimeMs = uPortGetTickTimeMs();
         // Convert uGnssPrivateUbxReceiveMessage_t into uGnssPrivateMessageId_t
         privateMessageId.type = U_GNSS_PROTOCOL_UBX;
         privateMessageId.id.ubx = (U_GNSS_UBX_MESSAGE_CLASS_ALL << 8) | U_GNSS_UBX_MESSAGE_ID_ALL;
@@ -439,143 +416,56 @@ static int32_t receiveUbxMessageStream(uGnssPrivateInstance_t *pInstance,
         if (pResponse->id >= 0) {
             privateMessageId.id.ubx = (privateMessageId.id.ubx & 0xff00) | pResponse->id;
         }
-        // Lock our read pointer while we look for stuff
-        uRingBufferLockReadHandle(&(pInstance->ringBuffer),
-                                  pInstance->ringBufferReadHandlePrivate);
-        // This is constructed as a do()/while() so that it always has one go
-        // even with a zero timeout
-        do {
-            // Try to pull some more data in
-            uGnssPrivateStreamFillRingBuffer(pInstance, y, y);
-            // Get the number of bytes waiting for us in the ring buffer
-            receiveSize = uRingBufferDataSizeHandle(&(pInstance->ringBuffer),
-                                                    pInstance->ringBufferReadHandlePrivate);
-            if (receiveSize < 0) {
-                errorCodeOrLength = receiveSize;
-            } else if (receiveSize > 0) {
-                // Deal with any discard from a previous run around this loop
-                discardSize -= uRingBufferReadHandle(&(pInstance->ringBuffer),
-                                                     pInstance->ringBufferReadHandlePrivate,
-                                                     NULL, discardSize);
-                if (discardSize == 0) {
-                    if (errorCodeOrLength < U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES) {
-                        // If we haven't already started to receive a message, attempt to
-                        // decode a ubx message header from the ring buffer
-                        errorCodeOrLength = uGnssPrivateStreamDecodeRingBuffer(pInstance,
-                                                                               pInstance->ringBufferReadHandlePrivate,
-                                                                               &privateMessageId,
-                                                                               &discardSize);
-                        if (errorCodeOrLength >= U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES) {
-                            // There's a ubx-format message header we want in the buffer, we're off
-                            messageLength = errorCodeOrLength;
-                            captureLength = messageLength;
-                            totalReceiveSize = 0;
-                            crcSize = 0;
-                            ca = 0;
-                            cb = 0;
-                            // First deal with the message buffer
-                            if (bufferWasMalloced) {
-                                // This essage might be of a different length,
-                                // so free what we had
-                                free(*(pResponse->ppBody));
-                                *(pResponse->ppBody) = NULL;
-                            }
-                            if (*(pResponse->ppBody) != NULL) {
-                                // We were given a buffer, just limit the length
-                                if (captureLength > pResponse->size) {
-                                    captureLength = pResponse->size;
-                                }
-                            } else {
-                                bufferWasMalloced = true;
-                                *(pResponse->ppBody) = (char *) malloc(captureLength);
-                                if (*(pResponse->ppBody) != NULL) {
-                                    errorCodeOrLength = (int32_t) U_ERROR_COMMON_NO_MEMORY;
-                                    // This will throw the message away
-                                    captureLength = 0;
-                                }
-                            }
-                            // We want the message body, so just feed the CRC calculation
-                            // from the header and adjust the capture length to
-                            // not include the CRC
-                            uRingBufferReadHandle(&(pInstance->ringBuffer),
-                                                  pInstance->ringBufferReadHandlePrivate,
-                                                  (char *) header, sizeof(header));
-                            totalReceiveSize += sizeof(header);
-                            captureLength -= sizeof(header) + sizeof(crc);
-                            // The CRC is calculated from the message class byte onwards
-                            for (size_t z = 2; z < sizeof(header); z++) {
-                                ca += header[z];
-                                cb += ca;
-                            }
-                        }
-                    }
-                    if (errorCodeOrLength >= U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES) {
-                        // Here we're reading in the whole message
-                        if (totalReceiveSize < captureLength) {
-                            // [continue to] read in the body
-                            receiveSize = (int32_t) uRingBufferReadHandle(&(pInstance->ringBuffer),
-                                                                          pInstance->ringBufferReadHandlePrivate,
-                                                                          *(pResponse->ppBody) + totalReceiveSize,
-                                                                          captureLength - totalReceiveSize);
-                            totalCaptureSize += receiveSize;
-                        } else if ((captureLength > 0) && (crcSize < sizeof(crc))) {
-                            // [continue to] capture the CRC
-                            receiveSize = (int32_t) uRingBufferReadHandle(&(pInstance->ringBuffer),
-                                                                          pInstance->ringBufferReadHandlePrivate,
-                                                                          (char *) crc + crcSize, sizeof(crc));
-                            crcSize += receiveSize;
-                        } else {
-                            // Throw the rest away, or all of it away if we got no memory
-                            receiveSize = (int32_t) uRingBufferReadHandle(&(pInstance->ringBuffer),
-                                                                          pInstance->ringBufferReadHandlePrivate,
-                                                                          NULL, messageLength - totalReceiveSize);
-                        }
-                        totalReceiveSize += receiveSize;
-                        if ((totalReceiveSize >= messageLength) && (captureLength > 0)) {
-                            // Got the lot, continue the CRC calculation over the
-                            // message body that we have captured
-                            pCrc = (uint8_t *) *(pResponse->ppBody) + U_UBX_PROTOCOL_HEADER_LENGTH_BYTES; // *NOPAD*
-                            for (size_t z = 0; z < totalReceiveSize - sizeof(crc); z++) {
-                                ca += *pCrc;
-                                cb += ca;
-                                pCrc++;
-                            }
-                            // Check the CRC
-                            if ((crc[0] != (ca & 0xff)) || (crc[1] != (cb & 0xff))) {
-                                errorCodeOrLength = (int32_t) U_GNSS_ERROR_CRC;
-                                if (printIt) {
-                                    uPortLog("U_GNSS: CRC error.\n");
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            // Loop if we've not received anything, or need to discard something,
-            // or have not received all of the message, provided the timeout has not expired
-        } while (((errorCodeOrLength < 0) || (discardSize > 0) || (totalReceiveSize < messageLength)) &&
-                 (uPortGetTickTimeMs() - startTimeMs < timeoutMs));
-
-        // Unlock the read pointer
-        uRingBufferUnlockReadHandle(&(pInstance->ringBuffer),
-                                    pInstance->ringBufferReadHandlePrivate);
-
-        if (errorCodeOrLength >= 0) {
-            errorCodeOrLength = (int32_t) totalCaptureSize;
-            if (printIt) {
-                uPortLog("U_GNSS: decoded ubx response 0x%02x 0x%02x",
-                         privateMessageId.id.ubx >> 8, privateMessageId.id.ubx & 0xff);
-                if (errorCodeOrLength > 0) {
-                    uPortLog(":");
-                    uGnssPrivatePrintBuffer(*(pResponse->ppBody), errorCodeOrLength);
-                }
-                uPortLog(" [body %d byte(s)].\n", errorCodeOrLength);
-            }
-
+        // Now wait for the message, allowing a buffer to be allocated by
+        // the message receive function
+        errorCodeOrLength = uGnssPrivateReceiveStreamMessage(pInstance,
+                                                             &privateMessageId,
+                                                             pInstance->ringBufferReadHandlePrivate,
+                                                             &pBuffer, 0,
+                                                             timeoutMs, NULL);
+        if (errorCodeOrLength >= U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES) {
             // Convert uGnssPrivateMessageId_t into uGnssPrivateUbxReceiveMessage_t
             pResponse->cls = privateMessageId.id.ubx >> 8;
             pResponse->id = privateMessageId.id.ubx & 0xFF;
+            // Check the message is good
+            if (uGnssMsgIsGood(pBuffer, errorCodeOrLength)) {
+                // Remove the protocol overhead from the length, we just want the body
+                errorCodeOrLength -= U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES;
+                // Copy the body of the message into the response
+                if (*(pResponse->ppBody) == NULL) {
+                    *(pResponse->ppBody) = (char *) malloc(errorCodeOrLength);
+                } else {
+                    if (errorCodeOrLength > (int32_t) pResponse->bodySize) {
+                        errorCodeOrLength = (int32_t) pResponse->bodySize;
+                    }
+                }
+                if (*(pResponse->ppBody) != NULL) {
+                    memcpy(*(pResponse->ppBody), pBuffer + U_UBX_PROTOCOL_HEADER_LENGTH_BYTES, errorCodeOrLength);
+                    if (printIt) {
+                        uPortLog("U_GNSS: decoded ubx response 0x%02x 0x%02x",
+                                 privateMessageId.id.ubx >> 8, privateMessageId.id.ubx & 0xff);
+                        if (errorCodeOrLength > 0) {
+                            uPortLog(":");
+                            uGnssPrivatePrintBuffer(*(pResponse->ppBody), errorCodeOrLength);
+                        }
+                        uPortLog(" [body %d byte(s)].\n", errorCodeOrLength);
+                    }
+                } else {
+                    errorCodeOrLength = (int32_t) U_ERROR_COMMON_NO_MEMORY;
+                }
+            } else {
+                // We assume here that this really was the message
+                // we were after, but corrupted, hence no point
+                // in waiting any longer
+                errorCodeOrLength = (int32_t) U_GNSS_ERROR_CRC;
+                if (printIt) {
+                    uPortLog("U_GNSS: CRC error.\n");
+                }
+            }
         }
+
+        // Free memory (it is legal C to free a NULL pointer)
+        free(pBuffer);
     }
 
     return errorCodeOrLength;
@@ -652,8 +542,8 @@ static int32_t sendReceiveUbxMessageAt(const uAtClientHandle_t atHandle,
                 // Deal with the output buffer
                 captureSize = x;
                 if (*(pResponse->ppBody) != NULL) {
-                    if (captureSize > pResponse->size) {
-                        captureSize = pResponse->size;
+                    if (captureSize > pResponse->bodySize) {
+                        captureSize = pResponse->bodySize;
                     }
                 } else {
                     // We can just re-use the buffer we already have
@@ -662,7 +552,7 @@ static int32_t sendReceiveUbxMessageAt(const uAtClientHandle_t atHandle,
                 }
                 errorCodeOrLength = (int32_t) captureSize;
                 if (captureSize > 0) {
-                    // Decode th message body, noting that it is
+                    // Decode the message body, noting that it is
                     // safe to decode back into the same buffer
                     errorCodeOrLength = uUbxProtocolDecode(pBuffer, x,
                                                            &(pResponse->cls),
@@ -716,7 +606,7 @@ static int32_t sendReceiveUbxMessage(uGnssPrivateInstance_t *pInstance,
     if ((pInstance != NULL) &&
         (((pMessageBody == NULL) && (messageBodyLengthBytes == 0)) ||
          (messageBodyLengthBytes > 0)) &&
-        ((pResponse->size == 0) || (pResponse->ppBody != NULL))) {
+        ((pResponse->bodySize == 0) || (pResponse->ppBody != NULL))) {
         errorCodeOrResponseLength = (int32_t) U_ERROR_COMMON_NO_MEMORY;
         // Allocate a buffer big enough to encode the outgoing message
         pBuffer = (char *) malloc(messageBodyLengthBytes + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES);
@@ -1157,11 +1047,11 @@ bool uGnssPrivateMessageIdIsWanted(uGnssPrivateMessageId_t *pMessageId,
 int32_t uGnssPrivateDecodeNmea(const char *pBuffer, size_t size,
                                char *pMessageId, size_t *pDiscard)
 {
-    int32_t errorCodeOrLength = (int32_t) U_ERROR_COMMON_NOT_FOUND;
+    int32_t errorCodeOrLength = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
     const char *pInput = pBuffer;
     size_t i = 0;
     size_t x;
-    const char *pMessageStart = NULL;
+    const char *pMessageStart = pBuffer;
     const char *pTalkerSentenceId = NULL;
     char talkerSentenceIdBuffer[U_GNSS_NMEA_MESSAGE_MATCH_LENGTH_CHARACTERS + 1];
     uint8_t checkSum = 0;
@@ -1169,123 +1059,109 @@ int32_t uGnssPrivateDecodeNmea(const char *pBuffer, size_t size,
     uGnssPrivateNmeaMatch_t match = U_GNSS_PRIVATE_NMEA_MATCH_NULL;
 
     if (pDiscard != NULL) {
+        errorCodeOrLength = (int32_t) U_ERROR_COMMON_NOT_FOUND;
         *pDiscard = 0;
-    }
-    // NMEA messages begin wih $, then comes the ID, which ends with a
-    // comma, then the message body (which cannot contain CRLF) and
-    // finally CRLF; match takes us through this:
-    while ((i < size) && (match < U_GNSS_PRIVATE_NMEA_MATCH_GOT_MATCHING_MESSAGE)) {
-        if (*pInput == '$') {
-            // If we get a dollar at any time we must be
-            // at the start of a new sentence, so reset
-            talkerSentenceIdBuffer[0] = 0;
-            pTalkerSentenceId = NULL;
-            pMessageStart = pInput;
-            match = U_GNSS_PRIVATE_NMEA_MATCH_GOT_DOLLAR;
-            checkSum = 0;
-        } else if (match == U_GNSS_PRIVATE_NMEA_MATCH_GOT_DOLLAR) {
-            // After the dollar we start the checkSum
-            checkSum ^= (uint8_t) * pInput;
-            if (pTalkerSentenceId == NULL) {
-                // Must have just had the dollar, mark this position as
-                // the start of the sentence/talker ID
-                pTalkerSentenceId = pInput;
-            }
-            if (*pInput == ',') {
-                // End of the sentence/talker ID, save it and
-                // see if it is what we're after
-                match = U_GNSS_PRIVATE_NMEA_MATCH_GOT_MATCHING_ID;
-                if (pMessageId != NULL) {
-                    x = pInput - pTalkerSentenceId;
-                    if (x > sizeof(talkerSentenceIdBuffer) - 1) {
-                        x = sizeof(talkerSentenceIdBuffer) - 1;
-                    }
-                    memcpy(talkerSentenceIdBuffer, pTalkerSentenceId, x);
-                    // Ensure terminator
-                    talkerSentenceIdBuffer[x] = 0;
-                    if (strstr(talkerSentenceIdBuffer, pMessageId) != talkerSentenceIdBuffer) {
-                        // Nope, wait for a new sentence to start
-                        match = U_GNSS_PRIVATE_NMEA_MATCH_NULL;
-                    }
-                }
-                // NULL the sentence/talker ID marker for a potential next time
+        // NMEA messages begin wih $, then comes the ID, which ends with a
+        // comma, then the message body (which cannot contain CRLF) and
+        // finally CRLF; match takes us through this:
+        while ((i < size) && (match < U_GNSS_PRIVATE_NMEA_MATCH_GOT_MATCHING_MESSAGE)) {
+            if (*pInput == '$') {
+                // If we get a dollar at any time we must be
+                // at the start of a new sentence, so reset
+                talkerSentenceIdBuffer[0] = 0;
                 pTalkerSentenceId = NULL;
-            }
-        } else if (match == U_GNSS_PRIVATE_NMEA_MATCH_GOT_MATCHING_ID) {
-            // Need a '*' to mark the start of the check-sum field
-            if (*pInput == '*') {
-                match = U_GNSS_PRIVATE_NMEA_MATCH_GOT_MATCHING_ID_AND_STAR;
-            } else {
-                // Just continue the check-sum
+                pMessageStart = pInput;
+                match = U_GNSS_PRIVATE_NMEA_MATCH_GOT_DOLLAR;
+                checkSum = 0;
+            } else if (match == U_GNSS_PRIVATE_NMEA_MATCH_GOT_DOLLAR) {
+                // After the dollar we start the checkSum
                 checkSum ^= (uint8_t) * pInput;
-            }
-        } else if (match == U_GNSS_PRIVATE_NMEA_MATCH_GOT_MATCHING_ID_AND_STAR) {
-            // Got the first character of the two-digit hex-coded check-sum field
-            hexCheckSumFromMessage[0] = *pInput;
-            match = U_GNSS_PRIVATE_NMEA_MATCH_GOT_MATCHING_ID_AND_CS_1;
-        } else if (match == U_GNSS_PRIVATE_NMEA_MATCH_GOT_MATCHING_ID_AND_CS_1) {
-            // Got the second character of the two-digit hex-coded check-sum field
-            match = U_GNSS_PRIVATE_NMEA_MATCH_NULL;
-            hexCheckSumFromMessage[1] = *pInput;
-            // See if it matches
-            x = 0;
-            uHexToBin(hexCheckSumFromMessage, sizeof(hexCheckSumFromMessage), (char *) &x);
-            if (checkSum == (uint8_t) x) {
-                match = U_GNSS_PRIVATE_NMEA_MATCH_GOT_MATCHING_ID_AND_VALID_CS;
-            }
-        } else if (match == U_GNSS_PRIVATE_NMEA_MATCH_GOT_MATCHING_ID_AND_VALID_CS) {
-            match = U_GNSS_PRIVATE_NMEA_MATCH_NULL;
-            if (*pInput == '\r') {
-                match = U_GNSS_PRIVATE_NMEA_MATCH_GOT_MATCHING_ID_AND_CR;
-            }
-        } else if (match == U_GNSS_PRIVATE_NMEA_MATCH_GOT_MATCHING_ID_AND_CR) {
-            match = U_GNSS_PRIVATE_NMEA_MATCH_NULL;
-            if (*pInput == '\n') {
-                // Yes, got the final LF in a matching talker/sentence, done it!
-                match = U_GNSS_PRIVATE_NMEA_MATCH_GOT_MATCHING_MESSAGE;
-            }
-        }
-
-        i++;
-        pInput++;
-        if (i > U_GNSS_NMEA_SENTENCE_MAX_LENGTH_BYTES) {
-            // Message has become too long: bail
-            match = U_GNSS_PRIVATE_NMEA_MATCH_NULL;
-            // This will cause us to exit the loop and
-            // "size" bytes to be discard
-            size = i;
-        }
-    }
-
-    if (match > U_GNSS_PRIVATE_NMEA_MATCH_NULL) {
-        // We got some parts of the message overhead, so
-        // could be a message
-        errorCodeOrLength = (int32_t) U_ERROR_COMMON_TIMEOUT;
-        if (match == U_GNSS_PRIVATE_NMEA_MATCH_GOT_MATCHING_MESSAGE) {
-            // Got a complete matching message, write the sentence/talker
-            // ID back to pMessageId, populate the offset and return the
-            // message length
-            if (pMessageId != NULL) {
-                memcpy(pMessageId, talkerSentenceIdBuffer, sizeof(talkerSentenceIdBuffer));
-            }
-            if (pDiscard != NULL) {
-                *pDiscard = pMessageStart - pBuffer;
-            }
-            errorCodeOrLength = pInput - pMessageStart;
-        } else {
-            // Not matching but there are some bytes here that could form
-            // part of a future match so set pDiscard to discard up to
-            // pMessageStart
-            if (pDiscard != NULL) {
-                *pDiscard = 0;
-                if (pMessageStart != NULL) {
-                    *pDiscard = pMessageStart - pBuffer;
+                if (pTalkerSentenceId == NULL) {
+                    // Must have just had the dollar, mark this position as
+                    // the start of the sentence/talker ID
+                    pTalkerSentenceId = pInput;
+                }
+                if (*pInput == ',') {
+                    // End of the sentence/talker ID, save it and
+                    // see if it is what we're after
+                    match = U_GNSS_PRIVATE_NMEA_MATCH_GOT_MATCHING_ID;
+                    if (pMessageId != NULL) {
+                        x = pInput - pTalkerSentenceId;
+                        if (x > sizeof(talkerSentenceIdBuffer) - 1) {
+                            x = sizeof(talkerSentenceIdBuffer) - 1;
+                        }
+                        memcpy(talkerSentenceIdBuffer, pTalkerSentenceId, x);
+                        // Ensure terminator
+                        talkerSentenceIdBuffer[x] = 0;
+                        if (strstr(talkerSentenceIdBuffer, pMessageId) != talkerSentenceIdBuffer) {
+                            // Nope, wait for a new sentence to start
+                            match = U_GNSS_PRIVATE_NMEA_MATCH_NULL;
+                        }
+                    }
+                    // NULL the sentence/talker ID marker for a potential next time
+                    pTalkerSentenceId = NULL;
+                }
+            } else if (match == U_GNSS_PRIVATE_NMEA_MATCH_GOT_MATCHING_ID) {
+                // Need a '*' to mark the start of the check-sum field
+                if (*pInput == '*') {
+                    match = U_GNSS_PRIVATE_NMEA_MATCH_GOT_MATCHING_ID_AND_STAR;
+                } else {
+                    // Just continue the check-sum
+                    checkSum ^= (uint8_t) * pInput;
+                }
+            } else if (match == U_GNSS_PRIVATE_NMEA_MATCH_GOT_MATCHING_ID_AND_STAR) {
+                // Got the first character of the two-digit hex-coded check-sum field
+                hexCheckSumFromMessage[0] = *pInput;
+                match = U_GNSS_PRIVATE_NMEA_MATCH_GOT_MATCHING_ID_AND_CS_1;
+            } else if (match == U_GNSS_PRIVATE_NMEA_MATCH_GOT_MATCHING_ID_AND_CS_1) {
+                // Got the second character of the two-digit hex-coded check-sum field
+                match = U_GNSS_PRIVATE_NMEA_MATCH_NULL;
+                hexCheckSumFromMessage[1] = *pInput;
+                // See if it matches
+                x = 0;
+                uHexToBin(hexCheckSumFromMessage, sizeof(hexCheckSumFromMessage), (char *) &x);
+                if (checkSum == (uint8_t) x) {
+                    match = U_GNSS_PRIVATE_NMEA_MATCH_GOT_MATCHING_ID_AND_VALID_CS;
+                }
+            } else if (match == U_GNSS_PRIVATE_NMEA_MATCH_GOT_MATCHING_ID_AND_VALID_CS) {
+                match = U_GNSS_PRIVATE_NMEA_MATCH_NULL;
+                if (*pInput == '\r') {
+                    match = U_GNSS_PRIVATE_NMEA_MATCH_GOT_MATCHING_ID_AND_CR;
+                }
+            } else if (match == U_GNSS_PRIVATE_NMEA_MATCH_GOT_MATCHING_ID_AND_CR) {
+                match = U_GNSS_PRIVATE_NMEA_MATCH_NULL;
+                if (*pInput == '\n') {
+                    // Yes, got the final LF in a matching talker/sentence, done it!
+                    match = U_GNSS_PRIVATE_NMEA_MATCH_GOT_MATCHING_MESSAGE;
                 }
             }
+
+            i++;
+            pInput++;
+            if (i > U_GNSS_NMEA_SENTENCE_MAX_LENGTH_BYTES) {
+                // Message has become too long: bail
+                match = U_GNSS_PRIVATE_NMEA_MATCH_NULL;
+                // This will cause us to exit the loop and
+                // "size" bytes to be discard
+                size = i;
+            }
         }
-    } else {
-        // Nuffin: opulate pDiscard with all we've found
-        if (pDiscard != NULL) {
+
+        if (match > U_GNSS_PRIVATE_NMEA_MATCH_NULL) {
+            // We got some parts of the message overhead, so
+            // could be a message; discard up to the start of it
+            *pDiscard = pMessageStart - pBuffer;
+            errorCodeOrLength = (int32_t) U_ERROR_COMMON_TIMEOUT;
+            if (match == U_GNSS_PRIVATE_NMEA_MATCH_GOT_MATCHING_MESSAGE) {
+                // Got a complete matching message, write the sentence/talker
+                // ID back to pMessageId and return the message length
+                if (pMessageId != NULL) {
+                    memcpy(pMessageId, talkerSentenceIdBuffer, sizeof(talkerSentenceIdBuffer));
+                }
+                errorCodeOrLength = pInput - pMessageStart;
+            }
+        } else {
+            // Nuffin: populate pDiscard with all we've found
             *pDiscard = size;
         }
     }
@@ -1427,15 +1303,12 @@ int32_t uGnssPrivateStreamDecodeRingBuffer(uGnssPrivateInstance_t *pInstance,
             }
             // Discard from the ring buffer, populating *pDiscard
             // with any amount left over to be discarded by the caller
-            *pDiscard += uRingBufferReadHandle(&(pInstance->ringBuffer), readHandle, NULL,
-                                               discardSize) - discardSize;
+            *pDiscard += discardSize - uRingBufferReadHandle(&(pInstance->ringBuffer),
+                                                             readHandle, NULL, discardSize);
             // Drop out of the loop if we succeed or if
-            // we are no longer discarding anything; this
-            // doesn't _actually_ need to be a loop, with
-            // the way the message/header decode functions
-            // are written, but using a loop allows them to
-            // kind of "request a discard" if that's useful
-        } while ((errorCodeOrLength < 0) && (discardSize > 0));
+            // we are no longer discarding anything or
+            // if we are unable to discard everything
+        } while ((errorCodeOrLength < 0) && (discardSize > 0) && (*pDiscard == 0));
 
         if (errorCodeOrLength >= 0) {
             // Set the returned ID
@@ -1809,10 +1682,10 @@ int32_t uGnssPrivateSendReceiveUbxMessage(uGnssPrivateInstance_t *pInstance,
     response.cls = messageClass;
     response.id = messageId;
     response.ppBody = NULL;
-    response.size = 0;
+    response.bodySize = 0;
     if (pResponseBody != NULL) {
         response.ppBody = &pResponseBody;
-        response.size = maxResponseBodyLengthBytes;
+        response.bodySize = maxResponseBodyLengthBytes;
     }
 
     return sendReceiveUbxMessage(pInstance, messageClass, messageId,
@@ -1835,7 +1708,7 @@ int32_t uGnssPrivateSendReceiveUbxMessageAlloc(uGnssPrivateInstance_t *pInstance
     response.cls = messageClass;
     response.id = messageId;
     response.ppBody = ppResponseBody;
-    response.size = 0;
+    response.bodySize = 0;
 
     return sendReceiveUbxMessage(pInstance, messageClass, messageId,
                                  pMessageBody, messageBodyLengthBytes,
@@ -1852,7 +1725,7 @@ int32_t uGnssPrivateSendUbxMessage(uGnssPrivateInstance_t *pInstance,
 {
     int32_t errorCode;
     uGnssPrivateUbxReceiveMessage_t response;
-    char ackBody[2];
+    char ackBody[2] = {0};
     char *pBody = &(ackBody[0]);
 
     // Fill the response structure in with the message class
@@ -1860,7 +1733,7 @@ int32_t uGnssPrivateSendUbxMessage(uGnssPrivateInstance_t *pInstance,
     response.cls = 0x05;
     response.id = -1;
     response.ppBody = &pBody;
-    response.size = sizeof(ackBody);
+    response.bodySize = sizeof(ackBody);
 
     errorCode = sendReceiveUbxMessage(pInstance, messageClass, messageId,
                                       pMessageBody, messageBodyLengthBytes,

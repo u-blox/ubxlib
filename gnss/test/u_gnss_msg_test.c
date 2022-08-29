@@ -656,6 +656,10 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveNonBlocking")
                     uPortTaskBlock(U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_POLL_DELAY_SECONDS * 1000);
                 }
 
+                // Wait for all of those to come through
+                U_TEST_PRINT_LINE("wait for it...");
+                uPortTaskBlock(5000);
+
                 // Now stop the odd ones
                 for (size_t x = 1; x < sizeof(gpMessageReceive) / sizeof(gpMessageReceive[0]); x += 2) {
                     pTmp = gpMessageReceive[x];
@@ -664,7 +668,7 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveNonBlocking")
                 }
 
                 // A little more cooking...
-                U_TEST_PRINT_LINE("wait for it...");
+                U_TEST_PRINT_LINE("just a little longer...");
                 uPortTaskBlock(5000);
 
                 // Record the stack extent of the transparent receive task and then

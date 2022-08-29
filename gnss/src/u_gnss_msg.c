@@ -111,9 +111,12 @@
 /** How long the asynchronous message receive task guarantees to give
  * to the rest of the system; if this is made larger the asynchronous
  * receive task won't be able to service the input stream so often
- * and hence the UART/I2C transport may overflow.
+ * and hence the UART/I2C transport may overflow.  25 ms allows
+ * polling of the 9600 baud UART implementation on STM32F4 to keep
+ * up; more than that and it likely won't, resulting in data loss at the
+ * UART level.
  */
-# define U_GNSS_MSG_TASK_STACK_YIELD_TIME_MS 50
+# define U_GNSS_MSG_TASK_STACK_YIELD_TIME_MS 25
 #endif
 
 #if U_GNSS_MSG_TASK_STACK_YIELD_TIME_MS < U_CFG_OS_YIELD_MS
@@ -143,8 +146,8 @@ static void msgReceiveTask(void *pParam)
     uGnssPrivateMsgReceive_t *pMsgReceive = pInstance->pMsgReceive;
     uGnssPrivateMsgReader_t *pReader;
     int32_t errorCodeOrLength;
+    int32_t receiveSize;
     size_t discardSize = 0;
-    int32_t dataLength;
     uGnssMessageId_t messageId;
     uGnssPrivateMessageId_t privateMessageId;
     char nmeaId[U_GNSS_NMEA_MESSAGE_MATCH_LENGTH_CHARACTERS + 1];
@@ -163,63 +166,64 @@ static void msgReceiveTask(void *pParam)
         // provided this task is brought up and torn down in an organised way
 
         // Pull stuff into the ring buffer
-        uGnssPrivateStreamFillRingBuffer(pInstance, 0, 0);
+        receiveSize = uGnssPrivateStreamFillRingBuffer(pInstance, 0, 0);
         // Deal with any discard from a previous run around this loop
         discardSize -= uRingBufferReadHandle(&(pInstance->ringBuffer),
                                              pMsgReceive->ringBufferReadHandle,
                                              NULL, discardSize);
-        errorCodeOrLength = uRingBufferDataSizeHandle(&(pInstance->ringBuffer),
-                                                      pMsgReceive->ringBufferReadHandle);
-        dataLength = errorCodeOrLength;
-        while (dataLength > 0) {
-            privateMessageId.type = U_GNSS_PROTOCOL_ALL;
-            // Attempt to decode a message of any type from the ring buffer
-            errorCodeOrLength = uGnssPrivateStreamDecodeRingBuffer(pInstance,
-                                                                   pMsgReceive->ringBufferReadHandle,
-                                                                   &privateMessageId,
-                                                                   &discardSize);
-            if (errorCodeOrLength >= 0) {
+        if (discardSize == 0) {
+            errorCodeOrLength = uRingBufferDataSizeHandle(&(pInstance->ringBuffer),
+                                                          pMsgReceive->ringBufferReadHandle);
+            // Run around a loop processing the data from the ring buffer
+            // for as long as we're still finding messages in it
+            while (errorCodeOrLength > 0) {
+                privateMessageId.type = U_GNSS_PROTOCOL_ALL;
+                // Attempt to decode a message of any type from the ring buffer
+                errorCodeOrLength = uGnssPrivateStreamDecodeRingBuffer(pInstance,
+                                                                       pMsgReceive->ringBufferReadHandle,
+                                                                       &privateMessageId,
+                                                                       &discardSize);
+                if (errorCodeOrLength > 0) {
+                    // Remember how long the message is
+                    pMsgReceive->msgBytesLeftToRead = errorCodeOrLength;
 
-                // Remember how much data we have
-                pMsgReceive->msgBytesLeftToRead = errorCodeOrLength;
+                    if (uGnssPrivateMessageIdToPublic(&privateMessageId, &messageId, nmeaId) == 0) {
+                        // Got something, with a message ID now in public form;
+                        // go through the list of readers looking for those interested
 
-                if (uGnssPrivateMessageIdToPublic(&privateMessageId, &messageId, nmeaId) == 0) {
-                    // Got something, with a message ID now in public form;
-                    // go through the list of readers looking for those interested
+                        U_PORT_MUTEX_LOCK(pMsgReceive->readerMutexHandle);
 
-                    U_PORT_MUTEX_LOCK(pMsgReceive->readerMutexHandle);
-
-                    pReader = pMsgReceive->pReaderList;
-                    while (pReader != NULL) {
-                        if (uGnssPrivateMessageIdIsWanted(&privateMessageId,
-                                                          &(pReader->privateMessageId))) {
-                            // This reader is interested, call the callback
-                            ((uGnssMsgReceiveCallback_t) pReader->pCallback)(pInstance->gnssHandle,
-                                                                             &messageId,
-                                                                             errorCodeOrLength,
-                                                                             pReader->pCallbackParam);
+                        pReader = pMsgReceive->pReaderList;
+                        while (pReader != NULL) {
+                            if (uGnssPrivateMessageIdIsWanted(&privateMessageId,
+                                                              &(pReader->privateMessageId))) {
+                                // This reader is interested, call the callback
+                                ((uGnssMsgReceiveCallback_t) pReader->pCallback)(pInstance->gnssHandle,
+                                                                                 &messageId,
+                                                                                 errorCodeOrLength,
+                                                                                 pReader->pCallbackParam);
+                            }
+                            // Next!
+                            pReader = pReader->pNext;
                         }
-                        // Next!
-                        pReader = pReader->pNext;
+
+                        U_PORT_MUTEX_UNLOCK(pMsgReceive->readerMutexHandle);
                     }
 
-                    U_PORT_MUTEX_UNLOCK(pMsgReceive->readerMutexHandle);
+                    // Clear out any remaining data
+                    uRingBufferReadHandle(&(pInstance->ringBuffer),
+                                          pMsgReceive->ringBufferReadHandle, NULL,
+                                          pMsgReceive->msgBytesLeftToRead);
                 }
-
-                // Clear out any remaining data
-                uRingBufferReadHandle(&(pInstance->ringBuffer),
-                                      pMsgReceive->ringBufferReadHandle, NULL,
-                                      pMsgReceive->msgBytesLeftToRead);
-                dataLength -= errorCodeOrLength;
-            } else {
-                // Error or "need more data" case
-                dataLength = errorCodeOrLength;
             }
         }
 
-        if (errorCodeOrLength != (int32_t) U_ERROR_COMMON_TIMEOUT) {
-            // Relax to let others in provided we aren't half way
-            // through receiving a message
+        // Relax to let others in: relax for twice as long if we
+        // last received nothing in order to allow some data to
+        // build up
+        if (receiveSize == 0) {
+            uPortTaskBlock(U_GNSS_MSG_TASK_STACK_YIELD_TIME_MS * 2);
+        } else {
             uPortTaskBlock(U_GNSS_MSG_TASK_STACK_YIELD_TIME_MS);
         }
     }
@@ -303,14 +307,24 @@ bool uGnssMsgIdIsWanted(uGnssMessageId_t *pMessageId,
 bool uGnssMsgIsGood(char *pBuffer, size_t size)
 {
     bool isGood = false;
+    int32_t decodedSize;
+    size_t discardSize = 0xFFFFFFFF;
+    const char *pMessageEnd = NULL;
 
-    if (uUbxProtocolDecode(pBuffer, size, NULL, NULL, NULL, 0, NULL) >= 0) {
+    decodedSize = uUbxProtocolDecode(pBuffer, size, NULL, NULL, NULL, 0, &pMessageEnd);
+    if ((decodedSize >= 0) &&
+        (pMessageEnd - pBuffer == decodedSize + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES)) {
         // In the ubx message case the decode function returns the
         // body length, hence the >= 0, since a message need have no body
         // Iiiiiiii... ain't got no... boh-u-oooh-dee...
+        // Oh, and the message has to start at the start of the buffer,
+        // if it does not it is not valid
         isGood = true;
     } else {
-        if (uGnssPrivateDecodeNmea(pBuffer, size, NULL, NULL) > 0) {
+        // Checking that discardSize is zero confirms that the message
+        // starts at the start of the buffer
+        decodedSize = uGnssPrivateDecodeNmea(pBuffer, size, NULL, &discardSize);
+        if ((decodedSize > 0) && (discardSize == 0)) {
             isGood = true;
         }
     }

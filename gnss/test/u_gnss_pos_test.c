@@ -358,6 +358,7 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosPos")
         uGnssSetUbxMessagePrint(gnssHandle, true);
 
         U_PORT_TEST_ASSERT(gGnssHandle == gnssHandle);
+        U_TEST_PRINT_LINE("asynchonous API received error code %d.", gErrorCode);
         U_PORT_TEST_ASSERT(gErrorCode == 0);
         U_TEST_PRINT_LINE("position establishment took %d second(s).",
                           (int32_t) (uPortGetTickTimeMs() - startTime) / 1000);
