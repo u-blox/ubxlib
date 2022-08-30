@@ -1,5 +1,5 @@
 # Introduction
-These directories provide examples that are specific to u-blox cellular modules, e.g. SARA-U201, SARA-R4 and SARA-R5.
+These directories provide examples that are specific to u-blox cellular modules, e.g. SARA-U201, SARA-R4 and SARA-R5.  For basic things, e.g. powering up a cellular module, using a cellular module for [sockets/TLS](example/sockets) or [MQTT](example/mqtt_client) or [CellLocate](example/location) or [security](example/security) or using a [GNSS module](example/location) that is incorporated into a cellular module etc., you should refer to the generic examples instead; the APIs demonstrated here are only those _specific_ to certain aspects of cellular behaviour, hence requiring use of the [cell](/cell) API directly.
 
 # Examples
 - [lte_cfg](lte_cfg) contains an example of how to configure an LTE cellular module (e.g. SARA-R4 or SARA-R5) to obtain network service in exactly the way you like using `ubxlib`.  If you are having trouble getting network service or you want to learn how to programmatical configure the cellular network settings, this example may be of use to you.
