@@ -159,6 +159,7 @@ typedef enum {
     U_GNSS_PROTOCOL_UBX = 0,
     U_GNSS_PROTOCOL_NMEA = 1,
     U_GNSS_PROTOCOL_MAX_NUM,
+    U_GNSS_PROTOCOL_NONE,
     U_GNSS_PROTOCOL_ALL
 } uGnssProtocol_t;
 

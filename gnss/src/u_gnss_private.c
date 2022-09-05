@@ -108,28 +108,6 @@ typedef struct {
                           CRC calculation will fail. */
 } uGnssPrivateUbxReceiveMessage_t;
 
-/** Track state of NMEA message decode matching.
- */
-typedef enum {
-    U_GNSS_PRIVATE_NMEA_MATCH_NULL = 0,                         /**< no sentence yet detected. */
-    U_GNSS_PRIVATE_NMEA_MATCH_GOT_DOLLAR = 1,                   /**< got the '$'. */
-    U_GNSS_PRIVATE_NMEA_MATCH_GOT_MATCHING_ID = 2,              /**< got the ',' after the '$' and the
-                                                                     sentence/talker ID matches. */
-    U_GNSS_PRIVATE_NMEA_MATCH_GOT_MATCHING_ID_AND_STAR = 3,     /**< got the '*' which indicates that
-                                                                     the check-sum comes next after
-                                                                     a matching sentence/talker ID. */
-    U_GNSS_PRIVATE_NMEA_MATCH_GOT_MATCHING_ID_AND_CS_1 = 4,     /**< got the first digit of the check-sum
-                                                                     after a matching sentence/talker ID. */
-    U_GNSS_PRIVATE_NMEA_MATCH_GOT_MATCHING_ID_AND_VALID_CS = 5, /**< got a valid check-sum for a sentence
-                                                                     where the sentence/talker matches. */
-    U_GNSS_PRIVATE_NMEA_MATCH_GOT_MATCHING_ID_AND_CR = 6,       /**< got the CR at the end of a sentence
-                                                                     where the sentence/talker matches. */
-    U_GNSS_PRIVATE_NMEA_MATCH_GOT_MATCHING_MESSAGE = 7,         /**< got the LF immediately after the
-                                                                     CR at the end of a sentence where
-                                                                     the sentence/talker matches. */
-    U_GNSS_PRIVATE_NMEA_MATCH_MAX_NUM
-} uGnssPrivateNmeaMatch_t;
-
 /* ----------------------------------------------------------------
  * VARIABLES THAT ARE SHARED THROUGHOUT THE GNSS IMPLEMENTATION
  * -------------------------------------------------------------- */
@@ -1045,124 +1023,133 @@ bool uGnssPrivateMessageIdIsWanted(uGnssPrivateMessageId_t *pMessageId,
 
 // Find a valid, matching, NMEA-format message in a buffer.
 int32_t uGnssPrivateDecodeNmea(const char *pBuffer, size_t size,
-                               char *pMessageId, size_t *pDiscard)
+                               char *pMessageId, size_t *pDiscard,
+                               uGnssPrivateMessageDecodeState_t *pSavedState)
 {
     int32_t errorCodeOrLength = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
     const char *pInput = pBuffer;
     size_t i = 0;
     size_t x;
     const char *pMessageStart = pBuffer;
-    const char *pTalkerSentenceId = NULL;
-    char talkerSentenceIdBuffer[U_GNSS_NMEA_MESSAGE_MATCH_LENGTH_CHARACTERS + 1];
-    uint8_t checkSum = 0;
-    char hexCheckSumFromMessage[2] = {0};
-    uGnssPrivateNmeaMatch_t match = U_GNSS_PRIVATE_NMEA_MATCH_NULL;
+    uGnssPrivateMessageNmeaDecodeState_t state = {0};
 
     if (pDiscard != NULL) {
         errorCodeOrLength = (int32_t) U_ERROR_COMMON_NOT_FOUND;
         *pDiscard = 0;
+        if ((pSavedState != NULL) && (pSavedState->type == U_GNSS_PROTOCOL_NMEA)) {
+            // Fill in the state from the passed-in state
+            state = pSavedState->saved.nmea;
+            pInput += state.startOffset;
+            i = state.startOffset;
+        }
+
         // NMEA messages begin wih $, then comes the ID, which ends with a
         // comma, then the message body (which cannot contain CRLF) and
         // finally CRLF; match takes us through this:
-        while ((i < size) && (match < U_GNSS_PRIVATE_NMEA_MATCH_GOT_MATCHING_MESSAGE)) {
+        while ((i < size) && (state.match < U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_GOT_MATCHING_MESSAGE)) {
             if (*pInput == '$') {
                 // If we get a dollar at any time we must be
                 // at the start of a new sentence, so reset
-                talkerSentenceIdBuffer[0] = 0;
-                pTalkerSentenceId = NULL;
+                memset(state.talkerSentenceIdBuffer, 0, sizeof(state.talkerSentenceIdBuffer));
                 pMessageStart = pInput;
-                match = U_GNSS_PRIVATE_NMEA_MATCH_GOT_DOLLAR;
-                checkSum = 0;
-            } else if (match == U_GNSS_PRIVATE_NMEA_MATCH_GOT_DOLLAR) {
+                state.match = U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_GOT_DOLLAR;
+                state.checkSum = 0;
+            } else if (state.match == U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_GOT_DOLLAR) {
                 // After the dollar we start the checkSum
-                checkSum ^= (uint8_t) * pInput;
-                if (pTalkerSentenceId == NULL) {
-                    // Must have just had the dollar, mark this position as
-                    // the start of the sentence/talker ID
-                    pTalkerSentenceId = pInput;
-                }
-                if (*pInput == ',') {
-                    // End of the sentence/talker ID, save it and
-                    // see if it is what we're after
-                    match = U_GNSS_PRIVATE_NMEA_MATCH_GOT_MATCHING_ID;
-                    if (pMessageId != NULL) {
-                        x = pInput - pTalkerSentenceId;
-                        if (x > sizeof(talkerSentenceIdBuffer) - 1) {
-                            x = sizeof(talkerSentenceIdBuffer) - 1;
-                        }
-                        memcpy(talkerSentenceIdBuffer, pTalkerSentenceId, x);
-                        // Ensure terminator
-                        talkerSentenceIdBuffer[x] = 0;
-                        if (strstr(talkerSentenceIdBuffer, pMessageId) != talkerSentenceIdBuffer) {
-                            // Nope, wait for a new sentence to start
-                            match = U_GNSS_PRIVATE_NMEA_MATCH_NULL;
-                        }
+                state.checkSum ^= (uint8_t) *pInput; // *NOPAD*
+                if (*pInput != ',') {
+                    x = pInput - pMessageStart - 1;
+                    // -1 to always leave a null terminator
+                    if (x < sizeof(state.talkerSentenceIdBuffer) - 1) {
+                        // Save this character of the talker/sentence
+                        state.talkerSentenceIdBuffer[pInput - pMessageStart - 1] = *pInput;
+                    } else {
+                        // Too much man
+                        state.match = U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_NULL;
                     }
-                    // NULL the sentence/talker ID marker for a potential next time
-                    pTalkerSentenceId = NULL;
+                } else {
+                    // End of the talker/sentence ID,
+                    // see if it is what we're after
+                    state.match = U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_GOT_MATCHING_ID;
+                    if ((pMessageId != NULL) &&
+                        (strstr(state.talkerSentenceIdBuffer, pMessageId) != state.talkerSentenceIdBuffer)) {
+                        // Nope, wait for a new sentence to start
+                        state.match = U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_NULL;
+                    }
                 }
-            } else if (match == U_GNSS_PRIVATE_NMEA_MATCH_GOT_MATCHING_ID) {
+            } else if (state.match == U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_GOT_MATCHING_ID) {
                 // Need a '*' to mark the start of the check-sum field
                 if (*pInput == '*') {
-                    match = U_GNSS_PRIVATE_NMEA_MATCH_GOT_MATCHING_ID_AND_STAR;
+                    state.match = U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_GOT_MATCHING_ID_AND_STAR;
                 } else {
                     // Just continue the check-sum
-                    checkSum ^= (uint8_t) * pInput;
+                    state.checkSum ^= (uint8_t) *pInput; // *NOPAD*
                 }
-            } else if (match == U_GNSS_PRIVATE_NMEA_MATCH_GOT_MATCHING_ID_AND_STAR) {
+            } else if (state.match == U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_GOT_MATCHING_ID_AND_STAR) {
                 // Got the first character of the two-digit hex-coded check-sum field
-                hexCheckSumFromMessage[0] = *pInput;
-                match = U_GNSS_PRIVATE_NMEA_MATCH_GOT_MATCHING_ID_AND_CS_1;
-            } else if (match == U_GNSS_PRIVATE_NMEA_MATCH_GOT_MATCHING_ID_AND_CS_1) {
+                state.hexCheckSumFromMessage[0] = *pInput;
+                state.match = U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_GOT_MATCHING_ID_AND_CS_1;
+            } else if (state.match == U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_GOT_MATCHING_ID_AND_CS_1) {
                 // Got the second character of the two-digit hex-coded check-sum field
-                match = U_GNSS_PRIVATE_NMEA_MATCH_NULL;
-                hexCheckSumFromMessage[1] = *pInput;
+                state.match = U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_NULL;
+                state.hexCheckSumFromMessage[1] = *pInput;
                 // See if it matches
                 x = 0;
-                uHexToBin(hexCheckSumFromMessage, sizeof(hexCheckSumFromMessage), (char *) &x);
-                if (checkSum == (uint8_t) x) {
-                    match = U_GNSS_PRIVATE_NMEA_MATCH_GOT_MATCHING_ID_AND_VALID_CS;
+                uHexToBin(state.hexCheckSumFromMessage, sizeof(state.hexCheckSumFromMessage), (char *) &x);
+                if (state.checkSum == (uint8_t) x) {
+                    state.match = U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_GOT_MATCHING_ID_AND_VALID_CS;
                 }
-            } else if (match == U_GNSS_PRIVATE_NMEA_MATCH_GOT_MATCHING_ID_AND_VALID_CS) {
-                match = U_GNSS_PRIVATE_NMEA_MATCH_NULL;
+            } else if (state.match == U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_GOT_MATCHING_ID_AND_VALID_CS) {
+                state.match = U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_NULL;
                 if (*pInput == '\r') {
-                    match = U_GNSS_PRIVATE_NMEA_MATCH_GOT_MATCHING_ID_AND_CR;
+                    state.match = U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_GOT_MATCHING_ID_AND_CR;
                 }
-            } else if (match == U_GNSS_PRIVATE_NMEA_MATCH_GOT_MATCHING_ID_AND_CR) {
-                match = U_GNSS_PRIVATE_NMEA_MATCH_NULL;
+            } else if (state.match == U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_GOT_MATCHING_ID_AND_CR) {
+                state.match = U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_NULL;
                 if (*pInput == '\n') {
                     // Yes, got the final LF in a matching talker/sentence, done it!
-                    match = U_GNSS_PRIVATE_NMEA_MATCH_GOT_MATCHING_MESSAGE;
+                    state.match = U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_GOT_MATCHING_MESSAGE;
                 }
             }
 
             i++;
             pInput++;
-            if (i > U_GNSS_NMEA_SENTENCE_MAX_LENGTH_BYTES) {
+            if ((state.match > U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_NULL) &&
+                (i > U_GNSS_NMEA_SENTENCE_MAX_LENGTH_BYTES)) {
                 // Message has become too long: bail
-                match = U_GNSS_PRIVATE_NMEA_MATCH_NULL;
-                // This will cause us to exit the loop and
-                // "size" bytes to be discard
-                size = i;
+                state.match = U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_NULL;
             }
         }
 
-        if (match > U_GNSS_PRIVATE_NMEA_MATCH_NULL) {
+        if (state.match > U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_NULL) {
             // We got some parts of the message overhead, so
-            // could be a message; discard up to the start of it
+            // store the offset for next time
+            state.startOffset = pInput - pMessageStart;
+            // Discard up to the start of the message
             *pDiscard = pMessageStart - pBuffer;
             errorCodeOrLength = (int32_t) U_ERROR_COMMON_TIMEOUT;
-            if (match == U_GNSS_PRIVATE_NMEA_MATCH_GOT_MATCHING_MESSAGE) {
+            if (state.match == U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_GOT_MATCHING_MESSAGE) {
                 // Got a complete matching message, write the sentence/talker
                 // ID back to pMessageId and return the message length
                 if (pMessageId != NULL) {
-                    memcpy(pMessageId, talkerSentenceIdBuffer, sizeof(talkerSentenceIdBuffer));
+                    memcpy(pMessageId, state.talkerSentenceIdBuffer,
+                           sizeof(state.talkerSentenceIdBuffer));
                 }
                 errorCodeOrLength = pInput - pMessageStart;
+                // Reset the state
+                memset(&state, 0, sizeof(state));
             }
         } else {
             // Nuffin: populate pDiscard with all we've found
             *pDiscard = size;
+            // Set the state back to defaults
+            memset(&state, 0, sizeof(state));
+        }
+
+        if (pSavedState != NULL) {
+            // Save the state
+            pSavedState->type = U_GNSS_PROTOCOL_NMEA;
+            pSavedState->saved.nmea = state;
         }
     }
 
@@ -1235,7 +1222,8 @@ int32_t uGnssPrivateStreamGetReceiveSize(int32_t streamHandle,
 int32_t uGnssPrivateStreamDecodeRingBuffer(uGnssPrivateInstance_t *pInstance,
                                            int32_t readHandle,
                                            uGnssPrivateMessageId_t *pPrivateMessageId,
-                                           size_t *pDiscard)
+                                           size_t *pDiscard,
+                                           uGnssPrivateMessageDecodeState_t *pSavedState)
 {
     int32_t errorCodeOrLength = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
     char buffer[U_GNSS_NMEA_SENTENCE_MAX_LENGTH_BYTES * 2];  // * 2 so that we are more likely
@@ -1282,7 +1270,8 @@ int32_t uGnssPrivateStreamDecodeRingBuffer(uGnssPrivateInstance_t *pInstance,
                     // protocol has no length indicator in the header,
                     // we have to play "hunt the CRLF"
                     errorCodeOrLength = uGnssPrivateDecodeNmea(buffer, receiveSize,
-                                                               nmeaStr, &discardSize);
+                                                               nmeaStr, &discardSize,
+                                                               pSavedState);
                     break;
                 case U_GNSS_PROTOCOL_ALL:
                     // Since an NMEA message is all ASCII and the header
@@ -1295,7 +1284,8 @@ int32_t uGnssPrivateStreamDecodeRingBuffer(uGnssPrivateInstance_t *pInstance,
                     if ((errorCodeOrLength < 0) && (errorCodeOrLength != U_ERROR_COMMON_TIMEOUT)) {
                         protocolFound = U_GNSS_PROTOCOL_NMEA;
                         errorCodeOrLength = uGnssPrivateDecodeNmea(buffer, receiveSize,
-                                                                   nmeaStr, &discardSize);
+                                                                   nmeaStr, &discardSize,
+                                                                   pSavedState);
                     }
                     break;
                 default:
@@ -1591,11 +1581,13 @@ int32_t uGnssPrivateReceiveStreamMessage(uGnssPrivateInstance_t *pInstance,
     int32_t x = timeoutMs > U_GNSS_RING_BUFFER_MIN_FILL_TIME_MS * 10 ? timeoutMs / 10 :
                 U_GNSS_RING_BUFFER_MIN_FILL_TIME_MS;
     int32_t y;
+    uGnssPrivateMessageDecodeState_t state;
 
     if ((pInstance != NULL) && (pPrivateMessageId != NULL) &&
         (ppBuffer != NULL) && ((*ppBuffer == NULL) || (size > 0))) {
         errorCodeOrLength = (int32_t) U_ERROR_COMMON_TIMEOUT;
         startTimeMs = uPortGetTickTimeMs();
+        U_GNSS_PRIVATE_MESSAGE_DECODE_STATE_DEFAULT(&state);
         // Lock our read pointer while we look for stuff
         uRingBufferLockReadHandle(&(pInstance->ringBuffer), readHandle);
         // This is constructed as a do()/while() so that it always has one go
@@ -1618,7 +1610,8 @@ int32_t uGnssPrivateReceiveStreamMessage(uGnssPrivateInstance_t *pInstance,
                     errorCodeOrLength = uGnssPrivateStreamDecodeRingBuffer(pInstance,
                                                                            readHandle,
                                                                            pPrivateMessageId,
-                                                                           &discardSize);
+                                                                           &discardSize,
+                                                                           &state);
                     if (errorCodeOrLength > 0) {
                         if (*ppBuffer == NULL) {
                             // The caller didn't give us any memory; allocate the right

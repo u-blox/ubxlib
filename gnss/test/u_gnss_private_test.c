@@ -171,14 +171,37 @@ static bool checkUGnssPrivateDecodeNmea(const char *pBuffer, size_t size,
 {
     bool passNotFail = true;
     size_t discard = 0;
-    size_t x = 0xff;
-    int32_t errorCodeOrSize = (int32_t) U_ERROR_COMMON_TIMEOUT;
+    size_t incrementalSize = size;
+    size_t x;
+    size_t y;
+    int32_t errorCodeOrSize;
+    uGnssPrivateMessageDecodeState_t savedState;
+    uGnssPrivateMessageDecodeState_t *pSavedState = NULL;
 
+    // Randomly chose whether to use saved state or not
+    if (rand() % 2) {
+        pSavedState = &savedState;
+        U_GNSS_PRIVATE_MESSAGE_DECODE_STATE_DEFAULT(pSavedState);
+    }
+    if (pSavedState != NULL) {
+        // If we're using a saved state, feed the buffer into the decoder
+        // incrementally so as to make proper use of it
+        incrementalSize = 1;
+    }
     do {
-        errorCodeOrSize = uGnssPrivateDecodeNmea(pBuffer + discard, size - discard,
-                                                 pTalkerSentenceStr, &x);
+        x = 0xffffffff;
+        errorCodeOrSize = uGnssPrivateDecodeNmea(pBuffer + discard, incrementalSize - discard,
+                                                 pTalkerSentenceStr, &x, pSavedState);
         discard += x;
-    } while (x > 0);
+        if ((pSavedState != NULL) && (incrementalSize <= size)) {
+            y = rand() % (size - incrementalSize + 1);
+            if (y == 0) {
+                y++;
+            }
+            incrementalSize += y;
+        }
+    } while (((pSavedState == NULL) && (x > 0)) ||
+             ((pSavedState != NULL) && (incrementalSize <= size)));
 
     if ((errorCodeOrSize != expectedReturnValue) || (expectedDiscard != discard)) {
         passNotFail = false;

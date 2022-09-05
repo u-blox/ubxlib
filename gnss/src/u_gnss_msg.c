@@ -111,12 +111,9 @@
 /** How long the asynchronous message receive task guarantees to give
  * to the rest of the system; if this is made larger the asynchronous
  * receive task won't be able to service the input stream so often
- * and hence the UART/I2C transport may overflow.  25 ms allows
- * polling of the 9600 baud UART implementation on STM32F4 to keep
- * up; more than that and it likely won't, resulting in data loss at the
- * UART level.
+ * and hence the UART/I2C transport may overflow.
  */
-# define U_GNSS_MSG_TASK_STACK_YIELD_TIME_MS 25
+# define U_GNSS_MSG_TASK_STACK_YIELD_TIME_MS 50
 #endif
 
 #if U_GNSS_MSG_TASK_STACK_YIELD_TIME_MS < U_CFG_OS_YIELD_MS
@@ -145,14 +142,18 @@ static void msgReceiveTask(void *pParam)
     char queueItem[U_GNSS_MSG_RECEIVE_TASK_QUEUE_ITEM_SIZE_BYTES];
     uGnssPrivateMsgReceive_t *pMsgReceive = pInstance->pMsgReceive;
     uGnssPrivateMsgReader_t *pReader;
-    int32_t errorCodeOrLength;
+    int32_t errorCodeOrLength = (int32_t) U_ERROR_COMMON_UNKNOWN;
     int32_t receiveSize;
+    int32_t yieldTimeMs;
     size_t discardSize = 0;
     uGnssMessageId_t messageId;
     uGnssPrivateMessageId_t privateMessageId;
     char nmeaId[U_GNSS_NMEA_MESSAGE_MATCH_LENGTH_CHARACTERS + 1];
+    uGnssPrivateMessageDecodeState_t savedState;
 
     U_PORT_MUTEX_LOCK(pMsgReceive->taskRunningMutexHandle);
+
+    U_GNSS_PRIVATE_MESSAGE_DECODE_STATE_DEFAULT(&savedState);
 
     // Lock our ring buffer read handle; now we just have to keep up...
     uRingBufferLockReadHandle(&(pInstance->ringBuffer),
@@ -182,7 +183,8 @@ static void msgReceiveTask(void *pParam)
                 errorCodeOrLength = uGnssPrivateStreamDecodeRingBuffer(pInstance,
                                                                        pMsgReceive->ringBufferReadHandle,
                                                                        &privateMessageId,
-                                                                       &discardSize);
+                                                                       &discardSize,
+                                                                       &savedState);
                 if (errorCodeOrLength > 0) {
                     // Remember how long the message is
                     pMsgReceive->msgBytesLeftToRead = errorCodeOrLength;
@@ -218,13 +220,16 @@ static void msgReceiveTask(void *pParam)
             }
         }
 
-        // Relax to let others in: relax for twice as long if we
-        // last received nothing in order to allow some data to
-        // build up
-        if (receiveSize == 0) {
-            uPortTaskBlock(U_GNSS_MSG_TASK_STACK_YIELD_TIME_MS * 2);
-        } else {
-            uPortTaskBlock(U_GNSS_MSG_TASK_STACK_YIELD_TIME_MS);
+        if (errorCodeOrLength != (int32_t) U_ERROR_COMMON_TIMEOUT) {
+            // Relax to let others in, provided we aren't desperately
+            // seeking more data; relax for twice as long if we
+            // last received nothing in order to allow some data to
+            // build up
+            yieldTimeMs = U_GNSS_MSG_TASK_STACK_YIELD_TIME_MS;
+            if (receiveSize == 0) {
+                yieldTimeMs *= 2;
+            }
+            uPortTaskBlock(yieldTimeMs);
         }
     }
 
@@ -323,7 +328,7 @@ bool uGnssMsgIsGood(char *pBuffer, size_t size)
     } else {
         // Checking that discardSize is zero confirms that the message
         // starts at the start of the buffer
-        decodedSize = uGnssPrivateDecodeNmea(pBuffer, size, NULL, &discardSize);
+        decodedSize = uGnssPrivateDecodeNmea(pBuffer, size, NULL, &discardSize, NULL);
         if ((decodedSize > 0) && (discardSize == 0)) {
             isGood = true;
         }

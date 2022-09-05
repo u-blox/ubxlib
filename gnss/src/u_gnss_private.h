@@ -104,6 +104,11 @@ extern "C" {
   */
 #define U_GNSS_NMEA_SENTENCE_MAX_LENGTH_BYTES 82
 
+/** Macro to initialise any variable of type uGnssPrivateMessageDecodeState_t.
+ */
+#define U_GNSS_PRIVATE_MESSAGE_DECODE_STATE_DEFAULT(pState) {memset((pState), 0, sizeof(*(pState)));     \
+                                                             (pState)->type  = U_GNSS_PROTOCOL_NONE;}
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -145,6 +150,51 @@ typedef enum {
     U_GNSS_PRIVATE_STREAM_TYPE_I2C,
     U_GNSS_PRIVATE_STREAM_TYPE_MAX_NUM
 } uGnssPrivateStreamType_t;
+
+/** Track state of NMEA message decode matching.
+ */
+typedef enum {
+    U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_NULL = 0,                         /**< no sentence yet detected; must be 0. */
+    U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_GOT_DOLLAR = 1,                   /**< got the '$'. */
+    U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_GOT_MATCHING_ID = 2,              /**< got the ',' after the '$' and the
+                                                                             sentence/talker ID matches. */
+    U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_GOT_MATCHING_ID_AND_STAR = 3,     /**< got the '*' which indicates that
+                                                                             the check-sum comes next after
+                                                                             a matching sentence/talker ID. */
+    U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_GOT_MATCHING_ID_AND_CS_1 = 4,     /**< got the first digit of the check-sum
+                                                                             after a matching sentence/talker ID. */
+    U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_GOT_MATCHING_ID_AND_VALID_CS = 5, /**< got a valid check-sum for a sentence
+                                                                             where the sentence/talker matches. */
+    U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_GOT_MATCHING_ID_AND_CR = 6,       /**< got the CR at the end of a sentence
+                                                                             where the sentence/talker matches. */
+    U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_GOT_MATCHING_MESSAGE = 7,         /**< got the LF immediately after the
+                                                                             CR at the end of a sentence where
+                                                                             the sentence/talker matches. */
+    U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_MAX_NUM
+} uGnssPrivateMessageNmeaMatch_t;
+
+/** Structure to hold all the variables related to NMEA message decode;
+ * this must be such that memset()ing to zero achieves the default state.
+ */
+typedef struct {
+    size_t startOffset;
+    char talkerSentenceIdBuffer[U_GNSS_NMEA_MESSAGE_MATCH_LENGTH_CHARACTERS + 1];
+    uint8_t checkSum;
+    char hexCheckSumFromMessage[2];
+    uGnssPrivateMessageNmeaMatch_t match;
+} uGnssPrivateMessageNmeaDecodeState_t;
+
+/** Structure to hold the variables for any message decoder;
+ * a variable of this type must be initialised using the
+ * #U_GNSS_PRIVATE_MESSAGE_DECODE_STATE_DEFAULT macro.
+ */
+typedef struct {
+    uGnssProtocol_t type;
+    union {
+        uGnssPrivateMessageNmeaDecodeState_t nmea;
+    } saved; /**< any member of this union must be such that a memset() to 0
+                  will return it to defaults. */
+} uGnssPrivateMessageDecodeState_t;
 
 /** Structure to hold a message ID where the NMEA field is a buffer rather
  * than a pointer to a string.
@@ -393,39 +443,56 @@ bool uGnssPrivateMessageIdIsWanted(uGnssPrivateMessageId_t *pMessageId,
                                    uGnssPrivateMessageId_t *pMessageIdWanted);
 
 /** Find a valid NMEA-format message in the given buffer which
- * matches the given sentence/talker message ID string.
+ * matches the given sentence/talker message ID string.  Note in
+ * particular the usage of pDiscard.
  *
- * @param[in] pBuffer        a pointer to the buffer that might
- *                           contain an NMEA message; cannot be
- *                           NULL.
- * @param size               the amount of data at pBuffer.
- * @param[in,out] pMessageId a pointer to a buffer of size
- *                           at least
- *                           #U_GNSS_NMEA_MESSAGE_MATCH_LENGTH_CHARACTERS + 1
- *                           containing an NMEA ID (talker + sentence)
- *                           null-terminated string (e.g. "GNZDA");
- *                           on exit this will be over-written with
- *                           up to
- *                           #U_GNSS_NMEA_MESSAGE_MATCH_LENGTH_CHARACTERS
- *                           of the message ID matched followed by a
- *                           null-terminator; may be NULL, in which
- *                           case any valid NMEA message will match.
- * @param[out] pDiscard      if a matching NMEA message is found
- *                           this will be populated with the number
- *                           of bytes into pBuffer that the message
- *                           starts (i.e. the offset to the $ character
- *                           of the message); if a matching NMEA
- *                           messsage is not found this will be
- *                           populated with the number of bytes
- *                           that can be discarded.  Cannot be NULL.
- * @return                   on success the total length of the NMEA
- *                           message found (i.e from the $ to the
- *                           end of the CRLF), else negative error
- *                           code; if a partial message is found
- *                           #U_ERROR_COMMON_TIMEOUT will be returned.
+ * @param[in] pBuffer         a pointer to the buffer that might
+ *                            contain an NMEA message; cannot be
+ *                            NULL.
+ * @param size                the amount of data at pBuffer.
+ * @param[in,out] pMessageId  a pointer to a buffer of size
+ *                            at least
+ *                            #U_GNSS_NMEA_MESSAGE_MATCH_LENGTH_CHARACTERS + 1
+ *                            containing an NMEA ID (talker + sentence)
+ *                            null-terminated string (e.g. "GNZDA");
+ *                            on exit this will be over-written with
+ *                            up to
+ *                            #U_GNSS_NMEA_MESSAGE_MATCH_LENGTH_CHARACTERS
+ *                            of the message ID matched followed by a
+ *                            null-terminator; may be NULL, in which
+ *                            case any valid NMEA message will match.
+ * @param[out] pDiscard       if a matching NMEA message is found
+ *                            this will be populated with the number
+ *                            of bytes into pBuffer that the message
+ *                            starts (i.e. the offset to the $ character
+ *                            of the message).  If a matching NMEA
+ *                            messsage is not found this will be
+ *                            populated with the number of bytes
+ *                            that can be discarded; the caller should
+ *                            discard this number of bytes before calling
+ *                            this, or any other, message decode function
+ *                            again.  In particular, in the case of a
+ *                            potential-but-not-yet-complete match,
+ *                            if pSavedState is provided it will be set up to
+ *                            expect this number of bytes to be discarded
+ *                            before uGnssPrivateDecodeNmea() is called
+ *                            again.  Cannot be NULL.
+ * @param[in,out] pSavedState a pointer to a message decode state
+ *                            structure, which must have been initialised
+ *                            using the #U_GNSS_PRIVATE_MESSAGE_DECODE_STATE_DEFAULT
+ *                            macro; this is used to hold the state
+ *                            of a partial decode, saving time when
+ *                            the function returns #U_ERROR_COMMON_TIMEOUT;
+ *                            may be NULL, though that will be slow.
+ * @return                    on success the total length of the NMEA
+ *                            message found (i.e from the $ to the
+ *                            end of the CRLF), else negative error
+ *                            code; if a partial message is found
+ *                            #U_ERROR_COMMON_TIMEOUT will be returned.
  */
 int32_t uGnssPrivateDecodeNmea(const char *pBuffer, size_t size,
-                               char *pMessageId, size_t *pDiscard);
+                               char *pMessageId, size_t *pDiscard,
+                               uGnssPrivateMessageDecodeState_t *pSavedState);
 
 /* ----------------------------------------------------------------
  * FUNCTIONS: STREAMING TRANSPORT ONLY
@@ -531,6 +598,13 @@ int32_t uGnssPrivateStreamFillRingBuffer(uGnssPrivateInstance_t *pInstance,
  *                                   uGnssPrivateStreamFillRingBuffer(), until
  *                                   discard is zero.
  *                                   Cannot be NULL.
+ * @param [in,out] pSavedState       a pointer to a message decode state
+ *                                   structure, which must have been initialised
+ *                                   using the #U_GNSS_PRIVATE_MESSAGE_DECODE_STATE_DEFAULT
+ *                                   macro; this is used to hold the state
+ *                                   of a partial decode, saving time when
+ *                                   the function returns #U_ERROR_COMMON_TIMEOUT;
+ *                                   may be NULL, though that will be slow.
  * @return                           if the given message ID is detected then
  *                                   the number of bytes of data in it
  *                                   (including $, header, checksum, etc.)
@@ -543,7 +617,8 @@ int32_t uGnssPrivateStreamFillRingBuffer(uGnssPrivateInstance_t *pInstance,
 int32_t uGnssPrivateStreamDecodeRingBuffer(uGnssPrivateInstance_t *pInstance,
                                            int32_t readHandle,
                                            uGnssPrivateMessageId_t *pPrivateMessageId,
-                                           size_t *pDiscard);
+                                           size_t *pDiscard,
+                                           uGnssPrivateMessageDecodeState_t *pSavedState);
 
 /** Read data from the internal ring buffer into the given linear buffer.
  * Note: gUGnssPrivateMutex should be locked before this is called, but

@@ -109,11 +109,18 @@
 # define U_GNSS_MSG_TEST_MESSAGE_RECEIVE_TASK_THRESHOLD_BYTES 512
 #endif
 
-#ifndef U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_MIN
-/** The minimum number of messages we expect each message receiver
+#ifndef U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_MIN_UBX
+/** The minimum number of ubx messages we expect each message receiver
  * to receive during the non-blocking test.
  */
-# define U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_MIN 15
+# define U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_MIN_UBX 15
+#endif
+
+#ifndef U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_MIN_NMEA
+/** The minimum number of NMEA messages we expect each message receiver
+ * to receive during the non-blocking test.
+ */
+# define U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_MIN_NMEA 300
 #endif
 
 #ifndef U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_POS_DELAY_SECONDS
@@ -140,6 +147,7 @@ typedef struct {
     char *pBuffer;
     uGnssMessageId_t messageId;
     size_t numReceived;
+    size_t numDecodedMin;
     size_t numRead;
     size_t numDecoded;
     size_t numOutsize;
@@ -578,7 +586,7 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveNonBlocking")
             U_TEST_PRINT_LINE("running %d transparent non-blocking receives for ~%d second(s)...",
                               sizeof(gpMessageReceive) / sizeof(gpMessageReceive[0]),
                               U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_POLL_DELAY_SECONDS *
-                              U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_MIN);
+                              U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_MIN_UBX);
 
             // Note that we don't switch on message printing here, just too much man
 
@@ -604,9 +612,11 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveNonBlocking")
                     U_PORT_TEST_ASSERT(pTmp->pBuffer != NULL);
                     // Ask for all message types in either protocol
                     pTmp->messageId.type = U_GNSS_PROTOCOL_NMEA; // pNmea left at NULL is "all"
+                    pTmp->numDecodedMin = U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_MIN_NMEA;
                     if (x % 2) {
                         pTmp->messageId.type = U_GNSS_PROTOCOL_UBX;
                         pTmp->messageId.id.ubx = (U_GNSS_UBX_MESSAGE_CLASS_ALL << 8) | U_GNSS_UBX_MESSAGE_ID_ALL;
+                        pTmp->numDecodedMin = U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_MIN_UBX;
                     }
                 }
 
@@ -624,13 +634,13 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveNonBlocking")
                 // Messages should now start arriving at our callback
                 startTimeMs = uPortGetTickTimeMs();
                 U_PORT_TEST_ASSERT(uUbxProtocolEncode(0x02, 0x14, NULL, 0, command) == sizeof(command));
-                for (size_t x = 0; x < U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_MIN; x++) {
+                for (size_t x = 0; x < U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_MIN_UBX; x++) {
 # ifdef U_GNSS_MSG_TEST_INCLUDE_A_POS
                     if (z == 0) {
                         // Poll for RRLP (UBX-RXM-MEASX), the response to which can be quite long
                         U_TEST_PRINT_LINE("%3d polling for a ubx-format RRLP message in the mix.",
                                           U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_POLL_DELAY_SECONDS *
-                                          (U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_MIN - x));
+                                          (U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_MIN_UBX - x));
                         U_PORT_TEST_ASSERT(uGnssMsgSend(gnssHandle, command,
                                                         sizeof(command)) == sizeof(command));
                     } else {
@@ -649,7 +659,7 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveNonBlocking")
                     // Poll for RRLP (UBX-RXM-MEASX), the response to which can be quite long
                     U_TEST_PRINT_LINE("%3d polling for a ubx-format RRLP message in the mix.",
                                       U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_POLL_DELAY_SECONDS *
-                                      (U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_MIN - x));
+                                      (U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_MIN_UBX - x));
                     U_PORT_TEST_ASSERT(uGnssMsgSend(gnssHandle, command,
                                                     sizeof(command)) == sizeof(command));
 # endif
@@ -683,7 +693,7 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveNonBlocking")
 
                 // Print the outcome prettilyish
                 U_TEST_PRINT_LINE("run %d done, results are:", z + 1);
-                U_TEST_PRINT_LINE("handle   received   read    decoded    not wanted   outsized   when stopped");
+                U_TEST_PRINT_LINE("handle   received   read  decoded threshold   not wanted   outsized   when stopped");
                 for (size_t x = 0; x < sizeof(gpMessageReceive) / sizeof(gpMessageReceive[0]); x++) {
                     pTmp = gpMessageReceive[x];
                     uPortLog(U_TEST_PREFIX " %2d       ", pTmp->asyncHandle);
@@ -698,13 +708,13 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveNonBlocking")
                     } else {
                         uPortLog("  -  ");
                     }
-                    uPortLog("     ");
+                    uPortLog("   ");
                     if (pTmp->numDecoded > 0) {
                         uPortLog("%5d", pTmp->numDecoded);
                     } else {
                         uPortLog("  -  ");
                     }
-                    uPortLog("        ");
+                    uPortLog("   %5d        ", pTmp->numDecodedMin);
                     if (pTmp->numNotWanted > 0) {
                         uPortLog("%5d", pTmp->numNotWanted);
                     } else {
@@ -723,8 +733,9 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveNonBlocking")
                         uPortLog("  -  ");
                     }
                     uPortLog("\n");
+# ifdef U_GNSS_MSG_TEST_INCLUDE_A_POS
                     if (z == 0) {
-                        if (pTmp->numReceived < U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_MIN) {
+                        if (pTmp->numDecoded - pTmp->numOutsize < pTmp->numDecodedMin) {
                             bad = true;
                         }
                     } else {
@@ -732,10 +743,12 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveNonBlocking")
                             bad = true;
                         }
                     }
-                    if (pTmp->numRead < pTmp->numReceived - pTmp->numOutsize) {
+# else
+                    if (pTmp->numDecoded - pTmp->numOutsize < pTmp->numDecodedMin) {
                         bad = true;
                     }
-                    if (pTmp->numDecoded < pTmp->numRead) {
+# endif
+                    if (pTmp->numReceived - pTmp->numOutsize < pTmp->numRead) {
                         bad = true;
                     }
                     if (pTmp->numNotWanted > 0) {
