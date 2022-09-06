@@ -411,8 +411,8 @@ U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoCleanUp")
 
     x = uPortGetHeapMinFree();
     if (x >= 0) {
-        U_TEST_PRINT_LINE("U_CELL_INFO_TEST: heap had a minimum of %d"
-                          " byte(s) free at the end of these tests.", x);
+        U_TEST_PRINT_LINE("heap had a minimum of %d byte(s) free at the"
+                          " end of these tests.", x);
         U_PORT_TEST_ASSERT(x >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
     }
 }

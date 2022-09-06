@@ -1845,8 +1845,7 @@ U_PORT_TEST_FUNCTION("[port]", "portOsBlock")
 {
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
-    U_TEST_PRINT_LINE("U_PORT_TEST: waiting %d ms...",
-                      U_PORT_TEST_OS_BLOCK_TIME_MS);
+    U_TEST_PRINT_LINE("waiting %d ms...", U_PORT_TEST_OS_BLOCK_TIME_MS);
 
     uPortTaskBlock(U_PORT_TEST_OS_BLOCK_TIME_MS);
 

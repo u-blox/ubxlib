@@ -176,7 +176,7 @@ static void testBlocking(uDeviceHandle_t devHandle,
     gStopTimeMs = startTime + U_LOCATION_TEST_CFG_TIMEOUT_SECONDS * 1000;
     uLocationTestResetLocation(&location);
     if (pLocationCfg != NULL) {
-        U_TEST_PRINT_LINE("U_LOCATION_TEST: blocking API.");
+        U_TEST_PRINT_LINE("blocking API.");
         // The location type is supported (a GNSS network always
         // supports location, irrespective of the location type) so it
         // should work

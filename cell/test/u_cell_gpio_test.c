@@ -132,7 +132,7 @@ U_PORT_TEST_FUNCTION("[cellGpio]", "cellGpioBasic")
     //lint -esym(613, pInstance) Suppress possible use of NULL pointer
     // for pInstance from now on
 
-    U_TEST_PRINT_LINE("U_CELL_GPIO_TEST: setting GPIO ID %d to an output and 1.",
+    U_TEST_PRINT_LINE("setting GPIO ID %d to an output and 1.",
                       U_CFG_TEST_GPIO_NAME);
     U_PORT_TEST_ASSERT(uCellGpioConfig(cellHandle, U_CFG_TEST_GPIO_NAME,
                                        true, 1) == 0);
@@ -198,8 +198,8 @@ U_PORT_TEST_FUNCTION("[cellGpio]", "cellGpioCleanUp")
 
     x = uPortGetHeapMinFree();
     if (x >= 0) {
-        U_TEST_PRINT_LINE("U_CELL_GPIO_TEST: heap had a minimum of %d"
-                          " byte(s) free at the end of these tests.", x);
+        U_TEST_PRINT_LINE("heap had a minimum of %d byte(s) free at the"
+                          " end of these tests.", x);
         U_PORT_TEST_ASSERT(x >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
     }
 }
