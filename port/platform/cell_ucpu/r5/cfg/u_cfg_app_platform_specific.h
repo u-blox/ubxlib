@@ -17,12 +17,6 @@
 #ifndef _U_PORT_APP_PLATFORM_SPECIFIC_H_
 #define _U_PORT_APP_PLATFORM_SPECIFIC_H_
 
-/* Only bring in #includes specifically related to running applications. */
-
-#ifdef U_RUNNER_TOP_STR
-# include "u_runner.h"
-#endif
-
 /** @file
  * @brief Most of the parameters in this header file are required only to permit
  * the ubxlib example/test code to compile, and hence are present and set to -1,.

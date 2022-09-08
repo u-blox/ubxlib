@@ -43,12 +43,6 @@
 
 // Includes needed for uDeviceGetDefaults
 #include "u_compiler.h"
-// This is a temporary *FIX* due to problems with esp32 builds.
-// Caused by a probably unnecessary include of u_runner.h in
-// u_cfg_app_platform_specific.h
-#ifdef U_RUNNER_TOP_STR
-# undef U_RUNNER_TOP_STR
-#endif
 #include "u_cfg_app_platform_specific.h"
 #include "u_at_client.h"
 #include "u_cell_module_type.h"

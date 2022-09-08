@@ -40,10 +40,6 @@
 
 #include "u_debug_utils.h"
 
-#ifdef U_RUNNER_TOP_STR
-# include "u_runner.h"
-#endif
-
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */

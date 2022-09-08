@@ -17,8 +17,6 @@
 #ifndef _U_CFG_TEST_PLATFORM_SPECIFIC_H_
 #define _U_CFG_TEST_PLATFORM_SPECIFIC_H_
 
-/* Only bring in #includes specifically related to the test framework */
-
 #ifndef ARDUINO
 # include "unity.h"
 #endif
@@ -37,6 +35,7 @@
  * -------------------------------------------------------------- */
 
 #ifdef U_RUNNER_TOP_STR
+#include "u_runner.h"
 /** Macro to wrap a test assertion and map it to our Unity port.
  */
 # define U_PORT_TEST_ASSERT(condition) U_PORT_UNITY_TEST_ASSERT(condition)

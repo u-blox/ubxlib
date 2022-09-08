@@ -31,6 +31,10 @@
 // the ubxlib code
 #include <u_cfg_app_platform_specific.h>
 
+#ifdef U_RUNNER_TOP_STR
+#include "u_runner.h"
+#endif
+
 // Required, just for this example file, to bring in U_CFG_OS_xxx;
 // you would not need this in your application.
 #include <u_cfg_os_platform_specific.h>

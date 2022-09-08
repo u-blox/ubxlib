@@ -17,12 +17,6 @@
 #ifndef _U_PORT_APP_PLATFORM_SPECIFIC_H_
 #define _U_PORT_APP_PLATFORM_SPECIFIC_H_
 
-/* Only bring in #includes specifically related to running applications. */
-
-#ifdef U_RUNNER_TOP_STR
-# include "u_runner.h"
-#endif
-
 /** @file
  * @brief This header file contains configuration information for
  * an ESP32 platform that is fed in at application level.  You should

@@ -27,6 +27,7 @@
  * data sheet for the module to determine the mapping.
  */
 #include "devicetree.h"
+#include "u_runner.h"
 
 /** @file
  * @brief Porting layer and configuration items passed in at application

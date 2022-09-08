@@ -43,7 +43,6 @@
 
 #include "u_debug_utils.h"
 
-#include "u_runner.h"
 
 #include "cmsis_os.h"
 #include "stm32f4xx.h"

@@ -17,13 +17,7 @@
 #ifndef _U_CFG_APP_PLATFORM_SPECIFIC_H_
 #define _U_CFG_APP_PLATFORM_SPECIFIC_H_
 
-/* Only bring in #includes specifically related to running applications. */
-
-#ifdef U_RUNNER_TOP_STR
-# include "u_runner.h"
-#endif
-
-/* Thes inclusion is required to get the UART CTS/RTS pin assignments
+/* This inclusion is required to get the UART CTS/RTS pin assignments
  * from the Zephyr device tree.
  */
 #include "devicetree.h"
