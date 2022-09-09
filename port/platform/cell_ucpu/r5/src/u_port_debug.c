@@ -59,11 +59,9 @@ void uPortLogF(const char *pFormat, ...)
 {
     va_list args;
 
-    if (gPortLogOn) {
-        va_start(args, pFormat);
-        ucpu_sdk_debug_va_list(pFormat, args);
-        va_end(args);
-    }
+    va_start(args, pFormat);
+    ucpu_sdk_debug_va_list(gPortLogOn, pFormat, args);
+    va_end(args);
 }
 
 // Switch logging off.
