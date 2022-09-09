@@ -97,8 +97,10 @@ typedef enum {
 } uWifiErrorCode_t;
 
 typedef enum {
-    U_WIFI_AUTH_OPEN = 1, /**< no authentication mode. */
-    U_WIFI_AUTH_WPA_PSK = 2, /**< WPA/WPA2/WPA3 psk authentication mode. */
+    U_WIFI_AUTH_OPEN = 1,          /**< no authentication mode. */
+    U_WIFI_AUTH_WPA_PSK = 2,       /**< WPA/WPA2/WPA3 psk authentication mode. */
+    U_WIFI_AUTH_WPA2_WPA3_PSK = 6, /**< WPA2/WPA3 psk authentication mode. */
+    U_WIFI_AUTH_WPA3_PSK = 7,      /**< WPA3 psk authentication mode. */
 } uWifiAuth_t;
 
 typedef struct {
