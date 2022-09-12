@@ -52,15 +52,6 @@ extern "C" {
  * TYPES
  * -------------------------------------------------------------- */
 
-/** Structure describing a file on file system, used when listing
- * stored files on file system.
- */
-typedef struct uCellFileListContainer_t {
-    /** The name of the file. */
-    char fileName[U_CELL_FILE_NAME_MAX_LENGTH + 1];
-    struct uCellFileListContainer_t *pNext;
-} uCellFileListContainer_t;
-
 /* ----------------------------------------------------------------
  * FUNCTIONS
  * -------------------------------------------------------------- */
@@ -194,9 +185,9 @@ int32_t uCellFileDelete(uDeviceHandle_t cellHandle,
  * ```
  * char fileName[U_CELL_FILE_NAME_MAX_LENGTH + 1];
  *
- * for (int32_t x = uCellFileListFirst(handle, &fileName);
+ * for (int32_t x = uCellFileListFirst(handle, fileName);
  *      x >= 0;
- *      x = uCellFileListNext(handle, &fileName)) {
+ *      x = uCellFileListNext(handle, fileName)) {
  *      printf("%s\n", fileName);
  * }
  * ```

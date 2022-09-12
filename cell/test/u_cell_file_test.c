@@ -53,9 +53,9 @@
 
 #include "u_cell_module_type.h"
 #include "u_cell.h"
+#include "u_cell_file.h"
 #include "u_cell_net.h"     // Required by u_cell_private.h
 #include "u_cell_private.h" // So that we can get at some innards
-#include "u_cell_file.h"
 
 #include "u_cell_test_cfg.h"
 #include "u_cell_test_private.h"

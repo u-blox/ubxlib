@@ -48,6 +48,7 @@
 #include "u_security.h"
 
 #include "u_cell_module_type.h"
+#include "u_cell_file.h" // U_CELL_FILE_NAME_MAX_LENGTH
 #include "u_cell.h"         // Order is
 #include "u_cell_net.h"     // important here
 #include "u_cell_private.h" // don't change it
@@ -380,6 +381,66 @@ static int32_t deepSleepWakeUp(uCellPrivateInstance_t *pInstance)
     }
 
     return errorCode;
+}
+
+// Add an entry to the end of the linked list
+// of files and count how many are in it once added.
+static size_t filelListAddCount(uCellPrivateFileListContainer_t **ppFileContainer,
+                                uCellPrivateFileListContainer_t *pAdd)
+{
+    size_t count = 0;
+    uCellPrivateFileListContainer_t **ppTmp = ppFileContainer;
+
+    while (*ppTmp != NULL) {
+        ppTmp = &((*ppTmp)->pNext);
+        count++;
+    }
+
+    if (pAdd != NULL) {
+        *ppTmp = pAdd;
+        pAdd->pNext = NULL;
+        count++;
+    }
+
+    return count;
+}
+
+// Get an entry from the start of the linked list of files
+// and remove it from the list, returning the number left
+static int32_t fileListGetRemove(uCellPrivateFileListContainer_t **ppFileContainer,
+                                 char *pFile)
+{
+    int32_t errorOrCount = (int32_t) U_ERROR_COMMON_NOT_FOUND;
+    uCellPrivateFileListContainer_t *pTmp = *ppFileContainer;
+
+    if (pTmp != NULL) {
+        if (pFile != NULL) {
+            strncpy(pFile, pTmp->fileName,
+                    U_CELL_FILE_NAME_MAX_LENGTH + 1);
+        }
+        pTmp = (*ppFileContainer)->pNext;
+        free(*ppFileContainer);
+        *ppFileContainer = pTmp;
+        errorOrCount = 0;
+        while (pTmp != NULL) {
+            pTmp = pTmp->pNext;
+            errorOrCount++;
+        }
+    }
+
+    return errorOrCount;
+}
+
+// Clear the file list
+static void fileListClear(uCellPrivateFileListContainer_t **ppFileContainer)
+{
+    uCellPrivateFileListContainer_t *pTmp;
+
+    while (*ppFileContainer != NULL) {
+        pTmp = (*ppFileContainer)->pNext;
+        free(*ppFileContainer);
+        *ppFileContainer = pTmp;
+    }
 }
 
 /* ----------------------------------------------------------------
@@ -984,6 +1045,132 @@ int32_t uCellPrivateResumeUartPowerSaving(const uCellPrivateInstance_t *pInstanc
     uAtClientCommandStopReadResponse(atHandle);
 
     return uAtClientUnlock(atHandle);
+}
+
+// Delete file on file system.
+int32_t uCellPrivateFileDelete(const uCellPrivateInstance_t *pInstance,
+                               const char *pFileName)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    uAtClientHandle_t atHandle;
+
+    // Check parameters
+    if ((pInstance != NULL) && (pFileName != NULL) &&
+        (strlen(pFileName) <= U_CELL_FILE_NAME_MAX_LENGTH)) {
+        errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
+        atHandle = pInstance->atHandle;
+        // Do the UDELFILE thang with the AT interface
+        uAtClientLock(atHandle);
+        uAtClientCommandStart(atHandle, "AT+UDELFILE=");
+        // Write file name
+        uAtClientWriteString(atHandle, pFileName, true);
+        if (pInstance->pFileSystemTag != NULL) {
+            // Write tag
+            uAtClientWriteString(atHandle, pInstance->pFileSystemTag, true);
+        }
+        uAtClientCommandStop(atHandle);
+        // Grab the response
+        uAtClientCommandStopReadResponse(atHandle);
+        if (uAtClientUnlock(atHandle) == 0) {
+            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+        }
+    }
+
+    return errorCode;
+}
+
+// Get the name of the first file stored on file system.
+int32_t uCellPrivateFileListFirst(const uCellPrivateInstance_t *pInstance,
+                                  uCellPrivateFileListContainer_t **ppFileListContainer,
+                                  char *pFileName)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    uAtClientHandle_t atHandle;
+    uCellPrivateFileListContainer_t *pFileContainer;
+    bool keepGoing = true;
+    int32_t bytesRead = 0;
+    size_t count = 0;
+
+    // Check parameters
+    if ((pInstance != NULL) && (ppFileListContainer != NULL) && (pFileName != NULL)) {
+        errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
+        atHandle = pInstance->atHandle;
+        // Do the ULSTFILE thang with the AT interface
+        uAtClientLock(atHandle);
+        uAtClientCommandStart(atHandle, "AT+ULSTFILE=");
+        // List files operation
+        uAtClientWriteInt(atHandle, 0);
+        if (pInstance->pFileSystemTag != NULL) {
+            // Write tag
+            uAtClientWriteString(atHandle, pInstance->pFileSystemTag, true);
+        }
+        uAtClientCommandStop(atHandle);
+        uAtClientResponseStart(atHandle, "+ULSTFILE:");
+        while (keepGoing) {
+            keepGoing = false;
+            errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
+            pFileContainer = (uCellPrivateFileListContainer_t *) malloc(sizeof(*pFileContainer));
+            if (pFileContainer != NULL) {
+                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                // Read file name
+                bytesRead = uAtClientReadString(atHandle, pFileContainer->fileName,
+                                                sizeof(pFileContainer->fileName), false);
+            }
+            if (bytesRead > 0) {
+                bytesRead = 0;
+                keepGoing = true;
+                // Add the container to the end of the list
+                count = filelListAddCount(ppFileListContainer, pFileContainer);
+            } else {
+                // Nothing there, free it
+                free(pFileContainer);
+            }
+        }
+        uAtClientResponseStop(atHandle);
+
+        // Do the following parts inside the AT lock,
+        // providing protection for the linked-list.
+        if (errorCode == (int32_t) U_ERROR_COMMON_NO_MEMORY) {
+            // If we ran out of memory, clear the whole list,
+            // don't want to report partial information
+            fileListClear(&pFileContainer);
+        } else {
+            if (count > 0) {
+                // Set the return value, copy out the first item in the list
+                // and remove it.
+                errorCode = (int32_t) count;
+                fileListGetRemove(ppFileListContainer, pFileName);
+            } else {
+                errorCode = (int32_t) U_ERROR_COMMON_NOT_FOUND;
+            }
+        }
+        uAtClientUnlock(atHandle);
+    }
+
+    return errorCode;
+}
+
+// Return subsequent file name in the list.
+int32_t uCellPrivateFileListNext(uCellPrivateFileListContainer_t **ppFileListContainer,
+                                 char *pFileName)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+
+    // Check parameters
+    if ((ppFileListContainer != NULL) && (*ppFileListContainer != NULL) &&
+        (pFileName != NULL)) {
+        errorCode = fileListGetRemove(ppFileListContainer, pFileName);
+    }
+
+    return errorCode;
+}
+
+// Free memory from list.
+void uCellPrivateFileListLast(uCellPrivateFileListContainer_t **ppFileListContainer)
+{
+    if ((ppFileListContainer != NULL) && (*ppFileListContainer != NULL)) {
+        fileListClear(ppFileListContainer);
+    }
 }
 
 // End of file

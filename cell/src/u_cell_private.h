@@ -359,6 +359,15 @@ typedef enum {
     U_CELL_PRIVATE_PROFILE_STATE_MAX_NUM
 } uCellPrivateProfileState_t;
 
+/** Structure describing a file on file system, used when listing
+ * stored files on file system.
+ */
+typedef struct uCellPrivateFileListContainer_t {
+    /** The name of the file. */
+    char fileName[U_CELL_FILE_NAME_MAX_LENGTH + 1];
+    struct uCellPrivateFileListContainer_t *pNext;
+} uCellPrivateFileListContainer_t;
+
 /** Definition of a cellular instance.
  */
 typedef struct uCellPrivateInstance_t {
@@ -690,6 +699,72 @@ int32_t uCellPrivateSuspendUartPowerSaving(const uCellPrivateInstance_t *pInstan
  */
 int32_t uCellPrivateResumeUartPowerSaving(const uCellPrivateInstance_t *pInstance,
                                           int32_t mode, int32_t timeout);
+
+/** Delete a file from the file system. If the file does not exist an
+ * error will be returned.
+ *
+ * Note: gUCellPrivateMutex should be locked before this is called.
+ *
+ * @param pInstance      a pointer to the cellular instance.
+ * @param[in] pFileName  a pointer to the file name to delete from the
+ *                       file system. File names cannot contain these
+ *                       characters: / * : % | " < > ?.
+ * @return               zero on success or negative error code on failure.
+ */
+int32_t uCellPrivateFileDelete(const uCellPrivateInstance_t *pInstance,
+                               const char *pFileName);
+
+/** Get the description of file stored on the file system;
+ * uCellPrivateFileListNext() should be called repeatedly to iterate
+ * through subsequent entries in the list.
+ *
+ * Note: gUCellPrivateMutex should be locked before this is called.
+ *
+ * @param pInstance           a pointer to the cellular instance.
+ * @param ppFileListContainer a pointer to a place to store the pointer
+ *                            to the internal file list that this
+ *                            function creates; this will be passed to
+ *                            uCellPrivateFileListNext() and
+ *                            uCellPrivateFileListLast().
+ * @param[out] pFileName      pointer to somewhere to store the result;
+ *                            at least #U_CELL_FILE_NAME_MAX_LENGTH + 1 bytes
+ *                            of storage must be provided.
+ * @return                    the total number of file names in the list
+ *                            or negative error code.
+ */
+int32_t uCellPrivateFileListFirst(const uCellPrivateInstance_t *pInstance,
+                                  uCellPrivateFileListContainer_t **ppFileListContainer,
+                                  char *pFileName);
+
+/** Get the subsequent file names in the list. Use
+ * uCellPrivateFileListFirst() to get the total number of entries in the
+ * list and the first result then call this "number of results" times to
+ * read out all of the file names in the link list. Calling this "number
+ * of results" times will free the memory that held the list after the
+ * final call (can be freed with a call to uCellPrivateFileListLast()).
+ *
+ * @param ppFileListContainer a pointer to the internal file list that
+ *                            MUST already have been populated through
+ *                            a call to uCellPrivateFileListFirst().
+ * @param[out] pFileName      pointer to somewhere to store the result;
+ *                            at least #U_CELL_FILE_NAME_MAX_LENGTH + 1
+ *                            bytes of storage must be provided..
+ * @return                    the number of entries remaining *after*
+ *                            this one has been read or negative error
+ *                            code.
+ */
+int32_t uCellPrivateFileListNext(uCellPrivateFileListContainer_t **ppFileListContainer,
+                                 char *pFileName);
+
+/** It is good practice to call this to clear up memory from
+ * uCellPrivateFileListFirst() if you are not going to iterate
+ * through the whole list with uCellPrivateFileListNext().
+ *
+ * @param ppFileListContainer a pointer to the internal file list that
+ *                            MUST already have been populated through
+ *                            a call to uCellPrivateFileListFirst().
+ */
+void uCellPrivateFileListLast(uCellPrivateFileListContainer_t **ppFileListContainer);
 
 #ifdef __cplusplus
 }

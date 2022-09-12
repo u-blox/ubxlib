@@ -50,6 +50,7 @@
 #include "u_sock.h"
 
 #include "u_cell_module_type.h"
+#include "u_cell_file.h"
 #include "u_cell_net.h"
 #include "u_cell_private.h"
 #include "u_cell_sock.h"

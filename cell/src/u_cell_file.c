@@ -42,8 +42,8 @@
 #include "u_at_client.h"
 #include "u_cell_module_type.h"
 #include "u_cell_net.h"
-#include "u_cell_private.h"
 #include "u_cell_file.h"
+#include "u_cell_private.h"
 
 /* ----------------------------------------------------------------
  * VARIABLES
@@ -52,69 +52,11 @@
 /** Root of the linked list of files container,
  * used when reading the list of stored files on file system.
  */
-static uCellFileListContainer_t *gpFileList = NULL;
+static uCellPrivateFileListContainer_t *gpFileList = NULL;
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
-
-// Add an entry to the end of the linked list
-// and count how many are in it once added.
-static size_t uCellFilelListAddCount(uCellFileListContainer_t *pAdd)
-{
-    size_t count = 0;
-    uCellFileListContainer_t **ppTmp = &gpFileList;
-
-    while (*ppTmp != NULL) {
-        ppTmp = &((*ppTmp)->pNext);
-        count++;
-    }
-
-    if (pAdd != NULL) {
-        *ppTmp = pAdd;
-        count++;
-    }
-
-    return count;
-}
-
-// Get an entry from the start of the linked list and remove
-// it from the list, returning the number left
-static int32_t uCellFileListGetRemove(char *pFile)
-{
-    int32_t errorOrCount = (int32_t) U_ERROR_COMMON_NOT_FOUND;
-    uCellFileListContainer_t *pTmp = gpFileList;
-
-    if (pTmp != NULL) {
-        if (pFile != NULL) {
-            strncpy(pFile, pTmp->fileName,
-                    U_CELL_FILE_NAME_MAX_LENGTH + 1);
-        }
-        pTmp = gpFileList->pNext;
-        free(gpFileList);
-        gpFileList = pTmp;
-        errorOrCount = 0;
-        while (pTmp != NULL) {
-            pTmp = pTmp->pNext;
-            errorOrCount++;
-        }
-    }
-
-    return errorOrCount;
-}
-
-// Clear the file list
-static void uCellFileListClear()
-{
-    uCellFileListContainer_t *pTmp;
-
-    while (gpFileList != NULL) {
-        pTmp = gpFileList->pNext;
-        free(gpFileList);
-        gpFileList = pTmp;
-    }
-    gpFileList = NULL;
-}
 
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
@@ -452,34 +394,14 @@ int32_t uCellFileDelete(uDeviceHandle_t cellHandle,
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
-    uAtClientHandle_t atHandle;
 
     if (gUCellPrivateMutex != NULL) {
 
         U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
 
         pInstance = pUCellPrivateGetInstance(cellHandle);
-        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-        // Check parameters
-        if ((pInstance != NULL) && (pFileName != NULL) &&
-            (strlen(pFileName) <= U_CELL_FILE_NAME_MAX_LENGTH)) {
-            errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
-            atHandle = pInstance->atHandle;
-            // Do the UDELFILE thang with the AT interface
-            uAtClientLock(atHandle);
-            uAtClientCommandStart(atHandle, "AT+UDELFILE=");
-            // Write file name
-            uAtClientWriteString(atHandle, pFileName, true);
-            if (pInstance->pFileSystemTag != NULL) {
-                // Write tag
-                uAtClientWriteString(atHandle, pInstance->pFileSystemTag, true);
-            }
-            uAtClientCommandStop(atHandle);
-            // Grab the response
-            uAtClientCommandStopReadResponse(atHandle);
-            if (uAtClientUnlock(atHandle) == 0) {
-                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-            }
+        if (pInstance != NULL) {
+            errorCode = uCellPrivateFileDelete(pInstance, pFileName);
         }
 
         U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
@@ -494,75 +416,16 @@ int32_t uCellFileListFirst(uDeviceHandle_t cellHandle,
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
-    uAtClientHandle_t atHandle;
-    uCellFileListContainer_t *pFileContainer;
-    bool keepGoing = true;
-    int32_t bytesRead = 0;
-    size_t count = 0;
 
     if (gUCellPrivateMutex != NULL) {
 
         U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
 
         pInstance = pUCellPrivateGetInstance(cellHandle);
-        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-        // Check parameters
-        if ((pInstance != NULL) && (pFileName != NULL)) {
-            errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
-            atHandle = pInstance->atHandle;
-            // Do the ULSTFILE thang with the AT interface
-            uAtClientLock(atHandle);
-            // Make sure the credential list is clear
-            uCellFileListClear();
-            uAtClientCommandStart(atHandle, "AT+ULSTFILE=");
-            // List files operation
-            uAtClientWriteInt(atHandle, 0);
-            if (pInstance->pFileSystemTag != NULL) {
-                // Write tag
-                uAtClientWriteString(atHandle, pInstance->pFileSystemTag, true);
-            }
-            uAtClientCommandStop(atHandle);
-            uAtClientResponseStart(atHandle, "+ULSTFILE:");
-            while (keepGoing) {
-                keepGoing = false;
-                errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
-                pFileContainer = (uCellFileListContainer_t *) malloc(sizeof(*pFileContainer));
-                if (pFileContainer != NULL) {
-                    pFileContainer->pNext = NULL;
-                    errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-                    // Read file name
-                    bytesRead = uAtClientReadString(atHandle, pFileContainer->fileName,
-                                                    sizeof(pFileContainer->fileName), false);
-                }
-                if (bytesRead > 0) {
-                    bytesRead = 0;
-                    keepGoing = true;
-                    // Add the container to the end of the list
-                    count = uCellFilelListAddCount(pFileContainer);
-                } else {
-                    // Nothing there, free it
-                    free(pFileContainer);
-                }
-            }
-            uAtClientResponseStop(atHandle);
-
-            // Do the following parts inside the AT lock,
-            // providing protection for the linked-list.
-            if (errorCode == (int32_t) U_ERROR_COMMON_NO_MEMORY) {
-                // If we ran out of memory, clear the whole list,
-                // don't want to report partial information
-                uCellFileListClear();
-            } else {
-                if (count > 0) {
-                    // Set the return value, copy out the first item in the list
-                    // and remove it.
-                    errorCode = (int32_t) count;
-                    uCellFileListGetRemove(pFileName);
-                } else {
-                    errorCode = (int32_t) U_ERROR_COMMON_NOT_FOUND;
-                }
-            }
-            uAtClientUnlock(atHandle);
+        if (pInstance != NULL) {
+            errorCode = uCellPrivateFileListFirst(pInstance,
+                                                  &gpFileList,
+                                                  pFileName);
         }
 
         U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
@@ -576,24 +439,17 @@ int32_t uCellFileListNext(uDeviceHandle_t cellHandle,
                           char *pFileName)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
-    uCellPrivateInstance_t *pInstance;
-    uAtClientHandle_t atHandle;
+
+    // This parameter is no longer needed
+    (void) cellHandle;
 
     if (gUCellPrivateMutex != NULL) {
 
+        // Though this doesn't use the instance pointer we can
+        // use the cellular API mutex to protect the linked list
         U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
 
-        pInstance = pUCellPrivateGetInstance(cellHandle);
-        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-        // Check parameters
-        if ((pInstance != NULL) && (pFileName != NULL)) {
-            atHandle = pInstance->atHandle;
-            uAtClientLock(atHandle);
-            // While this doesn't use the AT interface we can use
-            // the mutex to protect the linked list.
-            errorCode = uCellFileListGetRemove(pFileName);
-            uAtClientUnlock(atHandle);
-        }
+        errorCode = uCellPrivateFileListNext(&gpFileList, pFileName);
 
         U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
     }
@@ -604,24 +460,19 @@ int32_t uCellFileListNext(uDeviceHandle_t cellHandle,
 // Free memory from list.
 void uCellFileListLast(uDeviceHandle_t cellHandle)
 {
-    uCellPrivateInstance_t *pInstance;
-    uAtClientHandle_t atHandle;
+    // This parameter is no longer needed
+    (void) cellHandle;
 
     if (gUCellPrivateMutex != NULL) {
 
+        // Though this doesn't use the instance pointer we can
+        // use the cellular API mutex to protect the linked list
         U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
 
-        pInstance = pUCellPrivateGetInstance(cellHandle);
-        // Check parameters
-        if (pInstance != NULL) {
-            atHandle = pInstance->atHandle;
-            uAtClientLock(atHandle);
-            // While this doesn't use the AT interface we can use
-            // the mutex to protect the linked list.
-            uCellFileListClear();
-            uAtClientUnlock(atHandle);
-        }
+        uCellPrivateFileListLast(&gpFileList);
 
         U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
     }
 }
+
+// End of file

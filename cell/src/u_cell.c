@@ -46,6 +46,7 @@
 #include "u_device_shared.h"
 
 #include "u_cell_module_type.h"
+#include "u_cell_file.h"
 #include "u_cell.h"         // Order is
 #include "u_cell_net.h"     // important here
 #include "u_cell_private.h" // don't change it
