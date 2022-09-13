@@ -735,7 +735,7 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveNonBlocking")
                     uPortLog("\n");
 # ifdef U_GNSS_MSG_TEST_INCLUDE_A_POS
                     if (z == 0) {
-                        if (pTmp->numDecoded - pTmp->numOutsize < pTmp->numDecodedMin) {
+                        if (pTmp->numDecoded + pTmp->numOutsize < pTmp->numDecodedMin) {
                             bad = true;
                         }
                     } else {
@@ -744,11 +744,11 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveNonBlocking")
                         }
                     }
 # else
-                    if (pTmp->numDecoded - pTmp->numOutsize < pTmp->numDecodedMin) {
+                    if (pTmp->numDecoded + pTmp->numOutsize < pTmp->numDecodedMin) {
                         bad = true;
                     }
 # endif
-                    if (pTmp->numReceived - pTmp->numOutsize < pTmp->numRead) {
+                    if (pTmp->numReceived + pTmp->numOutsize < pTmp->numRead) {
                         bad = true;
                     }
                     if (pTmp->numNotWanted > 0) {
