@@ -24,6 +24,7 @@
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
+#include "limits.h"    // INT_MAX
 
 #include "windows.h"
 
@@ -145,7 +146,7 @@ void uPortDeinit()
 // Get the current tick in milliseconds.
 int32_t uPortGetTickTimeMs()
 {
-    return GetTickCount();
+    return GetTickCount() % INT_MAX;
 }
 
 // Get the minimum amount of heap free, ever, in bytes.
