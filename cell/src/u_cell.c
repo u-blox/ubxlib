@@ -159,6 +159,8 @@ void uCellDeinit()
             uCellPrivateLocRemoveContext(pInstance);
             // Free any sleep context
             uCellPrivateSleepRemoveContext(pInstance);
+            // Free any FOTA context
+            free(pInstance->pFotaContext);
             free(pInstance);
         }
 

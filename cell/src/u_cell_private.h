@@ -219,7 +219,8 @@ typedef enum {
     U_CELL_PRIVATE_FEATURE_EDRX,
     U_CELL_PRIVATE_FEATURE_MQTTSN,
     U_CELL_PRIVATE_FEATURE_CTS_CONTROL,
-    U_CELL_PRIVATE_FEATURE_SOCK_SET_LOCAL_PORT
+    U_CELL_PRIVATE_FEATURE_SOCK_SET_LOCAL_PORT,
+    U_CELL_PRIVATE_FEATURE_FOTA
 } uCellPrivateFeature_t;
 
 /** The characteristics that may differ between cellular modules.
@@ -423,6 +424,8 @@ typedef struct uCellPrivateInstance_t {
     uCellPrivateSleep_t *pSleepContext; /**< Context for sleep stuff. */
     uCellPrivateUartSleepCache_t uartSleepCache; /**< Used only by uCellPwrEnable/DisableUartSleep(). */
     uCellPrivateProfileState_t profileState; /**< To track whether a profile is meant to be active. */
+    void *pFotaContext; /**< FOTA context, lodged here as a void * to
+                             avoid spreading its types all over. */
     struct uCellPrivateInstance_t *pNext;
 } uCellPrivateInstance_t;
 
