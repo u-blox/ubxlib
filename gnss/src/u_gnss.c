@@ -288,11 +288,12 @@ int32_t uGnssAdd(uGnssModuleType_t moduleType,
                             (transportType == U_GNSS_TRANSPORT_UBX_UART)) {
                             pInstance->portNumber = 1; // This is the UART port number inside the GNSS chip
                         }
+#if defined(_WIN32) || (defined(__ZEPHYR__) && defined(CONFIG_UART_NATIVE_POSIX))
+                        // For Windows and Linux the GNSS-side connection is assumed to be USB
+                        pInstance->portNumber = 3;
+#endif
 #ifdef U_CFG_GNSS_PORT_NUMBER
-                        // A hack for use during development testing where
-                        // we can force the port number, e.g. to 3, which is
-                        // the USB port, so that we can drive a GNSS board
-                        // directly from a PC
+                        // Force the port number
                         pInstance->portNumber = U_CFG_GNSS_PORT_NUMBER;
 #endif
                         pInstance->posTask = NULL;
