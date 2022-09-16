@@ -32,6 +32,7 @@ cell/test/u_cell_mqtt_test.c
 cell/test/u_cell_file_test.c
 cell/test/u_cell_loc_test.c
 cell/test/u_cell_gpio_test.c
+cell/test/u_cell_fota_test.c
 cell/test/u_cell_test_preamble.c
 cell/test/u_cell_test_private.c
 gnss/test/u_gnss_test.c

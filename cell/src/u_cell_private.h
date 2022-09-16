@@ -103,7 +103,7 @@ extern "C" {
 //lint --emacro((774), U_CELL_PRIVATE_HAS) Suppress left side always
 // evaluates to True
 #define U_CELL_PRIVATE_HAS(pModule, feature) \
-    ((pModule != NULL) && ((pModule->featuresBitmap) & (1UL << (int32_t) (feature))))
+    ((pModule != NULL) && ((pModule->featuresBitmap) & (1ULL << (int32_t) (feature))))
 
 #ifndef U_CELL_PRIVATE_GREETING_STR
 /** A greeting string, a useful indication that the module
@@ -218,7 +218,9 @@ typedef enum {
     U_CELL_PRIVATE_FEATURE_DEEP_SLEEP_URC,
     U_CELL_PRIVATE_FEATURE_EDRX,
     U_CELL_PRIVATE_FEATURE_MQTTSN,
-    U_CELL_PRIVATE_FEATURE_CTS_CONTROL
+    U_CELL_PRIVATE_FEATURE_CTS_CONTROL,
+    U_CELL_PRIVATE_FEATURE_SOCK_SET_LOCAL_PORT,
+    U_CELL_PRIVATE_FEATURE_FOTA
 } uCellPrivateFeature_t;
 
 /** The characteristics that may differ between cellular modules.
@@ -270,7 +272,7 @@ typedef struct {
     uint32_t supportedRatsBitmap; /**< A bit-map of the uCellNetRat_t
                                        values supported by the cellular
                                        module. */
-    uint32_t featuresBitmap; /**< a bit-map of the uCellPrivateFeature_t
+    uint64_t featuresBitmap; /**< a bit-map of the uCellPrivateFeature_t
                                   characteristics of this module. */
 } uCellPrivateModule_t;
 
@@ -358,6 +360,15 @@ typedef enum {
     U_CELL_PRIVATE_PROFILE_STATE_MAX_NUM
 } uCellPrivateProfileState_t;
 
+/** Structure describing a file on file system, used when listing
+ * stored files on file system.
+ */
+typedef struct uCellPrivateFileListContainer_t {
+    /** The name of the file. */
+    char fileName[U_CELL_FILE_NAME_MAX_LENGTH + 1];
+    struct uCellPrivateFileListContainer_t *pNext;
+} uCellPrivateFileListContainer_t;
+
 /** Definition of a cellular instance.
  */
 typedef struct uCellPrivateInstance_t {
@@ -401,6 +412,7 @@ typedef struct uCellPrivateInstance_t {
     void (*pConnectionStatusCallback) (bool, void *);
     void *pConnectionStatusCallbackParameter;
     uCellPrivateNet_t *pScanResults;    /**< Anchor for list of network scan results. */
+    int32_t sockNextLocalPort;
     void *pSecurityC2cContext;  /**< Hook for a chip to chip security context. */
     volatile void *pMqttContext; /**< Hook for MQTT context, volatile as it
                                       can be populared by a URC in a different thread. */
@@ -412,6 +424,8 @@ typedef struct uCellPrivateInstance_t {
     uCellPrivateSleep_t *pSleepContext; /**< Context for sleep stuff. */
     uCellPrivateUartSleepCache_t uartSleepCache; /**< Used only by uCellPwrEnable/DisableUartSleep(). */
     uCellPrivateProfileState_t profileState; /**< To track whether a profile is meant to be active. */
+    void *pFotaContext; /**< FOTA context, lodged here as a void * to
+                             avoid spreading its types all over. */
     struct uCellPrivateInstance_t *pNext;
 } uCellPrivateInstance_t;
 
@@ -688,6 +702,72 @@ int32_t uCellPrivateSuspendUartPowerSaving(const uCellPrivateInstance_t *pInstan
  */
 int32_t uCellPrivateResumeUartPowerSaving(const uCellPrivateInstance_t *pInstance,
                                           int32_t mode, int32_t timeout);
+
+/** Delete a file from the file system. If the file does not exist an
+ * error will be returned.
+ *
+ * Note: gUCellPrivateMutex should be locked before this is called.
+ *
+ * @param pInstance      a pointer to the cellular instance.
+ * @param[in] pFileName  a pointer to the file name to delete from the
+ *                       file system. File names cannot contain these
+ *                       characters: / * : % | " < > ?.
+ * @return               zero on success or negative error code on failure.
+ */
+int32_t uCellPrivateFileDelete(const uCellPrivateInstance_t *pInstance,
+                               const char *pFileName);
+
+/** Get the description of file stored on the file system;
+ * uCellPrivateFileListNext() should be called repeatedly to iterate
+ * through subsequent entries in the list.
+ *
+ * Note: gUCellPrivateMutex should be locked before this is called.
+ *
+ * @param pInstance           a pointer to the cellular instance.
+ * @param ppFileListContainer a pointer to a place to store the pointer
+ *                            to the internal file list that this
+ *                            function creates; this will be passed to
+ *                            uCellPrivateFileListNext() and
+ *                            uCellPrivateFileListLast().
+ * @param[out] pFileName      pointer to somewhere to store the result;
+ *                            at least #U_CELL_FILE_NAME_MAX_LENGTH + 1 bytes
+ *                            of storage must be provided.
+ * @return                    the total number of file names in the list
+ *                            or negative error code.
+ */
+int32_t uCellPrivateFileListFirst(const uCellPrivateInstance_t *pInstance,
+                                  uCellPrivateFileListContainer_t **ppFileListContainer,
+                                  char *pFileName);
+
+/** Get the subsequent file names in the list. Use
+ * uCellPrivateFileListFirst() to get the total number of entries in the
+ * list and the first result then call this "number of results" times to
+ * read out all of the file names in the link list. Calling this "number
+ * of results" times will free the memory that held the list after the
+ * final call (can be freed with a call to uCellPrivateFileListLast()).
+ *
+ * @param ppFileListContainer a pointer to the internal file list that
+ *                            MUST already have been populated through
+ *                            a call to uCellPrivateFileListFirst().
+ * @param[out] pFileName      pointer to somewhere to store the result;
+ *                            at least #U_CELL_FILE_NAME_MAX_LENGTH + 1
+ *                            bytes of storage must be provided..
+ * @return                    the number of entries remaining *after*
+ *                            this one has been read or negative error
+ *                            code.
+ */
+int32_t uCellPrivateFileListNext(uCellPrivateFileListContainer_t **ppFileListContainer,
+                                 char *pFileName);
+
+/** It is good practice to call this to clear up memory from
+ * uCellPrivateFileListFirst() if you are not going to iterate
+ * through the whole list with uCellPrivateFileListNext().
+ *
+ * @param ppFileListContainer a pointer to the internal file list that
+ *                            MUST already have been populated through
+ *                            a call to uCellPrivateFileListFirst().
+ */
+void uCellPrivateFileListLast(uCellPrivateFileListContainer_t **ppFileListContainer);
 
 #ifdef __cplusplus
 }

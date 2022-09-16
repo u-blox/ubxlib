@@ -46,6 +46,7 @@
 #include "u_device_shared.h"
 
 #include "u_cell_module_type.h"
+#include "u_cell_file.h"
 #include "u_cell.h"         // Order is
 #include "u_cell_net.h"     // important here
 #include "u_cell_private.h" // don't change it
@@ -158,6 +159,8 @@ void uCellDeinit()
             uCellPrivateLocRemoveContext(pInstance);
             // Free any sleep context
             uCellPrivateSleepRemoveContext(pInstance);
+            // Free any FOTA context
+            free(pInstance->pFotaContext);
             free(pInstance);
         }
 
@@ -253,6 +256,7 @@ int32_t uCellAdd(uCellModuleType_t moduleType,
                     }
                     uCellPrivateClearRadioParameters(&(pInstance->radioParameters));
                     pInstance->pModule = &(gUCellPrivateModuleList[moduleType]);
+                    pInstance->sockNextLocalPort = -1;
                     pInstance->pSecurityC2cContext = NULL;
                     pInstance->pMqttContext = NULL;
                     pInstance->pLocContext = NULL;

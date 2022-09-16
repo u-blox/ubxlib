@@ -137,7 +137,9 @@ int32_t uWifiSockDeinitInstance(uDeviceHandle_t devHandle);
  * FUNCTIONS: CREATE/OPEN/CLOSE/CLEAN-UP
  * -------------------------------------------------------------- */
 
-/** Create a socket.
+/** Create a socket.  The local port number employed will be
+ * assigned by the IP stack unless uWifiSockSetNextLocalPort()
+ * has been called.
  *
  * @param devHandle the handle of the wifi instance.
  * @param type      the type of socket to create.
@@ -277,6 +279,23 @@ int32_t uWifiSockOptionGet(uDeviceHandle_t devHandle,
                            uint32_t option,
                            void *pOptionValue,
                            size_t *pOptionValueLength);
+
+/** Set a local port which will be used on the next uWifiSockCreate(),
+ * otherwise a local port will be chosen by the IP stack.  Once
+ * uWifiSockCreate() has been called, the local port will return to
+ * being IP-stack-assigned once more.  Obviously this is not
+ * thread-safe, unless the caller makes it so through some form of
+ * mutex protection at application level.  Specify -1 to cancel a
+ * previously selected local port if you change your mind.
+ *
+ * @param devHandle   the handle of the wifi instance.
+ * @param port        the uint16_t port number or -1 to cancel a previous
+ *                    uWifiSockSetNextLocalPort() selection.
+ * @return            zero on success else negative error code (and
+ *                    errno will also be set to a value from
+ *                    u_sock_errno.h).
+ */
+int32_t uWifiSockSetNextLocalPort(uDeviceHandle_t devHandle, int32_t port);
 
 /* ----------------------------------------------------------------
  * FUNCTIONS: UDP ONLY

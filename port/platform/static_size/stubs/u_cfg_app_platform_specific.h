@@ -17,12 +17,6 @@
 #ifndef _U_CFG_APP_PLATFORM_SPECIFIC_H_
 #define _U_CFG_APP_PLATFORM_SPECIFIC_H_
 
-/* Only bring in #includes specifically related to running applications. */
-
-#ifdef U_RUNNER_TOP_STR
-# include "u_runner.h"
-#endif
-
 /** @file
  * @brief This header file contains dummy application
  * configuration information for the static size build.

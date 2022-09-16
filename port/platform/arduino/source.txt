@@ -25,6 +25,7 @@ cell/src/u_cell_mqtt.c
 cell/src/u_cell_file.c
 cell/src/u_cell_loc.c
 cell/src/u_cell_gpio.c
+cell/src/u_cell_fota.c
 cell/src/u_cell_private.c
 gnss/src/u_gnss.c
 gnss/src/u_gnss_pwr.c

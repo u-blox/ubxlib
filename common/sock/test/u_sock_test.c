@@ -1617,6 +1617,202 @@ U_PORT_TEST_FUNCTION("[sock]", "sockOptionsSetGet")
     uNetworkTestListFree();
 }
 
+/** Test setting the local port.
+ */
+U_PORT_TEST_FUNCTION("[sock]", "sockLocalPort")
+{
+    uNetworkTestList_t *pList;
+    int32_t errorCode;
+    uDeviceHandle_t devHandle;
+    uSockAddress_t remoteAddress;
+    uSockDescriptor_t descriptor;
+    bool closedCallbackCalled;
+    int32_t startTimeMs;
+    size_t sizeBytes;
+    size_t offset;
+    int32_t y;
+    char *pDataReceived;
+    int32_t heapUsed;
+    int32_t heapSockInitLoss = 0;
+    int32_t heapXxxSockInitLoss = 0;
+
+    // Call clean up to release OS resources that may
+    // have been left hanging by a previous failed test
+    osCleanup();
+
+    // Do the standard preamble to make sure there is
+    // a network underneath us
+    pList = pStdPreamble();
+
+    // Repeat for all bearers
+    for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+        devHandle = *pTmp->pDevHandle;
+        // Get the initial-ish heap
+        heapUsed = uPortGetHeapFree();
+
+        U_TEST_PRINT_LINE("testing setting local port on %s.",
+                          gpUNetworkTestTypeName[pTmp->networkType]);
+        U_TEST_PRINT_LINE("looking up echo server \"%s\"...",
+                          U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME);
+        // Look up the address of the server we use for TCP echo
+        // The first call to a sockets API needs to
+        // initialise the underlying sockets layer; take
+        // account of that initialisation heap cost here.
+        heapSockInitLoss = uPortGetHeapFree();
+        U_PORT_TEST_ASSERT(uSockGetHostByName(devHandle,
+                                              U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME,
+                                              &(remoteAddress.ipAddress)) == 0);
+        heapSockInitLoss -= uPortGetHeapFree();
+
+        // Add the remote port number we will use
+        remoteAddress.port = U_SOCK_TEST_ECHO_TCP_SERVER_PORT;
+
+        // Set the local port number we will use; there is no way
+        // to check it on cellular or Wi-Fi unfortunately, as Phil
+        // says it is "set and forget"
+        U_TEST_PRINT_LINE("setting local port to %d.", U_SOCK_TEST_LOCAL_PORT);
+        errorCode = uSockSetNextLocalPort(devHandle, U_SOCK_TEST_LOCAL_PORT);
+        if (errorCode == 0) {
+            U_TEST_PRINT_LINE("using the connection.");
+            // Create a TCP socket
+            // Creating a socket may use heap in the underlying
+            // network layer which will be reclaimed when the
+            // network layer is closed but we don't do that here
+            // to save time so need to allow for it in the heap loss
+            // calculation
+            heapXxxSockInitLoss += uPortGetHeapFree();
+            descriptor = uSockCreate(devHandle, U_SOCK_TYPE_STREAM,
+                                     U_SOCK_PROTOCOL_TCP);
+            heapXxxSockInitLoss -= uPortGetHeapFree();
+            U_PORT_TEST_ASSERT(descriptor >= 0);
+            U_PORT_TEST_ASSERT(errno == 0);
+
+            // Set up the closed callback
+            closedCallbackCalled = false;
+            uSockRegisterCallbackClosed(descriptor,
+                                        setBoolCallback,
+                                        &closedCallbackCalled);
+            U_PORT_TEST_ASSERT(!closedCallbackCalled);
+            // Connect the socket
+            U_TEST_PRINT_LINE("connect socket to \"%s:%d\"...",
+                              U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME,
+                              U_SOCK_TEST_ECHO_TCP_SERVER_PORT);
+            // Connections can fail so allow this a few goes
+            errorCode = -1;
+            for (y = 2; (y > 0) && (errorCode < 0); y--) {
+                errorCode = uSockConnect(descriptor, &remoteAddress);
+                if (errorCode < 0) {
+                    U_PORT_TEST_ASSERT(errno != 0);
+                    errno = 0;
+                }
+            }
+            U_PORT_TEST_ASSERT(errorCode == 0);
+
+            U_TEST_PRINT_LINE("sending/receiving data over socket...");
+
+            // Throw random sized TCP segments up...
+            offset = 0;
+            y = 0;
+            while (offset < sizeof(gSendData) - 1) {
+                sizeBytes = (rand() % U_SOCK_TEST_MAX_TCP_READ_WRITE_SIZE) + 1;
+                sizeBytes = fix(sizeBytes,
+                                U_SOCK_TEST_MAX_TCP_READ_WRITE_SIZE);
+                if (offset + sizeBytes > sizeof(gSendData) - 1) {
+                    sizeBytes = (sizeof(gSendData) - 1) - offset;
+                }
+                if (sendTcp(descriptor, gSendData + offset,
+                            sizeBytes) == sizeBytes) {
+                    offset += sizeBytes;
+                }
+                y++;
+            }
+            sizeBytes = offset;
+            U_TEST_PRINT_LINE("%d byte(s) sent via TCP @%d ms, now receiving...",
+                              sizeBytes, (int32_t) uPortGetTickTimeMs());
+            pDataReceived = (char *) malloc((sizeof(gSendData) - 1) +
+                                            (U_SOCK_TEST_GUARD_LENGTH_SIZE_BYTES * 2));
+            U_PORT_TEST_ASSERT(pDataReceived != NULL);
+            //lint -e(668) Suppress possible use of NULL pointer
+            // for pDataReceived
+            memset(pDataReceived,
+                   U_SOCK_TEST_FILL_CHARACTER,
+                   (sizeof(gSendData) - 1) + (U_SOCK_TEST_GUARD_LENGTH_SIZE_BYTES * 2));
+            startTimeMs = uPortGetTickTimeMs();
+            offset = 0;
+            //lint -e{441} Suppress loop variable not found in
+            // condition: we're using time instead
+            for (y = 0; (offset < sizeof(gSendData) - 1) &&
+                 (uPortGetTickTimeMs() - startTimeMs < 20000); y++) {
+                sizeBytes = uSockRead(descriptor,
+                                      pDataReceived + offset +
+                                      U_SOCK_TEST_GUARD_LENGTH_SIZE_BYTES,
+                                      (sizeof(gSendData) - 1) - offset);
+                if (sizeBytes > 0) {
+                    U_TEST_PRINT_LINE("received %d byte(s) on TCP socket.", sizeBytes);
+                    offset += sizeBytes;
+                }
+            }
+            sizeBytes = offset;
+            if (sizeBytes < sizeof(gSendData) - 1) {
+                U_TEST_PRINT_LINE("only %d byte(s) received after %d ms.", sizeBytes,
+                                  (int32_t) (uPortGetTickTimeMs() - startTimeMs));
+            } else {
+                U_TEST_PRINT_LINE("all %d byte(s) received back after %d ms,"
+                                  " checking if they were as expected...", sizeBytes,
+                                  (int32_t) (uPortGetTickTimeMs() - startTimeMs));
+            }
+
+            // Check that we reassembled everything correctly
+            U_PORT_TEST_ASSERT(checkAgainstSentData(gSendData,
+                                                    sizeof(gSendData) - 1,
+                                                    pDataReceived,
+                                                    sizeBytes));
+
+            // Close the socket
+            U_PORT_TEST_ASSERT(uSockClose(descriptor) == 0);
+            U_TEST_PRINT_LINE("waiting up to %d second(s) for TCP socket to close...",
+                              U_SOCK_TEST_TCP_CLOSE_SECONDS);
+            for (y = 0; (y < U_SOCK_TEST_TCP_CLOSE_SECONDS) &&
+                 !closedCallbackCalled; y++) {
+                uPortTaskBlock(1000);
+            }
+            U_PORT_TEST_ASSERT(closedCallbackCalled);
+            uSockCleanUp();
+
+            free(pDataReceived);
+        } else {
+            U_TEST_PRINT_LINE("setting local port number is not supported.");
+            U_PORT_TEST_ASSERT(errorCode == (int32_t) U_ERROR_COMMON_BSD_ERROR);
+            U_PORT_TEST_ASSERT(errno == U_SOCK_ENOSYS);
+            errno = 0;
+        }
+
+        U_TEST_PRINT_LINE("clean up...");
+        uSockCleanUp();
+
+        // Check for memory leaks
+        heapUsed -= uPortGetHeapFree();
+        U_TEST_PRINT_LINE("during this part of the test 0 byte(s) of heap"
+                          " were lost to the C library and %d byte(s) were"
+                          " lost to sockets initialisation; we have leaked"
+                          " %d byte(s).",
+                          heapSockInitLoss + heapXxxSockInitLoss,
+                          heapUsed - (heapSockInitLoss + heapXxxSockInitLoss));
+        U_PORT_TEST_ASSERT(heapUsed <= heapSockInitLoss + heapXxxSockInitLoss);
+    }
+
+    // Remove each network type
+    for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+        U_TEST_PRINT_LINE("taking down %s...",
+                          gpUNetworkTestTypeName[pTmp->networkType]);
+        U_PORT_TEST_ASSERT(uNetworkInterfaceDown(*pTmp->pDevHandle,
+                                                 pTmp->networkType) == 0);
+    }
+
+    // To speed things up, do not close the device
+    uNetworkTestListFree();
+}
+
 /** Test setting non-blocking and blocking.
  */
 U_PORT_TEST_FUNCTION("[sock]", "sockNonBlocking")

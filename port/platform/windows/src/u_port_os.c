@@ -97,7 +97,6 @@
 
 #include "u_cfg_sw.h"
 #include "u_cfg_os_platform_specific.h"
-#include "u_cfg_test_platform_specific.h" // For U_CFG_TEST_HEAP_MIN_FREE_BYTES
 
 #include "u_error_common.h"
 

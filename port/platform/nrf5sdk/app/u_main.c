@@ -42,8 +42,6 @@
 
 #include "u_debug_utils.h"
 
-#include "u_runner.h"
-
 #include "nrf_delay.h"
 
 /* ----------------------------------------------------------------

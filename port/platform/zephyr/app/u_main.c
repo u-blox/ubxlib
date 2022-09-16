@@ -42,8 +42,6 @@
 #include "u_port_debug.h"
 #include "u_port_os.h"
 
-#include "u_runner.h"
-
 #include "zephyr.h"
 
 #ifdef CONFIG_ARCH_POSIX

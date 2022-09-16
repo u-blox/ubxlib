@@ -47,6 +47,7 @@
 #include "u_security.h"
 
 #include "u_cell_module_type.h"
+#include "u_cell_file.h"
 #include "u_cell_net.h"     // Order is important
 #include "u_cell_private.h" // here don't change it
 #include "u_cell_info.h"    // For the IMEI

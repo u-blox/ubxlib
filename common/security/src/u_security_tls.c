@@ -268,7 +268,7 @@ uSecurityTlsContext_t *pUSecurityTlsAdd(uDeviceHandle_t devHandle,
 // Free the given TLS security context.
 void uSecurityTlsRemove(uSecurityTlsContext_t *pContext)
 {
-    if ((pContext != NULL) && init()) {
+    if ((pContext != NULL) && (init() == 0)) {
 
         U_PORT_MUTEX_LOCK(gMutex);
 

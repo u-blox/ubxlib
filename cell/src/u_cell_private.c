@@ -48,6 +48,7 @@
 #include "u_security.h"
 
 #include "u_cell_module_type.h"
+#include "u_cell_file.h" // U_CELL_FILE_NAME_MAX_LENGTH
 #include "u_cell.h"         // Order is
 #include "u_cell_net.h"     // important here
 #include "u_cell_private.h" // don't change it
@@ -83,17 +84,18 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
         5 /* Boot wait */, 5 /* Min awake */, 5 /* Pwr down wait */, 5 /* Reboot wait */, 10 /* AT timeout */,
         50 /* Cmd wait ms */, 2000 /* Resp max wait ms */, 0 /* radioOffCfun */, 75 /* resetHoldMilliseconds */,
         2 /* Simultaneous RATs */,
-        ((1UL << (int32_t) U_CELL_NET_RAT_GSM_GPRS_EGPRS) |
-         (1UL << (int32_t) U_CELL_NET_RAT_UTRAN)) /* RATs */,
-        ((1UL << (int32_t) U_CELL_PRIVATE_FEATURE_USE_UPSD_CONTEXT_ACTIVATION) |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CONTEXT_MAPPING_REQUIRED)    |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_AUTO_BAUDING)                |
+        ((1ULL << (int32_t) U_CELL_NET_RAT_GSM_GPRS_EGPRS) |
+         (1ULL << (int32_t) U_CELL_NET_RAT_UTRAN)) /* RATs */,
+        ((1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_USE_UPSD_CONTEXT_ACTIVATION) |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CONTEXT_MAPPING_REQUIRED)    |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_AUTO_BAUDING)                |
          // In theory SARA-U201 does support DTR power saving however we do not
          // have this in our regression test farm and hence it is not marked
          // as supported for now
-         // (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_DTR_POWER_SAVING)
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_AT_PROFILES)                 |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CTS_CONTROL) /* features */
+         // (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_DTR_POWER_SAVING)
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_AT_PROFILES)                 |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CTS_CONTROL)                 |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SOCK_SET_LOCAL_PORT) /* features */
         )
     },
     {
@@ -101,20 +103,21 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
         6 /* Boot wait */, 30 /* Min awake */, 35 /* Pwr down wait */, 5 /* Reboot wait */, 10 /* AT timeout */,
         100 /* Cmd wait ms */, 3000 /* Resp max wait ms */, 4 /* radioOffCfun */, 16500 /* resetHoldMilliseconds */,
         2 /* Simultaneous RATs */,
-        ((1UL << (int32_t) U_CELL_NET_RAT_CATM1)          |
-         (1UL << (int32_t) U_CELL_NET_RAT_NB1)) /* RATs */,
-        ((1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE)        |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_ASYNC_SOCK_CLOSE)   |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT)               |
+        ((1ULL << (int32_t) U_CELL_NET_RAT_CATM1)          |
+         (1ULL << (int32_t) U_CELL_NET_RAT_NB1)) /* RATs */,
+        ((1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE)        |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_ASYNC_SOCK_CLOSE)   |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT)               |
          // In theory SARA-R410M does support keep alive but I have been
          // unable to make it work (always returns error) and hence this is
          // not marked as supported for now
-         // (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_KEEP_ALIVE)         |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX) |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_UCGED5)                  |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_FILE_SYSTEM_TAG)         |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING)       |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_EDRX) /* features */
+         // (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_KEEP_ALIVE)         |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX) |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UCGED5)                  |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_FILE_SYSTEM_TAG)         |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING)       |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_EDRX)                    |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_FOTA) /* features */
         )
     },
     {
@@ -122,25 +125,27 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
         5 /* Boot wait */, 30 /* Min awake */, 35 /* Pwr down wait */, 10 /* Reboot wait */, 10 /* AT timeout */,
         100 /* Cmd wait ms */, 3000 /* Resp max wait ms */, 4 /* radioOffCfun */, 16500 /* resetHoldMilliseconds */,
         3 /* Simultaneous RATs */,
-        ((1UL << (int32_t) U_CELL_NET_RAT_GSM_GPRS_EGPRS) |
-         (1UL << (int32_t) U_CELL_NET_RAT_CATM1)          |
-         (1UL << (int32_t) U_CELL_NET_RAT_NB1)) /* RATs */,
-        ((1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE)                            |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CSCON)                                  |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_ASYNC_SOCK_CLOSE)                       |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_SERVER_NAME_INDICATION)    |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT)                                |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)             |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SET_LOCAL_PORT)                 |
+        ((1ULL << (int32_t) U_CELL_NET_RAT_GSM_GPRS_EGPRS) |
+         (1ULL << (int32_t) U_CELL_NET_RAT_CATM1)          |
+         (1ULL << (int32_t) U_CELL_NET_RAT_NB1)) /* RATs */,
+        ((1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE)                            |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CSCON)                                  |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_ASYNC_SOCK_CLOSE)                       |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_SERVER_NAME_INDICATION)    |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT)                                |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)             |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SET_LOCAL_PORT)                 |
          // In theory SARA-R412M does support keep alive but I have been
          // unable to make it work (always returns error) and hence this is
          // not marked as supported for now
-         // (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_KEEP_ALIVE)                     |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SESSION_RETAIN)                 |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_UCGED5)                              |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_FILE_SYSTEM_TAG)                     |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING)                   |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_EDRX) /* features */
+         // (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_KEEP_ALIVE)                     |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SESSION_RETAIN)                 |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UCGED5)                              |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_FILE_SYSTEM_TAG)                     |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING)                   |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_EDRX)                                |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_FOTA) /* features */
+         /* features */
         )
     },
     {
@@ -148,17 +153,17 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
         6 /* Boot wait */, 30 /* Min awake */, 35 /* Pwr down wait */, 5 /* Reboot wait */, 10 /* AT timeout */,
         100 /* Cmd wait ms */, 2000 /* Resp max wait ms */, 4 /* radioOffCfun */, 16500 /* resetHoldMilliseconds */,
         3 /* Simultaneous RATs */,
-        ((1UL << (int32_t) U_CELL_NET_RAT_GSM_GPRS_EGPRS) |
-         (1UL << (int32_t) U_CELL_NET_RAT_CATM1)          |
-         (1UL << (int32_t) U_CELL_NET_RAT_NB1)) /* RATs */,
-        ((1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE)                         |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CSCON)                               |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_SERVER_NAME_INDICATION) |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_UCGED5)                              |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_FILE_SYSTEM_TAG)                     |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_DEEP_SLEEP_URC)                      |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING)                   |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_EDRX) /* features */
+        ((1ULL << (int32_t) U_CELL_NET_RAT_GSM_GPRS_EGPRS) |
+         (1ULL << (int32_t) U_CELL_NET_RAT_CATM1)          |
+         (1ULL << (int32_t) U_CELL_NET_RAT_NB1)) /* RATs */,
+        ((1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE)                         |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CSCON)                               |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_SERVER_NAME_INDICATION) |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UCGED5)                              |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_FILE_SYSTEM_TAG)                     |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_DEEP_SLEEP_URC)                      |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING)                   |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_EDRX) /* features */
         )
     },
     {
@@ -166,32 +171,34 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
         6 /* Boot wait */, 10 /* Min awake */, 20 /* Pwr down wait */, 15 /* Reboot wait */, 10 /* AT timeout */,
         20 /* Cmd wait ms */, 3000 /* Resp max wait ms */, 4 /* radioOffCfun */, 150 /* resetHoldMilliseconds */,
         1 /* Simultaneous RATs */,
-        (1UL << (int32_t) U_CELL_NET_RAT_CATM1) /* RATs */,
-        ((1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE)                         |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CSCON)                               |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_ROOT_OF_TRUST)                       |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_C2C)                        |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_DATA_COUNTERS)                       |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_IANA_NUMBERING)         |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_CIPHER_LIST)            |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_SERVER_NAME_INDICATION) |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT)                                |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_BINARY_PUBLISH)                 |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_WILL)                           |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_KEEP_ALIVE)                     |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SECURITY)                       |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CONTEXT_MAPPING_REQUIRED)            |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_AUTO_BAUDING)                        |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_AT_PROFILES)                         |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_ZTP)                        |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_FILE_SYSTEM_TAG)                     |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_DTR_POWER_SAVING)                    |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_DEEP_SLEEP_URC)                      |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING)                   |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING_PAGING_WINDOW_SET) |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_EDRX)                                |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTTSN)                              |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CTS_CONTROL) /* features */
+        (1ULL << (int32_t) U_CELL_NET_RAT_CATM1) /* RATs */,
+        ((1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE)                         |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CSCON)                               |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_ROOT_OF_TRUST)                       |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_C2C)                        |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_DATA_COUNTERS)                       |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_IANA_NUMBERING)         |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_CIPHER_LIST)            |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_SERVER_NAME_INDICATION) |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT)                                |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_BINARY_PUBLISH)                 |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_WILL)                           |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_KEEP_ALIVE)                     |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SECURITY)                       |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CONTEXT_MAPPING_REQUIRED)            |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_AUTO_BAUDING)                        |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_AT_PROFILES)                         |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_ZTP)                        |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_FILE_SYSTEM_TAG)                     |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_DTR_POWER_SAVING)                    |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_DEEP_SLEEP_URC)                      |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING)                   |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING_PAGING_WINDOW_SET) |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_EDRX)                                |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTTSN)                              |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CTS_CONTROL)                         |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SOCK_SET_LOCAL_PORT)                 |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_FOTA) /* features */
         )
     },
     {
@@ -199,19 +206,19 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
         6 /* Boot wait */, 30 /* Min awake */, 35 /* Pwr down wait */, 5 /* Reboot wait */, 10 /* AT timeout */,
         100 /* Cmd wait ms */, 2000 /* Resp max wait ms */, 4 /* radioOffCfun */,  16500 /* resetHoldMilliseconds */,
         2 /* Simultaneous RATs */,
-        ((1UL << (int32_t) U_CELL_NET_RAT_CATM1)          |
-         (1UL << (int32_t) U_CELL_NET_RAT_NB1)) /* RATs */,
-        ((1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE)                         |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CSCON)                               |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_SERVER_NAME_INDICATION) |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT)                                |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_KEEP_ALIVE)                     |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SECURITY)                       |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_UCGED5)                              |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_FILE_SYSTEM_TAG)                     |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_DEEP_SLEEP_URC)                      |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING)                   |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_EDRX) /* features */
+        ((1ULL << (int32_t) U_CELL_NET_RAT_CATM1)          |
+         (1ULL << (int32_t) U_CELL_NET_RAT_NB1)) /* RATs */,
+        ((1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE)                         |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CSCON)                               |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_SERVER_NAME_INDICATION) |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT)                                |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_KEEP_ALIVE)                     |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SECURITY)                       |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UCGED5)                              |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_FILE_SYSTEM_TAG)                     |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_DEEP_SLEEP_URC)                      |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING)                   |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_EDRX) /* features */
         )
     },
     {
@@ -219,31 +226,32 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
         5 /* Boot wait */, 30 /* Min awake */, 35 /* Pwr down wait */, 10 /* Reboot wait */, 10 /* AT timeout */,
         100 /* Cmd wait ms */, 3000 /* Resp max wait ms */, 4 /* radioOffCfun */,  16500 /* resetHoldMilliseconds */,
         3 /* Simultaneous RATs */,
-        ((1UL << (int32_t) U_CELL_NET_RAT_GSM_GPRS_EGPRS) |
-         (1UL << (int32_t) U_CELL_NET_RAT_CATM1)          |
-         (1UL << (int32_t) U_CELL_NET_RAT_NB1)) /* RATs */,
-        ((1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE)                         |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CSCON)                               |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_ROOT_OF_TRUST)                       |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_ASYNC_SOCK_CLOSE)                    |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_IANA_NUMBERING)         |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_SERVER_NAME_INDICATION) |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT)                                |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_BINARY_PUBLISH)                 |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_WILL)                           |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_KEEP_ALIVE)                     |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SECURITY)                       |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CONTEXT_MAPPING_REQUIRED)            |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_FILE_SYSTEM_TAG)                     |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_DEEP_SLEEP_URC)                      |
+        ((1ULL << (int32_t) U_CELL_NET_RAT_GSM_GPRS_EGPRS) |
+         (1ULL << (int32_t) U_CELL_NET_RAT_CATM1)          |
+         (1ULL << (int32_t) U_CELL_NET_RAT_NB1)) /* RATs */,
+        ((1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE)                         |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CSCON)                               |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_ROOT_OF_TRUST)                       |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_ASYNC_SOCK_CLOSE)                    |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_IANA_NUMBERING)         |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_SERVER_NAME_INDICATION) |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT)                                |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_BINARY_PUBLISH)                 |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_WILL)                           |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_KEEP_ALIVE)                     |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SECURITY)                       |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CONTEXT_MAPPING_REQUIRED)            |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_FILE_SYSTEM_TAG)                     |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_DEEP_SLEEP_URC)                      |
          // SARA-R422 _does_ support 3GPP power saving, however the tests fail at the
          // moment because a second attempt to enter 3GPP power saving, after waking-up
          // from sleep to do something, fails, hence the support is disabled until
          // we determine why that is
-         //(1UL << (int32_t) U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING)                   |
-         //(1UL << (int32_t) U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING_PAGING_WINDOW_SET) |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_EDRX)                                  |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTTSN) /* features */
+         //(1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING)                   |
+         //(1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING_PAGING_WINDOW_SET) |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_EDRX)                                  |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTTSN)                                |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_FOTA) /* features */
         )
     },
     {
@@ -251,22 +259,24 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
         10 /* Boot wait */, 30 /* Min awake */, 35 /* Pwr down wait */, 10 /* Reboot wait */, 10 /* AT timeout */,
         100 /* Cmd wait ms */, 3000 /* Resp max wait ms */, 4 /* radioOffCfun */,  150 /* resetHoldMilliseconds */,
         3 /* Simultaneous RATs */,
-        ((1UL << (int32_t) U_CELL_NET_RAT_GSM_GPRS_EGPRS) |
-         (1UL << (int32_t) U_CELL_NET_RAT_LTE)            |
-         (1UL << (int32_t) U_CELL_NET_RAT_UTRAN)) /* RATs */,
-        ((1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE)                         |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CSCON)                               |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_ROOT_OF_TRUST)                       |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_IANA_NUMBERING)         |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_SERVER_NAME_INDICATION) |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT)                                |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_BINARY_PUBLISH)                 |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_WILL)                           |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_KEEP_ALIVE)                     |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SECURITY)                       |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_FILE_SYSTEM_TAG)                     |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_DTR_POWER_SAVING)                    |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTTSN) /* features */
+        ((1ULL << (int32_t) U_CELL_NET_RAT_GSM_GPRS_EGPRS) |
+         (1ULL << (int32_t) U_CELL_NET_RAT_LTE)            |
+         (1ULL << (int32_t) U_CELL_NET_RAT_UTRAN)) /* RATs */,
+        ((1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE)                         |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CSCON)                               |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_ROOT_OF_TRUST)                       |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_IANA_NUMBERING)         |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_SERVER_NAME_INDICATION) |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT)                                |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_BINARY_PUBLISH)                 |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_WILL)                           |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_KEEP_ALIVE)                     |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SECURITY)                       |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_FILE_SYSTEM_TAG)                     |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_DTR_POWER_SAVING)                    |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTTSN)                              |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SOCK_SET_LOCAL_PORT)                 |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_FOTA) /* features */
         )
     }
 };
@@ -377,6 +387,66 @@ static int32_t deepSleepWakeUp(uCellPrivateInstance_t *pInstance)
     }
 
     return errorCode;
+}
+
+// Add an entry to the end of the linked list
+// of files and count how many are in it once added.
+static size_t filelListAddCount(uCellPrivateFileListContainer_t **ppFileContainer,
+                                uCellPrivateFileListContainer_t *pAdd)
+{
+    size_t count = 0;
+    uCellPrivateFileListContainer_t **ppTmp = ppFileContainer;
+
+    while (*ppTmp != NULL) {
+        ppTmp = &((*ppTmp)->pNext);
+        count++;
+    }
+
+    if (pAdd != NULL) {
+        *ppTmp = pAdd;
+        pAdd->pNext = NULL;
+        count++;
+    }
+
+    return count;
+}
+
+// Get an entry from the start of the linked list of files
+// and remove it from the list, returning the number left
+static int32_t fileListGetRemove(uCellPrivateFileListContainer_t **ppFileContainer,
+                                 char *pFile)
+{
+    int32_t errorOrCount = (int32_t) U_ERROR_COMMON_NOT_FOUND;
+    uCellPrivateFileListContainer_t *pTmp = *ppFileContainer;
+
+    if (pTmp != NULL) {
+        if (pFile != NULL) {
+            strncpy(pFile, pTmp->fileName,
+                    U_CELL_FILE_NAME_MAX_LENGTH + 1);
+        }
+        pTmp = (*ppFileContainer)->pNext;
+        free(*ppFileContainer);
+        *ppFileContainer = pTmp;
+        errorOrCount = 0;
+        while (pTmp != NULL) {
+            pTmp = pTmp->pNext;
+            errorOrCount++;
+        }
+    }
+
+    return errorOrCount;
+}
+
+// Clear the file list
+static void fileListClear(uCellPrivateFileListContainer_t **ppFileContainer)
+{
+    uCellPrivateFileListContainer_t *pTmp;
+
+    while (*ppFileContainer != NULL) {
+        pTmp = (*ppFileContainer)->pNext;
+        free(*ppFileContainer);
+        *ppFileContainer = pTmp;
+    }
 }
 
 /* ----------------------------------------------------------------
@@ -981,6 +1051,132 @@ int32_t uCellPrivateResumeUartPowerSaving(const uCellPrivateInstance_t *pInstanc
     uAtClientCommandStopReadResponse(atHandle);
 
     return uAtClientUnlock(atHandle);
+}
+
+// Delete file on file system.
+int32_t uCellPrivateFileDelete(const uCellPrivateInstance_t *pInstance,
+                               const char *pFileName)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    uAtClientHandle_t atHandle;
+
+    // Check parameters
+    if ((pInstance != NULL) && (pFileName != NULL) &&
+        (strlen(pFileName) <= U_CELL_FILE_NAME_MAX_LENGTH)) {
+        errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
+        atHandle = pInstance->atHandle;
+        // Do the UDELFILE thang with the AT interface
+        uAtClientLock(atHandle);
+        uAtClientCommandStart(atHandle, "AT+UDELFILE=");
+        // Write file name
+        uAtClientWriteString(atHandle, pFileName, true);
+        if (pInstance->pFileSystemTag != NULL) {
+            // Write tag
+            uAtClientWriteString(atHandle, pInstance->pFileSystemTag, true);
+        }
+        uAtClientCommandStop(atHandle);
+        // Grab the response
+        uAtClientCommandStopReadResponse(atHandle);
+        if (uAtClientUnlock(atHandle) == 0) {
+            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+        }
+    }
+
+    return errorCode;
+}
+
+// Get the name of the first file stored on file system.
+int32_t uCellPrivateFileListFirst(const uCellPrivateInstance_t *pInstance,
+                                  uCellPrivateFileListContainer_t **ppFileListContainer,
+                                  char *pFileName)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    uAtClientHandle_t atHandle;
+    uCellPrivateFileListContainer_t *pFileContainer;
+    bool keepGoing = true;
+    int32_t bytesRead = 0;
+    size_t count = 0;
+
+    // Check parameters
+    if ((pInstance != NULL) && (ppFileListContainer != NULL) && (pFileName != NULL)) {
+        errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
+        atHandle = pInstance->atHandle;
+        // Do the ULSTFILE thang with the AT interface
+        uAtClientLock(atHandle);
+        uAtClientCommandStart(atHandle, "AT+ULSTFILE=");
+        // List files operation
+        uAtClientWriteInt(atHandle, 0);
+        if (pInstance->pFileSystemTag != NULL) {
+            // Write tag
+            uAtClientWriteString(atHandle, pInstance->pFileSystemTag, true);
+        }
+        uAtClientCommandStop(atHandle);
+        uAtClientResponseStart(atHandle, "+ULSTFILE:");
+        while (keepGoing) {
+            keepGoing = false;
+            errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
+            pFileContainer = (uCellPrivateFileListContainer_t *) malloc(sizeof(*pFileContainer));
+            if (pFileContainer != NULL) {
+                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                // Read file name
+                bytesRead = uAtClientReadString(atHandle, pFileContainer->fileName,
+                                                sizeof(pFileContainer->fileName), false);
+            }
+            if (bytesRead > 0) {
+                bytesRead = 0;
+                keepGoing = true;
+                // Add the container to the end of the list
+                count = filelListAddCount(ppFileListContainer, pFileContainer);
+            } else {
+                // Nothing there, free it
+                free(pFileContainer);
+            }
+        }
+        uAtClientResponseStop(atHandle);
+
+        // Do the following parts inside the AT lock,
+        // providing protection for the linked-list.
+        if (errorCode == (int32_t) U_ERROR_COMMON_NO_MEMORY) {
+            // If we ran out of memory, clear the whole list,
+            // don't want to report partial information
+            fileListClear(&pFileContainer);
+        } else {
+            if (count > 0) {
+                // Set the return value, copy out the first item in the list
+                // and remove it.
+                errorCode = (int32_t) count;
+                fileListGetRemove(ppFileListContainer, pFileName);
+            } else {
+                errorCode = (int32_t) U_ERROR_COMMON_NOT_FOUND;
+            }
+        }
+        uAtClientUnlock(atHandle);
+    }
+
+    return errorCode;
+}
+
+// Return subsequent file name in the list.
+int32_t uCellPrivateFileListNext(uCellPrivateFileListContainer_t **ppFileListContainer,
+                                 char *pFileName)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+
+    // Check parameters
+    if ((ppFileListContainer != NULL) && (*ppFileListContainer != NULL) &&
+        (pFileName != NULL)) {
+        errorCode = fileListGetRemove(ppFileListContainer, pFileName);
+    }
+
+    return errorCode;
+}
+
+// Free memory from list.
+void uCellPrivateFileListLast(uCellPrivateFileListContainer_t **ppFileListContainer)
+{
+    if ((ppFileListContainer != NULL) && (*ppFileListContainer != NULL)) {
+        fileListClear(ppFileListContainer);
+    }
 }
 
 // End of file

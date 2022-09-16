@@ -1905,6 +1905,42 @@ int32_t uSockSecurity(uSockDescriptor_t descriptor,
     return errorCode;
 }
 
+// Set a local port which will be used on the next uSockCreate().
+int32_t uSockSetNextLocalPort(uDeviceHandle_t devHandle, int32_t port)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+    int32_t errnoLocal;
+
+    errnoLocal = init();
+    if (errnoLocal == U_SOCK_ENONE) {
+
+        U_PORT_MUTEX_LOCK(gMutexContainer);
+
+        errorCode = -U_SOCK_ENOSYS;
+        int32_t devType = uDeviceGetDeviceType(devHandle);
+        if (devType == (int32_t) U_DEVICE_TYPE_CELL) {
+            errorCode = uCellSockSetNextLocalPort(devHandle, port);
+        } else if (devType == (int32_t) U_DEVICE_TYPE_SHORT_RANGE) {
+            errorCode = uWifiSockSetNextLocalPort(devHandle, port);
+        }
+
+        if (errorCode < 0) {
+            // Set errno
+            errnoLocal = -errorCode;
+        }
+
+        U_PORT_MUTEX_UNLOCK(gMutexContainer);
+    }
+
+    if (errnoLocal != U_SOCK_ENONE) {
+        // Write the errno
+        errno = errnoLocal;
+        errorCode = (int32_t) U_ERROR_COMMON_BSD_ERROR;
+    }
+
+    return errorCode;
+}
+
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS: UDP ONLY
  * -------------------------------------------------------------- */

@@ -34,6 +34,7 @@
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 #include "string.h"    // memcpy(), memcmp(), strlen()
+#include "limits.h"    // UINT16_MAX
 
 #include "u_cfg_sw.h"
 
@@ -49,6 +50,7 @@
 #include "u_sock.h"
 
 #include "u_cell_module_type.h"
+#include "u_cell_file.h"
 #include "u_cell_net.h"
 #include "u_cell_private.h"
 #include "u_cell_sock.h"
@@ -746,6 +748,11 @@ int32_t uCellSockCreate(uDeviceHandle_t cellHandle,
             uAtClientCommandStart(atHandle, "AT+USOCR=");
             // Protocol is 6 for TCP or 17 for UDP
             uAtClientWriteInt(atHandle, (int32_t) protocol);
+            // User-specified local port number
+            if (pInstance->sockNextLocalPort >= 0) {
+                uAtClientWriteInt(atHandle, pInstance->sockNextLocalPort);
+                pInstance->sockNextLocalPort = -1;
+            }
             uAtClientCommandStop(atHandle);
             uAtClientResponseStart(atHandle, "+USOCR:");
             pSocket->sockHandleModule = uAtClientReadInt(atHandle);
@@ -1181,6 +1188,28 @@ bool uCellSockHexModeIsOn(uDeviceHandle_t cellHandle)
     }
 
     return hexModeIsOn;
+}
+
+// Set a local port for the next uCellSockCreate().
+int32_t uCellSockSetNextLocalPort(uDeviceHandle_t cellHandle,
+                                  int32_t port)
+{
+    int32_t negErrnoLocal = -U_SOCK_EINVAL;
+    uCellPrivateInstance_t *pInstance;
+
+    // Find the instance
+    pInstance = pUCellPrivateGetInstance(cellHandle);
+    if ((pInstance != NULL) &&
+        ((port == -1) || ((port >= 0) && (port <= UINT16_MAX)))) {
+        negErrnoLocal =  -U_SOCK_ENOSYS;
+        if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                               U_CELL_PRIVATE_FEATURE_SOCK_SET_LOCAL_PORT)) {
+            negErrnoLocal = U_SOCK_ENONE;
+            pInstance->sockNextLocalPort = port;
+        }
+    }
+
+    return negErrnoLocal;
 }
 
 /* ----------------------------------------------------------------

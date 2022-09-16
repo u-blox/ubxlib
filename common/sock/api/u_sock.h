@@ -30,7 +30,7 @@
 
 /** @file
  * @brief This header file defines the sockets API. These functions are
- * thread-safe.
+ * thread-safe with the exception of uSockSetNextLocalPort().
  */
 
 #ifdef __cplusplus
@@ -364,7 +364,9 @@ typedef struct {
  * FUNCTIONS: CREATE/OPEN/CLOSE/CLEAN-UP
  * -------------------------------------------------------------- */
 
-/** Create a socket.
+/** Create a socket.  The local port number employed will be
+ * assigned by the IP stack unless uSockSetNextLocalPort()
+ * has been called.
  *
  * @param devHandle      the handle of the underlying network
  *                       layer to use, usually established by
@@ -495,6 +497,27 @@ int32_t uSockOptionGet(uSockDescriptor_t descriptor,
                        int32_t level, uint32_t option,
                        void *pOptionValue,
                        size_t *pOptionValueLength);
+
+/** Set a local port which will be used on the next uSockCreate(),
+ * otherwise a local port will be chosen by the IP stack.  This is
+ * useful if you, for instance, need to maintain a DTLS connection
+ * across IP connections.  Once uSockCreate() has been called, the local
+ * port will return to being IP-stack-assigned once more.  Obviously this
+ * is not thread-safe, unless the caller makes it so through some form
+ * of mutex protection at application level.  Specify -1 to cancel a
+ * previously selected local port if you change your mind.
+ * NOTE: not all module types support setting the local port (e.g.
+ * cellular SARA-R4 doesn't).
+ *
+ * @param devHandle   the handle of the underlying network layer to
+ *                    use, usually established by a call to uDeviceOpen().
+ * @param port        the uint16_t port number or -1 to cancel a previous
+ *                    uSockSetNextLocalPort() selection.
+ * @return            zero on success else negative error code (and
+ *                    errno will also be set to a value from
+ *                    u_sock_errno.h).
+ */
+int32_t uSockSetNextLocalPort(uDeviceHandle_t devHandle, int32_t port);
 
 /* ----------------------------------------------------------------
  * FUNCTIONS: UDP ONLY
@@ -730,6 +753,8 @@ int32_t uSockGetRemoteAddress(uSockDescriptor_t descriptor,
                               uSockAddress_t *pRemoteAddress);
 
 /** Get the local address of the given socket.
+ * IMPORTANT: the port number will be zero unless this is a TCP
+ * server, i.e. it will be zero for any client connection.
  *
  * @param descriptor    the descriptor of the socket.
  * @param pLocalAddress a pointer to a place to put the address

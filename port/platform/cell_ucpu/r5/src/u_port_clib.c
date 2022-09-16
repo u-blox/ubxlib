@@ -66,9 +66,10 @@ void *malloc(size_t size)
     void *ptr = NULL;
 
     if ((size > 0) &&  (pHeapPool != NULL)) {
-        result = tx_byte_allocate(pHeapPool, &ptr, size, TX_WAIT_FOREVER);
+        result = tx_byte_allocate(pHeapPool, &ptr, size, TX_NO_WAIT);
 
         if (result != TX_SUCCESS) {
+            uPortLog("malloc() Heap pool exhausted.\n");
             ptr = NULL;
         }
     }

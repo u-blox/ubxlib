@@ -21,7 +21,7 @@
  */
 
 /** @file
- * @brief Tests for the cellular GPIO API: these should pass on all
+ * @brief Tests for the cellular FOTA API: these should pass on all
  * platforms that have a cellular module connected to them.  They
  * are only compiled if U_CFG_TEST_CELL_MODULE_TYPE is defined.
  * IMPORTANT: see notes in u_cfg_test_platform_specific.h for the
@@ -49,7 +49,6 @@
 #include "u_port.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"   // Required by u_cell_private.h
-#include "u_port_uart.h"
 
 #include "u_at_client.h"
 
@@ -58,8 +57,7 @@
 #include "u_cell_file.h"
 #include "u_cell_net.h"     // Required by u_cell_private.h
 #include "u_cell_private.h" // So that we can get at some innards
-#include "u_cell_info.h"    // Required for uCellInfoIsxxxFlowControlEnabled()
-#include "u_cell_gpio.h"
+#include "u_cell_fota.h"
 
 #include "u_cell_test_cfg.h"
 #include "u_cell_test_private.h"
@@ -70,17 +68,11 @@
 
 /** The string to put at the start of all prints from this test.
  */
-#define U_TEST_PREFIX "U_CELL_GPIO_TEST: "
+#define U_TEST_PREFIX "U_CELL_FOTA_TEST: "
 
 /** Print a whole line, with terminator, prefixed for this test file.
  */
 #define U_TEST_PRINT_LINE(format, ...) uPortLog(U_TEST_PREFIX format "\n", ##__VA_ARGS__)
-
-#ifndef U_CFG_TEST_GPIO_NAME
-/** The GPIO ID to use when testing.
- */
-# define U_CFG_TEST_GPIO_NAME U_CELL_GPIO_NUMBER_TO_GPIO_ID(1)
-#endif
 
 /* ----------------------------------------------------------------
  * TYPES
@@ -98,23 +90,36 @@ static uCellTestPrivate_t gHandles = U_CELL_TEST_PRIVATE_DEFAULTS;
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
+// The FOTA status callback.
+void fotaStatusCallback(uDeviceHandle_t cellHandle,
+                        uCellFotaStatus_t *pStatus,
+                        void *pParameter)
+{
+    // Deliberately empty
+
+    (void) cellHandle;
+    (void) pStatus;
+    (void) pParameter;
+}
+
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-/** Test GPIOs.
+/** Test FOTA; there's very little here I'm afraid as it is not
+ * currently possible to run a proper regression test of FOTA.
  *
  * IMPORTANT: see notes in u_cfg_test_platform_specific.h for the
  * naming rules that must be followed when using the
  * U_PORT_TEST_FUNCTION() macro.
  */
-U_PORT_TEST_FUNCTION("[cellGpio]", "cellGpioBasic")
+U_PORT_TEST_FUNCTION("[cellFota]", "cellFotaVeryBasicIndeed")
 {
     uDeviceHandle_t cellHandle;
-    const uCellPrivateInstance_t *pInstance;
+    const uCellPrivateModule_t *pModule;
     int32_t heapUsed;
+    int32_t heapFotaInitLoss = 0;
     int32_t x;
-    int32_t y;
 
     // In case a previous test failed
     uCellTestPrivateCleanup(&gHandles);
@@ -127,44 +132,40 @@ U_PORT_TEST_FUNCTION("[cellGpio]", "cellGpioBasic")
                                                 &gHandles, true) == 0);
     cellHandle = gHandles.cellHandle;
 
-    // Get the private module instance data as we need it for testing
-    pInstance = pUCellPrivateGetInstance(cellHandle);
-    U_PORT_TEST_ASSERT(pInstance != NULL);
-    //lint -esym(613, pInstance) Suppress possible use of NULL pointer
-    // for pInstance from now on
+    // Get the private module data as we need it for testing
+    pModule = pUCellPrivateGetModule(cellHandle);
+    U_PORT_TEST_ASSERT(pModule != NULL);
+    //lint -esym(613, pModule) Suppress possible use of NULL pointer
+    // for pModule from now on
 
-    U_TEST_PRINT_LINE("setting GPIO ID %d to an output and 1.",
-                      U_CFG_TEST_GPIO_NAME);
-    U_PORT_TEST_ASSERT(uCellGpioConfig(cellHandle, U_CFG_TEST_GPIO_NAME,
-                                       true, 1) == 0);
-    x = uCellGpioGet(cellHandle, U_CFG_TEST_GPIO_NAME);
-    U_TEST_PRINT_LINE("GPIO ID %d is %d.", U_CFG_TEST_GPIO_NAME, x);
-    U_PORT_TEST_ASSERT(x == 1);
-    U_TEST_PRINT_LINE("setting GPIO ID %d to 0.", U_CFG_TEST_GPIO_NAME);
-    U_PORT_TEST_ASSERT(uCellGpioSet(cellHandle, U_CFG_TEST_GPIO_NAME, 0) == 0);
-    x = uCellGpioGet(cellHandle, U_CFG_TEST_GPIO_NAME);
-    U_TEST_PRINT_LINE("GPIO ID %d is %d.", U_CFG_TEST_GPIO_NAME, x);
-    U_PORT_TEST_ASSERT(x == 0);
+    if ((pModule->moduleType != U_CELL_MODULE_TYPE_SARA_R412M_02B) &&
+        (pModule->moduleType != U_CELL_MODULE_TYPE_SARA_R410M_02B)) {
 
-    // For toggling the CTS pin we need to know that it is not
-    // already in use for flow control and this command is also not
-    // supported on SARA-R4
-    if (!U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType) &&
-        !uCellInfoIsCtsFlowControlEnabled(cellHandle)) {
-        U_TEST_PRINT_LINE("getting CTS...");
-        x = uCellGpioGetCts(cellHandle);
-        U_TEST_PRINT_LINE("CTS is %d.", x);
-        U_PORT_TEST_ASSERT((x == 0) || (x == 1));
-        U_TEST_PRINT_LINE("setting CTS to %d.", !((bool) x));
-        U_PORT_TEST_ASSERT(uCellGpioSetCts(cellHandle, !x) == 0);
-        y = uCellGpioGetCts(cellHandle);
-        U_TEST_PRINT_LINE("CTS is now %d.", y);
-        U_PORT_TEST_ASSERT(y == !((bool) x));
-        U_TEST_PRINT_LINE("putting CTS back again...");
-        U_PORT_TEST_ASSERT(uCellGpioSetCts(cellHandle, x) == 0);
+        U_TEST_PRINT_LINE("setting FOTA call-back.");
+
+        // The first call to FOTA will allocate a context which
+        // is not deallocated until cellular is taken down, which
+        // we don't do here to save time; take account of that
+        // initialisation heap cost here.
+        heapFotaInitLoss = uPortGetHeapFree();
+        x = uCellFotaSetStatusCallback(cellHandle, -1, fotaStatusCallback, NULL);
+        heapFotaInitLoss -= uPortGetHeapFree();
+        if (U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_FOTA)) {
+            U_PORT_TEST_ASSERT(x == 0);
+            x = uCellFotaSetStatusCallback(cellHandle, -1, NULL, NULL);
+            U_PORT_TEST_ASSERT(x == 0);
+        } else {
+            U_PORT_TEST_ASSERT(x == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED);
+        }
     } else {
-        U_TEST_PRINT_LINE("not testing setting of the CTS pin.");
+        // The SARA-R410M and SARA-R412M modules we have under regression
+        // test are the 02B-02 varieties, not the 02B-03 varieties, which
+        // are the ones that support FOTA
+        U_TEST_PRINT_LINE("note testing FOTA on SARA-R410M-02B-02 or"
+                          " SARA-R412M-02B-02.");
     }
+
+    // That's all we can do I'm afraid
 
     // Do the standard postamble, leaving the module on for the next
     // test to speed things up
@@ -172,17 +173,18 @@ U_PORT_TEST_FUNCTION("[cellGpio]", "cellGpioBasic")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT(heapUsed <= 0);
+    U_TEST_PRINT_LINE("during this part of the test %d byte(s)"
+                      " were lost to cell FOTA initialisation; we"
+                      " have leaked %d byte(s).",
+                      heapFotaInitLoss, heapUsed - heapFotaInitLoss);
+    U_PORT_TEST_ASSERT(heapUsed <= heapFotaInitLoss);
 }
 
 /** Clean-up to be run at the end of this round of tests, just
  * in case there were test failures which would have resulted
  * in the deinitialisation being skipped.
  */
-U_PORT_TEST_FUNCTION("[cellGpio]", "cellGpioCleanUp")
+U_PORT_TEST_FUNCTION("[cellFota]", "cellFotaCleanUp")
 {
     int32_t x;
 
@@ -199,8 +201,8 @@ U_PORT_TEST_FUNCTION("[cellGpio]", "cellGpioCleanUp")
 
     x = uPortGetHeapMinFree();
     if (x >= 0) {
-        U_TEST_PRINT_LINE("heap had a minimum of %d byte(s) free at the"
-                          " end of these tests.", x);
+        U_TEST_PRINT_LINE("heap had a minimum of %d byte(s) free"
+                          " at the end of these tests.", x);
         U_PORT_TEST_ASSERT(x >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
     }
 }

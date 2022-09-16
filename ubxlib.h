@@ -112,6 +112,7 @@
 #include <u_cell_sec.h>
 #include <u_cell_sec_tls.h>
 #include <u_cell_sock.h>
+#include <u_cell_fota.h>
 #include <u_gnss_type.h>
 #include <u_gnss.h>
 #include <u_gnss_cfg.h>

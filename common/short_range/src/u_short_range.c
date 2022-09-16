@@ -220,6 +220,7 @@ static int32_t uShortRangeAdd(uShortRangeModuleType_t moduleType,
             pInstance->mode = U_SHORT_RANGE_MODE_EDM;
             pInstance->startTimeMs = 500;
             pInstance->urcConHandlerSet = false;
+            pInstance->sockNextLocalPort = -1;
             pInstance->uartHandle = uartHandle;
 
             streamHandle = uAtClientStreamGet(atHandle, &streamType);

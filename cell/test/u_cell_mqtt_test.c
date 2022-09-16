@@ -58,6 +58,7 @@
 
 #include "u_cell_module_type.h"
 #include "u_cell.h"
+#include "u_cell_file.h"
 #include "u_cell_net.h"     // Required by u_cell_private.h
 #include "u_cell_private.h" // So that we can get at some innards
 #include "u_cell_mqtt.h"
@@ -334,8 +335,7 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqtt")
             if (U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_MQTT_SECURITY) &&
                 (pModule->moduleType != U_CELL_MODULE_TYPE_SARA_R412M_02B)) {
                 x = 0;
-                U_TEST_PRINT_LINE("U_CELL_MQTT_TEST: security is off, switching it on"
-                                  " with profile %d...", x);
+                U_TEST_PRINT_LINE("security is off, switching it on with profile %d...", x);
                 U_PORT_TEST_ASSERT(uCellMqttSetSecurityOn(cellHandle, x) == 0);
                 x = -1;
                 y = uCellMqttIsSecured(cellHandle, &x);

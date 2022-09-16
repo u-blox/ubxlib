@@ -276,6 +276,10 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
             config.parity     = UART_PARITY_DISABLE;
 #if SOC_UART_SUPPORT_REF_TICK
             config.source_clk = UART_SCLK_REF_TICK;
+#elif SOC_UART_SUPPORT_XTAL_CLK
+            config.source_clk = UART_SCLK_XTAL;
+#else
+            config.source_clk = UART_SCLK_APB;
 #endif
 
             // Set the baud rate

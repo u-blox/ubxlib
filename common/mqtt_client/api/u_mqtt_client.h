@@ -107,7 +107,14 @@ typedef struct {
                                             driver chose.  Note that only
                                             SARA-R412M-02B supports setting
                                             localPort; for all other modules
-                                            this value must be left at -1. */
+                                            this value must be left at -1.
+                                            This parameter is nothing to do
+                                            with the remote port number on the
+                                            destination server you wish to
+                                            connect to; that is specified in
+                                            pBrokerNameStr e.g. mybroker.com:247
+                                            to connect to the given remote
+                                            server on port 247. */
     int32_t inactivityTimeoutSeconds;  /**< the inactivity timeout used by
                                             the MQTT client.  Set to -1 for
                                             no inactivity timeout (which is

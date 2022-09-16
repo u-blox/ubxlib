@@ -18,6 +18,7 @@
 #define _U_CFG_TEST_PLATFORM_SPECIFIC_H_
 
 /* Only bring in #includes specifically related to the test framework. */
+#include "u_runner.h"
 
 /** @file
  * @brief Porting layer and configuration items passed in at application

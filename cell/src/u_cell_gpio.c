@@ -44,6 +44,7 @@
 #include "u_at_client.h"
 
 #include "u_cell_module_type.h"
+#include "u_cell_file.h"
 #include "u_cell_net.h"     // Order is important here
 #include "u_cell_private.h" // don't change it
 #include "u_cell_gpio.h"

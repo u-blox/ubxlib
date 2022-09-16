@@ -58,7 +58,9 @@ typedef struct {
     const char *pSsid;       /**< the access point SSID to connect */
     int32_t authentication;  /**< the access point authentication mode. Values are:
                                   1: Open (No authentication)
-                                  2: WPA/WPA2/WPA3-PSK */
+                                  2: WPA/WPA2/WPA3-PSK
+                                  6: WPA2/WPA3-PSK
+                                  7: WPA3-PSK */
     const char *pPassPhrase; /**< WPA/WPA2/WPA3 passphrase - should be NULL for open */
     /* This is the end of version 0 of this
        structure: should any fields be added to

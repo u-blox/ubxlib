@@ -3,6 +3,17 @@ MAKEFILE_DIR := $(realpath $(subst \,/,$(dir $(lastword $(MAKEFILE_LIST)))))
 UBXLIB_BASE ?= $(realpath $(MAKEFILE_DIR)/../../..)
 OUTDIR ?= output
 
+ifeq ($(OS),Windows_NT)
+# Force Windows as otherise, if sh.exe is in the path, make
+# will use it and mess up on slashes/brackets in file paths 
+SHELL = cmd
+endif
+
+$(info MAKEFILE_DIR is ${MAKEFILE_DIR})
+$(info UBXLIB_BASE is ${UBXLIB_BASE})
+$(info OUTDIR is ${OUTDIR})
+$(info SHELL is ${SHELL})
+
 TARGET_FLOAT = static_size_float.elf
 TARGET_NO_FLOAT = static_size_no_float.elf
 OUTDIR_FLOAT := $(OUTDIR)/float
@@ -15,7 +26,7 @@ RM = rm
 CC = arm-none-eabi-gcc
 SIZE = arm-none-eabi-size
 
-ifeq ($(shell echo "check_quotes"),"check_quotes")
+ifeq ($(OS),Windows_NT)
 mkdir = mkdir $(subst /,\,$(1)) > nul 2>&1 || (exit 0)
 else
 mkdir = mkdir -p $(1)
@@ -97,4 +108,3 @@ $(OUTDIR_NO_FLOAT)/$(TARGET_NO_FLOAT): $(OBJS_NO_FLOAT)
 
 no_float_size: $(OUTDIR_NO_FLOAT)/$(TARGET_NO_FLOAT)
 	$(SILENT)$(SIZE) -G $(OBJS_NO_FLOAT) $(OUTDIR_NO_FLOAT)/$(TARGET_NO_FLOAT)
-
