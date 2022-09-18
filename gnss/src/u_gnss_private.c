@@ -1115,7 +1115,7 @@ int32_t uGnssPrivateDecodeNmea(const char *pBuffer, size_t size,
             i++;
             pInput++;
             if ((state.match > U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_NULL) &&
-                (i > U_GNSS_NMEA_SENTENCE_MAX_LENGTH_BYTES)) {
+                (pInput - pMessageStart > U_GNSS_NMEA_SENTENCE_MAX_LENGTH_BYTES)) {
                 // Message has become too long: bail
                 state.match = U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_NULL;
             }
