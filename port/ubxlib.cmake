@@ -97,6 +97,7 @@ u_add_module_dir(base ${UBXLIB_BASE}/port/platform/common/debug_utils)
 # Additional source directories
 u_add_source_dir(base ${UBXLIB_BASE}/port/platform/common/event_queue)
 u_add_source_dir(base ${UBXLIB_BASE}/port/platform/common/mutex_debug)
+u_add_source_dir(base ${UBXLIB_BASE}/port/platform/common/log_ram)
 
 # Additional include directories
 list(APPEND UBXLIB_INC
@@ -108,6 +109,7 @@ list(APPEND UBXLIB_INC
 list(APPEND UBXLIB_PRIVATE_INC
   ${UBXLIB_BASE}/port/platform/common/event_queue
   ${UBXLIB_BASE}/port/platform/common/mutex_debug
+  ${UBXLIB_BASE}/port/platform/common/log_ram
 )
 
 # Device and network require special care since they contains stub & optional files

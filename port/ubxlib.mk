@@ -21,18 +21,21 @@ UBXLIB_MODULE_DIRS = \
 # Additional source directories
 UBXLIB_SRC_DIRS += \
 	${UBXLIB_BASE}/port/platform/common/event_queue \
-	${UBXLIB_BASE}/port/platform/common/mutex_debug
+	${UBXLIB_BASE}/port/platform/common/mutex_debug \
+	${UBXLIB_BASE}/port/platform/common/log_ram
+
 
 # Additional include directories
 UBXLIB_INC += \
 	${UBXLIB_BASE} \
 	${UBXLIB_BASE}/cfg \
-	${UBXLIB_BASE}/port/api \
+	${UBXLIB_BASE}/port/api
 
 UBXLIB_PRIVATE_INC += \
 	${UBXLIB_BASE}/port/platform/common/event_queue \
 	${UBXLIB_BASE}/port/platform/common/mutex_debug \
-	${UBXLIB_BASE}/port/platform/common/debug_utils/src/freertos/additions
+	${UBXLIB_BASE}/port/platform/common/debug_utils/src/freertos/additions \
+	${UBXLIB_BASE}/port/platform/common/log_ram
 
 # Device and network require special care since they contain stub & optional files
 UBXLIB_SRC += ${UBXLIB_BASE}/common/network/src/u_network.c
