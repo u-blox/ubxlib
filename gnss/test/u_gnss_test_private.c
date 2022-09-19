@@ -31,6 +31,8 @@
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
+#include "stdlib.h"    // malloc()/free()
+#include "string.h"    // memset(), strtol()
 
 #include "u_cfg_sw.h"
 #include "u_cfg_app_platform_specific.h"
@@ -82,6 +84,28 @@
  * TYPES
  * -------------------------------------------------------------- */
 
+/** Possible states for tracking NMEA messages, see
+ * uGnssTestPrivateNmeaComprehender().
+ */
+typedef enum {
+    U_GNSS_TEST_PRIVATE_NMEA_STATE_NULL,
+    U_GNSS_TEST_PRIVATE_NMEA_STATE_GOT_GNRMC_1_START,
+    U_GNSS_TEST_PRIVATE_NMEA_STATE_GOT_GNVTG_2,
+    U_GNSS_TEST_PRIVATE_NMEA_STATE_GOT_GNGGA_3,
+    U_GNSS_TEST_PRIVATE_NMEA_STATE_GOT_GNGSA_4,
+    U_GNSS_TEST_PRIVATE_NMEA_STATE_GOT_GXGSV_5
+} uGnssTestPrivateNmeaState_t;
+
+/** Context data structure for uGnssTestPrivateNmeaComprehender().
+ */
+typedef struct {
+    uGnssTestPrivateNmeaState_t state;
+    size_t lastGngsa;
+    char xInGxgsv;
+    size_t totalInGxgsv;
+    size_t lastInGxgsv;
+} uGnssTestPrivateNmeaContext_t;
+
 /* ----------------------------------------------------------------
  * VARIABLES
  * -------------------------------------------------------------- */
@@ -96,6 +120,53 @@ static const char *const gpTransportTypeString[] = {"none", "UART",
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
+
+// Get the number just before the * in an NMEA string, which could
+// be the sequence number in a GNGSA, used by
+// uGnssTestPrivateNmeaComprehender().
+static size_t getGngsa(const char *pBuffer, size_t size)
+{
+    size_t number = 0;
+    const char *pLastComma = NULL;
+
+    // Find the last comma in the string
+    for (const char *pTmp = pBuffer;  // *NOPAD*
+         (pTmp != NULL) && (pTmp - pBuffer < (int32_t) size);
+         pTmp = strchr(pTmp + 1, (int32_t) ',')) {
+        pLastComma = pTmp;
+    }
+    // Make sure there was a command and there is a * after it
+    if ((pLastComma != NULL) && (pLastComma - pBuffer + 1 < (int32_t) size) &&
+        (strchr(pLastComma, (int32_t) '*') != NULL)) {
+        number = strtol(pLastComma + 1, NULL, 10);
+    }
+
+    return number;
+}
+
+// Get the ? character and the values of the numbers Y and Z from
+// a string of the form "$G?GSV,Y,Z", used by
+// uGnssTestPrivateNmeaComprehender().
+static char getGxgsv(const char *pBuffer, size_t size,
+                     size_t *pTotalInGxgsv, size_t *pThisInGxgsv)
+{
+    char x = 0;
+    char *pEnd = NULL;
+
+    *pTotalInGxgsv = 0;
+    *pThisInGxgsv = 0;
+    if ((size >= 10) && (*pBuffer == '$') && (*(pBuffer + 1) == 'G') &&
+        (*(pBuffer + 3) == 'G') && (*(pBuffer + 4) == 'S') &&
+        (*(pBuffer + 5) == 'V') && (*(pBuffer + 6) == ',')) {
+        x = *(pBuffer + 2);
+        *pTotalInGxgsv = strtol(pBuffer + 7, &pEnd, 10);
+        if ((pEnd != NULL) && (pEnd - pBuffer < (int32_t) size - 1)) {
+            *pThisInGxgsv = strtol(pEnd + 1, NULL, 10);
+        }
+    }
+
+    return x;
+}
 
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
@@ -416,6 +487,222 @@ void uGnssTestPrivateCleanup(uGnssTestPrivate_t *pParameters)
         }
     }
     pParameters->streamHandle = -1;
+}
+
+// Track a sequence of NMEA message to spot errors,
+//
+// Here is an example of a good sequence of NMEA messages, taken
+// from a ZED-F9P:
+//
+// $GNRMC,143858.00,A,4710.5737891,N,00825.4665003,E,0.009,,180922,2.83,E,D,V*40\r\n
+// $GNVTG,,T,,M,0.009,N,0.016,K,D*36\r\n
+// $GNGGA,143858.00,4710.5737891,N,00825.4665003,E,2,12,0.58,459.860,M,47.319,M,,0123*4B\r\n
+// $GNGSA,A,3,02,05,06,09,11,20,07,30,,,,,1.24,0.58,1.10,1*05\r\n
+// $GNGSA,A,3,76,67,82,81,75,65,66,,,,,,1.24,0.58,1.10,2*0A\r\n
+// $GNGSA,A,3,30,33,12,26,19,07,,,,,,,1.24,0.58,1.10,3*02\r\n
+// $GNGSA,A,3,20,32,37,46,19,,,,,,,,1.24,0.58,1.10,4*03\r\n
+// $GNGSA,A,3,,,,,,,,,,,,,1.24,0.58,1.10,5*0F\r\n
+// $GPGSV,3,1,11,02,26,307,37,05,16,309,45,06,30,212,43,07,73,126,48,1*60\r\n
+// $GPGSV,3,2,11,09,48,072,41,11,44,251,46,13,07,259,31,20,54,298,43,1*6A\r\n
+// $GPGSV,3,3,11,30,50,195,46,36,31,150,45,49,36,185,44,1*5B\r\n
+// $GPGSV,2,1,08,04,12,077,23,05,16,309,46,06,30,212,41,07,73,126,43,6*64\r\n
+// $GPGSV,2,2,08,09,48,072,40,11,44,251,38,29,03,323,26,30,50,195,47,6*64\r\n
+// $GLGSV,3,1,09,65,37,088,48,66,66,346,42,67,21,297,50,75,44,053,32,1*71\r\n
+// $GLGSV,3,2,09,76,45,141,48,77,08,177,35,81,20,246,47,82,29,299,50,1*79\r\n
+// $GLGSV,3,3,09,83,13,343,16,1*4B\r\n
+// $GLGSV,3,1,09,65,37,088,41,66,66,346,39,67,21,297,42,75,44,053,37,3*70\r\n
+// $GLGSV,3,2,09,76,45,141,44,77,08,177,28,81,20,246,46,82,29,299,40,3*7B\r\n
+// $GLGSV,3,3,09,83,13,343,23,3*4F\r\n
+// $GLGSV,1,1,01,74,02,018,,0*40\r\n
+// $GAGSV,2,1,08,07,54,073,40,10,08,335,37,12,23,316,47,19,22,272,36,2*7C\r\n
+// $GAGSV,2,2,08,26,19,204,43,27,21,142,30,30,32,083,47,33,39,256,46,2*72\r\n
+// $GAGSV,3,1,09,07,54,073,34,10,08,335,38,12,23,316,38,19,22,272,41,7*7D\r\n
+// $GAGSV,3,2,09,20,,,34,26,19,204,42,27,21,142,18,30,32,083,44,7*43\r\n
+// $GAGSV,3,3,09,33,39,256,44,7*41\r\n
+// $GAGSV,1,1,01,08,04,085,,0*44\r\n
+// $GBGSV,2,1,07,19,36,297,41,20,84,015,43,32,32,108,50,37,55,118,46,1*79\r\n
+// $GBGSV,2,2,07,46,22,183,43,56,,,38,57,,,44,1*44\r\n
+// $GQGSV,1,1,00,0*64\r\n
+// $GNGLL,4710.5737891,N,00825.4665003,E,143858.00,A,D*78\r\n
+//
+// Hence the expected pattern is:
+//
+// - start with a $GNRMC message, followed by a $GNVTG message, followed by
+//   a $GNGGA message,
+// - one or more $GNGSA message will follow, where the digit before the *
+//   at the end starts at 1 and increments by one for each message,
+// - sets of $G?GSV,y,z messages will follow where y is the number of each
+//   type and z the count of the messages within that type,
+// - end with a $GNGLL message.
+int32_t uGnssTestPrivateNmeaComprehender(const char *pNmeaMessage, size_t size,
+                                         void **ppContext, bool printErrors)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_FOUND;
+    uGnssTestPrivateNmeaContext_t *pContext = (uGnssTestPrivateNmeaContext_t *) *ppContext;
+    char x ;
+    size_t thisGngsa = 0;
+    size_t totalInGxgsv = 0;
+    size_t thisInGxgsv = 0;
+
+    if (pContext == NULL) {
+        // No context, so we are looking for the start of a sequence, $GNRMC.
+        if ((size >= 6) && (strstr(pNmeaMessage, "$GNRMC") == pNmeaMessage)) {
+            // Got the start of a sequence, allocate memory to track it
+            errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
+            pContext = (uGnssTestPrivateNmeaContext_t *) malloc(sizeof(uGnssTestPrivateNmeaContext_t));
+            if (pContext != NULL) {
+                memset(pContext, 0, sizeof(*pContext));
+                pContext->state = U_GNSS_TEST_PRIVATE_NMEA_STATE_GOT_GNRMC_1_START;
+                errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
+            }
+        }
+    } else if (size >= 6) {
+        // Have a context and enough of a message to contain
+        // a talker/sentence, we must be in a sequence; track it
+        switch (pContext->state) {
+            case U_GNSS_TEST_PRIVATE_NMEA_STATE_GOT_GNRMC_1_START:
+                // Next must be $GNVTG
+                if (strstr(pNmeaMessage, "$GNVTG") == pNmeaMessage) {
+                    pContext->state = U_GNSS_TEST_PRIVATE_NMEA_STATE_GOT_GNVTG_2;
+                    errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
+                } else if (printErrors) {
+                    U_TEST_PRINT_LINE("NMEA sequence error: had $GNRMC,"
+                                      " expecting $GNVTG but got \"%.6s\".",
+                                      pNmeaMessage);
+                }
+                break;
+            case U_GNSS_TEST_PRIVATE_NMEA_STATE_GOT_GNVTG_2:
+                // Next must be $GNGGA
+                if (strstr(pNmeaMessage, "$GNGGA") == pNmeaMessage) {
+                    pContext->state = U_GNSS_TEST_PRIVATE_NMEA_STATE_GOT_GNGGA_3;
+                    errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
+                } else if (printErrors) {
+                    U_TEST_PRINT_LINE("NMEA sequence error: had $GNVTG,"
+                                      " expecting $GNGGA but got \"%.6s\".",
+                                      pNmeaMessage);
+                }
+                break;
+            case U_GNSS_TEST_PRIVATE_NMEA_STATE_GOT_GNGGA_3:
+                // Next must be $GNGSA
+                thisGngsa = getGngsa(pNmeaMessage, size);
+                if (strstr(pNmeaMessage, "$GNGSA") == pNmeaMessage) {
+                    pContext->state = U_GNSS_TEST_PRIVATE_NMEA_STATE_GOT_GNGSA_4;
+                    pContext->lastGngsa = thisGngsa;
+                    errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
+                } else if (printErrors) {
+                    U_TEST_PRINT_LINE("NMEA sequence error: had $GNGGA,"
+                                      " expecting $GNGSA ... %d* but got \"%.6s ... %d*\".",
+                                      pContext->lastGngsa + 1, pNmeaMessage, thisGngsa);
+                }
+                break;
+            case U_GNSS_TEST_PRIVATE_NMEA_STATE_GOT_GNGSA_4:
+            //lint -fallthrough
+            case U_GNSS_TEST_PRIVATE_NMEA_STATE_GOT_GXGSV_5:
+                // Next either we have another $GNGSA or we're in a $G?GSV or
+                // we might even be expecting a $GNGLL
+                thisGngsa = getGngsa(pNmeaMessage, size);
+                x = getGxgsv(pNmeaMessage, size, &totalInGxgsv, &thisInGxgsv);
+                if ((pContext->state == U_GNSS_TEST_PRIVATE_NMEA_STATE_GOT_GNGSA_4) &&
+                    (strstr(pNmeaMessage, "$GNGSA") == pNmeaMessage)) {
+                    if (thisGngsa == pContext->lastGngsa + 1) {
+                        // $GNGSA continues
+                        pContext->lastGngsa = thisGngsa;
+                        errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
+                    } else if (printErrors) {
+                        U_TEST_PRINT_LINE("NMEA sequence error: expecting"
+                                          " $GNGSA ... %d* but got $GNGSA ... %d*.",
+                                          pContext->lastGngsa + 1, thisGngsa);
+                    }
+                } else if (x != 0) {
+                    // We're in, or maybe starting a sequence of $G?GSV
+                    pContext->lastGngsa = 0;
+                    if (pContext->xInGxgsv == x) {
+                        // We've had this $G?GSV before, check the numbers
+                        if ((pContext->totalInGxgsv == totalInGxgsv) &&
+                            (thisInGxgsv == pContext->lastInGxgsv + 1)) {
+                            // We're in sequence, all is good
+                            pContext->state = U_GNSS_TEST_PRIVATE_NMEA_STATE_GOT_GXGSV_5;
+                            pContext->lastInGxgsv = thisInGxgsv;
+                            errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
+                            if (thisInGxgsv == pContext->totalInGxgsv) {
+                                // That must be the last of this $G?GSV, reset
+                                pContext->xInGxgsv = 0;
+                            }
+                        } else if (printErrors) {
+                            U_TEST_PRINT_LINE("NMEA sequence error: expecting $G%cGSV %d,%d"
+                                              " but got $G%cGSV %d,%d.",
+                                              pContext->xInGxgsv, pContext->totalInGxgsv,
+                                              pContext->lastInGxgsv + 1,
+                                              pContext->xInGxgsv, thisInGxgsv, totalInGxgsv);
+                        }
+                    } else {
+                        // Not seen this $G?GSV before, check that we're
+                        // at the start of one
+                        if (pContext->xInGxgsv == 0) {
+                            pContext->state = U_GNSS_TEST_PRIVATE_NMEA_STATE_GOT_GXGSV_5;
+                            if (thisInGxgsv < totalInGxgsv) {
+                                // We are at the start of one that has
+                                // more than a single message, remember it
+                                pContext->xInGxgsv = x;
+                                pContext->totalInGxgsv = totalInGxgsv;
+                                pContext->lastInGxgsv = thisInGxgsv;
+                            }
+                            errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
+                        } else if (printErrors) {
+                            U_TEST_PRINT_LINE("NMEA sequence error: a new $G?GSV has"
+                                              " started but we haven't finished the last"
+                                              " one yet, was expecting $G%cGSV %d,%d.",
+                                              pContext->xInGxgsv, pContext->totalInGxgsv,
+                                              pContext->lastInGxgsv);
+                        }
+                    }
+                } else if ((pContext->state == U_GNSS_TEST_PRIVATE_NMEA_STATE_GOT_GXGSV_5) &&
+                           (pContext->xInGxgsv == 0) &&
+                           (strstr(pNmeaMessage, "$GNGLL") == pNmeaMessage)) {
+                    // We're not currently in a $G?GSV but we have been in one and we've now
+                    // hit a $GNGLL: we're done
+                    errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                } else if (printErrors) {
+                    if (pContext->xInGxgsv > 0) {
+                        if (size >= 11) {
+                            U_TEST_PRINT_LINE("NMEA sequence error: expecting $G%cGSV %d"
+                                              " of %d or $GNGLL but got \"%.11s...\".",
+                                              pContext->xInGxgsv, pContext->lastInGxgsv + 1,
+                                              pContext->totalInGxgsv, pNmeaMessage);
+                        } else {
+                            U_TEST_PRINT_LINE("NMEA sequence error: expecting $G%cGSV %d"
+                                              " of %d or $GNGLL but got \"%.6s\".",
+                                              pContext->xInGxgsv, pContext->lastInGxgsv + 1,
+                                              pContext->totalInGxgsv, pNmeaMessage);
+                        }
+                    } else {
+                        U_TEST_PRINT_LINE("NMEA sequence error: expecting a new $G?GSV"
+                                          " or $GNGLL but got \"%.6s\".", pNmeaMessage);
+                    }
+                }
+                break;
+            default:
+                if (printErrors) {
+                    U_TEST_PRINT_LINE("NMEA sequence error: unknown state (%d).", pContext->state);
+                }
+                break;
+        }
+    } else if (printErrors) {
+        U_TEST_PRINT_LINE("NMEA sequence error: message too short (%d character(s): \"%.*s\").",
+                          size, size, pNmeaMessage);
+    }
+
+    if ((errorCode == (int32_t) U_ERROR_COMMON_NOT_FOUND) ||
+        (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS)) {
+        // In either case we can free the context; it is legal C to free a NULL pointer
+        free(pContext);
+        pContext = NULL;
+    }
+
+    // Always store the context back before exiting
+    *ppContext = pContext;
+
+    return errorCode;
 }
 
 // End of file

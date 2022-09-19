@@ -144,6 +144,7 @@
  */
 typedef struct {
     int32_t asyncHandle;
+    uGnssModuleType_t moduleType;
     char *pBuffer;
     uGnssMessageId_t messageId;
     size_t numReceived;
@@ -154,6 +155,10 @@ typedef struct {
     bool stopped;
     size_t numWhenStopped;
     size_t numNotWanted;
+    void *pNmeaComprehenderContext;
+    bool nmeaSequenceHasBegun;
+    size_t numNmeaSequence;
+    size_t numNmeaBadSequence;
 } uGnssMsgTestReceive_t;
 
 /* ----------------------------------------------------------------
@@ -296,6 +301,7 @@ static void messageReceiveCallback(uDeviceHandle_t gnssHandle,
                                    void *pCallbackParam)
 {
     uGnssMsgTestReceive_t *pMsgReceive = (uGnssMsgTestReceive_t *) pCallbackParam;
+    int32_t nmeaComprehenderErrorCode;
 
     if (gnssHandle != gHandles.gnssHandle) {
         gCallbackErrorCode = 1;
@@ -330,6 +336,37 @@ static void messageReceiveCallback(uDeviceHandle_t gnssHandle,
                 if (uGnssMsgIsGood(pMsgReceive->pBuffer,
                                    U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_BUFFER_SIZE_BYTES)) {
                     pMsgReceive->numDecoded++;
+                    // NOTE: uGnssTestPrivateNmeaComprehender() currently only supports
+                    // M9, hence this check
+                    if ((pMsgReceive->messageId.type == U_GNSS_PROTOCOL_NMEA) &&
+                        (pMsgReceive->moduleType == U_GNSS_MODULE_TYPE_M9)) {
+#ifdef U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_PRINT
+                        // It's often useful to see these messages but the load is
+                        // heavy so we don't enable printing unless required
+                        U_TEST_PRINT_LINE("%.*s", errorCodeOrLength - 2, pMsgReceive->pBuffer);
+#endif
+                        // This is an NMEA message, pass it to the comprehender
+                        nmeaComprehenderErrorCode = uGnssTestPrivateNmeaComprehender(pMsgReceive->pBuffer,
+                                                                                     errorCodeOrLength,
+                                                                                     &(pMsgReceive->pNmeaComprehenderContext),
+                                                                                     !U_CFG_OS_CLIB_LEAKS);
+                        if (pMsgReceive->nmeaSequenceHasBegun) {
+                            if (nmeaComprehenderErrorCode == (int32_t) U_ERROR_COMMON_NOT_FOUND) {
+                                // NMEA sequence is not as expected
+                                pMsgReceive->numNmeaBadSequence++;
+                                pMsgReceive->nmeaSequenceHasBegun = false;
+                            } else if (nmeaComprehenderErrorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
+                                // An NMEA sequence has been completed, well done
+                                pMsgReceive->nmeaSequenceHasBegun = false;
+                            }
+                        } else {
+                            if (nmeaComprehenderErrorCode == (int32_t) U_ERROR_COMMON_TIMEOUT) {
+                                // An NMEA sequence has started
+                                pMsgReceive->nmeaSequenceHasBegun = true;
+                                pMsgReceive->numNmeaSequence++;
+                            }
+                        }
+                    }
                 }
             }
         } else {
@@ -541,6 +578,7 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveBlocking")
 U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveNonBlocking")
 {
     uDeviceHandle_t gnssHandle;
+    const uGnssPrivateModule_t *pModule;
     int32_t heapUsed;
     uGnssMsgTestReceive_t *pTmp;
     int32_t a;
@@ -580,6 +618,9 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveNonBlocking")
                                                         U_CFG_APP_CELL_PIN_GNSS_POWER,
                                                         U_CFG_APP_CELL_PIN_GNSS_DATA_READY) == 0);
             gnssHandle = gHandles.gnssHandle;
+
+            pModule = pUGnssPrivateGetModule(gnssHandle);
+            U_PORT_TEST_ASSERT(pModule != NULL);
 
             // Make sure NMEA is on
             U_PORT_TEST_ASSERT(uGnssCfgSetProtocolOut(gnssHandle, U_GNSS_PROTOCOL_NMEA, true) == 0);
@@ -629,6 +670,7 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveNonBlocking")
                                                              &(pTmp->messageId),
                                                              messageReceiveCallback,
                                                              (void *) pTmp);
+                    pTmp->moduleType = pModule->moduleType;
                     U_PORT_TEST_ASSERT(pTmp->asyncHandle >= 0);
                 }
 
@@ -694,7 +736,7 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveNonBlocking")
 
                 // Print the outcome prettilyish
                 U_TEST_PRINT_LINE("run %d done, results are:", z + 1);
-                U_TEST_PRINT_LINE("handle   received   read  decoded threshold   not wanted   outsized   when stopped");
+                U_TEST_PRINT_LINE("handle   received   read  decoded threshold  NMEA sequence  NMEA bad sequence  not wanted   outsized   when stopped");
                 for (size_t x = 0; x < sizeof(gpMessageReceive) / sizeof(gpMessageReceive[0]); x++) {
                     pTmp = gpMessageReceive[x];
                     uPortLog(U_TEST_PREFIX " %2d       ", pTmp->asyncHandle);
@@ -715,7 +757,19 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveNonBlocking")
                     } else {
                         uPortLog("  -  ");
                     }
-                    uPortLog("   %5d        ", pTmp->numDecodedMin);
+                    uPortLog("   %5d       ", pTmp->numDecodedMin);
+                    if (pTmp->numNmeaSequence > 0) {
+                        uPortLog("%5d", pTmp->numNmeaSequence);
+                    } else {
+                        uPortLog("  -  ");
+                    }
+                    uPortLog("         ");
+                    if (pTmp->numNmeaBadSequence > 0) {
+                        uPortLog("%5d", pTmp->numNmeaBadSequence);
+                    } else {
+                        uPortLog("  -  ");
+                    }
+                    uPortLog("               ");
                     if (pTmp->numNotWanted > 0) {
                         uPortLog("%5d", pTmp->numNotWanted);
                     } else {
@@ -749,6 +803,16 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveNonBlocking")
                         bad = true;
                     }
 # endif
+                    // Can currently only check the NMEA sequence for M9
+                    // modules, hence the check below
+                    if ((pTmp->messageId.type != U_GNSS_PROTOCOL_UBX) &&
+                        (pTmp->moduleType == U_GNSS_MODULE_TYPE_M9) &&
+                        (pTmp->numNmeaSequence == 0)) {
+                        bad = true;
+                    }
+                    if (pTmp->numNmeaBadSequence > 0) {
+                        bad = true;
+                    }
                     if (pTmp->numReceived + pTmp->numOutsize < pTmp->numRead) {
                         bad = true;
                     }
@@ -816,6 +880,7 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveNonBlocking")
                 // Free memory
                 for (size_t x = 0; x < sizeof(gpMessageReceive) / sizeof(gpMessageReceive[0]); x++) {
                     free(gpMessageReceive[x]->pBuffer);
+                    free(gpMessageReceive[x]->pNmeaComprehenderContext);
                     free(gpMessageReceive[x]);
                     gpMessageReceive[x] = NULL;
                 }

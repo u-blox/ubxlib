@@ -1343,6 +1343,7 @@ int32_t uGnssPrivateStreamDecodeRingBuffer(uGnssPrivateInstance_t *pInstance,
     uGnssProtocol_t protocolFound = pPrivateMessageId->type;
     char nmeaStr[U_GNSS_NMEA_MESSAGE_MATCH_LENGTH_CHARACTERS + 1] = {0};
     uint16_t ubxId = (U_GNSS_UBX_MESSAGE_CLASS_ALL << 8) | U_GNSS_UBX_MESSAGE_ID_ALL;
+    char *pPrintDiscard = NULL;
 
     if ((pInstance != NULL) && (pPrivateMessageId != NULL) && (pDiscard != NULL)) {
         *pDiscard = 0;
@@ -1394,6 +1395,20 @@ int32_t uGnssPrivateStreamDecodeRingBuffer(uGnssPrivateInstance_t *pInstance,
                     errorCodeOrLength = matchUbxMessageHeader(buffer, receiveSize,
                                                               &ubxId, &discardSize,
                                                               true);
+                    if ((errorCodeOrLength > 0) && (discardSize > 0)) {
+                        // Check if there's an NMEA protocol message hiding
+                        // in the part of the buffer we are going to discard
+                        size_t discardSizeNmea = 0;
+                        int32_t errorCodeOrLengthNmea = uGnssPrivateDecodeNmea(buffer, receiveSize,
+                                                                               nmeaStr, &discardSizeNmea,
+                                                                               pSavedState);
+                        if ((errorCodeOrLengthNmea > 0) && (discardSizeNmea < discardSize)) {
+                            protocolFound = U_GNSS_PROTOCOL_NMEA;
+                            discardSize = discardSizeNmea;
+                            errorCodeOrLength = errorCodeOrLengthNmea;
+                        }
+                    }
+
                     if ((errorCodeOrLength < 0) &&
                         (errorCodeOrLength != U_ERROR_COMMON_TIMEOUT) &&
                         (errorCodeOrLength != U_GNSS_ERROR_NACK)) {
@@ -1408,8 +1423,20 @@ int32_t uGnssPrivateStreamDecodeRingBuffer(uGnssPrivateInstance_t *pInstance,
             }
             // Discard from the ring buffer, populating *pDiscard
             // with any amount left over to be discarded by the caller
+#ifdef U_GNSS_PRIVATE_PRINT_STREAM_RING_BUFFER_DISCARD
+            if (discardSize > 0) {
+                pPrintDiscard = (char *) malloc(discardSize);
+            }
+#endif
             *pDiscard += discardSize - uRingBufferReadHandle(&(pInstance->ringBuffer),
-                                                             readHandle, NULL, discardSize);
+                                                             readHandle, pPrintDiscard, discardSize);
+            if (pPrintDiscard != NULL) {
+                uPortLog("U_GNSS_PRIVATE_DISCARD: ");
+                uGnssPrivatePrintBuffer(pPrintDiscard, discardSize);
+                uPortLog("\n");
+                free(pPrintDiscard);
+            }
+
             // Drop out of the loop if we succeed or if we received
             // a NACK for a ubx-format message we were looking for
             // or we are no longer discarding anything or if we need

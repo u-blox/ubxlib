@@ -159,6 +159,67 @@ void uGnssTestPrivatePostamble(uGnssTestPrivate_t *pParameters,
 //                                         is not defined
 void uGnssTestPrivateCleanup(uGnssTestPrivate_t *pParameters);
 
+/** The sequence of NMEA messages emitted by a GNSS receiver
+ * follows a known pattern (see the implementation of this function
+ * for details).  This function may be called for a sequence of
+ * NMEA messages, one at a time, and will return an error code
+ * based on whether the sequence is as expected or whether NMEA
+ * messages are missing.  The CRC is NOT checked: messages are
+ * assumed to be correct and fully-formed, it is only the _sequence_
+ * which is checked.
+ *
+ * Note: this has only been tested on M9 modules.
+ *
+ * A good pattern for using this function is as follows:
+ *
+ * - call it for every NMEA message with ppContext initially
+ *   pointing to a NULL pointer,
+ * - wait for #U_ERROR_COMMON_TIMEOUT to be returned: this
+ *   indicates that an expected sequence has begun,
+ * - if the function ever returns #U_ERROR_COMMON_NOT_FOUND *after*
+ *   that then there is an error in the sequence.
+ * - if it returns #U_ERROR_COMMON_SUCCESS then an expected
+ *   NMEA sequence has ended.
+ * - to stop using this function without a memory leak you must
+ *   free(*ppContext).
+ *
+ * @param pNmeaMessage a pointer to a complete NMEA message.
+ * @param size         the number of bytes at pNmeaMessage.
+ * @param ppContext    a pointer to a pointer where this function
+ *                     can store context data for the next time
+ *                     it is called.  ppContext must point to
+ *                     NULL when this function is first called
+ *                     (i.e. *ppContext must be NULL).  Cannot be
+ *                     NULL.
+ * @param printErrors  if true erorr messages will be printed when
+ *                     errors are spotted.
+ * @return             if *ppContext is NULL and pNmeaMessage contains
+ *                     the start of an NMEA sequence then context data
+ *                     will be malloc()ed and stored at *ppContext for
+ *                     the next time the function is called and
+ *                     #U_ERROR_COMMON_TIMEOUT will be returned.  If
+ *                     *ppContext is non-NULL then the data stored
+ *                     there and the new message will be used to
+ *                     determine if the sequence is as expected; if
+ *                     it is, and the sequence is not yet complete,
+ *                     #U_ERROR_COMMON_TIMEOUT will be returned.  If
+ *                     there is an error in the sequence, or the start
+ *                     of a sequence has not yet been found,
+ *                     #U_ERROR_COMMON_NOT_FOUND will be returned and
+ *                     *ppContext will be free()ed (or not populated),
+ *                     resetting things for the next sequence.  If a
+ *                     sequence is completed #U_ERROR_COMMON_SUCCESS
+ *                     will be returned and, as for the error case,
+ *                     the malloc()ed context will be free()ed.
+ */
+//lint -esym(759, uGnssTestPrivateNmeaComprehender) Suppress the "can be
+//lint -esym(765, uGnssTestPrivateNmeaComprehender) made static" etc. which
+//lint -esym(714, uGnssTestPrivateNmeaComprehender) will occur if
+//                                                  U_CFG_TEST_GNSS_MODULE_TYPE
+//                                                  is not defined
+int32_t uGnssTestPrivateNmeaComprehender(const char *pNmeaMessage, size_t size,
+                                         void **ppContext, bool printErrors);
+
 #ifdef __cplusplus
 }
 #endif
