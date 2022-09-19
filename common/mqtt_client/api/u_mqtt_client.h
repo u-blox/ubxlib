@@ -247,8 +247,10 @@ int32_t uMqttClientOpenResetLastError();
 void uMqttClientClose(uMqttClientContext_t *pContext);
 
 /** Connect an MQTT session.  If pKeepGoingCallback()
- * inside pConnection is non-NULL then it will called while
- * this function is waiting for a connection to be made.
+ * inside pConnection is non-NULL then it will called while this
+ * function is waiting for a connection to be made; this function
+ * works for both MQTT and MQTT-SN however see also
+ * uMqttClientSnConnect().
  *
  * @param[in] pContext     a pointer to the internal MQTT context
  *                         structure that was originally returned by
@@ -469,6 +471,34 @@ int32_t uMqttClientMessageRead(uMqttClientContext_t *pContext,
  * @return             true if MQTT-SN is supported, else false.
  */
 bool uMqttClientSnIsSupported(const uMqttClientContext_t *pContext);
+
+/** This may seem a bit peculiar.  uMqttClientSnConnect() performs
+ * the same function as uMqttClientConnect(), however it gives
+ * the option of doing all of the connection setup but NOT actually
+ * performing the connection.  This is useful if you only wish to
+ * call uMqttClientSnPublish() with uMqttQos_t set to
+ * #U_MQTT_QOS_SEND_AND_FORGET; that will work WITHOUT a
+ * connection to the MQTT-SN broker, saving you time and money.
+ * Of course, to use a different MQTT QoS, or to subscribe to topics
+ * on the broker etc. doNotConnect must be set to false (or you
+ * may just use uMqttClientConnect() as normal).
+ *
+ * @param[in] pContext     a pointer to the internal MQTT context
+ *                         structure that was originally returned by
+ *                         pUMqttClientOpen().
+ * @param[in] pConnection  the connection information for this
+ *                         session.
+ * @param doNotConnect     if set to true then all of the connection
+ *                         parameters will be applied, locally, but
+ *                         there will be no communication with the
+ *                         MQTT-SN broker, no connection will be made;
+ *                         if set to false this function is identical
+ *                         in operation to uMqttClientConnect().
+ * @return                 zero on success or negative error code.
+ */
+int32_t uMqttClientSnConnect(uMqttClientContext_t *pContext,
+                             const uMqttClientConnection_t *pConnection,
+                             bool doNotConnect);
 
 /** Convenience function to populate an MQTT-SN topic name with
  * a predefined MQTT-SN topic ID.
