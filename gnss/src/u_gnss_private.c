@@ -1578,6 +1578,10 @@ int32_t uGnssPrivateStreamFillRingBuffer(uGnssPrivateInstance_t *pInstance,
         }
     }
 
+    if (totalReceiveSize > 0) {
+        errorCodeOrLength = totalReceiveSize;
+    }
+
     return errorCodeOrLength;
 }
 
