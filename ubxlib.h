@@ -115,6 +115,7 @@
 #include <u_cell_fota.h>
 #include <u_gnss_type.h>
 #include <u_gnss.h>
+#include <u_gnss_cfg_val_key.h>
 #include <u_gnss_cfg.h>
 #include <u_gnss_info.h>
 #include <u_gnss_pos.h>

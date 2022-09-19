@@ -292,7 +292,7 @@ static void checkMessageReceive(uGnssMessageId_t *pMessageId,
 // Callback for the non-blocking message receives.
 static void messageReceiveCallback(uDeviceHandle_t gnssHandle,
                                    const uGnssMessageId_t *pMessageId,
-                                   size_t size,
+                                   int32_t errorCodeOrLength,
                                    void *pCallbackParam)
 {
     uGnssMsgTestReceive_t *pMsgReceive = (uGnssMsgTestReceive_t *) pCallbackParam;
@@ -303,7 +303,7 @@ static void messageReceiveCallback(uDeviceHandle_t gnssHandle,
     if (pMessageId == NULL) {
         gCallbackErrorCode = 2;
     }
-    if (size == 0) {
+    if (errorCodeOrLength < 0) {
         gCallbackErrorCode = 3;
     }
     if (pCallbackParam == NULL) {
@@ -318,10 +318,11 @@ static void messageReceiveCallback(uDeviceHandle_t gnssHandle,
         if ((pMessageId != NULL) && (pMessageId->type != pMsgReceive->messageId.type)) {
             pMsgReceive->numNotWanted++;
         }
-        if (size <= U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_BUFFER_SIZE_BYTES) {
+        if ((errorCodeOrLength > 0) &&
+            (errorCodeOrLength <= U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_BUFFER_SIZE_BYTES)) {
             if (uGnssMsgReceiveCallbackRead(gnssHandle,
                                             pMsgReceive->pBuffer,
-                                            size) == size) {
+                                            errorCodeOrLength) == errorCodeOrLength) {
                 pMsgReceive->numRead++;
                 // Deliberately using U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_BUFFER_SIZE_BYTES
                 // rather than "size" here to check that uGnssMsgIsGood() ignores

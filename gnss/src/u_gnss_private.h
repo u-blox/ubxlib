@@ -81,8 +81,7 @@ extern "C" {
 //lint --emacro((774), U_GNSS_PRIVATE_HAS) Suppress left side always
 // evaluates to True
 //lint -esym(755, U_GNSS_PRIVATE_HAS) Suppress macro not
-// referenced as this is for future expansion and, in any case,
-// references may be conditionally compiled-out.
+// referenced it may be conditionally compiled-out.
 #define U_GNSS_PRIVATE_HAS(pModule, feature) \
     ((pModule != NULL) && ((pModule->featuresBitmap) & (1UL << (int32_t) (feature))))
 
@@ -118,15 +117,8 @@ extern "C" {
  */
 //lint -esym(756, uGnssPrivateFeature_t) Suppress not referenced,
 // Lint can't seem to find it inside macros.
-//lint -esym(769, uGnssPrivateFeature_t::U_GNSS_PRIVATE_FEATURE_DUMMY)
-// Suppress not referenced, just a placeholder.
 typedef enum {
-    // This feature selector is included for future expansion:
-    // there are currently no optional features and hence
-    // U_GNSS_PRIVATE_FEATURE_DUMMY is used simply to permit
-    // compilation; it should be removed when the first
-    // optional feature is added.
-    U_GNSS_PRIVATE_FEATURE_DUMMY
+    U_GNSS_PRIVATE_FEATURE_CFGVALXXX
 } uGnssPrivateFeature_t;
 
 /** The characteristics that may differ between GNSS modules.
@@ -311,6 +303,7 @@ extern uPortMutexHandle_t gUGnssPrivateMutex;
  * that this function accepts any handle from the device API, e.g.
  * if the GNSS network has been brought up on a cellular device then
  * the cellular device handle may be passed in.
+ *
  * Note: gUGnssPrivateMutex should be locked before this is called.
  *
  * @param handle  the instance handle.
@@ -319,6 +312,7 @@ extern uPortMutexHandle_t gUGnssPrivateMutex;
 uGnssPrivateInstance_t *pUGnssPrivateGetInstance(uDeviceHandle_t handle);
 
 /** Get the module characteristics for a given instance.
+ *
  * Note: gUGnssPrivateMutex should be locked before this is called.
  *
  * @param gnssHandle  the instance handle.
@@ -340,6 +334,7 @@ void uGnssPrivatePrintBuffer(const char *pBuffer,
 /** Get the protocol types output by the GNSS chip; not relevant
  * where an AT transports is in use since only the ubx protocol is
  * currently supported through that transport.
+ *
  * Note: gUGnssPrivateMutex should be locked before this is called.
  *
  * @param[in] pInstance  a pointer to the GNSS instance, cannot be NULL.
@@ -351,6 +346,7 @@ int32_t uGnssPrivateGetProtocolOut(uGnssPrivateInstance_t *pInstance);
 /** Set the protocol type output by the GNSS chip; not relevant
  * where an AT transports is in use since only the ubx protocol is
  * currently supported through that transport.
+ *
  * Note: gUGnssPrivateMutex should be locked before this is called.
  *
  * @param[in] pInstance  a pointer to the GNSS instance, cannot be NULL.
@@ -371,6 +367,7 @@ int32_t uGnssPrivateSetProtocolOut(uGnssPrivateInstance_t *pInstance,
                                    bool onNotOff);
 
 /** Shut down and free memory from a [potentially] running pos task.
+ *
  * Note: gUGnssPrivateMutex should be locked before this is called.
  *
  * @param[in] pInstance  a pointer to the GNSS instance, cannot  be NULL.
@@ -380,6 +377,7 @@ void uGnssPrivateCleanUpPosTask(uGnssPrivateInstance_t *pInstance);
 /** Check whether a GNSS chip that we are using via a cellular module
  * is on-board the cellular module, in which case the AT+GPIOC
  * comands are not used.
+ *
  * Note: gUGnssPrivateMutex should be locked before this is called.
  *
  * @param[in] pInstance  a pointer to the GNSS instance, cannot  be NULL.
@@ -390,6 +388,7 @@ bool uGnssPrivateIsInsideCell(const uGnssPrivateInstance_t *pInstance);
 
 /** Stop the asynchronous message receive task; kept here so that
  * GNSS deinitialisation can call it.
+ *
  * Note: gUGnssPrivateMutex should be locked before this is called.
  *
  * @param[in] pInstance  a pointer to the GNSS instance, cannot  be NULL.
@@ -523,9 +522,11 @@ int32_t uGnssPrivateStreamGetReceiveSize(int32_t streamHandle,
 
 /** Fill the internal ring buffer with as much data as possible from
  * the GNSS chip when using a streaming transport (e.g. UART or I2C).
+ *
  * Note that the total maximum time that this function might take is
  * timeoutMs + maxTimeMs.  For a "quick check", to just read in a
  * buffer-full of data that is already available, set timeoutMs to 0.
+ *
  * Note: gUGnssPrivateMutex should be locked before this is called, but
  * it is also safe to call this from the task that is checking for
  * asynchronous messages, even though that doesn't lock gUGnssPrivateMutex,
@@ -563,6 +564,7 @@ int32_t uGnssPrivateStreamFillRingBuffer(uGnssPrivateInstance_t *pInstance,
  * that is already in the ring buffer.  See the msgReceiveTask() asynchronous
  * message receive function in u_gnss_msg.c for an example of how this
  * might be done.
+ *
  * Note: it is important that pDiscard (see below) is obeyed, i.e.
  * always discard that many bytes of data from the ring-buffer at the
  * given read handle before this function is called again.
@@ -621,6 +623,7 @@ int32_t uGnssPrivateStreamDecodeRingBuffer(uGnssPrivateInstance_t *pInstance,
                                            uGnssPrivateMessageDecodeState_t *pSavedState);
 
 /** Read data from the internal ring buffer into the given linear buffer.
+ *
  * Note: gUGnssPrivateMutex should be locked before this is called, but
  * it is also safe to call this from the task that is checking for
  * asynchronous receipt of messages, even though that doesn't lock
@@ -644,6 +647,7 @@ int32_t uGnssPrivateStreamReadRingBuffer(uGnssPrivateInstance_t *pInstance,
 
 /** Take a peek into the internal ring buffer, copying the data into a
  * linear buffer.
+ *
  * Note: gUGnssPrivateMutex should be locked before this is called, but
  * it is also safe to call this from the task that is checking for
  * asynchronous recipt of messages, even though that doesn't lock
@@ -668,6 +672,7 @@ int32_t uGnssPrivateStreamPeekRingBuffer(uGnssPrivateInstance_t *pInstance,
                                          int32_t maxTimeMs);
 
 /** Send a ubx format message over UART or I2C (do not wait for the response).
+ *
  * Note: gUGnssPrivateMutex should be locked before this is called.
  *
  * @param[in] pInstance              a pointer to the GNSS instance, cannot
@@ -691,6 +696,7 @@ int32_t uGnssPrivateSendOnlyStreamUbxMessage(const uGnssPrivateInstance_t *pInst
 /** Send a ubx format message that does not have an acknowledgement
  * over a stream and check that it was accepted by the GNSS chip
  * by querying the GNSS chip's message count.
+ *
  * Note: gUGnssPrivateMutex should be locked before this is called.
  *
  * @param[in] pInstance              a pointer to the GNSS instance, cannot
@@ -716,6 +722,12 @@ int32_t uGnssPrivateSendOnlyCheckStreamUbxMessage(uGnssPrivateInstance_t *pInsta
  * etc. are included.  This function will internally call
  * uGnssPrivateStreamFillRingBuffer() to fill the ring buffer with data
  * and then uGnssPrivateStreamReadRingBuffer() to read it.
+ *
+ * Note: if the message ID is set to a particular ubx-format message (i.e.
+ * no wild-cards) and a NACK is received for that message then the
+ * error code #U_GNSS_ERROR_NACK will be returned (and the message will
+ * be discarded).
+ *
  * Note: gUGnssPrivateMutex should be locked before this is called.
  *
  * @param[in] pInstance              a pointer to the GNSS instance, cannot
@@ -781,6 +793,7 @@ int32_t uGnssPrivateReceiveStreamMessage(uGnssPrivateInstance_t *pInstance,
  * used with any transport.  For a streamed transport this function will
  * internally call uGnssPrivateStreamFillRingBuffer() to fill the ring
  * buffer with data and then uGnssPrivateStreamReadRingBuffer() to read it.
+ *
  * Note: gUGnssPrivateMutex should be locked before this is called.
  *
  * @param[in] pInstance              a pointer to the GNSS instance, cannot
@@ -815,6 +828,7 @@ int32_t uGnssPrivateSendReceiveUbxMessage(uGnssPrivateInstance_t *pInstance,
  * streamed transport this function will internally call
  * uGnssPrivateStreamFillRingBuffer() to fill the ring buffer with data
  * and then uGnssPrivateStreamReadRingBuffer() to read it.
+ *
  * Note: gUGnssPrivateMutex should be locked before this is called.
  *
  * @param[in] pInstance              a pointer to the GNSS instance, cannot
@@ -841,6 +855,7 @@ int32_t uGnssPrivateSendReceiveUbxMessageAlloc(uGnssPrivateInstance_t *pInstance
 
 /** Send a ubx format message to the GNSS module that only has an Ack
  * response and check that it is Acked.  May be used with any transport.
+ *
  * Note: gUGnssPrivateMutex should be locked before this is called.
  *
  * @param[in] pInstance              a pointer to the GNSS instance, cannot

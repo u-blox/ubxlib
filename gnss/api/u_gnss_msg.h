@@ -117,6 +117,11 @@ extern "C" {
  * avoid data loss.  The ONLY GNSS API calls that pCallback may make
  * are uGnssMsgReceiveCallbackRead()/uGnssMsgReceiveCallbackExtract()
  * and uGnssMsgIsGood(), no others or you risk getting* mutex-locked.
+ * If you are checking for a specific ubx-format message (i.e. no
+ * wild-cards) and a NACK is received for that message then
+ * errorCodeOrLength will be set to #U_GNSS_ERROR_NACK and there
+ * will be no message to read, otherwise errorCodeOrLength will
+ * indicate the length of the message.
  * A simple construction might be to have set the pCallbackParam
  * when you called uGnssMsgReceiveStart() to the address of your
  * buffer and then the callback might be:
@@ -124,16 +129,18 @@ extern "C" {
  * ```
  * void myCallback(uDeviceHandle_t gnssHandle,
  *                 const uGnssMessageId_t *pMessageId,
- *                 size_t size,
+ *                 int32_t errorCodeOrLength,
  *                 void *pCallbackParam)
  * {
  *     (void) pMessageId;
- *     if (size > MY_MESSAGE_BUFFER_SIZE) {
- *         size = MY_MESSAGE_BUFFER_SIZE;
+ *     if (errorCodeOrLength > 0) {
+ *         if (errorCodeOrLength > MY_MESSAGE_BUFFER_SIZE) {
+ *             errorCodeOrLength = MY_MESSAGE_BUFFER_SIZE;
+ *         }
+ *         uGnssMsgReceiveCallbackRead(gnssHandle,
+ *                                     (char *) pCallbackParam,
+ *                                     errorCodeOrLength);
  *     }
- *     uGnssMsgReceiveCallbackRead(gnssHandle,
- *                                 (char *) pCallbackParam,
- *                                 size);
  * }
  * ```
  *
@@ -146,13 +153,19 @@ extern "C" {
  * @param gnssHandle             the handle of the GNSS instance.
  * @param[out] pMessageId        a pointer to the message ID that was
  *                               detected.
- * @param size                   the size of the message.
+ * @param errorCodeOrLength      the size of the message or, if
+ *                               pMessageId specifies a particular
+ *                               ubx-format message (i.e. no wild-cards)
+ *                               and a NACK was received for that
+ *                               message, then #U_GNSS_ERROR_NACK
+ *                               will be returned (and there will
+ *                               be no message to read).
  * @param[in,out] pCallbackParam the callback parameter that was originally
  *                               given to uGnssMsgReceiveStart().
  */
 typedef void (*uGnssMsgReceiveCallback_t)(uDeviceHandle_t gnssHandle,
                                           const uGnssMessageId_t *pMessageId,
-                                          size_t size,
+                                          int32_t errorCodeOrLength,
                                           void *pCallbackParam);
 
 /* ----------------------------------------------------------------
@@ -207,7 +220,7 @@ bool uGnssMsgIsGood(char *pBuffer, size_t size);
  *
  * @param gnssHandle  the handle of the GNSS instance.
  * @param asyncAlso   if this is set to true then the buffers used
- *                    for the heandles returned by
+ *                    for the handles returned by
  *                    uGnssMsgReceiveStart() are also flushed.
  */
 void uGnssMsgReceiveFlush(uDeviceHandle_t gnssHandle, bool asyncAlso);
@@ -272,6 +285,10 @@ int32_t uGnssMsgSend(uDeviceHandle_t gnssHandle,
  * checksum on the message is NOT checked: if you are interested
  * in the message you may confirm that it is coherent by calling
  * uGnssMsgIsGood().
+ *
+ * Note: if the message ID is set to a particular ubx-format message (i.e.
+ * no wild-cards) and a NACK is received for that message then the
+ * error code #U_GNSS_ERROR_NACK will be returned.
  *
  * This function does not pass back the message ID it has decoded;
  * if you used a wildcard in pMessageId and you don't want to decode

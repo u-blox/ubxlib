@@ -185,9 +185,12 @@ static void msgReceiveTask(void *pParam)
                                                                        &privateMessageId,
                                                                        &discardSize,
                                                                        &savedState);
-                if (errorCodeOrLength > 0) {
+                if ((errorCodeOrLength > 0) || (errorCodeOrLength == (int32_t) U_GNSS_ERROR_NACK)) {
                     // Remember how long the message is
-                    pMsgReceive->msgBytesLeftToRead = errorCodeOrLength;
+                    pMsgReceive->msgBytesLeftToRead = 0;
+                    if (errorCodeOrLength > 0) {
+                        pMsgReceive->msgBytesLeftToRead = errorCodeOrLength;
+                    }
 
                     if (uGnssPrivateMessageIdToPublic(&privateMessageId, &messageId, nmeaId) == 0) {
                         // Got something, with a message ID now in public form;

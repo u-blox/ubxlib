@@ -108,6 +108,23 @@ typedef struct {
                           CRC calculation will fail. */
 } uGnssPrivateUbxReceiveMessage_t;
 
+/** Track state of UBX message decode matching.
+ */
+typedef enum {
+    U_GNSS_PRIVATE_UBX_MATCH_NULL = 0,                    /**< no message yet detected. */
+    U_GNSS_PRIVATE_UBX_MATCH_GOT_HEADER_BYTE_B5 = 1,      /**< got the 0xb5. */
+    U_GNSS_PRIVATE_UBX_MATCH_GOT_HEADER_BYTE_62 = 2,      /**< got the 0x62. */
+    U_GNSS_PRIVATE_UBX_MATCH_GOT_MESSAGE_CLASS = 3,       /**< got the message class. */
+    U_GNSS_PRIVATE_UBX_MATCH_GOT_MESSAGE_ID = 4,          /**< got the message ID. */
+    U_GNSS_PRIVATE_UBX_MATCH_GOT_LENGTH_BYTE_LOWER = 5,   /**< got the first byte of the length. */
+    U_GNSS_PRIVATE_UBX_MATCH_GOT_HEADER = 6,              /**< got all of the message header. */
+    U_GNSS_PRIVATE_UBX_MATCH_GOT_NACK_MESSAGE_CLASS = 7,  /**< in a NACK, got the message class. */
+    U_GNSS_PRIVATE_UBX_MATCH_GOT_NACK_MESSAGE_ID = 8,     /**< in a NACK, got the message class. */
+    U_GNSS_PRIVATE_UBX_MATCH_GOT_CRC_BYTE_1 = 9,          /**< got the first byte of the CRC. */
+    U_GNSS_PRIVATE_UBX_MATCH_GOT_WHOLE_MESSAGE = 10,      /**< got a whole message. */
+    U_GNSS_PRIVATE_UBX_MATCH_MAX_NUM
+} uGnssPrivateUbxMatch_t;
+
 /* ----------------------------------------------------------------
  * VARIABLES THAT ARE SHARED THROUGHOUT THE GNSS IMPLEMENTATION
  * -------------------------------------------------------------- */
@@ -129,7 +146,9 @@ const uGnssPrivateModule_t gUGnssPrivateModuleList[] = {
         U_GNSS_MODULE_TYPE_M8, 0 /* features */
     },
     {
-        U_GNSS_MODULE_TYPE_M9, 0 /* features */
+        U_GNSS_MODULE_TYPE_M9,
+        ((1UL << (int32_t) U_GNSS_PRIVATE_FEATURE_CFGVALXXX) /* features */
+        )
     }
 };
 
@@ -173,19 +192,31 @@ const uGnssPrivateStreamType_t gGnssPrivateTransportTypeToStream[] = {
 // permitted, on exit this will be populated with the message class
 // ID found. If a partial header is found U_ERROR_COMMON_TIMEOUT
 // will be returned.
+// Under some circumstance it is useful to check, in addition, for
+// a NACK message for the given message class and ID landing at the
+// same time.  Where this is the case checkNack should be set; if
+// a NACK is found the error code will be U_GNSS_ERROR_NACK and, for
+// this case, we do check the CRC.
 // See also uGnssPrivateDecodeNmea().
 static int32_t matchUbxMessageHeader(const char *pBuffer, size_t size,
                                      uint16_t *pMessageClassAndId,
-                                     size_t *pDiscard)
+                                     size_t *pDiscard,
+                                     bool checkNack)
 {
     int32_t errorCodeOrLength = (int32_t) U_ERROR_COMMON_NOT_FOUND;
     const uint8_t *pInput = (const uint8_t *) pBuffer;
     size_t x;
-    size_t headerByteCount = 0;
+    uGnssPrivateUbxMatch_t match = U_GNSS_PRIVATE_UBX_MATCH_NULL;
+    int32_t ca = 0;
+    int32_t cb = 0;
+    bool updateCrc = false;
     bool idMatch = false;
+    bool gotNack = false;
     uint16_t messageBodyLength = 0;
     uint8_t messageClass = U_GNSS_UBX_MESSAGE_CLASS_ALL;
     uint8_t messageId = U_GNSS_UBX_MESSAGE_ID_ALL;
+    uint16_t nackMessageClassAndId = 0;
+    uint8_t firstCrcByte;
 
     U_ASSERT(pDiscard != NULL);
 
@@ -194,70 +225,119 @@ static int32_t matchUbxMessageHeader(const char *pBuffer, size_t size,
         messageClass = (uint8_t) (*pMessageClassAndId >> 8);
         messageId = (uint8_t) (*pMessageClassAndId & 0xff);
     }
+    // Normally we only want the header; for the NACK case we
+    // want the whole message and will CRC check it
     for (x = 0; (x < size) &&
-         (headerByteCount < U_UBX_PROTOCOL_HEADER_LENGTH_BYTES); x++) {
-        switch (headerByteCount) {
-            case 0:
-                //lint -e{650} Suppress warning about 0xb5 being out of range for char
+         ((!gotNack && (match < U_GNSS_PRIVATE_UBX_MATCH_GOT_HEADER)) ||
+          (gotNack && (match < U_GNSS_PRIVATE_UBX_MATCH_GOT_WHOLE_MESSAGE))); x++) {
+        switch (match) {
+            case U_GNSS_PRIVATE_UBX_MATCH_NULL:
                 if (*pInput == 0xb5) {
-                    // Got first byte of header, increment count
-                    headerByteCount++;
+                    // Got first byte of header
+                    // We can always discard the stuff up to the point where the
+                    // potential message began
+                    *pDiscard = (const char *) pInput - pBuffer;
+                    match = U_GNSS_PRIVATE_UBX_MATCH_GOT_HEADER_BYTE_B5;
                 }
                 break;
-            case 1:
+            case U_GNSS_PRIVATE_UBX_MATCH_GOT_HEADER_BYTE_B5:
+                match = U_GNSS_PRIVATE_UBX_MATCH_NULL;
                 if (*pInput == 0x62) {
-                    // Got second byte of header, increment count
-                    headerByteCount++;
-                } else {
-                    // Not a valid message, start again
-                    headerByteCount = 0;
+                    // Got second byte of header
+                    match = U_GNSS_PRIVATE_UBX_MATCH_GOT_HEADER_BYTE_62;
                 }
                 break;
-            case 2:
+            case U_GNSS_PRIVATE_UBX_MATCH_GOT_HEADER_BYTE_62:
                 // Got message class, store it
-                headerByteCount++;
+                match = U_GNSS_PRIVATE_UBX_MATCH_GOT_MESSAGE_CLASS;
                 if ((messageClass == U_GNSS_UBX_MESSAGE_CLASS_ALL) ||
                     (messageClass == *pInput)) {
                     messageClass = *pInput;
                     idMatch = true;
                 }
+                if (checkNack && (*pInput == 0x05)) {
+                    gotNack = true;
+                    // If this is a nack then we need to check the
+                    // CRC as we need the two bytes of body
+                    ca = 0;
+                    cb = 0;
+                    updateCrc = true;
+                }
                 break;
-            case 3:
+            case U_GNSS_PRIVATE_UBX_MATCH_GOT_MESSAGE_CLASS:
                 // Got message ID, store it
-                headerByteCount++;
+                match = U_GNSS_PRIVATE_UBX_MATCH_GOT_MESSAGE_ID;
                 if ((messageId == U_GNSS_UBX_MESSAGE_ID_ALL) ||
                     (messageId == *pInput)) {
                     messageId = *pInput;
                 } else {
                     idMatch = false;
                 }
+                if (*pInput != 0x00) {
+                    gotNack = false;
+                }
+                updateCrc = gotNack;
                 break;
-            case 4:
+            case U_GNSS_PRIVATE_UBX_MATCH_GOT_MESSAGE_ID:
                 // Got first byte of length, store it
+                match = U_GNSS_PRIVATE_UBX_MATCH_GOT_LENGTH_BYTE_LOWER;
                 messageBodyLength = *pInput;
-                headerByteCount++;
+                updateCrc = gotNack;
                 break;
-            case 5:
+            case U_GNSS_PRIVATE_UBX_MATCH_GOT_LENGTH_BYTE_LOWER:
                 // Got second byte of length, add it to the first
+                match = U_GNSS_PRIVATE_UBX_MATCH_GOT_HEADER;
                 messageBodyLength += ((size_t) *pInput) << 8; // *NOPAD*
-                headerByteCount++;
+                if (messageBodyLength != 2) {
+                    // NACKs must have a body length of 2
+                    gotNack = false;
+                }
+                updateCrc = gotNack;
+                break;
+            case U_GNSS_PRIVATE_UBX_MATCH_GOT_HEADER:
+                // Must be in a NACK, grab the class of the NACKed' message from the body
+                match = U_GNSS_PRIVATE_UBX_MATCH_GOT_NACK_MESSAGE_CLASS;
+                nackMessageClassAndId = ((uint16_t) *pInput) << 8; // *NOPAD*
+                updateCrc = gotNack;
+                break;
+            case U_GNSS_PRIVATE_UBX_MATCH_GOT_NACK_MESSAGE_CLASS:
+                // Grab the ID of the NACKed message from the body
+                match = U_GNSS_PRIVATE_UBX_MATCH_GOT_NACK_MESSAGE_ID;
+                nackMessageClassAndId |= *pInput; // *NOPAD*
+                updateCrc = gotNack;
+                break;
+            case U_GNSS_PRIVATE_UBX_MATCH_GOT_NACK_MESSAGE_ID:
+                // That's it for the NACK message body, grab the first CRC byte
+                match = U_GNSS_PRIVATE_UBX_MATCH_GOT_CRC_BYTE_1;
+                firstCrcByte = *pInput;
+                break;
+            case U_GNSS_PRIVATE_UBX_MATCH_GOT_CRC_BYTE_1:
+                // Whole CRC, est arrivee, check it
+                match = U_GNSS_PRIVATE_UBX_MATCH_NULL;
+                if (((uint8_t) ca == firstCrcByte) && ((uint8_t) cb == *pInput)) {
+                    match = U_GNSS_PRIVATE_UBX_MATCH_GOT_WHOLE_MESSAGE;
+                }
                 break;
             default:
-                headerByteCount = 0;
+                match = U_GNSS_PRIVATE_UBX_MATCH_NULL;
                 break;
         }
+
+        if (updateCrc) {
+            ca += *pInput;
+            cb += ca;
+            updateCrc = false;
+        }
+
         // Next byte
         pInput++;
     }
 
-    if (headerByteCount > 0) {
+    if (match != U_GNSS_PRIVATE_UBX_MATCH_NULL) {
         // We got some parts of the message overhead, so
         // could be a message
         errorCodeOrLength = (int32_t) U_ERROR_COMMON_TIMEOUT;
-        // We can always discard the stuff up to the point where the
-        // potential message began
-        *pDiscard = (pInput - (const uint8_t *) pBuffer) - headerByteCount;
-        if (headerByteCount == U_UBX_PROTOCOL_HEADER_LENGTH_BYTES) {
+        if (match >= U_GNSS_PRIVATE_UBX_MATCH_GOT_HEADER) {
             errorCodeOrLength = (int32_t) U_ERROR_COMMON_NOT_FOUND;
             if (idMatch) {
                 // Got a matching message, populate the message class/ID,
@@ -267,8 +347,17 @@ static int32_t matchUbxMessageHeader(const char *pBuffer, size_t size,
                     *pMessageClassAndId = (((uint16_t) messageClass) << 8) | messageId;
                 }
                 errorCodeOrLength = messageBodyLength + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES;
+            } else if (checkNack && gotNack && (match == U_GNSS_PRIVATE_UBX_MATCH_GOT_WHOLE_MESSAGE) &&
+                       (pMessageClassAndId != NULL) && (*pMessageClassAndId == nackMessageClassAndId)) {
+                // We were interested in NACK messages, we've captured a whole one with
+                // correct CRC, and the message class and ID stored in the body of the
+                // NACK message matches what we're looking for; we've been NACKed
+                errorCodeOrLength = U_GNSS_ERROR_NACK;
+                // We can now discard the whole NACK message, add to pDiscard the
+                // length of the unwanted message body plus overhead
+                *pDiscard += messageBodyLength + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES;
             } else {
-                // Not an ID match, add to pDiscard the length of the unwanted message body plus overhead
+                // Not an ID match
                 *pDiscard += messageBodyLength + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES;
             }
         }
@@ -440,6 +529,9 @@ static int32_t receiveUbxMessageStream(uGnssPrivateInstance_t *pInstance,
                     uPortLog("U_GNSS: CRC error.\n");
                 }
             }
+        } else if (printIt && (errorCodeOrLength == (int32_t) U_GNSS_ERROR_NACK)) {
+            uPortLog("U_GNSS: got Nack for 0x%02x 0x%02x.\n",
+                     pResponse->cls, pResponse->id);
         }
 
         // Free memory (it is legal C to free a NULL pointer)
@@ -471,6 +563,9 @@ static int32_t sendReceiveUbxMessageAt(const uAtClientHandle_t atHandle,
     bool bufferReuse = false;
     int32_t bytesRead;
     size_t captureSize;
+    int32_t clsNack = 0x05;
+    int32_t idNack = 0x00;
+    char ackBody[2] = {0};
     bool atPrintOn = uAtClientPrintAtGet(atHandle);
     bool atDebugPrintOn = uAtClientDebugGet(atHandle);
 
@@ -530,25 +625,41 @@ static int32_t sendReceiveUbxMessageAt(const uAtClientHandle_t atHandle,
                 }
                 errorCodeOrLength = (int32_t) captureSize;
                 if (captureSize > 0) {
-                    // Decode the message body, noting that it is
-                    // safe to decode back into the same buffer
-                    errorCodeOrLength = uUbxProtocolDecode(pBuffer, x,
-                                                           &(pResponse->cls),
-                                                           &(pResponse->id),
-                                                           *(pResponse->ppBody),
-                                                           captureSize, NULL);
-                    if (errorCodeOrLength > (int32_t) captureSize) {
-                        errorCodeOrLength = (int32_t) captureSize;
+                    // First check if we received a NACK
+                    if ((uUbxProtocolDecode(pBuffer, x, &clsNack, &idNack,
+                                            ackBody, sizeof(ackBody),
+                                            NULL) == 2) &&
+                        (ackBody[0] == pResponse->cls) &&
+                        (ackBody[1] == pResponse->id)) {
+                        // We got a NACK for the message class
+                        // and ID we are monitoring
+                        errorCodeOrLength = (int32_t) U_GNSS_ERROR_NACK;
+                    } else {
+                        // No NACK, we can decode the message body, noting
+                        // that it is safe to decode back into the same buffer
+                        errorCodeOrLength = uUbxProtocolDecode(pBuffer, x,
+                                                               &(pResponse->cls),
+                                                               &(pResponse->id),
+                                                               *(pResponse->ppBody),
+                                                               captureSize, NULL);
+                        if (errorCodeOrLength > (int32_t) captureSize) {
+                            errorCodeOrLength = (int32_t) captureSize;
+                        }
                     }
                 }
-                if ((errorCodeOrLength >= 0) && printIt) {
-                    uPortLog("U_GNSS: decoded ubx response 0x%02x 0x%02x",
-                             pResponse->cls, pResponse->id);
-                    if (errorCodeOrLength > 0) {
-                        uPortLog(":");
-                        uGnssPrivatePrintBuffer(*(pResponse->ppBody), errorCodeOrLength);
+                if (printIt) {
+                    if (errorCodeOrLength >= 0) {
+                        uPortLog("U_GNSS: decoded ubx response 0x%02x 0x%02x",
+                                 pResponse->cls, pResponse->id);
+                        if (errorCodeOrLength > 0) {
+                            uPortLog(":");
+                            uGnssPrivatePrintBuffer(*(pResponse->ppBody), errorCodeOrLength);
+                        }
+                        uPortLog(" [body %d byte(s)].\n", errorCodeOrLength);
+                    } else if (errorCodeOrLength == (int32_t) U_GNSS_ERROR_NACK) {
+                        uPortLog("U_GNSS: got Nack for 0x%02x 0x%02x.\n",
+                                 pResponse->cls, pResponse->id);
                     }
-                    uPortLog(" [body %d byte(s)].\n", errorCodeOrLength);
                 }
             }
         }
@@ -1262,7 +1373,8 @@ int32_t uGnssPrivateStreamDecodeRingBuffer(uGnssPrivateInstance_t *pInstance,
                 case U_GNSS_PROTOCOL_UBX:
                     // See if there is a ubx message protocol header in there
                     errorCodeOrLength = matchUbxMessageHeader(buffer, receiveSize,
-                                                              &ubxId, &discardSize);
+                                                              &ubxId, &discardSize,
+                                                              true);
                     break;
                 case U_GNSS_PROTOCOL_NMEA:
                     // See if there is an NMEA protocol message in there;
@@ -1280,8 +1392,11 @@ int32_t uGnssPrivateStreamDecodeRingBuffer(uGnssPrivateInstance_t *pInstance,
                     // ubx protocol header first
                     protocolFound = U_GNSS_PROTOCOL_UBX;
                     errorCodeOrLength = matchUbxMessageHeader(buffer, receiveSize,
-                                                              &ubxId, &discardSize);
-                    if ((errorCodeOrLength < 0) && (errorCodeOrLength != U_ERROR_COMMON_TIMEOUT)) {
+                                                              &ubxId, &discardSize,
+                                                              true);
+                    if ((errorCodeOrLength < 0) &&
+                        (errorCodeOrLength != U_ERROR_COMMON_TIMEOUT) &&
+                        (errorCodeOrLength != U_GNSS_ERROR_NACK)) {
                         protocolFound = U_GNSS_PROTOCOL_NMEA;
                         errorCodeOrLength = uGnssPrivateDecodeNmea(buffer, receiveSize,
                                                                    nmeaStr, &discardSize,
@@ -1295,10 +1410,12 @@ int32_t uGnssPrivateStreamDecodeRingBuffer(uGnssPrivateInstance_t *pInstance,
             // with any amount left over to be discarded by the caller
             *pDiscard += discardSize - uRingBufferReadHandle(&(pInstance->ringBuffer),
                                                              readHandle, NULL, discardSize);
-            // Drop out of the loop if we succeed or if
-            // we are no longer discarding anything or
-            // if we are unable to discard everything
-        } while ((errorCodeOrLength < 0) && (discardSize > 0) && (*pDiscard == 0));
+            // Drop out of the loop if we succeed or if we received
+            // a NACK for a ubx-format message we were looking for
+            // or we are no longer discarding anything or if we need
+            // the caller to discard stuff for us
+        } while ((errorCodeOrLength < 0) && (errorCodeOrLength != U_GNSS_ERROR_NACK) &&
+                 (discardSize > 0) && (*pDiscard == 0));
 
         if (errorCodeOrLength >= 0) {
             // Set the returned ID
@@ -1643,7 +1760,12 @@ int32_t uGnssPrivateReceiveStreamMessage(uGnssPrivateInstance_t *pInstance,
                     }
                 }
             }
-        } while ((((errorCodeOrLength < 0) && (errorCodeOrLength != (int32_t) U_ERROR_COMMON_NO_MEMORY)) ||
+            // Continue to loop while we've not received anything (provided
+            // there hasn't been a NACK for the ubx-format message we were looking
+            // for and we haven't run out of memory) or still need to discard things,
+            // but always checking the guard time/callback.
+        } while ((((errorCodeOrLength < 0) && (errorCodeOrLength != (int32_t) U_GNSS_ERROR_NACK) &&
+                   (errorCodeOrLength != (int32_t) U_ERROR_COMMON_NO_MEMORY)) ||
                   (discardSize > 0)) &&
                  (uPortGetTickTimeMs() - startTimeMs < timeoutMs) &&
                  ((pKeepGoingCallback == NULL) || pKeepGoingCallback(pInstance->gnssHandle)));
