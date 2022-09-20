@@ -835,7 +835,6 @@ static void entryFunction(uDeviceHandle_t cellHandle,
                                    U_CELL_PRIVATE_FEATURE_MQTTSN)) {
                 errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
                 if (!mustBeInitialised || (pInstance->pMqttContext != NULL)) {
-                    *ppInstance = pInstance;
                     errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
                 } else {
                     // NULL pInstance in case the caller isn't checkiing
