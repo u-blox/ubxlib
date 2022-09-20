@@ -322,7 +322,7 @@ bool uGnssMsgIsGood(char *pBuffer, size_t size)
     decodedSize = uUbxProtocolDecode(pBuffer, size, NULL, NULL, NULL, 0, &pMessageEnd);
     if ((decodedSize >= 0) &&
         (pMessageEnd - pBuffer == decodedSize + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES)) {
-        // In the ubx message case the decode function returns the
+        // In the UBX message case the decode function returns the
         // body length, hence the >= 0, since a message need have no body
         // Iiiiiiii... ain't got no... boh-u-oooh-dee...
         // Oh, and the message has to start at the start of the buffer,

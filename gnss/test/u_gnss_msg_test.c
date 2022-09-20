@@ -110,7 +110,7 @@
 #endif
 
 #ifndef U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_MIN_UBX
-/** The minimum number of ubx messages we expect each message receiver
+/** The minimum number of UBX messages we expect each message receiver
  * to receive during the non-blocking test.
  */
 # define U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_MIN_UBX 15
@@ -521,7 +521,7 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveBlocking")
                                 // +1000 in order to rely on keepGoingCallback
                                 U_GNSS_MSG_TEST_MESSAGE_RECEIVE_TIMEOUT_MS + 1000,
                                 keepGoingCallback);
-            U_TEST_PRINT_LINE("%d byte(s) received (including ubx protocol overhead).", x);
+            U_TEST_PRINT_LINE("%d byte(s) received (including UBX protocol overhead).", x);
             checkMessageReceive(&messageId, pBuffer3, x, messageId.id.ubx,
                                 y + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES, pBuffer1);
             U_PORT_TEST_ASSERT(gCallbackErrorCode == 0);
@@ -540,7 +540,7 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveBlocking")
             x = uGnssMsgReceive(gnssHandle, &messageId, &pBuffer2,
                                 U_GNSS_MSG_TEST_MESSAGE_RECEIVE_BUFFER_SIZE_BYTES,
                                 U_GNSS_MSG_TEST_MESSAGE_RECEIVE_TIMEOUT_MS, NULL);
-            U_TEST_PRINT_LINE("%d byte(s) received (including ubx protocol overhead).", x);
+            U_TEST_PRINT_LINE("%d byte(s) received (including UBX protocol overhead).", x);
             checkMessageReceive(&messageId, pBuffer2, x, messageId.id.ubx,
                                 y + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES, pBuffer1);
             U_PORT_TEST_ASSERT(gCallbackErrorCode == 0);
@@ -683,7 +683,7 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveNonBlocking")
 # ifdef U_GNSS_MSG_TEST_INCLUDE_A_POS
                     if (z == 0) {
                         // Poll for RRLP (UBX-RXM-MEASX), the response to which can be quite long
-                        U_TEST_PRINT_LINE("%3d polling for a ubx-format RRLP message in the mix.",
+                        U_TEST_PRINT_LINE("%3d polling for a UBX-format RRLP message in the mix.",
                                           U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_POLL_DELAY_SECONDS *
                                           (U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_MIN_UBX - x));
                         U_PORT_TEST_ASSERT(uGnssMsgSend(gnssHandle, command,
@@ -702,7 +702,7 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveNonBlocking")
 # else
                     (void) startTimeMs;
                     // Poll for RRLP (UBX-RXM-MEASX), the response to which can be quite long
-                    U_TEST_PRINT_LINE("%3d polling for a ubx-format RRLP message in the mix.",
+                    U_TEST_PRINT_LINE("%3d polling for a UBX-format RRLP message in the mix.",
                                       U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_POLL_DELAY_SECONDS *
                                       (U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_MIN_UBX - x));
                     U_PORT_TEST_ASSERT(uGnssMsgSend(gnssHandle, command,

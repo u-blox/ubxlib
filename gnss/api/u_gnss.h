@@ -204,19 +204,19 @@ int32_t uGnssGetTimeout(uDeviceHandle_t gnssHandle);
  */
 void uGnssSetTimeout(uDeviceHandle_t gnssHandle, int32_t timeoutMs);
 
-/** Get whether printing of ubx commands and responses
+/** Get whether printing of UBX commands and responses
  * is on or off.
  *
  * @param gnssHandle   the handle of the GNSS instance.
- * @return             true if printing ubx commands and
+ * @return             true if printing UBX commands and
  *                     responses is on, else false.
  */
 bool uGnssGetUbxMessagePrint(uDeviceHandle_t gnssHandle);
 
-/** Switch printing of ubx commands and response on or off.
+/** Switch printing of UBX commands and response on or off.
  *
  * @param gnssHandle   the handle of the GNSS instance.
- * @param onNotOff     set to true to cause ubx commands
+ * @param onNotOff     set to true to cause UBX commands
  *                     and responses to be printed, false to
  *                     switch printing off.
  */

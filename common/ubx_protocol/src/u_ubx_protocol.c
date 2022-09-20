@@ -22,7 +22,7 @@
  */
 
 /** @file
- * @brief Implementation of the ubx protocol message encode/decode API.
+ * @brief Implementation of the UBX protocol message encode/decode API.
  */
 
 #ifdef U_CFG_OVERRIDE
@@ -163,7 +163,7 @@ uint64_t uUbxProtocolUint64Encode(uint64_t uint64)
     return  retValue;
 }
 
-// Encode a ubx protocol message.
+// Encode a UBX protocol message.
 int32_t uUbxProtocolEncode(int32_t messageClass, int32_t messageId,
                            const char *pMessage, size_t messageBodyLengthBytes,
                            char *pBuffer)
@@ -210,7 +210,7 @@ int32_t uUbxProtocolEncode(int32_t messageClass, int32_t messageId,
     return errorCodeOrLength;
 }
 
-// Decode a ubx protocol message.
+// Decode a UBX protocol message.
 int32_t uUbxProtocolDecode(const char *pBufferIn, size_t bufferLengthBytes,
                            int32_t *pMessageClass, int32_t *pMessageId,
                            char *pMessage, size_t maxMessageLengthBytes,

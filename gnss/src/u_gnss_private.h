@@ -39,7 +39,7 @@ extern "C" {
  * -------------------------------------------------------------- */
 
 #ifndef U_GNSS_MAX_UBX_PROTOCOL_MESSAGE_BODY_LENGTH_BYTES
-/** The maximum size of ubx-format message body to be read using
+/** The maximum size of UBX-format message body to be read using
  * these functions.  The maximum length of an RRLP message
  * (UBX-RXM-MEASX) is the governing factor here.  Note that when
  * using a  streamed transport messages can be of arbitrary
@@ -257,7 +257,7 @@ typedef struct uGnssPrivateInstance_t {
     int32_t ringBufferReadHandleMsgReceive; /**< the read handle for uGnssUtilTransparentReceive(). */
     uint16_t i2cAddress; /**< the I2C address of the GNSS chip, only relevant if the transport is I2C. */
     int32_t timeoutMs; /**< the timeout for responses from the GNSS chip in milliseconds. */
-    bool printUbxMessages; /**< whether debug printing of ubx messages is on or off. */
+    bool printUbxMessages; /**< whether debug printing of UBX messages is on or off. */
     int32_t pinGnssEnablePower; /**< the pin of the MCU that enables power to the GNSS module. */
     int32_t pinGnssEnablePowerOnState; /**< the value to set pinGnssEnablePower to for "on". */
     int32_t atModulePinPwr; /**< the pin of the AT module that enables power to the GNSS chip (only relevant for transport type AT). */
@@ -334,7 +334,7 @@ void uGnssPrivatePrintBuffer(const char *pBuffer,
                              size_t bufferLengthBytes);
 
 /** Get the protocol types output by the GNSS chip; not relevant
- * where an AT transports is in use since only the ubx protocol is
+ * where an AT transports is in use since only the UBX protocol is
  * currently supported through that transport.
  *
  * Note: gUGnssPrivateMutex should be locked before this is called.
@@ -346,7 +346,7 @@ void uGnssPrivatePrintBuffer(const char *pBuffer,
 int32_t uGnssPrivateGetProtocolOut(uGnssPrivateInstance_t *pInstance);
 
 /** Set the protocol type output by the GNSS chip; not relevant
- * where an AT transports is in use since only the ubx protocol is
+ * where an AT transports is in use since only the UBX protocol is
  * currently supported through that transport.
  *
  * Note: gUGnssPrivateMutex should be locked before this is called.
@@ -356,7 +356,7 @@ int32_t uGnssPrivateGetProtocolOut(uGnssPrivateInstance_t *pInstance);
  *                       be used to enable all of the output protocols
  *                       supported by the GNSS chip (though using this
  *                       with onNotOff set to false will return an error).
- *                       ubx protocol output cannot be switched off
+ *                       UBX protocol output cannot be switched off
  *                       since it is used by this code.
  *                       The range of the parameter is NOT checked, hence
  *                       you may set a value which is known to the GNSS
@@ -589,7 +589,7 @@ int32_t uGnssPrivateStreamFillRingBuffer(uGnssPrivateInstance_t *pInstance,
  *                                   needs to be discarded.  The message could,
  *                                   potentially, be larger than the current
  *                                   contents of the ring buffer (if it is
- *                                   the body of an un-matching ubx-format message
+ *                                   the body of an un-matching UBX-format message
  *                                   that needs to be thrown away).  This
  *                                   is a pointer to a place to store this
  *                                   "over-hanging" discard amount; it is up
@@ -673,20 +673,20 @@ int32_t uGnssPrivateStreamPeekRingBuffer(uGnssPrivateInstance_t *pInstance,
                                          size_t offset,
                                          int32_t maxTimeMs);
 
-/** Send a ubx format message over UART or I2C (do not wait for the response).
+/** Send a UBX format message over UART or I2C (do not wait for the response).
  *
  * Note: gUGnssPrivateMutex should be locked before this is called.
  *
  * @param[in] pInstance              a pointer to the GNSS instance, cannot
  *                                   be NULL.
- * @param messageClass               the ubx message class to send with.
- * @param messageId                  the ubx message ID to send with.
+ * @param messageClass               the UBX message class to send with.
+ * @param messageId                  the UBX message ID to send with.
  * @param[in] pMessageBody           the body of the message to send; may be
  *                                   NULL.
  * @param messageBodyLengthBytes     the amount of data at pMessageBody; must
  *                                   be non-zero if pMessageBody is non-NULL.
  * @return                           the number of bytes sent, INCLUDING
- *                                   ubx protocol coding overhead, else negative
+ *                                   UBX protocol coding overhead, else negative
  *                                   error code.
  */
 int32_t uGnssPrivateSendOnlyStreamUbxMessage(const uGnssPrivateInstance_t *pInstance,
@@ -695,7 +695,7 @@ int32_t uGnssPrivateSendOnlyStreamUbxMessage(const uGnssPrivateInstance_t *pInst
                                              const char *pMessageBody,
                                              size_t messageBodyLengthBytes);
 
-/** Send a ubx format message that does not have an acknowledgement
+/** Send a UBX format message that does not have an acknowledgement
  * over a stream and check that it was accepted by the GNSS chip
  * by querying the GNSS chip's message count.
  *
@@ -703,14 +703,14 @@ int32_t uGnssPrivateSendOnlyStreamUbxMessage(const uGnssPrivateInstance_t *pInst
  *
  * @param[in] pInstance              a pointer to the GNSS instance, cannot
  *                                   be NULL.
- * @param messageClass               the ubx message class to send with.
- * @param messageId                  the ubx message ID to send with.
+ * @param messageClass               the UBX message class to send with.
+ * @param messageId                  the UBX message ID to send with.
  * @param[in] pMessageBody           the body of the message to send; may be
  *                                   NULL.
  * @param messageBodyLengthBytes     the amount of data at pMessageBody; must
  *                                   be non-zero if pMessageBody is non-NULL.
  * @return                           the number of bytes sent, INCLUDING
- *                                   ubx protocol coding overhead, else negative
+ *                                   UBX protocol coding overhead, else negative
  *                                   error code.
  */
 int32_t uGnssPrivateSendOnlyCheckStreamUbxMessage(uGnssPrivateInstance_t *pInstance,
@@ -719,13 +719,13 @@ int32_t uGnssPrivateSendOnlyCheckStreamUbxMessage(uGnssPrivateInstance_t *pInsta
                                                   const char *pMessageBody,
                                                   size_t messageBodyLengthBytes);
 
-/** Wait for the given message, which can be of any type (not just ubx-format)
+/** Wait for the given message, which can be of any type (not just UBX-format)
  * from the GNSS module; the WHOLE message is returned, i.e. header and CRC
  * etc. are included.  This function will internally call
  * uGnssPrivateStreamFillRingBuffer() to fill the ring buffer with data
  * and then uGnssPrivateStreamReadRingBuffer() to read it.
  *
- * Note: if the message ID is set to a particular ubx-format message (i.e.
+ * Note: if the message ID is set to a particular UBX-format message (i.e.
  * no wild-cards) and a NACK is received for that message then the
  * error code #U_GNSS_ERROR_NACK will be returned (and the message will
  * be discarded).
@@ -787,7 +787,7 @@ int32_t uGnssPrivateReceiveStreamMessage(uGnssPrivateInstance_t *pInstance,
  * FUNCTIONS: ANY TRANSPORT
  * -------------------------------------------------------------- */
 
-/** Send a ubx format message to the GNSS module and, optionally, receive
+/** Send a UBX format message to the GNSS module and, optionally, receive
  * a response of known length.  If the message only illicites a simple
  * Ack/Nack from the module then uGnssPrivateSendUbxMessage() must be used
  * instead.  If the response is of unknown length
@@ -800,8 +800,8 @@ int32_t uGnssPrivateReceiveStreamMessage(uGnssPrivateInstance_t *pInstance,
  *
  * @param[in] pInstance              a pointer to the GNSS instance, cannot
  *                                   be NULL.
- * @param messageClass               the ubx message class.
- * @param messageId                  the ubx message ID.
+ * @param messageClass               the UBX message class.
+ * @param messageId                  the UBX message ID.
  * @param[in] pMessageBody           the body of the message to send; may be
  *                                   NULL.
  * @param messageBodyLengthBytes     the amount of data at pMessageBody; must
@@ -824,7 +824,7 @@ int32_t uGnssPrivateSendReceiveUbxMessage(uGnssPrivateInstance_t *pInstance,
                                           char *pResponseBody,
                                           size_t maxResponseBodyLengthBytes);
 
-/** Send a ubx format message to the GNSS module and receive a response of
+/** Send a UBX format message to the GNSS module and receive a response of
  * unknown length, allocating memory to do so. IT IS UP TO THE CALLER TO
  * FREE THIS MEMORY WHEN DONE.  May be used with any transport.  For a
  * streamed transport this function will internally call
@@ -835,8 +835,8 @@ int32_t uGnssPrivateSendReceiveUbxMessage(uGnssPrivateInstance_t *pInstance,
  *
  * @param[in] pInstance              a pointer to the GNSS instance, cannot
  *                                   be NULL.
- * @param messageClass               the ubx message class.
- * @param messageId                  the ubx message ID.
+ * @param messageClass               the UBX message class.
+ * @param messageId                  the UBX message ID.
  * @param[in] pMessageBody           the body of the message to send; may be
  *                                   NULL.
  * @param messageBodyLengthBytes     the amount of data at pMessageBody; must
@@ -855,15 +855,15 @@ int32_t uGnssPrivateSendReceiveUbxMessageAlloc(uGnssPrivateInstance_t *pInstance
                                                size_t messageBodyLengthBytes,
                                                char **ppResponseBody);
 
-/** Send a ubx format message to the GNSS module that only has an Ack
+/** Send a UBX format message to the GNSS module that only has an Ack
  * response and check that it is Acked.  May be used with any transport.
  *
  * Note: gUGnssPrivateMutex should be locked before this is called.
  *
  * @param[in] pInstance              a pointer to the GNSS instance, cannot
  *                                   be NULL.
- * @param messageClass               the ubx message class.
- * @param messageId                  the ubx message ID.
+ * @param messageClass               the UBX message class.
+ * @param messageId                  the UBX message ID.
  * @param[in] pMessageBody           the body of the message to send; may be
  *                                   NULL.
  * @param messageBodyLengthBytes     the amount of data at pMessageBody; must

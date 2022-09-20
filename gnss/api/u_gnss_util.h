@@ -62,24 +62,24 @@ extern "C" {
  * or uGnssMsgReceiveStart() instead.
  *
  * You must encode the message correctly (e.g. using the encode/decode
- * functions of the ubx protocol API if you are using ubx format).
+ * functions of the UBX protocol API if you are using UBX format).
  * Since this code knows nothing of the outgoing message format,
  * it can know nothing of the response format either, so pResponse
  * is just the stream of output from the GNSS chip that came after
  * the sent message.  It is up to you to pick the exact response
- * message out of the stream and parse it; if you are only using ubx
+ * message out of the stream and parse it; if you are only using UBX
  * format messages you may like to call uGnssCfgSetProtocolOut() to
  * filter out NMEA messages.
  *
  * IMPORTANT: when the GNSS chip is connected via an intermediate
  * [e.g. cellular] module (i.e. you are using #U_GNSS_TRANSPORT_AT)
  * then responses will only be returned by this function if UBX FORMAT
- * is used; that is why this function has "ubx" in the name. However,
+ * is used; that is why this function has "Ubx" in the name. However,
  * the message contents are not touched by this code and hence could
  * be anything at all *except* that in the case of the AT transport
  * the intermediate AT (e.g. cellular) module will overwrite the
- * last two bytes of the message with a ubx message checksum.
- * Hence, you _can_ send a non-ubx-format message transparently
+ * last two bytes of the message with a UBX message checksum.
+ * Hence, you _can_ send a non-UBX-format message transparently
  * to the GNSS chip with this function when using
  * #U_GNSS_TRANSPORT_AT but be sure to add two dummy bytes
  * to the outgoing message buffer.

@@ -337,7 +337,7 @@ typedef enum {
 /** Item IDs for #U_GNSS_CFG_VAL_KEY_GROUP_ID_I2CINPROT.
  */
 typedef enum {
-    U_GNSS_CFG_VAL_KEY_ITEM_I2CINPROT_UBX_L    = 0x01, /**< set this flag to allow ubx protocol as input on I2C. */
+    U_GNSS_CFG_VAL_KEY_ITEM_I2CINPROT_UBX_L    = 0x01, /**< set this flag to allow UBX protocol as input on I2C. */
     U_GNSS_CFG_VAL_KEY_ITEM_I2CINPROT_NMEA_L   = 0x02, /**< set this flag to allow NMEA protocol as input on I2C. */
     U_GNSS_CFG_VAL_KEY_ITEM_I2CINPROT_RTCM3X_L = 0x04, /**< set this flag to allow RTCM3X protocol as input on I2C. */
     U_GNSS_CFG_VAL_KEY_ITEM_I2CINPROT_SPARTN_L = 0x05  /**< set this flag to allow SPARTN protocol as input on I2C. */
@@ -346,7 +346,7 @@ typedef enum {
 /** Item IDs for #U_GNSS_CFG_VAL_KEY_GROUP_ID_I2COUTPROT.
  */
 typedef enum {
-    U_GNSS_CFG_VAL_KEY_ITEM_I2COUTPROT_UBX_L    = 0x01, /**< set this flag to use ubx protocol on the output of I2C. */
+    U_GNSS_CFG_VAL_KEY_ITEM_I2COUTPROT_UBX_L    = 0x01, /**< set this flag to use UBX protocol on the output of I2C. */
     U_GNSS_CFG_VAL_KEY_ITEM_I2COUTPROT_NMEA_L   = 0x02, /**< set this flag to use NMEA protocol on the output of I2C. */
     U_GNSS_CFG_VAL_KEY_ITEM_I2COUTPROT_RTCM3X_L = 0x04  /**< set this flag to use RTCM3X protocol on the output of I2C. */
 } uGnssCfgValKeyItemI2coutprot_t;
@@ -355,15 +355,15 @@ typedef enum {
  */
 typedef enum {
     U_GNSS_CFG_VAL_KEY_ITEM_INFMSG_UBX_I2C_X1    = 0x01, /**< enable flags for information on the I2C interface with
-                                                              ubx protocol, see #uGnssCfgValKeyItemValueInfmsg_t. */
+                                                              UBX protocol, see #uGnssCfgValKeyItemValueInfmsg_t. */
     U_GNSS_CFG_VAL_KEY_ITEM_INFMSG_UBX_UART1_X1  = 0x02, /**< enable flags for information on the UART1 interface with
-                                                              ubx protocol, see #uGnssCfgValKeyItemValueInfmsg_t. */
+                                                              UBX protocol, see #uGnssCfgValKeyItemValueInfmsg_t. */
     U_GNSS_CFG_VAL_KEY_ITEM_INFMSG_UBX_UART2_X1  = 0x03, /**< enable flags for information on the UART2 interface with
-                                                              ubx protocol, see #uGnssCfgValKeyItemValueInfmsg_t. */
+                                                              UBX protocol, see #uGnssCfgValKeyItemValueInfmsg_t. */
     U_GNSS_CFG_VAL_KEY_ITEM_INFMSG_UBX_USB_X1    = 0x04, /**< enable flags for information on the USB interface with
-                                                              ubx protocol, see #uGnssCfgValKeyItemValueInfmsg_t. */
+                                                              UBX protocol, see #uGnssCfgValKeyItemValueInfmsg_t. */
     U_GNSS_CFG_VAL_KEY_ITEM_INFMSG_UBX_SPI_X1    = 0x05, /**< enable flags for information on the SPI interface with
-                                                              ubx protocol, see #uGnssCfgValKeyItemValueInfmsg_t. */
+                                                              UBX protocol, see #uGnssCfgValKeyItemValueInfmsg_t. */
     U_GNSS_CFG_VAL_KEY_ITEM_INFMSG_NMEA_I2C_X1   = 0x06, /**< enable flags for information on the I2C interface with
                                                               NMEA protocol, see #uGnssCfgValKeyItemValueInfmsg_t. */
     U_GNSS_CFG_VAL_KEY_ITEM_INFMSG_NMEA_UART1_X1 = 0x07, /**< enable flags for information on the UART1 interface with
@@ -1756,7 +1756,7 @@ typedef enum {
 /** Item IDs for #U_GNSS_CFG_VAL_KEY_GROUP_ID_SPIINPROT.
  */
 typedef enum {
-    U_GNSS_CFG_VAL_KEY_ITEM_SPIINPROT_UBX_L    = 0x01, /**< set this flag to allow ubx protocol as input on SPI. */
+    U_GNSS_CFG_VAL_KEY_ITEM_SPIINPROT_UBX_L    = 0x01, /**< set this flag to allow UBX protocol as input on SPI. */
     U_GNSS_CFG_VAL_KEY_ITEM_SPIINPROT_NMEA_L   = 0x02, /**< set this flag to allow NMEA protocol as input on SPI. */
     U_GNSS_CFG_VAL_KEY_ITEM_SPIINPROT_RTCM3X_L = 0x04, /**< set this flag to allow RTCM3X protocol as input on SPI. */
     U_GNSS_CFG_VAL_KEY_ITEM_SPIINPROT_SPARTN_L = 0x05  /**< set this flag to allow SPARTN protocol as input on SPI. */
@@ -1765,7 +1765,7 @@ typedef enum {
 /** Item IDs for #U_GNSS_CFG_VAL_KEY_GROUP_ID_SPIOUTPROT.
  */
 typedef enum {
-    U_GNSS_CFG_VAL_KEY_ITEM_SPIOUTPROT_UBX_L    = 0x01, /**< set this flag to allow ubx protocol as output of SPI. */
+    U_GNSS_CFG_VAL_KEY_ITEM_SPIOUTPROT_UBX_L    = 0x01, /**< set this flag to allow UBX protocol as output of SPI. */
     U_GNSS_CFG_VAL_KEY_ITEM_SPIOUTPROT_NMEA_L   = 0x02, /**< set this flag to allow NMEA protocol as output of SPI. */
     U_GNSS_CFG_VAL_KEY_ITEM_SPIOUTPROT_RTCM3X_L = 0x04  /**< set this flag to allow RTCM3X protocol as output of SPI. */
 } uGnssCfgValKeyItemSpioutprot_t;
@@ -2121,7 +2121,7 @@ typedef enum {
 /** Item IDs for #U_GNSS_CFG_VAL_KEY_GROUP_ID_UART1INPROT.
  */
 typedef enum {
-    U_GNSS_CFG_VAL_KEY_ITEM_UART1INPROT_UBX_L    = 0x01, /**< set this flag to allow ubx protocol as input on UART1. */
+    U_GNSS_CFG_VAL_KEY_ITEM_UART1INPROT_UBX_L    = 0x01, /**< set this flag to allow UBX protocol as input on UART1. */
     U_GNSS_CFG_VAL_KEY_ITEM_UART1INPROT_NMEA_L   = 0x02, /**< set this flag to allow NMEA protocol as input on UART1. */
     U_GNSS_CFG_VAL_KEY_ITEM_UART1INPROT_RTCM3X_L = 0x04, /**< set this flag to allow RTCM3X protocol as input on UART1. */
     U_GNSS_CFG_VAL_KEY_ITEM_UART1INPROT_SPARTN_L = 0x05  /**< set this flag to allow SPARTN protocol as input on UART1. */
@@ -2130,7 +2130,7 @@ typedef enum {
 /** Item IDs for #U_GNSS_CFG_VAL_KEY_GROUP_ID_UART1OUTPROT.
  */
 typedef enum {
-    U_GNSS_CFG_VAL_KEY_ITEM_UART1OUTPROT_UBX_L    = 0x01, /**< set this flag to allow ubx protocol as output of UART1. */
+    U_GNSS_CFG_VAL_KEY_ITEM_UART1OUTPROT_UBX_L    = 0x01, /**< set this flag to allow UBX protocol as output of UART1. */
     U_GNSS_CFG_VAL_KEY_ITEM_UART1OUTPROT_NMEA_L   = 0x02, /**< set this flag to allow NMEA protocol as output of UART1. */
     U_GNSS_CFG_VAL_KEY_ITEM_UART1OUTPROT_RTCM3X_L = 0x04  /**< set this flag to allow RTCM3X protocol as output of UART1. */
 } uGnssCfgValKeyItemUart1outprot_t;
@@ -2151,7 +2151,7 @@ typedef enum {
 /** Item IDs for #U_GNSS_CFG_VAL_KEY_GROUP_ID_UART2INPROT.
  */
 typedef enum {
-    U_GNSS_CFG_VAL_KEY_ITEM_UART2INPROT_UBX_L    = 0x01, /**< set this flag to allow ubx protocol as input on UART2. */
+    U_GNSS_CFG_VAL_KEY_ITEM_UART2INPROT_UBX_L    = 0x01, /**< set this flag to allow UBX protocol as input on UART2. */
     U_GNSS_CFG_VAL_KEY_ITEM_UART2INPROT_NMEA_L   = 0x02, /**< set this flag to allow NMEA protocol as input on UART2. */
     U_GNSS_CFG_VAL_KEY_ITEM_UART2INPROT_RTCM3X_L = 0x04, /**< set this flag to allow RTCM3X protocol as input on UART2. */
     U_GNSS_CFG_VAL_KEY_ITEM_UART2INPROT_SPARTN_L = 0x05  /**< set this flag to allow SPARTN protocol as input on UART2. */
@@ -2160,7 +2160,7 @@ typedef enum {
 /** Item IDs for #U_GNSS_CFG_VAL_KEY_GROUP_ID_UART2OUTPROT.
  */
 typedef enum {
-    U_GNSS_CFG_VAL_KEY_ITEM_UART2OUTPROT_UBX_L    = 0x01, /**< set this flag to allow ubx protocol as output of UART2. */
+    U_GNSS_CFG_VAL_KEY_ITEM_UART2OUTPROT_UBX_L    = 0x01, /**< set this flag to allow UBX protocol as output of UART2. */
     U_GNSS_CFG_VAL_KEY_ITEM_UART2OUTPROT_NMEA_L   = 0x02, /**< set this flag to allow NMEA protocol as output of UART2. */
     U_GNSS_CFG_VAL_KEY_ITEM_UART2OUTPROT_RTCM3X_L = 0x04  /**< set this flag to allow RTCM3X protocol as output of UART2. */
 } uGnssCfgValKeyItemUart2outprot_t;
@@ -2190,7 +2190,7 @@ typedef enum {
 /** Item IDs for #U_GNSS_CFG_VAL_KEY_GROUP_ID_USBINPROT.
  */
 typedef enum {
-    U_GNSS_CFG_VAL_KEY_ITEM_USBINPROT_UBX_L    = 0x01, /**< set this flag to allow ubx protocol as input on USB. */
+    U_GNSS_CFG_VAL_KEY_ITEM_USBINPROT_UBX_L    = 0x01, /**< set this flag to allow UBX protocol as input on USB. */
     U_GNSS_CFG_VAL_KEY_ITEM_USBINPROT_NMEA_L   = 0x02, /**< set this flag to allow NMEA protocol as input on USB. */
     U_GNSS_CFG_VAL_KEY_ITEM_USBINPROT_RTCM3X_L = 0x04, /**< set this flag to allow RTCM3X protocol as input on USB. */
     U_GNSS_CFG_VAL_KEY_ITEM_USBINPROT_SPARTN_L = 0x05  /**< set this flag to allow SPARTN protocol as input on USB. */
@@ -2199,7 +2199,7 @@ typedef enum {
 /** Item IDs for #U_GNSS_CFG_VAL_KEY_GROUP_ID_USBOUTPROT.
  */
 typedef enum {
-    U_GNSS_CFG_VAL_KEY_ITEM_USBOUTPROT_UBX_L    = 0x01, /**< set this flag to allow ubx protocol as output of USB. */
+    U_GNSS_CFG_VAL_KEY_ITEM_USBOUTPROT_UBX_L    = 0x01, /**< set this flag to allow UBX protocol as output of USB. */
     U_GNSS_CFG_VAL_KEY_ITEM_USBOUTPROT_NMEA_L   = 0x02, /**< set this flag to allow NMEA protocol as output of USB. */
     U_GNSS_CFG_VAL_KEY_ITEM_USBOUTPROT_RTCM3X_L = 0x04  /**< set this flag to allow RTCM3X protocol as output of USB. */
 } uGnssCfgValKeyItemUsboutprot_t;

@@ -75,14 +75,14 @@
 #endif
 
 #ifndef U_GNSS_UBX_MESSAGE_CLASS_ALL
-/** Value used in the most significant byte of the ubx field of
+/** Value used in the most significant byte of the UBX field of
  * uGnssMessageId_t to indicate "all classes".
  */
 # define U_GNSS_UBX_MESSAGE_CLASS_ALL 0xFF
 #endif
 
 #ifndef U_GNSS_UBX_MESSAGE_ID_ALL
-/** Value used in the least significant byte of the ubx field of
+/** Value used in the least significant byte of the UBX field of
  * uGnssMessageId_t to indicate "all IDs".
  */
 # define U_GNSS_UBX_MESSAGE_ID_ALL 0xFF
@@ -110,34 +110,34 @@ typedef enum {
     U_GNSS_TRANSPORT_NONE,
     U_GNSS_TRANSPORT_UART,      /**< the transport handle should be a UART handle. */
     U_GNSS_TRANSPORT_AT,        /**< the transport handle should be an AT client
-                                     handle; currently only ubx-format messages may
+                                     handle; currently only UBX-format messages may
                                      be received when this transport type is in use. */
     U_GNSS_TRANSPORT_I2C,       /**< the transport handle should be an I2C handle. */
     U_GNSS_TRANSPORT_UBX_UART,  /**< \deprecated the transport handle should be a UART handle
-                                     over which ubx commands will be transferred;
+                                     over which UBX commands will be transferred;
                                      NMEA will be switched off; THIS IS DEPRECATED,
                                      PLEASE USE #U_GNSS_TRANSPORT_UART instead
                                      and use uGnssCfgSetProtocolOut() to switch
                                      off NMEA message output if required. */
     U_GNSS_TRANSPORT_UBX_I2C,   /**< \deprecated the transport handle should be an I2C handle
-                                     over which ubx commands will be transferred;
+                                     over which UBX commands will be transferred;
                                      NMEA will be switched off; THIS IS DEPRECATED,
                                      PLEASE USE #U_GNSS_TRANSPORT_I2C instead and
                                      use uGnssCfgSetProtocolOut() to switch off NMEA
                                      message output if required. */
     U_GNSS_TRANSPORT_MAX_NUM_WITH_UBX,
     U_GNSS_TRANSPORT_UBX_AT = U_GNSS_TRANSPORT_AT,      /**< \deprecated the transport handle should be an AT client
-                                                             handle over which ubx commands will be
+                                                             handle over which UBX commands will be
                                                              transferred; THIS IS DEPRECATED, PLEASE
                                                              USE #U_GNSS_TRANSPORT_AT instead. */
     U_GNSS_TRANSPORT_NMEA_UART = U_GNSS_TRANSPORT_UART, /**< \deprecated the transport handle should be a UART handle
                                                              over which NMEA commands may be received;
-                                                             ubx commands will still be used by this code.
+                                                             UBX commands will still be used by this code.
                                                              THIS IS DEPRECATED, PLEASE USE
                                                              #U_GNSS_TRANSPORT_UART. */
     U_GNSS_TRANSPORT_NMEA_I2C = U_GNSS_TRANSPORT_I2C,   /**< \deprecated the transport handle should be an I2C handle
                                                              over which NMEA commands may be received;
-                                                             ubx commands will still be used by this code.
+                                                             UBX commands will still be used by this code.
                                                              THIS IS DEPRECATED, PLEASE USE
                                                              #U_GNSS_TRANSPORT_I2C. */
     U_GNSS_TRANSPORT_MAX_NUM

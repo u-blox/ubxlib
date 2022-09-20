@@ -106,7 +106,7 @@ static uGnssTestPrivate_t gHandles = U_GNSS_TEST_PRIVATE_DEFAULTS;
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-/** Exchange transparent ubx message with the GNSS chip.
+/** Exchange transparent UBX message with the GNSS chip.
  */
 U_PORT_TEST_FUNCTION("[gnssUtil]", "gnssUtilTransparent")
 {

@@ -117,7 +117,7 @@ extern "C" {
  * avoid data loss.  The ONLY GNSS API calls that pCallback may make
  * are uGnssMsgReceiveCallbackRead()/uGnssMsgReceiveCallbackExtract()
  * and uGnssMsgIsGood(), no others or you risk getting* mutex-locked.
- * If you are checking for a specific ubx-format message (i.e. no
+ * If you are checking for a specific UBX-format message (i.e. no
  * wild-cards) and a NACK is received for that message then
  * errorCodeOrLength will be set to #U_GNSS_ERROR_NACK and there
  * will be no message to read, otherwise errorCodeOrLength will
@@ -144,7 +144,7 @@ extern "C" {
  * }
  * ```
  *
- * Note that for ubx format messages, which may be quite long,
+ * Note that for UBX format messages, which may be quite long,
  * the checksum on the message is NOT checked: if you are interested
  * in the message you may confirm that it is OK by calling
  * uGnssMsgIsGood(), preferably after the callback has returned
@@ -155,7 +155,7 @@ extern "C" {
  *                               detected.
  * @param errorCodeOrLength      the size of the message or, if
  *                               pMessageId specifies a particular
- *                               ubx-format message (i.e. no wild-cards)
+ *                               UBX-format message (i.e. no wild-cards)
  *                               and a NACK was received for that
  *                               message, then #U_GNSS_ERROR_NACK
  *                               will be returned (and there will
@@ -179,7 +179,7 @@ typedef void (*uGnssMsgReceiveCallback_t)(uDeviceHandle_t gnssHandle,
  * all NMEA message IDs will match, if pNmea contains "G" then
  * "GX" and "GAZZN" would match, if pMessageIdWanted has the
  * protocol type #U_GNSS_PROTOCOL_UBX and the message class
- * (upper byte) set to #U_GNSS_UBX_MESSAGE_CLASS_ALL then all ubx
+ * (upper byte) set to #U_GNSS_UBX_MESSAGE_CLASS_ALL then all UBX
  * format messages of that class will match, etc.
  *
  * @param[in] pMessageId       the message ID to check.
@@ -200,7 +200,7 @@ bool uGnssMsgIdIsWanted(uGnssMessageId_t *pMessageId,
  * @param[in] pBuffer     a pointer to the buffer containing the
  *                        message; this should be at the start of the
  *                        header, i.e. the $ in the case of NMEA, the
- *                        0xb5 in the case of a ubx protocol message,
+ *                        0xb5 in the case of a UBX protocol message,
  *                        etc.
  * @param size            the number of bytes of storage at pBuffer;
  *                        this may be more than the expected message
@@ -227,7 +227,7 @@ void uGnssMsgReceiveFlush(uDeviceHandle_t gnssHandle, bool asyncAlso);
 
 /** Send a message of your choosing to the GNSS chip. You must
  * encode the message correctly (e.g. using the encode/decode
- * functions of the ubx protocol API if you are using ubx format).
+ * functions of the UBX protocol API if you are using UBX format).
  * If you expect a response you may follow this function with
  * a call to uGnssMsgReceive() containing the ID of the message that
  * you expect back.  If you use a wildcard in that message ID, or that
@@ -281,19 +281,19 @@ int32_t uGnssMsgSend(uDeviceHandle_t gnssHandle,
 /** Monitor the output of the GNSS chip for a given message, blocking
  * (see uGnssMsgReceiveStart() for a non-blocking version).
  *
- * Note that for ubx-format messages, which may be quite long, the
+ * Note that for UBX-format messages, which may be quite long, the
  * checksum on the message is NOT checked: if you are interested
  * in the message you may confirm that it is coherent by calling
  * uGnssMsgIsGood().
  *
- * Note: if the message ID is set to a particular ubx-format message (i.e.
+ * Note: if the message ID is set to a particular UBX-format message (i.e.
  * no wild-cards) and a NACK is received for that message then the
  * error code #U_GNSS_ERROR_NACK will be returned.
  *
  * This function does not pass back the message ID it has decoded;
  * if you used a wildcard in pMessageId and you don't want to decode
  * the message ID from the message yourself (e.g. in the case of a
- * ubx protocol message by using uUbxProtocolDecode()), then you
+ * UBX protocol message by using uUbxProtocolDecode()), then you
  * could instead use uGnssMsgReceiveStart(), which does pass back
  * the decoded message ID to the pCallback.
  *

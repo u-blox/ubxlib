@@ -71,8 +71,8 @@ static const char *const gpTransportTypeText[] = {"None",       // U_GNSS_TRANSP
                                                   "UART",       // U_GNSS_TRANSPORT_UART
                                                   "AT",         // U_GNSS_TRANSPORT_AT
                                                   "I2C",        // U_GNSS_TRANSPORT_I2C
-                                                  "ubx UART",   // U_GNSS_TRANSPORT_UBX_UART
-                                                  "ubx I2C"     // U_GNSS_TRANSPORT_UBX_I2C
+                                                  "UBX UART",   // U_GNSS_TRANSPORT_UBX_UART
+                                                  "UBX I2C"     // U_GNSS_TRANSPORT_UBX_I2C
                                                  };
 
 /* ----------------------------------------------------------------
@@ -589,7 +589,7 @@ void uGnssSetTimeout(uDeviceHandle_t gnssHandle, int32_t timeoutMs)
     }
 }
 
-// Get whether printing of ubx commands and responses is on or off.
+// Get whether printing of UBX commands and responses is on or off.
 bool uGnssGetUbxMessagePrint(uDeviceHandle_t gnssHandle)
 {
     uGnssPrivateInstance_t *pInstance;
@@ -610,7 +610,7 @@ bool uGnssGetUbxMessagePrint(uDeviceHandle_t gnssHandle)
     return isOn;
 }
 
-// Switch printing of ubx commands and response on or off.
+// Switch printing of UBX commands and response on or off.
 void uGnssSetUbxMessagePrint(uDeviceHandle_t gnssHandle, bool onNotOff)
 {
     uGnssPrivateInstance_t *pInstance;

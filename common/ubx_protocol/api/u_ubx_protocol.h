@@ -27,8 +27,8 @@
  */
 
 /** @file
- * @brief This header file defines the ubx protocol API, intended to
- * encode/decode ubx format messages when communicating with a u-blox
+ * @brief This header file defines the UBX protocol API, intended to
+ * encode/decode UBX format messages when communicating with a u-blox
  * GNSS module.
  */
 
@@ -40,12 +40,12 @@ extern "C" {
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
-/** The length of the ubx protocol (header consisting of 0xB5,
+/** The length of the UBX protocol (header consisting of 0xB5,
  * 0x62, class, ID and two bytes of length).
  */
 #define U_UBX_PROTOCOL_HEADER_LENGTH_BYTES 6
 
-/** The overhead of the ubx protocol (header consisting of 0xB5,
+/** The overhead of the UBX protocol (header consisting of 0xB5,
  * 0x62, class, ID, two bytes of length and, at the end, two bytes
  * of CRC). Must be added to the encoded message length to obtain
  * the required encode buffer size.
@@ -60,7 +60,7 @@ extern "C" {
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-/** The ubx message protocol is natively little endian, hence any
+/** The UBX message protocol is natively little endian, hence any
  * multi-byte values must be little-endian encoded.  Call this
  * function to confirm that your processor is little endian if you
  * intend to use multi-byte values in a message body; you must convert
@@ -105,7 +105,7 @@ uint32_t uUbxProtocolUint32Decode(const char *pByte);
  */
 uint64_t uUbxProtocolUint64Decode(const char *pByte);
 
-/** Encode the given uint16_t value with correct endianness for the ubx
+/** Encode the given uint16_t value with correct endianness for the UBX
  * protocol.
  *
  * @param uint16  the uint16_t value to encode.
@@ -113,7 +113,7 @@ uint64_t uUbxProtocolUint64Decode(const char *pByte);
  */
 uint16_t uUbxProtocolUint16Encode(uint16_t uint16);
 
-/** Encode the given uint32_t value with correct endianness for the ubx
+/** Encode the given uint32_t value with correct endianness for the UBX
  * protocol.
  *
  * @param uint32  the uint32_t value to encode.
@@ -121,7 +121,7 @@ uint16_t uUbxProtocolUint16Encode(uint16_t uint16);
  */
 uint32_t uUbxProtocolUint32Encode(uint32_t uint32);
 
-/** Encode the given uint64_t value with correct endianness for the ubx
+/** Encode the given uint64_t value with correct endianness for the UBX
  * protocol.
  *
  * @param uint64  the uint64_t value to encode.
@@ -129,10 +129,10 @@ uint32_t uUbxProtocolUint32Encode(uint32_t uint32);
  */
 uint64_t uUbxProtocolUint64Encode(uint64_t uint64);
 
-/** Encode a ubx protocol message.
+/** Encode a UBX protocol message.
  *
- * @param messageClass            the ubx protocol message class.
- * @param messageId               the ubx protocol message ID.
+ * @param messageClass            the UBX protocol message class.
+ * @param messageId               the UBX protocol message ID.
  * @param[in] pMessageBody        the message body to be encoded,
  *                                may be NULL if the message has no
  *                                body.
@@ -151,8 +151,8 @@ int32_t uUbxProtocolEncode(int32_t messageClass, int32_t messageId,
                            const char *pMessageBody, size_t messageBodyLengthBytes,
                            char *pBuffer);
 
-/** Decode a ubx protocol message.  Call this function with a buffer
- * and it will return the first valid ubx format message it finds
+/** Decode a UBX protocol message.  Call this function with a buffer
+ * and it will return the first valid UBX format message it finds
  * in the buffer. ppBufferOut will be set to the first position in
  * the buffer after any message is found, or will point one byte
  * beyond the end of the buffer if no message or a partial message
@@ -195,9 +195,9 @@ int32_t uUbxProtocolEncode(int32_t messageClass, int32_t messageId,
  *                                   decode.
  * @param bufferLengthBytes          the amount of data at pBufferIn.
  * @param[out] pMessageClass         a pointer to somewhere to store the
- *                                   decoded ubx message class; may be NULL.
+ *                                   decoded UBX message class; may be NULL.
  * @param[out] pMessageId            a pointer to somewher to store the
- *                                   decoded ubx message ID; may be NULL.
+ *                                   decoded UBX message ID; may be NULL.
  * @param[out] pMessageBody          a pointer to somewhere to store
  *                                   the decoded message body; it is safe
  *                                   to decode back into pBufferIn if you

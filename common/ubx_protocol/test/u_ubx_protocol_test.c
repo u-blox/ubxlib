@@ -21,7 +21,7 @@
  */
 
 /** @file
- * @brief Test for the ubx API: these should pass on all platforms.
+ * @brief Test for the UBX API: these should pass on all platforms.
  * IMPORTANT: see notes in u_cfg_test_platform_specific.h for the
  * naming rules that must be followed when using the U_PORT_TEST_FUNCTION()
  * macro.
@@ -63,7 +63,7 @@
 #define U_TEST_PRINT_LINE(format, ...) uPortLog(U_TEST_PREFIX format "\n", ##__VA_ARGS__)
 
 #ifndef U_UBX_PROTOCOL_TEST_MAX_BODY_SIZE
-/** The maximum ubx protocol message body size to test with.
+/** The maximum UBX protocol message body size to test with.
  */
 # define U_UBX_PROTOCOL_TEST_MAX_BODY_SIZE 1024
 #endif
@@ -84,7 +84,7 @@
  * PUBLIC FUNCTIONS: TESTS
  * -------------------------------------------------------------- */
 
-/** Back-to-back testing of the ubx protocol encoder/decoder.
+/** Back-to-back testing of the UBX protocol encoder/decoder.
  */
 U_PORT_TEST_FUNCTION("[ubxProtocol]", "ubxProtocolBackToBack")
 {

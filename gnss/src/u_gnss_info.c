@@ -291,7 +291,7 @@ int32_t uGnssInfoGetCommunicationStats(uDeviceHandle_t gnssHandle,
         pInstance = pUGnssPrivateGetInstance(gnssHandle);
         if (pInstance != NULL) {
             errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
-            // TODO: fix this properly with versioned ubx messaging later
+            // TODO: fix this properly with versioned UBX messaging later
             if (pInstance->pModule->moduleType >= U_GNSS_MODULE_TYPE_M9) {
                 errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
                 // Message big enough to store UBX-MON-COMMS with max port numbers

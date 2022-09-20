@@ -235,7 +235,7 @@ int32_t uGnssCfgSetUtcStandard(uDeviceHandle_t gnssHandle,
                                uGnssUtcStandard_t utcStandard);
 
 /** Get the protocol types output by the GNSS chip; not relevant
- * where an AT transport is in use since only the ubx protocol is
+ * where an AT transport is in use since only the UBX protocol is
  * currently supported through that transport.
  *
  * @param gnssHandle the handle of the GNSS instance.
@@ -245,7 +245,7 @@ int32_t uGnssCfgSetUtcStandard(uDeviceHandle_t gnssHandle,
 int32_t uGnssCfgGetProtocolOut(uDeviceHandle_t gnssHandle);
 
 /** Set the protocol type output by the GNSS chip; not relevant
- * where an AT transport is in use since only the ubx protocol is
+ * where an AT transport is in use since only the UBX protocol is
  * currently supported through that transport.
  *
  * @param gnssHandle the handle of the GNSS instance.
@@ -253,7 +253,7 @@ int32_t uGnssCfgGetProtocolOut(uDeviceHandle_t gnssHandle);
  *                   be used to enable all of the output protocols
  *                   supported by the GNSS chip (though using this
  *                   with onNotOff set to false will return an error).
- *                   ubx protocol output cannot be switched off
+ *                   UBX protocol output cannot be switched off
  *                   since it is used by this code. The range of
  *                   the parameter is NOT checked, hence you may set
  *                   a value which is known to the GNSS chip but not

@@ -71,7 +71,7 @@
  * -------------------------------------------------------------- */
 
 #ifndef U_GNSS_AT_BUFFER_LENGTH_BYTES
-/** The length of a temporary buffer store a hex-encoded ubx-format
+/** The length of a temporary buffer store a hex-encoded UBX-format
  * message when receiving responses over an AT interface.
  */
 # define U_GNSS_AT_BUFFER_LENGTH_BYTES ((U_GNSS_MAX_UBX_PROTOCOL_MESSAGE_BODY_LENGTH_BYTES + \
@@ -91,7 +91,7 @@
  * TYPES
  * -------------------------------------------------------------- */
 
-/** Structure to hold a received ubx-format message.
+/** Structure to hold a received UBX-format message.
  */
 typedef struct {
     int32_t cls;
@@ -178,7 +178,7 @@ const uGnssPrivateStreamType_t gGnssPrivateTransportTypeToStream[] = {
  * STATIC FUNCTIONS: MESSAGE RELATED
  * -------------------------------------------------------------- */
 
-// Find the header of a ubx-format message in the given buffer,
+// Find the header of a UBX-format message in the given buffer,
 // returning the number of bytes in the entire message (header
 // and check-sum etc. included).  If a matching message is found
 // pDiscard (which cannot be NULL) will be populated with the distance
@@ -460,10 +460,10 @@ static int32_t sendMessageStream(int32_t streamHandle,
     return errorCodeOrSentLength;
 }
 
-// Receive a ubx format message over UART or I2C.
+// Receive a UBX format message over UART or I2C.
 // On entry pResponse should be set to the message class and ID of the
 // expected response, wild cards permitted.  On success it will
-// be set to the message ID received and the ubx message body length
+// be set to the message ID received and the UBX message body length
 // will be returned.
 static int32_t receiveUbxMessageStream(uGnssPrivateInstance_t *pInstance,
                                        uGnssPrivateUbxReceiveMessage_t *pResponse,
@@ -509,7 +509,7 @@ static int32_t receiveUbxMessageStream(uGnssPrivateInstance_t *pInstance,
                 if (*(pResponse->ppBody) != NULL) {
                     memcpy(*(pResponse->ppBody), pBuffer + U_UBX_PROTOCOL_HEADER_LENGTH_BYTES, errorCodeOrLength);
                     if (printIt) {
-                        uPortLog("U_GNSS: decoded ubx response 0x%02x 0x%02x",
+                        uPortLog("U_GNSS: decoded UBX response 0x%02x 0x%02x",
                                  privateMessageId.id.ubx >> 8, privateMessageId.id.ubx & 0xff);
                         if (errorCodeOrLength > 0) {
                             uPortLog(":");
@@ -545,7 +545,7 @@ static int32_t receiveUbxMessageStream(uGnssPrivateInstance_t *pInstance,
  * STATIC FUNCTIONS: AT TRANSPORT ONLY
  * -------------------------------------------------------------- */
 
-// Send a ubx format message over an AT interface and receive
+// Send a UBX format message over an AT interface and receive
 // the response.  No matching of message ID or class for
 // the response is performed as it is not possible to get other
 // responses when using an AT command.
@@ -599,7 +599,7 @@ static int32_t sendReceiveUbxMessageAt(const uAtClientHandle_t atHandle,
         // Read the response
         uAtClientCommandStop(atHandle);
         if (printIt) {
-            uPortLog("U_GNSS: sent ubx command");
+            uPortLog("U_GNSS: sent UBX command");
             uGnssPrivatePrintBuffer(pSend, sendLengthBytes);
             uPortLog(".\n");
         }
@@ -649,7 +649,7 @@ static int32_t sendReceiveUbxMessageAt(const uAtClientHandle_t atHandle,
                 }
                 if (printIt) {
                     if (errorCodeOrLength >= 0) {
-                        uPortLog("U_GNSS: decoded ubx response 0x%02x 0x%02x",
+                        uPortLog("U_GNSS: decoded UBX response 0x%02x 0x%02x",
                                  pResponse->cls, pResponse->id);
                         if (errorCodeOrLength > 0) {
                             uPortLog(":");
@@ -679,7 +679,7 @@ static int32_t sendReceiveUbxMessageAt(const uAtClientHandle_t atHandle,
  * STATIC FUNCTIONS: ANY TRANSPORT
  * -------------------------------------------------------------- */
 
-// Send a ubx format message to the GNSS module and receive
+// Send a UBX format message to the GNSS module and receive
 // the response.
 static int32_t sendReceiveUbxMessage(uGnssPrivateInstance_t *pInstance,
                                      int32_t messageClass,
@@ -818,7 +818,7 @@ const uGnssPrivateModule_t *pUGnssPrivateGetModule(uDeviceHandle_t gnssHandle)
     return pModule;
 }
 
-// Print a ubx message in hex.
+// Print a UBX message in hex.
 //lint -esym(522, uGnssPrivatePrintBuffer) Suppress "lacks side effects"
 // when compiled out
 void uGnssPrivatePrintBuffer(const char *pBuffer,
@@ -1372,7 +1372,7 @@ int32_t uGnssPrivateStreamDecodeRingBuffer(uGnssPrivateInstance_t *pInstance,
             // Take a peek at a chunk, putting it into our temporary buffer
             switch (pPrivateMessageId->type) {
                 case U_GNSS_PROTOCOL_UBX:
-                    // See if there is a ubx message protocol header in there
+                    // See if there is a UBX message protocol header in there
                     errorCodeOrLength = matchUbxMessageHeader(buffer, receiveSize,
                                                               &ubxId, &discardSize,
                                                               true);
@@ -1388,9 +1388,9 @@ int32_t uGnssPrivateStreamDecodeRingBuffer(uGnssPrivateInstance_t *pInstance,
                     break;
                 case U_GNSS_PROTOCOL_ALL:
                     // Since an NMEA message is all ASCII and the header
-                    // of a ubx one is definitely not ASCII and is shorter
+                    // of a UBX one is definitely not ASCII and is shorter
                     // than an NMEA message, we can reliably check for a
-                    // ubx protocol header first
+                    // UBX protocol header first
                     protocolFound = U_GNSS_PROTOCOL_UBX;
                     errorCodeOrLength = matchUbxMessageHeader(buffer, receiveSize,
                                                               &ubxId, &discardSize,
@@ -1438,7 +1438,7 @@ int32_t uGnssPrivateStreamDecodeRingBuffer(uGnssPrivateInstance_t *pInstance,
             }
 
             // Drop out of the loop if we succeed or if we received
-            // a NACK for a ubx-format message we were looking for
+            // a NACK for a UBX-format message we were looking for
             // or we are no longer discarding anything or if we need
             // the caller to discard stuff for us
         } while ((errorCodeOrLength < 0) && (errorCodeOrLength != U_GNSS_ERROR_NACK) &&
@@ -1606,7 +1606,7 @@ int32_t uGnssPrivateStreamPeekRingBuffer(uGnssPrivateInstance_t *pInstance,
                                    offset, maxTimeMs, false);
 }
 
-// Send a ubx format message over UART or I2C.
+// Send a UBX format message over UART or I2C.
 int32_t uGnssPrivateSendOnlyStreamUbxMessage(const uGnssPrivateInstance_t *pInstance,
                                              int32_t messageClass,
                                              int32_t messageId,
@@ -1792,7 +1792,7 @@ int32_t uGnssPrivateReceiveStreamMessage(uGnssPrivateInstance_t *pInstance,
                 }
             }
             // Continue to loop while we've not received anything (provided
-            // there hasn't been a NACK for the ubx-format message we were looking
+            // there hasn't been a NACK for the UBX-format message we were looking
             // for and we haven't run out of memory) or still need to discard things,
             // but always checking the guard time/callback.
         } while ((((errorCodeOrLength < 0) && (errorCodeOrLength != (int32_t) U_GNSS_ERROR_NACK) &&
@@ -1812,7 +1812,7 @@ int32_t uGnssPrivateReceiveStreamMessage(uGnssPrivateInstance_t *pInstance,
  * PUBLIC FUNCTIONS THAT ARE PRIVATE TO GNSS: ANY TRANSPORT
  * -------------------------------------------------------------- */
 
-// Send a ubx format message and receive a response of known length.
+// Send a UBX format message and receive a response of known length.
 int32_t uGnssPrivateSendReceiveUbxMessage(uGnssPrivateInstance_t *pInstance,
                                           int32_t messageClass,
                                           int32_t messageId,
@@ -1839,7 +1839,7 @@ int32_t uGnssPrivateSendReceiveUbxMessage(uGnssPrivateInstance_t *pInstance,
                                  &response);
 }
 
-// Send a ubx format message and receive a response of unknown length.
+// Send a UBX format message and receive a response of unknown length.
 int32_t uGnssPrivateSendReceiveUbxMessageAlloc(uGnssPrivateInstance_t *pInstance,
                                                int32_t messageClass,
                                                int32_t messageId,
@@ -1861,7 +1861,7 @@ int32_t uGnssPrivateSendReceiveUbxMessageAlloc(uGnssPrivateInstance_t *pInstance
                                  &response);
 }
 
-// Send a ubx format message to the GNSS module that only has an
+// Send a UBX format message to the GNSS module that only has an
 // Ack response and check that it is Acked.
 int32_t uGnssPrivateSendUbxMessage(uGnssPrivateInstance_t *pInstance,
                                    int32_t messageClass,
