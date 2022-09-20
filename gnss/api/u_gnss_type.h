@@ -152,6 +152,24 @@ typedef union {
     int32_t i2c;    /**< for transport type #U_GNSS_TRANSPORT_I2C. */
 } uGnssTransportHandle_t;
 
+/** The port type on the GNSS chip itself; this is different
+ * from the uGnssTransportType_t since, for instance, a USB port
+ * on the MCU might be connected to a UART port on the GNSS chip,
+ * and some GNSS chips have two UART ports which need to be
+ * identified separately; effectively this is the GNSS chip's own
+ * internal port ID, which needs to be used in some messages
+ * (e.g. those querying the communications state).
+ */
+typedef enum {
+    U_GNSS_PORT_I2C = 0,
+    U_GNSS_PORT_UART = 1,
+    U_GNSS_PORT_UART1 = 1,
+    U_GNSS_PORT_UART2 = 2,
+    U_GNSS_PORT_USB = 3,
+    U_GNSS_PORT_SPI = 4,
+    U_GNSS_PORT_MAX_NUM
+} uGnssPort_t;
+
 /** The protocol types for exchanges with a GNSS chip,
  * values chosen to match the bit-map used on the GNSS interface.
  */

@@ -283,10 +283,10 @@ int32_t uGnssAdd(uGnssModuleType_t moduleType,
                         pInstance->pinGnssEnablePower = pinGnssEnablePower;
                         pInstance->atModulePinPwr = -1;
                         pInstance->atModulePinDataReady = -1;
-                        pInstance->portNumber = 0; // This is the I2C port number inside the GNSS chip
+                        pInstance->portNumber = U_GNSS_PORT_I2C;
                         if ((transportType == U_GNSS_TRANSPORT_UART) ||
                             (transportType == U_GNSS_TRANSPORT_UBX_UART)) {
-                            pInstance->portNumber = 1; // This is the UART port number inside the GNSS chip
+                            pInstance->portNumber = U_GNSS_PORT_UART;
                         }
 #if defined(_WIN32) || (defined(__ZEPHYR__) && defined(CONFIG_UART_NATIVE_POSIX))
                         // For Windows and Linux the GNSS-side connection is assumed to be USB

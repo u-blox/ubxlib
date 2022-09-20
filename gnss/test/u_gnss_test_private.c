@@ -114,8 +114,12 @@ typedef struct {
  */
 static const char *const gpTransportTypeString[] = {"none", "UART",
                                                     "AT", "I2C",
-                                                    "ubx UART", "ubx I2C"
+                                                    "UBX UART", "UBX I2C"
                                                    };
+
+/** The names of the protocol types.
+ */
+static const char *const gpProtocolString[] = {"UBX", "NMEA"};
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -289,6 +293,19 @@ size_t uGnssTestPrivateTransportTypesSet(uGnssTransportType_t *pTransportTypes,
     }
 
     return numEntries;
+}
+
+// Return a string representing the protocol.
+const char *pGnssTestPrivateProtocolName(uGnssProtocol_t protocol)
+{
+    const char *pString = NULL;
+
+    if (((size_t) protocol >= 0) &&
+        ((size_t) protocol < sizeof(gpProtocolString) / sizeof(gpProtocolString[0]))) {
+        pString = gpProtocolString[(size_t) protocol];
+    }
+
+    return pString;
 }
 
 // The standard preamble for a GNSS test.

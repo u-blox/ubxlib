@@ -244,6 +244,7 @@ typedef struct {
  * at none of note) but, more importantly, posGetTask() is stopped
  * before an instance is removed.
  */
+// *INDENT-OFF* (otherwise AStyle makes a mess of this)
 typedef struct uGnssPrivateInstance_t {
     uDeviceHandle_t gnssHandle; /**< the handle for this instance. */
     const uGnssPrivateModule_t *pModule; /**< pointer to the module type. */
@@ -261,7 +262,7 @@ typedef struct uGnssPrivateInstance_t {
     int32_t pinGnssEnablePowerOnState; /**< the value to set pinGnssEnablePower to for "on". */
     int32_t atModulePinPwr; /**< the pin of the AT module that enables power to the GNSS chip (only relevant for transport type AT). */
     int32_t atModulePinDataReady; /**< the pin of the AT module that is connected to the Data Ready pin of the GNSS chip (only relevant for transport type AT). */
-    int32_t portNumber; /**< the internal port number of the GNSS device that we are connected on. */
+    uGnssPort_t portNumber; /**< the internal port number of the GNSS device that we are connected on. */
     uPortMutexHandle_t transportMutex; /**< mutex so that we can have an asynchronous
                                             task use the transport. */
     uPortTaskHandle_t posTask; /**< handle for a task associated with
@@ -273,6 +274,7 @@ typedef struct uGnssPrivateInstance_t {
                                                 message receive utility functions. */
     struct uGnssPrivateInstance_t *pNext;
 } uGnssPrivateInstance_t;
+// *INDENT-ON*
 
 /* ----------------------------------------------------------------
  * VARIABLES

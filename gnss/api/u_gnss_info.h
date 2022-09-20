@@ -55,6 +55,35 @@ typedef struct {
     char mod[27];   //<! Module  Variant
 } uGnssVersionType_t; //!< return structs with different information
 
+/** Array of communications as seen by the GNSS chip.
+ */
+typedef struct {
+    size_t txPendingBytes;        /**< number of bytes pending in the GNSS chip's
+                                       transmitter buffer. */
+    size_t txBytes;               /**< number of bytes ever sent by the GNSS chip. */
+    size_t txPercentageUsage;     /**< maximum percentage usage of the GNSS chip's
+                                       transmit buffer during the last sysmon period. */
+    size_t txPeakPercentageUsage; /**< maximum percentage usage of the GNSS chip's
+                                       transmit buffer, the high water-mark. */
+    size_t rxPendingBytes;        /**< number of bytes pending in the GNSS chip's
+                                       receive buffer. */
+    size_t rxBytes;               /**< number of bytes ever received by the GNSS chip. */
+    size_t rxPercentageUsage;     /**< maximum percentage usage of the GNSS chip's
+                                       receive buffer during the last sysmon period. */
+    size_t rxPeakPercentageUsage; /**< maximum percentage usage of the GNSS chip's
+                                       receive buffer, the high water-mark. */
+    size_t rxOverrunErrors;       /**< the number of 100 ms timeslots with receive
+                                       overrun errors. */
+    int32_t rxNumMessages[U_GNSS_PROTOCOL_MAX_NUM]; /**< the number of messages
+                                                         received by the GNSS
+                                                         chip for each protocol
+                                                         type, indexed by
+                                                         uGnssProtocol_t; any
+                                                         that are not reported
+                                                         will contain -1. */
+    size_t rxSkippedBytes;        /**< the number of receive bytes skipped. */
+} uGnssCommunicationStats_t;
+
 /* ----------------------------------------------------------------
  * FUNCTIONS
  * -------------------------------------------------------------- */
@@ -132,6 +161,28 @@ int32_t uGnssInfoGetIdStr(uDeviceHandle_t gnssHandle,
  *                    error code.
  */
 int64_t uGnssInfoGetTimeUtc(uDeviceHandle_t gnssHandle);
+
+/** Get the communication stats as seen by the GNSS chip; supported
+ * only on M9 modules and beyond.
+ *
+ * @param gnssHandle  the handle of the GNSS instance.
+ * @param port        the GNSS chip's port number, selected
+ *                    from #uGnssPort_t; this is for the [rare]
+ *                    scenario that you are connected to the
+ *                    GNSS chip on two different ports at the
+ *                    same time (e.g. I2C and USB) and want to
+ *                    read the communicatins stats of the I2C
+ *                    port from the USB port, for instance.
+ *                    To just read the communication stats for
+ *                    the current port set this to -1.
+ * @param[out] pStats a pointer to a place to put the stats.
+ * @return            zero on success, else negative error code.
+ */
+int32_t uGnssInfoGetCommunicationStats(uDeviceHandle_t gnssHandle,
+                                       int32_t port,
+                                       uGnssCommunicationStats_t *pStats);
+
+
 
 #ifdef __cplusplus
 }

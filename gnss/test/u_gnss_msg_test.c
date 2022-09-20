@@ -63,7 +63,7 @@
 #include "u_gnss_type.h"
 #include "u_gnss.h"
 #include "u_gnss_cfg.h"   // For uGnssCfgSetProtocolOut()
-#include "u_gnss_info.h"  // For uGnssInfoGetFirmwareVersionStr()
+#include "u_gnss_info.h"  // For uGnssInfoGetFirmwareVersionStr() and uGnssInfoGetCommunicationStats()
 #include "u_gnss_pos.h"   // For uGnssPosGetStart()
 #include "u_gnss_msg.h"
 #include "u_gnss_private.h"
@@ -595,6 +595,8 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveNonBlocking")
     char prefix[2];
     int32_t whole[2];
     int32_t fraction[2];
+    uGnssCommunicationStats_t communicationStats;
+    const char *pProtocolName;
 
     // In case a previous test failed
     uGnssTestPrivateCleanup(&gHandles);
@@ -876,6 +878,49 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveNonBlocking")
                         U_PORT_TEST_ASSERT(false);
                     }
                 }
+
+                // Switch message printing on for this bit
+                uGnssSetUbxMessagePrint(gnssHandle, true);
+
+                a = uGnssInfoGetCommunicationStats(gnssHandle, -1, &communicationStats);
+                if (a == 0) {
+                    // Print the communication stats as seen by the GNSS chip
+                    U_TEST_PRINT_LINE("communications from the GNSS chip's perspective:");
+                    U_TEST_PRINT_LINE(" %d transmit byte(s) currently pending.", communicationStats.txPendingBytes);
+                    U_TEST_PRINT_LINE(" %d byte(s) ever transmitted.", communicationStats.txBytes);
+                    U_TEST_PRINT_LINE(" %d%% transmit buffer currently used.", communicationStats.txPercentageUsage);
+                    U_TEST_PRINT_LINE(" %d%% peak transmit buffer usage.", communicationStats.txPeakPercentageUsage);
+                    U_TEST_PRINT_LINE(" %d receive byte(s) currently pending.", communicationStats.rxPendingBytes);
+                    U_TEST_PRINT_LINE(" %d byte(s) ever received.", communicationStats.rxBytes);
+                    U_TEST_PRINT_LINE(" %d%% receive buffer currently used.", communicationStats.rxPercentageUsage);
+                    U_TEST_PRINT_LINE(" %d%% peak receive buffer usage.", communicationStats.rxPeakPercentageUsage);
+                    U_TEST_PRINT_LINE(" %d 100 ms interval(s) with receive overrun errors.",
+                                      communicationStats.rxOverrunErrors);
+                    for (size_t x = 0; x < sizeof(communicationStats.rxNumMessages) /
+                         sizeof(communicationStats.rxNumMessages[0]); x++) {
+                        if (communicationStats.rxNumMessages[x] >= 0) {
+                            pProtocolName = pGnssTestPrivateProtocolName((uGnssProtocol_t) x);
+                            if (pProtocolName != NULL) {
+                                U_TEST_PRINT_LINE(" %d %s message(s) decoded.", communicationStats.rxNumMessages[x], pProtocolName);
+                            } else {
+                                U_TEST_PRINT_LINE(" %d protocol %d message(s) decoded.", communicationStats.rxNumMessages[x], x);
+                            }
+                        }
+                    }
+                    U_TEST_PRINT_LINE(" %d receive byte(s) skipped.", communicationStats.rxSkippedBytes);
+
+                    // Assert on some of the above
+                    U_PORT_TEST_ASSERT(communicationStats.txPeakPercentageUsage < 100);
+                    U_PORT_TEST_ASSERT(communicationStats.rxPeakPercentageUsage < 100);
+                    U_PORT_TEST_ASSERT(communicationStats.rxOverrunErrors == 0);
+                    U_PORT_TEST_ASSERT(communicationStats.rxNumMessages[U_GNSS_PROTOCOL_UBX] > 0);
+                } else {
+                    U_TEST_PRINT_LINE("unable to check GNSS chip's view of communications state.");
+                    U_PORT_TEST_ASSERT(a == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED);
+                }
+
+                // Switch message printing back off again
+                uGnssSetUbxMessagePrint(gnssHandle, false);
 
                 // Free memory
                 for (size_t x = 0; x < sizeof(gpMessageReceive) / sizeof(gpMessageReceive[0]); x++) {

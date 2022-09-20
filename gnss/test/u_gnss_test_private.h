@@ -100,6 +100,13 @@ const char *pGnssTestPrivateTransportTypeName(uGnssTransportType_t transportType
 size_t uGnssTestPrivateTransportTypesSet(uGnssTransportType_t *pTransportTypes,
                                          int32_t uart, int32_t i2c);
 
+/** Return a string representing the name of the given protocol.
+ *
+ * @param  protocol  the protocol.
+ * @return           a string giving the name of the protocol.
+ */
+const char *pGnssTestPrivateProtocolName(uGnssProtocol_t protocol);
+
 /** The standard preamble for a GNSS test.  Creates all the necessary
  * instances and powers the module on if requested.
  *

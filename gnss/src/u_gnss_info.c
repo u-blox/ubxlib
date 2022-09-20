@@ -57,6 +57,12 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+/** The amount of space required to store the body of a
+ * UBX-MON-COMMS message (see uGnssInfoGetCommunicationStats())
+ * with max port numbers.
+ */
+#define U_GNSS_INFO_MESSAGE_BODY_LENGTH_UBX_MON_COMMS (8 + (40 * U_GNSS_PORT_MAX_NUM))
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -225,6 +231,7 @@ int64_t uGnssInfoGetTimeUtc(uDeviceHandle_t gnssHandle)
 
         U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
 
+        errorCodeOrTime = (int64_t) U_ERROR_COMMON_INVALID_PARAMETER;
         pInstance = pUGnssPrivateGetInstance(gnssHandle);
         if (pInstance != NULL) {
             // Poll with the message class and ID of the UBX-NAV-TIMEUTC command
@@ -263,5 +270,100 @@ int64_t uGnssInfoGetTimeUtc(uDeviceHandle_t gnssHandle)
 
     return errorCodeOrTime;
 }
+
+// Get the communication stats as seen by the GNSS chip.
+int32_t uGnssInfoGetCommunicationStats(uDeviceHandle_t gnssHandle,
+                                       int32_t port,
+                                       uGnssCommunicationStats_t *pStats)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uGnssPrivateInstance_t *pInstance;
+    char *pMessage;
+    int32_t messageLength;
+    int32_t numPorts = -1;
+    int32_t protocolId;
+
+    if (gUGnssPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
+
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        pInstance = pUGnssPrivateGetInstance(gnssHandle);
+        if (pInstance != NULL) {
+            errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+            // TODO: fix this properly with versioned ubx messaging later
+            if (pInstance->pModule->moduleType >= U_GNSS_MODULE_TYPE_M9) {
+                errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
+                // Message big enough to store UBX-MON-COMMS with max port numbers
+                pMessage = (char *) malloc(U_GNSS_INFO_MESSAGE_BODY_LENGTH_UBX_MON_COMMS);
+                if (pMessage != NULL) {
+                    if (port < 0) {
+                        port = (int32_t) pInstance->portNumber;
+                    }
+                    // Poll with the message class and ID of the UBX-MON-COMMS command
+                    errorCode = uGnssPrivateSendReceiveUbxMessage(pInstance,
+                                                                  0x0a, 0x36,
+                                                                  NULL, 0, pMessage,
+                                                                  U_GNSS_INFO_MESSAGE_BODY_LENGTH_UBX_MON_COMMS);
+                    if (errorCode >= 0) {
+                        messageLength = errorCode;
+                        if ((messageLength >= 2) && (*pMessage == 0)) {
+                            // Have a message in a version we understand;
+                            // get the number of ports reported in it
+                            numPorts = *(pMessage + 1);
+                        }
+                        errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
+                        if ((numPorts > 0) && (messageLength >= 8 + (numPorts * 40))) {
+                            // The message has some ports in it and is of the correct
+                            // length for that number of ports; run through the
+                            // message in blocks of 40 bytes, the length of the
+                            // report for one port being 40 bytes, after the initial
+                            // 8 bytes, to find the report for our port number
+                            for (int32_t offset = 0; (8 + offset < messageLength) &&
+                                 (errorCode != (int32_t) U_ERROR_COMMON_SUCCESS); offset += 40) {
+                                if (uUbxProtocolUint16Decode(pMessage + 8 + offset) == port) {
+                                    errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                                    if (pStats != NULL) {
+                                        pStats->txPendingBytes = uUbxProtocolUint16Decode(pMessage + 10 + offset);
+                                        pStats->txBytes = uUbxProtocolUint32Decode(pMessage + 12 + offset);
+                                        pStats->txPercentageUsage = *(pMessage + 16 + offset);
+                                        pStats->txPeakPercentageUsage = *(pMessage + 17 + offset);
+                                        pStats->rxPendingBytes = uUbxProtocolUint16Decode(pMessage + 18 + offset);
+                                        pStats->rxBytes = uUbxProtocolUint32Decode(pMessage + 20 + offset);
+                                        pStats->rxPercentageUsage = *(pMessage + 24 + offset);
+                                        pStats->rxPeakPercentageUsage = *(pMessage + 25 + offset);
+                                        pStats->rxOverrunErrors = uUbxProtocolUint16Decode(pMessage + 26 + offset);
+                                        // The number of messages parsed is in the array which follows
+                                        // based on the array of protocol IDs way back at the start
+                                        // of the message in byte 4
+                                        for (size_t x = 0; x < sizeof(pStats->rxNumMessages) / sizeof(pStats->rxNumMessages[0]); x++) {
+                                            pStats->rxNumMessages[x] = -1;
+                                        }
+                                        for (size_t x = 0; x < 4; x++) {
+                                            protocolId = *(pMessage + 4 + x);
+                                            if ((protocolId >= 0) &&
+                                                (protocolId < sizeof(pStats->rxNumMessages) / sizeof(pStats->rxNumMessages[0]))) {
+                                                pStats->rxNumMessages[protocolId] = uUbxProtocolUint16Decode(pMessage + 28 + offset + (x * 2));
+                                            }
+                                        }
+                                        pStats->rxSkippedBytes = uUbxProtocolUint32Decode(pMessage + 44 + offset);
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Free memory
+                    free(pMessage);
+                }
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
+    }
+
+    return errorCode;
+}
+
 
 // End of file
