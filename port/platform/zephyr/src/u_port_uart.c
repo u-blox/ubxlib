@@ -48,6 +48,7 @@
 #include "u_port_os.h"
 #include "u_port_event_queue.h"
 #include "u_port_uart.h"
+#include "version.h"
 
 #include "string.h" // For memcpy()
 

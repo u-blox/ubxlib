@@ -34,6 +34,7 @@
 #include "u_port.h"
 #include "u_port_os.h"
 #include "u_port_i2c.h"
+#include "version.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS

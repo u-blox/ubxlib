@@ -33,6 +33,7 @@
 #include "zephyr.h"
 #include "device.h"
 #include "drivers/gpio.h"
+#include "version.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
