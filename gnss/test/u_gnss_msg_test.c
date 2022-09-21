@@ -109,25 +109,17 @@
 # define U_GNSS_MSG_TEST_MESSAGE_RECEIVE_TASK_THRESHOLD_BYTES 512
 #endif
 
-#ifndef U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_MIN_UBX
-/** The minimum number of UBX messages we expect each message receiver
- * to receive during the non-blocking test.
+#ifndef U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_MIN_STEPS
+/** The minimum number of steps in the non-blocking test.
  */
-# define U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_MIN_UBX 15
+# define U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_MIN_STEPS 30
 #endif
 
 #ifndef U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_MIN_NMEA
 /** The minimum number of NMEA messages we expect each message receiver
  * to receive during the non-blocking test.
  */
-# define U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_MIN_NMEA 300
-#endif
-
-#ifndef U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_POS_DELAY_SECONDS
-/** The number of seconds into the non-blocking test that we
- * trigger a position establishment request.
- */
-# define U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_POS_DELAY_SECONDS 5
+# define U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_MIN_NMEA 600
 #endif
 
 #ifndef U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_POLL_DELAY_SECONDS
@@ -155,6 +147,7 @@ typedef struct {
     bool stopped;
     size_t numWhenStopped;
     size_t numNotWanted;
+    bool useNmeaComprehender;
     void *pNmeaComprehenderContext;
     bool nmeaSequenceHasBegun;
     size_t numNmeaSequence;
@@ -182,46 +175,6 @@ static int32_t gCallbackErrorCode = 0;
 /** Array of message receivers.
  */
 static uGnssMsgTestReceive_t *gpMessageReceive[U_GNSS_MSG_RECEIVER_MAX_NUM] = {0};
-
-/** Timestamp used by posCallback().
- */
-static int32_t gPosStopTime = -1;
-
-/** GNSS handle as seen by posCallback().
- */
-static uDeviceHandle_t gGnssHandle = NULL;
-
-/** Error code as seen by posCallback().
- */
-static volatile int32_t gErrorCode;
-
-/** Latitude as seen by posCallback().
- */
-static int32_t gLatitudeX1e7 = INT_MIN;
-
-/** Longitude as seen by posCallback().
- */
-static int32_t gLongitudeX1e7 = INT_MIN;
-
-/** Altitude as seen by posCallback().
- */
-static int32_t gAltitudeMillimetres = INT_MIN;
-
-/** Radius as seen by posCallback().
- */
-static int32_t gRadiusMillimetres = INT_MIN;
-
-/** Speed as seen by posCallback().
- */
-static int32_t gSpeedMillimetresPerSecond = INT_MIN;
-
-/** Number of satellites as seen by posCallback().
- */
-static int32_t gSvs = 0;
-
-/** Time as seen by posCallback().
- */
-static int64_t gTimeUtc = LONG_MIN;
 
 #endif // #ifndef U_CFG_TEST_USING_NRF5SDK 
 
@@ -339,7 +292,8 @@ static void messageReceiveCallback(uDeviceHandle_t gnssHandle,
                     // NOTE: uGnssTestPrivateNmeaComprehender() currently only supports
                     // M9, hence this check
                     if ((pMsgReceive->messageId.type == U_GNSS_PROTOCOL_NMEA) &&
-                        (pMsgReceive->moduleType == U_GNSS_MODULE_TYPE_M9)) {
+                        (pMsgReceive->moduleType == U_GNSS_MODULE_TYPE_M9) &&
+                        (pMsgReceive->useNmeaComprehender)) {
 #ifdef U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_PRINT
                         // It's often useful to see these messages but the load is
                         // heavy so we don't enable printing unless required
@@ -377,62 +331,6 @@ static void messageReceiveCallback(uDeviceHandle_t gnssHandle,
             pMsgReceive->numWhenStopped++;
         }
     }
-}
-
-# ifdef U_GNSS_MSG_TEST_INCLUDE_A_POS
-// Callback function for asynchronous position establishment API.
-static void posCallback(uDeviceHandle_t gnssHandle,
-                        int32_t errorCode,
-                        int32_t latitudeX1e7,
-                        int32_t longitudeX1e7,
-                        int32_t altitudeMillimetres,
-                        int32_t radiusMillimetres,
-                        int32_t speedMillimetresPerSecond,
-                        int32_t svs,
-                        int64_t timeUtc)
-{
-    gPosStopTime = uPortGetTickTimeMs();
-    gGnssHandle = gnssHandle;
-    gErrorCode = errorCode;
-    gLatitudeX1e7 = latitudeX1e7;
-    gLongitudeX1e7 = longitudeX1e7;
-    gAltitudeMillimetres = altitudeMillimetres;
-    gRadiusMillimetres = radiusMillimetres;
-    gSpeedMillimetresPerSecond = speedMillimetresPerSecond;
-    gSvs = svs;
-    gTimeUtc = timeUtc;
-}
-# endif // # ifdef U_GNSS_MSG_TEST_INCLUDE_A_POS
-
-// Convert a lat/long into a whole number and a
-// bit-after-the-decimal-point that can be printed
-// without having to invoke floating point operations,
-// returning the prefix (either "+" or "-").
-// The result should be printed with printf() format
-// specifiers %c%d.%07d, e.g. something like:
-//
-// int32_t whole;
-// int32_t fraction;
-//
-// printf("%c%d.%07d/%c%d.%07d", latLongToBits(latitudeX1e7, &whole, &fraction),
-//                               whole, fraction,
-//                               latLongToBits(longitudeX1e7, &whole, &fraction),
-//                               whole, fraction);
-static char latLongToBits(int32_t thingX1e7,
-                          int32_t *pWhole,
-                          int32_t *pFraction)
-{
-    char prefix = '+';
-
-    // Deal with the sign
-    if (thingX1e7 < 0) {
-        thingX1e7 = -thingX1e7;
-        prefix = '-';
-    }
-    *pWhole = thingX1e7 / 10000000;
-    *pFraction = thingX1e7 % 10000000;
-
-    return prefix;
 }
 
 #endif // #ifndef U_CFG_TEST_USING_NRF5SDK 
@@ -590,11 +488,6 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveNonBlocking")
     char command[U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES];
     size_t iterations;
     uGnssTransportType_t transportTypes[U_GNSS_TRANSPORT_MAX_NUM_WITH_UBX];
-    int32_t startTimeMs;
-    int32_t posStartTime = -1;
-    char prefix[2];
-    int32_t whole[2];
-    int32_t fraction[2];
     uGnssCommunicationStats_t communicationStats;
     const char *pProtocolName;
 
@@ -630,22 +523,19 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveNonBlocking")
             U_TEST_PRINT_LINE("running %d transparent non-blocking receives for ~%d second(s)...",
                               sizeof(gpMessageReceive) / sizeof(gpMessageReceive[0]),
                               U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_POLL_DELAY_SECONDS *
-                              U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_MIN_UBX);
+                              U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_MIN_STEPS);
 
             // Note that we don't switch on message printing here, just too much man
 
             // Do this twice - once asking for loads of nice long RRLP messages to add
-            // stress, then a second time doing a position establishment in parallel
+            // stress, then a second time doing just NMEA messages and checking that
+            // none go missing
             for (size_t z = 0; z < 2; z++) {
-# ifdef U_GNSS_MSG_TEST_INCLUDE_A_POS
                 if (z == 0) {
                     U_TEST_PRINT_LINE("run %d, with nice long RRLP messages to decode.", z + 1);
                 } else {
-                    U_TEST_PRINT_LINE("run %d, with parallel position establishment.", z + 1);
+                    U_TEST_PRINT_LINE("run %d, just NMEA.", z + 1);
                 }
-# else
-                U_TEST_PRINT_LINE("run %d, with nice long RRLP messages to decode.", z + 1);
-# endif
                 // Allocate memory for all the transparent receivers
                 for (size_t x = 0; x < sizeof(gpMessageReceive) / sizeof(gpMessageReceive[0]); x++) {
                     gpMessageReceive[x] = (uGnssMsgTestReceive_t *) malloc(sizeof(uGnssMsgTestReceive_t));
@@ -657,10 +547,16 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveNonBlocking")
                     // Ask for all message types in either protocol
                     pTmp->messageId.type = U_GNSS_PROTOCOL_NMEA; // pNmea left at NULL is "all"
                     pTmp->numDecodedMin = U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_MIN_NMEA;
-                    if (x % 2) {
-                        pTmp->messageId.type = U_GNSS_PROTOCOL_UBX;
-                        pTmp->messageId.id.ubx = (U_GNSS_UBX_MESSAGE_CLASS_ALL << 8) | U_GNSS_UBX_MESSAGE_ID_ALL;
-                        pTmp->numDecodedMin = U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_MIN_UBX;
+                    if (z == 0) {
+                        // Make every other one a UBX protocol receiver
+                        if (x % 2) {
+                            pTmp->messageId.type = U_GNSS_PROTOCOL_UBX;
+                            pTmp->messageId.id.ubx = (U_GNSS_UBX_MESSAGE_CLASS_ALL << 8) | U_GNSS_UBX_MESSAGE_ID_ALL;
+                            pTmp->numDecodedMin = U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_MIN_STEPS;
+                        }
+                    } else  {
+                        // Just NMEA this time
+                        pTmp->useNmeaComprehender = true;
                     }
                 }
 
@@ -677,37 +573,20 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveNonBlocking")
                 }
 
                 // Messages should now start arriving at our callback
-                startTimeMs = uPortGetTickTimeMs();
                 U_PORT_TEST_ASSERT(uUbxProtocolEncode(0x02, 0x14, NULL, 0, command) == sizeof(command));
-                for (size_t x = 0; x < U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_MIN_UBX; x++) {
-# ifdef U_GNSS_MSG_TEST_INCLUDE_A_POS
+                for (size_t x = 0; x < U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_MIN_STEPS; x++) {
                     if (z == 0) {
                         // Poll for RRLP (UBX-RXM-MEASX), the response to which can be quite long
                         U_TEST_PRINT_LINE("%3d polling for a UBX-format RRLP message in the mix.",
                                           U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_POLL_DELAY_SECONDS *
-                                          (U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_MIN_UBX - x));
+                                          (U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_MIN_STEPS - x));
                         U_PORT_TEST_ASSERT(uGnssMsgSend(gnssHandle, command,
                                                         sizeof(command)) == sizeof(command));
                     } else {
-                        // Start a parallel position establishment part-way into the test
-                        if ((posStartTime < 0) &&
-                            ((uPortGetTickTimeMs() - startTimeMs) / 1000 >
-                             U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_POS_DELAY_SECONDS)) {
-                            U_TEST_PRINT_LINE("started a position establishment in parallel, please wait...");
-                            gErrorCode = 0xFFFFFFFF;
-                            posStartTime = uPortGetTickTimeMs();
-                            U_PORT_TEST_ASSERT(uGnssPosGetStart(gnssHandle, posCallback) == 0);
-                        }
+                        U_TEST_PRINT_LINE("%3d waiting.",
+                                          U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_POLL_DELAY_SECONDS *
+                                          (U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_MIN_STEPS - x));
                     }
-# else
-                    (void) startTimeMs;
-                    // Poll for RRLP (UBX-RXM-MEASX), the response to which can be quite long
-                    U_TEST_PRINT_LINE("%3d polling for a UBX-format RRLP message in the mix.",
-                                      U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_POLL_DELAY_SECONDS *
-                                      (U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_MIN_UBX - x));
-                    U_PORT_TEST_ASSERT(uGnssMsgSend(gnssHandle, command,
-                                                    sizeof(command)) == sizeof(command));
-# endif
                     uPortTaskBlock(U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_POLL_DELAY_SECONDS * 1000);
                 }
 
@@ -721,10 +600,6 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveNonBlocking")
                     U_PORT_TEST_ASSERT(uGnssMsgReceiveStop(gnssHandle, pTmp->asyncHandle) == 0);
                     pTmp->stopped = true;
                 }
-
-                // A little more cooking...
-                U_TEST_PRINT_LINE("just a little longer...");
-                uPortTaskBlock(5000);
 
                 // Record the stack extent of the transparent receive task and then
                 // stop everything; not asserting here so that we can see what
@@ -790,25 +665,14 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveNonBlocking")
                         uPortLog("  -  ");
                     }
                     uPortLog("\n");
-# ifdef U_GNSS_MSG_TEST_INCLUDE_A_POS
-                    if (z == 0) {
-                        if (pTmp->numDecoded + pTmp->numOutsize < pTmp->numDecodedMin) {
-                            bad = true;
-                        }
-                    } else {
-                        if (pTmp->numReceived < (size_t) (gPosStopTime >= 0)) {
-                            bad = true;
-                        }
-                    }
-# else
                     if (pTmp->numDecoded + pTmp->numOutsize < pTmp->numDecodedMin) {
                         bad = true;
                     }
-# endif
                     // Can currently only check the NMEA sequence for M9
                     // modules, hence the check below
                     if ((pTmp->messageId.type != U_GNSS_PROTOCOL_UBX) &&
                         (pTmp->moduleType == U_GNSS_MODULE_TYPE_M9) &&
+                        (pTmp->useNmeaComprehender == true) &&
                         (pTmp->numNmeaSequence == 0)) {
                         bad = true;
                     }
@@ -843,41 +707,6 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveNonBlocking")
                 U_PORT_TEST_ASSERT(c == 0);
                 U_PORT_TEST_ASSERT(d == 0);
                 U_PORT_TEST_ASSERT(gCallbackErrorCode == 0);
-
-                if (posStartTime >= 0) {
-                    // Check the outcome of the parallel position establishment
-                    if (gPosStopTime >= 0) {
-                        U_TEST_PRINT_LINE("parallel position establishment reported after %d second(s).",
-                                          (gPosStopTime - posStartTime) / 1000);
-                        U_PORT_TEST_ASSERT(gGnssHandle == gnssHandle);
-                        if (gErrorCode != 0xFFFFFFFF) {
-                            U_TEST_PRINT_LINE("parallel position establishment returned error code %d.", gErrorCode);
-                        }
-                        U_PORT_TEST_ASSERT(gErrorCode == 0);
-
-                        prefix[0] = latLongToBits(gLatitudeX1e7, &(whole[0]), &(fraction[0]));
-                        prefix[1] = latLongToBits(gLongitudeX1e7, &(whole[1]), &(fraction[1]));
-                        U_TEST_PRINT_LINE("location %c%d.%07d/%c%d.%07d (radius %d metre(s)), %d metre(s) high,"
-                                          " moving at %d metre(s)/second, %d satellite(s) visible, time %d.",
-                                          prefix[0], whole[0], fraction[0], prefix[1], whole[1], fraction[1],
-                                          gRadiusMillimetres / 1000, gAltitudeMillimetres / 1000,
-                                          gSpeedMillimetresPerSecond / 1000, gSvs, (int32_t) gTimeUtc);
-                        U_TEST_PRINT_LINE("paste this into a browser https://maps.google.com/?q=%c%d.%07d,%c%d.%07d",
-                                          prefix[0], whole[0], fraction[0], prefix[1], whole[1], fraction[1]);
-
-                        U_PORT_TEST_ASSERT(gLatitudeX1e7 > INT_MIN);
-                        U_PORT_TEST_ASSERT(gLongitudeX1e7 > INT_MIN);
-                        // Don't test altitude as we may only have a 2D fix
-                        U_PORT_TEST_ASSERT(gRadiusMillimetres > INT_MIN);
-                        U_PORT_TEST_ASSERT(gSpeedMillimetresPerSecond > INT_MIN);
-                        // Inertial fixes will be reported with no satellites, hence >= 0
-                        U_PORT_TEST_ASSERT(gSvs >= 0);
-                        U_PORT_TEST_ASSERT(gTimeUtc > 0);
-                    } else {
-                        U_TEST_PRINT_LINE("parallel position establishment did not complete though.");
-                        U_PORT_TEST_ASSERT(false);
-                    }
-                }
 
                 // Switch message printing on for this bit
                 uGnssSetUbxMessagePrint(gnssHandle, true);
