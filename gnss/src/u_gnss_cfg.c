@@ -162,9 +162,9 @@ static int32_t setUbxCfgNav5(uDeviceHandle_t gnssHandle,
  * -------------------------------------------------------------- */
 
 // Encode a layer enum into the value for a VALGET message.
-static char encodeLayerForGet(uGnssCfgValLayer_t layer)
+static int32_t encodeLayerForGet(uGnssCfgValLayer_t layer)
 {
-    char encodedLayer = -1;
+    int32_t encodedLayer = -1;
 
     switch (layer) {
         case U_GNSS_CFG_VAL_LAYER_RAM:
@@ -372,7 +372,7 @@ static int32_t valGetListAlloc(uDeviceHandle_t gnssHandle,
 {
     int32_t errorCodeOrCount = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uGnssPrivateInstance_t *pInstance;
-    char encodedLayer = encodeLayerForGet(layer);
+    int32_t encodedLayer = encodeLayerForGet(layer);
     char *pMessageOut = NULL;
     size_t messageOutSize = 4 + (4 * numKeyIds);
     uGnssCfgValGetMessageBody_t messageIn[U_GNSS_CFG_MAX_NUM_VAL_GET_SEGMENTS] = {0};
@@ -394,7 +394,7 @@ static int32_t valGetListAlloc(uDeviceHandle_t gnssHandle,
                 if (pMessageOut != NULL) {
                     // Assemble the message
                     *pMessageOut       = 0; // Version
-                    *(pMessageOut + 1) = encodedLayer;
+                    *(pMessageOut + 1) = (char) encodedLayer;
                     // Position is added in the loop below
                     for (size_t x = 0; x < numKeyIds; x++) {
                         *((uint32_t *) (pMessageOut + 4 + (x << 2))) = uUbxProtocolUint32Encode(*pKeyIdList);
