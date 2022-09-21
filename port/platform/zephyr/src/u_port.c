@@ -40,6 +40,7 @@
 #include "u_port_private.h"
 
 #include "zephyr.h"
+#include <device.h>
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -158,4 +159,15 @@ U_INLINE void uPortExitCritical()
 {
     irq_unlock(gIrqLockKey);
 }
+
+static int ubxlib_preinit(const struct device *arg)
+{
+    ARG_UNUSED(arg);
+
+    k_thread_system_pool_assign(k_current_get());
+    return 0;
+}
+
+SYS_INIT(ubxlib_preinit, PRE_KERNEL_1, 0);
+
 // End of file
