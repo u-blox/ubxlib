@@ -175,6 +175,10 @@ int64_t uGnssInfoGetTimeUtc(uDeviceHandle_t gnssHandle);
  *                    port from the USB port, for instance.
  *                    To just read the communication stats for
  *                    the current port set this to -1.
+ *                    Note: this parameter is _deliberately_ not
+ *                    range checked so that new port numbers adopted
+ *                    on future GNSS devices may be passed
+ *                    transparently through to the GNSS device.
  * @param[out] pStats a pointer to a place to put the stats.
  * @return            zero on success, else negative error code.
  */

@@ -300,6 +300,31 @@ int32_t uGnssInfoGetCommunicationStats(uDeviceHandle_t gnssHandle,
                     if (port < 0) {
                         port = (int32_t) pInstance->portNumber;
                     }
+                    // Note: the if() condition below is present to allow future
+                    // values, or new and interesting values, to be passed transparently
+                    // to this function.
+                    if (port < U_GNSS_PORT_MAX_NUM) {
+                        // The encoding of the port number in this message is _different_
+                        // to that in UBX-CFG-PORT - here it is, adopting the form used
+                        // in the system integration manuals, which is AFTER endian
+                        // conversion:
+                        //
+                        // 0 ==> 0x0000 I2C
+                        // 1 ==> 0x0100 UART1
+                        // 2 ==> 0x0201 UART2
+                        // 3 ==> 0x0300 USB
+                        // 4 ==> 0x0400 SPI
+                        //
+                        // This is because there are additional UARTs internal to the
+                        // GNSS device which need to be accounted for.  The ones listed
+                        // above are those that may be connected to a host MCU, but note
+                        // that others (e.g. 0x0101) may appear in the output of
+                        // UBX-MON-COMMS, which we will ignore.
+                        port = ((uint32_t) port) << 8;
+                        if (port == (((uint32_t) U_GNSS_PORT_UART2) << 8)) {
+                            port++;
+                        }
+                    }
                     // Poll with the message class and ID of the UBX-MON-COMMS command
                     errorCode = uGnssPrivateSendReceiveUbxMessage(pInstance,
                                                                   0x0a, 0x36,
@@ -321,7 +346,8 @@ int32_t uGnssInfoGetCommunicationStats(uDeviceHandle_t gnssHandle,
                             // 8 bytes, to find the report for our port number
                             for (int32_t offset = 0; (8 + offset < messageLength) &&
                                  (errorCode != (int32_t) U_ERROR_COMMON_SUCCESS); offset += 40) {
-                                if (uUbxProtocolUint16Decode(pMessage + 8 + offset) == port) {
+                                // No endian conversion here as port is already endian converted
+                                if (*(uint16_t *) (pMessage + 8 + offset) == port) {
                                     errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
                                     if (pStats != NULL) {
                                         pStats->txPendingBytes = uUbxProtocolUint16Decode(pMessage + 10 + offset);
