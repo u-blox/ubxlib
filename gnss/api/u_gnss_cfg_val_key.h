@@ -2084,7 +2084,15 @@ typedef enum {
 /** Item IDs for #U_GNSS_CFG_VAL_KEY_GROUP_ID_UART1.
  */
 typedef enum {
-    U_GNSS_CFG_VAL_KEY_ITEM_UART1_BAUDRATE_U4  = 0x01,  /**< the baud rate that should be configured on UART1. */
+    U_GNSS_CFG_VAL_KEY_ITEM_UART1_BAUDRATE_U4  = 0x01,  /**< the baud rate that should be configured on
+                                                             UART1; note that if you are currently
+                                                             communicating on UART1 and you change the
+                                                             baud rate of UART1 then the acknowledgement
+                                                             for the baud rate change will go missing;
+                                                             it is up to you to call uPortUartClose() /
+                                                             uPortUartOpen() with the new baud rate
+                                                             to re-establish communication with the
+                                                             GNSS chip. */
     U_GNSS_CFG_VAL_KEY_ITEM_UART1_STOPBITS_E1  = 0x02,  /**< the number of stop bits on UART1, see
                                                              #uGnssCfgValKeyItemValueUartStopbits_t. */
     U_GNSS_CFG_VAL_KEY_ITEM_UART1_DATABITS_E1  = 0x03,  /**< the number of data bits on UART1, see
@@ -2138,7 +2146,15 @@ typedef enum {
 /** Item IDs for #U_GNSS_CFG_VAL_KEY_GROUP_ID_UART2.
  */
 typedef enum {
-    U_GNSS_CFG_VAL_KEY_ITEM_UART2_BAUDRATE_U4  = 0x01,  /**< the baud rate that should be configured on UART2. */
+    U_GNSS_CFG_VAL_KEY_ITEM_UART2_BAUDRATE_U4  = 0x01,  /**< the baud rate that should be configured on
+                                                             UART2; note that if you are currently
+                                                             communicating on UART2 and you change the
+                                                             baud rate of UART2 then the acknowledgement
+                                                             for the baud rate change will go missing;
+                                                             it is up to you to call uPortUartClose() /
+                                                             uPortUartOpen() with the new baud rate
+                                                             to re-establish communication with the
+                                                             GNSS chip. */
     U_GNSS_CFG_VAL_KEY_ITEM_UART2_STOPBITS_E1  = 0x02,  /**< the number of stop bits on UART2, see
                                                              #uGnssCfgValKeyItemValueUartStopbits_t. */
     U_GNSS_CFG_VAL_KEY_ITEM_UART2_DATABITS_E1  = 0x03,  /**< the number of data bits on UART2, see
