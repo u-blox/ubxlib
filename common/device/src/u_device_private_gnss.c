@@ -138,13 +138,7 @@ static int32_t addDevice(int32_t transportHandle,
             U_DEVICE_INSTANCE(*pDeviceHandle)->pContext = pContext;
             // Power on the GNSS chip
             errorCode = uGnssPwrOn(*pDeviceHandle);
-            if (errorCode == 0) {
-                if (!pCfgGnss->includeNmea) {
-                    // Not checking for errors here, this is "best effort"
-                    uGnssCfgSetProtocolOut(*pDeviceHandle,
-                                           U_GNSS_PROTOCOL_NMEA, false);
-                }
-            } else {
+            if (errorCode != 0) {
                 // If we failed to power on, clean up
                 removeDevice(*pDeviceHandle, false);
             }

@@ -227,8 +227,7 @@ static const uDeviceCfg_t gDeviceCfgGnss = {
         .cfgGnss = {
             .moduleType = U_CFG_TEST_GNSS_MODULE_TYPE,
             .pinEnablePower = U_CFG_APP_PIN_GNSS_ENABLE_POWER,
-            .pinDataReady = -1,
-            .includeNmea = true
+            .pinDataReady = -1
         }
     },
 # if (U_CFG_APP_GNSS_I2C >= 0)

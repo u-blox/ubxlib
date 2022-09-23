@@ -221,13 +221,15 @@ typedef struct {
                                       this field is present for
                                       forwards-compatibility only; it is
                                       currently ignored. */
-    bool includeNmea;            /**< Set this to true if you are using the
-                                      GNSS interface directly and want to be
-                                      able to read NMEA commands; ubxlib
-                                      does not use NMEA commands (it uses only
-                                      ubx protocol commands), and hence this
-                                      should normally be left to false to
-                                      reduce noise on the interface. */
+    bool includeNmea;            /**< \deprecated This field used to
+                                      permit NMEA messages to be included
+                                      when they were normally excluded by
+                                      default; it is now ignored and may
+                                      be removed in future: instead NMEA
+                                      messages are now included by default.
+                                      If you wish to disable them please use
+                                      #uGnssCfgSetProtocolOut() once you have
+                                      opened your GNSS device. */
     uint16_t i2cAddress;         /**< Only required if the GNSS device is
                                       connected via I2C and the I2C address that
                                       the GNSS device is using is NOT the default
