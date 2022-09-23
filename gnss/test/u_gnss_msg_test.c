@@ -123,9 +123,12 @@
 #endif
 
 #ifndef U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_POLL_DELAY_SECONDS
-/** The time to wait between RRLP polls in the non-blocking test in seconds.
+/** The time to wait between RRLP polls in the non-blocking test in seconds;
+ * was set to 2 seconds, however, with all of the NMEA messages flowing also,
+ * and with a 9600 bits/s UART link to the GNSS chip in the worst case,
+ * that is too fast, the RRLP messages back up. 3 seconds works.
  */
-# define U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_POLL_DELAY_SECONDS 2
+# define U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_POLL_DELAY_SECONDS 3
 #endif
 
 /* ----------------------------------------------------------------
