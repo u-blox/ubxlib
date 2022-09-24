@@ -152,7 +152,7 @@ static void printLocation(int32_t latitudeX1e7, int32_t longitudeX1e7)
 
     prefixLat = latLongToBits(latitudeX1e7, &wholeLat, &fractionLat);
     prefixLong = latLongToBits(longitudeX1e7, &wholeLong, &fractionLong);
-    uPortLog("I am here: https://maps.google.com/?q=%c%d.%07d/%c%d.%07d\n",
+    uPortLog("I am here: https://maps.google.com/?q=%c%d.%07d,%c%d.%07d\n",
              prefixLat, wholeLat, fractionLat, prefixLong, wholeLong,
              fractionLong);
 }

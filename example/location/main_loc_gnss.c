@@ -216,7 +216,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocGnss")
         // Get location
         if (uLocationGet(devHandle, U_LOCATION_TYPE_GNSS,
                          NULL, NULL, &location, NULL) == 0) {
-            uPortLog("I am here: https://maps.google.com/?q=%c%d.%07d/%c%d.%07d\n",
+            uPortLog("I am here: https://maps.google.com/?q=%c%d.%07d,%c%d.%07d\n",
                      latLongToBits(location.latitudeX1e7, &whole, &fraction),
                      whole, fraction,
                      latLongToBits(location.longitudeX1e7, &whole, &fraction),
