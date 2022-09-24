@@ -69,6 +69,11 @@
  */
 #define U_TEST_PRINT_LINE(format, ...) uPortLog(U_TEST_PREFIX format "\n", ##__VA_ARGS__)
 
+/** The length of the NMEA data, when formed into an NMEA string,
+ * of the first entry in gNmeaTestMessage[].
+ */
+#define U_GNSS_PRIVATE_TEST_NMEA_MESSAGE_0_LENGTH 72
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -81,6 +86,15 @@ typedef struct {
     const char *pChecksumHexStr;
 } uGnssPrivateTestNmea_t;
 
+/** Struct to hold a pointer to some NMEA test data, a matching
+ * talker/sentence and the expected outcome from ID matching.
+ */
+typedef struct {
+    const uGnssPrivateTestNmea_t *pNmea;
+    char talkerSentenceStr[U_GNSS_NMEA_MESSAGE_MATCH_LENGTH_CHARACTERS + 10];
+    const int32_t result;
+} uGnssPrivateTestMatch_t;
+
 /* ----------------------------------------------------------------
  * VARIABLES
  * -------------------------------------------------------------- */
@@ -90,7 +104,10 @@ typedef struct {
 /** Some sample NMEA message strings, taken from
  * https://en.wikipedia.org/wiki/NMEA_0183.
  */
-static uGnssPrivateTestNmea_t gNmeaTestMessage[] = {
+static const uGnssPrivateTestNmea_t gNmeaTestMessage[] = {
+    // This first entry is also referenced by gTalkerSentenceMatch;
+    // its length, when formed into an NMEA message, must be
+    // U_GNSS_PRIVATE_TEST_NMEA_MESSAGE_0_LENGTH
     {"GPGGA", "092750.000,5321.6802,N,00630.3372,W,1,8,1.03,61.7,M,55.2,M,,", "76"},
     {"GPGSA", "A,3,10,07,05,02,29,04,08,13,,,,,1.72,1.03,1.38", "0A"},
     {"GPGSV", "3,1,11,10,63,137,17,07,61,098,15,05,59,290,20,08,54,157,30", "70"},
@@ -103,6 +120,28 @@ static uGnssPrivateTestNmea_t gNmeaTestMessage[] = {
     {"GPGSV", "3,2,11,02,39,223,16,13,28,070,17,26,23,252,,04,14,186,15", "77"},
     {"GPGSV", "3,3,11,29,09,301,24,16,09,020,,36,,,", "76"},
     {"GPRMC", "092751.000,A,5321.6802,N,00630.3371,W,0.06,31.66,280511,,,A", "45"}
+};
+
+/** Some talker/sentence ID match data; the first entry of gNmeaTestMessage,
+ * which will be "$GPGGA,0927..." when formed into a full NMEA string,
+ * is referenced here.
+ */
+static uGnssPrivateTestMatch_t gTalkerSentenceMatch[] = {
+    {&(gNmeaTestMessage[0]), "GPGGA", U_GNSS_PRIVATE_TEST_NMEA_MESSAGE_0_LENGTH},
+    {&(gNmeaTestMessage[0]), "?PGGA", U_GNSS_PRIVATE_TEST_NMEA_MESSAGE_0_LENGTH},
+    {&(gNmeaTestMessage[0]), "G?GGA", U_GNSS_PRIVATE_TEST_NMEA_MESSAGE_0_LENGTH},
+    {&(gNmeaTestMessage[0]), "GP?GA", U_GNSS_PRIVATE_TEST_NMEA_MESSAGE_0_LENGTH},
+    {&(gNmeaTestMessage[0]), "GPG?A", U_GNSS_PRIVATE_TEST_NMEA_MESSAGE_0_LENGTH},
+    {&(gNmeaTestMessage[0]), "GPGG?", U_GNSS_PRIVATE_TEST_NMEA_MESSAGE_0_LENGTH},
+    {&(gNmeaTestMessage[0]), "?PGG?", U_GNSS_PRIVATE_TEST_NMEA_MESSAGE_0_LENGTH},
+    {&(gNmeaTestMessage[0]), "?P?G?", U_GNSS_PRIVATE_TEST_NMEA_MESSAGE_0_LENGTH},
+    {&(gNmeaTestMessage[0]), "?????", U_GNSS_PRIVATE_TEST_NMEA_MESSAGE_0_LENGTH},
+    {&(gNmeaTestMessage[0]), "GPGGA?", (int32_t) U_ERROR_COMMON_NOT_FOUND},
+    {&(gNmeaTestMessage[0]), "?GPGGA", (int32_t) U_ERROR_COMMON_NOT_FOUND},
+    {&(gNmeaTestMessage[0]), "X????", (int32_t) U_ERROR_COMMON_NOT_FOUND},
+    {&(gNmeaTestMessage[0]), "????X", (int32_t) U_ERROR_COMMON_NOT_FOUND},
+    {&(gNmeaTestMessage[0]), "??X??", (int32_t) U_ERROR_COMMON_NOT_FOUND},
+    {&(gNmeaTestMessage[0]), "GPGGA?", (int32_t) U_ERROR_COMMON_NOT_FOUND}
 };
 
 #endif // #ifndef __ZEPHYR__
@@ -335,6 +374,18 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssPrivateNmea")
             *(pMessage + z) = '_';
             U_PORT_TEST_ASSERT(checkUGnssPrivateDecodeNmea(buffer, sizeof(buffer), NULL, returnValue, w));
         }
+    }
+
+    // Check that wild-card matches work
+    for (size_t x = 0; x < sizeof(gTalkerSentenceMatch) / sizeof(gTalkerSentenceMatch[0]); x++) {
+        U_TEST_PRINT_LINE("test wildcard talker/sentence match %s",
+                          gTalkerSentenceMatch[x].talkerSentenceStr);
+        messageSize = makeNmeaMessage(buffer, gTalkerSentenceMatch[x].pNmea->pTalkerSentenceStr,
+                                      gTalkerSentenceMatch[x].pNmea->pBodyStr,
+                                      gTalkerSentenceMatch[x].pNmea->pChecksumHexStr);
+        U_PORT_TEST_ASSERT(uGnssPrivateDecodeNmea(buffer, messageSize,
+                                                  (char *) (gTalkerSentenceMatch[x].talkerSentenceStr),
+                                                  &z, NULL) == gTalkerSentenceMatch[x].result);
     }
 
     uPortDeinit();

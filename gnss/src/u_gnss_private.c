@@ -369,6 +369,30 @@ static int32_t matchUbxMessageHeader(const char *pBuffer, size_t size,
     return errorCodeOrLength;
 }
 
+// Match an NMEA ID with the wanted NMEA ID.  Both pointers must be
+// to null-terminated strings.
+static bool nmeaIdMatch(const char *pNmeaIdActual, const char *pNmeaIdWanted)
+{
+    bool match = true;
+
+    if (pNmeaIdWanted != NULL) {  // A wanted string of NULL matches anything
+        match = false;            // An actual string of NULL matches nothing (except NULL)
+        if (pNmeaIdActual != NULL) {
+            match = true;
+            while ((*pNmeaIdWanted != 0) && match) {
+                if ((*pNmeaIdActual == 0) ||
+                    ((*pNmeaIdWanted != '?') && (*pNmeaIdWanted != *pNmeaIdActual))) {
+                    match = false;
+                }
+                pNmeaIdActual++;
+                pNmeaIdWanted++;
+            }
+        }
+    }
+
+    return match;
+}
+
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS: STREAMING TRANSPORT ONLY
  * -------------------------------------------------------------- */
@@ -1120,8 +1144,7 @@ bool uGnssPrivateMessageIdIsWanted(uGnssPrivateMessageId_t *pMessageId,
         isWanted = true;
     } else if ((pMessageIdWanted->type == U_GNSS_PROTOCOL_NMEA) &&
                (pMessageId->type == U_GNSS_PROTOCOL_NMEA)) {
-        isWanted = (strstr(pMessageId->id.nmea,
-                           pMessageIdWanted->id.nmea) == pMessageId->id.nmea);
+        isWanted = nmeaIdMatch(pMessageId->id.nmea, pMessageIdWanted->id.nmea);
     } else if ((pMessageIdWanted->type == U_GNSS_PROTOCOL_UBX) &&
                (pMessageId->type == U_GNSS_PROTOCOL_UBX)) {
         isWanted = ((pMessageIdWanted->id.ubx == ((U_GNSS_UBX_MESSAGE_CLASS_ALL << 8) |
@@ -1182,8 +1205,7 @@ int32_t uGnssPrivateDecodeNmea(const char *pBuffer, size_t size,
                     // End of the talker/sentence ID,
                     // see if it is what we're after
                     state.match = U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_GOT_MATCHING_ID;
-                    if ((pMessageId != NULL) &&
-                        (strstr(state.talkerSentenceIdBuffer, pMessageId) != state.talkerSentenceIdBuffer)) {
+                    if ((pMessageId != NULL) && !nmeaIdMatch(state.talkerSentenceIdBuffer, pMessageId)) {
                         // Nope, wait for a new sentence to start
                         state.match = U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_NULL;
                     }

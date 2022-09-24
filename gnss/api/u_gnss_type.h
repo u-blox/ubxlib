@@ -194,14 +194,17 @@ typedef struct {
                            #U_GNSS_UBX_MESSAGE_CLASS_ALL in the most significant byte
                            for all classes, #U_GNSS_UBX_MESSAGE_ID_ALL in the least
                            significant byte for all IDs. */
-        char *pNmea;  /**< "GPGGA", "GNZDA", etc. i.e. a null-terminated
-                           string; where this is used for matching it is done
-                           on a per character basis for up to the first
+        char *pNmea;  /**< "GPGGA", "GNZDA": a null-terminated string;
+                           where this is used for matching it is done on a
+                           per character basis for up to the first
                            #U_GNSS_NMEA_MESSAGE_MATCH_LENGTH_CHARACTERS: set
                            this to NULL or an empty string to match all NMEA
                            messages, "G" to match both "GPGGA" and "GNZDA",
                            "GP" to match all sentences of the "GP" talker,
-                           etc.  Any matching is done in a case-sensitive way. */
+                           etc.  Any matching is done in a case-sensitive way
+                           Use of a "?" indicates a wildcard, matching any
+                           character at that position, so for instance "G?GSV"
+                           would match "GPGSV", "GLGSV", "GAGSV", etc. */
     } id;
 } uGnssMessageId_t;
 
