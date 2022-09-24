@@ -154,6 +154,8 @@ Configuration information for the examples and the tests can be found in the `cf
 | Bluetooth    | SPS (serial port service). |
 | Wi-Fi        | The [sockets](/example/sockets "sockets example") example brings up a TCP/UDP socket by using the [device](/common/device "device API"), [network](/common/network "network API") and [sock](/common/sock "sock API") APIs.  |
 | GNSS         | [location](/example/location "location example") example using a GNSS chip connected directly or via a cellular module.|
+| GNSS         | [cfg_val](/example/gnss "CFGVALXXX example") example configuring an M9 or later GNSS chip with CFGVALXXX messages.|
+| GNSS         | [message](/example/gnss "message example") example communicating directly with a GNSS chip, messages of your choice.|
 
 # Quick Start Guide
 It is easy to get started with `ubxlib` using the [examples](/example) listed above and the build files in this repository as a basis.  A step-by-step description of how to get started with an application based on `ubxlib` is given below.

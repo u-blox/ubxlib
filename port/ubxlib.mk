@@ -101,6 +101,7 @@ UBXLIB_TEST_DIRS += \
 	${UBXLIB_BASE}/example/location \
 	${UBXLIB_BASE}/example/cell/lte_cfg \
 	${UBXLIB_BASE}/example/cell/power_saving \
+	${UBXLIB_BASE}/example/gnss \
 	${UBXLIB_BASE}/example/utilities/c030_module_fw_update
 
 
