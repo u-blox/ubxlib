@@ -172,6 +172,7 @@ static void msgReceiveTask(void *pParam)
         discardSize -= uRingBufferReadHandle(&(pInstance->ringBuffer),
                                              pMsgReceive->ringBufferReadHandle,
                                              NULL, discardSize);
+        errorCodeOrLength = 0;
         if (discardSize == 0) {
             errorCodeOrLength = uRingBufferDataSizeHandle(&(pInstance->ringBuffer),
                                                           pMsgReceive->ringBufferReadHandle);
@@ -223,17 +224,14 @@ static void msgReceiveTask(void *pParam)
             }
         }
 
-        if (errorCodeOrLength != (int32_t) U_ERROR_COMMON_TIMEOUT) {
-            // Relax to let others in, provided we aren't desperately
-            // seeking more data; relax for twice as long if we
-            // last received nothing in order to allow some data to
-            // build up
-            yieldTimeMs = U_GNSS_MSG_TASK_STACK_YIELD_TIME_MS;
-            if (receiveSize == 0) {
-                yieldTimeMs *= 2;
-            }
-            uPortTaskBlock(yieldTimeMs);
+        // Relax to let others in; relax for twice as long if we last
+        // received nothing and aren't desperately seeking more data,
+        // in order to allow some data to build up
+        yieldTimeMs = U_GNSS_MSG_TASK_STACK_YIELD_TIME_MS;
+        if ((receiveSize == 0) && (errorCodeOrLength != (int32_t) U_ERROR_COMMON_TIMEOUT))  {
+            yieldTimeMs *= 2;
         }
+        uPortTaskBlock(yieldTimeMs);
     }
 
     // Now we can unlock our ring buffer read handle.  Phew.
@@ -356,7 +354,9 @@ void uGnssMsgReceiveFlush(uDeviceHandle_t gnssHandle, bool asyncAlso)
         pInstance = pUGnssPrivateGetInstance(gnssHandle);
         if (pInstance != NULL) {
             // Bring any existing new data into the ring buffer first
-            uGnssPrivateStreamFillRingBuffer(pInstance, 0, 0);
+            uGnssPrivateStreamFillRingBuffer(pInstance,
+                                             U_GNSS_RING_BUFFER_MIN_FILL_TIME_MS,
+                                             U_GNSS_RING_BUFFER_MAX_FILL_TIME_MS);
             // And flush...
             uRingBufferFlushHandle(&(pInstance->ringBuffer),
                                    pInstance->ringBufferReadHandleMsgReceive);

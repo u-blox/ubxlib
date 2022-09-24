@@ -42,9 +42,11 @@
 #endif
 
 #ifndef U_GNSS_UART_BUFFER_LENGTH_BYTES
-/** The recommended UART buffer length for the GNSS driver.
+/** The recommended UART buffer length for the GNSS driver;
+ * 256 bytes is OK for a 9600 baud UART but on Windows/Linux
+ * with a USB interface it needs to be more like 1024.
  */
-# define U_GNSS_UART_BUFFER_LENGTH_BYTES 256
+# define U_GNSS_UART_BUFFER_LENGTH_BYTES 1024
 #endif
 
 #ifndef U_GNSS_DEFAULT_TIMEOUT_MS
