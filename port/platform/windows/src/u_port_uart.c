@@ -61,9 +61,9 @@
 #endif
 
 #ifndef U_PORT_UART_TIMER_POLL_TIME_MS
-/** Poll every second to catch anything we might have missed.
+/** Poll every 10 milliseconds to catch anything we might have missed.
  */
-# define U_PORT_UART_TIMER_POLL_TIME_MS 1000
+# define U_PORT_UART_TIMER_POLL_TIME_MS 10
 #endif
 
 /* ----------------------------------------------------------------
@@ -423,9 +423,9 @@ static int32_t waitCommEventThread(void *pParam)
             // if our  buffer was full at the time).
             eventHandles[2] = CreateWaitableTimer(NULL, false, NULL);
             if (eventHandles[2] != INVALID_HANDLE_VALUE) {
-                // Start the periodic timer
-                timerDueTime.QuadPart = -U_PORT_UART_TIMER_POLL_TIME_MS /
-                                        10000; // 100 nanosecond intervals in the future
+                // Start the periodic timer, a relative timeout value
+                // that is in units of 100 nanosecond intervals in the future
+                timerDueTime.QuadPart = -U_PORT_UART_TIMER_POLL_TIME_MS * 10;
                 if (SetWaitableTimer(eventHandles[2], &timerDueTime,
                                      U_PORT_UART_TIMER_POLL_TIME_MS, NULL, NULL, 0)) {
                     // Now we can wait for events on those handles
