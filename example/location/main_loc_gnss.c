@@ -68,7 +68,7 @@
 
 #if defined(U_CFG_TEST_GNSS_MODULE_TYPE) && ((U_CFG_APP_GNSS_UART >= 0) || (U_CFG_APP_GNSS_I2C >= 0))
 // DEVICE i.e. module/chip configuration: in this case a GNSS
-// module connected via UART
+// module connected via UART or I2C
 static const uDeviceCfg_t gDeviceCfg = {
     .deviceType = U_DEVICE_TYPE_GNSS,
     .deviceCfg = {

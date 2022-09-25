@@ -15,7 +15,9 @@
  */
 
 /** @brief This example demonstrates how to exchange message of your
- * choice with a GNSS device that is directly connected to this MCU.
+ * choice with a GNSS device that is directly connected to this MCU;
+ * this mechanism does not currently work if your GNSS device is
+ * connected via an intermediate [cellular] module.
  *
  * The choice of module and the choice of platform on which this
  * code runs is made at build time, see the README.md for
@@ -39,7 +41,7 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
-/** The size of message buffer we need: eEnough room for a UBX-NAV-PVT
+/** The size of message buffer we need: enough room for a UBX-NAV-PVT
  * message, which has a body of length 92 bytes, and any NMEA message,
  * which have a maximum size of 82 bytes.
  */
@@ -75,7 +77,7 @@
 
 #if defined(U_CFG_TEST_GNSS_MODULE_TYPE) && ((U_CFG_APP_GNSS_UART >= 0) || (U_CFG_APP_GNSS_I2C >= 0))
 // DEVICE i.e. module/chip configuration: in this case a GNSS
-// module connected via UART
+// module connected via UART or I2C
 static const uDeviceCfg_t gDeviceCfg = {
     .deviceType = U_DEVICE_TYPE_GNSS,
     .deviceCfg = {

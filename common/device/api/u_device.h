@@ -333,7 +333,8 @@ int32_t uDeviceDeinit();
 int32_t uDeviceGetDefaults(uDeviceType_t deviceType,
                            uDeviceCfg_t *pDeviceCfg);
 
-/** Open a device instance.
+/** Open a device instance; if this function returns successfully
+ * the device is powered-up and ready to be configured.
  *
  * @param[in] pDeviceCfg      device configuration, cannot be NULL.
  * @param[out] pDeviceHandle  a place to put the device handle;
@@ -343,7 +344,7 @@ int32_t uDeviceGetDefaults(uDeviceType_t deviceType,
 int32_t uDeviceOpen(const uDeviceCfg_t *pDeviceCfg,
                     uDeviceHandle_t *pDeviceHandle);
 
-/** Close an open device instance.
+/** Close an open device instance, optionally powering it down.
  *
  * @param devHandle handle to a previously opened device.
  * @param powerOff  if true then also power the device off; leave
