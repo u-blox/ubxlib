@@ -58,6 +58,25 @@ typedef struct {
     const char *pApn;    /**< the APN to use; if left as NULL
                               a database look-up will be used. */
     int32_t timeoutSeconds; /**< timeout when connecting, in seconds. */
+    bool (*pKeepGoingCallback) (uDeviceHandle_t); /**< if set, this function
+                                                       will be called
+                                                       periodically during
+                                                       an "abortable"
+                                                       operation; while the
+                                                       function returns true
+                                                       the operation will
+                                                       continue, else it will
+                                                       be stopped and this
+                                                       code will return. If
+                                                       this is set
+                                                       timeoutSeconds will
+                                                       be ignored.  If you do
+                                                       not need this facility,
+                                                       ignore it, i.e. allow
+                                                       your compiler to set
+                                                       the field to zero, and
+                                                       timeoutSeconds will be
+                                                       obeyed instead. */
     /* This is the end of version 0 of this
        structure: should any fields be added to
        this structure in future they must be
