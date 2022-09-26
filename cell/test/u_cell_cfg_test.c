@@ -122,7 +122,8 @@ static bool keepGoingCallback(uDeviceHandle_t unused)
 static void testBandMask(uDeviceHandle_t cellHandle,
                          uCellNetRat_t rat,
                          const char *pRatString,
-                         uint32_t supportedRatsBitmap)
+                         uint32_t supportedRatsBitmap,
+                         uCellModuleType_t moduleType)
 {
     int32_t errorCode;
     uint64_t originalBandMask1 = 0;
@@ -133,7 +134,13 @@ static void testBandMask(uDeviceHandle_t cellHandle,
     U_TEST_PRINT_LINE("getting band masks for %s...", pRatString);
     errorCode = uCellCfgGetBandMask(cellHandle, rat,
                                     &originalBandMask1, &originalBandMask2);
-    if (supportedRatsBitmap & (1UL << (int32_t) rat)) {
+    // For SARA-R4 and LARA-R6 the module reports the band mask for
+    // all of the RATs it supports, while SARA-R5 only reports
+    // the band masks for the RAT that is enabled, which in the
+    // case of these tests is only one, the one at rank 0
+    if (((moduleType != U_CELL_MODULE_TYPE_SARA_R5) ||
+         (uCellCfgGetRatRank(cellHandle, rat) == 0)) &&
+        (supportedRatsBitmap & (1UL << (int32_t) rat))) {
         U_PORT_TEST_ASSERT(errorCode == 0);
         U_TEST_PRINT_LINE("band mask for %s is 0x%08x%08x %08x%08x...",
                           pRatString,
@@ -162,22 +169,25 @@ static void testBandMask(uDeviceHandle_t cellHandle,
         // Re-boot for the change to take effect
         U_PORT_TEST_ASSERT(uCellPwrReboot(cellHandle, NULL) == 0);
         U_PORT_TEST_ASSERT(!uCellPwrRebootIsRequired(cellHandle));
-        U_TEST_PRINT_LINE("reading new band mask for %s...",
-                          pRatString);
-        U_PORT_TEST_ASSERT(uCellCfgGetBandMask(cellHandle, rat,
-                                               &bandMask1, &bandMask2) == 0);
-        U_TEST_PRINT_LINE("new %s band mask is 0x%08x%08x %08x%08x...",
-                          pRatString, (uint32_t) (bandMask2 >> 32), (uint32_t) bandMask2,
-                          (uint32_t) (bandMask1 >> 32), (uint32_t) bandMask1);
-        U_PORT_TEST_ASSERT(bandMask1 == U_CELL_TEST_CFG_ALT_BANDMASK1);
-        U_PORT_TEST_ASSERT(bandMask2 == U_CELL_TEST_CFG_ALT_BANDMASK2);
-
-        U_TEST_PRINT_LINE("putting original band masks back...");
-        U_PORT_TEST_ASSERT(uCellCfgSetBandMask(cellHandle, rat,
-                                               originalBandMask1,
-                                               originalBandMask2) == 0);
-        // Re-boot for the change to take effect
-        U_PORT_TEST_ASSERT(uCellPwrReboot(cellHandle, NULL) == 0);
+        // For SARA-R5 we can only read it back if it is the current RAT
+        if ((moduleType != U_CELL_MODULE_TYPE_SARA_R5) ||
+            (uCellCfgGetRatRank(cellHandle, rat) == 0)) {
+            U_TEST_PRINT_LINE("reading new band mask for %s...",
+                              pRatString);
+            U_PORT_TEST_ASSERT(uCellCfgGetBandMask(cellHandle, rat,
+                                                   &bandMask1, &bandMask2) == 0);
+            U_TEST_PRINT_LINE("new %s band mask is 0x%08x%08x %08x%08x...",
+                              pRatString, (uint32_t) (bandMask2 >> 32), (uint32_t) bandMask2,
+                              (uint32_t) (bandMask1 >> 32), (uint32_t) bandMask1);
+            U_PORT_TEST_ASSERT(bandMask1 == U_CELL_TEST_CFG_ALT_BANDMASK1);
+            U_PORT_TEST_ASSERT(bandMask2 == U_CELL_TEST_CFG_ALT_BANDMASK2);
+            U_TEST_PRINT_LINE("putting original band masks back...");
+            U_PORT_TEST_ASSERT(uCellCfgSetBandMask(cellHandle, rat,
+                                                   originalBandMask1,
+                                                   originalBandMask2) == 0);
+            // Re-boot for the change to take effect
+            U_PORT_TEST_ASSERT(uCellPwrReboot(cellHandle, NULL) == 0);
+        }
     } else {
         U_PORT_TEST_ASSERT(errorCode != 0);
     }
@@ -222,15 +232,15 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgBandMask")
 
     // Test cat-M1
     testBandMask(gHandles.cellHandle, U_CELL_NET_RAT_CATM1, "cat-M1",
-                 pModule->supportedRatsBitmap);
+                 pModule->supportedRatsBitmap, pModule->moduleType);
 
     // Test NB1
     testBandMask(gHandles.cellHandle, U_CELL_NET_RAT_NB1, "NB1",
-                 pModule->supportedRatsBitmap);
+                 pModule->supportedRatsBitmap, pModule->moduleType);
 
     // Test LTE
     testBandMask(gHandles.cellHandle, U_CELL_NET_RAT_LTE, "LTE",
-                 pModule->supportedRatsBitmap);
+                 pModule->supportedRatsBitmap, pModule->moduleType);
 
     // Do the standard postamble, leaving the module on for the next
     // test to speed things up

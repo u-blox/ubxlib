@@ -346,6 +346,13 @@ int32_t uCellTestPrivatePreamble(uCellModuleType_t moduleType,
                                 }
                                 if (setRat && (primaryRat > U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED)) {
                                     errorCode = uCellCfgSetRat(cellHandle, primaryRat);
+                                    if (errorCode == 0) {
+                                        // If we've changed the RAT here we need to re-boot
+                                        // for it to take effect or, if this is SARA-R5, when
+                                        // we get the band mask in the next clause it will give
+                                        // us the band mask for the wrong RAT.
+                                        errorCode = uCellPwrReboot(cellHandle, NULL);
+                                    }
                                 } else {
                                     // If we haven't set or read a sole RAT then
                                     // the module doesn't support it, just carry on

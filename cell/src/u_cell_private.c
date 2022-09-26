@@ -171,7 +171,12 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
         6 /* Boot wait */, 10 /* Min awake */, 20 /* Pwr down wait */, 15 /* Reboot wait */, 10 /* AT timeout */,
         20 /* Cmd wait ms */, 3000 /* Resp max wait ms */, 4 /* radioOffCfun */, 150 /* resetHoldMilliseconds */,
         1 /* Simultaneous RATs */,
+#ifdef U_CELL_CFG_SARA_R5_00B
         (1ULL << (int32_t) U_CELL_NET_RAT_CATM1) /* RATs */,
+#else
+        ((1ULL << (int32_t) U_CELL_NET_RAT_CATM1) |
+         (1ULL << (int32_t) U_CELL_NET_RAT_NB1)) /* RATs */,
+#endif
         ((1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE)                         |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CSCON)                               |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_ROOT_OF_TRUST)                       |
