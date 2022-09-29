@@ -101,6 +101,18 @@ typedef struct {
                                          ring buffer. */
 } uRingBuffer_t;
 
+typedef void *uParseHandle_t; //!< Parser handle.
+
+/** Parser function prototype, used with uRingBufferParseHandle().
+ *
+ * @param parseHandle     the parser handle used to access the ring buffer.
+ * @param[in] pUserParam  a user parameter, passed in via uRingBufferParseHandle().
+ * @return                #U_ERROR_COMMON_TIMEOUT if more data is needed to
+ *                        conclude, #U_ERROR_COMMON_NOT_FOUND if nothing found or
+ *                        #U_ERROR_COMMON_SUCCESS if sucessful.
+ */
+typedef int32_t (*U_RING_BUFFER_PARSER_f)(uParseHandle_t parseHandle, void *pUserParam);
+
 /* ----------------------------------------------------------------
  * VARIABLES
  * -------------------------------------------------------------- */
@@ -428,6 +440,49 @@ void uRingBufferFlushHandle(uRingBuffer_t *pRingBuffer, int32_t handle);
  */
 size_t uRingBufferStatReadLossHandle(uRingBuffer_t *pRingBuffer,
                                      int32_t handle);
+
+/* ----------------------------------------------------------------
+ * FUNCTIONS: PARSER
+ * -------------------------------------------------------------- */
+
+/** Run a set of parsers over the contents of the ring buffer.
+ *
+ * @param[in] pRingBuffer a pointer to the ring buffer, cannot be NULL.
+ * @param handle          a read handle, as originally returned by
+ *                        uRingBufferTakeReadHandle().
+ * @param[in] pParserList a pointer to a list of parsers, terminated by
+ *                        a NULL pointer.
+ * @param[in] pUserParam  a user parameter to pass to each parser in the list.
+ * @return                the number of bytes lost from the given
+ *                        read handle.
+ */
+size_t uRingBufferParseHandle(uRingBuffer_t *pRingBuffer, int32_t handle,
+                              U_RING_BUFFER_PARSER_f *pParserList, void *pUserParam);
+
+/** Get a byte from the ring buffer while in a parser function.
+ *
+ * IMPORTANT: unlike all of the other ring-buffer functions, this function
+ * is NOT thread-safe, it is ONLY intended to be used from within a
+ * U_RING_BUFFER_PARSER_f function that will be called by uRingBufferParseHandle()
+ * (which adds thread-safety).
+ *
+ * @param parseHandle     the parser handle used to access the ring buffer.
+ * @param[out] p          pointer to store the byte or char.
+ * @return                false if no more data, true if get of byte sucessful.
+ */
+bool uRingBufferGetByteUnprotected(uParseHandle_t parseHandle, void *p);
+
+/** Number of bytes in the ring buffer while in a parser function.
+ *
+ * IMPORTANT: unlike all of the other ring-buffer functions, this function
+ * is NOT thread-safe, it is ONLY intended to be used from within a
+ * U_RING_BUFFER_PARSER_f function that will be called by uRingBufferParseHandle()
+ * (which adds thread-safety).
+ *
+ * @param parseHandle     the parser handle used to access the ring buffer.
+ * @return                number of bytes available in the ring buffer.
+ */
+size_t uRingBufferBytesAvailableUnprotected(uParseHandle_t parseHandle);
 
 #ifdef __cplusplus
 }

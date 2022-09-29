@@ -149,11 +149,8 @@ static void msgReceiveTask(void *pParam)
     uGnssMessageId_t messageId;
     uGnssPrivateMessageId_t privateMessageId;
     char nmeaId[U_GNSS_NMEA_MESSAGE_MATCH_LENGTH_CHARACTERS + 1];
-    uGnssPrivateMessageDecodeState_t savedState;
 
     U_PORT_MUTEX_LOCK(pMsgReceive->taskRunningMutexHandle);
-
-    U_GNSS_PRIVATE_MESSAGE_DECODE_STATE_DEFAULT(&savedState);
 
     // Lock our ring buffer read handle; now we just have to keep up...
     uRingBufferLockReadHandle(&(pInstance->ringBuffer),
@@ -183,9 +180,7 @@ static void msgReceiveTask(void *pParam)
                 // Attempt to decode a message of any type from the ring buffer
                 errorCodeOrLength = uGnssPrivateStreamDecodeRingBuffer(pInstance,
                                                                        pMsgReceive->ringBufferReadHandle,
-                                                                       &privateMessageId,
-                                                                       &discardSize,
-                                                                       &savedState);
+                                                                       &privateMessageId);
                 if ((errorCodeOrLength > 0) || (errorCodeOrLength == (int32_t) U_GNSS_ERROR_NACK)) {
                     // Remember how long the message is
                     pMsgReceive->msgBytesLeftToRead = 0;
@@ -292,8 +287,17 @@ bool uGnssMsgIdIsWanted(uGnssMessageId_t *pMessageId,
 {
     bool isWanted = false;
 
-    if (pMessageIdWanted->type == U_GNSS_PROTOCOL_ALL) {
+    if (pMessageIdWanted->type == U_GNSS_PROTOCOL_ANY) {
         isWanted = true;
+    } else if ((pMessageIdWanted->type == U_GNSS_PROTOCOL_ALL) &&
+               (pMessageId->type != U_GNSS_PROTOCOL_UNKNOWN)) {
+        isWanted = true;
+    } else if ((pMessageIdWanted->type == U_GNSS_PROTOCOL_UNKNOWN) &&
+               (pMessageId->type == U_GNSS_PROTOCOL_UNKNOWN)) {
+        isWanted = true;
+    } else if ((pMessageIdWanted->type == U_GNSS_PROTOCOL_RTCM) &&
+               (pMessageId->type == U_GNSS_PROTOCOL_RTCM)) {
+        isWanted = pMessageIdWanted->id.rtcm == pMessageId->id.rtcm;
     } else if ((pMessageIdWanted->type == U_GNSS_PROTOCOL_NMEA) &&
                (pMessageId->type == U_GNSS_PROTOCOL_NMEA)) {
         isWanted = ((pMessageIdWanted->id.pNmea == NULL) ||   // == any
@@ -307,35 +311,6 @@ bool uGnssMsgIdIsWanted(uGnssMessageId_t *pMessageId,
     }
 
     return isWanted;
-}
-
-// Check that the framing of the given protocol message is good.
-bool uGnssMsgIsGood(char *pBuffer, size_t size)
-{
-    bool isGood = false;
-    int32_t decodedSize;
-    size_t discardSize = 0xFFFFFFFF;
-    const char *pMessageEnd = NULL;
-
-    decodedSize = uUbxProtocolDecode(pBuffer, size, NULL, NULL, NULL, 0, &pMessageEnd);
-    if ((decodedSize >= 0) &&
-        (pMessageEnd - pBuffer == decodedSize + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES)) {
-        // In the UBX message case the decode function returns the
-        // body length, hence the >= 0, since a message need have no body
-        // Iiiiiiii... ain't got no... boh-u-oooh-dee...
-        // Oh, and the message has to start at the start of the buffer,
-        // if it does not it is not valid
-        isGood = true;
-    } else {
-        // Checking that discardSize is zero confirms that the message
-        // starts at the start of the buffer
-        decodedSize = uGnssPrivateDecodeNmea(pBuffer, size, NULL, &discardSize, NULL);
-        if ((decodedSize > 0) && (discardSize == 0)) {
-            isGood = true;
-        }
-    }
-
-    return isGood;
 }
 
 /* ----------------------------------------------------------------

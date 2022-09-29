@@ -78,15 +78,6 @@
                                          U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES) * 2)
 #endif
 
-/** The maximum length of an NMEA message/sentence, including the
- * $ on the front and the CR/LF on the end.  Note that a buffer
- * of size twice this is put on the stack in
- * uGnssPrivateStreamDecodeRingBuffer() and hence it cannot be
- * made much bigger; not that there's a need to 'cos it's fixed
- * by the NMEA standard.
-  */
-#define U_GNSS_NMEA_SENTENCE_MAX_LENGTH_BYTES 82
-
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -107,23 +98,6 @@ typedef struct {
                           large enough to fit the body in or the
                           CRC calculation will fail. */
 } uGnssPrivateUbxReceiveMessage_t;
-
-/** Track state of UBX message decode matching.
- */
-typedef enum {
-    U_GNSS_PRIVATE_UBX_MATCH_NULL = 0,                    /**< no message yet detected. */
-    U_GNSS_PRIVATE_UBX_MATCH_GOT_HEADER_BYTE_B5 = 1,      /**< got the 0xb5. */
-    U_GNSS_PRIVATE_UBX_MATCH_GOT_HEADER_BYTE_62 = 2,      /**< got the 0x62. */
-    U_GNSS_PRIVATE_UBX_MATCH_GOT_MESSAGE_CLASS = 3,       /**< got the message class. */
-    U_GNSS_PRIVATE_UBX_MATCH_GOT_MESSAGE_ID = 4,          /**< got the message ID. */
-    U_GNSS_PRIVATE_UBX_MATCH_GOT_LENGTH_BYTE_LOWER = 5,   /**< got the first byte of the length. */
-    U_GNSS_PRIVATE_UBX_MATCH_GOT_HEADER = 6,              /**< got all of the message header. */
-    U_GNSS_PRIVATE_UBX_MATCH_GOT_NACK_MESSAGE_CLASS = 7,  /**< in a NACK, got the message class. */
-    U_GNSS_PRIVATE_UBX_MATCH_GOT_NACK_MESSAGE_ID = 8,     /**< in a NACK, got the message class. */
-    U_GNSS_PRIVATE_UBX_MATCH_GOT_CRC_BYTE_1 = 9,          /**< got the first byte of the CRC. */
-    U_GNSS_PRIVATE_UBX_MATCH_GOT_WHOLE_MESSAGE = 10,      /**< got a whole message. */
-    U_GNSS_PRIVATE_UBX_MATCH_MAX_NUM
-} uGnssPrivateUbxMatch_t;
 
 /* ----------------------------------------------------------------
  * VARIABLES THAT ARE SHARED THROUGHOUT THE GNSS IMPLEMENTATION
@@ -178,197 +152,6 @@ const uGnssPrivateStreamType_t gGnssPrivateTransportTypeToStream[] = {
  * STATIC FUNCTIONS: MESSAGE RELATED
  * -------------------------------------------------------------- */
 
-// Find the header of a UBX-format message in the given buffer,
-// returning the number of bytes in the entire message (header
-// and check-sum etc. included).  If a matching message is found
-// pDiscard (which cannot be NULL) will be populated with the distance
-// into pBuffer that the message begins; if a matching message is NOT
-// found pDiscard will be populated with the amount of data that can be
-// discarded; NOTE that this could be MORE than "size", since for a
-// non-matching message we can discard the length of body + CRC that is
-// to come.
-// On entry pMessageClassAndId should contain the required message class
-// (most significant byte) and ID (least significant byte), wildcards
-// permitted, on exit this will be populated with the message class
-// ID found. If a partial header is found U_ERROR_COMMON_TIMEOUT
-// will be returned.
-// Under some circumstance it is useful to check, in addition, for
-// a NACK message for the given message class and ID landing at the
-// same time.  Where this is the case checkNack should be set; if
-// a NACK is found the error code will be U_GNSS_ERROR_NACK and, for
-// this case, we do check the CRC.
-// See also uGnssPrivateDecodeNmea().
-static int32_t matchUbxMessageHeader(const char *pBuffer, size_t size,
-                                     uint16_t *pMessageClassAndId,
-                                     size_t *pDiscard,
-                                     bool checkNack)
-{
-    int32_t errorCodeOrLength = (int32_t) U_ERROR_COMMON_NOT_FOUND;
-    const uint8_t *pInput = (const uint8_t *) pBuffer;
-    size_t x;
-    uGnssPrivateUbxMatch_t match = U_GNSS_PRIVATE_UBX_MATCH_NULL;
-    int32_t ca = 0;
-    int32_t cb = 0;
-    bool updateCrc = false;
-    bool idMatch = false;
-    bool gotNack = false;
-    uint16_t messageBodyLength = 0;
-    uint8_t messageClass = U_GNSS_UBX_MESSAGE_CLASS_ALL;
-    uint8_t messageId = U_GNSS_UBX_MESSAGE_ID_ALL;
-    uint16_t nackMessageClassAndId = 0;
-    uint8_t firstCrcByte;
-
-    U_ASSERT(pDiscard != NULL);
-
-    *pDiscard = 0;
-    if (pMessageClassAndId != NULL) {
-        messageClass = (uint8_t) (*pMessageClassAndId >> 8);
-        messageId = (uint8_t) (*pMessageClassAndId & 0xff);
-    }
-    // Normally we only want the header; for the NACK case we
-    // want the whole message and will CRC check it
-    for (x = 0; (x < size) &&
-         ((!gotNack && (match < U_GNSS_PRIVATE_UBX_MATCH_GOT_HEADER)) ||
-          (gotNack && (match < U_GNSS_PRIVATE_UBX_MATCH_GOT_WHOLE_MESSAGE))); x++) {
-        switch (match) {
-            case U_GNSS_PRIVATE_UBX_MATCH_NULL:
-                if (*pInput == 0xb5) {
-                    // Got first byte of header
-                    // We can always discard the stuff up to the point where the
-                    // potential message began
-                    *pDiscard = (const char *) pInput - pBuffer;
-                    match = U_GNSS_PRIVATE_UBX_MATCH_GOT_HEADER_BYTE_B5;
-                }
-                break;
-            case U_GNSS_PRIVATE_UBX_MATCH_GOT_HEADER_BYTE_B5:
-                match = U_GNSS_PRIVATE_UBX_MATCH_NULL;
-                if (*pInput == 0x62) {
-                    // Got second byte of header
-                    match = U_GNSS_PRIVATE_UBX_MATCH_GOT_HEADER_BYTE_62;
-                }
-                break;
-            case U_GNSS_PRIVATE_UBX_MATCH_GOT_HEADER_BYTE_62:
-                // Got message class, store it
-                match = U_GNSS_PRIVATE_UBX_MATCH_GOT_MESSAGE_CLASS;
-                if ((messageClass == U_GNSS_UBX_MESSAGE_CLASS_ALL) ||
-                    (messageClass == *pInput)) {
-                    messageClass = *pInput;
-                    idMatch = true;
-                }
-                if (checkNack && (*pInput == 0x05)) {
-                    gotNack = true;
-                    // If this is a nack then we need to check the
-                    // CRC as we need the two bytes of body
-                    ca = 0;
-                    cb = 0;
-                    updateCrc = true;
-                }
-                break;
-            case U_GNSS_PRIVATE_UBX_MATCH_GOT_MESSAGE_CLASS:
-                // Got message ID, store it
-                match = U_GNSS_PRIVATE_UBX_MATCH_GOT_MESSAGE_ID;
-                if ((messageId == U_GNSS_UBX_MESSAGE_ID_ALL) ||
-                    (messageId == *pInput)) {
-                    messageId = *pInput;
-                } else {
-                    idMatch = false;
-                }
-                if (*pInput != 0x00) {
-                    gotNack = false;
-                }
-                updateCrc = gotNack;
-                break;
-            case U_GNSS_PRIVATE_UBX_MATCH_GOT_MESSAGE_ID:
-                // Got first byte of length, store it
-                match = U_GNSS_PRIVATE_UBX_MATCH_GOT_LENGTH_BYTE_LOWER;
-                messageBodyLength = *pInput;
-                updateCrc = gotNack;
-                break;
-            case U_GNSS_PRIVATE_UBX_MATCH_GOT_LENGTH_BYTE_LOWER:
-                // Got second byte of length, add it to the first
-                match = U_GNSS_PRIVATE_UBX_MATCH_GOT_HEADER;
-                messageBodyLength += ((size_t) *pInput) << 8; // *NOPAD*
-                if (messageBodyLength != 2) {
-                    // NACKs must have a body length of 2
-                    gotNack = false;
-                }
-                updateCrc = gotNack;
-                break;
-            case U_GNSS_PRIVATE_UBX_MATCH_GOT_HEADER:
-                // Must be in a NACK, grab the class of the NACKed' message from the body
-                match = U_GNSS_PRIVATE_UBX_MATCH_GOT_NACK_MESSAGE_CLASS;
-                nackMessageClassAndId = ((uint16_t) *pInput) << 8; // *NOPAD*
-                updateCrc = gotNack;
-                break;
-            case U_GNSS_PRIVATE_UBX_MATCH_GOT_NACK_MESSAGE_CLASS:
-                // Grab the ID of the NACKed message from the body
-                match = U_GNSS_PRIVATE_UBX_MATCH_GOT_NACK_MESSAGE_ID;
-                nackMessageClassAndId |= *pInput; // *NOPAD*
-                updateCrc = gotNack;
-                break;
-            case U_GNSS_PRIVATE_UBX_MATCH_GOT_NACK_MESSAGE_ID:
-                // That's it for the NACK message body, grab the first CRC byte
-                match = U_GNSS_PRIVATE_UBX_MATCH_GOT_CRC_BYTE_1;
-                firstCrcByte = *pInput;
-                break;
-            case U_GNSS_PRIVATE_UBX_MATCH_GOT_CRC_BYTE_1:
-                // Whole CRC, est arrivee, check it
-                match = U_GNSS_PRIVATE_UBX_MATCH_NULL;
-                if (((uint8_t) ca == firstCrcByte) && ((uint8_t) cb == *pInput)) {
-                    match = U_GNSS_PRIVATE_UBX_MATCH_GOT_WHOLE_MESSAGE;
-                }
-                break;
-            default:
-                match = U_GNSS_PRIVATE_UBX_MATCH_NULL;
-                break;
-        }
-
-        if (updateCrc) {
-            ca += *pInput;
-            cb += ca;
-            updateCrc = false;
-        }
-
-        // Next byte
-        pInput++;
-    }
-
-    if (match != U_GNSS_PRIVATE_UBX_MATCH_NULL) {
-        // We got some parts of the message overhead, so
-        // could be a message
-        errorCodeOrLength = (int32_t) U_ERROR_COMMON_TIMEOUT;
-        if (match >= U_GNSS_PRIVATE_UBX_MATCH_GOT_HEADER) {
-            errorCodeOrLength = (int32_t) U_ERROR_COMMON_NOT_FOUND;
-            if (idMatch) {
-                // Got a matching message, populate the message class/ID,
-                // and return the whole message length, including header
-                // and CRC
-                if (pMessageClassAndId != NULL) {
-                    *pMessageClassAndId = (((uint16_t) messageClass) << 8) | messageId;
-                }
-                errorCodeOrLength = messageBodyLength + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES;
-            } else if (checkNack && gotNack && (match == U_GNSS_PRIVATE_UBX_MATCH_GOT_WHOLE_MESSAGE) &&
-                       (pMessageClassAndId != NULL) && (*pMessageClassAndId == nackMessageClassAndId)) {
-                // We were interested in NACK messages, we've captured a whole one with
-                // correct CRC, and the message class and ID stored in the body of the
-                // NACK message matches what we're looking for; we've been NACKed
-                errorCodeOrLength = U_GNSS_ERROR_NACK;
-                // We can now discard the whole NACK message, add to pDiscard the
-                // length of the unwanted message body plus overhead
-                *pDiscard += messageBodyLength + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES;
-            } else {
-                // Not an ID match
-                *pDiscard += messageBodyLength + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES;
-            }
-        }
-    } else {
-        // Nothing; put into pDiscard all that we've processed
-        *pDiscard = size;
-    }
-
-    return errorCodeOrLength;
-}
-
 // Match an NMEA ID with the wanted NMEA ID.  Both pointers must be
 // to null-terminated strings.
 static bool nmeaIdMatch(const char *pNmeaIdActual, const char *pNmeaIdWanted)
@@ -391,6 +174,19 @@ static bool nmeaIdMatch(const char *pNmeaIdActual, const char *pNmeaIdWanted)
     }
 
     return match;
+}
+
+// Match an UBX ID with the wanted UXB ID, allowing ALL wildcard 0xFF
+static bool ubxIdMatch(uint16_t ubxIdActual, uint16_t ubxIdWanted)
+{
+    if ((ubxIdWanted &  U_GNSS_UBX_MESSAGE_ID_ALL) == U_GNSS_UBX_MESSAGE_ID_ALL) {
+        ubxIdActual |= U_GNSS_UBX_MESSAGE_ID_ALL;
+    }
+    if ((ubxIdWanted & (U_GNSS_UBX_MESSAGE_CLASS_ALL << 8)) ==
+        (U_GNSS_UBX_MESSAGE_CLASS_ALL << 8)) {
+        ubxIdActual |= (U_GNSS_UBX_MESSAGE_CLASS_ALL << 8);
+    }
+    return ubxIdActual == ubxIdWanted;
 }
 
 /* ----------------------------------------------------------------
@@ -517,40 +313,29 @@ static int32_t receiveUbxMessageStream(uGnssPrivateInstance_t *pInstance,
             // Convert uGnssPrivateMessageId_t into uGnssPrivateUbxReceiveMessage_t
             pResponse->cls = privateMessageId.id.ubx >> 8;
             pResponse->id = privateMessageId.id.ubx & 0xFF;
-            // Check the message is good
-            if (uGnssMsgIsGood(pBuffer, errorCodeOrLength)) {
-                // Remove the protocol overhead from the length, we just want the body
-                errorCodeOrLength -= U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES;
-                // Copy the body of the message into the response
-                if (*(pResponse->ppBody) == NULL) {
-                    *(pResponse->ppBody) = (char *) malloc(errorCodeOrLength);
-                } else {
-                    if (errorCodeOrLength > (int32_t) pResponse->bodySize) {
-                        errorCodeOrLength = (int32_t) pResponse->bodySize;
-                    }
+            // Remove the protocol overhead from the length, we just want the body
+            errorCodeOrLength -= U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES;
+            // Copy the body of the message into the response
+            if (*(pResponse->ppBody) == NULL) {
+                *(pResponse->ppBody) = (char *) malloc(errorCodeOrLength);
+            } else {
+                if (errorCodeOrLength > (int32_t) pResponse->bodySize) {
+                    errorCodeOrLength = (int32_t) pResponse->bodySize;
                 }
-                if (*(pResponse->ppBody) != NULL) {
-                    memcpy(*(pResponse->ppBody), pBuffer + U_UBX_PROTOCOL_HEADER_LENGTH_BYTES, errorCodeOrLength);
-                    if (printIt) {
-                        uPortLog("U_GNSS: decoded UBX response 0x%02x 0x%02x",
-                                 privateMessageId.id.ubx >> 8, privateMessageId.id.ubx & 0xff);
-                        if (errorCodeOrLength > 0) {
-                            uPortLog(":");
-                            uGnssPrivatePrintBuffer(*(pResponse->ppBody), errorCodeOrLength);
-                        }
-                        uPortLog(" [body %d byte(s)].\n", errorCodeOrLength);
+            }
+            if (*(pResponse->ppBody) != NULL) {
+                memcpy(*(pResponse->ppBody), pBuffer + U_UBX_PROTOCOL_HEADER_LENGTH_BYTES, errorCodeOrLength);
+                if (printIt) {
+                    uPortLog("U_GNSS: decoded UBX response 0x%02x 0x%02x",
+                             privateMessageId.id.ubx >> 8, privateMessageId.id.ubx & 0xff);
+                    if (errorCodeOrLength > 0) {
+                        uPortLog(":");
+                        uGnssPrivatePrintBuffer(*(pResponse->ppBody), errorCodeOrLength);
                     }
-                } else {
-                    errorCodeOrLength = (int32_t) U_ERROR_COMMON_NO_MEMORY;
+                    uPortLog(" [body %d byte(s)].\n", errorCodeOrLength);
                 }
             } else {
-                // We assume here that this really was the message
-                // we were after, but corrupted, hence no point
-                // in waiting any longer
-                errorCodeOrLength = (int32_t) U_GNSS_ERROR_CRC;
-                if (printIt) {
-                    uPortLog("U_GNSS: CRC error.\n");
-                }
+                errorCodeOrLength = (int32_t) U_ERROR_COMMON_NO_MEMORY;
             }
         } else if (printIt && (errorCodeOrLength == (int32_t) U_GNSS_ERROR_NACK)) {
             uPortLog("U_GNSS: got Nack for 0x%02x 0x%02x.\n",
@@ -800,6 +585,237 @@ static int32_t sendReceiveUbxMessage(uGnssPrivateInstance_t *pInstance,
     }
 
     return errorCodeOrResponseLength;
+}
+
+/* ----------------------------------------------------------------
+ * STATIC FUNCTIONS: MESSAGE PARSERS
+ * -------------------------------------------------------------- */
+
+/** UBX Parser function.
+ *
+ * @param parseHandle    the parse handle of the ring buffer to read from.
+ * @param[in] pUserParam the user parameter passed to uRingBufferParseHandle().
+ * @return               negative error or success code.
+ */
+static int32_t uGnssPrivateParseUbx(uParseHandle_t parseHandle, void *pUserParam)
+{
+    uGnssPrivateMessageId_t *pMsgId = (uGnssPrivateMessageId_t *) pUserParam;
+    uint8_t by = 0;
+    if (!uRingBufferGetByteUnprotected(parseHandle, &by)) {
+        return U_ERROR_COMMON_TIMEOUT;
+    }
+    if (0xB5 != by) {
+        return U_ERROR_COMMON_NOT_FOUND;    // = µ, 0xB5
+    }
+    if (!uRingBufferGetByteUnprotected(parseHandle, &by)) {
+        return U_ERROR_COMMON_TIMEOUT;
+    }
+    if (0x62 != by) {
+        return U_ERROR_COMMON_NOT_FOUND;    // = b
+    }
+    if (4 > uRingBufferBytesAvailableUnprotected(parseHandle)) {
+        return U_ERROR_COMMON_TIMEOUT;
+    }
+    uint8_t ckb = 0;
+    uint8_t cka = 0;
+    uint8_t cls, id;
+    uRingBufferGetByteUnprotected(parseHandle, &cls); // cls
+    cka += cls;
+    ckb += cka;
+    uRingBufferGetByteUnprotected(parseHandle, &id); // id
+    cka += id;
+    ckb += cka;
+    pMsgId->id.ubx = (cls << 8) + id;
+    uRingBufferGetByteUnprotected(parseHandle, &by); // len low
+    cka += by;
+    ckb += cka;
+    uint16_t l = by;
+    uRingBufferGetByteUnprotected(parseHandle, &by); // len high
+    cka += by;
+    ckb += cka;
+    l += (by << 8);
+    if (l > uRingBufferBytesAvailableUnprotected(parseHandle)) {
+        return U_ERROR_COMMON_TIMEOUT;
+    }
+    while (l --) {
+        uRingBufferGetByteUnprotected(parseHandle, &by);
+        cka += by;
+        ckb += cka;
+    }
+    cka = cka & 0xFF;
+    ckb = ckb & 0xFF;
+    if (!uRingBufferGetByteUnprotected(parseHandle, &by)) {
+        return U_ERROR_COMMON_TIMEOUT;
+    }
+    if (by != cka) {
+        return U_ERROR_COMMON_NOT_FOUND;
+    }
+    if (!uRingBufferGetByteUnprotected(parseHandle, &by)) {
+        return U_ERROR_COMMON_TIMEOUT;
+    }
+    if (by != ckb) {
+        return U_ERROR_COMMON_NOT_FOUND;
+    }
+    pMsgId->type = U_GNSS_PROTOCOL_UBX;
+    return U_ERROR_COMMON_SUCCESS;
+}
+
+/** NMEA Parser function.
+ *
+ * @param parseHandle    the parse handle of the ring buffer to read from.
+ * @param[in] pUserParam the user parameter passed to uRingBufferParseHandle().
+ * @return               negative error or success code.
+ */
+static int32_t uGnssPrivateParseNmea(uParseHandle_t parseHandle, void *pUserParam)
+{
+    uGnssPrivateMessageId_t *pMsgId = (uGnssPrivateMessageId_t *) pUserParam;
+    char ch = 0;
+    const char *hex = "0123456789ABCDEF";
+    if (!uRingBufferGetByteUnprotected(parseHandle, &ch)) {
+        return U_ERROR_COMMON_TIMEOUT;
+    }
+    if ('$' != ch) {
+        return U_ERROR_COMMON_NOT_FOUND;
+    }
+    char crc = 0;
+    int i = 0;
+    while (uRingBufferGetByteUnprotected(parseHandle, &ch)) {
+        crc ^= ch;
+        if (',' == ch) {
+            break;
+        }
+        if (i >= U_GNSS_NMEA_MESSAGE_MATCH_LENGTH_CHARACTERS) {
+            return U_ERROR_COMMON_NOT_FOUND;
+        }
+        if (('0' > ch) || ('Z' < ch) || (('9' < ch) && ('A' > ch))) {
+            return U_ERROR_COMMON_NOT_FOUND;    // A-Z, 0-9
+        }
+        pMsgId->id.nmea[i++] = ch;
+    }
+    pMsgId->id.nmea[i] = '\0';
+    while (uRingBufferGetByteUnprotected(parseHandle, &ch)) {
+        if ((' ' > ch) || ('~' < ch)) {
+            return U_ERROR_COMMON_NOT_FOUND;    // not in printable range 32 - 126
+        }
+        if ('*' == ch) {
+            break;    // *
+        }
+        crc ^= ch;
+    }
+    if (!uRingBufferGetByteUnprotected(parseHandle, &ch)) {
+        return U_ERROR_COMMON_TIMEOUT;
+    }
+    if (hex[(crc >> 4) & 0xF] != ch) {
+        return U_ERROR_COMMON_NOT_FOUND;
+    }
+    if (!uRingBufferGetByteUnprotected(parseHandle, &ch)) {
+        return U_ERROR_COMMON_TIMEOUT;
+    }
+    if (hex[crc & 0xF] != ch) {
+        return U_ERROR_COMMON_NOT_FOUND;
+    }
+    if (!uRingBufferGetByteUnprotected(parseHandle, &ch)) {
+        return U_ERROR_COMMON_TIMEOUT;
+    }
+    if ('\r' != ch) {
+        return U_ERROR_COMMON_NOT_FOUND;
+    }
+    if (!uRingBufferGetByteUnprotected(parseHandle, &ch)) {
+        return U_ERROR_COMMON_TIMEOUT;
+    }
+    if ('\n' != ch) {
+        return U_ERROR_COMMON_NOT_FOUND;
+    }
+    pMsgId->type = U_GNSS_PROTOCOL_NMEA;
+    return U_ERROR_COMMON_SUCCESS;
+}
+
+/** RTCM Parser function.
+ *
+ * @param parseHandle    the parse handle of the ring buffer to read from.
+ * @param[in] pUserParam the user parameter passed to uRingBufferParseHandle().
+ * @return               negative error or success code.
+ */
+static int32_t uGnssPrivateParseRtcm(uParseHandle_t parseHandle, void *pUserParam)
+{
+    uGnssPrivateMessageId_t *pMsgId = (uGnssPrivateMessageId_t *) pUserParam;
+    uint8_t by;
+    if (!uRingBufferGetByteUnprotected(parseHandle, &by)) {
+        return U_ERROR_COMMON_TIMEOUT;
+    }
+    if (0xD3 != by) {
+        return U_ERROR_COMMON_NOT_FOUND;
+    }
+    if (!uRingBufferGetByteUnprotected(parseHandle, &by)) {
+        return U_ERROR_COMMON_TIMEOUT;
+    }
+    if ((0xFC & by) != 0) {
+        return U_ERROR_COMMON_NOT_FOUND;
+    }
+    uint16_t l = (by & 0x3) << 8;
+    if (!uRingBufferGetByteUnprotected(parseHandle, &by)) {
+        return U_ERROR_COMMON_TIMEOUT;
+    }
+    l += by + 2;
+    uint8_t idLo, idHi;
+    uint32_t crc = 0;
+    // CRC24Q check
+    const uint32_t _crc24qTable[] = {
+        /* 00 */ 0x000000, 0x864cfb, 0x8ad50d, 0x0c99f6, 0x93e6e1, 0x15aa1a, 0x1933ec, 0x9f7f17,
+        /* 08 */ 0xa18139, 0x27cdc2, 0x2b5434, 0xad18cf, 0x3267d8, 0xb42b23, 0xb8b2d5, 0x3efe2e,
+        /* 10 */ 0xc54e89, 0x430272, 0x4f9b84, 0xc9d77f, 0x56a868, 0xd0e493, 0xdc7d65, 0x5a319e,
+        /* 18 */ 0x64cfb0, 0xe2834b, 0xee1abd, 0x685646, 0xf72951, 0x7165aa, 0x7dfc5c, 0xfbb0a7,
+        /* 20 */ 0x0cd1e9, 0x8a9d12, 0x8604e4, 0x00481f, 0x9f3708, 0x197bf3, 0x15e205, 0x93aefe,
+        /* 28 */ 0xad50d0, 0x2b1c2b, 0x2785dd, 0xa1c926, 0x3eb631, 0xb8faca, 0xb4633c, 0x322fc7,
+        /* 30 */ 0xc99f60, 0x4fd39b, 0x434a6d, 0xc50696, 0x5a7981, 0xdc357a, 0xd0ac8c, 0x56e077,
+        /* 38 */ 0x681e59, 0xee52a2, 0xe2cb54, 0x6487af, 0xfbf8b8, 0x7db443, 0x712db5, 0xf7614e,
+        /* 40 */ 0x19a3d2, 0x9fef29, 0x9376df, 0x153a24, 0x8a4533, 0x0c09c8, 0x00903e, 0x86dcc5,
+        /* 48 */ 0xb822eb, 0x3e6e10, 0x32f7e6, 0xb4bb1d, 0x2bc40a, 0xad88f1, 0xa11107, 0x275dfc,
+        /* 50 */ 0xdced5b, 0x5aa1a0, 0x563856, 0xd074ad, 0x4f0bba, 0xc94741, 0xc5deb7, 0x43924c,
+        /* 58 */ 0x7d6c62, 0xfb2099, 0xf7b96f, 0x71f594, 0xee8a83, 0x68c678, 0x645f8e, 0xe21375,
+        /* 60 */ 0x15723b, 0x933ec0, 0x9fa736, 0x19ebcd, 0x8694da, 0x00d821, 0x0c41d7, 0x8a0d2c,
+        /* 68 */ 0xb4f302, 0x32bff9, 0x3e260f, 0xb86af4, 0x2715e3, 0xa15918, 0xadc0ee, 0x2b8c15,
+        /* 70 */ 0xd03cb2, 0x567049, 0x5ae9bf, 0xdca544, 0x43da53, 0xc596a8, 0xc90f5e, 0x4f43a5,
+        /* 78 */ 0x71bd8b, 0xf7f170, 0xfb6886, 0x7d247d, 0xe25b6a, 0x641791, 0x688e67, 0xeec29c,
+        /* 80 */ 0x3347a4, 0xb50b5f, 0xb992a9, 0x3fde52, 0xa0a145, 0x26edbe, 0x2a7448, 0xac38b3,
+        /* 88 */ 0x92c69d, 0x148a66, 0x181390, 0x9e5f6b, 0x01207c, 0x876c87, 0x8bf571, 0x0db98a,
+        /* 90 */ 0xf6092d, 0x7045d6, 0x7cdc20, 0xfa90db, 0x65efcc, 0xe3a337, 0xef3ac1, 0x69763a,
+        /* 98 */ 0x578814, 0xd1c4ef, 0xdd5d19, 0x5b11e2, 0xc46ef5, 0x42220e, 0x4ebbf8, 0xc8f703,
+        /* a0 */ 0x3f964d, 0xb9dab6, 0xb54340, 0x330fbb, 0xac70ac, 0x2a3c57, 0x26a5a1, 0xa0e95a,
+        /* a8 */ 0x9e1774, 0x185b8f, 0x14c279, 0x928e82, 0x0df195, 0x8bbd6e, 0x872498, 0x016863,
+        /* b0 */ 0xfad8c4, 0x7c943f, 0x700dc9, 0xf64132, 0x693e25, 0xef72de, 0xe3eb28, 0x65a7d3,
+        /* b8 */ 0x5b59fd, 0xdd1506, 0xd18cf0, 0x57c00b, 0xc8bf1c, 0x4ef3e7, 0x426a11, 0xc426ea,
+        /* c0 */ 0x2ae476, 0xaca88d, 0xa0317b, 0x267d80, 0xb90297, 0x3f4e6c, 0x33d79a, 0xb59b61,
+        /* c8 */ 0x8b654f, 0x0d29b4, 0x01b042, 0x87fcb9, 0x1883ae, 0x9ecf55, 0x9256a3, 0x141a58,
+        /* d0 */ 0xefaaff, 0x69e604, 0x657ff2, 0xe33309, 0x7c4c1e, 0xfa00e5, 0xf69913, 0x70d5e8,
+        /* d8 */ 0x4e2bc6, 0xc8673d, 0xc4fecb, 0x42b230, 0xddcd27, 0x5b81dc, 0x57182a, 0xd154d1,
+        /* e0 */ 0x26359f, 0xa07964, 0xace092, 0x2aac69, 0xb5d37e, 0x339f85, 0x3f0673, 0xb94a88,
+        /* e8 */ 0x87b4a6, 0x01f85d, 0x0d61ab, 0x8b2d50, 0x145247, 0x921ebc, 0x9e874a, 0x18cbb1,
+        /* f0 */ 0xe37b16, 0x6537ed, 0x69ae1b, 0xefe2e0, 0x709df7, 0xf6d10c, 0xfa48fa, 0x7c0401,
+        /* f8 */ 0x42fa2f, 0xc4b6d4, 0xc82f22, 0x4e63d9, 0xd11cce, 0x575035, 0x5bc9c3, 0xdd8538
+    };
+#define RTCM_CRC(crc, by) ((crc << 8) | by) ^ _crc24qTable[(crc >> 16) & 0xff]
+    if (!uRingBufferGetByteUnprotected(parseHandle, &idLo)) {
+        return U_ERROR_COMMON_TIMEOUT;
+    }
+    crc = RTCM_CRC(crc, idLo);
+    if (!uRingBufferGetByteUnprotected(parseHandle, &idHi)) {
+        return U_ERROR_COMMON_TIMEOUT;
+    }
+    crc = RTCM_CRC(crc, idHi);
+    pMsgId->id.rtcm = (idHi >> 4) + (idLo << 4);
+    if (l  > uRingBufferBytesAvailableUnprotected(parseHandle)) {
+        return U_ERROR_COMMON_TIMEOUT;
+    }
+    while (l--) {
+        uRingBufferGetByteUnprotected(parseHandle, &by);
+        crc = RTCM_CRC(crc, by);
+    }
+    if ((crc & 0xFFFFFF) != 0x000000) {
+        return U_ERROR_COMMON_NOT_FOUND;
+    }
+    pMsgId->type = U_GNSS_PROTOCOL_RTCM;
+    return U_ERROR_COMMON_SUCCESS;
 }
 
 /* ----------------------------------------------------------------
@@ -1100,6 +1116,13 @@ int32_t uGnssPrivateMessageIdToPrivate(const uGnssMessageId_t *pMessageId,
                 }
                 errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
                 break;
+            case U_GNSS_PROTOCOL_RTCM:
+                pPrivateMessageId->id.rtcm = pMessageId->id.rtcm;
+                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                break;
+            case U_GNSS_PROTOCOL_UNKNOWN:
+                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                break;
             default:
                 break;
         }
@@ -1130,6 +1153,13 @@ int32_t uGnssPrivateMessageIdToPublic(const uGnssPrivateMessageId_t *pPrivateMes
                 pMessageId->id.pNmea = pNmea;
                 errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
                 break;
+            case U_GNSS_PROTOCOL_RTCM:
+                pMessageId->id.rtcm = pPrivateMessageId->id.rtcm;
+                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                break;
+            case U_GNSS_PROTOCOL_UNKNOWN:
+                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                break;
             default:
                 break;
         }
@@ -1144,153 +1174,26 @@ bool uGnssPrivateMessageIdIsWanted(uGnssPrivateMessageId_t *pMessageId,
 {
     bool isWanted = false;
 
-    if (pMessageIdWanted->type == U_GNSS_PROTOCOL_ALL) {
+    if (pMessageIdWanted->type == U_GNSS_PROTOCOL_ANY) {
         isWanted = true;
+    } else if ((pMessageIdWanted->type == U_GNSS_PROTOCOL_ALL) &&
+               (pMessageId->type != U_GNSS_PROTOCOL_UNKNOWN)) {
+        isWanted = true;
+    } else if ((pMessageIdWanted->type == U_GNSS_PROTOCOL_UNKNOWN) &&
+               (pMessageId->type == U_GNSS_PROTOCOL_UNKNOWN)) {
+        isWanted = true;
+    } else if ((pMessageIdWanted->type == U_GNSS_PROTOCOL_RTCM) &&
+               (pMessageId->type == U_GNSS_PROTOCOL_RTCM)) {
+        isWanted = pMessageId->id.rtcm == pMessageIdWanted->id.rtcm;
     } else if ((pMessageIdWanted->type == U_GNSS_PROTOCOL_NMEA) &&
                (pMessageId->type == U_GNSS_PROTOCOL_NMEA)) {
         isWanted = nmeaIdMatch(pMessageId->id.nmea, pMessageIdWanted->id.nmea);
     } else if ((pMessageIdWanted->type == U_GNSS_PROTOCOL_UBX) &&
                (pMessageId->type == U_GNSS_PROTOCOL_UBX)) {
-        isWanted = ((pMessageIdWanted->id.ubx == ((U_GNSS_UBX_MESSAGE_CLASS_ALL << 8) |
-                                                  U_GNSS_UBX_MESSAGE_ID_ALL)) ||
-                    (pMessageIdWanted->id.ubx == pMessageId->id.ubx));
+        isWanted = ubxIdMatch(pMessageId->id.ubx, pMessageIdWanted->id.ubx);
     }
 
     return isWanted;
-}
-
-// Find a valid, matching, NMEA-format message in a buffer.
-int32_t uGnssPrivateDecodeNmea(const char *pBuffer, size_t size,
-                               char *pMessageId, size_t *pDiscard,
-                               uGnssPrivateMessageDecodeState_t *pSavedState)
-{
-    int32_t errorCodeOrLength = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-    const char *pInput = pBuffer;
-    size_t i = 0;
-    size_t x;
-    const char *pMessageStart = pBuffer;
-    uGnssPrivateMessageNmeaDecodeState_t state = {0};
-
-    if (pDiscard != NULL) {
-        errorCodeOrLength = (int32_t) U_ERROR_COMMON_NOT_FOUND;
-        *pDiscard = 0;
-        if ((pSavedState != NULL) && (pSavedState->type == U_GNSS_PROTOCOL_NMEA)) {
-            // Fill in the state from the passed-in state
-            state = pSavedState->saved.nmea;
-            pInput += state.startOffset;
-            i = state.startOffset;
-        }
-
-        // NMEA messages begin with $, then comes the ID, which ends with a
-        // comma, then the message body (which cannot contain CRLF) and
-        // finally CRLF; match takes us through this:
-        while ((i < size) && (state.match < U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_GOT_MATCHING_MESSAGE)) {
-            if (*pInput == '$') {
-                // If we get a dollar at any time we must be
-                // at the start of a new sentence, so reset
-                memset(state.talkerSentenceIdBuffer, 0, sizeof(state.talkerSentenceIdBuffer));
-                pMessageStart = pInput;
-                state.match = U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_GOT_DOLLAR;
-                state.checkSum = 0;
-            } else if (state.match == U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_GOT_DOLLAR) {
-                // After the dollar we start the checkSum
-                state.checkSum ^= (uint8_t) *pInput; // *NOPAD*
-                if (*pInput != ',') {
-                    x = pInput - pMessageStart - 1;
-                    // -1 to always leave a null terminator
-                    if (x < sizeof(state.talkerSentenceIdBuffer) - 1) {
-                        // Save this character of the talker/sentence
-                        state.talkerSentenceIdBuffer[pInput - pMessageStart - 1] = *pInput;
-                    } else {
-                        // Too much man
-                        state.match = U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_NULL;
-                    }
-                } else {
-                    // End of the talker/sentence ID,
-                    // see if it is what we're after
-                    state.match = U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_GOT_MATCHING_ID;
-                    if ((pMessageId != NULL) && !nmeaIdMatch(state.talkerSentenceIdBuffer, pMessageId)) {
-                        // Nope, wait for a new sentence to start
-                        state.match = U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_NULL;
-                    }
-                }
-            } else if (state.match == U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_GOT_MATCHING_ID) {
-                // Need a '*' to mark the start of the check-sum field
-                if (*pInput == '*') {
-                    state.match = U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_GOT_MATCHING_ID_AND_STAR;
-                } else {
-                    // Just continue the check-sum
-                    state.checkSum ^= (uint8_t) *pInput; // *NOPAD*
-                }
-            } else if (state.match == U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_GOT_MATCHING_ID_AND_STAR) {
-                // Got the first character of the two-digit hex-coded check-sum field
-                state.hexCheckSumFromMessage[0] = *pInput;
-                state.match = U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_GOT_MATCHING_ID_AND_CS_1;
-            } else if (state.match == U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_GOT_MATCHING_ID_AND_CS_1) {
-                // Got the second character of the two-digit hex-coded check-sum field
-                state.match = U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_NULL;
-                state.hexCheckSumFromMessage[1] = *pInput;
-                // See if it matches
-                x = 0;
-                uHexToBin(state.hexCheckSumFromMessage, sizeof(state.hexCheckSumFromMessage), (char *) &x);
-                if (state.checkSum == (uint8_t) x) {
-                    state.match = U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_GOT_MATCHING_ID_AND_VALID_CS;
-                }
-            } else if (state.match == U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_GOT_MATCHING_ID_AND_VALID_CS) {
-                state.match = U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_NULL;
-                if (*pInput == '\r') {
-                    state.match = U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_GOT_MATCHING_ID_AND_CR;
-                }
-            } else if (state.match == U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_GOT_MATCHING_ID_AND_CR) {
-                state.match = U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_NULL;
-                if (*pInput == '\n') {
-                    // Yes, got the final LF in a matching talker/sentence, done it!
-                    state.match = U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_GOT_MATCHING_MESSAGE;
-                }
-            }
-
-            i++;
-            pInput++;
-            if ((state.match > U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_NULL) &&
-                (pInput - pMessageStart > U_GNSS_NMEA_SENTENCE_MAX_LENGTH_BYTES)) {
-                // Message has become too long: bail
-                state.match = U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_NULL;
-            }
-        }
-
-        if (state.match > U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_NULL) {
-            // We got some parts of the message overhead, so
-            // store the offset for next time
-            state.startOffset = pInput - pMessageStart;
-            // Discard up to the start of the message
-            *pDiscard = pMessageStart - pBuffer;
-            errorCodeOrLength = (int32_t) U_ERROR_COMMON_TIMEOUT;
-            if (state.match == U_GNSS_PRIVATE_MESSAGE_NMEA_MATCH_GOT_MATCHING_MESSAGE) {
-                // Got a complete matching message, write the sentence/talker
-                // ID back to pMessageId and return the message length
-                if (pMessageId != NULL) {
-                    memcpy(pMessageId, state.talkerSentenceIdBuffer,
-                           sizeof(state.talkerSentenceIdBuffer));
-                }
-                errorCodeOrLength = pInput - pMessageStart;
-                // Reset the state
-                memset(&state, 0, sizeof(state));
-            }
-        } else {
-            // Nuffin: populate pDiscard with all we've found
-            *pDiscard = size;
-            // Set the state back to defaults
-            memset(&state, 0, sizeof(state));
-        }
-
-        if (pSavedState != NULL) {
-            // Save the state
-            pSavedState->type = U_GNSS_PROTOCOL_NMEA;
-            pSavedState->saved.nmea = state;
-        }
-    }
-
-    return errorCodeOrLength;
 }
 
 /* ----------------------------------------------------------------
@@ -1358,137 +1261,66 @@ int32_t uGnssPrivateStreamGetReceiveSize(int32_t streamHandle,
 // the message receive task over in u_gnss_msg.c
 int32_t uGnssPrivateStreamDecodeRingBuffer(uGnssPrivateInstance_t *pInstance,
                                            int32_t readHandle,
-                                           uGnssPrivateMessageId_t *pPrivateMessageId,
-                                           size_t *pDiscard,
-                                           uGnssPrivateMessageDecodeState_t *pSavedState)
+                                           uGnssPrivateMessageId_t *pPrivateMessageId)
 {
     int32_t errorCodeOrLength = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-    char buffer[U_GNSS_NMEA_SENTENCE_MAX_LENGTH_BYTES * 2];  // * 2 so that we are more likely
-    size_t receiveSize;                                      // to fit in a whole NMEA sentence
-    size_t discardSize = 0;                                  // slightly on the large-side for the stack
-    uGnssProtocol_t protocolFound = pPrivateMessageId->type;
-    char nmeaStr[U_GNSS_NMEA_MESSAGE_MATCH_LENGTH_CHARACTERS + 1] = {0};
-    uint16_t ubxId = (U_GNSS_UBX_MESSAGE_CLASS_ALL << 8) | U_GNSS_UBX_MESSAGE_ID_ALL;
-    char *pPrintDiscard = NULL;
-
-    if ((pInstance != NULL) && (pPrivateMessageId != NULL) && (pDiscard != NULL)) {
-        *pDiscard = 0;
-        // Prepare the ID
-        switch (pPrivateMessageId->type) {
-            case U_GNSS_PROTOCOL_UBX:
-                ubxId = pPrivateMessageId->id.ubx;
+    if ((pInstance != NULL) && (pPrivateMessageId != NULL)) {
+        while (1) {
+            U_RING_BUFFER_PARSER_f parserList[] = {
+                uGnssPrivateParseUbx,
+                uGnssPrivateParseNmea,
+                uGnssPrivateParseRtcm,
+                NULL
+            };
+            uGnssPrivateMessageId_t msg;
+            memset(&msg, 0, sizeof(msg));
+            msg.type = U_GNSS_PROTOCOL_UNKNOWN;
+            errorCodeOrLength = uRingBufferParseHandle(&(pInstance->ringBuffer), readHandle, parserList, &msg);
+            if (errorCodeOrLength <= 0) {
                 break;
-            case U_GNSS_PROTOCOL_NMEA:
-                strncpy(nmeaStr, pPrivateMessageId->id.nmea,
-                        U_GNSS_NMEA_MESSAGE_MATCH_LENGTH_CHARACTERS + 1);
-                // Ensure a terminator on the NMEA ID string
-                nmeaStr[sizeof(nmeaStr) - 1] = 0;
+            } else if (uGnssPrivateMessageIdIsWanted(&msg, pPrivateMessageId)) {
+                memcpy(pPrivateMessageId, &msg, sizeof(uGnssPrivateMessageId_t));
+#ifdef U_GNSS_PRIVATE_DEBUG_PARSING
+                if (msg.type == U_GNSS_PROTOCOL_UBX) {
+                    uPortLog("** UBX %04X size %d\n", msg.id.ubx, errorCodeOrLength);
+                } else if (msg.type == U_GNSS_PROTOCOL_NMEA) {
+                    uPortLog("** NMEA %s size %d\n", msg.id.nmea, errorCodeOrLength);
+                } else if (msg.type == U_GNSS_PROTOCOL_RTCM) {
+                    uPortLog("** RTCM %d size %d\n", msg.id.rtcm, errorCodeOrLength);
+                } else if (msg.type == U_GNSS_PROTOCOL_UNKNOWN) {
+                    uPortLog("** UNKNOWN size %d\n", errorCodeOrLength);
+                } else {
+                    uPortLog("** ERROR size %d\n", errorCodeOrLength);
+                }
+#endif
                 break;
-            case U_GNSS_PROTOCOL_ALL:
-            //lint fallthrough
-            default:
-                break;
-        }
-
-        do {
-            // Fill our local buffer from the ring buffer but using a peek
-            // so as not to move the read pointer on
-            receiveSize = uRingBufferPeekHandle(&(pInstance->ringBuffer), readHandle,
-                                                buffer, sizeof(buffer), 0);
-            // Take a peek at a chunk, putting it into our temporary buffer
-            switch (pPrivateMessageId->type) {
-                case U_GNSS_PROTOCOL_UBX:
-                    // See if there is a UBX message protocol header in there
-                    errorCodeOrLength = matchUbxMessageHeader(buffer, receiveSize,
-                                                              &ubxId, &discardSize,
-                                                              true);
-                    break;
-                case U_GNSS_PROTOCOL_NMEA:
-                    // See if there is an NMEA protocol message in there;
-                    // a complete message in this case since the NMEA
-                    // protocol has no length indicator in the header,
-                    // we have to play "hunt the CRLF"
-                    errorCodeOrLength = uGnssPrivateDecodeNmea(buffer, receiveSize,
-                                                               nmeaStr, &discardSize,
-                                                               pSavedState);
-                    break;
-                case U_GNSS_PROTOCOL_ALL:
-                    // Since an NMEA message is all ASCII and the header
-                    // of a UBX one is definitely not ASCII and is shorter
-                    // than an NMEA message, we can reliably check for a
-                    // UBX protocol header first
-                    protocolFound = U_GNSS_PROTOCOL_UBX;
-                    errorCodeOrLength = matchUbxMessageHeader(buffer, receiveSize,
-                                                              &ubxId, &discardSize,
-                                                              true);
-                    if ((errorCodeOrLength > 0) && (discardSize > 0)) {
-                        // Check if there's an NMEA protocol message hiding
-                        // in the part of the buffer we are going to discard
-                        size_t discardSizeNmea = 0;
-                        int32_t errorCodeOrLengthNmea = uGnssPrivateDecodeNmea(buffer, receiveSize,
-                                                                               nmeaStr, &discardSizeNmea,
-                                                                               pSavedState);
-                        if ((errorCodeOrLengthNmea > 0) && (discardSizeNmea < discardSize)) {
-                            protocolFound = U_GNSS_PROTOCOL_NMEA;
-                            discardSize = discardSizeNmea;
-                            errorCodeOrLength = errorCodeOrLengthNmea;
+            } else {
+#ifdef U_GNSS_PRIVATE_DEBUG_PARSING
+                uPortLog("** DISCARD %d %d size %d\n", msg, pPrivateMessageId->type, errorCodeOrLength);
+#endif
+                if ((pPrivateMessageId->type == U_GNSS_PROTOCOL_UBX) &&
+                    (msg.type == U_GNSS_PROTOCOL_UBX) &&
+                    (msg.id.ubx == 0x0500/*ACK-NACK*/) && (errorCodeOrLength == 10)) {
+                    uint8_t msg[10];
+                    if (10 == uRingBufferReadHandle(&(pInstance->ringBuffer), readHandle, (char *)msg, 10)) {
+                        uint16_t ubxId = (msg[6]/*CLS*/ << 8) | msg[7]/*ID*/;
+                        if (ubxIdMatch(ubxId, pPrivateMessageId->id.ubx)) {
+#ifdef U_GNSS_PRIVATE_DEBUG_PARSING
+                            uPortLog("** ACK-NACK %04X => U_GNSS_ERROR_NACK\n", ubxId);
+#endif
+                            errorCodeOrLength = U_GNSS_ERROR_NACK;
+                            break;
                         }
                     }
+                } else {
+                    // discard what is not wanted by the calling
 
-                    if ((errorCodeOrLength < 0) &&
-                        (errorCodeOrLength != U_ERROR_COMMON_TIMEOUT) &&
-                        (errorCodeOrLength != U_GNSS_ERROR_NACK)) {
-                        protocolFound = U_GNSS_PROTOCOL_NMEA;
-                        errorCodeOrLength = uGnssPrivateDecodeNmea(buffer, receiveSize,
-                                                                   nmeaStr, &discardSize,
-                                                                   pSavedState);
-                    }
-                    break;
-                default:
-                    break;
+                    // wouldnt it be better to just adbvance the read handle here
+                    uRingBufferReadHandle(&(pInstance->ringBuffer), readHandle, NULL, errorCodeOrLength);
+                }
             }
-            // Discard from the ring buffer, populating *pDiscard
-            // with any amount left over to be discarded by the caller
-#ifdef U_GNSS_PRIVATE_PRINT_STREAM_RING_BUFFER_DISCARD
-            if (discardSize > 0) {
-                pPrintDiscard = (char *) malloc(discardSize);
-            }
-#endif
-            *pDiscard += discardSize - uRingBufferReadHandle(&(pInstance->ringBuffer),
-                                                             readHandle, pPrintDiscard, discardSize);
-            if (pPrintDiscard != NULL) {
-                uPortLog("U_GNSS_PRIVATE_DISCARD:");
-                uGnssPrivatePrintBuffer(pPrintDiscard, discardSize);
-                uPortLog("\n");
-                free(pPrintDiscard);
-                pPrintDiscard = NULL;
-            }
-
-            // Drop out of the loop if we succeed or if we received
-            // a NACK for a UBX-format message we were looking for
-            // or we are no longer discarding anything or if we need
-            // the caller to discard stuff for us
-        } while ((errorCodeOrLength < 0) && (errorCodeOrLength != U_GNSS_ERROR_NACK) &&
-                 (discardSize > 0) && (*pDiscard == 0));
-
-        if (errorCodeOrLength >= 0) {
-            // Set the returned ID
-            pPrivateMessageId->type = protocolFound;
-            switch (pPrivateMessageId->type) {
-                case U_GNSS_PROTOCOL_UBX:
-                    pPrivateMessageId->id.ubx = ubxId;
-                    break;
-                case U_GNSS_PROTOCOL_NMEA:
-                    strncpy(pPrivateMessageId->id.nmea, nmeaStr, sizeof(pPrivateMessageId->id.nmea));
-                    break;
-                case U_GNSS_PROTOCOL_ALL:
-                //lint fallthrough
-                default:
-                    break;
-            }
-        }
+        };
     }
-
     return errorCodeOrLength;
 }
 
@@ -1755,13 +1587,11 @@ int32_t uGnssPrivateReceiveStreamMessage(uGnssPrivateInstance_t *pInstance,
     int32_t startTimeMs;
     int32_t x = timeoutMs > 0 ? U_GNSS_RING_BUFFER_MIN_FILL_TIME_MS : 0;
     int32_t y;
-    uGnssPrivateMessageDecodeState_t state;
 
     if ((pInstance != NULL) && (pPrivateMessageId != NULL) &&
         (ppBuffer != NULL) && ((*ppBuffer == NULL) || (size > 0))) {
         errorCodeOrLength = (int32_t) U_ERROR_COMMON_TIMEOUT;
         startTimeMs = uPortGetTickTimeMs();
-        U_GNSS_PRIVATE_MESSAGE_DECODE_STATE_DEFAULT(&state);
         // Lock our read pointer while we look for stuff
         uRingBufferLockReadHandle(&(pInstance->ringBuffer), readHandle);
         // This is constructed as a do()/while() so that it always has one go
@@ -1783,9 +1613,7 @@ int32_t uGnssPrivateReceiveStreamMessage(uGnssPrivateInstance_t *pInstance,
                     // Attempt to decode a message/message header from the ring buffer
                     errorCodeOrLength = uGnssPrivateStreamDecodeRingBuffer(pInstance,
                                                                            readHandle,
-                                                                           pPrivateMessageId,
-                                                                           &discardSize,
-                                                                           &state);
+                                                                           pPrivateMessageId);
                     if (errorCodeOrLength > 0) {
                         if (*ppBuffer == NULL) {
                             // The caller didn't give us any memory; allocate the right

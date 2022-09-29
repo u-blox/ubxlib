@@ -178,9 +178,12 @@ typedef enum {
 typedef enum {
     U_GNSS_PROTOCOL_UBX = 0,
     U_GNSS_PROTOCOL_NMEA = 1,
+    U_GNSS_PROTOCOL_RTCM = 2,
+    U_GNSS_PROTOCOL_UNKNOWN = 3,
     U_GNSS_PROTOCOL_MAX_NUM,
     U_GNSS_PROTOCOL_NONE,
-    U_GNSS_PROTOCOL_ALL
+    U_GNSS_PROTOCOL_ALL,
+    U_GNSS_PROTOCOL_ANY
 } uGnssProtocol_t;
 
 /** Structure to hold a message ID.
@@ -207,6 +210,7 @@ typedef struct {
                            Use of a "?" indicates a wildcard, matching any
                            character at that position, so for instance "G?GSV"
                            would match "GPGSV", "GLGSV", "GAGSV", etc. */
+        uint16_t rtcm;
     } id;
 } uGnssMessageId_t;
 

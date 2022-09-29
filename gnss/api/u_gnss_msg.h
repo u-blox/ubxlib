@@ -115,8 +115,8 @@ extern "C" {
  * when a matching message has been received from the GNSS chip.
  * This callback should be executed as quickly as possible to
  * avoid data loss.  The ONLY GNSS API calls that pCallback may make
- * are uGnssMsgReceiveCallbackRead()/uGnssMsgReceiveCallbackExtract()
- * and uGnssMsgIsGood(), no others or you risk getting* mutex-locked.
+ * are uGnssMsgReceiveCallbackRead() / uGnssMsgReceiveCallbackExtract(),
+ * no others or you risk getting* mutex-locked.
  * If you are checking for a specific UBX-format message (i.e. no
  * wild-cards) and a NACK is received for that message then
  * errorCodeOrLength will be set to #U_GNSS_ERROR_NACK and there
@@ -143,12 +143,6 @@ extern "C" {
  *     }
  * }
  * ```
- *
- * Note that for UBX format messages, which may be quite long,
- * the checksum on the message is NOT checked: if you are interested
- * in the message you may confirm that it is OK by calling
- * uGnssMsgIsGood(), preferably after the callback has returned
- * to save time.
  *
  * @param gnssHandle             the handle of the GNSS instance.
  * @param[out] pMessageId        a pointer to the message ID that was
@@ -189,25 +183,6 @@ typedef void (*uGnssMsgReceiveCallback_t)(uDeviceHandle_t gnssHandle,
  */
 bool uGnssMsgIdIsWanted(uGnssMessageId_t *pMessageId,
                         uGnssMessageId_t *pMessageIdWanted);
-
-/** Check that the framing of the given protocol message is good.
- * The message can be any of the #uGnssProtocol_t types.  The body of
- * the message is not checked, just that the message begins at the
- * start of pBuffer and that the header and the check-sum are good.
- * It is safe to call this function from the message receive
- * pCallback.
- *
- * @param[in] pBuffer     a pointer to the buffer containing the
- *                        message; this should be at the start of the
- *                        header, i.e. the $ in the case of NMEA, the
- *                        0xb5 in the case of a UBX protocol message,
- *                        etc.
- * @param size            the number of bytes of storage at pBuffer;
- *                        this may be more than the expected message
- *                        length.
- * @return                true if the message is good, else false.
- */
-bool uGnssMsgIsGood(char *pBuffer, size_t size);
 
 /* ----------------------------------------------------------------
  * FUNCTIONS: SEND/RECEIVE

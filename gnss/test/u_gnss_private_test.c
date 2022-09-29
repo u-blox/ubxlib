@@ -32,6 +32,9 @@
 # ifdef U_CFG_OVERRIDE
 #  include "u_cfg_override.h" // For a customer's configuration override
 # endif
+# if 0
+
+// This is currently not used, will be replaced with new message parsing tests shortly...
 
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
@@ -434,5 +437,5 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssPrivateCleanUp")
         U_PORT_TEST_ASSERT(x >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
     }
 }
-
+#endif
 // End of file

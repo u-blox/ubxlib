@@ -286,42 +286,36 @@ static void messageReceiveCallback(uDeviceHandle_t gnssHandle,
                                             pMsgReceive->pBuffer,
                                             errorCodeOrLength) == errorCodeOrLength) {
                 pMsgReceive->numRead++;
-                // Deliberately using U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_BUFFER_SIZE_BYTES
-                // rather than "size" here to check that uGnssMsgIsGood() ignores
-                // any rubbish on the end
-                if (uGnssMsgIsGood(pMsgReceive->pBuffer,
-                                   U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_BUFFER_SIZE_BYTES)) {
-                    pMsgReceive->numDecoded++;
-                    // NOTE: uGnssTestPrivateNmeaComprehender() currently only supports
-                    // M9, hence this check
-                    if ((pMsgReceive->messageId.type == U_GNSS_PROTOCOL_NMEA) &&
-                        (pMsgReceive->moduleType == U_GNSS_MODULE_TYPE_M9) &&
-                        (pMsgReceive->useNmeaComprehender)) {
+                pMsgReceive->numDecoded++;
+                // NOTE: uGnssTestPrivateNmeaComprehender() currently only supports
+                // M9, hence this check
+                if ((pMsgReceive->messageId.type == U_GNSS_PROTOCOL_NMEA) &&
+                    (pMsgReceive->moduleType == U_GNSS_MODULE_TYPE_M9) &&
+                    (pMsgReceive->useNmeaComprehender)) {
 #ifdef U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_PRINT
-                        // It's often useful to see these messages but the load is
-                        // heavy so we don't enable printing unless required
-                        U_TEST_PRINT_LINE("%.*s", errorCodeOrLength - 2, pMsgReceive->pBuffer);
+                    // It's often useful to see these messages but the load is
+                    // heavy so we don't enable printing unless required
+                    U_TEST_PRINT_LINE("%.*s", errorCodeOrLength - 2, pMsgReceive->pBuffer);
 #endif
-                        // This is an NMEA message, pass it to the comprehender
-                        nmeaComprehenderErrorCode = uGnssTestPrivateNmeaComprehender(pMsgReceive->pBuffer,
-                                                                                     errorCodeOrLength,
-                                                                                     &(pMsgReceive->pNmeaComprehenderContext),
-                                                                                     !U_CFG_OS_CLIB_LEAKS);
-                        if (pMsgReceive->nmeaSequenceHasBegun) {
-                            if (nmeaComprehenderErrorCode == (int32_t) U_ERROR_COMMON_NOT_FOUND) {
-                                // NMEA sequence is not as expected
-                                pMsgReceive->numNmeaBadSequence++;
-                                pMsgReceive->nmeaSequenceHasBegun = false;
-                            } else if (nmeaComprehenderErrorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
-                                // An NMEA sequence has been completed, well done
-                                pMsgReceive->nmeaSequenceHasBegun = false;
-                            }
-                        } else {
-                            if (nmeaComprehenderErrorCode == (int32_t) U_ERROR_COMMON_TIMEOUT) {
-                                // An NMEA sequence has started
-                                pMsgReceive->nmeaSequenceHasBegun = true;
-                                pMsgReceive->numNmeaSequence++;
-                            }
+                    // This is an NMEA message, pass it to the comprehender
+                    nmeaComprehenderErrorCode = uGnssTestPrivateNmeaComprehender(pMsgReceive->pBuffer,
+                                                                                 errorCodeOrLength,
+                                                                                 &(pMsgReceive->pNmeaComprehenderContext),
+                                                                                 !U_CFG_OS_CLIB_LEAKS);
+                    if (pMsgReceive->nmeaSequenceHasBegun) {
+                        if (nmeaComprehenderErrorCode == (int32_t) U_ERROR_COMMON_NOT_FOUND) {
+                            // NMEA sequence is not as expected
+                            pMsgReceive->numNmeaBadSequence++;
+                            pMsgReceive->nmeaSequenceHasBegun = false;
+                        } else if (nmeaComprehenderErrorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
+                            // An NMEA sequence has been completed, well done
+                            pMsgReceive->nmeaSequenceHasBegun = false;
+                        }
+                    } else {
+                        if (nmeaComprehenderErrorCode == (int32_t) U_ERROR_COMMON_TIMEOUT) {
+                            // An NMEA sequence has started
+                            pMsgReceive->nmeaSequenceHasBegun = true;
+                            pMsgReceive->numNmeaSequence++;
                         }
                     }
                 }

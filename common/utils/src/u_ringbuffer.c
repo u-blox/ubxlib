@@ -60,6 +60,15 @@
  * TYPES
  * -------------------------------------------------------------- */
 
+/** Parsing context.
+ */
+typedef struct {
+    uRingBuffer_t *pRingBuffer;
+    const char *pSource;
+    size_t bytesAvailable;
+    size_t bytesParsed;
+} uRingBufferParseContext_t;
+
 /* ----------------------------------------------------------------
  * PROTOTYPES
  * -------------------------------------------------------------- */
@@ -772,6 +781,81 @@ size_t uRingBufferStatReadLossHandle(uRingBuffer_t *pRingBuffer,
     }
 
     return bytesLost;
+}
+
+/* ----------------------------------------------------------------
+ * FUNCTIONS: PARSER
+ * -------------------------------------------------------------- */
+
+size_t uRingBufferParseHandle(uRingBuffer_t *pRingBuffer, int32_t handle,
+                              U_RING_BUFFER_PARSER_f *pParserList, void *pUserParam)
+{
+    size_t errorCodeOrLength = U_ERROR_COMMON_INVALID_PARAMETER;
+    if (pRingBuffer->pBuffer != NULL) {
+        U_PORT_MUTEX_LOCK((uPortMutexHandle_t) pRingBuffer->mutex);
+        if ((handle >= 0) && (handle < (int32_t) pRingBuffer->maxNumReadPointers) &&
+            (pRingBuffer->pDataRead[handle] != NULL)) {
+            const char *pOffset = pPtrOffset(pRingBuffer->pDataRead[handle], 0, pRingBuffer->pBuffer,
+                                             pRingBuffer->size);
+            size_t bytesAvailable = ptrDiff(pOffset, pRingBuffer->pDataWrite, pRingBuffer->size);
+            size_t bytesDiscard  = 0;
+            errorCodeOrLength = U_ERROR_COMMON_TIMEOUT;
+            while (bytesAvailable) {
+                U_RING_BUFFER_PARSER_f *pParser = pParserList;
+                // find the right protocol
+                errorCodeOrLength = U_ERROR_COMMON_NOT_FOUND;
+                while (*pParser) {
+                    uRingBufferParseContext_t ctx = {
+                        .pRingBuffer    = pRingBuffer,
+                        .pSource        = pOffset,
+                        .bytesAvailable = bytesAvailable,
+                        .bytesParsed    = 0
+                    };
+                    errorCodeOrLength = (*pParser)(&ctx, pUserParam);
+                    pParser ++;
+                    if (errorCodeOrLength == U_ERROR_COMMON_SUCCESS) {
+                        errorCodeOrLength = ctx.bytesParsed;
+                    }
+                    if (errorCodeOrLength != U_ERROR_COMMON_NOT_FOUND) {
+                        break;
+                    }
+                }
+                if (errorCodeOrLength != U_ERROR_COMMON_NOT_FOUND) {
+                    break;
+                }
+                pOffset = pPtrInc(pOffset, pRingBuffer->pBuffer, pRingBuffer->size);
+                bytesDiscard ++;
+                bytesAvailable --;
+            }
+            //
+            if (bytesDiscard > 0) {
+                errorCodeOrLength = bytesDiscard;
+            }
+        }
+        U_PORT_MUTEX_UNLOCK((uPortMutexHandle_t) pRingBuffer->mutex);
+    }
+    return errorCodeOrLength;
+}
+
+
+bool uRingBufferGetByteUnprotected(uParseHandle_t parseHandle, void *p)
+{
+    uRingBufferParseContext_t *pCtx = (uRingBufferParseContext_t *)parseHandle;
+    if (1 > pCtx->bytesAvailable) {
+        return false;
+    }
+    char *pDest = (char *)p;
+    *pDest = *pCtx->pSource;
+    pCtx->pSource = pPtrInc(pCtx->pSource, pCtx->pRingBuffer->pBuffer, pCtx->pRingBuffer->size);
+    pCtx->bytesParsed ++;
+    pCtx->bytesAvailable --;
+    return true;
+}
+
+size_t uRingBufferBytesAvailableUnprotected(uParseHandle_t parseHandle)
+{
+    uRingBufferParseContext_t *pCtx = (uRingBufferParseContext_t *)parseHandle;
+    return pCtx->bytesAvailable;
 }
 
 // End of file

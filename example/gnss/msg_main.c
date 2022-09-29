@@ -213,7 +213,7 @@ static void callback(uDeviceHandle_t devHandle, const uGnssMessageId_t *pMessage
     if (errorCodeOrLength >= 0) {
         // Read the message into our buffer and print it
         length = uGnssMsgReceiveCallbackRead(devHandle, pBuffer, errorCodeOrLength);
-        if ((length >= 0) && uGnssMsgIsGood(pBuffer, length)) {
+        if (length >= 0) {
             gMessageCount++;
 #if !U_CFG_OS_CLIB_LEAKS && !defined(U_CFG_TEST_USING_NRF5SDK) // NRF52 goes a bit crazy if you print here
             uPortLog("%.*s", length, pBuffer);
@@ -278,14 +278,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleGnssMsg")
             messageId.id.ubx = 0x0107; // This could be any UBX message ID/class
             length = uGnssMsgReceive(devHandle, &messageId, &pBuffer, MY_MESSAGE_BUFFER_LENGTH, 30000, NULL);
             if (length > 0) {
-                // Decode the UBX-NAV-PVT message: it can safely be decoded
-                // back into the same buffer
-                length = uUbxProtocolDecode(pBuffer, length, NULL, NULL, pBuffer, MY_MESSAGE_BUFFER_LENGTH, NULL);
-                if (length > 0) {
-                    printPosition(pBuffer, length);
-                } else {
-                    uPortLog("Unable to decode message!\n");
-                }
+                printPosition(pBuffer, length);
             } else {
                 uPortLog("Did not receive a response!\n");
             }
