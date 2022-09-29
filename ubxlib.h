@@ -90,6 +90,8 @@
 #include <u_mqtt_client.h>
 #include <u_location.h>
 #include <u_ubx_protocol.h>
+#include <u_spartn.h>
+#include <u_spartn_crc.h>
 #include <u_short_range.h>
 #include <u_short_range_pbuf.h>
 #include <u_short_range_edm_stream.h>

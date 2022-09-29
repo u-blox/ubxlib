@@ -61,6 +61,8 @@ common/location/src/u_location_shared.c
 common/location/src/u_location_private_cloud_locate.c
 common/at_client/src/u_at_client.c
 common/ubx_protocol/src/u_ubx_protocol.c
+common/spartn/src/u_spartn.c
+common/spartn/src/u_spartn_crc.c
 common/short_range/src/u_short_range.c
 common/short_range/src/u_short_range_sec_tls.c
 common/short_range/src/u_short_range_edm.c

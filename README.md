@@ -101,6 +101,7 @@ In order for u-blox to support multiple platforms with this code there is also a
 ¦   +---short_range            <-- internal API used by the BLE and Wi-Fi APIs (see below)
 ¦   +---at_client              <-- internal API used by the BLE, cell and Wi-Fi APIs
 ¦   +---ubx_protocol           <-- internal API used by the GNSS API
+¦   +---spartn                 <-- message validation utilities for SPARTN
 ¦   +---error                  <-- u_error_common.h: error codes common across APIs
 ¦   +---assert                 <-- assert hook
 ¦   +---utils                  <-- contains common utilities
