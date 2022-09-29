@@ -156,6 +156,17 @@ static const uNetworkCfgCell_t gNetworkCfg = {
     .type = U_NETWORK_TYPE_CELL,
     .pApn = NULL, /* APN: NULL to accept default.  If using a Thingstream SIM enter "tsiot" here */
     .timeoutSeconds = 240 /* Connection timeout in seconds */
+    // There is an additional field here "pKeepGoingCallback",
+    // which we do NOT set, we allow the compiler to set it to 0
+    // and all will be fine. You may set the field to a function
+    // of the form "bool keepGoingCallback(uDeviceHandle_t devHandle)",
+    // e.g.:
+    // .pKeepGoingCallback = keepGoingCallback
+    // ...and your function will be called periodically during an
+    // abortable network operation such as connect/disconnect;
+    // if it returns true the operation will continue else it
+    // will be aborted, allowing you immediate control.  If this
+    // field is set, timeoutSeconds will be ignored.
 };
 #else
 static const uDeviceCfg_t gDeviceCfg = {.deviceType = U_DEVICE_TYPE_NONE};

@@ -16,6 +16,8 @@ Note: the directory structure here differs from that in the other platform direc
 # SDK Installation
 `ubxlib` is tested with the version of Zephyr that comes with `nRFConnect SDK version 1.6.1` which is the recommended version.
 
+Ubxlib has been tested to build with all newer versions nRFConnect SDK, up til 2.1.0. The test suite for ubxlib is however still only using 1.6.1. This is due to the fact that an update to 2.x requires modification of the board overlay files, which would imply a breaking change. In coming versions of ubxlib, newer version of nRFConnect will be used.
+
 Follow the instructions to install the development tools:
 
 - Install nRF connect. https://www.nordicsemi.com/Software-and-Tools/Development-Tools/nRF-Connect-for-desktop
@@ -89,13 +91,13 @@ Since pin assignment for UARTs are made in the device tree, functions such as `u
 - Unless compiled for use on Linux/Posix, Zephyr usee its own internal minimal C library, not [newlib](https://sourceware.org/newlib/libc.html); if you wish to use [newlib](https://sourceware.org/newlib/libc.html) then you should add `U_CFG_ZEPHYR_USE_NEWLIB` to the conditional compilation flags passed into the build (see below for how to do this without modifying `CMakeLists.txt`).
 - Always clean the build directory when upgrading to a new ubxlib version.
 - You may override or provide conditional compilation flags to CMake without modifying `CMakeLists.txt`.  Do this by setting an environment variable `U_FLAGS`, e.g.:
-  
+
   ```
   set U_FLAGS=-DMY_FLAG
   ```
-  
+
   ...or:
-  
+
   ```
   set U_FLAGS=-DMY_FLAG -DU_CFG_APP_PIN_CELL_ENABLE_POWER=-1
   ```

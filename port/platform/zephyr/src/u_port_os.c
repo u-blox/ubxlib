@@ -195,14 +195,10 @@ static void freeThreadInstance(struct k_thread *threadPtr)
 // Initialise thread pool.
 void uPortOsPrivateInit()
 {
-    // There is a bug in Zephyr where main thread.resource_pool
-    // contains an uninitilized value. This results in crashes
-    // when using some of the Zephyr API that allocates memory
-    // using the resource pool (such as k_msgq_alloc_init()).
-    // Below is a workaround until this is fixed.
-    extern struct k_thread z_main_thread;
-    k_thread_system_pool_assign(&z_main_thread);
-
+    // systempool is now allocated during startup in z_sys_init_run_level.
+    // threads created afterwards will inherit this pool.
+    // this resolves a knownn issue in Zephyr when calling UBXLIB API from
+    // threads that isn't the Zephyr main thread.
     for (int32_t i = 0; i < U_CFG_OS_MAX_THREADS; i++) {
         gThreadInstances[i].pThread = NULL;
         gThreadInstances[i].pStack = NULL;

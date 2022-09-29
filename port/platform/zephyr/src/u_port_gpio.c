@@ -33,10 +33,25 @@
 #include "zephyr.h"
 #include "device.h"
 #include "drivers/gpio.h"
+#include "version.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
+
+/*
+    **** NOTE ****
+    The statements below is due to a change made in Zephyr 3.x.
+    For some reason the gpio drive mode macros have changed from
+    being generic to soc specific. The old macros are still there
+    but marked as deprecated and hence giving build warnings.
+    There is currently no directly correlated macros for Nrf and
+    we also want to use the code in this file for other
+    Zephyr targets. However in coming versions of ubxlib we have
+    to deal with some solution for this.
+*/
+#undef __DEPRECATED_MACRO
+#define __DEPRECATED_MACRO
 
 /* ----------------------------------------------------------------
  * TYPES
@@ -52,21 +67,25 @@
 
 static const struct device *getGpioDevice(uint32_t pin)
 {
-    const struct device *pDev;
+    const struct device *pDev = NULL;
     // common practice in device trees that one gpio port holds 32 pins
+#if KERNEL_VERSION_MAJOR < 3
     char dtDeviceNodeLabel[7];
     strncpy(dtDeviceNodeLabel, "GPIO_x", sizeof(dtDeviceNodeLabel));
     // replace x with corresponding port number
     dtDeviceNodeLabel[5] = '0' + (pin / GPIO_MAX_PINS_PER_PORT);
     dtDeviceNodeLabel[6] = 0;
     pDev = device_get_binding(dtDeviceNodeLabel);
-    if (!pDev) {
-        return NULL; // no such node label
+#else
+    int32_t port = pin / GPIO_MAX_PINS_PER_PORT;
+    if (port == 0) {
+        pDev = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(gpio0));
+    } else if (port == 1) {
+        pDev = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(gpio1));
     }
-
+#endif
     return pDev;
 }
-
 
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS

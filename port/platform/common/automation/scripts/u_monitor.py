@@ -93,10 +93,17 @@ def run_callback(match, user_parameter, results: TestResults, reporter):
 
     name = match.group(1)
     if results.current:
-        # There shouldn't be any current test case
-        # But if there are we mark it as an error
-        msg = "New test started before last one completed"
-        record_outcome(results, "ERROR", reporter, msg)
+        # There shouldn't be any current test case but this can happen
+        # occasionally on Nordic NRF52 platforms (both the NRF5SDK and
+        # the Zephyr flavour) due to loss of logging, where the line
+        # giving the outcome of the previous test is lost.  There is
+        # no pattern to this, it just happens some times, it doesn't
+        # appear to be related to logging load.  Since it is (a) rare
+        # enough not to be a worry in terms of checking code quality
+        # and (b) frequent enough to give irritating false negatives,
+        # each one of which has to be checked, we flag a warning when
+        # this happens but not an error.
+        msg = "** WARNING *** new test started before last one completed"
 
     results.current = TestCaseResult(name=name, start_time=datetime.now())
     U_LOG.info("progress update - item {}() started on {}.".     \
@@ -170,10 +177,10 @@ def finish_callback(match, user_parameter, results: TestResults, reporter):
     results.items_failed = int(match.group(2))
     results.items_ignored = int(match.group(3))
     U_LOG.info("run completed on {}, {} item(s) run, {} item(s) failed,"\
-                   " {} item(s) ignored, run took {}:{:02d}:{:02d}.". \
-                   format(end_time.time(), results.items_run,
-                          results.items_failed, results.items_ignored,
-                          duration_hours, duration_minutes, duration_seconds))
+               " {} item(s) ignored, run took {}:{:02d}:{:02d}.". \
+               format(end_time.time(), results.items_run,
+                      results.items_failed, results.items_ignored,
+                      duration_hours, duration_minutes, duration_seconds))
     if reporter:
         reporter.test_suite_completed_event(results.items_run, results.items_failed,
                                             results.items_ignored,

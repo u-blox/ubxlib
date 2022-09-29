@@ -34,6 +34,7 @@
 #include "u_port.h"
 #include "u_port_os.h"
 #include "u_port_i2c.h"
+#include "version.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -49,6 +50,11 @@
  * So, basically, use I2C HW block 1.
  */
 # define U_PORT_I2C_MAX_NUM 2
+#endif
+
+#ifndef I2C_MODE_CONTROLLER
+// MASTER deprecated in Zephyr 3.x
+# define I2C_MODE_CONTROLLER I2C_MODE_MASTER
 #endif
 
 /* ----------------------------------------------------------------
@@ -128,15 +134,24 @@ static int32_t openI2c(int32_t i2c, int32_t pinSda, int32_t pinSdc,
             handleOrErrorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
             switch (i2c) {
                 case 0:
+#if KERNEL_VERSION_MAJOR < 3
                     pDevice = device_get_binding("I2C_0");
+#else
+                    pDevice = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(i2c0));
+#endif
                     break;
                 case 1:
+#if KERNEL_VERSION_MAJOR < 3
                     pDevice = device_get_binding("I2C_1");
+#else
+                    pDevice = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(i2c1));
+#endif
                     break;
                 default:
                     break;
             }
-            i2cDeviceCfg = I2C_SPEED_SET(clockHertzToIndex(U_PORT_I2C_CLOCK_FREQUENCY_HERTZ)) | I2C_MODE_MASTER;
+            i2cDeviceCfg = I2C_SPEED_SET(clockHertzToIndex(U_PORT_I2C_CLOCK_FREQUENCY_HERTZ)) |
+                           I2C_MODE_CONTROLLER;
             if ((pDevice != NULL) &&
                 (!adopt || (i2c_configure(pDevice, i2cDeviceCfg) == 0))) {
                 gI2cData[i2c].clockHertz = U_PORT_I2C_CLOCK_FREQUENCY_HERTZ;
@@ -272,7 +287,7 @@ int32_t uPortI2cSetClock(int32_t handle, int32_t clockHertz)
             errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
             if (!gI2cData[handle].adopted) {
                 pDevice = gI2cData[handle].pDevice;
-                i2cDeviceCfg = I2C_SPEED_SET(clockIndex) | I2C_MODE_MASTER;
+                i2cDeviceCfg = I2C_SPEED_SET(clockIndex) | I2C_MODE_CONTROLLER;
                 errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
                 if (i2c_configure(pDevice, i2cDeviceCfg) == 0) {
                     gI2cData[handle].clockHertz = clockHertz;

@@ -141,25 +141,31 @@ int32_t uNetworkPrivateChangeStateCell(uDeviceHandle_t devHandle,
     uDeviceCellContext_t *pContext;
     uDeviceInstance_t *pDevInstance;
     int32_t errorCode = uDeviceGetInstance(devHandle, &pDevInstance);
+    bool (*pKeepGoingCallback)(uDeviceHandle_t devHandle) = keepGoingCallback;
 
     if (errorCode == 0) {
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         pContext = (uDeviceCellContext_t *) pDevInstance->pContext;
         if ((pCfg != NULL) && (pCfg->version == 0) &&
             (pCfg->type == U_NETWORK_TYPE_CELL) && (pContext != NULL)) {
-            // Set the stop time for the connect/disconnect calls
-            pContext->stopTimeMs = uPortGetTickTimeMs() +
-                                   (((int64_t) pCfg->timeoutSeconds) * 1000);
+            if (pCfg->pKeepGoingCallback != NULL) {
+                // The user has given us a keep-going callback, so use it
+                pKeepGoingCallback = pCfg->pKeepGoingCallback;
+            } else {
+                // Set the stop time for the connect/disconnect calls
+                pContext->stopTimeMs = uPortGetTickTimeMs() +
+                                       (((int64_t) pCfg->timeoutSeconds) * 1000);
+            }
             if (upNotDown) {
                 // Connect using automatic selection,
                 // default no user name or password for the APN
                 errorCode = uCellNetConnect(devHandle, NULL,
                                             pCfg->pApn,
                                             NULL, NULL,
-                                            keepGoingCallback);
+                                            pKeepGoingCallback);
             } else {
                 // Disconnect
-                errorCode = uCellNetDisconnect(devHandle, keepGoingCallback);
+                errorCode = uCellNetDisconnect(devHandle, pKeepGoingCallback);
             }
         }
     }

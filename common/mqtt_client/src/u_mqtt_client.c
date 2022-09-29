@@ -88,7 +88,8 @@ static uErrorCode_t gLastOpenError = U_ERROR_COMMON_SUCCESS;
  */
 int32_t cellConnect(uDeviceHandle_t devHandle,
                     const uMqttClientConnection_t *pConnection,
-                    const uSecurityTlsContext_t *pSecurityContext)
+                    const uSecurityTlsContext_t *pSecurityContext,
+                    bool doNotConnect)
 {
     int32_t errorCode;
     const uMqttWill_t *pWill = pConnection->pWill;
@@ -135,7 +136,7 @@ int32_t cellConnect(uDeviceHandle_t devHandle,
                                      pWill->retain);
     }
 
-    if (errorCode == 0) {
+    if ((errorCode == 0) && (!doNotConnect)) {
         // If everything went well, do the actual connection
         errorCode = uCellMqttConnect(devHandle);
         if ((errorCode == 0) && pConnection->keepAlive) {
@@ -274,7 +275,7 @@ int32_t uMqttClientConnect(uMqttClientContext_t *pContext,
         if (U_DEVICE_IS_TYPE(pContext->devHandle, U_DEVICE_TYPE_CELL)) {
             errorCode = cellConnect(pContext->devHandle,
                                     pConnection,
-                                    pContext->pSecurityContext);
+                                    pContext->pSecurityContext, false);
             // For cellular MQTT connections the pContext->pPriv is not
             // used, however for MQTT-SN the "will" data may be updated
             // and so a pointer to the "will" data is hooked into
@@ -612,6 +613,37 @@ bool uMqttClientSnIsSupported(const uMqttClientContext_t *pContext)
     }
 
     return isSupported;
+}
+
+// Connect with the option of not connecting.
+int32_t uMqttClientSnConnect(uMqttClientContext_t *pContext,
+                             const uMqttClientConnection_t *pConnection,
+                             bool doNotConnect)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+
+    if ((pContext != NULL) && (pConnection != NULL)) {
+        errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+
+        U_PORT_MUTEX_LOCK((uPortMutexHandle_t) (pContext->mutexHandle));
+
+        if (U_DEVICE_IS_TYPE(pContext->devHandle, U_DEVICE_TYPE_CELL)) {
+            errorCode = cellConnect(pContext->devHandle,
+                                    pConnection,
+                                    pContext->pSecurityContext,
+                                    doNotConnect);
+            // For cellular MQTT connections the pContext->pPriv is not
+            // used, however for MQTT-SN the "will" data may be updated
+            // and so a pointer to the "will" data is hooked into
+            // pContext->pPriv so that it is carred around with the
+            // context and can be updated.
+            pContext->pPriv = (void *) pConnection->pWill;
+        }
+
+        U_PORT_MUTEX_UNLOCK((uPortMutexHandle_t) (pContext->mutexHandle));
+    }
+
+    return errorCode;
 }
 
 // Populate an MQTT-SN topic name with a predefined topic ID.

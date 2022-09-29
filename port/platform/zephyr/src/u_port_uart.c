@@ -48,6 +48,7 @@
 #include "u_port_os.h"
 #include "u_port_event_queue.h"
 #include "u_port_uart.h"
+#include "version.h"
 
 #include "string.h" // For memcpy()
 
@@ -317,6 +318,7 @@ int32_t uPortUartInit()
         for (size_t x = 0; x < sizeof(gUartData) / sizeof(gUartData[0]); x++) {
             const struct device *dev = NULL;
             switch (x) {
+#if KERNEL_VERSION_MAJOR < 3
                 case 0:
                     dev = device_get_binding("UART_0");
                     break;
@@ -331,6 +333,22 @@ int32_t uPortUartInit()
                     break;
                 default:
                     break;
+#else
+                case 0:
+                    dev = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(uart0));
+                    break;
+                case 1:
+                    dev = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(uart1));
+                    break;
+                case 2:
+                    dev = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(uart2));
+                    break;
+                case 3:
+                    dev = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(uart3));
+                    break;
+                default:
+                    break;
+#endif
             }
 
             gUartData[x].pDevice = dev;
@@ -338,7 +356,7 @@ int32_t uPortUartInit()
         }
     }
 
-    return (int32_t) errorCode;
+    return (int32_t)errorCode;
 }
 
 void uPortUartDeinit()
