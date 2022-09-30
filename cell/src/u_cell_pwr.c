@@ -1081,6 +1081,15 @@ static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance,
     }
 
     if (success) {
+        // Retrieve and store the current MNO profile
+        pInstance->mnoProfile = -1;
+        uAtClientLock(atHandle);
+        uAtClientCommandStart(atHandle, "AT+UMNOPROF?");
+        uAtClientCommandStop(atHandle);
+        uAtClientResponseStart(atHandle, "+UMNOPROF:");
+        pInstance->mnoProfile = uAtClientReadInt(atHandle);
+        uAtClientResponseStop(atHandle);
+        uAtClientUnlock(atHandle);
         if (andRadioOff) {
             // Switch the radio off until commanded to connect
             // Wait for flip time to expire

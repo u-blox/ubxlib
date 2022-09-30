@@ -58,6 +58,7 @@
 #include "u_cell_private.h" // don't change it
 #include "u_cell_info.h"
 #include "u_cell_apn_db.h"
+#include "u_cell_mno_db.h"
 
 #include "u_cell_pwr_private.h"
 
@@ -1500,7 +1501,8 @@ static int32_t activateContextUpsd(const uCellPrivateInstance_t *pInstance,
     uAtClientCommandStart(atHandle, "AT+UPSD=");
     uAtClientWriteInt(atHandle, profileId);
     uAtClientWriteInt(atHandle, 1);
-    if (pApn != NULL) {
+    if ((pApn != NULL) && !uCellMnoDbProfileHas(pInstance,
+                                                U_CELL_MNO_DB_FEATURE_NO_CGDCONT)) {
         uAtClientWriteString(atHandle, pApn, true);
     } else {
         uAtClientWriteString(atHandle, "", true);
@@ -1513,7 +1515,8 @@ static int32_t activateContextUpsd(const uCellPrivateInstance_t *pInstance,
         uAtClientCommandStart(atHandle, "AT+UPSD=");
         uAtClientWriteInt(atHandle, profileId);
         uAtClientWriteInt(atHandle, 2);
-        if (pUsername != NULL) {
+        if ((pUsername != NULL)  && !uCellMnoDbProfileHas(pInstance,
+                                                          U_CELL_MNO_DB_FEATURE_NO_CGDCONT)) {
             uAtClientWriteString(atHandle, pUsername, true);
         } else {
             uAtClientWriteString(atHandle, "", true);
@@ -1527,7 +1530,8 @@ static int32_t activateContextUpsd(const uCellPrivateInstance_t *pInstance,
         uAtClientCommandStart(atHandle, "AT+UPSD=");
         uAtClientWriteInt(atHandle, profileId);
         uAtClientWriteInt(atHandle, 3);
-        if (pPassword != NULL) {
+        if ((pPassword != NULL) && !uCellMnoDbProfileHas(pInstance,
+                                                         U_CELL_MNO_DB_FEATURE_NO_CGDCONT)) {
             uAtClientWriteString(atHandle, pPassword, true);
         } else {
             uAtClientWriteString(atHandle, "", true);
@@ -2032,6 +2036,8 @@ int32_t uCellNetConnect(uDeviceHandle_t cellHandle,
                 errorCode = prepareConnect(pInstance);
                 if (errorCode == 0) {
                     if ((pApn == NULL) &&
+                        !uCellMnoDbProfileHas(pInstance,
+                                              U_CELL_MNO_DB_FEATURE_NO_CGDCONT) &&
                         (uCellPrivateGetImsi(pInstance, buffer) == 0)) {
                         // Set up the APN look-up since none is specified
                         pApnConfig = pApnGetConfig(buffer);
@@ -2048,15 +2054,36 @@ int32_t uCellNetConnect(uDeviceHandle_t cellHandle,
                                      " \"%s\".\n", pApn);
                         } else {
                             if (pApn != NULL) {
-                                uPortLog("U_CELL_NET: user-specified APN is"
-                                         " \"%s\".\n", pApn);
+                                if (uCellMnoDbProfileHas(pInstance,
+                                                         U_CELL_MNO_DB_FEATURE_IGNORE_APN)) {
+                                    uPortLog("U_CELL_NET: ** WARNING ** user-specified APN"
+                                             " \"%s\" will be IGNORED as the current MNO"
+                                             " profile (%d) does not permit user APNs.\n",
+                                             pApn, pInstance->mnoProfile);
+                                    pApn = NULL;
+                                } else if (uCellMnoDbProfileHas(pInstance,
+                                                                U_CELL_MNO_DB_FEATURE_NO_CGDCONT)) {
+                                    // An APN has been specified but the MNO profile doesn't
+                                    // permit one to be set through AT+CGDCONT (or the AT+UPSD
+                                    // equivalent) so flag an error
+                                    uPortLog("U_CELL_NET: APN \"%s\" was specified but the"
+                                             " current MNO profile (%d) does not permit an"
+                                             " APN to be set.\n", pInstance->mnoProfile, pApn);
+                                    errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+                                } else {
+                                    uPortLog("U_CELL_NET: user-specified APN is"
+                                             " \"%s\".\n", pApn);
+                                }
                             } else {
                                 uPortLog("U_CELL_NET: default APN will be"
                                          " used by network.\n");
                             }
                         }
-                        if (!U_CELL_PRIVATE_HAS(pInstance->pModule,
-                                                U_CELL_PRIVATE_FEATURE_USE_UPSD_CONTEXT_ACTIVATION)) {
+                        if ((errorCode == 0) &&
+                            !U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                                U_CELL_PRIVATE_FEATURE_USE_UPSD_CONTEXT_ACTIVATION) &&
+                            !uCellMnoDbProfileHas(pInstance,
+                                                  U_CELL_MNO_DB_FEATURE_NO_CGDCONT)) {
                             // If we're not using AT+UPSD-based
                             // context activation, set the context using
                             // AT+CGDCONT and the authentication mode
@@ -2135,7 +2162,7 @@ int32_t uCellNetConnect(uDeviceHandle_t cellHandle,
                                 if (pApn != NULL) {
                                     uPortLog(", is APN \"%s\" correct?\n", pApn);
                                 } else {
-                                    uPortLog(" (no APN specified).\n");
+                                    uPortLog(" (no APN specified/[or allowed]).\n");
                                 }
                             }
                         }

@@ -406,6 +406,7 @@ typedef struct uCellPrivateInstance_t {
     bool rebootIsRequired;   /**< Set to true if a reboot of the module is
                                   required, e.g. as a result of a configuration
                                   change. */
+    int32_t mnoProfile;     /**< The active MNO profile, populated at boot. */
     bool (*pKeepGoingCallback) (uDeviceHandle_t cellHandle);  /**< Used while connecting. */
     void (*pRegistrationStatusCallback) (uCellNetRegDomain_t, uCellNetStatus_t, void *);
     void *pRegistrationStatusCallbackParameter;
