@@ -414,6 +414,28 @@ int32_t uCellFileDelete(uDeviceHandle_t cellHandle,
 int32_t uCellFileListFirst(uDeviceHandle_t cellHandle,
                            char *pFileName)
 {
+    return uCellFileListFirst_r(cellHandle, pFileName, (void **) &gpFileList);
+}
+
+// Return subsequent file name in the list.
+int32_t uCellFileListNext(uDeviceHandle_t cellHandle,
+                          char *pFileName)
+{
+    (void) cellHandle;
+    return uCellFileListNext_r(pFileName, (void **) &gpFileList);
+}
+
+// Free memory from list.
+void uCellFileListLast(uDeviceHandle_t cellHandle)
+{
+    (void) cellHandle;
+    uCellFileListLast_r((void **) &gpFileList);
+}
+
+// Get the name of the first file stored on file system, re-entrant version.
+int32_t uCellFileListFirst_r(uDeviceHandle_t cellHandle,
+                             char *pFileName, void **ppRentrant)
+{
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
 
@@ -421,10 +443,12 @@ int32_t uCellFileListFirst(uDeviceHandle_t cellHandle,
 
         U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
 
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         pInstance = pUCellPrivateGetInstance(cellHandle);
-        if (pInstance != NULL) {
+        if ((pInstance != NULL) && (ppRentrant != NULL)) {
+            *ppRentrant = NULL;
             errorCode = uCellPrivateFileListFirst(pInstance,
-                                                  &gpFileList,
+                                                  (uCellPrivateFileListContainer_t **) ppRentrant,
                                                   pFileName);
         }
 
@@ -434,14 +458,10 @@ int32_t uCellFileListFirst(uDeviceHandle_t cellHandle,
     return errorCode;
 }
 
-// Return subsequent file name in the list.
-int32_t uCellFileListNext(uDeviceHandle_t cellHandle,
-                          char *pFileName)
+// Return subsequent file name in the list, re-entrant version.
+int32_t uCellFileListNext_r(char *pFileName, void **ppRentrant)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
-
-    // This parameter is no longer needed
-    (void) cellHandle;
 
     if (gUCellPrivateMutex != NULL) {
 
@@ -449,7 +469,11 @@ int32_t uCellFileListNext(uDeviceHandle_t cellHandle,
         // use the cellular API mutex to protect the linked list
         U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
 
-        errorCode = uCellPrivateFileListNext(&gpFileList, pFileName);
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        if (ppRentrant != NULL) {
+            errorCode = uCellPrivateFileListNext((uCellPrivateFileListContainer_t **) ppRentrant,
+                                                 pFileName);
+        }
 
         U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
     }
@@ -457,19 +481,18 @@ int32_t uCellFileListNext(uDeviceHandle_t cellHandle,
     return errorCode;
 }
 
-// Free memory from list.
-void uCellFileListLast(uDeviceHandle_t cellHandle)
+// Free memory from list, re-entrant version.
+void uCellFileListLast_r(void **ppRentrant)
 {
-    // This parameter is no longer needed
-    (void) cellHandle;
-
     if (gUCellPrivateMutex != NULL) {
 
         // Though this doesn't use the instance pointer we can
         // use the cellular API mutex to protect the linked list
         U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
 
-        uCellPrivateFileListLast(&gpFileList);
+        if (ppRentrant != NULL) {
+            uCellPrivateFileListLast((uCellPrivateFileListContainer_t **) ppRentrant);
+        }
 
         U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
     }

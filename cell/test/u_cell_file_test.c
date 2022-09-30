@@ -36,6 +36,7 @@
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
+#include "stdio.h"     // snprintf()
 #include "string.h"    // memset(), strcmp()
 
 #include "u_cfg_sw.h"
@@ -45,6 +46,9 @@
 
 #include "u_error_common.h"
 
+#include "u_port_clib_platform_specific.h" /* Integer stdio, must be included
+                                              before the other port files if
+                                              any print or scan function is used. */
 #include "u_port.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"   // Required by u_cell_private.h
@@ -74,7 +78,24 @@
 
 /** The name of the file to use when testing.
  */
-#define U_CELL_FILE_TEST_FILE_NAME "test.txt"
+#define U_CELL_FILE_TEST_FILE_NAME "test"
+
+/** strlen(U_CELL_FILE_TEST_FILE_NAME).
+ */
+#define U_CELL_FILE_TEST_FILE_NAME_LENGTH 4
+
+/** The number of files to test for in the re-entrant listing
+ * version
+ */
+#define U_CELL_FILE_TEST_REENTRANT_NUM 3
+
+/** The string to write to a file used in the re-entrant list testing.
+ */
+#define U_CELL_FILE_TEST_REENTRANT_STRING "delete me"
+
+/** strlen(U_CELL_FILE_TEST_REENTRANT_STRING).
+ */
+#define U_CELL_FILE_TEST_REENTRANT_STRING_SIZE 9
 
 /* ----------------------------------------------------------------
  * TYPES
@@ -87,6 +108,37 @@
 /** Handle.
 */
 static uCellTestPrivate_t gHandles = U_CELL_TEST_PRIVATE_DEFAULTS;
+
+/* ----------------------------------------------------------------
+* STATIC FUNCTIONS
+* -------------------------------------------------------------- */
+
+// Update a tracking array, used by cellFileListAllReentrant().
+static void updateTracker(const char *pFileName, bool *pTracker,
+                          size_t size)
+{
+    size_t x;
+
+    if (strlen(pFileName) == U_CELL_FILE_TEST_FILE_NAME_LENGTH + 1) {
+        x = strtol(pFileName + U_CELL_FILE_TEST_FILE_NAME_LENGTH, NULL, 10);
+        if (x < size) {
+            *(pTracker + x) = true;
+        }
+    }
+}
+
+// Check a tracking array, used by cellFileListAllReentrant();
+// return true only if all elements are true.
+static bool checkTracker(bool *pTracker, size_t size)
+{
+    bool isGood = true;
+
+    for (size_t x = 0; (x < size) && isGood; x++, pTracker++) {
+        isGood = *pTracker;
+    }
+
+    return isGood;
+}
 
 /* ----------------------------------------------------------------
 * PUBLIC FUNCTIONS
@@ -430,6 +482,93 @@ U_PORT_TEST_FUNCTION("[cellFile]", "cellFileListAll")
         }
 
         U_PORT_TEST_ASSERT(found);
+    }
+
+    free(pFileName);
+
+    // Do the standard postamble, leaving the module on for the next
+    // test to speed things up
+    uCellTestPrivatePostamble(&gHandles, false);
+
+    // Check for memory leaks
+    heapUsed -= uPortGetHeapFree();
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
+    // heapUsed < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT(heapUsed <= 0);
+}
+
+/** Test list all files, re-entrant version.
+ */
+U_PORT_TEST_FUNCTION("[cellFile]", "cellFileListAllReentrant")
+{
+    int32_t heapUsed;
+    uDeviceHandle_t cellHandle;
+    int32_t result = U_CELL_FILE_TEST_REENTRANT_STRING_SIZE;
+    // Enough room for the test file name plus a single number
+    // plus a null terminator
+    size_t y = 0;
+    char buffer[U_CELL_FILE_TEST_FILE_NAME_LENGTH + 2];
+    char *pFileName;
+    void *pRentrantOuter;
+    bool trackerOuter[U_CELL_FILE_TEST_REENTRANT_NUM] = {0};
+    void *pRentrantInner;
+    bool trackerInner[U_CELL_FILE_TEST_REENTRANT_NUM];
+
+    pFileName = (char *) malloc(U_CELL_FILE_NAME_MAX_LENGTH + 1);
+    U_PORT_TEST_ASSERT(pFileName != NULL);
+
+    // In case a previous test failed
+    uCellTestPrivateCleanup(&gHandles);
+
+    // Obtain the initial heap size
+    heapUsed = uPortGetHeapFree();
+
+    // Do the standard preamble
+    U_PORT_TEST_ASSERT(uCellTestPrivatePreamble(U_CFG_TEST_CELL_MODULE_TYPE,
+                                                &gHandles, true) == 0);
+    cellHandle = gHandles.cellHandle;
+
+    // Write the files we need to list
+    for (size_t x = 0; (x < U_CELL_FILE_TEST_REENTRANT_NUM) &&
+         (result == U_CELL_FILE_TEST_REENTRANT_STRING_SIZE); x++) {
+        snprintf(buffer, sizeof(buffer), "%s%1d", U_CELL_FILE_TEST_FILE_NAME, x);
+        U_TEST_PRINT_LINE("writing file %s...", buffer);
+        result = uCellFileWrite(cellHandle, buffer,
+                                U_CELL_FILE_TEST_REENTRANT_STRING,
+                                U_CELL_FILE_TEST_REENTRANT_STRING_SIZE);
+    }
+    U_PORT_TEST_ASSERT(result == U_CELL_FILE_TEST_REENTRANT_STRING_SIZE);
+
+    // List the files in two loops, one within the other, making sure
+    // that all files are listed in both loops on each run
+    U_TEST_PRINT_LINE("listing the files...");
+    for (int32_t x = uCellFileListFirst_r(cellHandle, pFileName, &pRentrantOuter);
+         x >= 0;
+         x = uCellFileListNext_r(pFileName, &pRentrantOuter), y++) {
+        U_TEST_PRINT_LINE("outer loop: \"%s\".", pFileName);
+        updateTracker(pFileName, trackerOuter, sizeof(trackerOuter) / sizeof(trackerOuter[0]));
+
+        memset(trackerInner, 0, sizeof(trackerInner));
+        for (int32_t y = uCellFileListFirst_r(cellHandle, pFileName, &pRentrantInner);
+             y >= 0;
+             y = uCellFileListNext_r(pFileName, &pRentrantInner)) {
+            U_TEST_PRINT_LINE("inner loop: \"%s\".", pFileName);
+            updateTracker(pFileName, trackerInner, sizeof(trackerInner) / sizeof(trackerInner[0]));
+        }
+        U_PORT_TEST_ASSERT(checkTracker(trackerInner, sizeof(trackerInner) / sizeof(trackerInner[0])));
+        uCellFileListLast_r(&pRentrantInner);
+        U_TEST_PRINT_LINE("inner loop, all files listed on run %d.", y + 1);
+    }
+    U_PORT_TEST_ASSERT(checkTracker(trackerOuter, sizeof(trackerOuter) / sizeof(trackerOuter[0])));
+    uCellFileListLast_r(&pRentrantOuter);
+    U_TEST_PRINT_LINE("outer loop, all files listed.");
+
+    // Delete the files again, for tidiness
+    for (size_t x = 0; x < U_CELL_FILE_TEST_REENTRANT_NUM; x++) {
+        snprintf(buffer, sizeof(buffer), "%s%1d", U_CELL_FILE_TEST_FILE_NAME, x);
+        U_TEST_PRINT_LINE("deleting file %s...", buffer);
+        U_PORT_TEST_ASSERT(uCellFileDelete(cellHandle, buffer) == 0);
     }
 
     free(pFileName);

@@ -178,7 +178,8 @@ int32_t uCellFileDelete(uDeviceHandle_t cellHandle,
 /** Get the description of file stored on the file system; uCellFileListNext()
  * should be called repeatedly to iterate through subsequent entries in
  * the list. This function is not thread-safe in that there is a single
- * list of names for any given atHandle.
+ * list of names for any given cellHandle: for a re-entrant version see
+ * uCellFileListFirst_r() / uCellFileListNext_r() / uCellFileListLast_r().
  *
  * For instance, to print out the names of all stored files on file system:
  *
@@ -234,6 +235,56 @@ int32_t uCellFileListNext(uDeviceHandle_t cellHandle,
  * @param cellHandle the handle of the cellular instance.
  */
 void uCellFileListLast(uDeviceHandle_t cellHandle);
+
+/** As uCellFileListFirst() but re-entrant; you must provide
+ * storage for the pointer ppRentrant, something like:
+ *
+ * ```
+ * char fileName[U_CELL_FILE_NAME_MAX_LENGTH + 1];
+ * void *pReentrant;
+ *
+ * for (int32_t x = uCellFileListFirst_r(handle, fileName, &pReentrant);
+ *      x >= 0;
+ *      x = uCellFileListNext_r(fileName, &pReentrant)) {
+ *      printf("%s\n", fileName);
+ * }
+ * ```
+ *
+ * @param cellHandle      the handle of the cellular instance.
+ * @param[out] pFileName  pointer to somewhere to store the result;
+ *                        at least #U_CELL_FILE_NAME_MAX_LENGTH + 1 bytes
+ *                        of storage must be provided.
+ * @param[out] ppRentrant pointer to a place where this function
+                          can store its rentrancy pointer.
+ * @return                the total number of file names in the list
+ *                        or negative error code.
+ */
+int32_t uCellFileListFirst_r(uDeviceHandle_t cellHandle,
+                             char *pFileName, void **ppRentrant);
+
+/** As uCellFileListNext() but re-entrant; you must pass the
+ * re-entrancy pointer that was passed to uCellFileListFirst_r()
+ * to this function.
+ *
+ * @param[out] pFileName     pointer to somewhere to store the result;
+ *                           at least #U_CELL_FILE_NAME_MAX_LENGTH + 1
+ *                           bytes of storage must be provided.
+ * @param[in,out] ppRentrant pointer to the rentrancy pointer that
+ *                           was passed to uCellFileListFirst_r().
+ * @return                   the number of entries remaining *after*
+ *                           this one has been read or negative error
+ *                           code.
+ */
+int32_t uCellFileListNext_r(char *pFileName, void **ppRentrant);
+
+/**  As uCellFileListLast() but re-entrant; you must pass the
+ * re-entrancy pointer that was passed to uCellFileListFirst_r()
+ * to this function.
+ *
+ * @param[in] ppRentrant pointer to the rentrancy pointer that was
+ *                       passed to uCellFileListFirst_r().
+ */
+void uCellFileListLast_r(void **ppRentrant);
 
 #ifdef __cplusplus
 }
