@@ -27,8 +27,8 @@ The pattern of usage is as follows:
   By convention, if no parameter is required for a log item then 0 is used.
 
 - Near the start of your code, add a call to `uLogRamInit()`, passing in a pointer to a logging buffer of size `U_LOG_RAM_STORE_SIZE` bytes, or passing `NULL` to have it `malloc()` logging space for you; logging will begin at this point.
-- When logging is to be stopped, call `uLogRamDeinit()`; if you passed a buffer to `uLogRamInit()` the contents of that buffer will still be available for examination but if you let `uLogRamInit()` `malloc()` logging space then calling `uLogRamDeinit()` will deallocate it, it will no longer be printable.
 - To print out the logging data that has been captured since `uLogRamInit()`, call `uLogRamPrint()`.
 - Your code may also call `uLogRamGet()` to retrieve log items (in FIFO order) from RAM storage, removing them from the store.
+- When logging is to be stopped, call `uLogRamDeinit()`; if you passed a buffer to `uLogRamInit()` the contents of that buffer will still be available for examination aftewards but if you let `uLogRamInit()` `malloc()` logging space then calling `uLogRamDeinit()` will deallocate it, it will no longer be printable; in the usual case, when you are just hacking in some temporary debug, you'll probably not bother calling `uLogRamDeinit()`.
 
 Note: there is no mutex protection on the `uLogRam()` call since the priority is to log quickly and efficiently.  Hence it is possible for two `uLogRam()` calls to collide resulting in those particular log calls being mangled.  This will happen very rarely (I've never seen it happen in fact) but be aware that it is a possibility.  If you don't care about speed so much then call `uLogRamX()` instead; this _will_ mutex-lock.
