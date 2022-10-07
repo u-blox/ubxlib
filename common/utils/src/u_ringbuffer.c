@@ -67,6 +67,7 @@ typedef struct {
     const char *pSource;
     size_t bytesAvailable;
     size_t bytesParsed;
+    size_t bytesDiscard;
 } uRingBufferParseContext_t;
 
 /* ----------------------------------------------------------------
@@ -791,8 +792,11 @@ size_t uRingBufferParseHandle(uRingBuffer_t *pRingBuffer, int32_t handle,
                               U_RING_BUFFER_PARSER_f *pParserList, void *pUserParam)
 {
     size_t errorCodeOrLength = U_ERROR_COMMON_INVALID_PARAMETER;
+
     if (pRingBuffer->pBuffer != NULL) {
+
         U_PORT_MUTEX_LOCK((uPortMutexHandle_t) pRingBuffer->mutex);
+
         if ((handle >= 0) && (handle < (int32_t) pRingBuffer->maxNumReadPointers) &&
             (pRingBuffer->pDataRead[handle] != NULL)) {
             const char *pOffset = pPtrOffset(pRingBuffer->pDataRead[handle], 0, pRingBuffer->pBuffer,
@@ -809,7 +813,8 @@ size_t uRingBufferParseHandle(uRingBuffer_t *pRingBuffer, int32_t handle,
                         .pRingBuffer    = pRingBuffer,
                         .pSource        = pOffset,
                         .bytesAvailable = bytesAvailable,
-                        .bytesParsed    = 0
+                        .bytesParsed    = 0,
+                        .bytesDiscard   = bytesDiscard
                     };
                     errorCodeOrLength = (*pParser)(&ctx, pUserParam);
                     pParser ++;
@@ -827,13 +832,14 @@ size_t uRingBufferParseHandle(uRingBuffer_t *pRingBuffer, int32_t handle,
                 bytesDiscard ++;
                 bytesAvailable --;
             }
-            //
             if (bytesDiscard > 0) {
                 errorCodeOrLength = bytesDiscard;
             }
         }
+
         U_PORT_MUTEX_UNLOCK((uPortMutexHandle_t) pRingBuffer->mutex);
     }
+
     return errorCodeOrLength;
 }
 
@@ -856,6 +862,12 @@ size_t uRingBufferBytesAvailableUnprotected(uParseHandle_t parseHandle)
 {
     uRingBufferParseContext_t *pCtx = (uRingBufferParseContext_t *)parseHandle;
     return pCtx->bytesAvailable;
+}
+
+size_t uRingBufferBytesDiscardUnprotected(uParseHandle_t parseHandle)
+{
+    uRingBufferParseContext_t *pCtx = (uRingBufferParseContext_t *)parseHandle;
+    return pCtx->bytesDiscard;
 }
 
 // End of file

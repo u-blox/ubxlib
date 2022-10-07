@@ -176,7 +176,7 @@ static bool nmeaIdMatch(const char *pNmeaIdActual, const char *pNmeaIdWanted)
     return match;
 }
 
-// Match an UBX ID with the wanted UXB ID, allowing ALL wildcard 0xFF
+// Match an UBX ID with the wanted UXB ID, allowing ALL wildcards 0xFF.
 static bool ubxIdMatch(uint16_t ubxIdActual, uint16_t ubxIdWanted)
 {
     if ((ubxIdWanted &  U_GNSS_UBX_MESSAGE_ID_ALL) == U_GNSS_UBX_MESSAGE_ID_ALL) {
@@ -187,6 +187,12 @@ static bool ubxIdMatch(uint16_t ubxIdActual, uint16_t ubxIdWanted)
         ubxIdActual |= (U_GNSS_UBX_MESSAGE_CLASS_ALL << 8);
     }
     return ubxIdActual == ubxIdWanted;
+}
+
+// Match an RTCM ID with the wanted RTCM ID, allowing ALL wildcard 0xFFFF.
+static bool rtcmIdMatch(uint16_t rtcmIdActual, uint16_t rtcmIdWanted)
+{
+    return (rtcmIdActual == rtcmIdWanted) || (rtcmIdWanted == U_GNSS_RTCM_MESSAGE_ID_ALL);
 }
 
 /* ----------------------------------------------------------------
@@ -597,7 +603,7 @@ static int32_t sendReceiveUbxMessage(uGnssPrivateInstance_t *pInstance,
  * @param[in] pUserParam the user parameter passed to uRingBufferParseHandle().
  * @return               negative error or success code.
  */
-static int32_t uGnssPrivateParseUbx(uParseHandle_t parseHandle, void *pUserParam)
+static int32_t parseUbx(uParseHandle_t parseHandle, void *pUserParam)
 {
     uGnssPrivateMessageId_t *pMsgId = (uGnssPrivateMessageId_t *) pUserParam;
     uint8_t by = 0;
@@ -656,7 +662,11 @@ static int32_t uGnssPrivateParseUbx(uParseHandle_t parseHandle, void *pUserParam
     if (by != ckb) {
         return U_ERROR_COMMON_NOT_FOUND;
     }
-    pMsgId->type = U_GNSS_PROTOCOL_UBX;
+    // We can only claim this as a UBX-format message if
+    // there was nothing that needed discarding first.
+    if (uRingBufferBytesDiscardUnprotected(parseHandle) == 0) {
+        pMsgId->type = U_GNSS_PROTOCOL_UBX;
+    }
     return U_ERROR_COMMON_SUCCESS;
 }
 
@@ -666,7 +676,7 @@ static int32_t uGnssPrivateParseUbx(uParseHandle_t parseHandle, void *pUserParam
  * @param[in] pUserParam the user parameter passed to uRingBufferParseHandle().
  * @return               negative error or success code.
  */
-static int32_t uGnssPrivateParseNmea(uParseHandle_t parseHandle, void *pUserParam)
+static int32_t parseNmea(uParseHandle_t parseHandle, void *pUserParam)
 {
     uGnssPrivateMessageId_t *pMsgId = (uGnssPrivateMessageId_t *) pUserParam;
     char ch = 0;
@@ -726,7 +736,11 @@ static int32_t uGnssPrivateParseNmea(uParseHandle_t parseHandle, void *pUserPara
     if ('\n' != ch) {
         return U_ERROR_COMMON_NOT_FOUND;
     }
-    pMsgId->type = U_GNSS_PROTOCOL_NMEA;
+    // We can only claim this as an NMEA-format message if
+    // there was nothing that needed discarding first.
+    if (uRingBufferBytesDiscardUnprotected(parseHandle) == 0) {
+        pMsgId->type = U_GNSS_PROTOCOL_NMEA;
+    }
     return U_ERROR_COMMON_SUCCESS;
 }
 
@@ -736,29 +750,17 @@ static int32_t uGnssPrivateParseNmea(uParseHandle_t parseHandle, void *pUserPara
  * @param[in] pUserParam the user parameter passed to uRingBufferParseHandle().
  * @return               negative error or success code.
  */
-static int32_t uGnssPrivateParseRtcm(uParseHandle_t parseHandle, void *pUserParam)
+static int32_t parseRtcm(uParseHandle_t parseHandle, void *pUserParam)
 {
     uGnssPrivateMessageId_t *pMsgId = (uGnssPrivateMessageId_t *) pUserParam;
     uint8_t by;
+    uint32_t crc = 0;
     if (!uRingBufferGetByteUnprotected(parseHandle, &by)) {
         return U_ERROR_COMMON_TIMEOUT;
     }
     if (0xD3 != by) {
         return U_ERROR_COMMON_NOT_FOUND;
     }
-    if (!uRingBufferGetByteUnprotected(parseHandle, &by)) {
-        return U_ERROR_COMMON_TIMEOUT;
-    }
-    if ((0xFC & by) != 0) {
-        return U_ERROR_COMMON_NOT_FOUND;
-    }
-    uint16_t l = (by & 0x3) << 8;
-    if (!uRingBufferGetByteUnprotected(parseHandle, &by)) {
-        return U_ERROR_COMMON_TIMEOUT;
-    }
-    l += by + 2;
-    uint8_t idLo, idHi;
-    uint32_t crc = 0;
     // CRC24Q check
     const uint32_t _crc24qTable[] = {
         /* 00 */ 0x000000, 0x864cfb, 0x8ad50d, 0x0c99f6, 0x93e6e1, 0x15aa1a, 0x1933ec, 0x9f7f17,
@@ -794,27 +796,55 @@ static int32_t uGnssPrivateParseRtcm(uParseHandle_t parseHandle, void *pUserPara
         /* f0 */ 0xe37b16, 0x6537ed, 0x69ae1b, 0xefe2e0, 0x709df7, 0xf6d10c, 0xfa48fa, 0x7c0401,
         /* f8 */ 0x42fa2f, 0xc4b6d4, 0xc82f22, 0x4e63d9, 0xd11cce, 0x575035, 0x5bc9c3, 0xdd8538
     };
-#define RTCM_CRC(crc, by) ((crc << 8) | by) ^ _crc24qTable[(crc >> 16) & 0xff]
+#define RTCM_CRC(crc, by) (crc << 8) ^ _crc24qTable[(by ^ (crc >> 16)) & 0xff]
+    // CRC is over the entire message, 0xD3 included
+    crc = RTCM_CRC(crc, by);
+    if (!uRingBufferGetByteUnprotected(parseHandle, &by)) {
+        return U_ERROR_COMMON_TIMEOUT;
+    }
+    if ((0xFC & by) != 0) {
+        return U_ERROR_COMMON_NOT_FOUND;
+    }
+    uint16_t l = (by & 0x3) << 8;
+    crc = RTCM_CRC(crc, by);
+    if (!uRingBufferGetByteUnprotected(parseHandle, &by)) {
+        return U_ERROR_COMMON_TIMEOUT;
+    }
+    l += by;
+    // Length includes the two-byte message ID and the message
+    // body, i.e. up to the start of the 3-byte CRC, i.e.
+    // the total message length - 6.
+    if (l > uRingBufferBytesAvailableUnprotected(parseHandle) + 3) {
+        return U_ERROR_COMMON_TIMEOUT;
+    }
+    crc = RTCM_CRC(crc, by);
+    uint8_t idLo, idHi;
     if (!uRingBufferGetByteUnprotected(parseHandle, &idLo)) {
         return U_ERROR_COMMON_TIMEOUT;
     }
+    l--;
     crc = RTCM_CRC(crc, idLo);
     if (!uRingBufferGetByteUnprotected(parseHandle, &idHi)) {
         return U_ERROR_COMMON_TIMEOUT;
     }
+    l--;
     crc = RTCM_CRC(crc, idHi);
     pMsgId->id.rtcm = (idHi >> 4) + (idLo << 4);
-    if (l  > uRingBufferBytesAvailableUnprotected(parseHandle)) {
-        return U_ERROR_COMMON_TIMEOUT;
-    }
     while (l--) {
         uRingBufferGetByteUnprotected(parseHandle, &by);
         crc = RTCM_CRC(crc, by);
     }
-    if ((crc & 0xFFFFFF) != 0x000000) {
-        return U_ERROR_COMMON_NOT_FOUND;
+    // Compare CRC
+    for (int32_t x = 2; (x >= 0) && uRingBufferGetByteUnprotected(parseHandle, &by); x--) {
+        if (by != (uint8_t) (crc >> (8 * x))) {
+            return U_ERROR_COMMON_TIMEOUT;
+        }
     }
-    pMsgId->type = U_GNSS_PROTOCOL_RTCM;
+    // We can only claim this as an RTCM-format message if
+    // there was nothing that needed discarding first.
+    if (uRingBufferBytesDiscardUnprotected(parseHandle) == 0) {
+        pMsgId->type = U_GNSS_PROTOCOL_RTCM;
+    }
     return U_ERROR_COMMON_SUCCESS;
 }
 
@@ -1184,7 +1214,7 @@ bool uGnssPrivateMessageIdIsWanted(uGnssPrivateMessageId_t *pMessageId,
         isWanted = true;
     } else if ((pMessageIdWanted->type == U_GNSS_PROTOCOL_RTCM) &&
                (pMessageId->type == U_GNSS_PROTOCOL_RTCM)) {
-        isWanted = pMessageId->id.rtcm == pMessageIdWanted->id.rtcm;
+        isWanted = rtcmIdMatch(pMessageId->id.rtcm, pMessageIdWanted->id.rtcm);
     } else if ((pMessageIdWanted->type == U_GNSS_PROTOCOL_NMEA) &&
                (pMessageId->type == U_GNSS_PROTOCOL_NMEA)) {
         isWanted = nmeaIdMatch(pMessageId->id.nmea, pMessageIdWanted->id.nmea);
@@ -1259,23 +1289,23 @@ int32_t uGnssPrivateStreamGetReceiveSize(int32_t streamHandle,
 // effect on the instance data since it is called by
 // uGnssPrivateStreamFillRingBuffer() which may be called at any time by
 // the message receive task over in u_gnss_msg.c
-int32_t uGnssPrivateStreamDecodeRingBuffer(uGnssPrivateInstance_t *pInstance,
+int32_t uGnssPrivateStreamDecodeRingBuffer(uRingBuffer_t *pRingBuffer,
                                            int32_t readHandle,
                                            uGnssPrivateMessageId_t *pPrivateMessageId)
 {
     int32_t errorCodeOrLength = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-    if ((pInstance != NULL) && (pPrivateMessageId != NULL)) {
+    if ((pRingBuffer != NULL) && (pPrivateMessageId != NULL)) {
         while (1) {
             U_RING_BUFFER_PARSER_f parserList[] = {
-                uGnssPrivateParseUbx,
-                uGnssPrivateParseNmea,
-                uGnssPrivateParseRtcm,
+                parseUbx,
+                parseNmea,
+                parseRtcm,
                 NULL
             };
             uGnssPrivateMessageId_t msg;
             memset(&msg, 0, sizeof(msg));
             msg.type = U_GNSS_PROTOCOL_UNKNOWN;
-            errorCodeOrLength = uRingBufferParseHandle(&(pInstance->ringBuffer), readHandle, parserList, &msg);
+            errorCodeOrLength = uRingBufferParseHandle(pRingBuffer, readHandle, parserList, &msg);
             if (errorCodeOrLength <= 0) {
                 break;
             } else if (uGnssPrivateMessageIdIsWanted(&msg, pPrivateMessageId)) {
@@ -1302,7 +1332,7 @@ int32_t uGnssPrivateStreamDecodeRingBuffer(uGnssPrivateInstance_t *pInstance,
                     (msg.type == U_GNSS_PROTOCOL_UBX) &&
                     (msg.id.ubx == 0x0500/*ACK-NACK*/) && (errorCodeOrLength == 10)) {
                     uint8_t msg[10];
-                    if (10 == uRingBufferReadHandle(&(pInstance->ringBuffer), readHandle, (char *)msg, 10)) {
+                    if (10 == uRingBufferReadHandle(pRingBuffer, readHandle, (char *)msg, 10)) {
                         uint16_t ubxId = (msg[6]/*CLS*/ << 8) | msg[7]/*ID*/;
                         if (ubxIdMatch(ubxId, pPrivateMessageId->id.ubx)) {
 #ifdef U_GNSS_PRIVATE_DEBUG_PARSING
@@ -1313,10 +1343,8 @@ int32_t uGnssPrivateStreamDecodeRingBuffer(uGnssPrivateInstance_t *pInstance,
                         }
                     }
                 } else {
-                    // discard what is not wanted by the calling
-
-                    // wouldnt it be better to just adbvance the read handle here
-                    uRingBufferReadHandle(&(pInstance->ringBuffer), readHandle, NULL, errorCodeOrLength);
+                    // Discard what is not wanted by the caller
+                    uRingBufferReadHandle(pRingBuffer, readHandle, NULL, errorCodeOrLength);
                 }
             }
         };
@@ -1611,7 +1639,7 @@ int32_t uGnssPrivateReceiveStreamMessage(uGnssPrivateInstance_t *pInstance,
                                                      NULL, discardSize);
                 if (discardSize == 0) {
                     // Attempt to decode a message/message header from the ring buffer
-                    errorCodeOrLength = uGnssPrivateStreamDecodeRingBuffer(pInstance,
+                    errorCodeOrLength = uGnssPrivateStreamDecodeRingBuffer(&(pInstance->ringBuffer),
                                                                            readHandle,
                                                                            pPrivateMessageId);
                     if (errorCodeOrLength > 0) {

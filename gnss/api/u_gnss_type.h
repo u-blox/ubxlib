@@ -78,16 +78,22 @@
 
 #ifndef U_GNSS_UBX_MESSAGE_CLASS_ALL
 /** Value used in the most significant byte of the UBX field of
- * uGnssMessageId_t to indicate "all classes".
+ * uGnssMessageId_t to indicate "all UBX message classes".
  */
 # define U_GNSS_UBX_MESSAGE_CLASS_ALL 0xFF
 #endif
 
 #ifndef U_GNSS_UBX_MESSAGE_ID_ALL
 /** Value used in the least significant byte of the UBX field of
- * uGnssMessageId_t to indicate "all IDs".
+ * uGnssMessageId_t to indicate "all UBX message IDs".
  */
 # define U_GNSS_UBX_MESSAGE_ID_ALL 0xFF
+#endif
+
+#ifndef U_GNSS_RTCM_MESSAGE_ID_ALL
+/** Value used in uGnssMessageId_t to indicate "all RTCM message IDs".
+ */
+# define U_GNSS_RTCM_MESSAGE_ID_ALL 0xFFFF
 #endif
 
 #ifndef U_GNSS_NMEA_MESSAGE_MATCH_LENGTH_CHARACTERS

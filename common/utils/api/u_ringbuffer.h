@@ -379,7 +379,7 @@ size_t uRingBufferReadHandle(uRingBuffer_t *pRingBuffer, int32_t handle,
                              char *pData, size_t length);
 
 /** Like uRingBufferReadHandle() but doesn't move the read pointer on,
- * take a peek;.  To use this function the ring buffer must have
+ * take a peek.  To use this function the ring buffer must have
  * been created by calling uRingBufferCreateWithReadHandle() rather
  * than uRingBufferCreate().
  *
@@ -483,6 +483,18 @@ bool uRingBufferGetByteUnprotected(uParseHandle_t parseHandle, void *p);
  * @return                number of bytes available in the ring buffer.
  */
 size_t uRingBufferBytesAvailableUnprotected(uParseHandle_t parseHandle);
+
+/** Number of bytes in the ring buffer discarded while in a parser function.
+ *
+ * IMPORTANT: unlike all of the other ring-buffer functions, this function
+ * is NOT thread-safe, it is ONLY intended to be used from within a
+ * U_RING_BUFFER_PARSER_f function that will be called by uRingBufferParseHandle()
+ * (which adds thread-safety).
+ *
+ * @param parseHandle     the parser handle used to access the ring buffer.
+ * @return                number of bytes discarded in the ring buffer.
+ */
+size_t uRingBufferBytesDiscardUnprotected(uParseHandle_t parseHandle);
 
 #ifdef __cplusplus
 }

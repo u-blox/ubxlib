@@ -178,7 +178,7 @@ static void msgReceiveTask(void *pParam)
             while (errorCodeOrLength > 0) {
                 privateMessageId.type = U_GNSS_PROTOCOL_ALL;
                 // Attempt to decode a message of any type from the ring buffer
-                errorCodeOrLength = uGnssPrivateStreamDecodeRingBuffer(pInstance,
+                errorCodeOrLength = uGnssPrivateStreamDecodeRingBuffer(&(pInstance->ringBuffer),
                                                                        pMsgReceive->ringBufferReadHandle,
                                                                        &privateMessageId);
                 if ((errorCodeOrLength > 0) || (errorCodeOrLength == (int32_t) U_GNSS_ERROR_NACK)) {

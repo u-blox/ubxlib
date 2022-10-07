@@ -442,13 +442,12 @@ int32_t uGnssPrivateStreamGetReceiveSize(int32_t streamHandle,
 int32_t uGnssPrivateStreamFillRingBuffer(uGnssPrivateInstance_t *pInstance,
                                          int32_t timeoutMs, int32_t maxTimeMs);
 
-/** Examine the ring buffer of the given GNSS instance, for the
- * given read handle, and determine if it contains the given message ID,
- * or even the sniff of a possibility of it.  If a message header is
- * matched the read pointer for the given handle will be moved
- * up to the start of the message header; if a sniff of a message is found
- * but it is not complete, the pointer will be moved forward somewhat,
- * discarding unwanted data, otherwise the read pointer will be
+/** Examine the given ring buffer, for the given read handle, and determine
+ * if it contains the given message ID, or even the sniff of a possibility
+ * of it.  If a message header is matched the read pointer for the given
+ * handle will be moved up to the start of the message header; if a sniff
+ * of a message is found but it is not complete, the pointer will be moved
+ * forward somewhat, discarding unwanted data, otherwise the read pointer will be
  * moved on to the write pointer, i.e. the unwanted data that is in the
  * ring buffer will be discarded.  This function does NOT pull any new
  * data into the ring buffer, the caller must call
@@ -466,8 +465,8 @@ int32_t uGnssPrivateStreamFillRingBuffer(uGnssPrivateInstance_t *pInstance,
  * since it is otherwise thread-safe and that task is brought up and
  * down in a controlled fashion.
  *
- * @param[in] pInstance              a pointer to the GNSS instance, cannot
- *                                   be NULL.
+ * @param[in] pRingBuffer            a pointer to the ring buffer of the
+ *                                   GNSS instance, cannot be NULL.
  * @param readHandle                 the read handle of the ring buffer to
                                      read from.
  * @param[in,out] pPrivateMessageId  on entry this should contain the message
@@ -484,7 +483,7 @@ int32_t uGnssPrivateStreamFillRingBuffer(uGnssPrivateInstance_t *pInstance,
  *                                   #U_ERROR_COMMON_TIMEOUT will be returned,
  *                                   else a negative error code will be returned.
  */
-int32_t uGnssPrivateStreamDecodeRingBuffer(uGnssPrivateInstance_t *pInstance,
+int32_t uGnssPrivateStreamDecodeRingBuffer(uRingBuffer_t *pRingBuffer,
                                            int32_t readHandle,
                                            uGnssPrivateMessageId_t *pPrivateMessageId);
 
