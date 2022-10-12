@@ -408,7 +408,7 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveBlocking")
 
             U_TEST_PRINT_LINE("receiving response without message filter and with auto-buffer.");
             messageId.type = U_GNSS_PROTOCOL_UBX;
-            messageId.id.ubx = (U_GNSS_UBX_MESSAGE_CLASS_ALL << 8) | U_GNSS_UBX_MESSAGE_ID_ALL;
+            messageId.id.ubx = U_GNSS_UBX_MESSAGE(U_GNSS_UBX_MESSAGE_CLASS_ALL, U_GNSS_UBX_MESSAGE_ID_ALL);
             gStopTimeMs = uPortGetTickTimeMs() + U_GNSS_MSG_TEST_MESSAGE_RECEIVE_TIMEOUT_MS;
             pBuffer3 = NULL;
             gCallbackErrorCode = 0;
@@ -548,7 +548,7 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveNonBlocking")
                         // Make every other one a UBX protocol receiver
                         if (x % 2) {
                             pTmp->messageId.type = U_GNSS_PROTOCOL_UBX;
-                            pTmp->messageId.id.ubx = (U_GNSS_UBX_MESSAGE_CLASS_ALL << 8) | U_GNSS_UBX_MESSAGE_ID_ALL;
+                            pTmp->messageId.id.ubx = U_GNSS_UBX_MESSAGE_ALL;
                             pTmp->numDecodedMin = U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_MIN_STEPS;
                         }
                     } else  {

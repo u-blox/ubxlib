@@ -77,17 +77,24 @@
 #endif
 
 #ifndef U_GNSS_UBX_MESSAGE_CLASS_ALL
-/** Value used in the most significant byte of the UBX field of
+/** Value used in the most significant byte of the .ubx field of
  * uGnssMessageId_t to indicate "all UBX message classes".
  */
 # define U_GNSS_UBX_MESSAGE_CLASS_ALL 0xFF
 #endif
 
 #ifndef U_GNSS_UBX_MESSAGE_ID_ALL
-/** Value used in the least significant byte of the UBX field of
+/** Value used in the least significant byte of the .ubx field of
  * uGnssMessageId_t to indicate "all UBX message IDs".
  */
 # define U_GNSS_UBX_MESSAGE_ID_ALL 0xFF
+#endif
+
+#ifndef U_GNSS_UBX_MESSAGE_ALL
+/** Value that can be used in the .ubx field of uGnssMessageId_t
+ * to indicate "all UBX messages".
+ */
+# define U_GNSS_UBX_MESSAGE_ALL 0xFFFF
 #endif
 
 #ifndef U_GNSS_RTCM_MESSAGE_ID_ALL
@@ -103,6 +110,10 @@
   */
 # define U_GNSS_NMEA_MESSAGE_MATCH_LENGTH_CHARACTERS 8
 #endif
+
+/** Make a UBX message type from a message class and message ID.
+ */
+#define U_GNSS_UBX_MESSAGE(class, id) ((((uint16_t) (class)) << 8) | ((uint8_t) (id)))
 
 /* ----------------------------------------------------------------
  * TYPES
@@ -204,7 +215,8 @@ typedef struct {
                            this is employed for matching you may use
                            #U_GNSS_UBX_MESSAGE_CLASS_ALL in the most significant byte
                            for all classes, #U_GNSS_UBX_MESSAGE_ID_ALL in the least
-                           significant byte for all IDs. */
+                           significant byte for all IDs, or just
+                           #U_GNSS_UBX_MESSAGE_ALL for all UBX format messages. */
         char *pNmea;  /**< "GPGGA", "GNZDA": a null-terminated string;
                            where this is used for matching it is done on a
                            per character basis for up to the first
