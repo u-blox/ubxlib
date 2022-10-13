@@ -9,6 +9,7 @@ For each MCU you will find a `runner` build.  This builds and runs all of these 
 - [security](security) contains examples of how to use the u-blox security features.
 - [location](location) contains examples of how to get a location fix.
 - [mqtt_client](mqtt_client) contains an example of how to use the MQTT client API to contact an MQTT broker on the public internet.
+- [http_client](http_client) contains an example of how to use the HTTP client API.
 - [cell](cell) contains examples specific to u-blox cellular modules (e.g. SARA-U201, SARA-R4 or SARA-R5).
 - [gnss](gnss) contains examples specific to u-blox GNSS chips (e.g. M8, M9).
 - [utilities/c030_module_fw_update](utilities/c030_module_fw_update) is not so much an example as a program that is required if you need to update the firmware of the cellular module on a C030-R5 or C030-R4xx board.

@@ -27,6 +27,7 @@ The key APIs provided by this repo, and their relationships with each other, are
 - If you wish to use a socket over that network, use the common [sock](/common/sock) API.
 - If you wish to use security, use the common [security](/common/security) API.
 - If you wish to contact an MQTT broker over that network, use the common [mqtt_client](/common/mqtt_client) API.
+- If you wish to use HTTP, use the common [http_client](/common/http_client) API.
 - If you wish to get a location fix use the common [location](/common/location) API.
 - If you wish to take finer control of [cellular](/cell), [ble](/ble), [wifi](/wifi) or [gnss](/gnss), use the respective control API directly.
 - GNSS may be used via the [gnss](/gnss) API.
@@ -69,7 +70,7 @@ Peripherals are u-blox modules which accept commands (e.g. AT-commands) over a s
 
 |`ubxlib` peripherals |NINA-B41 series<br />NINA-B31 series<br />NINA-B1 series<br />ANNA-B1|NINA-W13|NINA-W15|SARA-U2 series|SARA-R4 series<br />SARA-R5 series<br />|SARA-R510M8S<br />SARA-R422M8S|M8/M9 series|
 |-----------|-----------|--------------|-----|-----|------|------|------|
-|**APIs provided by host with peripheral attached**|[ble](/ble "ble API")<br />[device](/common/device "device API")<br />[network](/common/network "network API")|[wifi](/wifi)<br />[device](/common/device "device API")<br />[network](/common/network "network API")<br />[sock](/common/sock "sock API")|[wifi](/wifi)<br />[ble](/ble "ble API")<br />[device](/common/device "device API")<br />[network](/common/network "network API")<br />[sock](/common/sock "sock API")|[cell](/cell "cell API")<br />[device](/common/device "device API")<br />[network](/common/network "network API")<br />[sock](/common/sock "sock API")<br />[location*](/common/location "location API")<br />[tls&nbsp;security](/common/security "security API")<br>|[cell](/cell "cell API")<br />[device](/common/device "device API")<br />[network](/common/network "network API")<br />[sock](/common/sock "sock API")<br />[location<sup>**</sup>](/common/location "location API")<br />[security](/common/security "security API")<br>[mqtt_client](/common/mqtt_client "MQTT client API")|All APIs of<br />SARA-R4,<br />SARA-R5 series&nbsp;+<br />[gnss](/gnss "GNSS API")<br />[location](/common/location "location API")|[gnss](/gnss "GNSS API")<br />[location](/common/location "location API")|
+|**APIs provided by host with peripheral attached**|[ble](/ble "ble API")<br />[device](/common/device "device API")<br />[network](/common/network "network API")|[wifi](/wifi)<br />[device](/common/device "device API")<br />[network](/common/network "network API")<br />[sock](/common/sock "sock API")<br />[tls&nbsp;security](/common/security "security API")<br />[mqtt_client](/common/mqtt_client "MQTT client API")|[wifi](/wifi)<br />[ble](/ble "ble API")<br />[device](/common/device "device API")<br />[network](/common/network "network API")<br />[sock](/common/sock "sock API")<br />[tls&nbsp;security](/common/security "security API")<br />[mqtt_client](/common/mqtt_client "MQTT client API")|[cell](/cell "cell API")<br />[device](/common/device "device API")<br />[network](/common/network "network API")<br />[sock](/common/sock "sock API")<br />[location*](/common/location "location API")<br />[tls&nbsp;security](/common/security "security API")<br />[http_client](/common/http_client "HTTP client API")|[cell](/cell "cell API")<br />[device](/common/device "device API")<br />[network](/common/network "network API")<br />[sock](/common/sock "sock API")<br />[location<sup>**</sup>](/common/location "location API")<br />[security](/common/security "security API")<br />[mqtt_client](/common/mqtt_client "MQTT client API")<br />[http_client](/common/httpt_client "HTTP client API")|All APIs of<br />SARA-R4,<br />SARA-R5 series&nbsp;+<br />[gnss](/gnss "GNSS API")<br />[location](/common/location "location API")|[gnss](/gnss "GNSS API")<br />[location](/common/location "location API")|
 
 
 <sup>** Through the u-blox [CellLocate](https://www.u-blox.com/en/product/celllocate) mobile network-based location service.</sup>
@@ -97,6 +98,7 @@ In order for u-blox to support multiple platforms with this code there is also a
 ¦   +---sock                   <-- the sockets API for cell, Wi-Fi (and in the future BLE)
 ¦   +---security               <-- common API for u-blox security and TLS security/credential storage
 ¦   +---mqtt_client            <-- common MQTT client API
+¦   +---http_client            <-- common HTTP client API
 ¦   +---location               <-- common location API, can use GNSS, Cell Locate, Cloud Locate and in the future Wi-Fi/BLE stations, etc.
 ¦   +---short_range            <-- internal API used by the BLE and Wi-Fi APIs (see below)
 ¦   +---at_client              <-- internal API used by the BLE, cell and Wi-Fi APIs
@@ -151,7 +153,8 @@ Configuration information for the examples and the tests can be found in the `cf
 | Cellular     | The [chip-to-chip security](/example/security/c2c "C2C example") example using the [security](/common/security "security API") API. |
 | Cellular     | A [TLS-secured version](/example/sockets "TLS sockets example") of the sockets example. |
 | Cellular     | An [MQTT/MQTT-SN client](/example/mqtt_client "MQTT/MQTT-SN example") using the [MQTT/MQTT-SN client](/common/mqtt_client "MQTT/MQTT-SN client API") API.|
-| Cellular     | [CellLocate](/example/location "CellLocate example") example. | Q2 2021|
+| Cellular     | An [HTTP client](/example/http_client "HTTP example") using the [HTTP client](/common/http_client "HTTP client API") API.|
+| Cellular     | [CellLocate](/example/location "CellLocate example") example.|
 | Bluetooth    | SPS (serial port service). |
 | Wi-Fi        | The [sockets](/example/sockets "sockets example") example brings up a TCP/UDP socket by using the [device](/common/device "device API"), [network](/common/network "network API") and [sock](/common/sock "sock API") APIs.  |
 | GNSS         | [location](/example/location "location example") example using a GNSS chip connected directly or via a cellular module.|

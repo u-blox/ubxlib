@@ -14,6 +14,7 @@ common/location/test
 common/at_client/test
 common/short_range/test
 common/mqtt_client/test
+common/http_client/test
 common/ubx_protocol/test
 common/spartn/test
 port/test

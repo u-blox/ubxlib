@@ -22,6 +22,7 @@ cell/src/u_cell_sec.c
 cell/src/u_cell_sec_c2c.c
 cell/src/u_cell_sec_tls.c
 cell/src/u_cell_mqtt.c
+cell/src/u_cell_http.c
 cell/src/u_cell_file.c
 cell/src/u_cell_loc.c
 cell/src/u_cell_gpio.c
@@ -75,6 +76,7 @@ common/utils/src/u_hex_bin_convert.c
 common/utils/src/u_time.c
 common/utils/src/u_mempool.c
 common/mqtt_client/src/u_mqtt_client.c
+common/http_client/src/u_http_client.c
 common/assert/src/u_assert.c
 port/platform/common/event_queue/u_port_event_queue.c
 port/platform/common/mbedtls/u_port_crypto.c

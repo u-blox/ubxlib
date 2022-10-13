@@ -29,6 +29,7 @@ common/network/src
 common/security/api
 common/sock/api
 common/mqtt_client/api
+common/http_client/api
 common/location/api
 common/location/src
 common/at_client/api

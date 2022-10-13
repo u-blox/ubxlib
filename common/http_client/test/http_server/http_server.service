@@ -1,0 +1,11 @@
+[Unit]
+Description=HTTP test servers
+
+[Service]
+# Modify this to point to wherever you've copied the HTTP test server stuff
+Type=forking
+WorkingDirectory=/home/rmea/http_server/
+ExecStart=/home/rmea/http_server/http_server.sh
+
+[Install]
+WantedBy=multi-user.target

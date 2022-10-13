@@ -42,6 +42,7 @@
 #include "u_port_uart.h"
 #include "u_port_gpio.h"
 #include "u_port_crypto.h"
+#include "u_port_event_queue.h"
 
 #include "u_at_client.h"
 
@@ -53,6 +54,8 @@
 #include "u_cell_net.h"     // important here
 #include "u_cell_private.h" // don't change it
 #include "u_cell_sec_c2c.h"
+#include "u_cell_http.h"
+#include "u_cell_http_private.h"
 #include "u_cell_pwr_private.h"
 
 /* ----------------------------------------------------------------
@@ -1181,6 +1184,37 @@ void uCellPrivateFileListLast(uCellPrivateFileListContainer_t **ppFileListContai
 {
     if ((ppFileListContainer != NULL) && (*ppFileListContainer != NULL)) {
         fileListClear(ppFileListContainer);
+    }
+}
+
+// Remove the HTTP context for the given instance.
+void uCellPrivateHttpRemoveContext(uCellPrivateInstance_t *pInstance)
+{
+    uCellHttpContext_t *pHttpContext;
+    uCellHttpInstance_t *pHttpInstance;
+    uCellHttpInstance_t *pNextHttpInstance;
+
+    if ((pInstance != NULL) && (pInstance->pHttpContext != NULL)) {
+
+        pHttpContext = pInstance->pHttpContext;
+
+        // Shut-down the event queue
+        uPortEventQueueClose(pHttpContext->eventQueueHandle);
+
+        // Free the instances
+        pHttpInstance = pHttpContext->pInstanceList;
+        while (pHttpInstance != NULL) {
+            pNextHttpInstance = pHttpInstance->pNext;
+            free(pHttpInstance);
+            pHttpInstance = pNextHttpInstance;
+        }
+
+        // Free the mutex
+        uPortMutexDelete(pHttpContext->linkedListMutex);
+
+        // Free the context
+        free(pHttpContext);
+        pInstance->pHttpContext = NULL;
     }
 }
 

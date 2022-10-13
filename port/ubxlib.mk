@@ -12,6 +12,7 @@ UBXLIB_MODULE_DIRS = \
 	${UBXLIB_BASE}/common/assert \
 	${UBXLIB_BASE}/common/location \
 	${UBXLIB_BASE}/common/mqtt_client \
+	${UBXLIB_BASE}/common/http_client \
 	${UBXLIB_BASE}/common/security \
 	${UBXLIB_BASE}/common/sock \
 	${UBXLIB_BASE}/common/ubx_protocol \
@@ -99,6 +100,7 @@ UBXLIB_TEST_DIRS += \
 	${UBXLIB_BASE}/example/security/psk \
 	${UBXLIB_BASE}/example/security/c2c \
 	${UBXLIB_BASE}/example/mqtt_client \
+	${UBXLIB_BASE}/example/http_client \
 	${UBXLIB_BASE}/example/location \
 	${UBXLIB_BASE}/example/cell/lte_cfg \
 	${UBXLIB_BASE}/example/cell/power_saving \

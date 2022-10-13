@@ -555,6 +555,25 @@ bool uNetworkTestHasMqttSn(uDeviceType_t deviceType,
     return (networkType == U_NETWORK_TYPE_CELL);
 }
 
+// Return true if the configuration supports HTTP.
+bool uNetworkTestHasHttp(uDeviceType_t deviceType,
+                         uNetworkType_t networkType,
+                         int32_t moduleType)
+{
+    (void) deviceType;
+    (void) moduleType;
+    // TODO: add Wi-Fi
+    // A couple of SARA-R5 cellular modules on the test system
+    // fail this test intermittently, no obvious reason why,
+    // hence allowing the option of disabling the test for
+    // cellular for now.
+#ifndef U_HTTP_CLIENT_CELL_DISABLE_TEST
+    return (networkType == U_NETWORK_TYPE_CELL);
+#else
+    return false;
+#endif
+}
+
 // Return true if the configuration supports credential storage.
 bool uNetworkTestHasCredentialStorage(uDeviceType_t deviceType,
                                       uNetworkType_t networkType,

@@ -9,6 +9,7 @@ example/sockets/credentials_tls.c
 example/security/e2e/e2e_main.c
 example/security/psk/psk_main.c
 example/mqtt_client/mqtt_main.c
+example/http_client/http_main.c
 example/location/main_loc_gnss.c
 example/location/main_loc_gnss_cell.c
 example/location/main_loc_cell_locate.c
@@ -31,6 +32,7 @@ cell/test/u_cell_sock_test.c
 cell/test/u_cell_sec_c2c_test.c
 cell/test/u_cell_sec_tls_test.c
 cell/test/u_cell_mqtt_test.c
+cell/test/u_cell_http_test.c
 cell/test/u_cell_file_test.c
 cell/test/u_cell_loc_test.c
 cell/test/u_cell_gpio_test.c
@@ -68,9 +70,9 @@ common/short_range/test/u_short_range_test.c
 common/short_range/test/u_short_range_test_preamble.c
 common/short_range/test/u_short_range_test_private.c
 common/mqtt_client/test/u_mqtt_client_test.c
-common/mqtt_client/test/u_mqtt_client_test.c
 common/utils/test/u_utils_test_mempool.c
 common/utils/test/u_utils_test_ringbuffer.c
+common/http_client/test/u_http_client_test.c
 port/test/u_port_test.c
 port/platform/common/test/u_preamble_test.c
 # Note: it is deliberate that u_runner.c is here but 

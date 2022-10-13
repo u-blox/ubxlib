@@ -88,6 +88,7 @@
 #include <u_sock_security.h>
 #include <u_mqtt_common.h>
 #include <u_mqtt_client.h>
+#include <u_http_client.h>
 #include <u_location.h>
 #include <u_ubx_protocol.h>
 #include <u_spartn.h>
@@ -110,6 +111,7 @@
 #include <u_cell_info.h>
 #include <u_cell_loc.h>
 #include <u_cell_mqtt.h>
+#include <u_cell_http.h>
 #include <u_cell_pwr.h>
 #include <u_cell_sec.h>
 #include <u_cell_sec_tls.h>

@@ -161,6 +161,8 @@ void uCellDeinit()
             uCellPrivateSleepRemoveContext(pInstance);
             // Free any FOTA context
             free(pInstance->pFotaContext);
+            // Free any HTTP context
+            uCellPrivateHttpRemoveContext(pInstance);
             free(pInstance);
         }
 
@@ -257,14 +259,6 @@ int32_t uCellAdd(uCellModuleType_t moduleType,
                     uCellPrivateClearRadioParameters(&(pInstance->radioParameters));
                     pInstance->pModule = &(gUCellPrivateModuleList[moduleType]);
                     pInstance->sockNextLocalPort = -1;
-                    pInstance->pSecurityC2cContext = NULL;
-                    pInstance->pMqttContext = NULL;
-                    pInstance->pLocContext = NULL;
-                    pInstance->socketsHexMode = false;
-                    pInstance->pFileSystemTag = NULL;
-                    pInstance->inWakeUpCallback = false;
-                    pInstance->pSleepContext = NULL;
-                    pInstance->pNext = NULL;
 
                     // Now set up the pins
                     uPortLog("U_CELL: initialising with enable power pin ");
