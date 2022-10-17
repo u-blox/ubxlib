@@ -281,9 +281,23 @@ int32_t uMqttClientDisconnect(const uMqttClientContext_t *pContext);
  */
 bool uMqttClientIsConnected(const uMqttClientContext_t *pContext);
 
-/** Set a callback to be called when new messages are
- * available to be read.  The callback may then call
- * uMqttClientGetUnread() to get the number of unread messages.
+/** Set a callback to be called when new messages are available to
+ * be read.  The callback may then call uMqttClientGetUnread() to get
+ * the number of unread messages.
+ *
+ * NOTE: it would be tempting to read a new unread message in your message
+ * callback.  However, note that if your device has been out of coverage
+ * while you are subscribed to an MQTT topic and then returns to coverage,
+ * there could be a deluge of messages that land all at once.  And since
+ * reading a message will cause the number of unread messages to change,
+ * you will likely get two unread message indications after every read: one
+ * indicating the count has gone up, since the messages are still arriving,
+ * and another indicating the count has gone down, since you've just read
+ * one.  Hence it is best if your MQTT message reads are carried out in
+ * their own thread; this thread would begin reading when a non-zero
+ * number of messages are available to read and continue to read messages
+ * until there are no more.  This takes the load out of the call-back queue
+ * and prevents multiple-triggering.
  *
  * @param[in] pContext        a pointer to the internal MQTT context
  *                            structure that was originally returned
