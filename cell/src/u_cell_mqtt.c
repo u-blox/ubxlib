@@ -1339,6 +1339,12 @@ static int32_t connect(const uCellPrivateInstance_t *pInstance,
             uAtClientResponseStop(atHandle);
         } else {
             uAtClientCommandStopReadResponse(atHandle);
+            // Catch errors such as +CME ERROR: operation not allowed,
+            // which is issued if this command is sent before a
+            // previous MQTT command was finished
+            uAtClientDeviceError_t deviceError;
+            uAtClientDeviceErrorGet(atHandle, &deviceError);
+            status = (deviceError.type == U_AT_CLIENT_DEVICE_ERROR_TYPE_NO_ERROR);
         }
 
         if ((uAtClientUnlock(atHandle) == 0) && (status == 1)) {
@@ -1733,6 +1739,10 @@ static int32_t subscribe(const uCellPrivateInstance_t *pInstance,
                 uAtClientResponseStop(atHandle);
             } else {
                 uAtClientCommandStopReadResponse(atHandle);
+                // Catch +CME ERROR etc.
+                uAtClientDeviceError_t deviceError;
+                uAtClientDeviceErrorGet(atHandle, &deviceError);
+                status = (deviceError.type == U_AT_CLIENT_DEVICE_ERROR_TYPE_NO_ERROR);
             }
 
             if ((uAtClientUnlock(atHandle) == 0) && (status == 1)) {
@@ -1813,6 +1823,10 @@ static int32_t unsubscribe(const uCellPrivateInstance_t *pInstance,
                 uAtClientResponseStop(atHandle);
             } else {
                 uAtClientCommandStopReadResponse(atHandle);
+                // Catch +CME ERROR etc.
+                uAtClientDeviceError_t deviceError;
+                uAtClientDeviceErrorGet(atHandle, &deviceError);
+                status = (deviceError.type == U_AT_CLIENT_DEVICE_ERROR_TYPE_NO_ERROR);
             }
 
             if ((uAtClientUnlock(atHandle) == 0) && (status == 1)) {
