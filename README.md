@@ -47,6 +47,7 @@ Hosts run `ubxlib` and interact with an attached periperal. A host platform cont
 - [STM32F4 Discovery board](https://www.st.com/en/evaluation-tools/stm32f4discovery.html)
 - [ESP32-DevKitC](https://www.espressif.com/en/products/devkits/esp32-devkitc/overview)
 - [u-blox NINA-W1 EVK](https://www.u-blox.com/en/product/evk-nina-w10)
+- [u-blox XPLR-IOT-1](https://www.u-blox.com/en/product/xplr-iot-1)
 
 If your MCU is on the list but your board is not:
 - Just set the HW pins in the source file of the example to match how your MCU is wired to the u-blox peripheral.
