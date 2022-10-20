@@ -339,8 +339,8 @@ int32_t uHttpClientPostRequest(uHttpClientContext_t *pContext,
  *
  * Only one HTTP request, of any kind, may be outstanding at a time.
  *
- * IMPORTANT: see warning below about the validity of the pResponseBody, pSize
- * and pContentType pointers.
+ * IMPORTANT: see warning below about the validity of the pResponseBody and
+ * pContentType pointers.
  *
  * Chunked or multi-part content is not handled here: should you wish to
  * handle such content you will need to do the re-assembly yourself.
@@ -366,9 +366,7 @@ int32_t uHttpClientPostRequest(uHttpClientContext_t *pContext,
  *                                   on return, in the blocking case, the amount of
  *                                   data copied to pResponseBody (in the non-blocking
  *                                   case the callback function is instead given the
- *                                   amount of data returned). As for pResponseBody,
- *                                   this MUST REMAIN VALID until pResponseCallback
- *                                   is called for the non-blocking case.
+ *                                   amount of data returned).
  * @param[out] pContentType          a place to put the content type of the response,
  *                                   for example "application/text". In the non-blocking
  *                                   case this storage MUST REMAIN VALID until
@@ -397,8 +395,7 @@ int32_t uHttpClientGetRequest(uHttpClientContext_t *pContext,
  *
  * Only one HTTP request, of any kind, may be outstanding at a time.
  *
- * IMPORTANT: see warning below about the validity of the pResponseHead
- * and pSize pointers.
+ * IMPORTANT: see warning below about the validity of the pResponseHead pointer.
  *
  * @param[in] pContext               a pointer to the internal HTTP context
  *                                   structure that was originally returned by
@@ -416,9 +413,7 @@ int32_t uHttpClientGetRequest(uHttpClientContext_t *pContext,
  *                                   on return, in the blocking case, the amount of
  *                                   data copied to pResponseHead (in the non-blocking
  *                                   case the callback function is instead given the
- *                                   amount of data returned). As for pResponseHead,
- *                                   this MUST REMAIN VALID until pResponseCallback
- *                                   is called for the non-blocking case.
+ *                                   amount of data returned).
  * @return                           in the blocking case the HTTP status code or
  *                                   negative error code; in the non-blocking case
  *                                   zero or negative error code.  If
