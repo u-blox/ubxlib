@@ -10,7 +10,7 @@ The goal of `ubxlib` is to deliver a single tested solution, with examples, whic
 
 ![ubxlib high level overview](/readme_images/ubxlib_high_level.png)
 
-The easiest way to quickly explore `ubxlib` is to start with a board listed in the [test farm](/port/platform/common/automation/DATABASE.md). u-blox EVKs (evaluation kits) or application boards can be found [here](https://www.u-blox.com/en/evk-search) or at major electronics distributors.
+The easiest way to quickly explore `ubxlib` is to start with a board listed in the [test farm](/port/platform/common/automation/DATABASE.md). u-blox EVKs (evaluation kits) or application boards can be found [here](https://www.u-blox.com/en/evk-search) or at major electronics distributors and code examples which run on the u-blox [XPLR-IOT-1 platform](https://www.u-blox.com/en/product/xplr-iot-1) can be found [here](https://github.com/u-blox/ubxlib_examples_xplr_iot).
 
 `ubxlib` runs on a host microcontroller and has a peripheral attached. This setup is very common in embedded applications. An example of such a host-peripheral configuration with EVK-NINA-B301 (Bluetooth 5.0) and EVK-R4 (SARA-R4 with 2G/3G/4G) in which the `ubxlib` host sets up a TCP connection is shown in the following figure. Many other combinations can be achieved, with the supported hosts and peripherals in the tables in the next section.
 
@@ -77,7 +77,7 @@ Peripherals are u-blox modules which accept commands (e.g. AT-commands) over a s
 # Structure of `ubxlib`
 The APIs for each type of u-blox module can be found in the relevant directory (e.g. [cell](/cell) for cellular modules and [ble](/ble)/[wifi](/wifi) for BLE/Wi-Fi modules).  The [common](/common) directory contains APIs and 'helper' modules that are shared by u-blox modules, most importantly the [device](/common/device) API, the [network](/common/network) API and the [sockets](/common/sockets) API.  All APIs are documented in the API header files.
 
-Examples demonstrating the use of the APIs can be found in the [example](/example) directory.
+Examples demonstrating the use of the APIs can be found in the [example](/example) directory.  If you are using Zephyr or the u-blox [XPLR-IOT-1 platform](https://www.u-blox.com/en/product/xplr-iot-1) you will find examples that are very simple to install and use in https://github.com/u-blox/ubxlib_examples_xplr_iot.
 
 Each API includes a `test` sub-directory containing the tests for that API which you may compile and run if you wish.
 

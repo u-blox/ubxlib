@@ -3,6 +3,8 @@ These directories provide the source code examples that show how to use the vari
 
 For each MCU you will find a `runner` build.  This builds and runs all of these examples and all of the unit tests.
 
+IN ADDITION to these examples, if you are using Zephyr or the u-blox [XPLR-IOT-1 platform](https://www.u-blox.com/en/product/xplr-iot-1), you will find examples that are very simple to install and use in https://github.com/u-blox/ubxlib_examples_xplr_iot.
+
 # Examples
 
 - [sockets](sockets) contains examples of how to bring up a network (cellular or Wi-Fi) and use it to make a UDP or TCP socket connection to a server on the public internet.
