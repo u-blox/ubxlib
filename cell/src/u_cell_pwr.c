@@ -964,10 +964,11 @@ static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance,
                 // "wake-up" character being sent to the module to get
                 // it out of sleep.
 
-                // Check if this platform supports suspension of CTS
-                // on a temporary basis (and that we're not LARA-R6
-                // which can't wake-up this way anyway)
-                if ((pInstance->pModule->moduleType != U_CELL_MODULE_TYPE_LARA_R6) &&
+                // Check if this platform supports UPSV power saving
+                // at all and if it supports suspension of CTS on a
+                // temporary basis
+                if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                       U_CELL_PRIVATE_FEATURE_UART_POWER_SAVING) &&
                     (uPortUartCtsSuspend(atStreamHandle) == 0)) {
                     // It does: resume CTS and we can use the wake-up on
                     // TX line feature for power saving
@@ -980,21 +981,23 @@ static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance,
                                          U_CELL_PWR_CONFIGURATION_COMMAND_TRIES);
             // RTS/CTS handshaking is not used by the UART HW, we
             // can use the wake-up on TX line feature without any
-            // complications, unless this is LARA-R6 which doesn't
-            // wake up that way
+            // complications
             if (uAtClientWakeUpHandlerIsSet(atHandle) &&
-                (pInstance->pModule->moduleType != U_CELL_MODULE_TYPE_LARA_R6)) {
+                U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                   U_CELL_PRIVATE_FEATURE_UART_POWER_SAVING)) {
                 uartPowerSavingMode = U_CELL_PWR_PSV_MODE_DATA;
             }
         }
     }
 
     if (success && uAtClientWakeUpHandlerIsSet(atHandle) &&
-        (pInstance->pinDtrPowerSaving >= 0)) {
+        (pInstance->pinDtrPowerSaving >= 0) &&
+        U_CELL_PRIVATE_HAS(pInstance->pModule,
+                           U_CELL_PRIVATE_FEATURE_UART_POWER_SAVING)) {
         // Irrespective of all the above, we permit the user to define
         // and connect this MCU to the module's DTR pin which,
-        // on SARA-R5, SARA-U201 and LARA-R6, can be used to get out of
-        // sleep mode. This will already have been set by the user calling
+        // on SARA-R5 and SARA-U201, can be used to get out of sleep.
+        // This will already have been set by the user calling
         // uCellPwrSetDtrPowerSavingPin().
         uartPowerSavingMode = U_CELL_PWR_PSV_MODE_DTR;
     }
