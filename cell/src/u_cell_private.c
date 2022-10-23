@@ -98,7 +98,8 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          // (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_DTR_POWER_SAVING)
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_AT_PROFILES)                 |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CTS_CONTROL)                 |
-         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SOCK_SET_LOCAL_PORT) /* features */
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SOCK_SET_LOCAL_PORT)         |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UART_POWER_SAVING) /* features */
         )
     },
     {
@@ -120,7 +121,8 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_FILE_SYSTEM_TAG)         |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING)       |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_EDRX)                    |
-         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_FOTA) /* features */
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_FOTA)                    |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UART_POWER_SAVING) /* features */
         )
     },
     {
@@ -147,8 +149,8 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_FILE_SYSTEM_TAG)                     |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING)                   |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_EDRX)                                |
-         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_FOTA) /* features */
-         /* features */
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_FOTA)                                |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UART_POWER_SAVING) /* features */
         )
     },
     {
@@ -166,7 +168,8 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_FILE_SYSTEM_TAG)                     |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_DEEP_SLEEP_URC)                      |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING)                   |
-         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_EDRX) /* features */
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_EDRX)                                |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UART_POWER_SAVING) /* features */
         )
     },
     {
@@ -206,7 +209,8 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTTSN)                              |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CTS_CONTROL)                         |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SOCK_SET_LOCAL_PORT)                 |
-         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_FOTA) /* features */
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_FOTA)                                |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UART_POWER_SAVING) /* features */
         )
     },
     {
@@ -226,7 +230,8 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_FILE_SYSTEM_TAG)                     |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_DEEP_SLEEP_URC)                      |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING)                   |
-         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_EDRX) /* features */
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_EDRX)                                |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UART_POWER_SAVING) /* features */
         )
     },
     {
@@ -259,7 +264,8 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          //(1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING_PAGING_WINDOW_SET) |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_EDRX)                                  |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTTSN)                                |
-         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_FOTA) /* features */
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_FOTA)                                  |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UART_POWER_SAVING) /* features */
         )
     },
     {

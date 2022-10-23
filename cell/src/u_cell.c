@@ -92,9 +92,11 @@ static void addCellInstance(uCellPrivateInstance_t *pInstance)
 }
 
 // Remove a cell instance from the list.
+// THIS NOW FREES THE CONTENTS OF THE INSTANCE ALSO; got tired
+// of forgetting to do the freeing in both of the places this is
+// called from.
 // gUCellPrivateMutex should be locked before this is called.
-// Note: doesn't free it, the caller must do that.
-static void removeCellInstance(const uCellPrivateInstance_t *pInstance)
+static void removeCellInstance(uCellPrivateInstance_t *pInstance)
 {
     uCellPrivateInstance_t *pCurrent;
     uCellPrivateInstance_t *pPrev = NULL;
@@ -107,6 +109,24 @@ static void removeCellInstance(const uCellPrivateInstance_t *pInstance)
             } else {
                 gpUCellPrivateInstanceList = pCurrent->pNext;
             }
+            // Tell the AT client to ignore any asynchronous events from now on
+            uAtClientIgnoreAsync(pInstance->atHandle);
+            // Free the wake-up callback
+            uAtClientSetWakeUpHandler(pInstance->atHandle, NULL, NULL, 0);
+            // Free any scan results
+            uCellPrivateScanFree(&(pInstance->pScanResults));
+            // Free any chip to chip security context
+            uCellPrivateC2cRemoveContext(pInstance);
+            // Free any location context and associated URC
+            uCellPrivateLocRemoveContext(pInstance);
+            // Free any sleep context
+            uCellPrivateSleepRemoveContext(pInstance);
+            // Free any FOTA context
+            free(pInstance->pFotaContext);
+            // Free any HTTP context
+            uCellPrivateHttpRemoveContext(pInstance);
+            uDeviceDestroyInstance(U_DEVICE_INSTANCE(pInstance->cellHandle));
+            free(pInstance);
             pCurrent = NULL;
         } else {
             pPrev = pCurrent;
@@ -114,7 +134,6 @@ static void removeCellInstance(const uCellPrivateInstance_t *pInstance)
         }
     }
 
-    uDeviceDestroyInstance(U_DEVICE_INSTANCE(pInstance->cellHandle));
 }
 
 /* ----------------------------------------------------------------
@@ -147,23 +166,6 @@ void uCellDeinit()
         while (gpUCellPrivateInstanceList != NULL) {
             pInstance = gpUCellPrivateInstanceList;
             removeCellInstance(pInstance);
-            // Tell the AT client to ignore any asynchronous events from now on
-            uAtClientIgnoreAsync(pInstance->atHandle);
-            // Free the wake-up callback
-            uAtClientSetWakeUpHandler(pInstance->atHandle, NULL, NULL, 0);
-            // Free any scan results
-            uCellPrivateScanFree(&(pInstance->pScanResults));
-            // Free any chip to chip security context
-            uCellPrivateC2cRemoveContext(pInstance);
-            // Free any location context and associated URC
-            uCellPrivateLocRemoveContext(pInstance);
-            // Free any sleep context
-            uCellPrivateSleepRemoveContext(pInstance);
-            // Free any FOTA context
-            free(pInstance->pFotaContext);
-            // Free any HTTP context
-            uCellPrivateHttpRemoveContext(pInstance);
-            free(pInstance);
         }
 
         // Unlock the mutex so that we can delete it
@@ -404,19 +406,6 @@ void uCellRemove(uDeviceHandle_t cellHandle)
         pInstance = pUCellPrivateGetInstance(cellHandle);
         if (pInstance != NULL) {
             removeCellInstance(pInstance);
-            // Tell the AT client to ignore any asynchronous events from now on
-            uAtClientIgnoreAsync(pInstance->atHandle);
-            // Free the wake-up callback
-            uAtClientSetWakeUpHandler(pInstance->atHandle, NULL, NULL, 0);
-            // Free any scan results
-            uCellPrivateScanFree(&(pInstance->pScanResults));
-            // Free any chip to chip security context
-            uCellPrivateC2cRemoveContext(pInstance);
-            // Free any location context and associated URC
-            uCellPrivateLocRemoveContext(pInstance);
-            // Free any sleep context
-            uCellPrivateSleepRemoveContext(pInstance);
-            free(pInstance);
         }
 
         U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);

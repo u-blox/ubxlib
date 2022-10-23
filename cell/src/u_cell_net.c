@@ -1022,6 +1022,7 @@ static int32_t registerNetwork(uCellPrivateInstance_t *pInstance,
     int32_t errorCode;
     uAtClientHandle_t atHandle = pInstance->atHandle;
     bool keepGoing = true;
+    bool deviceErrorDetected = false;
     int32_t regType;
     int32_t firstInt;
     int32_t status3gpp;
@@ -1065,17 +1066,31 @@ static int32_t registerNetwork(uCellPrivateInstance_t *pInstance,
         // The network
         uAtClientWriteString(atHandle, pMccMnc, true);
         uAtClientCommandStop(atHandle);
-        while (keepGoing && keepGoingLocalCb(pInstance)) {
+        // Loop until either we give up or we get a response
+        while (keepGoing && keepGoingLocalCb(pInstance) && !deviceErrorDetected) {
             uAtClientResponseStart(atHandle, NULL);
             keepGoing = (uAtClientErrorGet(atHandle) < 0);
+            // keepGoing will be false if we were successful
+            // (uAtClientErrorGet() returned 0, which is success),
+            // however it will ALSO be false if the module returned
+            // ERROR or "+CME ERROR: no network service",
+            // or "+CME ERROR: operation not allowed",
+            // so we need to check for device errors specifically
+            // and leave if one landed.
+            uAtClientDeviceError_t deviceError;
+            uAtClientDeviceErrorGet(atHandle, &deviceError);
+            deviceErrorDetected = (deviceError.type != U_AT_CLIENT_DEVICE_ERROR_TYPE_NO_ERROR);
             uAtClientClearError(atHandle);
-            uPortTaskBlock(1000);
         }
         uAtClientResponseStop(atHandle);
         uAtClientUnlock(atHandle);
-        if (keepGoing) {
-            // If we never got an answer, abort the
-            // command first.
+        if (keepGoing && !deviceErrorDetected) {
+            // Get here if there was a local abort (keepGoing
+            // was till true, we were still waiting for a response)
+            // and the module did not return ERROR/CME ERROR, i.e.
+            // we timed out waiting for an answer: need to
+            // abort the command for the module to start
+            // listening to us again
             abortCommand(pInstance);
         }
         // Let the registration outcome be decided
