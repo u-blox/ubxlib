@@ -42,6 +42,7 @@ wifi/src/u_wifi_cfg.c
 wifi/src/u_wifi_sock.c
 wifi/src/u_wifi_mqtt.c
 common/device/src/u_device.c
+common/device/src/u_device_serial.c
 common/device/src/u_device_shared.c
 common/device/src/u_device_private.c
 common/device/src/u_device_private_cell.c

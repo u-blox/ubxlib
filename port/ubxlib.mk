@@ -45,6 +45,7 @@ UBXLIB_SRC += ${UBXLIB_BASE}/common/network/src/u_network_shared.c
 UBXLIB_INC += ${UBXLIB_BASE}/common/network/api
 UBXLIB_PRIVATE_INC += ${UBXLIB_BASE}/common/network/src
 UBXLIB_SRC += ${UBXLIB_BASE}/common/device/src/u_device.c
+UBXLIB_SRC += ${UBXLIB_BASE}/common/device/src/u_device_serial.c
 UBXLIB_SRC += ${UBXLIB_BASE}/common/device/src/u_device_shared.c
 UBXLIB_SRC += ${UBXLIB_BASE}/common/device/src/u_device_private.c
 UBXLIB_INC += ${UBXLIB_BASE}/common/device/api
@@ -92,6 +93,7 @@ UBXLIB_TEST_DIRS += \
 	${UBXLIB_BASE}/port/platform/common/runner \
 	${UBXLIB_BASE}/port/platform/common/test \
 	${UBXLIB_BASE}/port/test \
+	${UBXLIB_BASE}/common/device/test \
 	${UBXLIB_BASE}/common/network/test
 # Examples are compiled as tests
 UBXLIB_TEST_DIRS += \

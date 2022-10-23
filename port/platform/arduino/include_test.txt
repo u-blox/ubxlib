@@ -8,6 +8,7 @@ cell/test
 gnss/test
 wifi/test
 common/sock/test
+common/device/test
 common/network/test
 common/security/test
 common/location/test

@@ -52,6 +52,7 @@ wifi/test/u_wifi_test.c
 wifi/test/u_wifi_cfg_test.c
 wifi/test/u_wifi_sock_test.c
 wifi/test/u_wifi_test_private.c
+common/device/test/u_device_test.c
 common/network/test/u_network_test.c
 common/network/test/u_network_test_shared_cfg.c
 common/sock/test/u_sock_test.c

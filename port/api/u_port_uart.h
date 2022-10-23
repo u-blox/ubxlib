@@ -31,6 +31,12 @@
  * are thread-safe.
  */
 
+/* NOTE TO MAINTAINERS: there is a virtualised version of this
+ * in the form of u_device_serial.h over in the uDevice API:
+ * if you add or amend the API here you may need to make the
+ * same change there.
+ */
+
 #ifdef __cplusplus
 extern "C" {
 #endif

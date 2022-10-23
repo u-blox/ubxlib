@@ -22,6 +22,8 @@
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
 
+#include "u_device_serial.h"
+
 /** \addtogroup device Device
  *  @{
  */
@@ -67,6 +69,7 @@ typedef enum {
     U_DEVICE_TRANSPORT_TYPE_NONE,
     U_DEVICE_TRANSPORT_TYPE_UART,
     U_DEVICE_TRANSPORT_TYPE_I2C,
+    U_DEVICE_TRANSPORT_TYPE_VIRTUAL_SERIAL,
     U_DEVICE_TRANSPORT_TYPE_MAX_NUM
 } uDeviceTransportType_t;
 
@@ -110,9 +113,9 @@ typedef struct {
     int32_t pinCts;           /**< The input pin that the module
                                    will use to indicate that data can be sent
                                    to it; use -1 if there is no such connection. */
-    int32_t pinRts;          /**< The output pin output pin that tells the
-                                  module that it can send more UART
-                                  data; use -1 if there is no such connection. */
+    int32_t pinRts;           /**< The output pin output pin that tells the
+                                   module that it can send more UART
+                                   data; use -1 if there is no such connection. */
     /* This is the end of version 0 of this structure:
        should any fields be added to this structure in
        future they must be added AFTER this point and
@@ -124,6 +127,25 @@ typedef struct {
        field is populated then the version field of
        this structure must be set to 1 or higher". */
 } uDeviceCfgUart_t;
+
+/** Virtual serial interface.
+ */
+typedef struct {
+    uDeviceVersion_t version; /**< Version of this structure; allow your
+                                   compiler to initialise this to zero
+                                   unless otherwise specified below. */
+    uDeviceSerial_t *pDevice; /**< The virtual serial interface. */
+    /* This is the end of version 0 of this structure:
+       should any fields be added to this structure in
+       future they must be added AFTER this point and
+       instructions must be given against each one
+       as to how to set the version field if any of
+       the new fields are populated. For example,
+       if int32_t pinMagic were added, the comment
+       against it might and with the clause"; if this
+       field is populated then the version field of
+       this structure must be set to 1 or higher". */
+} uDeviceCfgVirtualSerial_t;
 
 /** I2C transport configuration.
  */
@@ -141,7 +163,7 @@ typedef struct {
                                     and the default clock frequence will be
                                     employed; however, if you wish to set a
                                     different clock frequency you may set it
-                                    here.  Note that it alreadyOpen is set
+                                    here.  Note that if alreadyOpen is set
                                     to true then this will be IGNORED. */
     bool alreadyOpen;          /**< Set this to true if the application code
                                     has already opened the I2C port and
@@ -284,6 +306,7 @@ typedef struct {
     union {
         uDeviceCfgUart_t cfgUart;
         uDeviceCfgI2c_t cfgI2c;
+        uDeviceCfgVirtualSerial_t cfgVirtualSerial;
     } transportCfg;
     /* This is the end of version 0 of this structure:
        should any fields be added to this structure in
@@ -319,16 +342,17 @@ int32_t uDeviceDeinit();
 
 /** Fill a device configuration with recommended defaults.
  * These defaults come from the port specific settings or
- * possible compile time external defines.
- * This is a voluntary convenience routine.
- * Please note that the module type field may have to be filled in
- * manually after this call as there is currently no applicable default
- * unless it has been specified externally via U_CFG_..._MODULE_TYPE
+ * possible compile time external defines. This is a voluntary
+ * convenience routine. Please note that the module type field
+ * may have to be filled in manually after this call as there
+ * is currently no applicable default unless it has been
+ * specified externally via U_CFG_..._MODULE_TYPE
  *
  * @param[in] deviceType      type of the device
  * @param[in] pDeviceCfg      device configuration to be filled,
  *                            cannot be NULL.
- * @return                    zero on success else a negative error code.
+ * @return                    zero on success else a negative
+ *                            error code.
  */
 int32_t uDeviceGetDefaults(uDeviceType_t deviceType,
                            uDeviceCfg_t *pDeviceCfg);
@@ -339,7 +363,8 @@ int32_t uDeviceGetDefaults(uDeviceType_t deviceType,
  * @param[in] pDeviceCfg      device configuration, cannot be NULL.
  * @param[out] pDeviceHandle  a place to put the device handle;
  *                            cannot be NULL.
- * @return                    zero on success else a negative error code.
+ * @return                    zero on success else a negative error
+ *                            code.
  */
 int32_t uDeviceOpen(const uDeviceCfg_t *pDeviceCfg,
                     uDeviceHandle_t *pDeviceHandle);
