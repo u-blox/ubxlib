@@ -48,6 +48,7 @@
 #include <u_compiler.h>
 #include <u_error_common.h>
 #include <u_assert.h>
+#include <u_interface.h>
 
 // Porting APIs
 #include <u_port.h>

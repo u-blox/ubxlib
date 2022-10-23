@@ -75,6 +75,7 @@ common/utils/src/u_ringbuffer.c
 common/utils/src/u_hex_bin_convert.c
 common/utils/src/u_time.c
 common/utils/src/u_mempool.c
+common/utils/src/u_interface.c
 common/mqtt_client/src/u_mqtt_client.c
 common/http_client/src/u_http_client.c
 common/assert/src/u_assert.c
