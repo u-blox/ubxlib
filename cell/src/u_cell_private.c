@@ -28,7 +28,6 @@
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
 
-#include "stdlib.h"    // malloc() and free()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
@@ -37,6 +36,7 @@
 
 #include "u_error_common.h"
 
+#include "u_port_heap.h"
 #include "u_port.h"
 #include "u_port_os.h"
 #include "u_port_uart.h"
@@ -436,7 +436,7 @@ static int32_t fileListGetRemove(uCellPrivateFileListContainer_t **ppFileContain
                     U_CELL_FILE_NAME_MAX_LENGTH + 1);
         }
         pTmp = (*ppFileContainer)->pNext;
-        free(*ppFileContainer);
+        uPortFree(*ppFileContainer);
         *ppFileContainer = pTmp;
         errorOrCount = 0;
         while (pTmp != NULL) {
@@ -455,7 +455,7 @@ static void fileListClear(uCellPrivateFileListContainer_t **ppFileContainer)
 
     while (*ppFileContainer != NULL) {
         pTmp = (*ppFileContainer)->pNext;
-        free(*ppFileContainer);
+        uPortFree(*ppFileContainer);
         *ppFileContainer = pTmp;
     }
 }
@@ -751,7 +751,7 @@ void uCellPrivateScanFree(uCellPrivateNet_t **ppScanResults)
 
     while (*ppScanResults != NULL) {
         pTmp = (*ppScanResults)->pNext;
-        free(*ppScanResults);
+        uPortFree(*ppScanResults);
         *ppScanResults = pTmp;
     }
 
@@ -786,18 +786,18 @@ void uCellPrivateC2cRemoveContext(uCellPrivateInstance_t *pInstance)
                                        NULL, NULL);
             // For safety
             memset(pContext->pTx, 0, sizeof(*(pContext->pTx)));
-            free(pContext->pTx);
+            uPortFree(pContext->pTx);
         }
         if (pContext->pRx != NULL) {
             uAtClientStreamInterceptRx(pInstance->atHandle,
                                        NULL, NULL);
             // For safety
             memset(pContext->pRx, 0, sizeof(*(pContext->pRx)));
-            free(pContext->pRx);
+            uPortFree(pContext->pRx);
         }
         // For safety
         memset(pContext, 0, sizeof(*pContext));
-        free(pContext);
+        uPortFree(pContext);
         pInstance->pSecurityC2cContext = NULL;
     }
 }
@@ -819,7 +819,7 @@ void uCellPrivateLocRemoveContext(uCellPrivateInstance_t *pInstance)
             pContext->fixDataStorageMutex = NULL;
         }
         // Free the context
-        free(pContext);
+        uPortFree(pContext);
         pInstance->pLocContext = NULL;
     }
 }
@@ -829,7 +829,7 @@ void uCellPrivateSleepRemoveContext(uCellPrivateInstance_t *pInstance)
 {
     if (pInstance != NULL) {
         // Free the context
-        free(pInstance->pSleepContext);
+        uPortFree(pInstance->pSleepContext);
         pInstance->pSleepContext = NULL;
     }
 }
@@ -1126,7 +1126,7 @@ int32_t uCellPrivateFileListFirst(const uCellPrivateInstance_t *pInstance,
         while (keepGoing) {
             keepGoing = false;
             errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
-            pFileContainer = (uCellPrivateFileListContainer_t *) malloc(sizeof(*pFileContainer));
+            pFileContainer = (uCellPrivateFileListContainer_t *) pUPortMalloc(sizeof(*pFileContainer));
             if (pFileContainer != NULL) {
                 errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
                 // Read file name
@@ -1140,7 +1140,7 @@ int32_t uCellPrivateFileListFirst(const uCellPrivateInstance_t *pInstance,
                 count = filelListAddCount(ppFileListContainer, pFileContainer);
             } else {
                 // Nothing there, free it
-                free(pFileContainer);
+                uPortFree(pFileContainer);
             }
         }
         uAtClientResponseStop(atHandle);

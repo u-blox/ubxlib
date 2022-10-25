@@ -32,7 +32,6 @@
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
 
-#include "stdlib.h"    // malloc() and free()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
@@ -44,6 +43,7 @@
 
 #include "u_cfg_sw.h"
 #include "u_port.h"
+#include "u_port_heap.h"
 #include "u_port_os.h"
 #include "u_port_debug.h"
 #include "u_port_event_queue.h"
@@ -330,7 +330,7 @@ static void freeSpsConnection(int32_t spsConnHandle)
         spsConnection_t *pSpsConn = gpSpsConnections[spsConnHandle];
         uRingBufferDelete(&pSpsConn->rxRingBuffer);
         uPortSemaphoreDelete(pSpsConn->txCreditsSemaphore);
-        free(pSpsConn);
+        uPortFree(pSpsConn);
         gpSpsConnections[spsConnHandle] = NULL;
     }
 }
@@ -353,7 +353,7 @@ static spsConnection_t *initSpsConnection(int32_t spsConnHandle, int32_t gapConn
     }
 
     if (gpSpsConnections[spsConnHandle] == NULL) {
-        gpSpsConnections[spsConnHandle] = (spsConnection_t *)malloc(sizeof(spsConnection_t));
+        gpSpsConnections[spsConnHandle] = (spsConnection_t *)pUPortMalloc(sizeof(spsConnection_t));
     }
 
     if (gpSpsConnections[spsConnHandle] != NULL) {

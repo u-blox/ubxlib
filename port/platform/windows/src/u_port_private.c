@@ -21,7 +21,6 @@
 #ifdef U_CFG_OVERRIDE
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
-#include "stdlib.h"    // For malloc()/free()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
@@ -33,6 +32,7 @@
 #include "u_error_common.h"
 #include "u_assert.h"
 #include "u_port.h"
+#include "u_port_heap.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"
 #include "u_port_private.h"
@@ -326,8 +326,8 @@ static void queueFree(uPortPrivateQueue_t *pQueue)
     uPortSemaphoreDelete(pQueue->writeSemaphore);
     uPortSemaphoreDelete(pQueue->readSemaphore);
     // It is valid C to free a NULL buffer
-    free(pQueue->pBuffer);
-    free(pQueue);
+    uPortFree(pQueue->pBuffer);
+    uPortFree(pQueue);
 }
 
 // Remove a queue from the list, freeing memory.
@@ -395,7 +395,7 @@ static void timerRemove(uPortTimerHandle_t handle)
             gpTimerList = pTimer->pNext;
         }
         // Free the entry
-        free(pTimer);
+        uPortFree(pTimer);
     }
 }
 
@@ -816,7 +816,7 @@ int32_t uPortPrivateQueueAdd(size_t itemSizeBytes, size_t maxNumItems)
 
         if (success) {
             // Allocate memory for the queue
-            pNew = (uPortPrivateQueue_t *) malloc(sizeof(uPortPrivateQueue_t));
+            pNew = (uPortPrivateQueue_t *) pUPortMalloc(sizeof(uPortPrivateQueue_t));
             if (pNew != NULL) {
                 pNew->writeSemaphore = INVALID_HANDLE_VALUE;
                 pNew->readSemaphore = INVALID_HANDLE_VALUE;
@@ -829,7 +829,7 @@ int32_t uPortPrivateQueueAdd(size_t itemSizeBytes, size_t maxNumItems)
                     (uPortSemaphoreCreate(&pNew->readSemaphore, 0, maxNumItems) == 0) &&
                     (uPortSemaphoreCreate(&pNew->accessSemaphore, 1, 1) == 0)) {
                     // Allocate memory for the buffer
-                    pNew->pBuffer = (char *) malloc(bufferSizeBytes);
+                    pNew->pBuffer = (char *) pUPortMalloc(bufferSizeBytes);
                     if (pNew->pBuffer != NULL) {
                         // Populate the queue entry and add it to the front
                         // of the list
@@ -1145,7 +1145,7 @@ int32_t uPortPrivateTimerCreate(uPortTimerHandle_t *pHandle,
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if (pHandle != NULL) {
             // Allocate memory for the timer
-            pTimer = (uPortPrivateTimer_t *) malloc(sizeof(uPortPrivateTimer_t));
+            pTimer = (uPortPrivateTimer_t *) pUPortMalloc(sizeof(uPortPrivateTimer_t));
             errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
             if (pTimer != NULL) {
                 // Create the timer
@@ -1175,10 +1175,10 @@ int32_t uPortPrivateTimerCreate(uPortTimerHandle_t *pHandle,
                         // The name already exists: what we've got
                         // back is the handle of another timer, which is
                         // an error for us
-                        free(pTimer);
+                        uPortFree(pTimer);
                     }
                 } else {
-                    free(pTimer);
+                    uPortFree(pTimer);
                 }
             }
         }

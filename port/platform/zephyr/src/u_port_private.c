@@ -24,11 +24,11 @@
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
-#include "stdlib.h"    // malloc()/free()
 
 #include "u_cfg_os_platform_specific.h"
 #include "u_error_common.h"
 #include "u_port.h"
+#include "u_port_heap.h"
 #include "u_port_os.h"
 #include "u_port_private.h"
 #include "u_port_event_queue.h"
@@ -164,7 +164,7 @@ static void timerRemove(struct k_timer *pKTimer)
             gpTimerList = pTimer->pNext;
         }
         // Free the entry
-        free(pTimer);
+        uPortFree(pTimer);
     }
 }
 
@@ -287,7 +287,7 @@ int32_t uPortPrivateTimerCreate(uPortTimerHandle_t *pHandle,
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if (pHandle != NULL) {
             // Create an entry in the list
-            pTimer = (uPortPrivateTimer_t *) malloc(sizeof(uPortPrivateTimer_t));
+            pTimer = (uPortPrivateTimer_t *) pUPortMalloc(sizeof(uPortPrivateTimer_t));
             errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
             if (pTimer != NULL) {
                 // Find a free timer structure
@@ -306,7 +306,7 @@ int32_t uPortPrivateTimerCreate(uPortTimerHandle_t *pHandle,
                     errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
                 } else {
                     // Tidy up if a free timer could not be found
-                    free(pTimer);
+                    uPortFree(pTimer);
                 }
             }
         }

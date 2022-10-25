@@ -38,6 +38,7 @@
                                               any print or scan function is used. */
 #include "u_port_debug.h"
 #include "u_port.h"
+#include "u_port_heap.h"
 #include "u_port_os.h"
 #include "u_port_event_queue.h"
 #include "u_port_uart.h"
@@ -52,7 +53,6 @@
 #include "u_port_private.h"  // Down here 'cos it needs GPIO_TypeDef
 
 #include "string.h" // for memcpy()
-#include "stdlib.h" // for malloc()/free()
 
 /* The code here was written using the really useful information
  * here:
@@ -428,7 +428,7 @@ static int32_t nextHandleGet()
 }
 
 // Add a UART data structure to the list.
-// The required memory is malloc()ed.
+// The required memory is allocated.
 // Note: gMutex should be locked before this is called.
 static uPortUartData_t *pAddUart(uPortUartData_t *pUartData)
 {
@@ -440,7 +440,7 @@ static uPortUartData_t *pAddUart(uPortUartData_t *pUartData)
     }
 
     // Malloc memory for the item
-    *ppUartData = (uPortUartData_t *) malloc(sizeof(uPortUartData_t));
+    *ppUartData = (uPortUartData_t *) pUPortMalloc(sizeof(uPortUartData_t));
     if (*ppUartData != NULL) {
         // Copy the data in
         memcpy(*ppUartData, pUartData, sizeof(uPortUartData_t));
@@ -493,7 +493,7 @@ static uPortUartData_t *pGetUartDataByUart(int32_t uart)
 }
 
 // Remove a UART from the list.
-// The memory occupied is free()ed.
+// The memory occupied is free'ed.
 // Note: gMutex should be locked before this is called.
 static bool removeUart(uPortUartData_t *pUartData)
 {
@@ -525,7 +525,7 @@ static bool removeUart(uPortUartData_t *pUartData)
         if (pList == gpUartDataHead) {
             gpUartDataHead = pList->pNext;
         }
-        free(pList);
+        uPortFree(pList);
     }
 
     return found;
@@ -587,7 +587,7 @@ static void uartClose(int32_t handle)
         }
         if (pUartData->rxBufferIsMalloced) {
             // Free the buffer
-            free(pUartData->pRxBufferStart);
+            uPortFree(pUartData->pRxBufferStart);
         }
         // And finally remove the UART from the list
         removeUart(pUartData);
@@ -973,7 +973,7 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
                 uartData.pRxBufferStart = (char *) pReceiveBuffer;
                 if (uartData.pRxBufferStart == NULL) {
                     // Malloc memory for the read buffer
-                    uartData.pRxBufferStart = (char *) malloc(rxBufferSizeBytes);
+                    uartData.pRxBufferStart = (char *) pUPortMalloc(rxBufferSizeBytes);
                     uartData.rxBufferIsMalloced = true;
                 }
                 if (uartData.pRxBufferStart != NULL) {
@@ -1160,7 +1160,7 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
                 // If we failed, clean up
                 if (handleOrErrorCode < 0) {
                     if (uartData.rxBufferIsMalloced) {
-                        free(uartData.pRxBufferStart);
+                        uPortFree(uartData.pRxBufferStart);
                     }
                 }
             }

@@ -31,7 +31,6 @@
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
 
-#include "stdlib.h"    // malloc()/free()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
@@ -46,6 +45,7 @@
 #include "u_error_common.h"
 
 #include "u_port.h"
+#include "u_port_heap.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"
 
@@ -396,7 +396,7 @@ U_PORT_TEST_FUNCTION("[spartn]", "spartnMessage")
     // on the header provides only light protection, it is
     // possible to detect a SPARTN message header in the random
     // data.
-    pBuffer = (char *) malloc(U_SPARTN_TEST_BUFFER_SIZE_BYTES);
+    pBuffer = (char *) pUPortMalloc(U_SPARTN_TEST_BUFFER_SIZE_BYTES);
     U_PORT_TEST_ASSERT(pBuffer != NULL);
 
     // Do this lots of times for good randomness
@@ -441,7 +441,7 @@ U_PORT_TEST_FUNCTION("[spartn]", "spartnMessage")
                                        NULL) == sizeof(gpSpartnMessage));
 
     // Free memory
-    free(pBuffer);
+    uPortFree(pBuffer);
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();

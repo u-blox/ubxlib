@@ -28,7 +28,6 @@
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
 
-#include "stdlib.h"    // malloc() and free()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
@@ -39,6 +38,7 @@
 #include "u_error_common.h"
 
 #include "u_port_debug.h"
+#include "u_port_heap.h"
 #include "u_port_os.h"
 #include "u_port_gpio.h"
 
@@ -122,9 +122,9 @@ static void removeCellInstance(uCellPrivateInstance_t *pInstance)
             // Free any sleep context
             uCellPrivateSleepRemoveContext(pInstance);
             // Free any FOTA context
-            free(pInstance->pFotaContext);
+            uPortFree(pInstance->pFotaContext);
             uDeviceDestroyInstance(U_DEVICE_INSTANCE(pInstance->cellHandle));
-            free(pInstance);
+            uPortFree(pInstance);
             pCurrent = NULL;
         } else {
             pPrev = pCurrent;
@@ -230,7 +230,7 @@ int32_t uCellAdd(uCellModuleType_t moduleType,
                 (pGetCellInstanceAtHandle(atHandle) == NULL)) {
                 handleOrErrorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
                 // Allocate memory for the instance
-                pInstance = (uCellPrivateInstance_t *) malloc(sizeof(uCellPrivateInstance_t));
+                pInstance = (uCellPrivateInstance_t *) pUPortMalloc(sizeof(uCellPrivateInstance_t));
                 if (pInstance != NULL) {
                     handleOrErrorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
                     // Fill the values in
@@ -376,7 +376,7 @@ int32_t uCellAdd(uCellModuleType_t moduleType,
                         *pCellHandle = pInstance->cellHandle;
                     } else {
                         // If we hit a platform error, free memory again
-                        free(pInstance);
+                        uPortFree(pInstance);
                     }
                 }
             }

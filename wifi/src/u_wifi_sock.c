@@ -28,8 +28,6 @@
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
 
-//lint -efile(537, stdlib.h) suppress repeated include
-#include "stdlib.h"    // malloc() and free()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"

@@ -188,7 +188,7 @@ void uGnssTestPrivateCleanup(uGnssTestPrivate_t *pParameters);
  * - if it returns #U_ERROR_COMMON_SUCCESS then an expected
  *   NMEA sequence has ended.
  * - to stop using this function without a memory leak you must
- *   free(*ppContext).
+ *   uPortFree(*ppContext).
  *
  * @param pNmeaMessage a pointer to a complete NMEA message.
  * @param size         the number of bytes at pNmeaMessage.
@@ -202,7 +202,7 @@ void uGnssTestPrivateCleanup(uGnssTestPrivate_t *pParameters);
  *                     errors are spotted.
  * @return             if *ppContext is NULL and pNmeaMessage contains
  *                     the start of an NMEA sequence then context data
- *                     will be malloc()ed and stored at *ppContext for
+ *                     will be allocated and stored at *ppContext for
  *                     the next time the function is called and
  *                     #U_ERROR_COMMON_TIMEOUT will be returned.  If
  *                     *ppContext is non-NULL then the data stored
@@ -213,11 +213,11 @@ void uGnssTestPrivateCleanup(uGnssTestPrivate_t *pParameters);
  *                     there is an error in the sequence, or the start
  *                     of a sequence has not yet been found,
  *                     #U_ERROR_COMMON_NOT_FOUND will be returned and
- *                     *ppContext will be free()ed (or not populated),
+ *                     *ppContext will be free'ed (or not populated),
  *                     resetting things for the next sequence.  If a
  *                     sequence is completed #U_ERROR_COMMON_SUCCESS
  *                     will be returned and, as for the error case,
- *                     the malloc()ed context will be free()ed.
+ *                     the allocated context will be free'ed.
  */
 //lint -esym(759, uGnssTestPrivateNmeaComprehender) Suppress the "can be
 //lint -esym(765, uGnssTestPrivateNmeaComprehender) made static" etc. which

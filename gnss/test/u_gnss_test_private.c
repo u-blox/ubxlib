@@ -31,7 +31,7 @@
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
-#include "stdlib.h"    // malloc()/free()
+#include "stdlib.h"    // strtol()
 #include "string.h"    // memset(), strtol()
 
 #include "u_cfg_sw.h"
@@ -41,6 +41,7 @@
 #include "u_error_common.h"
 
 #include "u_port.h"
+#include "u_port_heap.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"
 #include "u_port_uart.h"
@@ -566,7 +567,7 @@ int32_t uGnssTestPrivateNmeaComprehender(const char *pNmeaMessage, size_t size,
         if ((size >= 6) && (strstr(pNmeaMessage, "$GNRMC") == pNmeaMessage)) {
             // Got the start of a sequence, allocate memory to track it
             errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
-            pContext = (uGnssTestPrivateNmeaContext_t *) malloc(sizeof(uGnssTestPrivateNmeaContext_t));
+            pContext = (uGnssTestPrivateNmeaContext_t *) pUPortMalloc(sizeof(uGnssTestPrivateNmeaContext_t));
             if (pContext != NULL) {
                 memset(pContext, 0, sizeof(*pContext));
                 pContext->state = U_GNSS_TEST_PRIVATE_NMEA_STATE_GOT_GNRMC_1_START;
@@ -711,8 +712,8 @@ int32_t uGnssTestPrivateNmeaComprehender(const char *pNmeaMessage, size_t size,
 
     if ((errorCode == (int32_t) U_ERROR_COMMON_NOT_FOUND) ||
         (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS)) {
-        // In either case we can free the context; it is legal C to free a NULL pointer
-        free(pContext);
+        // In either case we can free the context
+        uPortFree(pContext);
         pContext = NULL;
     }
 

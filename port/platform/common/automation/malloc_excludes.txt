@@ -1,0 +1,18 @@
+# Place in this file the names of any directory paths, optionally including a file name if
+# you need to be specific, relative to the ubxlib root directory, that are permitted to make
+# calls to malloc() or free().  This list is read by the script u_run_check_malloc.py which
+# searchs all .c/.cpp and .h/.hpp files for malloc() and free() calls.  Forward slashes, "/",
+# must be used
+
+# The malloc()/free() API and default implementation
+port/api/u_port_heap.h
+port/u_port_heap.c
+
+# Platform files that map malloc()/free(), left this way so that customer code can use malloc()/free()
+port/platform/cell_ucpu/r5/src/u_port_clib.c
+port/platform/nrf5sdk/src/heap_useNewlib.c
+port/platform/stm32cube/src/heap_useNewlib.c
+port/platform/zephyr/src/u_port_clib.c
+
+# Unity stuff used in automated testing
+port/platform/common/automation/Unity

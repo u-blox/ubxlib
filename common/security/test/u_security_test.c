@@ -33,7 +33,7 @@
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
 
-#include "stdlib.h"    // malloc(), free(), rand()
+#include "stdlib.h"    // rand()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
@@ -47,6 +47,7 @@
 #include "u_error_common.h" // For U_ERROR_COMMON_NOT_SUPPORTED
 
 #include "u_port.h"
+#include "u_port_heap.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"
 
@@ -568,7 +569,7 @@ U_PORT_TEST_FUNCTION("[security]", "securityC2cSock")
             U_PORT_TEST_ASSERT(sizeBytes >= sizeof(gSendData) - 1);
 
             // ...and capture them all again afterwards
-            pDataReceived = (char *) malloc(sizeof(gSendData) - 1);
+            pDataReceived = (char *) pUPortMalloc(sizeof(gSendData) - 1);
             U_PORT_TEST_ASSERT(pDataReceived != NULL);
             startTimeMs = uPortGetTickTimeMs();
             offset = 0;
@@ -607,7 +608,7 @@ U_PORT_TEST_FUNCTION("[security]", "securityC2cSock")
             U_PORT_TEST_ASSERT(uSockClose(descriptor) == 0);
             uSockCleanUp();
 
-            free(pDataReceived);
+            uPortFree(pDataReceived);
 
             U_TEST_PRINT_LINE("closing the session again...");
             U_PORT_TEST_ASSERT(uSecurityC2cClose(devHandle) == 0);
@@ -785,7 +786,7 @@ U_PORT_TEST_FUNCTION("[security]", "securityC2cSockAsync")
 
             // Throw small TCP segments up and wait
             // for them to come back...
-            gpBuffer = (char *) malloc(U_SECURITY_TEST_C2C_SMALL_CHUNK_SIZE);
+            gpBuffer = (char *) pUPortMalloc(U_SECURITY_TEST_C2C_SMALL_CHUNK_SIZE);
             U_PORT_TEST_ASSERT(gpBuffer != NULL);
             offset = 0;
             y = 0;
@@ -855,7 +856,7 @@ U_PORT_TEST_FUNCTION("[security]", "securityC2cSockAsync")
             U_PORT_TEST_ASSERT(uPortEventQueueClose(gEventQueueHandle) == 0);
             gEventQueueHandle = -1;
 
-            free(gpBuffer);
+            uPortFree(gpBuffer);
 
             U_TEST_PRINT_LINE("closing the session again...");
             U_PORT_TEST_ASSERT(uSecurityC2cClose(devHandle) == 0);
@@ -1090,7 +1091,7 @@ U_PORT_TEST_FUNCTION("[security]", "securityE2eEncryption")
                 }
 
                 // Allocate memory to receive into
-                pData = malloc(sizeof(gAllChars) + headerLengthBytes);
+                pData = pUPortMalloc(sizeof(gAllChars) + headerLengthBytes);
                 U_PORT_TEST_ASSERT(pData != NULL);
                 // Copy the output data into the input buffer, just to have
                 // something in there we can compare against
@@ -1104,7 +1105,7 @@ U_PORT_TEST_FUNCTION("[security]", "securityE2eEncryption")
                 U_TEST_PRINT_LINE("%d byte(s) of data returned.", y);
                 //lint -e(668) Suppress possible NULL pointer, it is checked above
                 U_PORT_TEST_ASSERT(memcmp(pData, gAllChars, sizeof(gAllChars)) != 0);
-                free(pData);
+                uPortFree(pData);
             } else {
                 U_TEST_PRINT_LINE("this device supports u-blox security but has not"
                                   " been security sealed, no testing of end to end"
@@ -1315,7 +1316,7 @@ U_PORT_TEST_FUNCTION("[security]", "securityZtp")
                 U_PORT_TEST_ASSERT((y > 0) || (y == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED));
                 if (y > 0) {
                     // Allocate memory to receive into and zero it for good measure
-                    pData = (char *) malloc(y);
+                    pData = (char *) pUPortMalloc(y);
                     U_PORT_TEST_ASSERT(pData != NULL);
                     //lint -e(668) Suppress possible use of NULL pointer for pData
                     memset(pData, 0, y);
@@ -1325,7 +1326,7 @@ U_PORT_TEST_FUNCTION("[security]", "securityZtp")
                     // Can't really check the data but can check that it is
                     // of the correct length
                     U_PORT_TEST_ASSERT(strlen(pData) == z - 1);
-                    free(pData);
+                    uPortFree(pData);
                 } else {
                     U_TEST_PRINT_LINE("module does not support reading device public certificate.");
                 }
@@ -1336,7 +1337,7 @@ U_PORT_TEST_FUNCTION("[security]", "securityZtp")
                 U_PORT_TEST_ASSERT((y > 0) || (y == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED));
                 if (y > 0) {
                     // Allocate memory to receive into and zero it for good measure
-                    pData = (char *) malloc(y);
+                    pData = (char *) pUPortMalloc(y);
                     U_PORT_TEST_ASSERT(pData != NULL);
                     //lint -e(668) Suppress possible use of NULL pointer for pData
                     memset(pData, 0, y);
@@ -1346,7 +1347,7 @@ U_PORT_TEST_FUNCTION("[security]", "securityZtp")
                     // Can't really check the data but can check that it is
                     // of the correct length
                     U_PORT_TEST_ASSERT(strlen(pData) == z - 1);
-                    free(pData);
+                    uPortFree(pData);
                 } else {
                     U_TEST_PRINT_LINE("module does not support reading device private key.");
                 }
@@ -1357,7 +1358,7 @@ U_PORT_TEST_FUNCTION("[security]", "securityZtp")
                 U_PORT_TEST_ASSERT((y > 0) || (y == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED));
                 if (y > 0) {
                     // Allocate memory to receive into and zero it for good measure
-                    pData = (char *) malloc(y);
+                    pData = (char *) pUPortMalloc(y);
                     U_PORT_TEST_ASSERT(pData != NULL);
                     //lint -e(668) Suppress possible use of NULL pointer for pData
                     memset(pData, 0, y);
@@ -1367,7 +1368,7 @@ U_PORT_TEST_FUNCTION("[security]", "securityZtp")
                     // Can't really check the data but can check that it is
                     // of the correct length
                     U_PORT_TEST_ASSERT(strlen(pData) == z - 1);
-                    free(pData);
+                    uPortFree(pData);
                 } else {
                     U_TEST_PRINT_LINE("module does not support reading certificate authorities.");
                 }

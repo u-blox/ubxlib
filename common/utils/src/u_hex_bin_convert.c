@@ -57,8 +57,6 @@ static const char gHex[] = {'0', '1', '2', '3', '4', '5', '6', '7',
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-//lint -esym(429, pHex) Suppress Lint getting a bee in its
-// bonnet about pHex not being free()'d when it IS being free()'d.
 size_t uBinToHex(const char *pBin, size_t binLength, char *pHex)
 {
     U_ASSERT(pHex != NULL);
@@ -74,8 +72,6 @@ size_t uBinToHex(const char *pBin, size_t binLength, char *pHex)
     return binLength * 2;
 }
 
-//lint -esym(429, pBin) Suppress Lint getting a bee in its
-// bonnet about pBin not being free()'d when it IS being free()'d.
 size_t uHexToBin(const char *pHex, size_t hexLength, char *pBin)
 {
     bool success = true;

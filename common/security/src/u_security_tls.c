@@ -31,7 +31,6 @@
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
 
-#include "stdlib.h"    // malloc() and free()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
@@ -39,6 +38,7 @@
 
 #include "u_error_common.h"
 
+#include "u_port_heap.h"
 #include "u_port_os.h"
 
 #include "u_device_shared.h"
@@ -127,7 +127,7 @@ uSecurityTlsContext_t *pUSecurityTlsAdd(uDeviceHandle_t devHandle,
                                         const uSecurityTlsSettings_t *pSettings)
 {
     int32_t errorCode = init();
-    uSecurityTlsContext_t *pContext = (uSecurityTlsContext_t *) malloc(sizeof(*pContext));
+    uSecurityTlsContext_t *pContext = (uSecurityTlsContext_t *) pUPortMalloc(sizeof(*pContext));
     void *pNetworkSpecific = NULL;
     const char *pRootCaCertificateName = NULL;
     const char *pClientCertificateName = NULL;
@@ -278,7 +278,7 @@ void uSecurityTlsRemove(uSecurityTlsContext_t *pContext)
         } else if (devType == (int32_t) U_DEVICE_TYPE_CELL) {
             uCellSecTlsRemove((uCellSecTlsContext_t *) pContext->pNetworkSpecific);
         }
-        free(pContext);
+        uPortFree(pContext);
 
         U_PORT_MUTEX_UNLOCK(gMutex);
     }

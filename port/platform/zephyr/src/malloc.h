@@ -15,7 +15,7 @@
  */
 
 /** @file
- * @brief Zephyr's minimal library offers malloc() and the like but
+ * @brief Zephyr's minimal library offers malloc and the like but
  * doesn't have a malloc.h file.  Adding this one allows us to compile
  * code.
  */

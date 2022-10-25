@@ -51,6 +51,7 @@
                                               is used. */
 #include "u_port_clib_mktime64.h"
 #include "u_port.h"
+#include "u_port_heap.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"
 #include "u_port_gpio.h"
@@ -163,7 +164,7 @@
  */
 #define U_PORT_TEST_OS_MALLOC_FILL ((int32_t) 0xdeadbeef)
 
-/** The amount of memory to malloc()ate during re-entrancy
+/** The amount of memory to pUPortMalloc()ate during re-entrancy
  * testing.
  */
 #define U_PORT_TEST_OS_MALLOC_SIZE_INTS ((int32_t) (1024 / sizeof(int32_t)))
@@ -481,7 +482,7 @@ static void osReentTask(void *pParameter)
     // Malloc a random amount of memory and fill it with
     // a known value unique to this task, yielding while
     // doing it so that others can get in and mess it up
-    pMem = (int32_t *) malloc(mallocSizeInts * sizeof(int32_t));
+    pMem = (int32_t *) pUPortMalloc(mallocSizeInts * sizeof(int32_t));
     uPortTaskBlock(U_CFG_OS_YIELD_MS);
     if (pMem != NULL) {
         pTmp = pMem;
@@ -550,7 +551,7 @@ static void osReentTask(void *pParameter)
             returnCode = -2;
         }
 
-        // Check that the memory we malloc()ed still contains
+        // Check that the memory we allocated still contains
         // what we put there
         pTmp = pMem;
         for (int32_t x = 0; (returnCode == 0) &&
@@ -562,15 +563,15 @@ static void osReentTask(void *pParameter)
         }
 
         // Free the memory again
-        free(pMem);
+        uPortFree(pMem);
 
         // Run around doing more malloc/compare/free with random
         // amounts of memory and yielding just to mix things up
-        uPortLog("U_PORT_TEST_OS_REENT_TASK_%d: please wait while malloc()"
+        uPortLog("U_PORT_TEST_OS_REENT_TASK_%d: please wait while pUPortMalloc()"
                  " is thrashed...\n", index);
         for (size_t x = 0; (returnCode == 0) && (x < 100); x++) {
             mallocSizeInts = 1 + (rand() % (U_PORT_TEST_OS_MALLOC_SIZE_INTS - 1));
-            pMem = (int32_t *) malloc(mallocSizeInts * sizeof(int32_t));
+            pMem = (int32_t *) pUPortMalloc(mallocSizeInts * sizeof(int32_t));
             uPortTaskBlock(U_CFG_OS_YIELD_MS);
             if (pMem != NULL) {
                 pTmp = pMem;
@@ -590,7 +591,7 @@ static void osReentTask(void *pParameter)
             } else {
                 returnCode = -11;
             }
-            free(pMem);
+            uPortFree(pMem);
         }
     } else {
         returnCode = -1;
@@ -1251,7 +1252,7 @@ U_PORT_TEST_FUNCTION("[port]", "portRentrancy")
     // and then all try to call stdlib functions
     // that might cause memory issues at once.
     // The tasks are passed a (non-zero) index so that they
-    // can identify themselves in malloc()s and
+    // can identify themselves in mallocs and
     // then indicate that they have finished by setting
     // the parameter to zero or less.
     for (size_t x = 0; (x < sizeof(taskHandle) /
@@ -1911,7 +1912,7 @@ U_PORT_TEST_FUNCTION("[port]", "portEventQueue")
 
     // Generate a block with a known test pattern, 0xFF to 0 repeated.
     //lint -esym(613, pParam) Suppress possible use of NULL pointer: it is checked
-    pParam = (uint8_t *) malloc(U_PORT_EVENT_QUEUE_MAX_PARAM_LENGTH_BYTES);
+    pParam = (uint8_t *) pUPortMalloc(U_PORT_EVENT_QUEUE_MAX_PARAM_LENGTH_BYTES);
     U_PORT_TEST_ASSERT(pParam != NULL);
     fill = 0xFF;
     for (x = 0; x < U_PORT_EVENT_QUEUE_MAX_PARAM_LENGTH_BYTES; x++) {
@@ -2029,7 +2030,7 @@ U_PORT_TEST_FUNCTION("[port]", "portEventQueue")
                                            U_PORT_TEST_OS_EVENT_QUEUE_PARAM_MIN_SIZE_BYTES) < 0);
 
     // Free memory
-    free(pParam);
+    uPortFree(pParam);
 
     uPortDeinit();
 

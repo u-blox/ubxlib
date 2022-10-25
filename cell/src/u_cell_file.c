@@ -29,7 +29,7 @@
 #endif
 
 #include "stdio.h"     // snprintf()
-#include "stdlib.h"    // malloc(), free(), strol(), atoi(), strol(), strtof()
+#include "stdlib.h"    // strol(), atoi(), strol(), strtof()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"

@@ -29,7 +29,7 @@
 #endif
 
 #include "limits.h"    // LONG_MIN, INT_MIN
-#include "stdlib.h"    // malloc()/free()
+#include "stdlib.h"    // strtol()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "string.h"    // strstr()
@@ -45,6 +45,7 @@
                                               other port files if any
                                               print or scan function
                                               is used. */
+#include "u_port_heap.h"
 #include "u_port.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"
@@ -280,7 +281,7 @@ static void UULOC_urc_callback(uAtClientHandle_t atHandle, void *pParam)
                 // Having called the callback we must free
                 // the data storage; the block is unaffected,
                 // that's the responsibility of whoever called us
-                free(pContext->pFixDataStorage);
+                uPortFree(pContext->pFixDataStorage);
                 pContext->pFixDataStorage = NULL;
             }
 
@@ -288,7 +289,7 @@ static void UULOC_urc_callback(uAtClientHandle_t atHandle, void *pParam)
         }
 
         // Free the URC storage
-        free(pUrcStorage);
+        uPortFree(pUrcStorage);
     }
 }
 
@@ -396,13 +397,13 @@ static void UULOC_urc(uAtClientHandle_t atHandle, void *pParam)
     if ((numParameters >= 8) && (pInstance != NULL)) {
         pContext = pInstance->pLocContext;
         if (pContext != NULL) {
-            // malloc memory in which to pass the location data
+            // pUPortMalloc memory in which to pass the location data
             // to a callback, where we can safely lock the
             // data storage mutex
             // Note: the callback will free the memory allocated here
             //lint -esym(593, pUrcStorage) Suppress pUrcStorage not freed,
             // the callback does that
-            pUrcStorage = (uCellLocUrc_t *) malloc(sizeof(*pUrcStorage));
+            pUrcStorage = (uCellLocUrc_t *) pUPortMalloc(sizeof(*pUrcStorage));
             if (pUrcStorage != NULL) {
                 pUrcStorage->pContext = pContext;
                 pFixDataStorageBlock = &(pUrcStorage->fixDataStorageBlock);
@@ -419,7 +420,7 @@ static void UULOC_urc(uAtClientHandle_t atHandle, void *pParam)
                     pFixDataStorageBlock->errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
                 }
                 if (uAtClientCallback(atHandle, UULOC_urc_callback, pUrcStorage) != 0) {
-                    free(pUrcStorage);
+                    uPortFree(pUrcStorage);
                 }
             }
         }
@@ -494,7 +495,7 @@ static int32_t ensureContext(uCellPrivateInstance_t *pInstance)
     if (pInstance->pLocContext == NULL) {
         errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
         // This is free'd by uCellDeinit() and uCellLocCleanUp()
-        pContext = (uCellPrivateLocContext_t *) malloc(sizeof(*pContext));
+        pContext = (uCellPrivateLocContext_t *) pUPortMalloc(sizeof(*pContext));
         if (pContext != NULL) {
             errorCode = uPortMutexCreate(&(pContext->fixDataStorageMutex));
             if (errorCode == 0) {
@@ -509,7 +510,7 @@ static int32_t ensureContext(uCellPrivateInstance_t *pInstance)
                 pInstance->pLocContext = pContext;
             } else {
                 // Free context on failure to create a fixDataStorageMutex
-                free(pContext);
+                uPortFree(pContext);
             }
         }
     }
@@ -1022,7 +1023,7 @@ int32_t uCellLocGet(uDeviceHandle_t cellHandle,
                 // local callback that is called from the URC handler
                 // once it's got an answer and copied it into our
                 // data block
-                pFixDataStorage = (uCellLocFixDataStorage_t *) malloc(sizeof(*pFixDataStorage));
+                pFixDataStorage = (uCellLocFixDataStorage_t *) pUPortMalloc(sizeof(*pFixDataStorage));
                 if (pFixDataStorage != NULL) {
                     // Attach our block to it
                     pFixDataStorage->type = U_CELL_LOC_FIX_DATA_STORAGE_TYPE_BLOCK;
@@ -1090,7 +1091,7 @@ int32_t uCellLocGet(uDeviceHandle_t cellHandle,
             // In case the callback hasn't freed the fix
             // data storage memory
             if (pContext->pFixDataStorage != NULL) {
-                free(pContext->pFixDataStorage);
+                uPortFree(pContext->pFixDataStorage);
                 pContext->pFixDataStorage = NULL;
             }
 
@@ -1135,7 +1136,7 @@ int32_t uCellLocGetStart(uDeviceHandle_t cellHandle,
                 // The data storage will be freed by the local callback
                 // that is called from the URC handler after it has done
                 // pCallback
-                pFixDataStorage = (uCellLocFixDataStorage_t *) malloc(sizeof(*pFixDataStorage));
+                pFixDataStorage = (uCellLocFixDataStorage_t *) pUPortMalloc(sizeof(*pFixDataStorage));
                 if (pFixDataStorage != NULL) {
                     pFixDataStorage->type = U_CELL_LOC_FIX_DATA_STORAGE_TYPE_CALLBACK;
                     pFixDataStorage->store.pCallback = pCallback;
@@ -1259,7 +1260,7 @@ void uCellLocGetStop(uDeviceHandle_t cellHandle)
 
         if (pContext->pFixDataStorage != NULL) {
             uAtClientRemoveUrcHandler(pInstance->atHandle, "+UULOC:");
-            free(pContext->pFixDataStorage);
+            uPortFree(pContext->pFixDataStorage);
             pContext->pFixDataStorage = NULL;
         }
 

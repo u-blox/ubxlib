@@ -38,6 +38,7 @@
                                               any print or scan function is used. */
 #include "u_port_debug.h"
 #include "u_port.h"
+#include "u_port_heap.h"
 #include "u_port_os.h"
 #include "u_port_uart.h"
 #include "u_port_event_queue.h"
@@ -163,7 +164,7 @@ static uPortUartData_t *pUartAdd()
     bool success = true;
     int32_t x;
 
-    pTmp = (uPortUartData_t *) malloc(sizeof(uPortUartData_t));
+    pTmp = (uPortUartData_t *) pUPortMalloc(sizeof(uPortUartData_t));
     if (pTmp != NULL) {
         memset(pTmp, 0, sizeof(*pTmp));
         pTmp->eventQueueHandle = -1;
@@ -191,7 +192,7 @@ static uPortUartData_t *pUartAdd()
             gpUartListRoot = pTmp;
         } else {
             // Clean up
-            free(pTmp);
+            uPortFree(pTmp);
             pTmp = NULL;
         }
     }
@@ -214,7 +215,7 @@ static void uartRemove(const uPortUartData_t *pUartData)
             } else {
                 pPrevious->pNext = pTmp->pNext;
             }
-            free(pTmp);
+            uPortFree(pTmp);
             // Force exit
             pTmp = NULL;
         } else {
@@ -245,7 +246,7 @@ static void uartCloseRequiresMutex(uPortUartData_t *pUartData)
 
     if (pUartData->rxBufferIsMalloced) {
         // Free the buffer
-        free(pUartData->pRxBufferStart);
+        uPortFree(pUartData->pRxBufferStart);
     }
     // Remove the UART itself
     CloseHandle(pUartData->windowsUartHandle);
@@ -568,7 +569,7 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
                 pUartData->pRxBufferStart = (char *) pReceiveBuffer;
                 if (pUartData->pRxBufferStart == NULL) {
                     // Malloc memory for the read buffer
-                    pUartData->pRxBufferStart = (char *) malloc(receiveBufferSizeBytes);
+                    pUartData->pRxBufferStart = (char *) pUPortMalloc(receiveBufferSizeBytes);
                     pUartData->rxBufferIsMalloced = true;
                 }
                 if (pUartData->pRxBufferStart != NULL) {
@@ -661,7 +662,7 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
                     CloseHandle(pUartData->waitCommEventThreadTerminateHandle);
                     CloseHandle(pUartData->windowsUartHandle);
                     if (pUartData->rxBufferIsMalloced) {
-                        free(pUartData->pRxBufferStart);
+                        uPortFree(pUartData->pRxBufferStart);
                     }
                     uartRemove(pUartData);
                 }

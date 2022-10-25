@@ -30,7 +30,6 @@
 #endif
 
 #include "errno.h"
-#include "stdlib.h"    // malloc(), free()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"

@@ -610,11 +610,11 @@ int32_t uGnssPrivateSendOnlyCheckStreamUbxMessage(uGnssPrivateInstance_t *pInsta
  *                                   in which the message will be placed,
  *                                   cannot be NULL.  If ppBuffer points
  *                                   to NULL (i.e *ppBuffer is NULL) then
- *                                   this function will malloc() a buffer
+ *                                   this function will allocate a buffer
  *                                   of the correct size and populate
- *                                   *ppBuffer with the malloc()ated buffer
+ *                                   *ppBuffer with the allocated buffer
  *                                   pointer; in this case IT IS UP TO
- *                                   THE CALLER TO free(*ppBuffer) WHEN
+ *                                   THE CALLER TO uPortFree(*ppBuffer) WHEN
  *                                   DONE.  The entire message, with
  *                                   any header, $, CRC, etc. included,
  *                                   will be written to the buffer.
@@ -705,7 +705,7 @@ int32_t uGnssPrivateSendReceiveUbxMessage(uGnssPrivateInstance_t *pInstance,
  * @param messageBodyLengthBytes     the amount of data at pMessageBody; must
  *                                   be non-zero if pMessageBody is non-NULL.
  * @param[out] ppResponseBody        a pointer to a pointer that will be
- *                                   populated with the malloc()ated memory
+ *                                   populated with the allocated memory
  *                                   containing the body of the response.
  *                                   Cannot be NULL.
  * @return                           the number of bytes of data at

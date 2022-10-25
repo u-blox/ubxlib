@@ -22,9 +22,6 @@
  * instructions.
  */
 
-// This for the C libary function free().
-#include "stdlib.h"
-
 // Bring in all of the ubxlib public header files
 #include "ubxlib.h"
 
@@ -271,7 +268,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleGnssCfgVal")
                 printCfgValList(pCfgValList, numValues);
                 // The function uGnssCfgValGetAlloc(), as implied by its name,
                 // will have allocated memory for pCfgValList; we must free it.
-                free(pCfgValList);
+                uPortFree(pCfgValList);
             } else {
                 uPortLog("Unable to get all of group ID GEOFENCE!\n");
             }

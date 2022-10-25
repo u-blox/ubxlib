@@ -30,7 +30,6 @@
 #endif
 
 #include "stdio.h"     // snprintf()
-#include "stdlib.h"    // malloc() and free()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
@@ -40,6 +39,7 @@
 
 #include "u_error_common.h"
 
+#include "u_port_heap.h"
 #include "u_port.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"
@@ -380,7 +380,7 @@ static int32_t createSleepContext(uCellPrivateInstance_t *pInstance)
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
     uCellPrivateSleep_t *pContext;
 
-    pInstance->pSleepContext = (uCellPrivateSleep_t *) malloc(sizeof(uCellPrivateSleep_t));
+    pInstance->pSleepContext = (uCellPrivateSleep_t *) pUPortMalloc(sizeof(uCellPrivateSleep_t));
     if (pInstance->pSleepContext != NULL) {
         pContext = pInstance->pSleepContext;
         memset(pContext, 0, sizeof(*pContext));
@@ -664,7 +664,7 @@ static void eDrxCallback(uAtClientHandle_t atHandle, void *pParameter)
                              pCallback->eDrxSecondsAssigned,
                              pCallback->pagingWindowSecondsAssigned,
                              pCallback->pCallbackParam);
-        free(pCallback);
+        uPortFree(pCallback);
     }
 }
 
@@ -722,10 +722,8 @@ static void CEDRXP_urc(uAtClientHandle_t atHandle, void *pParameter)
         // Put all the data in a struct and pass a pointer to it to our
         // local callback via the AT client's callback mechanism to decouple
         // it from whatever might have called us.
-        // Note: eDrxCallback will free() the malloc()ed memory.
-        //lint -esym(429, pCallback) Suppress pCallback not being free()ed here
-        //lint -esym(593, pCallback) Suppress pCallback not being free()ed here
-        pCallback = (uCellPwrEDrxCallback_t *) malloc(sizeof(*pCallback));
+        // Note: eDrxCallback will free the allocated memory.
+        pCallback = (uCellPwrEDrxCallback_t *) pUPortMalloc(sizeof(*pCallback));
         if (pCallback != NULL) {
             pCallback->cellHandle = pInstance->cellHandle;
             pCallback->pCallback = pInstance->pSleepContext->pEDrxCallback;
@@ -822,7 +820,7 @@ static void deepSleepWakeUpCallback(uAtClientHandle_t atHandle, void *pParameter
 
     if (pCallback != NULL) {
         pCallback->pCallback(pCallback->cellHandle, pCallback->pCallbackParam);
-        free(pCallback);
+        uPortFree(pCallback);
     }
 }
 
@@ -1372,10 +1370,8 @@ int32_t uCellPwrPrivateOn(uCellPrivateInstance_t *pInstance,
         // Put all the data in a struct and pass a pointer to it to our
         // local callback via the AT client's callback mechanism to decouple
         // it from whatever might have called us.
-        // Note: deepSleepWakeUpCallback will free() the malloc()ed memory.
-        //lint -esym(429, pCallback) Suppress pCallback not being free()ed here
-        //lint -esym(593, pCallback) Suppress pCallback not being free()ed here
-        pCallback = (uCellPwrDeepSleepWakeUpCallback_t *) malloc(sizeof(*pCallback));
+        // Note: deepSleepWakeUpCallback will free the allocated memory.
+        pCallback = (uCellPwrDeepSleepWakeUpCallback_t *) pUPortMalloc(sizeof(*pCallback));
         if (pCallback != NULL) {
             pCallback->cellHandle = pInstance->cellHandle;
             pCallback->pCallback = pSleepContext->pWakeUpCallback;
@@ -2263,7 +2259,7 @@ int32_t  uCellPwrSetRequested3gppPowerSaving(uDeviceHandle_t cellHandle,
                     } else {
                         if (justMalloced) {
                             // Clean up on failure
-                            free (pInstance->pSleepContext);
+                            uPortFree(pInstance->pSleepContext);
                             pInstance->pSleepContext = NULL;
                         }
                     }
@@ -2657,7 +2653,7 @@ int32_t uCellPwrSetDeepSleepWakeUpCallback(uDeviceHandle_t cellHandle,
             if ((pInstance->pinPwrOn >= 0) && (pInstance->pinVInt >= 0)) {
                 if (pInstance->pSleepContext == NULL) {
                     errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
-                    pInstance->pSleepContext = (uCellPrivateSleep_t *) malloc(sizeof(uCellPrivateSleep_t));
+                    pInstance->pSleepContext = (uCellPrivateSleep_t *) pUPortMalloc(sizeof(uCellPrivateSleep_t));
                     if (pInstance->pSleepContext != NULL) {
                         memset(pInstance->pSleepContext, 0,
                                sizeof(*(pInstance->pSleepContext)));

@@ -29,7 +29,6 @@
 #endif
 
 #include "limits.h"    // for INT_MAX
-#include "stdlib.h"    // malloc(), free()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
@@ -37,6 +36,7 @@
 
 #include "u_error_common.h"
 
+#include "u_port_heap.h"
 #include "u_port_os.h"
 #include "u_port_crypto.h"
 
@@ -573,10 +573,10 @@ int32_t uCellSecC2cPair(uDeviceHandle_t cellHandle,
 
                     // Get memory to put it in
                     // *INDENT-OFF* (otherwise AStyle makes a mess of this)
-                    pEncryptedC2cConfirmationTag = (char *) malloc(U_CELL_SEC_ENCRYPTED_C2C_CONFIRMATION_TAG_LENGTH_BYTES);
+                    pEncryptedC2cConfirmationTag = (char *) pUPortMalloc(U_CELL_SEC_ENCRYPTED_C2C_CONFIRMATION_TAG_LENGTH_BYTES);
                     if (pEncryptedC2cConfirmationTag != NULL) {
                         // ...and memory to put the hex-coded version in, +1 for terminator
-                        pEncryptedC2cConfirmationTagHex = (char *) malloc((U_CELL_SEC_ENCRYPTED_C2C_CONFIRMATION_TAG_LENGTH_BYTES * 2) + 1);
+                        pEncryptedC2cConfirmationTagHex = (char *) pUPortMalloc((U_CELL_SEC_ENCRYPTED_C2C_CONFIRMATION_TAG_LENGTH_BYTES * 2) + 1);
                         // *INDENT-ON*
                         if (pEncryptedC2cConfirmationTagHex != NULL) {
                             errorCode = (int32_t) U_ERROR_COMMON_AUTHENTICATION_FAILURE;
@@ -613,10 +613,10 @@ int32_t uCellSecC2cPair(uDeviceHandle_t cellHandle,
                                 }
                             }
                             // Free the hex buffer
-                            free(pEncryptedC2cConfirmationTagHex);
+                            uPortFree(pEncryptedC2cConfirmationTagHex);
                         }
                         // Free the binary buffer
-                        free(pEncryptedC2cConfirmationTag);
+                        uPortFree(pEncryptedC2cConfirmationTag);
                     }
                 }
 
@@ -672,14 +672,14 @@ int32_t uCellSecC2cOpen(uDeviceHandle_t cellHandle,
                         errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
                         // If that was successful, set up
                         // the chip to chip security context
-                        pInstance->pSecurityC2cContext = malloc(sizeof(uCellSecC2cContext_t));
+                        pInstance->pSecurityC2cContext = pUPortMalloc(sizeof(uCellSecC2cContext_t));
                         if (pInstance->pSecurityC2cContext != NULL) {
                             pContext = (uCellSecC2cContext_t *) pInstance->pSecurityC2cContext;
                             memset(pContext, 0, sizeof(uCellSecC2cContext_t));
-                            pContext->pTx = (uCellSecC2cContextTx_t *) malloc(sizeof(uCellSecC2cContextTx_t));
+                            pContext->pTx = (uCellSecC2cContextTx_t *) pUPortMalloc(sizeof(uCellSecC2cContextTx_t));
                             if (pContext->pTx != NULL) {
                                 memset(pContext->pTx, 0, sizeof(uCellSecC2cContextTx_t));
-                                pContext->pRx = (uCellSecC2cContextRx_t *) malloc(sizeof(uCellSecC2cContextRx_t));
+                                pContext->pRx = (uCellSecC2cContextRx_t *) pUPortMalloc(sizeof(uCellSecC2cContextRx_t));
                                 if (pContext->pRx != NULL) {
                                     memset(pContext->pRx, 0, sizeof(uCellSecC2cContextRx_t));
                                     // Copy the values we've been given into

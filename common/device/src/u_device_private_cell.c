@@ -25,12 +25,12 @@
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
-#include "stdlib.h"    // malloc()/free()
 #include "string.h"    // for memset()
 
 #include "u_error_common.h"
 
 #include "u_port.h"
+#include "u_port_heap.h"
 #include "u_port_uart.h"
 
 #include "u_device.h"
@@ -113,7 +113,7 @@ static int32_t removeDevice(uDeviceHandle_t devHandle, bool powerOff)
             uCellRemove(devHandle);
             uAtClientRemove(pContext->at);
             uPortUartClose(pContext->uart);
-            free(pContext);
+            uPortFree(pContext);
         }
     }
 
@@ -128,7 +128,7 @@ static int32_t addDevice(const uDeviceCfgUart_t *pCfgUart,
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
     uDeviceCellContext_t *pContext;
 
-    pContext = (uDeviceCellContext_t *) malloc(sizeof(uDeviceCellContext_t));
+    pContext = (uDeviceCellContext_t *) pUPortMalloc(sizeof(uDeviceCellContext_t));
     if (pContext != NULL) {
         // Open a UART with the recommended buffer length
         // and default baud rate.
@@ -186,16 +186,16 @@ static int32_t addDevice(const uDeviceCfgUart_t *pCfgUart,
                     // Failed to add cellular, clean up
                     uAtClientRemove(pContext->at);
                     uPortUartClose(pContext->uart);
-                    free(pContext);
+                    uPortFree(pContext);
                 }
             } else {
                 // Failed to add AT client, clean up
                 uPortUartClose(pContext->uart);
-                free(pContext);
+                uPortFree(pContext);
             }
         } else {
             // Failed to add UART, clean up
-            free(pContext);
+            uPortFree(pContext);
         }
     }
 

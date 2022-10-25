@@ -30,7 +30,7 @@
 #endif
 
 #include "errno.h"
-#include "stdlib.h"    // malloc(), free()
+#include "stdlib.h"    // rand()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
@@ -45,6 +45,7 @@
 
 #include "u_port_clib_platform_specific.h" /* struct timeval in some cases. */
 #include "u_port.h"
+#include "u_port_heap.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"
 #include "u_mempool.h"
@@ -119,11 +120,11 @@ U_PORT_TEST_FUNCTION("[pbuf]", "pbufInsertPayload")
     pPbufList = pUShortRangePbufListAlloc();
     U_PORT_TEST_ASSERT(pPbufList != NULL);
 
-    pBuffer2 = (char *)malloc(totalLen);
+    pBuffer2 = (char *)pUPortMalloc(totalLen);
     U_PORT_TEST_ASSERT(pBuffer2 != NULL);
     memset(pBuffer2, 0, totalLen);
 
-    pBuffer3 = (char *)malloc(totalLen);
+    pBuffer3 = (char *)pUPortMalloc(totalLen);
     U_PORT_TEST_ASSERT(pBuffer3 != NULL);
     memset(pBuffer3, 0, totalLen);
 
@@ -145,8 +146,8 @@ U_PORT_TEST_FUNCTION("[pbuf]", "pbufInsertPayload")
     U_PORT_TEST_ASSERT(errCode == (int32_t)U_ERROR_COMMON_SUCCESS);
 
     uShortRangeMemPoolDeInit();
-    free(pBuffer2);
-    free(pBuffer3);
+    uPortFree(pBuffer2);
+    uPortFree(pBuffer3);
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
@@ -190,15 +191,15 @@ U_PORT_TEST_FUNCTION("[pbuf]", "pbufPktList")
     pPbufList2 = pUShortRangePbufListAlloc();
     U_PORT_TEST_ASSERT(pPbufList2 != NULL);
 
-    pBuffer1 = (char *)malloc(totalLen);
+    pBuffer1 = (char *)pUPortMalloc(totalLen);
     U_PORT_TEST_ASSERT(pBuffer1 != NULL);
     memset(pBuffer1, 0, totalLen);
 
-    pBuffer2 = (char *)malloc(totalLen);
+    pBuffer2 = (char *)pUPortMalloc(totalLen);
     U_PORT_TEST_ASSERT(pBuffer2 != NULL);
     memset(pBuffer2, 0, totalLen);
 
-    pBuffer3 = (char *)malloc(totalLen);
+    pBuffer3 = (char *)pUPortMalloc(totalLen);
     U_PORT_TEST_ASSERT(pBuffer3 != NULL);
     memset(pBuffer3, 0, totalLen);
 
@@ -250,9 +251,9 @@ U_PORT_TEST_FUNCTION("[pbuf]", "pbufPktList")
     U_PORT_TEST_ASSERT(errCode == (int32_t)U_ERROR_COMMON_INVALID_PARAMETER);
 
     uShortRangeMemPoolDeInit();
-    free(pBuffer1);
-    free(pBuffer2);
-    free(pBuffer3);
+    uPortFree(pBuffer1);
+    uPortFree(pBuffer2);
+    uPortFree(pBuffer3);
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();

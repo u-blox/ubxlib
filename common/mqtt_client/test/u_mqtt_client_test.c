@@ -39,7 +39,6 @@
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
 
-#include "stdlib.h"    // malloc(), free()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
@@ -57,6 +56,7 @@
                                               before the other port files if
                                               any print or scan function is used. */
 #include "u_port.h"
+#include "u_port_heap.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"
 
@@ -302,14 +302,14 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClient")
                                                     gSerialNumber) > 0);
 
         // Malloc space to read messages and topics into
-        pTopicOut = (char *) malloc(U_MQTT_CLIENT_TEST_READ_TOPIC_MAX_LENGTH_BYTES);
+        pTopicOut = (char *) pUPortMalloc(U_MQTT_CLIENT_TEST_READ_TOPIC_MAX_LENGTH_BYTES);
         U_PORT_TEST_ASSERT(pTopicOut != NULL);
-        pTopicIn = (char *) malloc(U_MQTT_CLIENT_TEST_READ_TOPIC_MAX_LENGTH_BYTES);
+        pTopicIn = (char *) pUPortMalloc(U_MQTT_CLIENT_TEST_READ_TOPIC_MAX_LENGTH_BYTES);
         U_PORT_TEST_ASSERT(pTopicIn != NULL);
-        pMessageOut = (char *) malloc(U_MQTT_CLIENT_TEST_PUBLISH_MAX_LENGTH_BYTES);
+        pMessageOut = (char *) pUPortMalloc(U_MQTT_CLIENT_TEST_PUBLISH_MAX_LENGTH_BYTES);
         U_PORT_TEST_ASSERT(pMessageOut != NULL);
         //lint -esym(613, pMessageOut) Suppress possible use of NULL pointer in future
-        pMessageIn = (char *) malloc(U_MQTT_CLIENT_TEST_READ_MESSAGE_MAX_LENGTH_BYTES);
+        pMessageIn = (char *) pUPortMalloc(U_MQTT_CLIENT_TEST_READ_MESSAGE_MAX_LENGTH_BYTES);
         U_PORT_TEST_ASSERT(pMessageIn != NULL);
 
         // Do the entire sequence twice, once without TLS security
@@ -554,10 +554,10 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClient")
         }
 
         // Free memory
-        free(pMessageIn);
-        free(pMessageOut);
-        free(pTopicIn);
-        free(pTopicOut);
+        uPortFree(pMessageIn);
+        uPortFree(pMessageOut);
+        uPortFree(pTopicIn);
+        uPortFree(pTopicOut);
 
         // Check for memory leaks
         heapUsed -= uPortGetHeapFree();
@@ -628,12 +628,12 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClientSn")
                                                     gSerialNumber) > 0);
 
         // Malloc space to read messages and topics into
-        pTopicNameOutMqtt = (char *) malloc(U_MQTT_CLIENT_TEST_READ_TOPIC_MAX_LENGTH_BYTES);
+        pTopicNameOutMqtt = (char *) pUPortMalloc(U_MQTT_CLIENT_TEST_READ_TOPIC_MAX_LENGTH_BYTES);
         U_PORT_TEST_ASSERT(pTopicNameOutMqtt != NULL);
-        pMessageOut = (char *) malloc(U_MQTT_CLIENT_TEST_PUBLISH_MAX_LENGTH_BYTES);
+        pMessageOut = (char *) pUPortMalloc(U_MQTT_CLIENT_TEST_PUBLISH_MAX_LENGTH_BYTES);
         U_PORT_TEST_ASSERT(pMessageOut != NULL);
         //lint -esym(613, pMessageOut) Suppress possible use of NULL pointer in future
-        pMessageIn = (char *) malloc(U_MQTT_CLIENT_TEST_READ_MESSAGE_MAX_LENGTH_BYTES);
+        pMessageIn = (char *) pUPortMalloc(U_MQTT_CLIENT_TEST_READ_MESSAGE_MAX_LENGTH_BYTES);
         U_PORT_TEST_ASSERT(pMessageIn != NULL);
 
         // NOTE: would run the following in a loop, the second iteration doing DTLS
@@ -905,9 +905,9 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClientSn")
         }
 
         // Free memory
-        free(pMessageIn);
-        free(pMessageOut);
-        free(pTopicNameOutMqtt);
+        uPortFree(pMessageIn);
+        uPortFree(pMessageOut);
+        uPortFree(pTopicNameOutMqtt);
 
         U_TEST_PRINT_LINE_MQTTSN("taking down cellular network...");
         U_PORT_TEST_ASSERT(uNetworkInterfaceDown(devHandle,

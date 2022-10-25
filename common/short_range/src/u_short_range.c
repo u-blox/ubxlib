@@ -28,7 +28,7 @@
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
 
-#include "stdlib.h"    // malloc() and free()
+#include "stdlib.h"    // strtol(), atoi()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
@@ -41,6 +41,7 @@
 #include "u_error_common.h"
 
 #include "u_port.h"
+#include "u_port_heap.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"
 #include "u_port_gpio.h"
@@ -157,7 +158,7 @@ static void removeShortRangeInstance(uShortRangePrivateInstance_t *pInstance)
         }
     }
 
-    free(pInstance);
+    uPortFree(pInstance);
 }
 
 //lint -e{818} suppress "could be declared as pointing to const": it is!
@@ -204,7 +205,7 @@ static int32_t uShortRangeAdd(uShortRangeModuleType_t moduleType,
     pInstance = pGetShortRangeInstanceAtHandle(atHandle);
     if (pInstance == NULL) {
         // Allocate memory for the instance
-        pInstance = (uShortRangePrivateInstance_t *) malloc(sizeof(uShortRangePrivateInstance_t));
+        pInstance = (uShortRangePrivateInstance_t *) pUPortMalloc(sizeof(uShortRangePrivateInstance_t));
         if (pInstance != NULL) {
             int32_t streamHandle;
             uAtClientStream_t streamType;

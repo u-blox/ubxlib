@@ -32,7 +32,7 @@
 #define BASE64_H
 
 // MODIFICATION Rob Meades 2021/09/07: headers removed so
-// that puts() can be redirected and because malloc() is no longer used
+// that puts() can be redirected and because malloc is no longer used
 
 // MODIFICATION Rob Meades 2021/09/07: prevent AStyle formatting
 // *INDENT-OFF*
@@ -92,7 +92,7 @@ char* base64( const void* binaryData, int len, int *flen,
   // the caller can do a dummy run to just obtain the value
   // passed back in flen
   if ( res != NULL ) {
-    // MODIFICATION Rob Meades 2021/09/07: no malloc() here, memory
+    // MODIFICATION Rob Meades 2021/09/07: no malloc here, memory
     // is passed in
     for( byteNo = 0 ; byteNo <= len-3 ; byteNo+=3 )
     {
@@ -146,7 +146,7 @@ unsigned char* unbase64( const char* ascii, int len, int *flen,
   if( safeAsciiPtr[ len-2 ]=='=' )  ++pad ;
 
   *flen = 3*len/4 - pad ;
-  // MODIFICATION Rob Meades 2021/09/07:: no malloc() here, memory
+  // MODIFICATION Rob Meades 2021/09/07:: no malloc here, memory
   // is passed in
   // MODIFICATION Rob Meades 2021/09/07: NULL check added so that
   // the caller can do a dummy run to just obtain the value

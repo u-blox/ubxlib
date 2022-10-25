@@ -31,13 +31,13 @@
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
 
-#include "stdlib.h"    // malloc()/free().
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 
 #include "u_error_common.h"
 
+#include "u_port_heap.h"
 #include "u_port_os.h"
 
 #include "u_location.h"
@@ -103,7 +103,7 @@ void uLocationSharedDeinit()
              x < (int32_t) U_LOCATION_TYPE_MAX_NUM;
              x++) {
             while ((pEntry = pULocationSharedRequestPop((uLocationType_t) x)) != NULL) {
-                free(pEntry);
+                uPortFree(pEntry);
             }
         }
         U_PORT_MUTEX_UNLOCK(gULocationMutex);
@@ -147,7 +147,7 @@ int32_t uLocationSharedRequestPush(uDeviceHandle_t devHandle,
     if (ppThis != NULL) {
         errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
         // Add the new entry at the start of the list
-        *ppThis = (uLocationSharedFifoEntry_t *) malloc(sizeof(**ppThis));
+        *ppThis = (uLocationSharedFifoEntry_t *) pUPortMalloc(sizeof(**ppThis));
         if (*ppThis != NULL) {
             (*ppThis)->devHandle = devHandle;
             (*ppThis)->pCallback = pCallback;

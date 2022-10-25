@@ -44,7 +44,6 @@
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
 
-#include "stdlib.h"    // malloc(), free()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
@@ -54,6 +53,7 @@
 
 #include "u_device_shared.h"
 
+#include "u_port_heap.h"
 #include "u_port_os.h"
 
 #include "u_mqtt_common.h"
@@ -183,7 +183,7 @@ uMqttClientContext_t *pUMqttClientOpen(uDeviceHandle_t devHandle,
 
     if (gLastOpenError == U_ERROR_COMMON_SUCCESS) {
         gLastOpenError = U_ERROR_COMMON_NO_MEMORY;
-        pContext = (uMqttClientContext_t *) malloc(sizeof(*pContext));
+        pContext = (uMqttClientContext_t *) pUPortMalloc(sizeof(*pContext));
         if (pContext != NULL) {
             pContext->devHandle = devHandle;
             pContext->mutexHandle = NULL;
@@ -220,7 +220,7 @@ uMqttClientContext_t *pUMqttClientOpen(uDeviceHandle_t devHandle,
             if (pContext->pSecurityContext != NULL) {
                 uSecurityTlsRemove(pContext->pSecurityContext);
             }
-            free(pContext);
+            uPortFree(pContext);
             pContext = NULL;
         }
     }
@@ -257,7 +257,7 @@ void uMqttClientClose(uMqttClientContext_t *pContext)
         U_PORT_MUTEX_UNLOCK((uPortMutexHandle_t) (pContext->mutexHandle));
 
         uPortMutexDelete((uPortMutexHandle_t) (pContext->mutexHandle));
-        free(pContext);
+        uPortFree(pContext);
     }
 }
 

@@ -32,7 +32,6 @@
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
 
-#include "stdlib.h"    // malloc(), free()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
@@ -46,6 +45,7 @@
 #include "u_error_common.h"
 
 #include "u_port.h"
+#include "u_port_heap.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"   // Required by u_cell_private.h
 #include "u_port_uart.h"
@@ -149,7 +149,7 @@ U_PORT_TEST_FUNCTION("[cellSecTls]", "cellSecTlsSettings")
     heapUsed = uPortGetHeapFree();
 
     // malloc a buffer to put names in
-    pBuffer = (char *) malloc(U_CELL_SEC_TLS_TEST_NAME_LENGTH_BYTES + 1);
+    pBuffer = (char *) pUPortMalloc(U_CELL_SEC_TLS_TEST_NAME_LENGTH_BYTES + 1);
     U_PORT_TEST_ASSERT(pBuffer != NULL);
 
     // Do the standard preamble
@@ -473,7 +473,7 @@ U_PORT_TEST_FUNCTION("[cellSecTls]", "cellSecTlsSettings")
     uCellTestPrivatePostamble(&gHandles, false);
 
     // Release memory
-    free(pBuffer);
+    uPortFree(pBuffer);
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();

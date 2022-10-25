@@ -29,7 +29,6 @@
 #endif
 
 #include "string.h"
-#include "stdlib.h"    // malloc() and free()
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 #include "stdio.h"    // snprintf()
@@ -43,6 +42,7 @@
 #include "u_port_clib_platform_specific.h" /* Integer stdio, must be included
                                               before the other port files if
                                               any print or scan function is used. */
+#include "u_port_heap.h"
 #include "u_port_os.h"
 #include "u_port_debug.h"
 
@@ -404,9 +404,9 @@ void uRingBufferDelete(uRingBuffer_t *pRingBuffer)
 {
     if ((pRingBuffer != NULL) && (pRingBuffer->mutex != NULL)) {
         if (pRingBuffer->isMalloced) {
-            free(pRingBuffer->pDataRead);
+            uPortFree(pRingBuffer->pDataRead);
             pRingBuffer->pDataRead = NULL;
-            free(pRingBuffer->statReadLossBytes);
+            uPortFree(pRingBuffer->statReadLossBytes);
             pRingBuffer->statReadLossBytes = NULL;
         }
         pRingBuffer->maxNumReadPointers = 0;
@@ -572,8 +572,8 @@ int32_t uRingBufferCreateWithReadHandle(uRingBuffer_t *pRingBuffer, char *pLinea
 
     memset(pRingBuffer, 0x00, sizeof(uRingBuffer_t));
     maxNumReadHandles++; // Add one more for the non-handled read
-    pRingBuffer->pDataRead = (const char **) malloc((maxNumReadHandles) * sizeof(const char *));
-    pRingBuffer->statReadLossBytes = (size_t *) malloc((maxNumReadHandles) * sizeof(size_t));
+    pRingBuffer->pDataRead = (const char **) pUPortMalloc((maxNumReadHandles) * sizeof(const char *));
+    pRingBuffer->statReadLossBytes = (size_t *) pUPortMalloc((maxNumReadHandles) * sizeof(size_t));
     if ((pRingBuffer->pDataRead != NULL) && (pRingBuffer->statReadLossBytes != NULL) &&
         (maxNumReadHandles < (sizeof(pRingBuffer->dataReadLockBitmap) * 8))) {
         pRingBuffer->isMalloced = true;
@@ -585,9 +585,9 @@ int32_t uRingBufferCreateWithReadHandle(uRingBuffer_t *pRingBuffer, char *pLinea
         errorCode = createCommon(pRingBuffer, pLinearBuffer, size);
     }
     if (errorCode != 0) {
-        free(pRingBuffer->pDataRead);
+        uPortFree(pRingBuffer->pDataRead);
         pRingBuffer->pDataRead = NULL;
-        free(pRingBuffer->statReadLossBytes);
+        uPortFree(pRingBuffer->statReadLossBytes);
         pRingBuffer->statReadLossBytes = NULL;
         pRingBuffer->maxNumReadPointers = 0;
     }

@@ -32,7 +32,7 @@
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
 
-#include "stdlib.h"    // malloc(), free()
+#include "stdlib.h"    // strtol()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
@@ -46,6 +46,7 @@
 
 #include "u_port_clib_platform_specific.h" // isblank() in some cases
 #include "u_port_clib_mktime64.h"
+#include "u_port_heap.h"
 #include "u_port.h"
 #include "u_port_os.h"
 
@@ -214,7 +215,7 @@ static void credentialListClear()
 
     while (gpCredentialList != NULL) {
         pTmp = gpCredentialList->pNext;
-        free(gpCredentialList);
+        uPortFree(gpCredentialList);
         gpCredentialList = pTmp;
     }
 }
@@ -251,7 +252,7 @@ static int32_t credentialListGetRemove(uSecurityCredential_t *pCredential)
             memcpy(pCredential, &(pTmp->credential), sizeof(*pCredential));
         }
         pTmp = gpCredentialList->pNext;
-        free(gpCredentialList);
+        uPortFree(gpCredentialList);
         gpCredentialList = pTmp;
         errorOrCount = 0;
         while (pTmp != NULL) {
@@ -494,7 +495,7 @@ int32_t uSecurityCredentialListFirst(uDeviceHandle_t devHandle,
             while (keepGoing) {
                 errorCodeOrSize = (int32_t) U_ERROR_COMMON_NO_MEMORY;
                 keepGoing = false;
-                pContainer = (uSecurityCredentialContainer_t *) malloc(sizeof(*pContainer));
+                pContainer = (uSecurityCredentialContainer_t *) pUPortMalloc(sizeof(*pContainer));
                 if (pContainer != NULL) {
                     pContainer->pNext = NULL;
                     errorCodeOrSize = (int32_t) U_ERROR_COMMON_SUCCESS;
@@ -556,7 +557,7 @@ int32_t uSecurityCredentialListFirst(uDeviceHandle_t devHandle,
                     count = credentialListAddCount(pContainer);
                 } else {
                     // Nothing there, free it
-                    free(pContainer);
+                    uPortFree(pContainer);
                 }
                 // Now that we've got one, set the timeout short for
                 // the rest so that we don't wait around for

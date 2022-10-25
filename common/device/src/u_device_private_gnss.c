@@ -25,13 +25,13 @@
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
-#include "stdlib.h"    // malloc()/free()
 #include "string.h"    // for memset()
 
 #include "u_cfg_os_platform_specific.h" // For U_CFG_OS_CLIB_LEAKS
 
 #include "u_error_common.h"
 
+#include "u_port_heap.h"
 #include "u_port_uart.h"
 #include "u_port_i2c.h"
 
@@ -86,10 +86,10 @@ static int32_t removeDevice(uDeviceHandle_t devHandle, bool powerOff)
             if (errorCode == 0) {
                 // This will destroy the instance
                 uGnssRemove(devHandle);
-                free(pContext);
+                uPortFree(pContext);
             }
         } else {
-            free(pContext);
+            uPortFree(pContext);
         }
     }
 
@@ -115,7 +115,7 @@ static int32_t addDevice(int32_t transportHandle,
         gnssTransportHandle.uart = transportHandle;
     }
 
-    pContext = (uDeviceGnssInstance_t *) malloc(sizeof(uDeviceGnssInstance_t));
+    pContext = (uDeviceGnssInstance_t *) pUPortMalloc(sizeof(uDeviceGnssInstance_t));
     if (pContext != NULL) {
         pContext->transportHandle = transportHandle;
         pContext->transportType = transportType;
@@ -143,7 +143,7 @@ static int32_t addDevice(int32_t transportHandle,
                 removeDevice(*pDeviceHandle, false);
             }
         } else {
-            free(pContext);
+            uPortFree(pContext);
         }
     }
 

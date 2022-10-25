@@ -28,7 +28,7 @@
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
 
-#include "stdlib.h"    // malloc(), free()
+#include "stdlib.h"    // strtol()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
@@ -46,6 +46,7 @@
                                               be included before the other port
                                               files if any print or scan function
                                               is used. */
+#include "u_port_heap.h"
 #include "u_port.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"
@@ -1531,14 +1532,14 @@ static int32_t publish(const uCellPrivateInstance_t *pInstance,
             // blob then allocate space to publish it as a string,
             // either as hex or as ASCII with a terminator added
             if (isAscii) {
-                pTextMessage = (char *) malloc(messageSizeBytes + 1);
+                pTextMessage = (char *) pUPortMalloc(messageSizeBytes + 1);
                 if (pTextMessage != NULL) {
                     // Just copy in the text and add a terminator
                     memcpy(pTextMessage, pMessage, messageSizeBytes);
                     *(pTextMessage + messageSizeBytes) = '\0';
                 }
             } else {
-                pTextMessage = (char *) malloc((messageSizeBytes * 2) + 1);
+                pTextMessage = (char *) pUPortMalloc((messageSizeBytes * 2) + 1);
                 if (pTextMessage != NULL) {
                     // Convert to hex
                     uBinToHex(pMessage, messageSizeBytes, pTextMessage);
@@ -1666,8 +1667,7 @@ static int32_t publish(const uCellPrivateInstance_t *pInstance,
             } while ((errorCode != (int32_t) U_ERROR_COMMON_SUCCESS) &&
                      (tryCount < pContext->numTries) && mqttRetry(pInstance, mqttSn));
 
-            // Free memory (it is legal C to free a NULL pointer)
-            free(pTextMessage);
+            uPortFree(pTextMessage);
 
             if (errorCode != (int32_t) U_ERROR_COMMON_SUCCESS) {
                 printErrorCodes(pInstance);
@@ -2077,7 +2077,7 @@ int32_t uCellMqttInit(uDeviceHandle_t cellHandle, const char *pBrokerNameStr,
                  U_CELL_MQTT_BROKER_ADDRESS_STRING_MAX_LENGTH_BYTES)) {
                 errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
                 // Allocate memory for the MQTT context
-                pContext = (volatile uCellMqttContext_t *) malloc(sizeof(*pContext));
+                pContext = (volatile uCellMqttContext_t *) pUPortMalloc(sizeof(*pContext));
                 if (pContext != NULL) {
                     pContext->pKeepGoingCallback = pKeepGoingCallback;
                     pContext->pMessageIndicationCallback = NULL;
@@ -2094,7 +2094,7 @@ int32_t uCellMqttInit(uDeviceHandle_t cellHandle, const char *pBrokerNameStr,
                     pInstance->pMqttContext = pContext;
                     if (U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType)) {
                         // SARA-R4 requires a pUrcMessage as well
-                        pContext->pUrcMessage = (uCellMqttUrcMessage_t *) malloc(sizeof(*(pContext->pUrcMessage)));
+                        pContext->pUrcMessage = (uCellMqttUrcMessage_t *) pUPortMalloc(sizeof(*(pContext->pUrcMessage)));
                     }
                     if ((pContext->pUrcMessage != NULL) ||
                         !U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType)) {
@@ -2102,7 +2102,8 @@ int32_t uCellMqttInit(uDeviceHandle_t cellHandle, const char *pBrokerNameStr,
                         // Deal with the broker name string
                         // Allocate space to fiddle with the
                         // server address, +1 for terminator
-                        pContext->pBrokerNameStr = (char *) malloc(U_CELL_MQTT_BROKER_ADDRESS_STRING_MAX_LENGTH_BYTES + 1);
+                        pContext->pBrokerNameStr = (char *) pUPortMalloc(U_CELL_MQTT_BROKER_ADDRESS_STRING_MAX_LENGTH_BYTES
+                                                                         + 1);
                         if (pContext->pBrokerNameStr != NULL) {
                             errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
                             // Determine if the server name given
@@ -2156,7 +2157,7 @@ int32_t uCellMqttInit(uDeviceHandle_t cellHandle, const char *pBrokerNameStr,
                                 // We only need to  keep hold of the broker string
                                 // if we're using the old SARA-R4 syntax (since
                                 // the keep alive AT command needs it)
-                                free(pContext->pBrokerNameStr);
+                                uPortFree(pContext->pBrokerNameStr);
                                 pContext->pBrokerNameStr = NULL;
                             }
 
@@ -2243,11 +2244,11 @@ int32_t uCellMqttInit(uDeviceHandle_t cellHandle, const char *pBrokerNameStr,
                             //lint -e(605) Suppress complaints about
                             // freeing a volatile pointer as well
                             volatile uCellMqttContext_t *pCtx = (volatile uCellMqttContext_t *)pInstance->pMqttContext;
-                            free((void *)pCtx->pUrcMessage);
+                            uPortFree((void *)pCtx->pUrcMessage);
                         }
                         //lint -e(605) Suppress complaints about
                         // freeing this volatile pointer as well
-                        free((void *)pInstance->pMqttContext);
+                        uPortFree((void *)pInstance->pMqttContext);
                         pInstance->pMqttContext = NULL;
                     }
                 }
@@ -2275,13 +2276,13 @@ void uCellMqttDeinit(uDeviceHandle_t cellHandle)
         }
 
         uAtClientRemoveUrcHandler(pInstance->atHandle, "+UUMQTT");
-        free(pContext->pBrokerNameStr);
+        uPortFree(pContext->pBrokerNameStr);
         //lint -e(605) Suppress complaints about
         // freeing a volatile pointer as well
-        free((void *)pContext->pUrcMessage);
+        uPortFree((void *)pContext->pUrcMessage);
         //lint -e(605) Suppress complaints about
         // freeing this volatile pointer as well
-        free((void *)pContext);
+        uPortFree((void *)pContext);
         pInstance->pMqttContext = NULL;
     }
 
@@ -2669,7 +2670,7 @@ int32_t uCellMqttSetWill(uDeviceHandle_t cellHandle,
                     // For MQTT we can do it in hex, so allocate space
                     // to encode the hex version of the message
                     errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
-                    pHexMessage = (char *) malloc((messageSizeBytes * 2) + 1);
+                    pHexMessage = (char *) pUPortMalloc((messageSizeBytes * 2) + 1);
                     if (pHexMessage != NULL) {
                         // Convert to hex
                         uBinToHex(pMessage, messageSizeBytes, pHexMessage);
@@ -2729,7 +2730,7 @@ int32_t uCellMqttSetWill(uDeviceHandle_t cellHandle,
                     errorCode = atMqttStopCmdGetRespAndUnlock(pInstance);
                 }
                 // Free memory
-                free(pHexMessage);
+                uPortFree(pHexMessage);
             }
         }
     }
@@ -2776,7 +2777,7 @@ int32_t uCellMqttGetWill(uDeviceHandle_t cellHandle, char *pTopicNameStr,
                     // in, since it may be larger than the user has
                     // asked for and we have to read in the lot
                     errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
-                    pBuffer = (char *) malloc(U_CELL_MQTT_READ_TOPIC_MAX_LENGTH_BYTES + 1);
+                    pBuffer = (char *) pUPortMalloc(U_CELL_MQTT_READ_TOPIC_MAX_LENGTH_BYTES + 1);
                     if (pBuffer != NULL) {
                         // Get the "will" topic name string
                         uAtClientLock(atHandle);
@@ -2804,7 +2805,7 @@ int32_t uCellMqttGetWill(uDeviceHandle_t cellHandle, char *pTopicNameStr,
                             }
                         }
                         // Free memory.
-                        free(pBuffer);
+                        uPortFree(pBuffer);
                     }
                 }
                 if ((errorCode == 0) && (pMessage != NULL)) {

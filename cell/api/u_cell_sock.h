@@ -289,7 +289,7 @@ int32_t uCellSockSecure(uDeviceHandle_t cellHandle,
  * be 50 to 100 ms per packet, larger than the time it would
  * take to transmit the twice-as-long hex-coded message for
  * short message lengths, though it should be noted that
- * the code will malloc() a temporary buffer in which to
+ * the code will allocate a temporary buffer in which to
  * store the hex encoded message. In hex mode the maximum
  * length of a datagram is halved.
  * Note that this will apply to ALL sockets but you may

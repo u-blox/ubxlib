@@ -35,7 +35,6 @@
 #  include "u_cfg_override.h" // For a customer's configuration override
 # endif
 
-#include "stdlib.h"    // malloc()/free()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
@@ -53,6 +52,7 @@
                                               before the other port files if
                                               any print or scan function is used. */
 #include "u_port.h"
+#include "u_port_heap.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"   // Required by u_gnss_private.h
 #include "u_port_uart.h"
@@ -147,9 +147,9 @@ U_PORT_TEST_FUNCTION("[gnssUtil]", "gnssUtilTransparent")
             // So that we can see what we're doing
             uGnssSetUbxMessagePrint(gnssHandle, true);
 
-            pBuffer1 = (char *) malloc(U_GNSS_UTIL_TEST_VERSION_SIZE_MAX_BYTES);
+            pBuffer1 = (char *) pUPortMalloc(U_GNSS_UTIL_TEST_VERSION_SIZE_MAX_BYTES);
             U_PORT_TEST_ASSERT(pBuffer1 != NULL);
-            pBuffer2 = (char *) malloc(U_GNSS_UTIL_TEST_VERSION_SIZE_MAX_BYTES);
+            pBuffer2 = (char *) pUPortMalloc(U_GNSS_UTIL_TEST_VERSION_SIZE_MAX_BYTES);
             U_PORT_TEST_ASSERT(pBuffer2 != NULL);
 
             // Ask for the firmware version string in the normal way
@@ -209,8 +209,8 @@ U_PORT_TEST_FUNCTION("[gnssUtil]", "gnssUtilTransparent")
             U_PORT_TEST_ASSERT(x == 0);
 
             // Free memory
-            free(pBuffer2);
-            free(pBuffer1);
+            uPortFree(pBuffer2);
+            uPortFree(pBuffer1);
 
             // Do the standard postamble, but this time power the
             // module off as otherwise the response to the last

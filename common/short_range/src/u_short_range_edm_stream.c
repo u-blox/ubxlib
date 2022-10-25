@@ -27,7 +27,6 @@
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 #include "stdio.h"
-#include "stdlib.h"
 #include "ctype.h"
 
 //lint -efile(766, u_port_debug.h)
@@ -35,6 +34,7 @@
 #include "u_cfg_os_platform_specific.h"
 #include "u_error_common.h"
 #include "u_port.h"
+#include "u_port_heap.h"
 #include "u_port_os.h"
 #include "u_port_event_queue.h"
 #include "u_port_uart.h"
@@ -834,9 +834,9 @@ static void flushUart(int32_t uartHandle)
     int32_t length = uPortUartGetReceiveSize(uartHandle);
 
     if (length > 0) {
-        char *pDummy = (char *)malloc(length);
+        char *pDummy = (char *)pUPortMalloc(length);
         uPortUartRead(uartHandle, pDummy, length);
-        free(pDummy);
+        uPortFree(pDummy);
     }
 }
 
@@ -854,8 +854,8 @@ static int32_t edmSend(const uShortRangeEdmStreamInstance_t *pEdmStream)
     size_t written = 0;
     int32_t sizeOrError = (int32_t) U_ERROR_COMMON_NO_MEMORY;
 
-    pPacket = (char *) malloc(U_SHORT_RANGE_EDM_STREAM_AT_COMMAND_LENGTH +
-                              U_SHORT_RANGE_EDM_REQUEST_OVERHEAD);
+    pPacket = (char *) pUPortMalloc(U_SHORT_RANGE_EDM_STREAM_AT_COMMAND_LENGTH +
+                                    U_SHORT_RANGE_EDM_REQUEST_OVERHEAD);
     if (pPacket != NULL) {
         sizeOrError = uShortRangeEdmRequest(pEdmStream->pAtCommandBuffer,
                                             pEdmStream->atCommandCurrent,
@@ -871,7 +871,7 @@ static int32_t edmSend(const uShortRangeEdmStreamInstance_t *pEdmStream)
                                      (uint32_t) sizeOrError - written);
             }
         }
-        free(pPacket);
+        uPortFree(pPacket);
     }
 
     return sizeOrError;
@@ -990,9 +990,9 @@ int32_t uShortRangeEdmStreamOpen(int32_t uartHandle)
                                                           U_EDM_STREAM_TASK_PRIORITY);
 
             if (errorCode == 0) {
-                gEdmStream.pAtCommandBuffer = (char *)malloc(U_SHORT_RANGE_EDM_STREAM_AT_COMMAND_LENGTH);
+                gEdmStream.pAtCommandBuffer = (char *)pUPortMalloc(U_SHORT_RANGE_EDM_STREAM_AT_COMMAND_LENGTH);
                 memset(gEdmStream.pAtCommandBuffer, 0, U_SHORT_RANGE_EDM_STREAM_AT_COMMAND_LENGTH);
-                gEdmStream.pAtResponseBuffer = (char *)malloc(U_SHORT_RANGE_EDM_STREAM_AT_RESPONSE_LENGTH);
+                gEdmStream.pAtResponseBuffer = (char *)pUPortMalloc(U_SHORT_RANGE_EDM_STREAM_AT_RESPONSE_LENGTH);
                 memset(gEdmStream.pAtResponseBuffer, 0, U_SHORT_RANGE_EDM_STREAM_AT_RESPONSE_LENGTH);
                 if (gEdmStream.pAtCommandBuffer == NULL ||
                     gEdmStream.pAtResponseBuffer == NULL) {
@@ -1079,9 +1079,9 @@ void uShortRangeEdmStreamClose(int32_t handle)
             gEdmStream.pMqttEventCallbackParam = NULL;
             gEdmStream.pMqttDataCallback = NULL;
             gEdmStream.pMqttDataCallbackParam = NULL;
-            free(gEdmStream.pAtCommandBuffer);
+            uPortFree(gEdmStream.pAtCommandBuffer);
             gEdmStream.pAtCommandBuffer = NULL;
-            free(gEdmStream.pAtResponseBuffer);
+            uPortFree(gEdmStream.pAtResponseBuffer);
             gEdmStream.pAtResponseBuffer = NULL;
             for (uint32_t i = 0; i < U_SHORT_RANGE_EDM_STREAM_MAX_CONNECTIONS; i++) {
                 gEdmStream.connections[i].channel = -1;

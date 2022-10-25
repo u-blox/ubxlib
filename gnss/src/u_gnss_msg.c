@@ -60,7 +60,6 @@
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
 
-#include "stdlib.h"    // malloc()/free()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
@@ -71,6 +70,7 @@
 #include "u_error_common.h"
 
 #include "u_port.h"
+#include "u_port_heap.h"
 #include "u_port_os.h"  // Required by u_gnss_private.h
 #include "u_port_debug.h"
 #include "u_port_uart.h"
@@ -465,13 +465,14 @@ int32_t uGnssMsgReceiveStart(uDeviceHandle_t gnssHandle,
         pInstance = pUGnssPrivateGetInstance(gnssHandle);
         if ((pInstance != NULL) && (pMessageId != NULL) && (pCallback != NULL)) {
             errorCodeOrHandle = (int32_t) U_ERROR_COMMON_NO_MEMORY;
-            pReader = (uGnssPrivateMsgReader_t *) malloc(sizeof(uGnssPrivateMsgReader_t));
+            pReader = (uGnssPrivateMsgReader_t *) pUPortMalloc(sizeof(uGnssPrivateMsgReader_t));
             if (pReader != NULL) {
                 memset(pReader, 0, sizeof(*pReader));
                 // If the message receive task is not running
                 // at the moment, start it
                 if (pInstance->pMsgReceive == NULL) {
-                    pInstance->pMsgReceive = (uGnssPrivateMsgReceive_t *) malloc(sizeof(uGnssPrivateMsgReceive_t));
+                    pInstance->pMsgReceive = (uGnssPrivateMsgReceive_t *) pUPortMalloc(sizeof(
+                                                                                           uGnssPrivateMsgReceive_t));
                     if (pInstance->pMsgReceive != NULL) {
                         pMsgReceive = pInstance->pMsgReceive;
                         memset(pMsgReceive, 0, sizeof(*pMsgReceive));
@@ -481,7 +482,7 @@ int32_t uGnssMsgReceiveStart(uDeviceHandle_t gnssHandle,
                             // Allocate a temporary buffer that we can use to pull data
                             // from the streaming source into the ring-buffer from our
                             // asynchronous task
-                            pMsgReceive->pTemporaryBuffer = (char *) malloc(U_GNSS_MSG_TEMPORARY_BUFFER_LENGTH_BYTES);
+                            pMsgReceive->pTemporaryBuffer = (char *) pUPortMalloc(U_GNSS_MSG_TEMPORARY_BUFFER_LENGTH_BYTES);
                             if (pMsgReceive->pTemporaryBuffer != NULL) {
                                 // Create the mutex that controls access to the linked-list of readers
                                 errorCodeOrHandle = uPortMutexCreate(&(pMsgReceive->readerMutexHandle));
@@ -526,22 +527,22 @@ int32_t uGnssMsgReceiveStart(uDeviceHandle_t gnssHandle,
                                 if (pMsgReceive->readerMutexHandle != NULL) {
                                     uPortMutexDelete(pMsgReceive->readerMutexHandle);
                                 }
-                                free(pInstance->pTemporaryBuffer);
+                                uPortFree(pInstance->pTemporaryBuffer);
                                 uRingBufferGiveReadHandle(&(pInstance->ringBuffer),
                                                           pMsgReceive->ringBufferReadHandle);
-                                free(pInstance->pMsgReceive);
+                                uPortFree(pInstance->pMsgReceive);
                                 pInstance->pMsgReceive = NULL;
                             }
                         } else {
                             // Out of handles already
-                            free(pInstance->pMsgReceive);
+                            uPortFree(pInstance->pMsgReceive);
                             pInstance->pMsgReceive = NULL;
                         }
                     }
                 }
                 if (pInstance->pMsgReceive == NULL) {
                     // Clean up on error
-                    free(pReader);
+                    uPortFree(pReader);
                     pReader = NULL;
                 }
             }
@@ -627,7 +628,7 @@ int32_t uGnssMsgReceiveStop(uDeviceHandle_t gnssHandle, int32_t asyncHandle)
                         } else {
                             pMsgReceive->pReaderList = pCurrent->pNext;
                         }
-                        free(pCurrent);
+                        uPortFree(pCurrent);
                         pCurrent = NULL;
                         errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
                     } else {

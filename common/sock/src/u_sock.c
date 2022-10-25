@@ -310,7 +310,7 @@
 
 #include "limits.h"        // For UCHAR_MAX, USHRT_MAX, INT_MAX
 #include "errno.h"
-#include "stdlib.h"        // malloc() and free()
+#include "stdlib.h"        // strtol()
 #include "stddef.h"        // NULL, size_t etc.
 #include "stdint.h"        // int32_t etc.
 #include "stdbool.h"
@@ -329,6 +329,7 @@
                                               before the other port files if
                                               any print or scan function is used. */
 #include "u_port.h"
+#include "u_port_heap.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"
 
@@ -347,9 +348,9 @@
 #ifndef U_SOCK_NUM_STATIC_SOCKETS
 /** The number of statically allocated sockets.  When
  * more than this number of sockets are required to
- * be open simultaneously they will be malloc()ed and
+ * be open simultaneously they will be allocated and
  * it is up to the user to call uSockCleanUp()
- * to release the memory occupied by closed malloc()ed
+ * to release the memory occupied by closed allocated
  * sockets when done.
  */
 # define U_SOCK_NUM_STATIC_SOCKETS     7
@@ -604,7 +605,7 @@ static uSockContainer_t *pSockContainerCreate(uSockDescriptor_t descriptor,
         // Reached the end of the list and found no re-usable
         // containers, so allocate memory for the new container
         // and add it to the list
-        pContainer = (uSockContainer_t *) malloc(sizeof (*pContainer));
+        pContainer = (uSockContainer_t *) pUPortMalloc(sizeof (*pContainer));
         if (pContainer != NULL) {
             pContainer->isStatic = false;
             pContainer->pPrevious = pContainerPrevious;
@@ -665,7 +666,7 @@ static bool containerFree(uSockDescriptor_t descriptor)
             }
 
             // Free the memory and NULL the pointer
-            free(*ppContainer);
+            uPortFree(*ppContainer);
             *ppContainer = NULL;
         } else {
             // Nothing to do for a static container,
@@ -1457,7 +1458,7 @@ void uSockCleanUp()
                     devHandle = pContainer->socket.devHandle;
 
                     // Free the memory
-                    free(pContainer);
+                    uPortFree(pContainer);
                     // Move to the next entry
                     pContainer = pTmp;
                 } else {
@@ -1545,7 +1546,7 @@ void uSockDeinit()
                 pTmp = pContainer->pNext;
 
                 // Free the memory
-                free(pContainer);
+                uPortFree(pContainer);
                 // Move to the next entry
                 pContainer = pTmp;
             } else {

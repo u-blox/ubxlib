@@ -30,7 +30,7 @@
 
 #include "errno.h"
 #include "limits.h"    // INT_MAX
-#include "stdlib.h"    // malloc(), free(), strol(), atoi(), strol()
+#include "stdlib.h"    // strol(), atoi(), strol()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"

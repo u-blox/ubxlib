@@ -27,7 +27,6 @@
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
-#include "stdlib.h"    // for malloc()/free()
 #include "string.h"    // for memset()
 
 #include "u_cfg_sw.h"
@@ -35,6 +34,7 @@
 #include "u_error_common.h"
 
 #include "u_port.h"
+#include "u_port_heap.h"
 #include "u_port_os.h"
 #include "u_port_debug.h"
 
@@ -95,7 +95,7 @@ void uDeviceMutexDestroy()
 uDeviceInstance_t *pUDeviceCreateInstance(uDeviceType_t type)
 {
     uDeviceInstance_t *pInstance;
-    pInstance = (uDeviceInstance_t *) malloc(sizeof(uDeviceInstance_t));
+    pInstance = (uDeviceInstance_t *) pUPortMalloc(sizeof(uDeviceInstance_t));
 
     if (pInstance) {
         uDeviceInitInstance(pInstance, type);
@@ -109,7 +109,7 @@ void uDeviceDestroyInstance(uDeviceInstance_t *pInstance)
     if (uDeviceIsValidInstance(pInstance)) {
         // Invalidate the instance
         pInstance->magic = 0;
-        free(pInstance);
+        uPortFree(pInstance);
     } else {
         uPortLog("U_DEVICE: Warning: trying to destroy an already"
                  " destroyed instance.\n");

@@ -213,7 +213,7 @@ int32_t uPortTaskGetHandle(uPortTaskHandle_t *pTaskHandle)
 // of the STM32F4 platform, maps to FreeRTOS queues,
 // however an osMessage is fixed at 32 bits in size.
 // Could use osMail but that would result in lots
-// of malloc()/free() operations which is undesirable
+// of malloc/free operations which is undesirable
 // hence we go straight to the underlying FreeRTOS
 // xQueue interface here.
 int32_t uPortQueueCreate(size_t queueLength,

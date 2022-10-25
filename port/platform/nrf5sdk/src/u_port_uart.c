@@ -51,6 +51,7 @@
                                               any print or scan function is used. */
 #include "u_port_debug.h"
 #include "u_port.h"
+#include "u_port_heap.h"
 #include "u_port_os.h"
 #include "u_port_event_queue.h"
 #include "u_port_uart.h"
@@ -68,7 +69,6 @@
 #include "nrf_delay.h"
 
 #include "limits.h" // For INT_MAX
-#include "stdlib.h" // For malloc()/free()
 #include "string.h" // For memcpy()
 
 /* Design note: it took ages to get this to work.
@@ -289,7 +289,7 @@ static void uartClose(int32_t handle)
 
             // And finally free the allocated resources
             // and mark them NULL
-            free(gUartData[handle].pRxBuff);
+            uPortFree(gUartData[handle].pRxBuff);
             gUartData[handle].pRxBuff = NULL;
             gUartData[handle].pTxBuff = NULL;
             gUartData[handle].bufferRead = 0;
@@ -600,7 +600,7 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
 
                 // Malloc memory for the read buffer
                 gUartData[uart].rxBufferSizeBytes = receiveBufferSizeBytes;
-                gUartData[uart].pRxBuff = malloc(gUartData[uart].rxBufferSizeBytes);
+                gUartData[uart].pRxBuff = pUPortMalloc(gUartData[uart].rxBufferSizeBytes);
                 gUartData[uart].pTxBuff = NULL;
 
                 // Set up the rest of the UART data structure

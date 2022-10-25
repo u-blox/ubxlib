@@ -32,7 +32,7 @@
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
-#include "stdlib.h"    // malloc(), free()
+#include "stdlib.h"    // rand()
 
 // Must always be included before u_short_range_test_selector.h
 //lint -efile(766, u_wifi_module_type.h)
@@ -50,6 +50,7 @@
 #include "u_error_common.h"
 
 #include "u_port.h"
+#include "u_port_heap.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"
 
@@ -323,14 +324,14 @@ static int32_t wifiMqttUnsubscribeTest(bool isSecuredConnection)
     setUniqueClientId(gHandles.devHandle);
 
     // Malloc space to read messages and topics into
-    pTopicOut1 = (char *) malloc(U_MQTT_CLIENT_TEST_READ_TOPIC_MAX_LENGTH_BYTES);
+    pTopicOut1 = (char *) pUPortMalloc(U_MQTT_CLIENT_TEST_READ_TOPIC_MAX_LENGTH_BYTES);
     U_PORT_TEST_ASSERT(pTopicOut1 != NULL);
 
-    pTopicIn = (char *) malloc(U_MQTT_CLIENT_TEST_READ_TOPIC_MAX_LENGTH_BYTES);
+    pTopicIn = (char *) pUPortMalloc(U_MQTT_CLIENT_TEST_READ_TOPIC_MAX_LENGTH_BYTES);
     U_PORT_TEST_ASSERT(pTopicIn != NULL);
 
     //lint -esym(613, pMessageOut) Suppress possible use of NULL pointer in future
-    pMessageIn = (char *) malloc(U_MQTT_CLIENT_TEST_READ_MESSAGE_MAX_LENGTH_BYTES);
+    pMessageIn = (char *) pUPortMalloc(U_MQTT_CLIENT_TEST_READ_MESSAGE_MAX_LENGTH_BYTES);
     U_PORT_TEST_ASSERT(pMessageIn != NULL);
 
 
@@ -445,9 +446,9 @@ static int32_t wifiMqttUnsubscribeTest(bool isSecuredConnection)
     mqttSessionDisconnected = false;
 
     uMqttClientClose(mqttClientCtx);
-    free(pTopicIn);
-    free(pTopicOut1);
-    free(pMessageIn);
+    uPortFree(pTopicIn);
+    uPortFree(pTopicOut1);
+    uPortFree(pMessageIn);
 
     return err;
 }
@@ -470,16 +471,16 @@ static int32_t wifiMqttPublishSubscribeTest(bool isSecuredConnection)
     setUniqueClientId(gHandles.devHandle);
 
     // Malloc space to read messages and topics into
-    pTopicOut1 = (char *) malloc(U_MQTT_CLIENT_TEST_READ_TOPIC_MAX_LENGTH_BYTES);
+    pTopicOut1 = (char *) pUPortMalloc(U_MQTT_CLIENT_TEST_READ_TOPIC_MAX_LENGTH_BYTES);
     U_PORT_TEST_ASSERT(pTopicOut1 != NULL);
-    pTopicOut2 = (char *) malloc(U_MQTT_CLIENT_TEST_READ_TOPIC_MAX_LENGTH_BYTES);
+    pTopicOut2 = (char *) pUPortMalloc(U_MQTT_CLIENT_TEST_READ_TOPIC_MAX_LENGTH_BYTES);
     U_PORT_TEST_ASSERT(pTopicOut2 != NULL);
 
-    pTopicIn = (char *) malloc(U_MQTT_CLIENT_TEST_READ_TOPIC_MAX_LENGTH_BYTES);
+    pTopicIn = (char *) pUPortMalloc(U_MQTT_CLIENT_TEST_READ_TOPIC_MAX_LENGTH_BYTES);
     U_PORT_TEST_ASSERT(pTopicIn != NULL);
 
     //lint -esym(613, pMessageOut) Suppress possible use of NULL pointer in future
-    pMessageIn = (char *) malloc(U_MQTT_CLIENT_TEST_READ_MESSAGE_MAX_LENGTH_BYTES);
+    pMessageIn = (char *) pUPortMalloc(U_MQTT_CLIENT_TEST_READ_MESSAGE_MAX_LENGTH_BYTES);
     U_PORT_TEST_ASSERT(pMessageIn != NULL);
 
 
@@ -599,10 +600,10 @@ static int32_t wifiMqttPublishSubscribeTest(bool isSecuredConnection)
     mqttSessionDisconnected = false;
 
     uMqttClientClose(mqttClientCtx);
-    free(pTopicIn);
-    free(pTopicOut1);
-    free(pTopicOut2);
-    free(pMessageIn);
+    uPortFree(pTopicIn);
+    uPortFree(pTopicOut1);
+    uPortFree(pTopicOut2);
+    uPortFree(pMessageIn);
 
     return err;
 }

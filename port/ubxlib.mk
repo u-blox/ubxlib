@@ -49,6 +49,9 @@ UBXLIB_SRC += ${UBXLIB_BASE}/common/device/src/u_device_private.c
 UBXLIB_INC += ${UBXLIB_BASE}/common/device/api
 UBXLIB_PRIVATE_INC += ${UBXLIB_BASE}/common/device/src
 
+# Default malloc()/free() implementation
+UBXLIB_SRC += ${UBXLIB_BASE}/port/u_port_heap.c
+
 # Optional short range related files and directories
 ifneq ($(filter short_range,$(UBXLIB_FEATURES)),)
 UBXLIB_MODULE_DIRS += \

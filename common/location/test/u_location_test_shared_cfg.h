@@ -167,7 +167,7 @@ void uLocationTestPrintLocation(const uLocation_t *pLocation);
  * to free the memory allocated to the copy afterwards.
  *
  * @param pCfg  a pointer to the location test configuration to copy.
- * @return      a pointer to the malloc()ated copy of the location
+ * @return      a pointer to the allocated copy of the location
  *              test configuration or NULL on failure.
  */
 uLocationTestCfg_t *pULocationTestCfgDeepCopyMalloc(const uLocationTestCfg_t *pCfg);

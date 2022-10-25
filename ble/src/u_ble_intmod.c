@@ -30,7 +30,6 @@
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
 
-#include "stdlib.h"    // malloc() and free()
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 

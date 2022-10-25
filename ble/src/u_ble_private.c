@@ -29,7 +29,6 @@
 #endif
 
 #include "string.h"
-#include "stdlib.h"    // malloc() and free()
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 

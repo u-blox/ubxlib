@@ -31,7 +31,6 @@
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
 
-#include "stdlib.h"    // malloc()/free()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
@@ -45,6 +44,7 @@
 #include "u_error_common.h"
 
 #include "u_port.h"
+#include "u_port_heap.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"
 
@@ -99,11 +99,12 @@ U_PORT_TEST_FUNCTION("[ubxProtocol]", "ubxProtocolBackToBack")
     uint64_t z = 0xf0f1f2f3f4f5f6f7ULL;
     uint64_t intBuffer;
 
-    pBodyIn = (char *) malloc(U_UBX_PROTOCOL_TEST_MAX_BODY_SIZE);
+    pBodyIn = (char *) pUPortMalloc(U_UBX_PROTOCOL_TEST_MAX_BODY_SIZE);
     U_PORT_TEST_ASSERT(pBodyIn != NULL);
-    pBodyOut = (char *) malloc(U_UBX_PROTOCOL_TEST_MAX_BODY_SIZE);
+    pBodyOut = (char *) pUPortMalloc(U_UBX_PROTOCOL_TEST_MAX_BODY_SIZE);
     U_PORT_TEST_ASSERT(pBodyOut != NULL);
-    pBuffer = (char *) malloc(U_UBX_PROTOCOL_TEST_MAX_BODY_SIZE + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES);
+    pBuffer = (char *) pUPortMalloc(U_UBX_PROTOCOL_TEST_MAX_BODY_SIZE +
+                                    U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES);
     U_PORT_TEST_ASSERT(pBuffer != NULL);
 
     for (size_t x = 0; x < U_UBX_PROTOCOL_TEST_MAX_BODY_SIZE; x += 10) {
@@ -154,7 +155,7 @@ U_PORT_TEST_FUNCTION("[ubxProtocol]", "ubxProtocolBackToBack")
 
     // Test the integer encode/decode functions
     // There is a bug in Zephyr (https://github.com/zephyrproject-rtos/zephyr/issues/30723)
-    // where malloc() does not return a pointer that is aligned for 64-bit
+    // where malloc does not return a pointer that is aligned for 64-bit
     // access (i.e. to an 8-byte boundary) so here we use intBuffer,
     // which is just a 64-bit variable, instead of using the more
     // obvious pBuffer.
@@ -166,9 +167,9 @@ U_PORT_TEST_FUNCTION("[ubxProtocol]", "ubxProtocolBackToBack")
     U_PORT_TEST_ASSERT(uUbxProtocolUint64Decode((char *) &intBuffer) == z);
 
     // Free memory
-    free(pBodyIn);
-    free(pBodyOut);
-    free(pBuffer);
+    uPortFree(pBodyIn);
+    uPortFree(pBodyOut);
+    uPortFree(pBuffer);
 }
 
 /** Clean-up to be run at the end of this round of tests, just

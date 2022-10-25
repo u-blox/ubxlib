@@ -30,7 +30,6 @@
 #endif
 
 #include "errno.h"
-#include "stdlib.h"    // malloc(), free()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
@@ -43,6 +42,7 @@
 #include "u_error_common.h"
 
 #include "u_port.h"
+#include "u_port_heap.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"
 
@@ -406,7 +406,7 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
                           sizeof(gData) - 1, (int32_t) uPortGetTickTimeMs());
 
         // ...and capture them all again afterwards
-        pDataReceived = (char *) malloc(sizeof(gData) - 1);
+        pDataReceived = (char *) pUPortMalloc(sizeof(gData) - 1);
         U_PORT_TEST_ASSERT(pDataReceived != NULL);
         //lint -e(668) Suppress possible use of NULL pointer
         // for pDataReceived
@@ -438,7 +438,7 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
         // Check that we reassembled everything correctly
         U_PORT_TEST_ASSERT(memcmp(pDataReceived, gData, sizeof(gData) - 1) == 0);
 
-        free(pDataReceived);
+        uPortFree(pDataReceived);
 
         // Close the socket
         if (!closeSock(descriptor)) {
