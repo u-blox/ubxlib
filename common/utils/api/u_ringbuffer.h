@@ -69,12 +69,12 @@ typedef struct {
                                          case it will be malloc'ed and
                                          pDataReadNormal will not be used,
                                          instead the zeroth entry of the
-                                         malloc()ed array will hold the
+                                         allocated array will hold the
                                          "normal" read pointer. */
     size_t maxNumReadPointers;      /**< will always be at least 1 for the
                                          "normal" read case. */
     uint64_t dataReadLockBitmap;
-    bool isMalloced;                /**< true if pDataRead was malloc()ed. */
+    bool isMalloced;                /**< true if pDataRead was allocated. */
     char *pDataWrite;
     size_t size;
     void *mutex;                    /**< mutex for the ring buffer to ensure

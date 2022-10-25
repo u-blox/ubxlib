@@ -34,7 +34,7 @@
 /** Not stricty speaking part of the OS but there's nowhere better
  * to put this.  newlib on this platform doesn't recover memory
  * properly on task deletion: if you printf() from a task, the first
- * time it will malloc() 1468 bytes of memory and will never give
+ * time it will allocate 1468 bytes of memory and will never give
  * that back, even if you delete the task.  So either don't printf()
  * from the task at all or don't delete it.
  */

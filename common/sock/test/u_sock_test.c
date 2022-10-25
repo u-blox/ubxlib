@@ -37,7 +37,7 @@
 #endif
 
 #include "errno.h"
-#include "stdlib.h"    // malloc(), free()
+#include "stdlib.h"    // rand()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
@@ -53,6 +53,7 @@
 
 #include "u_port_clib_platform_specific.h" /* struct timeval in some cases. */
 #include "u_port.h"
+#include "u_port_heap.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"
 #include "u_port_event_queue.h"
@@ -550,8 +551,8 @@ static int32_t doUdpEchoBasic(uSockDescriptor_t descriptor,
                               const char *pSendData,
                               size_t sendSizeBytes)
 {
-    char *pDataReceived = (char *) malloc(sendSizeBytes +
-                                          (U_SOCK_TEST_GUARD_LENGTH_SIZE_BYTES * 2));
+    char *pDataReceived = (char *) pUPortMalloc(sendSizeBytes +
+                                                (U_SOCK_TEST_GUARD_LENGTH_SIZE_BYTES * 2));
     uSockAddress_t senderAddress;
     int32_t sentSizeBytes;
     int32_t receivedSizeBytes = 0;
@@ -618,7 +619,7 @@ static int32_t doUdpEchoBasic(uSockDescriptor_t descriptor,
         }
     }
 
-    free(pDataReceived);
+    uPortFree(pDataReceived);
 
     return receivedSizeBytes;
 }
@@ -1224,8 +1225,8 @@ U_PORT_TEST_FUNCTION("[sock]", "sockBasicTcp")
         U_PORT_TEST_ASSERT(uSockGetTotalBytesSent(descriptor) == sizeBytes);
 
         // ...and capture them all again afterwards
-        pDataReceived = (char *) malloc((sizeof(gSendData) - 1) +
-                                        (U_SOCK_TEST_GUARD_LENGTH_SIZE_BYTES * 2));
+        pDataReceived = (char *) pUPortMalloc((sizeof(gSendData) - 1) +
+                                              (U_SOCK_TEST_GUARD_LENGTH_SIZE_BYTES * 2));
         U_PORT_TEST_ASSERT(pDataReceived != NULL);
         //lint -e(668) Suppress possible use of NULL pointer
         // for pDataReceived
@@ -1298,7 +1299,7 @@ U_PORT_TEST_FUNCTION("[sock]", "sockBasicTcp")
         U_PORT_TEST_ASSERT(closedCallbackCalled);
         uSockCleanUp();
 
-        free(pDataReceived);
+        uPortFree(pDataReceived);
 
         // Check for memory leaks
         heapUsed -= uPortGetHeapFree();
@@ -1729,8 +1730,8 @@ U_PORT_TEST_FUNCTION("[sock]", "sockLocalPort")
             sizeBytes = offset;
             U_TEST_PRINT_LINE("%d byte(s) sent via TCP @%d ms, now receiving...",
                               sizeBytes, (int32_t) uPortGetTickTimeMs());
-            pDataReceived = (char *) malloc((sizeof(gSendData) - 1) +
-                                            (U_SOCK_TEST_GUARD_LENGTH_SIZE_BYTES * 2));
+            pDataReceived = (char *) pUPortMalloc((sizeof(gSendData) - 1) +
+                                                  (U_SOCK_TEST_GUARD_LENGTH_SIZE_BYTES * 2));
             U_PORT_TEST_ASSERT(pDataReceived != NULL);
             //lint -e(668) Suppress possible use of NULL pointer
             // for pDataReceived
@@ -1779,7 +1780,7 @@ U_PORT_TEST_FUNCTION("[sock]", "sockLocalPort")
             U_PORT_TEST_ASSERT(closedCallbackCalled);
             uSockCleanUp();
 
-            free(pDataReceived);
+            uPortFree(pDataReceived);
         } else {
             U_TEST_PRINT_LINE("setting local port number is not supported.");
             U_PORT_TEST_ASSERT(errorCode == (int32_t) U_ERROR_COMMON_BSD_ERROR);
@@ -2161,8 +2162,8 @@ U_PORT_TEST_FUNCTION("[sock]", "sockUdpEchoNonPingPong")
                 U_TEST_PRINT_LINE("a total of %d UDP packet(s) sent, now receiving...", y + 1);
 
                 // ...and capture them all again afterwards
-                pDataReceived = (char *) malloc((sizeof(gSendData) - 1) +
-                                                (U_SOCK_TEST_GUARD_LENGTH_SIZE_BYTES * 2));
+                pDataReceived = (char *) pUPortMalloc((sizeof(gSendData) - 1) +
+                                                      (U_SOCK_TEST_GUARD_LENGTH_SIZE_BYTES * 2));
                 U_PORT_TEST_ASSERT(pDataReceived != NULL);
                 //lint -e(668) Suppress possible use of NULL pointer
                 // for pDataReceived (it is checked above)
@@ -2192,7 +2193,7 @@ U_PORT_TEST_FUNCTION("[sock]", "sockUdpEchoNonPingPong")
                                                           sizeof(gSendData) - 1,
                                                           pDataReceived,
                                                           sizeBytes);
-                free(pDataReceived);
+                uPortFree(pDataReceived);
                 tries++;
             } while (!allPacketsReceived && (tries < U_SOCK_TEST_UDP_RETRIES));
 
@@ -2337,7 +2338,7 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAsyncUdpEchoMayFailDueToInternetDatagramLoss
             // and put the fill value into it
             gTestConfig.bufferLength = gTestConfig.bytesToSend +
                                        (U_SOCK_TEST_GUARD_LENGTH_SIZE_BYTES * 2);
-            gTestConfig.pBuffer = (char *) malloc(gTestConfig.bufferLength);
+            gTestConfig.pBuffer = (char *) pUPortMalloc(gTestConfig.bufferLength);
             U_PORT_TEST_ASSERT(gTestConfig.pBuffer != NULL);
             //lint -e(668) Suppress possible use of NULL pointer
             // for gTestConfig.pBuffer (it is checked above)
@@ -2454,7 +2455,7 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAsyncUdpEchoMayFailDueToInternetDatagramLoss
             gTestConfig.eventQueueHandle = -1;
 
             // Free memory
-            free(gTestConfig.pBuffer);
+            uPortFree(gTestConfig.pBuffer);
 
             if (gTestConfig.packetsReceived == 0) {
                 // If we're going to try again, take the
@@ -2588,7 +2589,7 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAsyncTcpEcho")
         // and put the fill value into it
         gTestConfig.bufferLength = gTestConfig.bytesToSend +
                                    (U_SOCK_TEST_GUARD_LENGTH_SIZE_BYTES * 2);
-        gTestConfig.pBuffer = (char *) malloc(gTestConfig.bufferLength);
+        gTestConfig.pBuffer = (char *) pUPortMalloc(gTestConfig.bufferLength);
         U_PORT_TEST_ASSERT(gTestConfig.pBuffer != NULL);
         //lint -e(668) Suppress possible use of NULL pointer
         // for gTestConfig.pBuffer (it is checked above)
@@ -2721,7 +2722,7 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAsyncTcpEcho")
         gTestConfig.eventQueueHandle = -1;
 
         // Free memory
-        free(gTestConfig.pBuffer);
+        uPortFree(gTestConfig.pBuffer);
 
 #if !U_CFG_OS_CLIB_LEAKS
         // Check for memory leaks but only

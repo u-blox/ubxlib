@@ -30,7 +30,6 @@
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
 
-#include "stdlib.h"    // malloc() and free()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
@@ -40,6 +39,7 @@
 #include "u_error_common.h"
 
 #include "u_cfg_sw.h"
+#include "u_port_heap.h"
 #include "u_port_os.h"
 #include "u_port_debug.h"
 #include "u_port_event_queue.h"
@@ -184,7 +184,7 @@ static void createSpsChannel(uShortRangePrivateInstance_t *pInstance,
     U_PORT_MUTEX_LOCK(gBleSpsMutex);
 
     if (pChannel == NULL) {
-        pChannel = (uBleSpsChannel_t *)malloc(sizeof(uBleSpsChannel_t));
+        pChannel = (uBleSpsChannel_t *)pUPortMalloc(sizeof(uBleSpsChannel_t));
         *ppListHead = pChannel;
     } else {
         uint32_t nbrOfChannels = 1;
@@ -193,7 +193,7 @@ static void createSpsChannel(uShortRangePrivateInstance_t *pInstance,
             nbrOfChannels++;
         }
         if (nbrOfChannels < U_BLE_SPS_MAX_CONNECTIONS) {
-            pChannel->pNext = (uBleSpsChannel_t *)malloc(sizeof(uBleSpsChannel_t));
+            pChannel->pNext = (uBleSpsChannel_t *)pUPortMalloc(sizeof(uBleSpsChannel_t));
         }
         pChannel = pChannel->pNext;
     }
@@ -258,7 +258,7 @@ static void deleteSpsChannel(const uShortRangePrivateInstance_t *pInstance,
         }
         uShortRangePbufListFree(pChannel->pSpsRxBuff);
 
-        free(pChannel);
+        uPortFree(pChannel);
     }
 
     U_PORT_MUTEX_UNLOCK(gBleSpsMutex);
@@ -274,7 +274,7 @@ static void deleteAllSpsChannels(uBleSpsChannel_t **ppListHead)
         uShortRangePbufListFree(pChannel->pSpsRxBuff);
         pChanToFree = pChannel;
         pChannel = pChannel->pNext;
-        free(pChanToFree);
+        uPortFree(pChanToFree);
     }
     *ppListHead = NULL;
 }
@@ -304,7 +304,7 @@ static void spsEventCallback(uAtClientHandle_t atHandle,
             pStatus->pInstance->pPendingSpsConnectionEvent = NULL;
         }
 
-        free(pStatus);
+        uPortFree(pStatus);
     }
 }
 
@@ -323,8 +323,8 @@ static void btEdmConnectionCallback(int32_t edmStreamHandle,
         bool send = false;
 
         if (pStatus == NULL) {
-            //lint -esym(593, pStatus) Suppress pStatus not being free()ed here
-            pStatus = (uBleSpsConnection_t *) malloc(sizeof(*pStatus));
+            //lint -esym(593, pStatus) Suppress pStatus not being uPortFree()ed here
+            pStatus = (uBleSpsConnection_t *) pUPortMalloc(sizeof(*pStatus));
         } else {
             send = true;
         }
@@ -366,8 +366,8 @@ static void atConnectionEvent(uDeviceHandle_t devHandle,
                                        pInstance->pPendingSpsConnectionEvent;
 
         if (pStatus == NULL) {
-            //lint -esym(429, pStatus) Suppress pStatus not being free()ed here
-            pStatus = (uBleSpsConnection_t *) malloc(sizeof(*pStatus));
+            //lint -esym(429, pStatus) Suppress pStatus not being uPortFree()ed here
+            pStatus = (uBleSpsConnection_t *) pUPortMalloc(sizeof(*pStatus));
         } else {
             send = true;
         }

@@ -30,7 +30,6 @@
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
 
-#include "stdlib.h"    // malloc()/free()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
@@ -40,6 +39,7 @@
 #include "u_error_common.h"
 
 #include "u_port.h"
+#include "u_port_heap.h"
 #include "u_port_os.h"  // Required by u_gnss_private.h
 #include "u_port_debug.h"
 
@@ -295,7 +295,7 @@ int32_t uGnssInfoGetCommunicationStats(uDeviceHandle_t gnssHandle,
             if (pInstance->pModule->moduleType >= U_GNSS_MODULE_TYPE_M9) {
                 errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
                 // Message big enough to store UBX-MON-COMMS with max port numbers
-                pMessage = (char *) malloc(U_GNSS_INFO_MESSAGE_BODY_LENGTH_UBX_MON_COMMS);
+                pMessage = (char *) pUPortMalloc(U_GNSS_INFO_MESSAGE_BODY_LENGTH_UBX_MON_COMMS);
                 if (pMessage != NULL) {
                     if (port < 0) {
                         port = (int32_t) pInstance->portNumber;
@@ -380,7 +380,7 @@ int32_t uGnssInfoGetCommunicationStats(uDeviceHandle_t gnssHandle,
                     }
 
                     // Free memory
-                    free(pMessage);
+                    uPortFree(pMessage);
                 }
             }
         }

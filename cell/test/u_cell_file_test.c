@@ -32,7 +32,7 @@
 #  include "u_cfg_override.h" // For a customer's configuration override
 # endif
 
-#include "stdlib.h"    // malloc()/free()
+#include "stdlib.h"    // strtol()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
@@ -50,6 +50,7 @@
                                               before the other port files if
                                               any print or scan function is used. */
 #include "u_port.h"
+#include "u_port_heap.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"   // Required by u_cell_private.h
 
@@ -432,7 +433,7 @@ U_PORT_TEST_FUNCTION("[cellFile]", "cellFileListAll")
     char *pFileName;
     size_t y = 1;
 
-    pFileName = (char *) malloc(U_CELL_FILE_NAME_MAX_LENGTH + 1);
+    pFileName = (char *) pUPortMalloc(U_CELL_FILE_NAME_MAX_LENGTH + 1);
     U_PORT_TEST_ASSERT(pFileName != NULL);
 
     // In case a previous test failed
@@ -484,7 +485,7 @@ U_PORT_TEST_FUNCTION("[cellFile]", "cellFileListAll")
         U_PORT_TEST_ASSERT(found);
     }
 
-    free(pFileName);
+    uPortFree(pFileName);
 
     // Do the standard postamble, leaving the module on for the next
     // test to speed things up
@@ -515,7 +516,7 @@ U_PORT_TEST_FUNCTION("[cellFile]", "cellFileListAllReentrant")
     void *pRentrantInner;
     bool trackerInner[U_CELL_FILE_TEST_REENTRANT_NUM];
 
-    pFileName = (char *) malloc(U_CELL_FILE_NAME_MAX_LENGTH + 1);
+    pFileName = (char *) pUPortMalloc(U_CELL_FILE_NAME_MAX_LENGTH + 1);
     U_PORT_TEST_ASSERT(pFileName != NULL);
 
     // In case a previous test failed
@@ -571,7 +572,7 @@ U_PORT_TEST_FUNCTION("[cellFile]", "cellFileListAllReentrant")
         U_PORT_TEST_ASSERT(uCellFileDelete(cellHandle, buffer) == 0);
     }
 
-    free(pFileName);
+    uPortFree(pFileName);
 
     // Do the standard postamble, leaving the module on for the next
     // test to speed things up

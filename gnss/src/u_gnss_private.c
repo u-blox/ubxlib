@@ -30,7 +30,6 @@
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
 
-#include "stdlib.h"    // malloc() and free()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
@@ -45,6 +44,7 @@
 #include "u_assert.h"
 
 #include "u_port.h"
+#include "u_port_heap.h"
 #include "u_port_os.h"
 #include "u_port_uart.h"
 #include "u_port_i2c.h"
@@ -323,7 +323,7 @@ static int32_t receiveUbxMessageStream(uGnssPrivateInstance_t *pInstance,
             errorCodeOrLength -= U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES;
             // Copy the body of the message into the response
             if (*(pResponse->ppBody) == NULL) {
-                *(pResponse->ppBody) = (char *) malloc(errorCodeOrLength);
+                *(pResponse->ppBody) = (char *) pUPortMalloc(errorCodeOrLength);
             } else {
                 if (errorCodeOrLength > (int32_t) pResponse->bodySize) {
                     errorCodeOrLength = (int32_t) pResponse->bodySize;
@@ -348,8 +348,8 @@ static int32_t receiveUbxMessageStream(uGnssPrivateInstance_t *pInstance,
                      pResponse->cls, pResponse->id);
         }
 
-        // Free memory (it is legal C to free a NULL pointer)
-        free(pBuffer);
+        // Free memory
+        uPortFree(pBuffer);
     }
 
     return errorCodeOrLength;
@@ -391,7 +391,7 @@ static int32_t sendReceiveUbxMessageAt(const uAtClientHandle_t atHandle,
     if (x < U_GNSS_AT_BUFFER_LENGTH_BYTES + 1) {
         x = U_GNSS_AT_BUFFER_LENGTH_BYTES + 1;
     }
-    pBuffer = (char *) malloc(x);
+    pBuffer = (char *) pUPortMalloc(x);
     if (pBuffer != NULL) {
         errorCodeOrLength = (int32_t) U_GNSS_ERROR_TRANSPORT;
         bytesToSend = uBinToHex(pSend, sendLengthBytes, pBuffer);
@@ -482,7 +482,7 @@ static int32_t sendReceiveUbxMessageAt(const uAtClientHandle_t atHandle,
         uAtClientDebugSet(atHandle, atDebugPrintOn);
 
         if (!bufferReuse) {
-            free(pBuffer);
+            uPortFree(pBuffer);
         }
     }
 
@@ -512,7 +512,7 @@ static int32_t sendReceiveUbxMessage(uGnssPrivateInstance_t *pInstance,
         ((pResponse->bodySize == 0) || (pResponse->ppBody != NULL))) {
         errorCodeOrResponseLength = (int32_t) U_ERROR_COMMON_NO_MEMORY;
         // Allocate a buffer big enough to encode the outgoing message
-        pBuffer = (char *) malloc(messageBodyLengthBytes + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES);
+        pBuffer = (char *) pUPortMalloc(messageBodyLengthBytes + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES);
         if (pBuffer != NULL) {
             errorCodeOrResponseLength = (int32_t) U_GNSS_ERROR_TRANSPORT;
             bytesToSend = uUbxProtocolEncode(messageClass, messageId,
@@ -586,7 +586,7 @@ static int32_t sendReceiveUbxMessage(uGnssPrivateInstance_t *pInstance,
             }
 
             // Free memory
-            free(pBuffer);
+            uPortFree(pBuffer);
         }
     }
 
@@ -1093,7 +1093,7 @@ void uGnssPrivateStopMsgReceive(uGnssPrivateInstance_t *pInstance)
         // we've shut the task down
         while (pMsgReceive->pReaderList != NULL) {
             pNext = pMsgReceive->pReaderList->pNext;
-            free(pMsgReceive->pReaderList);
+            uPortFree(pMsgReceive->pReaderList);
             pMsgReceive->pReaderList = pNext;
         }
 
@@ -1109,14 +1109,14 @@ void uGnssPrivateStopMsgReceive(uGnssPrivateInstance_t *pInstance)
         uPortTaskBlock(U_CFG_OS_YIELD_MS);
 
         // Free the temporary buffer
-        free(pMsgReceive->pTemporaryBuffer);
+        uPortFree(pMsgReceive->pTemporaryBuffer);
 
         // Give the ring buffer handle back
         uRingBufferGiveReadHandle(&(pInstance->ringBuffer),
                                   pMsgReceive->ringBufferReadHandle);
 
         // Add it's done
-        free(pInstance->pMsgReceive);
+        uPortFree(pInstance->pMsgReceive);
         pInstance->pMsgReceive = NULL;
     }
 }
@@ -1513,7 +1513,7 @@ int32_t uGnssPrivateSendOnlyStreamUbxMessage(const uGnssPrivateInstance_t *pInst
             errorCodeOrSentLength = (int32_t) U_ERROR_COMMON_NO_MEMORY;
 
             // Allocate a buffer big enough to encode the outgoing message
-            pBuffer = (char *) malloc(messageBodyLengthBytes + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES);
+            pBuffer = (char *) pUPortMalloc(messageBodyLengthBytes + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES);
             if (pBuffer != NULL) {
                 bytesToSend = uUbxProtocolEncode(messageClass, messageId,
                                                  pMessageBody, messageBodyLengthBytes,
@@ -1541,7 +1541,7 @@ int32_t uGnssPrivateSendOnlyStreamUbxMessage(const uGnssPrivateInstance_t *pInst
                 U_PORT_MUTEX_UNLOCK(pInstance->transportMutex);
 
                 // Free memory
-                free(pBuffer);
+                uPortFree(pBuffer);
             }
         }
     }
@@ -1646,7 +1646,7 @@ int32_t uGnssPrivateReceiveStreamMessage(uGnssPrivateInstance_t *pInstance,
                         if (*ppBuffer == NULL) {
                             // The caller didn't give us any memory; allocate the right
                             // amount; the caller must free this memory
-                            *ppBuffer = malloc(errorCodeOrLength);
+                            *ppBuffer = pUPortMalloc(errorCodeOrLength);
                         } else {
                             // If the user gave us a buffer, limit the size
                             if (errorCodeOrLength > (int32_t) size) {

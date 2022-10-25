@@ -305,7 +305,7 @@ int32_t uGnssCfgValGet(uDeviceHandle_t gnssHandle, uint32_t keyId,
  * to M9 modules and beyond, uses the UBX-CFG-VALGET mechanism.
  *
  * IMPORTANT: this function allocates memory for the answer, it is
- * up to the caller to free(*list) when done.
+ * up to the caller to uPortFree(*list) when done.
  *
  * @param gnssHandle    the handle of the GNSS instance.
  * @param keyId         the ID of the key to get; may be found in the
@@ -330,7 +330,7 @@ int32_t uGnssCfgValGet(uDeviceHandle_t gnssHandle, uint32_t keyId,
  *                      a single "p" is used in the variable name in
  *                      order to encourage the list to be treated as
  *                      an array.  If this function returns success
- *                      it is UP TO THE CALLER to free(*list) when done.
+ *                      it is UP TO THE CALLER to uPortFree(*list) when done.
  * @param layer         the layer to get the values from: use
  *                      #U_GNSS_CFG_VAL_LAYER_RAM to get the currently
  *                      applied values.
@@ -347,7 +347,7 @@ int32_t uGnssCfgValGetAlloc(uDeviceHandle_t gnssHandle,
  * mechanism.
  *
  * IMPORTANT: this function allocates memory for the answer, it is
- * up to the caller to free(*list) when done.
+ * up to the caller to uPortFree(*list) when done.
  *
  * @param gnssHandle     the handle of the GNSS instance.
  * @param[in] pKeyIdList a pointer to an array of key IDs to get;
@@ -361,7 +361,7 @@ int32_t uGnssCfgValGetAlloc(uDeviceHandle_t gnssHandle,
  *                       a single "p" is used in the variable name in
  *                       order to encourage the list to be treated as
  *                       an array.  If this function returns success
- *                       it is UP TO THE CALLER to free(*list) when done.
+ *                       it is UP TO THE CALLER to uPortFree(*list) when done.
  * @param layer          the layer to get the values from: use
  *                       #U_GNSS_CFG_VAL_LAYER_RAM to get the currently
  *                       applied values.

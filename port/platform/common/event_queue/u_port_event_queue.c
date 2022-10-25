@@ -33,11 +33,11 @@
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 #include "string.h"    // memcpy()
-#include "stdlib.h"    // malloc(), free()
 
 #include "u_cfg_os_platform_specific.h"
 #include "u_error_common.h"
 #include "u_assert.h"
+#include "u_port_heap.h"
 #include "u_port_os.h"
 
 #include "u_port_event_queue_private.h"
@@ -176,11 +176,11 @@ static int32_t eventQueueClose(uEventQueue_t *pEventQueue)
     // on its own here but, as address sanitizer points out,
     // the uPortQueueSend() function must copy the required
     // length for an item on the queue so it has to be
-    // given that data size, hence we malloc() the block,
+    // given that data size, hence we allocate the block,
     // put U_EVENT_CONTROL_EXIT_NOW at the start of it and
     // then free it once it is sent
-    pControl = malloc(pEventQueue->paramMaxLengthBytes +
-                      U_PORT_EVENT_QUEUE_CONTROL_OR_SIZE_LENGTH_BYTES);
+    pControl = pUPortMalloc(pEventQueue->paramMaxLengthBytes +
+                            U_PORT_EVENT_QUEUE_CONTROL_OR_SIZE_LENGTH_BYTES);
 
     if (pControl != NULL) {
         *((uEventQueueControlOrSize_t *) pControl) = U_EVENT_CONTROL_EXIT_NOW;
@@ -188,7 +188,7 @@ static int32_t eventQueueClose(uEventQueue_t *pEventQueue)
         while (uPortQueueSend(pEventQueue->queue, pControl) != 0) {
             uPortTaskBlock(10);
         }
-        free(pControl);
+        uPortFree(pControl);
         U_PORT_MUTEX_LOCK(pEventQueue->taskRunningMutex);
         U_PORT_MUTEX_UNLOCK(pEventQueue->taskRunningMutex);
 
@@ -203,7 +203,7 @@ static int32_t eventQueueClose(uEventQueue_t *pEventQueue)
 
         // Now remove it from the list and free it
         gpEventQueue[pEventQueue->handle] = NULL;
-        free(pEventQueue);
+        uPortFree(pEventQueue);
     }
 
     return errorCode;
@@ -313,7 +313,7 @@ int32_t uPortEventQueueOpen(void (*pFunction) (void *, size_t),
             handle = nextEventHandleGet();
             if (handle >= 0) {
                 // Malloc a structure to represent the event queue
-                pEventQueue = (uEventQueue_t *) malloc(sizeof(uEventQueue_t));
+                pEventQueue = (uEventQueue_t *) pUPortMalloc(sizeof(uEventQueue_t));
                 if (pEventQueue != NULL) {
                     pEventQueue->pFunction = pFunction;
                     pEventQueue->paramMaxLengthBytes = paramMaxLengthBytes;
@@ -353,17 +353,17 @@ int32_t uPortEventQueueOpen(void (*pFunction) (void *, size_t),
                                 // mutex and queue and free the structure
                                 uPortMutexDelete(pEventQueue->taskRunningMutex);
                                 uPortQueueDelete(pEventQueue->queue);
-                                free(pEventQueue);
+                                uPortFree(pEventQueue);
                             }
                         } else {
                             // Couldn't create the mutex, delete the queue
                             // and free the structure
                             uPortQueueDelete(pEventQueue->queue);
-                            free(pEventQueue);
+                            uPortFree(pEventQueue);
                         }
                     } else {
                         // Couldn't create the queue, free the structure
-                        free(pEventQueue);
+                        uPortFree(pEventQueue);
                     }
                 }
             }
@@ -395,13 +395,13 @@ int32_t uPortEventQueueSend(int32_t handle, const void *pParam,
             ((pParam != NULL) || (paramLengthBytes == 0))) {
             queue = pEventQueue->queue;
             errorCode = U_ERROR_COMMON_NO_MEMORY;
-            // We need to add the control word to the start, so malloc
+            // We need to add the control word to the start, so pUPortMalloc
             // a block that is paramMaxLengthBytes (i.e. paramMaxLengthBytes
             // of the queue, not just the paramLengthBytes passed in, since
             // uPortQueueSend() will expect to copy the full length) plus
             // plus the control word length
-            pBlock = (char *) malloc(pEventQueue->paramMaxLengthBytes +
-                                     U_PORT_EVENT_QUEUE_CONTROL_OR_SIZE_LENGTH_BYTES);
+            pBlock = (char *) pUPortMalloc(pEventQueue->paramMaxLengthBytes +
+                                           U_PORT_EVENT_QUEUE_CONTROL_OR_SIZE_LENGTH_BYTES);
             if (pBlock != NULL) {
                 // Copy in the control word, which is actually just
                 // the size in this case
@@ -429,7 +429,7 @@ int32_t uPortEventQueueSend(int32_t handle, const void *pParam,
                 errorCode = (uErrorCode_t) uPortQueueSend(queue, pBlock);
             }
             // Free memory again
-            free(pBlock);
+            uPortFree(pBlock);
         }
     }
 

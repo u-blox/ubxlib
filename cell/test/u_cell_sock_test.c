@@ -49,6 +49,7 @@
 #include "u_error_common.h"
 
 #include "u_port.h"
+#include "u_port_heap.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"   // Required by u_cell_private.h
 #include "u_port_uart.h"
@@ -346,7 +347,7 @@ static void checkOptionGet(uDeviceHandle_t cellHandle, int32_t sockHandle,
     size_t *pLength = &length;
 
     // Malloc memory for testing that values are consistent
-    pValueAgain = malloc(valueLength);
+    pValueAgain = pUPortMalloc(valueLength);
     U_PORT_TEST_ASSERT(pValueAgain != NULL);
 
     U_TEST_PRINT_LINE("testing uCellSockOptionGet() with level %d,"
@@ -382,7 +383,7 @@ static void checkOptionGet(uDeviceHandle_t cellHandle, int32_t sockHandle,
     U_PORT_TEST_ASSERT(*pLength == valueLength);
 
     // Free memory again
-    free(pValueAgain);
+    uPortFree(pValueAgain);
 }
 
 // Check setting an option.
@@ -398,7 +399,7 @@ static void checkOptionSet(uDeviceHandle_t cellHandle, int32_t sockHandle,
     size_t *pLength = &length;
 
     // Malloc memory for testing that value has been set
-    pValueRead = (char *) malloc(valueLength);
+    pValueRead = (char *) pUPortMalloc(valueLength);
     U_PORT_TEST_ASSERT(pValueRead != NULL);
 
     U_TEST_PRINT_LINE("testing uCellSockOptionSet() with level %d,"
@@ -429,7 +430,7 @@ static void checkOptionSet(uDeviceHandle_t cellHandle, int32_t sockHandle,
     }
 
     // Free memory again
-    free(pValueRead);
+    uPortFree(pValueRead);
 }
 
 /* ----------------------------------------------------------------
@@ -557,7 +558,7 @@ U_PORT_TEST_FUNCTION("[cellSock]", "cellSockBasic")
     memset(&address, 0, sizeof(address));
 
     // Malloc a buffer to receive things into.
-    pBuffer = (char *) malloc(U_CELL_SOCK_MAX_SEGMENT_SIZE_BYTES);
+    pBuffer = (char *) pUPortMalloc(U_CELL_SOCK_MAX_SEGMENT_SIZE_BYTES);
     U_PORT_TEST_ASSERT(pBuffer != NULL);
 
     // Do the standard preamble
@@ -905,7 +906,7 @@ U_PORT_TEST_FUNCTION("[cellSock]", "cellSockBasic")
     uCellTestPrivatePostamble(&gHandles, false);
 
     // Free memory
-    free(pBuffer);
+    uPortFree(pBuffer);
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
@@ -986,9 +987,9 @@ U_PORT_TEST_FUNCTION("[cellSock]", "cellSockOptionSetGet")
     }
 
     // Malloc memory for our testing
-    pValue = malloc(length);
+    pValue = pUPortMalloc(length);
     U_PORT_TEST_ASSERT(pValue != NULL);
-    pValueSaved = malloc(length);
+    pValueSaved = pUPortMalloc(length);
     U_PORT_TEST_ASSERT(pValueSaved != NULL);
 
     // Now test all supported options
@@ -1026,8 +1027,8 @@ U_PORT_TEST_FUNCTION("[cellSock]", "cellSockOptionSetGet")
     }
 
     // Free memory again
-    free(pValue);
-    free(pValueSaved);
+    uPortFree(pValue);
+    uPortFree(pValueSaved);
 
     // Close TCP socket, immediately since it was never
     // connected

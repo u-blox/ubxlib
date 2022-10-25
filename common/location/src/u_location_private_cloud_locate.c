@@ -31,7 +31,7 @@
 #endif
 
 #include "limits.h"    // INT_MAX
-#include "stdlib.h"    // malloc()/free()
+#include "stdlib.h"    // strtol()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
@@ -43,6 +43,7 @@
 
 #include "u_port.h"
 #include "u_port_clib_platform_specific.h" // strtok_r()
+#include "u_port_heap.h"
 #include "u_port_os.h"
 #include "u_port_debug.h"
 
@@ -354,7 +355,7 @@ int32_t uLocationPrivateCloudLocate(uDeviceHandle_t devHandle,
         ((pLocation == NULL) || (pClientIdStr != NULL))) {
         errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
         // Allocate memory to store the RRLP information
-        pBuffer = (char *) malloc(U_LOCATION_PRIVATE_CLOUD_LOCATE_BUFFER_LENGTH_BYTES);
+        pBuffer = (char *) pUPortMalloc(U_LOCATION_PRIVATE_CLOUD_LOCATE_BUFFER_LENGTH_BYTES);
         if (pBuffer != NULL) {
             errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
             if ((pClientIdStr != NULL) && (pLocation != NULL)) {
@@ -387,7 +388,7 @@ int32_t uLocationPrivateCloudLocate(uDeviceHandle_t devHandle,
             }
 
             // Free memory
-            free(pBuffer);
+            uPortFree(pBuffer);
 
             if ((errorCode == 0) && (pClientIdStr != NULL) && (pLocation != NULL)) {
                 // If all of that was successful, and after we've
@@ -401,10 +402,11 @@ int32_t uLocationPrivateCloudLocate(uDeviceHandle_t devHandle,
                 pLocation->svs = -1;
                 pLocation->timeUtc = -1;
                 errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
-                pTopicBufferRead = (char *) malloc(U_LOCATION_PRIVATE_CLOUD_LOCATE_SUBSCRIBE_TOPIC_LENGTH_BYTES);
+                pTopicBufferRead = (char *) pUPortMalloc(
+                                       U_LOCATION_PRIVATE_CLOUD_LOCATE_SUBSCRIBE_TOPIC_LENGTH_BYTES);
                 if (pTopicBufferRead != NULL) {
                     // +1 to allow us to insert a terminator
-                    pMessageRead = (char *) malloc(U_LOCATION_PRIVATE_CLOUD_LOCATE_READ_MESSAGE_LENGTH_BYTES + 1);
+                    pMessageRead = (char *) pUPortMalloc(U_LOCATION_PRIVATE_CLOUD_LOCATE_READ_MESSAGE_LENGTH_BYTES + 1);
                     if (pMessageRead != NULL) {
                         errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
                         uPortLog("U_LOCATION_PRIVATE_CLOUD_LOCATE: RRLP sent, waiting for"
@@ -444,11 +446,11 @@ int32_t uLocationPrivateCloudLocate(uDeviceHandle_t devHandle,
                         }
 
                         // Free message memory
-                        free(pMessageRead);
+                        uPortFree(pMessageRead);
                     }
 
                     // Free topic memory
-                    free(pTopicBufferRead);
+                    uPortFree(pTopicBufferRead);
                 }
             }
 

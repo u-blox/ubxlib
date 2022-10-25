@@ -29,7 +29,6 @@
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
 
-#include "stdlib.h"    // malloc()/free()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
@@ -40,6 +39,7 @@
 #include "u_error_common.h"
 
 #include "u_port.h"
+#include "u_port_heap.h"
 #include "u_port_os.h"  // Required by u_gnss_private.h
 #include "u_port_debug.h"
 #include "u_port_uart.h"
@@ -221,7 +221,7 @@ int32_t uGnssUtilUbxTransparentSendReceive(uDeviceHandle_t gnssHandle,
                 if (bufferLengthBytes < (maxResponseLengthBytes * 2) + 1) {
                     bufferLengthBytes = (maxResponseLengthBytes * 2) + 1;
                 }
-                pBuffer = (char *) malloc(bufferLengthBytes);
+                pBuffer = (char *) pUPortMalloc(bufferLengthBytes);
                 if (pBuffer != NULL) {
                     errorCodeOrResponseLength = (int32_t) U_GNSS_ERROR_TRANSPORT;
                     if (pCommand != NULL) {
@@ -260,7 +260,7 @@ int32_t uGnssUtilUbxTransparentSendReceive(uDeviceHandle_t gnssHandle,
                         }
                     }
                     // Free memory
-                    free(pBuffer);
+                    uPortFree(pBuffer);
                 }
             }
 

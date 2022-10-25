@@ -50,6 +50,7 @@
                                               before the other port files if
                                               any print or scan function is used. */
 #include "u_port.h"
+#include "u_port_heap.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"
 #include "u_port_uart.h"
@@ -100,7 +101,7 @@
  */
 #define U_AT_CLIENT_TEST_CMX_ERROR_NUMBER 65535
 
-/** The size required of a malloc()ed buffer for the
+/** The size required of an allocated buffer for the
  * AT server.  This must be big enough for all of the lines
  * of response in any one uAtClientTestCommandResponse_t of
  * gAtClientTestSet[], including multiple copies of the URC
@@ -648,9 +649,9 @@ static void atServerCallback(int32_t uartHandle, uint32_t eventBitmask,
                 U_AT_CLIENT_TEST_RESPONSE_NONE) {
                 // To avoid debug prints falling over each other we put the
                 // entire response, including URCs if they are to be interleaved,
-                // in a malloc()ed buffer, print it, and only then send it to
+                // in an allocated buffer, print it, and only then send it to
                 // the AT client over the UART.
-                pBuffer = (char *) malloc(U_AT_CLIENT_TEST_SERVER_RESPONSE_LENGTH);
+                pBuffer = (char *) pUPortMalloc(U_AT_CLIENT_TEST_SERVER_RESPONSE_LENGTH);
                 U_PORT_TEST_ASSERT(pBuffer != NULL);
                 pResponse = &(pCheckCommandResponse->pTestSet[pCheckCommandResponse->index].response);
                 pUrc = pCheckCommandResponse->pTestSet[pCheckCommandResponse->index].pUrc;
@@ -706,7 +707,7 @@ static void atServerCallback(int32_t uartHandle, uint32_t eventBitmask,
                     uPortUartWrite(uartHandle, pTmp, length);
                 }
                 // Free the buffer again
-                free(pBuffer);
+                uPortFree(pBuffer);
             } else {
                 U_TEST_PRINT_LINE_X("no response will be sent.",
                                     pCheckCommandResponse->index + 1);
@@ -909,7 +910,7 @@ int32_t uAtClientTestCheckParam(uAtClientHandle_t atClientHandle,
     (void) pPostfix;
 #endif
 
-    pBuffer = (char *) malloc(U_AT_CLIENT_TEST_RESPONSE_BUFFER_LENGTH);
+    pBuffer = (char *) pUPortMalloc(U_AT_CLIENT_TEST_RESPONSE_BUFFER_LENGTH);
     if (pBuffer != NULL) {
         lastError = 0;
         switch (pParameter->type) {
@@ -1023,7 +1024,7 @@ int32_t uAtClientTestCheckParam(uAtClientHandle_t atClientHandle,
     }
 
     // Free the buffer again
-    free(pBuffer);
+    uPortFree(pBuffer);
 
     return lastError;
 }

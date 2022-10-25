@@ -38,7 +38,6 @@
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
-#include "stdlib.h"    // free()
 
 #include "u_cfg_sw.h"
 #include "u_cfg_os_platform_specific.h"
@@ -48,6 +47,7 @@
 #include "u_error_common.h"
 
 #include "u_port.h"
+#include "u_port_heap.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"   // Required by u_gnss_private.h
 #include "u_port_uart.h"
@@ -463,7 +463,7 @@ U_PORT_TEST_FUNCTION("[gnssCfg]", "gnssCfgValBasic")
             // So that we can see what we're doing
             uGnssSetUbxMessagePrint(gnssHandle, true);
 
-#ifndef U_CFG_TEST_USING_NRF5SDK // NRF5 SDK's heap doesn't seem to be able to cope with such a huge malloc()
+#ifndef U_CFG_TEST_USING_NRF5SDK // NRF5 SDK's heap doesn't seem to be able to cope with such a huge malloc
             y = uPortGetHeapFree();
             // y < 0 below because reading the amount of heap free is not
             // supported on all platforms
@@ -485,7 +485,7 @@ U_PORT_TEST_FUNCTION("[gnssCfg]", "gnssCfgValBasic")
                         U_TEST_PRINT_LINE("...and that required %d byte(s) of heap.", y - uPortGetHeapFree());
                     }
                     // Free memory
-                    free(pCfgValList);
+                    uPortFree(pCfgValList);
                 } else {
                     U_TEST_PRINT_LINE("not enough memory to VALGET everything");
                 }
@@ -677,7 +677,7 @@ U_PORT_TEST_FUNCTION("[gnssCfg]", "gnssCfgValBasic")
             }
 
             // Free memory
-            free(pCfgValList);
+            uPortFree(pCfgValList);
 
             // Check that we haven't dropped any incoming data
             y = uGnssMsgReceiveStatStreamLoss(gnssHandle);

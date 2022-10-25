@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-#include <stdlib.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>

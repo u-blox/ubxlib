@@ -50,6 +50,7 @@
 #include "u_ubx_protocol.h"
 
 #include "u_port_clib_platform_specific.h" // in some cases rand()
+#include "u_port_heap.h"
 #include "u_port.h"
 #include "u_port_debug.h"
 #include "u_port_os.h" // Needed by u_gnss_private.h
@@ -525,7 +526,7 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssPrivateNmea")
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
     // Allocate memory to use for the ring buffer
-    gpLinearBuffer = (char *) malloc(U_GNSS_PRIVATE_TEST_RINGBUFFER_SIZE);
+    gpLinearBuffer = (char *) pUPortMalloc(U_GNSS_PRIVATE_TEST_RINGBUFFER_SIZE);
     U_PORT_TEST_ASSERT(gpLinearBuffer != NULL);
 
     // Create a ring buffer from the linear buffer with a single read handle allowed
@@ -542,8 +543,8 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssPrivateNmea")
     U_PORT_TEST_ASSERT(readHandle >= 0);
 
     // Allocate a buffer to decode from
-    gpBuffer = (char *) malloc(U_GNSS_PRIVATE_TEST_NMEA_SENTENCE_MAX_LENGTH_BYTES +
-                               U_GNSS_PRIVATE_TEST_RUBBISH_ROOM_BYTES);
+    gpBuffer = (char *) pUPortMalloc(U_GNSS_PRIVATE_TEST_NMEA_SENTENCE_MAX_LENGTH_BYTES +
+                                     U_GNSS_PRIVATE_TEST_RUBBISH_ROOM_BYTES);
     U_PORT_TEST_ASSERT(gpBuffer != NULL);
 
     // Parse all the test data
@@ -629,10 +630,10 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssPrivateNmea")
     }
 
     // Free memory.
-    free(gpBuffer);
+    uPortFree(gpBuffer);
     gpBuffer = NULL;
     uRingBufferDelete(&gRingBuffer);
-    free(gpLinearBuffer);
+    uPortFree(gpLinearBuffer);
     gpLinearBuffer = NULL;
 
     uPortDeinit();
@@ -676,7 +677,7 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssPrivateRtcm")
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
     // Allocate memory to use for the ring buffer
-    gpLinearBuffer = (char *) malloc(U_GNSS_PRIVATE_TEST_RINGBUFFER_SIZE);
+    gpLinearBuffer = (char *) pUPortMalloc(U_GNSS_PRIVATE_TEST_RINGBUFFER_SIZE);
     U_PORT_TEST_ASSERT(gpLinearBuffer != NULL);
 
     // Create a ring buffer from the linear buffer with a single read handle allowed
@@ -697,7 +698,7 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssPrivateRtcm")
         pRtcmTest = &(gRtcmTestMessage[x]);
         bufferSize = pRtcmTest->rtcmSize + U_GNSS_PRIVATE_TEST_RUBBISH_ROOM_BYTES;
         // Allocate a buffer to decode from
-        gpBuffer = (char *) malloc(bufferSize);
+        gpBuffer = (char *) pUPortMalloc(bufferSize);
         U_PORT_TEST_ASSERT(gpBuffer != NULL);
 
         U_TEST_PRINT_LINE("test decoding RTCM message %d (ID %d, %d byte(s)).",
@@ -743,13 +744,13 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssPrivateRtcm")
         uPortTaskBlock(U_CFG_OS_YIELD_MS);
 
         // Free memory
-        free(gpBuffer);
+        uPortFree(gpBuffer);
         gpBuffer = NULL;
     }
 
     // Free memory.
     uRingBufferDelete(&gRingBuffer);
-    free(gpLinearBuffer);
+    uPortFree(gpLinearBuffer);
     gpLinearBuffer = NULL;
 
     uPortDeinit();
@@ -793,7 +794,7 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssPrivateUbx")
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
     // Allocate memory to use for the ring buffer
-    gpLinearBuffer = (char *) malloc(U_GNSS_PRIVATE_TEST_RINGBUFFER_SIZE);
+    gpLinearBuffer = (char *) pUPortMalloc(U_GNSS_PRIVATE_TEST_RINGBUFFER_SIZE);
     U_PORT_TEST_ASSERT(gpLinearBuffer != NULL);
 
     // Create a ring buffer from the linear buffer with a single read handle allowed
@@ -824,14 +825,14 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssPrivateUbx")
             messageId++;
         }
         // Create a message body, filled with safe randomness
-        gpBody = (char *) malloc(bodySize);
+        gpBody = (char *) pUPortMalloc(bodySize);
         U_PORT_TEST_ASSERT(gpBody != NULL);
         fillBufferRand(gpBody, bodySize);
 
         // Create a buffer filled with safe randomness
         bufferSize = bodySize + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES +
                      U_GNSS_PRIVATE_TEST_RUBBISH_ROOM_BYTES;
-        gpBuffer = (char *) malloc(bufferSize);
+        gpBuffer = (char *) pUPortMalloc(bufferSize);
         U_PORT_TEST_ASSERT(gpBuffer != NULL);
         fillBufferRand(gpBuffer, bufferSize);
 
@@ -880,15 +881,15 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssPrivateUbx")
         }
 
         // Free memory
-        free(gpBody);
+        uPortFree(gpBody);
         gpBody = NULL;
-        free(gpBuffer);
+        uPortFree(gpBuffer);
         gpBuffer = NULL;
     }
 
     // Free memory.
     uRingBufferDelete(&gRingBuffer);
-    free(gpLinearBuffer);
+    uPortFree(gpLinearBuffer);
     gpLinearBuffer = NULL;
 
     uPortDeinit();
@@ -919,10 +920,10 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssPrivateCleanUp")
 {
     int32_t x;
 
-    free(gpBody);
-    free(gpBuffer);
+    uPortFree(gpBody);
+    uPortFree(gpBuffer);
     uRingBufferDelete(&gRingBuffer);
-    free(gpLinearBuffer);
+    uPortFree(gpLinearBuffer);
 
     uGnssDeinit();
 

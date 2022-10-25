@@ -29,7 +29,6 @@
 #endif
 
 #include "limits.h"    // INT_MIN
-#include "stdlib.h"    // malloc()/free()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
@@ -41,6 +40,7 @@
 #include "u_error_common.h"
 
 #include "u_port.h"
+#include "u_port_heap.h"
 #include "u_port_os.h"  // Required by u_gnss_private.h
 #include "u_port_debug.h"
 
@@ -246,7 +246,7 @@ static void posGetTask(void *pParameter)
 
     // Copy the parameter into our local variable and free it
     memcpy(&taskParameters, pParameter, sizeof(taskParameters));
-    free(pParameter);
+    uPortFree(pParameter);
 
     // Lock the mutex to indicate that we're running
     U_PORT_MUTEX_LOCK(taskParameters.pInstance->posMutex);
@@ -359,7 +359,6 @@ int32_t uGnssPosGetStart(uDeviceHandle_t gnssHandle,
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uGnssPrivateInstance_t *pInstance;
-    //lint -esym(593, pParameters) Suppress not free'd - posGetTask() does that
     uGnssPosGetTaskParameters_t *pParameters;
 #ifdef U_CFG_SARA_R5_M8_WORKAROUND
     uint8_t message[4]; // Room for the body of a UBX-CFG-ANT message
@@ -385,7 +384,7 @@ int32_t uGnssPosGetStart(uDeviceHandle_t gnssHandle,
                     // Malloc memory to copy the parameters into:
                     // this memory will be free'd by the task
                     // once it has started
-                    pParameters = (uGnssPosGetTaskParameters_t *) malloc(sizeof(*pParameters));
+                    pParameters = (uGnssPosGetTaskParameters_t *) pUPortMalloc(sizeof(*pParameters));
                     if (pParameters != NULL) {
 #ifdef U_CFG_SARA_R5_M8_WORKAROUND
                         if (pInstance->transportType == U_GNSS_TRANSPORT_AT) {
@@ -427,7 +426,7 @@ int32_t uGnssPosGetStart(uDeviceHandle_t gnssHandle,
                             // If we couldn't create the task, clean the memory
                             // for the parameters and the mutex and re-zero
                             // posTaskFlags.
-                            free(pParameters);
+                            uPortFree(pParameters);
                             uPortMutexDelete(pInstance->posMutex);
                             pInstance->posMutex = NULL;
                             pInstance->posTaskFlags = 0;

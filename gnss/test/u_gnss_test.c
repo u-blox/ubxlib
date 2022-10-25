@@ -29,9 +29,9 @@
  * macro.
  */
 
-# ifdef U_CFG_OVERRIDE
-#  include "u_cfg_override.h" // For a customer's configuration override
-# endif
+#ifdef U_CFG_OVERRIDE
+# include "u_cfg_override.h" // For a customer's configuration override
+#endif
 
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
@@ -46,6 +46,7 @@
 #include "u_error_common.h"
 
 #include "u_port.h"
+#include "u_port_heap.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"
 #include "u_port_uart.h"
@@ -56,9 +57,9 @@
 #include "u_gnss.h"
 
 #if (U_CFG_APP_GNSS_I2C >= 0) && defined(U_GNSS_TEST_I2C_ADDRESS_EXTRA)
-#include "u_gnss_pwr.h"  // So that we can do something with the extra address
-#include "u_gnss_info.h" // To print something GNSS-module specific, show that we're not accidentally using address 0x42
-#include "u_gnss_msg.h"  // uGnssMsgReceiveStatStreamLoss()
+# include "u_gnss_pwr.h"  // So that we can do something with the extra address
+# include "u_gnss_info.h" // To print something GNSS-module specific, show that we're not accidentally using address 0x42
+# include "u_gnss_msg.h"  // uGnssMsgReceiveStatStreamLoss()
 #endif
 
 /* ----------------------------------------------------------------
@@ -412,8 +413,8 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssI2cAddress")
     U_TEST_PRINT_LINE("making sure the version strings are different...");
     // Get the firmware version strings of both and diff them, just to
     // make sure we are talking to different chips
-    buffer[0] = (char *) malloc(U_GNSS_TEST_BUFFER_SIZE_BYTES);
-    buffer[1] = (char *) malloc(U_GNSS_TEST_BUFFER_SIZE_BYTES);
+    buffer[0] = (char *) pUPortMalloc(U_GNSS_TEST_BUFFER_SIZE_BYTES);
+    buffer[1] = (char *) pUPortMalloc(U_GNSS_TEST_BUFFER_SIZE_BYTES);
     U_PORT_TEST_ASSERT(buffer[0] != NULL);
     U_PORT_TEST_ASSERT(buffer[1] != NULL);
     size[0] = uGnssInfoGetFirmwareVersionStr(gnssHandle[0], buffer[0], U_GNSS_TEST_BUFFER_SIZE_BYTES);
@@ -444,8 +445,8 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssI2cAddress")
     U_PORT_TEST_ASSERT(uGnssPwrOff(gnssHandle[0]) == 0);
 
     // Free memory
-    free(buffer[0]);
-    free(buffer[1]);
+    uPortFree(buffer[0]);
+    uPortFree(buffer[1]);
 
     // Check that we haven't dropped any incoming data
     y = uGnssMsgReceiveStatStreamLoss(gnssHandle);

@@ -35,7 +35,6 @@
 #  include "u_cfg_override.h" // For a customer's configuration override
 # endif
 
-#include "stdlib.h"    // malloc()/free()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
@@ -53,6 +52,7 @@
                                               before the other port files if
                                               any print or scan function is used. */
 #include "u_port.h"
+#include "u_port_heap.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"   // Required by u_gnss_private.h
 #include "u_port_uart.h"
@@ -381,9 +381,9 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveBlocking")
             // So that we can see what we're doing
             uGnssSetUbxMessagePrint(gnssHandle, true);
 
-            pBuffer1 = (char *) malloc(U_GNSS_MSG_TEST_MESSAGE_RECEIVE_BUFFER_SIZE_BYTES);
+            pBuffer1 = (char *) pUPortMalloc(U_GNSS_MSG_TEST_MESSAGE_RECEIVE_BUFFER_SIZE_BYTES);
             U_PORT_TEST_ASSERT(pBuffer1 != NULL);
-            pBuffer2 = (char *) malloc(U_GNSS_MSG_TEST_MESSAGE_RECEIVE_BUFFER_SIZE_BYTES);
+            pBuffer2 = (char *) pUPortMalloc(U_GNSS_MSG_TEST_MESSAGE_RECEIVE_BUFFER_SIZE_BYTES);
             U_PORT_TEST_ASSERT(pBuffer2 != NULL);
 
             // Ask for the firmware version string in the normal way
@@ -444,9 +444,9 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveBlocking")
             }
 
             // Free memory
-            free(pBuffer3);
-            free(pBuffer2);
-            free(pBuffer1);
+            uPortFree(pBuffer3);
+            uPortFree(pBuffer2);
+            uPortFree(pBuffer1);
 
             y = uGnssMsgReceiveStatStreamLoss(gnssHandle);
             U_TEST_PRINT_LINE("%d byte(s) lost at the input to the ring-buffer during that test.", y);
@@ -535,11 +535,12 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveNonBlocking")
                 }
                 // Allocate memory for all the transparent receivers
                 for (size_t x = 0; x < sizeof(gpMessageReceive) / sizeof(gpMessageReceive[0]); x++) {
-                    gpMessageReceive[x] = (uGnssMsgTestReceive_t *) malloc(sizeof(uGnssMsgTestReceive_t));
+                    gpMessageReceive[x] = (uGnssMsgTestReceive_t *) pUPortMalloc(sizeof(uGnssMsgTestReceive_t));
                     U_PORT_TEST_ASSERT(gpMessageReceive[x] != NULL);
                     pTmp = gpMessageReceive[x];
                     memset(pTmp, 0, sizeof(*pTmp));
-                    pTmp->pBuffer = (char *) malloc(U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_BUFFER_SIZE_BYTES);
+                    pTmp->pBuffer = (char *) pUPortMalloc(
+                                        U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_BUFFER_SIZE_BYTES);
                     U_PORT_TEST_ASSERT(pTmp->pBuffer != NULL);
                     // Ask for all message types in either protocol
                     pTmp->messageId.type = U_GNSS_PROTOCOL_NMEA; // pNmea left at NULL is "all"
@@ -750,9 +751,9 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveNonBlocking")
 
                 // Free memory
                 for (size_t x = 0; x < sizeof(gpMessageReceive) / sizeof(gpMessageReceive[0]); x++) {
-                    free(gpMessageReceive[x]->pBuffer);
-                    free(gpMessageReceive[x]->pNmeaComprehenderContext);
-                    free(gpMessageReceive[x]);
+                    uPortFree(gpMessageReceive[x]->pBuffer);
+                    uPortFree(gpMessageReceive[x]->pNmeaComprehenderContext);
+                    uPortFree(gpMessageReceive[x]);
                     gpMessageReceive[x] = NULL;
                 }
             }
@@ -785,8 +786,8 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgCleanUp")
 #ifndef U_CFG_TEST_USING_NRF5SDK
     for (size_t x = 0; x < sizeof(gpMessageReceive) / sizeof(gpMessageReceive[0]); x++) {
         if (gpMessageReceive[x] != NULL) {
-            free(gpMessageReceive[x]->pBuffer);
-            free(gpMessageReceive[x]);
+            uPortFree(gpMessageReceive[x]->pBuffer);
+            uPortFree(gpMessageReceive[x]);
         }
     }
 #endif // U_CFG_TEST_USING_NRF5SDK 

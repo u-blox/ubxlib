@@ -52,6 +52,7 @@
 #include "u_error_common.h"
 
 #include "u_port.h"
+#include "u_port_heap.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"
 #include "u_port_uart.h"
@@ -406,7 +407,7 @@ U_PORT_TEST_FUNCTION("[wifiSock]", "wifiSockTCPTest")
     gWifiConnected = 0;
 
     // Malloc a buffer to receive things into.
-    pBuffer = (char *) malloc(U_WIFI_SOCK_MAX_SEGMENT_SIZE_BYTES);
+    pBuffer = (char *) pUPortMalloc(U_WIFI_SOCK_MAX_SEGMENT_SIZE_BYTES);
     U_PORT_TEST_ASSERT(pBuffer != NULL);
 
     // Do the standard preamble
@@ -587,7 +588,7 @@ U_PORT_TEST_FUNCTION("[wifiSock]", "wifiSockTCPTest")
     uWifiTestPrivatePostamble(&gHandles);
 
     // Free memory
-    free(pBuffer);
+    uPortFree(pBuffer);
 
     // Now do all assert checking after cleanup
 
@@ -636,7 +637,7 @@ U_PORT_TEST_FUNCTION("[wifiSock]", "wifiSockUDPTest")
     gWifiConnected = 0;
 
     // Malloc a buffer to receive things into.
-    pBuffer = (char *) malloc(U_WIFI_SOCK_MAX_SEGMENT_SIZE_BYTES);
+    pBuffer = (char *) pUPortMalloc(U_WIFI_SOCK_MAX_SEGMENT_SIZE_BYTES);
     U_PORT_TEST_ASSERT(pBuffer != NULL);
 
     // Do the standard preamble
@@ -773,7 +774,7 @@ U_PORT_TEST_FUNCTION("[wifiSock]", "wifiSockUDPTest")
     uWifiTestPrivatePostamble(&gHandles);
 
     // Free memory
-    free(pBuffer);
+    uPortFree(pBuffer);
 
     // Now do all assert checking after cleanup
 

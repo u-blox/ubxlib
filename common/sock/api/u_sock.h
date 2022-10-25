@@ -417,7 +417,7 @@ int32_t uSockClose(uSockDescriptor_t descriptor);
  * may be refering to it.  You should call this clean-up function
  * when you are sure that there is no socket activity, either
  * locally or from the remote host, in order to free memory
- * malloc()ed for sockets.  A socket that is closed locally but
+ * allocated for sockets.  A socket that is closed locally but
  * waiting for the far end to close WILL be cleaned-up by this
  * function and so no callback registered by
  * uSockRegisterCallbackClosed() will be triggered when the

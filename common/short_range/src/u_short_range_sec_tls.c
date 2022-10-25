@@ -29,7 +29,6 @@
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
 
-#include "stdlib.h"    // malloc() and free()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
@@ -37,6 +36,7 @@
 
 #include "u_cfg_sw.h"
 #include "u_error_common.h"
+#include "u_port_heap.h"
 
 #include "u_security_tls.h"
 #include "u_security_credential.h"
@@ -78,7 +78,7 @@ static uErrorCode_t storeString(const char *pSrc, char **ppDest)
         // Add one more for the terminator
         bufferLength++;
         errorCode = U_ERROR_COMMON_NO_MEMORY;
-        *ppDest = (char *) malloc(bufferLength);
+        *ppDest = (char *) pUPortMalloc(bufferLength);
         if (*ppDest != NULL) {
             errorCode = U_ERROR_COMMON_SUCCESS;
             strncpy(*ppDest, pSrc, bufferLength);
@@ -99,7 +99,8 @@ uShortRangeSecTlsContext_t *pUShortRangeSecTlsAdd(uSecurityTlsVersion_t tlsVersi
                                                   const char *pClientPrivateKeyName,
                                                   bool certificateCheckOn)
 {
-    uShortRangeSecTlsContext_t *pContext = (uShortRangeSecTlsContext_t *) malloc(sizeof(*pContext));
+    uShortRangeSecTlsContext_t *pContext = (uShortRangeSecTlsContext_t *) pUPortMalloc(sizeof(
+                                                                                           *pContext));
     uErrorCode_t errorCode = U_ERROR_COMMON_NO_MEMORY;
 
     // Error checking will have already been performed by
@@ -119,11 +120,10 @@ uShortRangeSecTlsContext_t *pUShortRangeSecTlsAdd(uSecurityTlsVersion_t tlsVersi
                                     &(pContext->pClientPrivateKeyName));
         }
         if (errorCode != U_ERROR_COMMON_SUCCESS) {
-            // It is legal C to free a NULL pointer
-            free(pContext->pRootCaCertificateName);
-            free(pContext->pClientCertificateName);
-            free(pContext->pClientPrivateKeyName);
-            free(pContext);
+            uPortFree(pContext->pRootCaCertificateName);
+            uPortFree(pContext->pClientCertificateName);
+            uPortFree(pContext->pClientPrivateKeyName);
+            uPortFree(pContext);
             pContext = NULL;
         }
     }
@@ -139,11 +139,10 @@ uShortRangeSecTlsContext_t *pUShortRangeSecTlsAdd(uSecurityTlsVersion_t tlsVersi
 void uShortRangeSecTlsRemove(uShortRangeSecTlsContext_t *pContext)
 {
     if (pContext != NULL) {
-        // It is legal C to free a NULL pointer
-        free(pContext->pRootCaCertificateName);
-        free(pContext->pClientCertificateName);
-        free(pContext->pClientPrivateKeyName);
-        free(pContext);
+        uPortFree(pContext->pRootCaCertificateName);
+        uPortFree(pContext->pClientCertificateName);
+        uPortFree(pContext->pClientPrivateKeyName);
+        uPortFree(pContext);
     }
 }
 

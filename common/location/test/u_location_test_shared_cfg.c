@@ -30,7 +30,6 @@
 #endif
 
 #include "limits.h"    // LONG_MIN, INT_MIN
-#include "stdlib.h"    // malloc()/free()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
@@ -40,6 +39,7 @@
 #include "u_cfg_app_platform_specific.h"
 
 #include "u_port.h"
+#include "u_port_heap.h"
 #include "u_port_debug.h"
 
 #include "u_network.h"
@@ -269,21 +269,21 @@ uLocationTestCfg_t *pULocationTestCfgDeepCopyMalloc(const uLocationTestCfg_t *pC
     uLocationTestCfg_t *pCfgOut = NULL;
 
     if (pCfg != NULL) {
-        pCfgOut = (uLocationTestCfg_t *) malloc(sizeof(uLocationTestCfg_t));
+        pCfgOut = (uLocationTestCfg_t *) pUPortMalloc(sizeof(uLocationTestCfg_t));
         if (pCfgOut != NULL) {
             // Copy the outer structure
             *pCfgOut = *pCfg;
             pCfgOut->pLocationAssist = NULL;
             if (pCfg->pLocationAssist != NULL) {
                 // Malloc room for the location assist part in the new structure
-                pCfgOut->pLocationAssist = (uLocationAssist_t *) malloc(sizeof(uLocationAssist_t));
+                pCfgOut->pLocationAssist = (uLocationAssist_t *) pUPortMalloc(sizeof(uLocationAssist_t));
                 if (pCfgOut->pLocationAssist != NULL) {
                     // Copy the location assist structure
                     *(pCfgOut->pLocationAssist) = *(pCfg->pLocationAssist);
                 } else {
                     // If we can't get memory for the location
                     // assist structure, clean up
-                    free(pCfgOut);
+                    uPortFree(pCfgOut);
                     pCfgOut = NULL;
                 }
             }
@@ -298,9 +298,9 @@ void uLocationTestCfgDeepCopyFree(uLocationTestCfg_t *pCfg)
 {
     if (pCfg != NULL) {
         // Free the inner structure.
-        free(pCfg->pLocationAssist);
+        uPortFree(pCfg->pLocationAssist);
         // Free the outer structure
-        free(pCfg);
+        uPortFree(pCfg);
     }
 }
 

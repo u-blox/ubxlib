@@ -66,7 +66,7 @@
  * user code.  IMPORTANT: this takes into account the fact that
  * in our test code we call printf() from tasks which are created
  * and deleted, and since the newlib implementation used on this
- * platform does not free the memory it malloc()ates on the first
+ * platform does not free the memory it allocates on the first
  * printf() from a new task, we lose 1468 bytes of heap every time
  * we delete a task, and hence the heap just leaks away over time.
  * This is not an issue in normal use as we never call printf() from

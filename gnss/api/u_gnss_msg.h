@@ -233,7 +233,7 @@ void uGnssMsgReceiveFlush(uDeviceHandle_t gnssHandle, bool asyncAlso);
  *
  *         // Process the received message here
  *
- *         free(pMsgReceive);
+ *         uPortFree(pMsgReceive);
  *    }
  * }
  * ```
@@ -289,11 +289,11 @@ int32_t uGnssMsgSend(uDeviceHandle_t gnssHandle,
  *                               in which the message will be placed,
  *                               cannot be NULL.  If ppBuffer points
  *                               to NULL (i.e *ppBuffer is NULL) then
- *                               this function will malloc() a buffer
+ *                               this function will allocate a buffer
  *                               of the correct size and populate
- *                               *ppBuffer with the malloc()ated buffer
+ *                               *ppBuffer with the allocated buffer
  *                               pointer; in this case IT IS UP TO
- *                               THE CALLER TO free(*ppBuffer) WHEN
+ *                               THE CALLER TO uPortFree(*ppBuffer) WHEN
  *                               DONE.  The entire message, with
  *                               any header, $, CRC, etc. included,
  *                               will be written to the buffer.

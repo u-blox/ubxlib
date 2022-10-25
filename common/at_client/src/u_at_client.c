@@ -30,7 +30,7 @@
 #endif
 
 #include "limits.h"    // For INT_MAX
-#include "stdlib.h"    // malloc() and free()
+#include "stdlib.h"    // strtol()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
@@ -49,6 +49,7 @@
                                               before the other port files if
                                               any print or scan function is used. */
 #include "u_port.h"
+#include "u_port_heap.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"
 #include "u_port_gpio.h"
@@ -747,15 +748,15 @@ static void removeClient(uAtClientInstance_t *pClient)
     while (pClient->pUrcList != NULL) {
         pUrc = pClient->pUrcList;
         pClient->pUrcList = pUrc->pNext;
-        free(pUrc);
+        uPortFree(pUrc);
     }
 
     // Remove any activity pin
-    free(pClient->pActivityPin);
+    uPortFree(pClient->pActivityPin);
 
-    // Free the receive buffer if it was malloc()ed.
+    // Free the receive buffer if it was allocated.
     if (pClient->pReceiveBuffer->isMalloced) {
-        free(pClient->pReceiveBuffer);
+        uPortFree(pClient->pReceiveBuffer);
     }
 
     // Unlock its main mutex so that we can delete it
@@ -775,7 +776,7 @@ static void removeClient(uAtClientInstance_t *pClient)
         U_PORT_MUTEX_LOCK(pClient->pWakeUp->streamMutex);
         U_PORT_MUTEX_UNLOCK(pClient->pWakeUp->streamMutex);
         uPortMutexDelete(pClient->pWakeUp->streamMutex);
-        free(pClient->pWakeUp);
+        uPortFree(pClient->pWakeUp);
     }
 
     // Delete the stream mutex
@@ -787,7 +788,7 @@ static void removeClient(uAtClientInstance_t *pClient)
     uPortMutexDelete(pClient->urcPermittedMutex);
 
     // And finally free the client context.
-    free(pClient);
+    uPortFree(pClient);
 }
 
 // Check if an asynchronous event should be processed
@@ -2536,14 +2537,14 @@ uAtClientHandle_t uAtClientAdd(int32_t streamHandle,
             (numAtClients() < sizeof(gAtClientMagicNumberProcessAsync) /
              sizeof(gAtClientMagicNumberProcessAsync[0]))) {
             // Nope, create one
-            pClient = (uAtClientInstance_t *) malloc(sizeof(uAtClientInstance_t));
+            pClient = (uAtClientInstance_t *) pUPortMalloc(sizeof(uAtClientInstance_t));
             if (pClient != NULL) {
                 memset(pClient, 0, sizeof(*pClient));
                 pClient->pReceiveBuffer = (uAtClientReceiveBuffer_t *) pReceiveBuffer;
                 // Make sure we have a receive buffer
                 if (pClient->pReceiveBuffer == NULL) {
                     receiveBufferIsMalloced = true;
-                    pClient->pReceiveBuffer = (uAtClientReceiveBuffer_t *) malloc(receiveBufferSize);
+                    pClient->pReceiveBuffer = (uAtClientReceiveBuffer_t *) pUPortMalloc(receiveBufferSize);
                 }
                 if (pClient->pReceiveBuffer != NULL) {
                     pClient->pReceiveBuffer->isMalloced = (int32_t) receiveBufferIsMalloced;
@@ -2611,9 +2612,9 @@ uAtClientHandle_t uAtClientAdd(int32_t streamHandle,
                         uPortMutexDelete(pClient->mutex);
                     }
                     if (receiveBufferIsMalloced) {
-                        free(pClient->pReceiveBuffer);
+                        uPortFree(pClient->pReceiveBuffer);
                     }
-                    free(pClient);
+                    uPortFree(pClient);
                     pClient = NULL;
                 }
             }
@@ -3474,7 +3475,7 @@ int32_t uAtClientSetUrcHandler(uAtClientHandle_t atHandle,
     if ((pPrefix != NULL) && (pHandler != NULL)) {
         errorCode = U_ERROR_COMMON_NO_MEMORY;
         if (!findUrcHandler(pClient, pPrefix)) {
-            pUrc = (uAtClientUrc_t *) malloc(sizeof(uAtClientUrc_t));
+            pUrc = (uAtClientUrc_t *) pUPortMalloc(sizeof(uAtClientUrc_t));
             if (pUrc != NULL) {
                 prefixLength = strlen(pPrefix);
                 if (prefixLength > pClient->urcMaxStringLength) {
@@ -3545,7 +3546,7 @@ void uAtClientRemoveUrcHandler(uAtClientHandle_t atHandle,
 
             U_PORT_MUTEX_UNLOCK(pClient->urcPermittedMutex);
 
-            free(pCurrent);
+            uPortFree(pCurrent);
             pCurrent = NULL;
         } else {
             pPrev = pCurrent;
@@ -3575,9 +3576,6 @@ int32_t uAtClientUrcHandlerStackMinFree(uAtClientHandle_t atHandle)
 }
 
 // Make a callback resulting from a URC.
-//lint -esym(593, pCallbackParam) Suppress pCallbackParam not being
-// free()ed here: if Lint spots that pCallbackParam was malloc()ed
-// by the caller it can complain that it was not free()ed here.
 int32_t uAtClientCallback(uAtClientHandle_t atHandle,
                           void (*pCallback) (uAtClientHandle_t, void *),
                           void *pCallbackParam)
@@ -3836,13 +3834,13 @@ int32_t uAtClientSetWakeUpHandler(uAtClientHandle_t atHandle,
                 U_PORT_MUTEX_LOCK(pClient->pWakeUp->mutex);
                 U_PORT_MUTEX_UNLOCK(pClient->pWakeUp->mutex);
                 uPortMutexDelete(pClient->pWakeUp->mutex);
-                free(pClient->pWakeUp);
+                uPortFree(pClient->pWakeUp);
                 pClient->pWakeUp = NULL;
             }
             errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
         } else {
             if (pClient->pWakeUp == NULL) {
-                pClient->pWakeUp = (uAtClientWakeUp_t *) malloc(sizeof(*(pClient->pWakeUp)));
+                pClient->pWakeUp = (uAtClientWakeUp_t *) pUPortMalloc(sizeof(*(pClient->pWakeUp)));
                 if (pClient->pWakeUp != NULL) {
                     memset(pClient->pWakeUp, 0, sizeof(*pClient->pWakeUp));
                     if (uPortMutexCreate(&(pClient->pWakeUp->inWakeUpHandlerMutex)) == 0) {
@@ -3863,7 +3861,7 @@ int32_t uAtClientSetWakeUpHandler(uAtClientHandle_t atHandle,
                         if (pClient->pWakeUp->streamMutex != NULL) {
                             uPortMutexDelete(pClient->pWakeUp->streamMutex);
                         }
-                        free(pClient->pWakeUp);
+                        uPortFree(pClient->pWakeUp);
                         pClient->pWakeUp = NULL;
                     }
                 }
@@ -3908,12 +3906,12 @@ int32_t uAtClientSetActivityPin(uAtClientHandle_t atHandle,
     U_AT_CLIENT_LOCK_CLIENT_MUTEX(pClient);
 
     if (pin < 0) {
-        free(pClient->pActivityPin);
+        uPortFree(pClient->pActivityPin);
         pClient->pActivityPin = NULL;
         errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
     } else {
         if (pClient->pActivityPin == NULL) {
-            pClient->pActivityPin = (uAtClientActivityPin_t *) malloc(sizeof(*(pClient->pActivityPin)));
+            pClient->pActivityPin = (uAtClientActivityPin_t *) pUPortMalloc(sizeof(*(pClient->pActivityPin)));
         }
         if (pClient->pActivityPin != NULL) {
             pClient->pActivityPin->pin = pin;

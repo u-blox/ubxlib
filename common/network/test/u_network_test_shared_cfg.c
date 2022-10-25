@@ -31,7 +31,6 @@
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
 
-#include "stdlib.h"   // malloc()/free()
 #include "stddef.h"   // NULL, size_t etc.
 #include "stdint.h"   // int32_t etc.
 #include "stdbool.h"
@@ -47,6 +46,7 @@
 //lint -efile(766, u_port.h) Suppress header file not used, which
 // is true if U_CELL_TEST_CFG_APN is not defined
 #include "u_port.h" // For U_PORT_STRINGIFY_QUOTED()
+#include "u_port_heap.h"
 #include "u_port_debug.h"
 
 #ifdef U_CFG_TEST_CELL_MODULE_TYPE
@@ -427,7 +427,7 @@ uNetworkTestList_t *pUNetworkTestListAlloc(uNetworkTestValidFunction_t pValidFun
                         // The device/network/module is valid for the test,
                         // so allocate memory for it and add it to the
                         // front of the list
-                        pList = (uNetworkTestList_t *) malloc(sizeof(*pList));
+                        pList = (uNetworkTestList_t *) pUPortMalloc(sizeof(*pList));
                         if (pList != NULL) {
                             memset(pList, 0, sizeof(*pList));
                             pList->pDevHandle = &(pDevice->devHandle);
@@ -454,7 +454,7 @@ void uNetworkTestListFree(void)
 
     while (gpNetworkTestList != NULL) {
         pTmp = gpNetworkTestList->pNext;
-        free(gpNetworkTestList);
+        uPortFree(gpNetworkTestList);
         gpNetworkTestList = pTmp;
     }
 }

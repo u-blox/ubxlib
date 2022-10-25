@@ -28,7 +28,7 @@
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
 
-#include "stdlib.h"    // malloc(), free(), atoi()
+#include "stdlib.h"    // atoi()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
@@ -38,6 +38,7 @@
 #include "u_error_common.h"
 
 #include "u_port.h"
+#include "u_port_heap.h"
 #include "u_port_os.h"
 
 #include "u_at_client.h"
@@ -169,7 +170,7 @@ static void fotaStatusCallback(uAtClientHandle_t atHandle, void *pParameter)
                                  &(pCallback->status),
                                  pCallback->pCallbackParam);
         }
-        free(pCallback);
+        uPortFree(pCallback);
     }
 }
 
@@ -183,10 +184,8 @@ static void queueFotaStatus(uCellPrivateInstance_t *pInstance,
     // Put all the data in a struct and pass a pointer to it to our
     // local callback via the AT client's callback mechanism to decouple
     // it from whatever might have called us.
-    // Note: fotaStatusCallback will free() the malloc()ed memory.
-    //lint -esym(429, pCallback) Suppress pCallback not being free()ed here
-    //lint -esym(593, pCallback) Suppress pCallback not being free()ed here
-    pCallback = (uCellFotaStatusCallbackParameters_t *) malloc(sizeof(*pCallback));
+    // Note: fotaStatusCallback will free the allocated memory.
+    pCallback = (uCellFotaStatusCallbackParameters_t *) pUPortMalloc(sizeof(*pCallback));
     if (pCallback != NULL) {
         pCallback->cellHandle = pInstance->cellHandle;
         pCallback->status = *pStatus;
@@ -332,7 +331,7 @@ int32_t uCellFotaSetStatusCallback(uDeviceHandle_t cellHandle,
                     // Note: we don't deallocate this until
                     // cellular is closed down in order to
                     // ensure thread-safety of the callback
-                    pContext = (uCellPrivateFotaContext_t *) malloc(sizeof(uCellPrivateFotaContext_t));
+                    pContext = (uCellPrivateFotaContext_t *) pUPortMalloc(sizeof(uCellPrivateFotaContext_t));
                 }
                 if (pContext != NULL) {
                     pInstance->pFotaContext = pContext;

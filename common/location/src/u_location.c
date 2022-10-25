@@ -29,7 +29,6 @@
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
 
-#include "stdlib.h"    // free()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
@@ -38,6 +37,7 @@
 
 #include "u_device_shared.h"
 
+#include "u_port_heap.h"
 #include "u_port_os.h"
 
 #include "u_cell_loc.h"
@@ -134,8 +134,7 @@ static void gnssPosCallback(uDeviceHandle_t devHandle,
             }
             pEntry->pCallback(devHandle, errorCode, &location);
         }
-        // It is legal C to free a NULL pointer
-        free(pEntry);
+        uPortFree(pEntry);
 
         U_PORT_MUTEX_UNLOCK(gULocationMutex);
     }
@@ -178,8 +177,7 @@ static void cellLocCallback(uDeviceHandle_t devHandle,
                 pEntry->pCallback(devHandle, errorCode, NULL);
             }
         }
-        // It is legal C to free a NULL pointer
-        free(pEntry);
+        uPortFree(pEntry);
 
         U_PORT_MUTEX_UNLOCK(gULocationMutex);
     }
@@ -318,7 +316,7 @@ int32_t uLocationGetStart(uDeviceHandle_t devHandle, uLocationType_t type,
                     if (errorCode == 0) {
                         errorCode = uCellLocGetStart(devHandle, cellLocCallback);
                         if (errorCode != 0) {
-                            free(pULocationSharedRequestPop(U_LOCATION_TYPE_CLOUD_CELL_LOCATE));
+                            uPortFree(pULocationSharedRequestPop(U_LOCATION_TYPE_CLOUD_CELL_LOCATE));
                         }
                     }
                 }
@@ -337,7 +335,7 @@ int32_t uLocationGetStart(uDeviceHandle_t devHandle, uLocationType_t type,
             if (errorCode == 0) {
                 errorCode = uGnssPosGetStart(devHandle, gnssPosCallback);
                 if (errorCode != 0) {
-                    free(pULocationSharedRequestPop(U_LOCATION_TYPE_GNSS));
+                    uPortFree(pULocationSharedRequestPop(U_LOCATION_TYPE_GNSS));
                 }
             }
         }

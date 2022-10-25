@@ -40,8 +40,8 @@ NEVER_DISCARD = ["DATABASE.md", "CMakeLists.txt", "source.txt", "include.txt"]
 # A list of file extensions to keep for code files
 EXT_CODE = ["c", "cpp", "h", "hpp"]
 
-# The instances to always run: CodeChecker, Doxygen, AStyle, size and ubxlib.h checking
-INSTANCES_ALWAYS = [[1], [2], [4], [5], [6,1], [6,2], [7], [8]]
+# The instances to always run: CodeChecker, Doxygen, AStyle, size, ubxlib.h and malloc checking
+INSTANCES_ALWAYS = [[1], [2], [4], [5], [6,1], [6,2], [7], [8], [9]]
 
 def instances_string(instances):
     '''Return a string of the form "1.2.3, 0.1"'''

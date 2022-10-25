@@ -29,7 +29,6 @@
 #endif
 #include "u_cfg_sw.h"
 
-#include "stdlib.h"    // malloc() and free()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
@@ -37,6 +36,7 @@
 
 #include "u_error_common.h"
 
+#include "u_port_heap.h"
 #include "u_port_os.h"
 #include "u_port_debug.h"
 #include "u_cfg_os_platform_specific.h"
@@ -297,7 +297,7 @@ static void wifiConnectCallback(uAtClientHandle_t atHandle,
         }
     }
 
-    free(pStatus);
+    uPortFree(pStatus);
 }
 
 //lint -esym(818, pParameter) Suppress pParameter could be const, need to
@@ -314,8 +314,7 @@ static void UUWLE_urc(uAtClientHandle_t atHandle,
     (void)uAtClientReadString(atHandle, bssid, U_WIFI_BSSID_SIZE, false);
     channel = uAtClientReadInt(atHandle);
 
-    //lint -esym(429, pStatus) Suppress pStatus not being free()ed here
-    pStatus = (uWifiConnection_t *) malloc(sizeof(*pStatus));
+    pStatus = (uWifiConnection_t *) pUPortMalloc(sizeof(*pStatus));
     if (pStatus != NULL) {
         pStatus->devHandle = devHandle;
         pStatus->connId = connId;
@@ -325,7 +324,7 @@ static void UUWLE_urc(uAtClientHandle_t atHandle,
         pStatus->reason = 0;
         //lint -e(1773) Suppress attempt to cast away volatile
         if (uAtClientCallback(atHandle, wifiConnectCallback, pStatus) < 0) {
-            free(pStatus);
+            uPortFree(pStatus);
         }
     }
 }
@@ -342,8 +341,7 @@ static void UUWLD_urc(uAtClientHandle_t atHandle,
     connId = uAtClientReadInt(atHandle);
     reason = uAtClientReadInt(atHandle);
 
-    //lint -esym(429, pStatus) Suppress pStatus not being free()ed here
-    pStatus = (uWifiConnection_t *) malloc(sizeof(*pStatus));
+    pStatus = (uWifiConnection_t *) pUPortMalloc(sizeof(*pStatus));
     if (pStatus != NULL) {
         pStatus->devHandle = devHandle;
         pStatus->connId = connId;
@@ -352,7 +350,7 @@ static void UUWLD_urc(uAtClientHandle_t atHandle,
         pStatus->bssid[0] = '\0';
         pStatus->reason = reason;
         if (uAtClientCallback(atHandle, wifiConnectCallback, pStatus) < 0) {
-            free(pStatus);
+            uPortFree(pStatus);
         }
     }
 }
@@ -420,7 +418,7 @@ static void networkStatusCallback(uAtClientHandle_t atHandle,
         pCallback(pEvt->devHandle, ifaceType, statusMask, (void *)pCallbackParam);
     }
 
-    free(pParameter);
+    uPortFree(pParameter);
 }
 
 static void UUNU_urc(uAtClientHandle_t atHandle,
@@ -430,13 +428,12 @@ static void UUNU_urc(uAtClientHandle_t atHandle,
     interfaceId = uAtClientReadInt(atHandle);
     if (interfaceId >= 0) {
         uWifiworkEvent_t *pEvt;
-        //lint -esym(593, pEvt) Suppress pEvt not being free()ed here
-        pEvt = (uWifiworkEvent_t *) malloc(sizeof(uWifiworkEvent_t));
+        pEvt = (uWifiworkEvent_t *) pUPortMalloc(sizeof(uWifiworkEvent_t));
         if (pEvt != NULL) {
             pEvt->devHandle = (uDeviceHandle_t)pParameter;
             pEvt->interfaceId = interfaceId;
             if (uAtClientCallback(atHandle, networkStatusCallback, pEvt) < 0) {
-                free(pEvt);
+                uPortFree(pEvt);
             }
         }
     }
@@ -449,13 +446,12 @@ static void UUND_urc(uAtClientHandle_t atHandle,
     interfaceId = uAtClientReadInt(atHandle);
     if (interfaceId >= 0) {
         uWifiworkEvent_t *pEvt;
-        //lint -esym(593, pEvt) Suppress pEvt not being free()ed here
-        pEvt = (uWifiworkEvent_t *) malloc(sizeof(uWifiworkEvent_t));
+        pEvt = (uWifiworkEvent_t *) pUPortMalloc(sizeof(uWifiworkEvent_t));
         if (pEvt != NULL) {
             pEvt->devHandle = (uDeviceHandle_t)pParameter;
             pEvt->interfaceId = interfaceId;
             if (uAtClientCallback(atHandle, networkStatusCallback, pEvt) < 0) {
-                free(pEvt);
+                uPortFree(pEvt);
             }
         }
     }

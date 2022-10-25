@@ -51,6 +51,7 @@
 #include "u_error_common.h"
 
 #include "u_port.h"
+#include "u_port_heap.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"   // Required by u_cell_private.h
 
@@ -359,7 +360,7 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqtt")
         if (U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_MQTT_WILL)) {
             U_TEST_PRINT_LINE("testing getting/setting \"will\"...");
             // Malloc memory to put the will message in
-            pBuffer = (char *) malloc(sizeof(gAllChars) + 1);
+            pBuffer = (char *) pUPortMalloc(sizeof(gAllChars) + 1);
             U_PORT_TEST_ASSERT(pBuffer != NULL);
             U_PORT_TEST_ASSERT(uCellMqttSetWill(cellHandle,
                                                 "In the event of my death",
@@ -378,7 +379,7 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqtt")
             U_PORT_TEST_ASSERT(z == sizeof(gAllChars));
             U_PORT_TEST_ASSERT(qos == U_CELL_MQTT_QOS_AT_MOST_ONCE);
             U_PORT_TEST_ASSERT(retained);
-            free(pBuffer);
+            uPortFree(pBuffer);
         }
 
         // Test that we can get and set the inactivity timeout
@@ -614,7 +615,7 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqttSn")
             // Note that for MQTT-SN the "will" message has to be a null-terminated
             // string, hence we don't try to include the null on the end of
             // gPrintableChars
-            pBuffer = (char *) malloc(sizeof(gPrintableChars));
+            pBuffer = (char *) pUPortMalloc(sizeof(gPrintableChars));
             U_PORT_TEST_ASSERT(pBuffer != NULL);
             U_PORT_TEST_ASSERT(uCellMqttSetWill(cellHandle, "In the event of my SN death",
                                                 gPrintableChars, strlen(gPrintableChars),
@@ -632,7 +633,7 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqttSn")
             U_PORT_TEST_ASSERT(memcmp(pBuffer, gPrintableChars, z) == 0);
             U_PORT_TEST_ASSERT(qos == U_CELL_MQTT_QOS_AT_MOST_ONCE);
             U_PORT_TEST_ASSERT(retained);
-            free(pBuffer);
+            uPortFree(pBuffer);
         }
 
         // Test that we can get and set the inactivity timeout

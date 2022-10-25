@@ -35,7 +35,6 @@
 #  include "u_cfg_override.h" // For a customer's configuration override
 # endif
 
-#include "stdlib.h"    // malloc()/free()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
@@ -49,6 +48,7 @@
 #include "u_error_common.h"
 
 #include "u_port.h"
+#include "u_port_heap.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"   // Required by u_gnss_private.h
 #include "u_port_uart.h"
@@ -148,7 +148,7 @@ U_PORT_TEST_FUNCTION("[gnssInfo]", "gnssInfoStatic")
         // So that we can see what we're doing
         uGnssSetUbxMessagePrint(gnssHandle, true);
 
-        pBuffer = (char *) malloc(U_GNSS_INFO_TEST_VERSION_SIZE_MAX_BYTES);
+        pBuffer = (char *) pUPortMalloc(U_GNSS_INFO_TEST_VERSION_SIZE_MAX_BYTES);
         U_PORT_TEST_ASSERT(pBuffer != NULL);
         // Ask for firmware version string with insufficient storage
         memset(pBuffer, 0x66, U_GNSS_INFO_TEST_VERSION_SIZE_MAX_BYTES);
@@ -224,7 +224,7 @@ U_PORT_TEST_FUNCTION("[gnssInfo]", "gnssInfoStatic")
                  version.prot, version.mod);
 
         // Free memory
-        free(pBuffer);
+        uPortFree(pBuffer);
 
         // Check that we haven't dropped any incoming data
         y = uGnssMsgReceiveStatStreamLoss(gnssHandle);

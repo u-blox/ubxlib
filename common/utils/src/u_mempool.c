@@ -29,12 +29,12 @@
 #endif
 
 #include "string.h"
-#include "stdlib.h"    // malloc() and free()
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 
 #include "u_assert.h"
 #include "u_port.h"
+#include "u_port_heap.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"
 #include "u_mempool.h"
@@ -128,7 +128,7 @@ void uMemPoolDeinit(uMemPoolDesc_t *pMemPool)
 
         if (pMemPool->pBuffer != NULL) {
             uPortLog("U_MEM_POOL: Freeing buffer: %p\n", pMemPool->pBuffer);
-            free(pMemPool->pBuffer);
+            uPortFree(pMemPool->pBuffer);
         }
         U_PORT_MUTEX_UNLOCK(pMemPool->mutex);
 
@@ -148,7 +148,7 @@ void *uMemPoolAllocMem(uMemPoolDesc_t *pMemPool)
         // If this is the first call to uMemPoolAllocMem we need to
         // allocate the buffer
         if (pMemPool->pBuffer == NULL) {
-            pMemPool->pBuffer = (uint8_t *)malloc(U_BUFFER_SIZE(pMemPool));
+            pMemPool->pBuffer = (uint8_t *)pUPortMalloc(U_BUFFER_SIZE(pMemPool));
             uPortLog("U_MEM_POOL: Allocated buffer %p\n", pMemPool->pBuffer);
             if (pMemPool->pBuffer != NULL) {
                 initFreeList(pMemPool);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox Ltd
+ * Copyright 2019-2022 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,17 +14,20 @@
  * limitations under the License.
  */
 
-#ifndef _U_PORT_CLIB_PLATFORM_SPECIFIC_H_
-#define _U_PORT_CLIB_PLATFORM_SPECIFIC_H_
-
 /** @file
- * @brief Implementations of C library functions not available on this
- * platform.
+ * @brief Default implementation of pUPortMalloc() / uPortFree().
  */
 
-#ifdef __cplusplus
-extern "C" {
+#ifdef U_CFG_OVERRIDE
+# include "u_cfg_override.h" // For a customer's configuration override
 #endif
+
+/* ----------------------------------------------------------------
+ * INCLUDE FILES
+ * -------------------------------------------------------------- */
+
+#include "stdlib.h"      // malloc()/free().
+#include "u_compiler.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -35,14 +38,26 @@ extern "C" {
  * -------------------------------------------------------------- */
 
 /* ----------------------------------------------------------------
- * FUNCTIONS
+ * VARIABLES
  * -------------------------------------------------------------- */
 
+/* ----------------------------------------------------------------
+ * STATIC FUNCTIONS
+ * -------------------------------------------------------------- */
 
-#ifdef __cplusplus
+/* ----------------------------------------------------------------
+ * PUBLIC FUNCTIONS
+ * -------------------------------------------------------------- */
+
+U_WEAK void *pUPortMalloc(size_t sizeBytes)
+{
+    return malloc(sizeBytes);
 }
-#endif
 
-#endif // _U_PORT_CLIB_PLATFORM_SPECIFIC_H_
+U_WEAK void uPortFree(void *pMemory)
+{
+    free(pMemory);
+}
+
 
 // End of file

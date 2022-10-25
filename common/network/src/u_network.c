@@ -31,7 +31,6 @@
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
-#include "stdlib.h"    // malloc(), free()
 #include "string.h"    // memset()
 
 #include "u_error_common.h"
@@ -40,6 +39,7 @@
 
 #include "u_network_shared.h"
 
+#include "u_port_heap.h"
 #include "u_port_os.h"
 
 #include "u_location.h"
@@ -199,7 +199,7 @@ int32_t uNetworkInterfaceDown(uDeviceHandle_t devHandle, uNetworkType_t netType)
                 errorCode = networkInterfaceChangeState(devHandle, netType,
                                                         pNetworkData->pCfg,
                                                         false);
-                free(pNetworkData->pStatusCallbackData);
+                uPortFree(pNetworkData->pStatusCallbackData);
                 pNetworkData->pStatusCallbackData = NULL;
             }
         }
@@ -238,7 +238,7 @@ int32_t uNetworkSetStatusCallback(uDeviceHandle_t devHandle,
                 // obtain it from there with a call to
                 // pUNetworkGetNetworkData()
                 if (pNetworkData->pStatusCallbackData == NULL) {
-                    pNetworkData->pStatusCallbackData = malloc(sizeof(uNetworkStatusCallbackData_t));
+                    pNetworkData->pStatusCallbackData = pUPortMalloc(sizeof(uNetworkStatusCallbackData_t));
                 }
                 pStatusCallbackData = (uNetworkStatusCallbackData_t *) pNetworkData->pStatusCallbackData;
                 if (pStatusCallbackData != NULL) {
@@ -262,7 +262,7 @@ int32_t uNetworkSetStatusCallback(uDeviceHandle_t devHandle,
                             break;
                     }
                     if (errorCode != 0) {
-                        free(pNetworkData->pStatusCallbackData);
+                        uPortFree(pNetworkData->pStatusCallbackData);
                         pNetworkData->pStatusCallbackData = NULL;
                     }
                 }

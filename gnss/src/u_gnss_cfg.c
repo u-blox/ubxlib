@@ -32,13 +32,13 @@
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 #include "string.h"    // memcpy()
-#include "stdlib.h"    // malloc()/free()
 
 #include "u_compiler.h" // U_INLINE
 #include "u_error_common.h"
 #include "u_assert.h"
 
 #include "u_port.h"
+#include "u_port_heap.h"
 #include "u_port_os.h"  // Required by u_gnss_private.h
 
 #include "u_ubx_protocol.h"
@@ -339,7 +339,7 @@ static int32_t unpackMessageAlloc(uGnssCfgValGetMessageBody_t *pMessageList,
 
     if (count > 0) {
         errorCodeOrCount = (int32_t) U_ERROR_COMMON_NO_MEMORY;
-        *pList = (uGnssCfgVal_t *) malloc(count * sizeof(uGnssCfgVal_t));
+        *pList = (uGnssCfgVal_t *) pUPortMalloc(count * sizeof(uGnssCfgVal_t));
         if (*pList != NULL) {
             errorCodeOrCount = (int32_t) count;
             // Now we can populate the array from the messages
@@ -390,7 +390,7 @@ static int32_t valGetListAlloc(uDeviceHandle_t gnssHandle,
             if (U_GNSS_PRIVATE_HAS(pInstance->pModule, U_GNSS_PRIVATE_FEATURE_CFGVALXXX)) {
                 errorCodeOrCount = (int32_t) U_ERROR_COMMON_NO_MEMORY;
                 // Get memory for the body of the UBX-CFG-VALGET message
-                pMessageOut = (char *) malloc(messageOutSize);
+                pMessageOut = (char *) pUPortMalloc(messageOutSize);
                 if (pMessageOut != NULL) {
                     // Assemble the message
                     *pMessageOut       = 0; // Version
@@ -427,12 +427,12 @@ static int32_t valGetListAlloc(uDeviceHandle_t gnssHandle,
                         errorCodeOrCount = unpackMessageAlloc(messageIn, messageInCount, pList);
                         // Free the memory that was allocated by the send/receive calls
                         for (size_t x = 0; x < messageInCount; x++) {
-                            free(messageIn[x].pBody);
+                            uPortFree(messageIn[x].pBody);
                         }
                     }
 
                     // Free the memory that was used for the outgoing message
-                    free(pMessageOut);
+                    uPortFree(pMessageOut);
                 }
             }
         }
@@ -475,7 +475,7 @@ static int32_t valSetList(uDeviceHandle_t gnssHandle,
                     messageSize += getStorageSizeBytes(U_GNSS_CFG_VAL_KEY_GET_SIZE((pList + x)->keyId));
                 }
                 // Get memory for the body of the UBX-CFG-VALSET message
-                pMessage = (char *) malloc(messageSize);
+                pMessage = (char *) pUPortMalloc(messageSize);
                 if (pMessage != NULL) {
                     // Assemble the message
                     *pMessage       = 0; // Version
@@ -488,7 +488,7 @@ static int32_t valSetList(uDeviceHandle_t gnssHandle,
                     errorCode = uGnssPrivateSendUbxMessage(pInstance, 0x06, 0x8a,
                                                            pMessage, messageSize);
                     // Free memory
-                    free(pMessage);
+                    uPortFree(pMessage);
                 }
             }
         }
@@ -527,7 +527,7 @@ static int32_t valDelList(uDeviceHandle_t gnssHandle,
             if (U_GNSS_PRIVATE_HAS(pInstance->pModule, U_GNSS_PRIVATE_FEATURE_CFGVALXXX)) {
                 errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
                 // Get memory for the body of the UBX-CFG-VALDEL message
-                pMessage = malloc(messageSize);
+                pMessage = pUPortMalloc(messageSize);
                 if (pMessage != NULL) {
                     // Assemble the message
                     *pMessage       = 0x01; // Version
@@ -545,7 +545,7 @@ static int32_t valDelList(uDeviceHandle_t gnssHandle,
                     errorCode = uGnssPrivateSendUbxMessage(pInstance, 0x06, 0x8c,
                                                            pMessage, messageSize);
                     // Free memory
-                    free(pMessage);
+                    uPortFree(pMessage);
                 }
             }
         }
@@ -709,8 +709,8 @@ int32_t uGnssCfgValGet(uDeviceHandle_t gnssHandle, uint32_t keyId,
                 }
             }
         }
-        // Free memory; it is legal C to free a NULL pointer
-        free(pList);
+        // Free memory
+        uPortFree(pList);
     }
 
     return errorCode;
@@ -785,7 +785,7 @@ int32_t uGnssCfgValDelListX(uDeviceHandle_t gnssHandle,
 
     if ((numValues > 0) && (pList != NULL)) {
         errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
-        pKeyIdList = malloc(sizeof(uint32_t) * numValues);
+        pKeyIdList = pUPortMalloc(sizeof(uint32_t) * numValues);
         if (pKeyIdList != NULL) {
             for (size_t x = 0; x < numValues; x++) {
                 *(pKeyIdList + x) = pList->keyId;
@@ -799,7 +799,7 @@ int32_t uGnssCfgValDelListX(uDeviceHandle_t gnssHandle,
         errorCode = valDelList(gnssHandle, pKeyIdList, numValues,
                                transaction, layers);
         // It is valid C to free a NULL pointer
-        free(pKeyIdList);
+        uPortFree(pKeyIdList);
     }
 
     return errorCode;

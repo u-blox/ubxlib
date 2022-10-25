@@ -28,7 +28,6 @@
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
 
-#include "stdlib.h"    // malloc() and free()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
@@ -41,6 +40,7 @@
 
 #include "u_device_shared.h"
 
+#include "u_port_heap.h"
 #include "u_port_os.h"
 #include "u_port_debug.h"
 #include "u_port_gpio.h"
@@ -143,10 +143,10 @@ static void deleteGnssInstance(uGnssPrivateInstance_t *pInstance)
             if (pInstance->pLinearBuffer != NULL) {
                 // Free the streaming buffer
                 uRingBufferDelete(&(pInstance->ringBuffer));
-                free(pInstance->pLinearBuffer);
+                uPortFree(pInstance->pLinearBuffer);
             }
-            // This can go now too (it is legal C to free a NULL pointer)
-            free(pInstance->pTemporaryBuffer);
+            // This can go now too
+            uPortFree(pInstance->pTemporaryBuffer);
             // Delete the transport mutex
             uPortMutexDelete(pInstance->transportMutex);
             // Deallocate the uDevice instance
@@ -159,7 +159,7 @@ static void deleteGnssInstance(uGnssPrivateInstance_t *pInstance)
             }
             pCurrent = NULL;
             // Free the instance
-            free(pInstance);
+            uPortFree(pInstance);
         } else {
             pPrev = pCurrent;
             pCurrent = pPrev->pNext;
@@ -260,7 +260,7 @@ int32_t uGnssAdd(uGnssModuleType_t moduleType,
                  (pGetGnssInstanceTransportHandle(transportType, transportHandle) == NULL))) {
                 errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
                 // Allocate memory for the instance
-                pInstance = (uGnssPrivateInstance_t *) malloc(sizeof(uGnssPrivateInstance_t));
+                pInstance = (uGnssPrivateInstance_t *) pUPortMalloc(sizeof(uGnssPrivateInstance_t));
                 if (pInstance != NULL) {
                     // Fill the values in
                     memset(pInstance, 0, sizeof(*pInstance));
@@ -348,11 +348,11 @@ int32_t uGnssAdd(uGnssModuleType_t moduleType,
                             // Provided we're not on AT transport, i.e. we're on
                             // a streaming transport, then set up the buffer into
                             // which we stream messages received from the module
-                            pInstance->pLinearBuffer = (char *) malloc(U_GNSS_MSG_RING_BUFFER_LENGTH_BYTES);
+                            pInstance->pLinearBuffer = (char *) pUPortMalloc(U_GNSS_MSG_RING_BUFFER_LENGTH_BYTES);
                             if (pInstance->pLinearBuffer != NULL) {
                                 // Also need a temporary buffer to get stuff out
                                 // of the UART/I2C in the first place
-                                pInstance->pTemporaryBuffer = (char *) malloc(U_GNSS_MSG_TEMPORARY_BUFFER_LENGTH_BYTES);
+                                pInstance->pTemporaryBuffer = (char *) pUPortMalloc(U_GNSS_MSG_TEMPORARY_BUFFER_LENGTH_BYTES);
                                 if (pInstance->pTemporaryBuffer != NULL) {
                                     // +2 below to keep one for ourselves and one for the
                                     // blocking transparent receive function
@@ -393,15 +393,15 @@ int32_t uGnssAdd(uGnssModuleType_t moduleType,
                         // If we hit an error, free memory again
                         if (pInstance->pLinearBuffer != NULL) {
                             uRingBufferDelete(&(pInstance->ringBuffer));
-                            free(pInstance->pLinearBuffer);
+                            uPortFree(pInstance->pLinearBuffer);
                         }
                         if (pInstance->pTemporaryBuffer != NULL) {
-                            free(pInstance->pTemporaryBuffer);
+                            uPortFree(pInstance->pTemporaryBuffer);
                         }
                         if (pInstance->transportMutex != NULL) {
                             uPortMutexDelete(pInstance->transportMutex);
                         }
-                        free(pInstance);
+                        uPortFree(pInstance);
                     }
                 }
             }

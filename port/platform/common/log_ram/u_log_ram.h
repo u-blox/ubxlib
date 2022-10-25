@@ -93,7 +93,7 @@ typedef struct {
  *                   initialised at a reset then logging to RAM will
  *                   also survive across a reset.  If pBuffer
  *                   is NULL then memory will be allocated for the
- *                   log and will be free()ed on deinitialisation.
+ *                   log and will be free'ed on deinitialisation.
  * @return           true if successful, else false.
  */
 bool uLogRamInit(void *pBuffer);

@@ -28,7 +28,6 @@
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
 
-#include "stdlib.h"    // malloc()/free()
 #include "stdio.h"     // snprintf()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
@@ -39,6 +38,7 @@
 #include "u_cfg_sw.h"
 
 #include "u_port.h"
+#include "u_port_heap.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"
 
@@ -1254,7 +1254,7 @@ int32_t uCellSockSendTo(uDeviceHandle_t cellHandle,
                         if (dataSizeBytes <= dataLengthMax) {
                             if (pInstance->socketsHexMode) {
                                 negErrnoLocalOrSize = -U_SOCK_ENOMEM;
-                                pHexBuffer = (char *) malloc(dataSizeBytes * 2 + 1);  // +1 for terminator
+                                pHexBuffer = (char *) pUPortMalloc(dataSizeBytes * 2 + 1);  // +1 for terminator
                                 if (pHexBuffer != NULL) {
                                     // Make the hex-coded null terminated string
                                     x = uBinToHex((const char *) pData, dataSizeBytes, pHexBuffer);
@@ -1278,7 +1278,7 @@ int32_t uCellSockSendTo(uDeviceHandle_t cellHandle,
                                     uAtClientWriteString(atHandle, pHexBuffer, true);
                                     uAtClientCommandStop(atHandle);
                                     // Free the buffer
-                                    free(pHexBuffer);
+                                    uPortFree(pHexBuffer);
                                     written = true;
                                 } else {
                                     // Not in hex mode, wait for the prompt
@@ -1428,7 +1428,7 @@ int32_t uCellSockReceiveFrom(uDeviceHandle_t cellHandle,
                             // the hex into and then we can decode it
                             negErrnoLocalOrSize = -U_SOCK_ENOMEM;
                             //lint -e{647} Suppress suspicious truncation
-                            pHexBuffer = (char *) malloc(receivedSize * 2 + 1);  // +1 for terminator
+                            pHexBuffer = (char *) pUPortMalloc(receivedSize * 2 + 1);  // +1 for terminator
                         }
                         if (!pInstance->socketsHexMode || (pHexBuffer != NULL)) {
                             if (pHexBuffer != NULL) {
@@ -1444,7 +1444,7 @@ int32_t uCellSockReceiveFrom(uDeviceHandle_t cellHandle,
                                     uHexToBin(pHexBuffer, readLength, (char *) pData);
                                 }
                                 // Free memory
-                                free(pHexBuffer);
+                                uPortFree(pHexBuffer);
                             } else {
                                 // Binary mode, don't stop for anything!
                                 uAtClientIgnoreStopTag(atHandle);
@@ -1536,7 +1536,7 @@ int32_t uCellSockWrite(uDeviceHandle_t cellHandle,
         if (pInstance->socketsHexMode) {
             thisSendSize /= 2;
             negErrnoLocalOrSize = -U_SOCK_ENOMEM;
-            pHexBuffer = (char *)malloc(thisSendSize * 2 + 1); // +1 for terminator
+            pHexBuffer = (char *)pUPortMalloc(thisSendSize * 2 + 1); // +1 for terminator
         }
         // Find the entry
         if (sockHandle >= 0) {
@@ -1617,7 +1617,7 @@ int32_t uCellSockWrite(uDeviceHandle_t cellHandle,
             }
         }
         // Free the buffer
-        free(pHexBuffer);
+        uPortFree(pHexBuffer);
     }
 
     if (negErrnoLocalOrSize == U_SOCK_ENONE) {
@@ -1722,7 +1722,7 @@ int32_t uCellSockRead(uDeviceHandle_t cellHandle,
                                 // the hex into and then we can decode it
                                 negErrnoLocalOrSize = -U_SOCK_ENOMEM;
                                 //lint -e{647} Suppress suspicious truncation
-                                pHexBuffer = (char *) malloc(thisActualReceiveSize * 2 + 1);  // +1 for terminator
+                                pHexBuffer = (char *) pUPortMalloc(thisActualReceiveSize * 2 + 1);  // +1 for terminator
                             }
                             if (!pInstance->socketsHexMode || (pHexBuffer != NULL)) {
                                 negErrnoLocalOrSize = U_SOCK_ENONE;
@@ -1741,7 +1741,7 @@ int32_t uCellSockRead(uDeviceHandle_t cellHandle,
                                                   (char *) pData + totalReceivedSize);
                                     }
                                     // Free memory
-                                    free(pHexBuffer);
+                                    uPortFree(pHexBuffer);
                                 } else {
                                     // Binary mode, don't stop for anything!
                                     uAtClientIgnoreStopTag(atHandle);

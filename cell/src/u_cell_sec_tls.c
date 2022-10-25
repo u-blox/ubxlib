@@ -28,7 +28,7 @@
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
 
-#include "stdlib.h"    // malloc(), realloc(), free(), strol()
+#include "stdlib.h"    // strol()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
@@ -38,6 +38,7 @@
 
 #include "u_error_common.h"
 
+#include "u_port_heap.h"
 #include "u_port_os.h"
 
 #include "u_hex_bin_convert.h"
@@ -155,7 +156,7 @@ static uCellSecTlsContext_t *pNewContext()
          (pContext == NULL); x++) {
         if (gpContextList[x] == NULL) {
             // Allocate memory for the entry
-            gpContextList[x] = (uCellSecTlsContext_t *) malloc(sizeof(uCellSecTlsContext_t));
+            gpContextList[x] = (uCellSecTlsContext_t *) pUPortMalloc(sizeof(uCellSecTlsContext_t));
             if (gpContextList[x] != NULL) {
                 // Initialise the entry
                 pContext = gpContextList[x];
@@ -177,7 +178,7 @@ static void freeContext(const uCellSecTlsContext_t *pContext)
 
     if (profileId < sizeof(gpContextList) / sizeof(gpContextList[0])) {
         // Free the context
-        free(gpContextList[profileId]);
+        uPortFree(gpContextList[profileId]);
         // Mark the entry in the list as free
         gpContextList[profileId] = NULL;
     }
@@ -299,7 +300,7 @@ static int32_t setSequence(const uCellSecTlsContext_t *pContext,
                     // hex then do that since then it can include
                     // zeroes
                     isHex = true;
-                    pString = (char *) malloc(size * 2 + 1);
+                    pString = (char *) pUPortMalloc(size * 2 + 1);
                     if (pString != NULL) {
                         // Encode as hex
                         y = uBinToHex(pBinary, size, pString);
@@ -315,7 +316,7 @@ static int32_t setSequence(const uCellSecTlsContext_t *pContext,
                     }
                     if (good) {
                         errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
-                        pString = (char *) malloc(size + 1);
+                        pString = (char *) pUPortMalloc(size + 1);
                         if (pString != NULL) {
                             // Just copy
                             memcpy(pString, pBinary, size);
@@ -343,7 +344,7 @@ static int32_t setSequence(const uCellSecTlsContext_t *pContext,
                     errorCode = uAtClientUnlock(atHandle);
 
                     // Free memory
-                    free(pString);
+                    uPortFree(pString);
                 }
             }
         }
@@ -462,8 +463,7 @@ static int32_t cipherSuiteSet(const uCellSecTlsContext_t *pContext,
 // The mutex must be locked before this is called.
 static void cipherListFree(uCellSecTlsCipherList_t *pList)
 {
-    // It is legal C to free a NULL pointer
-    free(pList->pString);
+    uPortFree(pList->pString);
     pList->pString = NULL;
     pList->index = 0;
 }
@@ -875,7 +875,7 @@ int32_t uCellSecTlsCipherSuiteListFirst(uCellSecTlsContext_t *pContext)
                     // Free any previous cipher list
                     cipherListFree(pCipherList);
                     // Allocate space for the list
-                    pCipherList->pString = (char *) malloc(U_CELL_SEC_CIPHERS_BUFFER_LENGTH_BYTES);
+                    pCipherList->pString = (char *) pUPortMalloc(U_CELL_SEC_CIPHERS_BUFFER_LENGTH_BYTES);
                     if (pCipherList->pString != NULL) {
                         atHandle = pInstance->atHandle;
                         // Talk to the cellular module to get the

@@ -80,6 +80,7 @@ common/utils/src/u_interface.c
 common/mqtt_client/src/u_mqtt_client.c
 common/http_client/src/u_http_client.c
 common/assert/src/u_assert.c
+port/u_port_heap.c
 port/platform/common/event_queue/u_port_event_queue.c
 port/platform/common/mbedtls/u_port_crypto.c
 port/clib/u_port_clib_mktime64.c

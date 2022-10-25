@@ -29,7 +29,7 @@
 #endif
 
 #include "limits.h"    // INT_MAX
-#include "stdlib.h"    // malloc(), free(), atoi()
+#include "stdlib.h"    // atoi()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
@@ -45,6 +45,7 @@
                                               be included before the other port
                                               files if any print or scan function
                                               is used. */
+#include "u_port_heap.h"
 #include "u_port.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"
@@ -208,7 +209,7 @@ static void registrationStatusCallback(uAtClientHandle_t atHandle,
             pStatus->pCallback(pStatus->domain, pStatus->networkStatus,
                                pStatus->pCallbackParameter);
         }
-        free(pStatus);
+        uPortFree(pStatus);
     }
 }
 
@@ -230,7 +231,7 @@ static void powerSaving3gppCallback(uAtClientHandle_t atHandle,
                                  pCallback->periodicWakeupSeconds,
                                  pCallback->pCallbackParam);
         }
-        free(pCallback);
+        uPortFree(pCallback);
     }
 }
 
@@ -395,11 +396,9 @@ static void setNetworkStatus(uCellPrivateInstance_t *pInstance,
         // data in a struct and pass a pointer to it to our
         // local callback via the AT client's callback mechanism
         // to decouple it from any URC handler.
-        // Note: it is up to registrationStatusCallback() to free()
-        // the malloc()ed memory.
-        //lint -esym(429, pStatus) Suppress pStatus not being free()ed here
-        //lint -esym(593, pStatus) Suppress pStatus not being free()ed here
-        pStatus = (uCellNetRegistationStatus_t *) malloc(sizeof(*pStatus));
+        // Note: it is up to registrationStatusCallback() to free the
+        // allocated memory
+        pStatus = (uCellNetRegistationStatus_t *) pUPortMalloc(sizeof(*pStatus));
         if (pStatus != NULL) {
             pStatus->domain = domain;
             pStatus->networkStatus = status;
@@ -579,10 +578,8 @@ static void CEREG_urc(uAtClientHandle_t atHandle,
             // Put all the data in a struct and pass a pointer to it to our
             // local callback via the AT client's callback mechanism to decouple
             // it from whatever might have called us.
-            // Note: powerSaving3gppCallback will free() the malloc()ed memory.
-            //lint -esym(429, pCallback) Suppress pCallback not being free()ed here
-            //lint -esym(593, pCallback) Suppress pCallback not being free()ed here
-            pCallback = (uCellNet3gppPowerSavingCallback_t *) malloc(sizeof(*pCallback));
+            // Note: powerSaving3gppCallback will free the allocated memory.
+            pCallback = (uCellNet3gppPowerSavingCallback_t *) pUPortMalloc(sizeof(*pCallback));
             if (pCallback != NULL) {
                 pCallback->cellHandle = pInstance->cellHandle;
                 pCallback->pCallback = pSleepContext->p3gppPowerSavingCallback;
@@ -616,7 +613,7 @@ static void connectionStatusCallback(uAtClientHandle_t atHandle,
             pStatus->pCallback(pStatus->isConnected,
                                pStatus->pCallbackParameter);
         }
-        free(pStatus);
+        uPortFree(pStatus);
     }
 }
 
@@ -640,10 +637,9 @@ static void CSCON_urc(uAtClientHandle_t atHandle,
         // data in a struct and pass a pointer to it to our
         // local callback via the AT client's callback mechanism
         // to decouple it from any URC handler.
-        // Note: it is up to connectionStatusCallback() to free()
-        // the malloc()ed memory.
-        //lint -esym(429, pStatus) Suppress pStatus not being free()ed here
-        pStatus = (uCellNetConnectionStatus_t *) malloc(sizeof(*pStatus));
+        // Note: it is up to connectionStatusCallback() to free the
+        // allocate memory.
+        pStatus = (uCellNetConnectionStatus_t *) pUPortMalloc(sizeof(*pStatus));
         if (pStatus != NULL) {
             pStatus->isConnected = isConnected;
             pStatus->pCallback = pInstance->pConnectionStatusCallback;
@@ -892,7 +888,7 @@ static int32_t storeNextScanItem(uCellPrivateInstance_t *pInstance,
     // the <stat> and <numeric> fields must be present, the
     // rest could be absent or zero length strings
     // Malloc() memory to store this item
-    pNet = (uCellPrivateNet_t *) malloc(sizeof(*pNet));
+    pNet = (uCellPrivateNet_t *) pUPortMalloc(sizeof(*pNet));
     if (pNet != NULL) {
         // Check that "(<stat>" is there and throw it away
         pStr = strtok_r(pBuffer, ",", &pSaved);
@@ -972,7 +968,7 @@ static int32_t storeNextScanItem(uCellPrivateInstance_t *pInstance,
         count++;
     } else {
         // Found gunk, just free the memory
-        free (pNet);
+        uPortFree(pNet);
     }
 
     return count;
@@ -1001,7 +997,7 @@ static int32_t readNextScanItem(uCellPrivateInstance_t *pInstance,
         }
         // Now remove this entry from the list
         pTmp = pNet->pNext;
-        free(pNet);
+        uPortFree(pNet);
         pInstance->pScanResults = pTmp;
 
         // Count what's left
@@ -1752,7 +1748,7 @@ static int32_t handleExistingContext(uCellPrivateInstance_t *pInstance,
     }
     if (hasContext) {
         // Check if we already have the right APN
-        pBuffer = (char *) malloc(U_CELL_NET_MAX_APN_LENGTH_BYTES);
+        pBuffer = (char *) pUPortMalloc(U_CELL_NET_MAX_APN_LENGTH_BYTES);
         if (pBuffer != NULL) {
             if (U_CELL_PRIVATE_HAS(pInstance->pModule,
                                    U_CELL_PRIVATE_FEATURE_USE_UPSD_CONTEXT_ACTIVATION)) {
@@ -1777,7 +1773,7 @@ static int32_t handleExistingContext(uCellPrivateInstance_t *pInstance,
             }
 
             // Free memory
-            free(pBuffer);
+            uPortFree(pBuffer);
         }
 
         if (errorCode != 0) {
@@ -1824,7 +1820,7 @@ static int32_t getDnsStr(const uCellPrivateInstance_t *pInstance,
     // Malloc() memory for this rather than put it on
     // the stack as we read both IPV4 and IPV6 addresses
     // if available
-    pBuffer = (char *) malloc(U_CELL_NET_IP_ADDRESS_SIZE * 4);
+    pBuffer = (char *) pUPortMalloc(U_CELL_NET_IP_ADDRESS_SIZE * 4);
     if (pBuffer != NULL) {
         errorCode = (int32_t) U_CELL_ERROR_NOT_CONNECTED;
         if (pStrDns1 != NULL) {
@@ -1930,7 +1926,7 @@ static int32_t getDnsStr(const uCellPrivateInstance_t *pInstance,
         }
 
         // Free memory
-        free(pBuffer);
+        uPortFree(pBuffer);
     }
 
     return errorCode;
@@ -1950,7 +1946,7 @@ static int32_t getDnsStrUpsd(const uCellPrivateInstance_t *pInstance,
 
     // Malloc() memory for this as there are two possibly
     // IPV6 addresses
-    pBuffer = (char *) malloc(U_CELL_NET_IP_ADDRESS_SIZE * 2);
+    pBuffer = (char *) pUPortMalloc(U_CELL_NET_IP_ADDRESS_SIZE * 2);
     if (pBuffer != NULL) {
         errorCode = (int32_t) U_CELL_ERROR_NOT_CONNECTED;
         if (pStrDns1 != NULL) {
@@ -2007,7 +2003,7 @@ static int32_t getDnsStrUpsd(const uCellPrivateInstance_t *pInstance,
         }
 
         // Free memory
-        free(pBuffer);
+        uPortFree(pBuffer);
     }
 
     return errorCode;
@@ -2562,10 +2558,8 @@ int32_t uCellNetScanGetFirst(uDeviceHandle_t cellHandle,
             // Free any previous scan results
             uCellPrivateScanFree(&(pInstance->pScanResults));
             errorCodeOrNumber = (int32_t) U_ERROR_COMMON_NO_MEMORY;
-            // Malloc() some temporary storage
-            pBuffer = (char *) malloc(U_CELL_NET_SCAN_LENGTH_BYTES);
-            //lint -esym(429, pBuffer) Suppress complaint about
-            // pBuffer not being free()ed: it is!
+            // Allocate some temporary storage
+            pBuffer = (char *) pUPortMalloc(U_CELL_NET_SCAN_LENGTH_BYTES);
             if (pBuffer != NULL) {
                 errorCodeOrNumber = (int32_t) U_CELL_ERROR_TEMPORARY_FAILURE;
                 // Ensure that we're powered up.
@@ -2656,7 +2650,7 @@ int32_t uCellNetScanGetFirst(uDeviceHandle_t cellHandle,
                 }
 
                 // Free memory
-                free(pBuffer);
+                uPortFree(pBuffer);
 
                 // Put the mode back if it was not already 1
                 if ((mode >= 0) && (mode != 1)) {
@@ -2994,7 +2988,7 @@ int32_t uCellNetGetIpAddressStr(uDeviceHandle_t cellHandle,
                 errorCodeOrSize = (int32_t) U_ERROR_COMMON_NO_MEMORY;
                 // Malloc() memory for this rather than put it on
                 // the stack as IPV6 addresses can be quite big
-                pBuffer = (char *) malloc(U_CELL_NET_IP_ADDRESS_SIZE);
+                pBuffer = (char *) pUPortMalloc(U_CELL_NET_IP_ADDRESS_SIZE);
                 if (pBuffer != NULL) {
                     // Try this a few times: I have seen
                     // "AT+CGPADDR= 1," returned on rare occasions
@@ -3043,7 +3037,7 @@ int32_t uCellNetGetIpAddressStr(uDeviceHandle_t cellHandle,
                     }
 
                     // Free memory
-                    free(pBuffer);
+                    uPortFree(pBuffer);
                 }
             } else {
                 uPortLog("U_CELL_NET: not connected, unable to read IP address.\n");

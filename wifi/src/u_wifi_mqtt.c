@@ -29,12 +29,11 @@
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
 
-#include "stdlib.h"    // malloc(), free()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 #include "ctype.h"     // isdigit()
-#include "string.h"    // memset(), strncpy(), strtok_r(), strtol()
+#include "string.h"    // memset(), strncpy(), strtok_r()
 #include "stdio.h"     // snprintf()
 
 #include "u_cfg_sw.h"
@@ -46,6 +45,7 @@
                                               files if any print or scan function
                                               is used. */
 #include "u_port.h"
+#include "u_port_heap.h"
 #include "u_port_debug.h"
 #include "u_port_event_queue.h"
 #include "u_port_os.h"
@@ -165,7 +165,7 @@ static uWifiMqttTopic_t *pAllocateMqttTopic (uWifiMqttSession_t *pMqttSession, b
 
     if (pMqttSession != NULL) {
 
-        pTopic = (uWifiMqttTopic_t *)malloc(sizeof(uWifiMqttTopic_t));
+        pTopic = (uWifiMqttTopic_t *)pUPortMalloc(sizeof(uWifiMqttTopic_t));
 
         if (pTopic != NULL) {
 
@@ -213,8 +213,8 @@ static void freeMqttTopic(uWifiMqttSession_t *pMqttSession, uWifiMqttTopic_t *pT
                 pPrev->pNext = pCurr->pNext;
 
             }
-            free(pCurr->pTopicStr);
-            free(pCurr);
+            uPortFree(pCurr->pTopicStr);
+            uPortFree(pCurr);
             break;
         }
     }
@@ -231,8 +231,8 @@ static void freeAllMqttTopics(uWifiMqttSession_t *pMqttSession)
     for (pTemp = pMqttSession->topicList.pHead; pTemp != NULL; pTemp = pNext) {
 
         pNext = pTemp->pNext;
-        free(pTemp->pTopicStr);
-        free(pTemp);
+        uPortFree(pTemp->pTopicStr);
+        uPortFree(pTemp);
     }
 
     pMqttSession->topicList.pHead = NULL;
@@ -251,7 +251,7 @@ static int32_t copyConnectionParams(char **ppMqttSessionParams,
 
         if (ppMqttSessionParams != NULL) {
 
-            *ppMqttSessionParams = (char *)malloc(len);
+            *ppMqttSessionParams = (char *)pUPortMalloc(len);
 
             if (*ppMqttSessionParams != NULL) {
 
@@ -684,18 +684,18 @@ static void freeMqttSession(uWifiMqttSession_t *pMqttSession)
     if (pMqttSession != NULL) {
 
         if (pMqttSession->pClientIdStr) {
-            free(pMqttSession->pClientIdStr);
+            uPortFree(pMqttSession->pClientIdStr);
         }
         if (pMqttSession->pPasswordStr) {
-            free(pMqttSession->pPasswordStr);
+            uPortFree(pMqttSession->pPasswordStr);
         }
 
         if (pMqttSession->pUserNameStr) {
-            free(pMqttSession->pUserNameStr);
+            uPortFree(pMqttSession->pUserNameStr);
         }
 
         if (pMqttSession->pBrokerNameStr) {
-            free(pMqttSession->pBrokerNameStr);
+            uPortFree(pMqttSession->pBrokerNameStr);
         }
         if (pMqttSession->semaphore) {
             uPortSemaphoreDelete(pMqttSession->semaphore);

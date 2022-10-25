@@ -28,7 +28,6 @@
 #include "stddef.h"
 #include "stdint.h"
 #include "stdbool.h"
-#include "stdlib.h"
 
 #include "u_cfg_sw.h"
 #include "u_port.h"
@@ -36,6 +35,7 @@
 #include "u_port_debug.h"
 #include "u_cfg_os_platform_specific.h"
 #include "u_port_clib_platform_specific.h"
+#include "u_port_heap.h"
 #include "u_port_os.h"
 #include "u_port_debug.h"
 
@@ -78,7 +78,7 @@ void *malloc(size_t size)
 }
 
 // Free dynamically allocated memory.
-void free (void *ptr)
+void free(void *ptr)
 {
     if (ptr != NULL) {
         tx_byte_release(ptr);

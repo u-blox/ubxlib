@@ -24,8 +24,6 @@
  * instructions.
  */
 
-#include "stdlib.h" // For malloc()/free()
-
 // Bring in all of the ubxlib public header files
 #include "ubxlib.h"
 
@@ -237,7 +235,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleGnssMsg")
     uGnssMessageId_t messageId = {0};
     // Enough room for the UBX-NAV-PVT message, which has a body of length 92 bytes,
     // and any NMEA message (which have a maximum size of 82 bytes)
-    char *pBuffer = (char *) malloc(MY_MESSAGE_BUFFER_LENGTH);
+    char *pBuffer = (char *) pUPortMalloc(MY_MESSAGE_BUFFER_LENGTH);
     int32_t length = 0;
     int32_t returnCode;
     int32_t handle;
@@ -320,7 +318,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleGnssMsg")
 
     uPortLog("Done.\n");
 
-    free(pBuffer);
+    uPortFree(pBuffer);
 
 #if defined(U_CFG_TEST_GNSS_MODULE_TYPE) && ((U_CFG_APP_GNSS_UART >= 0) || (U_CFG_APP_GNSS_I2C >= 0))
     // For u-blox internal testing only

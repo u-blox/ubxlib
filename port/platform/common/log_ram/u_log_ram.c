@@ -31,12 +31,12 @@
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
-#include "stdlib.h"    // malloc()/free()
 #include "string.h"    // memcpy()/memset()
 
 #include "u_cfg_sw.h"
 
 #include "u_port.h"
+#include "u_port_heap.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"
 
@@ -101,7 +101,7 @@ bool uLogRamInit(void *pBuffer)
 
     if (gMutex != NULL) {
         if (pBuffer == NULL) {
-            pBuffer = malloc(U_LOG_RAM_STORE_SIZE);
+            pBuffer = pUPortMalloc(U_LOG_RAM_STORE_SIZE);
             memset(pBuffer, 0, U_LOG_RAM_STORE_SIZE);
             gContextMalloced = true;
         }
@@ -145,7 +145,7 @@ void uLogRamDeinit()
 
         uLogRam(U_LOG_RAM_EVENT_STOP, U_LOG_RAM_VERSION);
         if (gContextMalloced) {
-            free(gpContext);
+            uPortFree(gpContext);
             // Only reset the context if we allocated
             // it otherwise leave it there so that it can
             // still be printed
