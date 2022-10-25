@@ -28,7 +28,6 @@
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
 
-#include "stdlib.h"    // malloc(), free()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
@@ -47,6 +46,7 @@
                                               before the other port files if
                                               any print or scan function is used. */
 #include "u_port.h"
+#include "u_port_heap.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"
 #include "u_port_event_queue.h"
@@ -357,7 +357,7 @@ static void eventQueueCallback(void *pParameters, size_t paramLength)
         // that was allocated by UUHTTPCR_urc();
         // the event queue mechanism will deal
         // with the memory occupied by pCallback.
-        free(pCallback->pFileNameResponse);
+        uPortFree(pCallback->pFileNameResponse);
     }
 }
 
@@ -388,12 +388,12 @@ static void UUHTTPCR_urc(uAtClientHandle_t atHandle, void *pParameter)
         // Find the profile in the list
         pHttpInstance = pFindHttpInstance(pCellInstance, profileId);
         if (pHttpInstance != NULL) {
-            pCallback = (uCellHttpCallbackParameters_t *) malloc(sizeof(*pCallback));
+            pCallback = (uCellHttpCallbackParameters_t *) pUPortMalloc(sizeof(*pCallback));
             if (pCallback != NULL) {
                 // Note: eventQueueCallback() will free() pFileNameResponse.
                 //lint -esym(429, pFileNameResponse) Suppress pFileNameResponse not being free()ed here
                 //lint -esym(593, pFileNameResponse) Suppress pFileNameResponse not being free()ed here
-                pCallback->pFileNameResponse = (char *) malloc(U_CELL_FILE_NAME_MAX_LENGTH + 1);
+                pCallback->pFileNameResponse = (char *) pUPortMalloc(U_CELL_FILE_NAME_MAX_LENGTH + 1);
                 if (pCallback->pFileNameResponse != NULL) {
                     strncpy(pCallback->pFileNameResponse, pHttpInstance->fileNameResponse,
                             U_CELL_FILE_NAME_MAX_LENGTH + 1);
@@ -406,12 +406,12 @@ static void UUHTTPCR_urc(uAtClientHandle_t atHandle, void *pParameter)
                     if (uPortEventQueueSend(pHttpContext->eventQueueHandle,
                                             pCallback, sizeof(*pCallback)) < 0) {
                         // Free pFileNameResponse if we couldn't send it
-                        free(pCallback->pFileNameResponse);
+                        uPortFree(pCallback->pFileNameResponse);
                     }
                 }
                 // Can always free pCallback as uPortEventQueueSend() will have
                 // taken a copy of it
-                free(pCallback);
+                uPortFree(pCallback);
             }
         }
 
@@ -455,7 +455,7 @@ int32_t uCellHttpOpen(uDeviceHandle_t cellHandle, const char *pServerName,
                 // Get a context if we don't already have one; this
                 // will be free'd only when the cellular instance is closed
                 // to ensure thread-safety
-                pHttpContext = (uCellHttpContext_t *) malloc(sizeof(uCellHttpContext_t));
+                pHttpContext = (uCellHttpContext_t *) pUPortMalloc(sizeof(uCellHttpContext_t));
                 if (pHttpContext != NULL) {
                     memset(pHttpContext, 0, sizeof(*pHttpContext));
                     pHttpContext->eventQueueHandle = -1;
@@ -474,12 +474,12 @@ int32_t uCellHttpOpen(uDeviceHandle_t cellHandle, const char *pServerName,
                         if (pHttpContext->eventQueueHandle < 0) {
                             // Clean up on error
                             uPortMutexDelete(pHttpContext->linkedListMutex);
-                            free(pHttpContext);
+                            uPortFree(pHttpContext);
                             pHttpContext = NULL;
                         }
                     } else {
                         // Clean up on error
-                        free(pHttpContext);
+                        uPortFree(pHttpContext);
                         pHttpContext = NULL;
                     }
                 }
@@ -495,10 +495,10 @@ int32_t uCellHttpOpen(uDeviceHandle_t cellHandle, const char *pServerName,
                 if (profileId >= 0) {
                     // Grab some temporary memory to manipulate the server name
                     // +1 for terminator
-                    pServerNameTmp = (char *) malloc(U_CELL_HTTP_SERVER_NAME_MAX_LEN_BYTES + 1);
+                    pServerNameTmp = (char *) pUPortMalloc(U_CELL_HTTP_SERVER_NAME_MAX_LEN_BYTES + 1);
                     if (pServerNameTmp != NULL) {
                         // Allocate memory for an HTTP instance
-                        pHttpInstance = (uCellHttpInstance_t *) malloc(sizeof(uCellHttpInstance_t));
+                        pHttpInstance = (uCellHttpInstance_t *) pUPortMalloc(sizeof(uCellHttpInstance_t));
                         if (pHttpInstance != NULL) {
                             memset(pHttpInstance, 0, sizeof(*pHttpInstance));
                             pHttpInstance->profileId = profileId;
@@ -580,11 +580,11 @@ int32_t uCellHttpOpen(uDeviceHandle_t cellHandle, const char *pServerName,
                                 errorCodeOrHandle = profileId;
                             } else {
                                 // Free memory
-                                free(pHttpInstance);
+                                uPortFree(pHttpInstance);
                             }
                         }
                         // Free temporary memory
-                        free(pServerNameTmp);
+                        uPortFree(pServerNameTmp);
                     }
                 }
             }
@@ -622,7 +622,7 @@ void uCellHttpClose(uDeviceHandle_t cellHandle, int32_t httpHandle)
                         pHttpContext->pInstanceList = pCurrent->pNext;
                     }
                     // Free memory
-                    free(pCurrent);
+                    uPortFree(pCurrent);
                     pCurrent = NULL;
                 } else {
                     pPrev = pCurrent;

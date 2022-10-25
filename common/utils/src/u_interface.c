@@ -32,9 +32,9 @@
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 #include "string.h"    // memset()/memcpy()
-#include "stdlib.h"    // malloc()/free()
 
 #include "u_error_common.h"
+#include "u_port_heap.h"
 
 #include "u_interface.h"
 
@@ -120,8 +120,8 @@ uInterfaceTable_t *pUInterfaceCreate(size_t sizeVectorTableBytes,
     // Allocate memory for uInterface_t, plus the vector table
     // which will follow immediately after it, plus any context
     // memory which the caller has asked for
-    pInterface = (uInterface_t *) malloc(U_INTERFACE_SIZE_BYTES(sizeVectorTableBytes,
-                                                                sizeContextBytes));
+    pInterface = (uInterface_t *) pUPortMalloc(U_INTERFACE_SIZE_BYTES(sizeVectorTableBytes,
+                                                                      sizeContextBytes));
     if (pInterface != NULL) {
         memset(pInterface, 0, U_INTERFACE_SIZE_BYTES(sizeVectorTableBytes,
                                                      sizeContextBytes));
@@ -172,7 +172,7 @@ void uInterfaceDelete(uInterfaceTable_t pInterfaceTable)
     }
 
     // Free memory
-    free(pInterface);
+    uPortFree(pInterface);
 }
 
 // End of file

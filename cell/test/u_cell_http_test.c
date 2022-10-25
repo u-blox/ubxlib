@@ -56,6 +56,7 @@
                                               before the other port files if
                                               any print or scan function is used. */
 #include "u_port.h"
+#include "u_port_heap.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"   // Required by u_cell_private.h
 
@@ -213,7 +214,7 @@ static bool checkFile(uDeviceHandle_t cellHandle, const char *pFileName,
     // For a GET request we check the contents
     fileSize = uCellFileSize(cellHandle, pFileName);
     if (fileSize >= 0) {
-        pFileContents = (char *) malloc(fileSize);
+        pFileContents = (char *) pUPortMalloc(fileSize);
         if (pFileContents != NULL) {
             if (uCellFileRead(cellHandle, pFileName,
                               pFileContents, (size_t) fileSize) == fileSize) {
@@ -249,7 +250,7 @@ static bool checkFile(uDeviceHandle_t cellHandle, const char *pFileName,
                                   fileSize, pFileName);
             }
             // Free memory
-            free(pFileContents);
+            uPortFree(pFileContents);
         } else if (printIt) {
             U_TEST_PRINT_LINE("unable to get %d byte(s) of memory to read file \"%s\".",
                               fileSize, pFileName);

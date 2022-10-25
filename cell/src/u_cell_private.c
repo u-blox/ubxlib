@@ -1211,7 +1211,7 @@ void uCellPrivateHttpRemoveContext(uCellPrivateInstance_t *pInstance)
         pHttpInstance = pHttpContext->pInstanceList;
         while (pHttpInstance != NULL) {
             pNextHttpInstance = pHttpInstance->pNext;
-            free(pHttpInstance);
+            uPortFree(pHttpInstance);
             pHttpInstance = pNextHttpInstance;
         }
 
@@ -1219,7 +1219,7 @@ void uCellPrivateHttpRemoveContext(uCellPrivateInstance_t *pInstance)
         uPortMutexDelete(pHttpContext->linkedListMutex);
 
         // Free the context
-        free(pHttpContext);
+        uPortFree(pHttpContext);
         pInstance->pHttpContext = NULL;
     }
 }

@@ -44,7 +44,7 @@
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
 
-#include "stdlib.h"    // malloc(), free()
+#include "stdlib.h"    // strtol()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
@@ -60,6 +60,7 @@
                                               any print or scan function is used. */
 
 #include "u_port.h"
+#include "u_port_heap.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"
 
@@ -219,7 +220,7 @@ static int32_t cellFileResponseReadHead(uDeviceHandle_t cellHandle,
 
     if (pBuffer == NULL) {
         size = U_HTTP_CLIENT_CELL_FILE_READ_HEADERS_LENGTH;
-        pBuffer = (char *) malloc(size + 1); // +1 to add a terminator
+        pBuffer = (char *) pUPortMalloc(size + 1); // +1 to add a terminator
         malloced = true;
     }
 
@@ -269,7 +270,7 @@ static int32_t cellFileResponseReadHead(uDeviceHandle_t cellHandle,
 
         if (malloced) {
             // Free memory
-            free(pBuffer);
+            uPortFree(pBuffer);
         }
     }
 
@@ -390,7 +391,7 @@ static int32_t cellOpen(uHttpClientContext_t *pContext,
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
     uHttpClientContextCell_t *pContextCell;
 
-    pContext->pPriv = malloc(sizeof(uHttpClientContextCell_t));
+    pContext->pPriv = pUPortMalloc(sizeof(uHttpClientContextCell_t));
     if (pContext->pPriv != NULL) {
         pContextCell = (uHttpClientContextCell_t *) pContext->pPriv;
         memset(pContextCell, 0, sizeof(*pContextCell));
@@ -403,7 +404,7 @@ static int32_t cellOpen(uHttpClientContext_t *pContext,
                                                  (void *) pContext);
         if (pContextCell->httpHandle < 0) {
             errorCode = (uErrorCode_t) pContextCell->httpHandle;
-            free(pContext->pPriv);
+            uPortFree(pContext->pPriv);
         } else {
             if (pContext->pSecurityContext != NULL) {
                 errorCode = (uErrorCode_t) uCellHttpSetSecurityOn(pContext->devHandle,
@@ -416,7 +417,7 @@ static int32_t cellOpen(uHttpClientContext_t *pContext,
             if (errorCode < 0) {
                 // Clean up on error
                 uCellHttpClose(pContext->devHandle, pContextCell->httpHandle);
-                free(pContext->pPriv);
+                uPortFree(pContext->pPriv);
             }
         }
     }
@@ -433,7 +434,7 @@ static void cellClose(uDeviceHandle_t cellHandle, int32_t httpHandle)
     char *pFileName;
 
     // Clear out any files from PUT/POST operations
-    pFileName = (char *) malloc(U_CELL_FILE_NAME_MAX_LENGTH + 1);
+    pFileName = (char *) pUPortMalloc(U_CELL_FILE_NAME_MAX_LENGTH + 1);
     if (pFileName != NULL) {
         // The thing to match with: any files from this httpHandle
         snprintf(buffer, sizeof(buffer), "%s%d",
@@ -451,7 +452,7 @@ static void cellClose(uDeviceHandle_t cellHandle, int32_t httpHandle)
             }
         }
         uCellFileListLast_r(&pReentrant);
-        free(pFileName);
+        uPortFree(pFileName);
     }
 }
 
@@ -636,7 +637,7 @@ uHttpClientContext_t *pUHttpClientOpen(uDeviceHandle_t devHandle,
     if (pConnection != NULL) {
         // Sort out common resources
         gLastOpenError = U_ERROR_COMMON_NO_MEMORY;
-        pContext = (uHttpClientContext_t *) malloc(sizeof(*pContext));
+        pContext = (uHttpClientContext_t *) pUPortMalloc(sizeof(*pContext));
         if (pContext != NULL) {
             // Populate our HTTP context and set up security
             memset(pContext, 0, sizeof (*pContext));
@@ -682,7 +683,7 @@ uHttpClientContext_t *pUHttpClientOpen(uDeviceHandle_t devHandle,
                 if (pContext->pSecurityContext != NULL) {
                     uSecurityTlsRemove(pContext->pSecurityContext);
                 }
-                free(pContext);
+                uPortFree(pContext);
                 pContext = NULL;
             }
         }
@@ -720,8 +721,8 @@ void uHttpClientClose(uHttpClientContext_t *pContext)
         }
 
         uPortSemaphoreDelete((uPortSemaphoreHandle_t) pContext->semaphoreHandle);
-        free(pContext->pPriv);
-        free(pContext);
+        uPortFree(pContext->pPriv);
+        uPortFree(pContext);
         pContext = NULL;
 
         U_HTTP_CLIENT_REQUEST_EXIT_FUNCTION(pContext, 0);

@@ -37,7 +37,6 @@
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
 
-#include "stdlib.h"    // malloc(), free()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
@@ -55,6 +54,7 @@
                                               before the other port files if
                                               any print or scan function is used. */
 #include "u_port.h"
+#include "u_port_heap.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"
 
@@ -90,7 +90,7 @@
 #endif
 
 #ifndef U_HTTP_CLIENT_TEST_DATA_SIZE_BYTES
-/** The amount of data to HTTP PUT/POST/GET; must be able to malloc()
+/** The amount of data to HTTP PUT/POST/GET; must be able to allocate
  * this much.
  */
 # define U_HTTP_CLIENT_TEST_DATA_SIZE_BYTES (1024 * 5)
@@ -468,11 +468,11 @@ U_PORT_TEST_FUNCTION("[httpClient]", "httpClient")
     pList = pStdPreamble();
 
     // Get storage for what we're going to PUT/POST/GET
-    gpDataBuffer = (char *) malloc(U_HTTP_CLIENT_TEST_DATA_SIZE_BYTES);
+    gpDataBuffer = (char *) pUPortMalloc(U_HTTP_CLIENT_TEST_DATA_SIZE_BYTES);
     U_PORT_TEST_ASSERT(gpDataBuffer != NULL);
 
     // Get storage for the content-type of a GET
-    gpContentTypeBuffer = (char *) malloc(U_HTTP_CLIENT_CONTENT_TYPE_LENGTH_BYTES);
+    gpContentTypeBuffer = (char *) pUPortMalloc(U_HTTP_CLIENT_CONTENT_TYPE_LENGTH_BYTES);
     U_PORT_TEST_ASSERT(gpContentTypeBuffer != NULL);
 
     // Repeat for all bearers that support HTTP/HTTPS
@@ -672,9 +672,9 @@ U_PORT_TEST_FUNCTION("[httpClient]", "httpClient")
     }
 
     // Free memory
-    free(gpDataBuffer);
+    uPortFree(gpDataBuffer);
     gpDataBuffer = NULL;
-    free(gpContentTypeBuffer);
+    uPortFree(gpContentTypeBuffer);
     gpContentTypeBuffer = NULL;
 
     // Close the devices once more and free the list
@@ -701,8 +701,8 @@ U_PORT_TEST_FUNCTION("[httpClient]", "httpClientCleanUp")
 {
     int32_t y;
 
-    free(gpDataBuffer);
-    free(gpContentTypeBuffer);
+    uPortFree(gpDataBuffer);
+    uPortFree(gpContentTypeBuffer);
 
     // The network test configuration is shared between
     // the network, sockets, security and location tests
