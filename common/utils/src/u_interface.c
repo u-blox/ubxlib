@@ -93,6 +93,8 @@ typedef struct uInterface_t {
                                       which will follow this structure. */
     size_t sizeContextBytes; /**< the size of the context that will
                                   follow the vector table. */
+    int32_t version; /**< the interface version as passed to
+                          pUInterfaceCreate().*/
 } uInterface_t;
 
 /* ----------------------------------------------------------------
@@ -110,6 +112,7 @@ typedef struct uInterface_t {
 // Create and initialise an interface.
 uInterfaceTable_t *pUInterfaceCreate(size_t sizeVectorTableBytes,
                                      size_t sizeContextBytes,
+                                     int32_t version,
                                      uInterfaceInit_t pInterfaceInit,
                                      void *pInitParam,
                                      uInterfaceDeinit_t pInterfaceDeinit)
@@ -132,6 +135,8 @@ uInterfaceTable_t *pUInterfaceCreate(size_t sizeVectorTableBytes,
         // Store the size of the context so that we know when there
         // is none
         pInterface->sizeContextBytes = sizeContextBytes;
+        // Store the version so that the user can retrieve it with uInterfaceVersion()
+        pInterface->version = version;
         // Store pInterfaceDeinit for when we shut things down
         pInterface->pInterfaceDeinit = pInterfaceDeinit;
         if (pInterfaceInit != NULL) {
@@ -156,6 +161,20 @@ void *pUInterfaceContext(uInterfaceTable_t pInterfaceTable)
     }
 
     return pContext;
+}
+
+// Get the interface version.
+int32_t uInterfaceVersion(uInterfaceTable_t pInterfaceTable)
+{
+    int32_t version = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    uInterface_t *pInterface;
+
+    if (pInterfaceTable != NULL) {
+        pInterface = U_INTERFACE_P_INTERFACE_P_VECTOR_TABLE(pInterfaceTable);
+        version = pInterface->version;
+    }
+
+    return version;
 }
 
 // Delete an interface.

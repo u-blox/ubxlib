@@ -44,6 +44,10 @@ extern "C" {
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+/** The default interface version number.
+ */
+#define U_INTERFACE_VERSION_DEFAULT 0
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -79,12 +83,24 @@ typedef void (*uInterfaceDeinit_t)(uInterfaceTable_t pInterfaceTable);
  *
  * @param sizeVectorTableBytes  the size of the vector table required, in bytes.
  * @param sizeContextBytes      the size of context required; may be zero.
+ * @param version               a version number for the interface; use
+ *                              #U_INTERFACE_VERSION_DEFAULT if you don't care.
  * @param pInterfaceInit        the initialisation function for the interface;
  *                              this will be called by pUInterfaceCreate() once
- *                              the interface has been created; it may be used,
+ *                              the interface has been created.  It may be used,
  *                              for example, to populate the vector table and/or
  *                              initialise the context; may be NULL if no
  *                              initialisation is required.
+ *                              IMPORTANT: for forwards-compatibility it is
+ *                              highly recommended that an initialisation
+ *                              function is provided which populates all of
+ *                              the entries in the vector table with default
+ *                              implementations that return
+ *                              #U_ERROR_COMMON_NOT_IMPLEMENTED or similar;
+ *                              without this, should you add new functions to
+ *                              an existing interface type without notice to
+ *                              the implementers of that interface, any user of
+ *                              the interface may end up calling NULL pointers.
  * @param pInitParam            parameter that will be passed to pInterfaceInit;
  *                              may be NULL, ignored if pInterfaceInit is NULL.
  * @param pInterfaceDeinit      the deinitialisation function for the interface;
@@ -96,6 +112,7 @@ typedef void (*uInterfaceDeinit_t)(uInterfaceTable_t pInterfaceTable);
  */
 uInterfaceTable_t *pUInterfaceCreate(size_t sizeVectorTableBytes,
                                      size_t sizeContextBytes,
+                                     int32_t version,
                                      uInterfaceInit_t pInterfaceInit,
                                      void *pInitParam,
                                      uInterfaceDeinit_t pInterfaceDeinit);
@@ -109,6 +126,14 @@ uInterfaceTable_t *pUInterfaceCreate(size_t sizeVectorTableBytes,
  *                         pUInterfaceCreate().
  */
 void *pUInterfaceContext(uInterfaceTable_t pInterfaceTable);
+
+/** Get the interface version.
+ *
+ * @param pInterfaceTable  a pointer to the interface table that was returned by
+ *                         pUInterfaceCreate().
+ * @return                 the interface version, as passed to pUInterfaceCreate().
+ */
+int32_t uInterfaceVersion(uInterfaceTable_t pInterfaceTable);
 
 /** Delete an interface, calling the pInterfaceDeinit function that was
  * passed to pUInterfaceCreate() in the process.

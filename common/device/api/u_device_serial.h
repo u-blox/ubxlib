@@ -32,11 +32,10 @@
  * where a real serial interface is multiplexed into many serial
  * interfaces, as in 3GPP 27.010 CMUX); usage pattern as follows:
  *
- * - Implement ALL of the device functions; where a function
- *   is not supported it MUST still be implemented, returning
- *   an appropriate error code (e.g. #U_ERROR_COMMON_NOT_SUPPORTED
- *   if it is formally not supported or #U_ERROR_COMMON_NOT_IMPLEMENTED
- *   if it is not yet implemented).
+ * - Implement the device functions; where a function
+ *   is not supported it may be left empty if returning the
+ *   default value of #U_ERROR_COMMON_NOT_IMPLEMENTED is
+ *   considered appropriate.
  * - Create a callback of type #uDeviceSerialInit_t which
  *   populates #uDeviceSerial_t with your functions.
  * - Your implementation may request context data for its private
@@ -56,6 +55,8 @@
  *   pDeviceSerial->close(pDeviceSerial);
  * ```
  *
+ * - You may call uInterfaceVersion() to obtain the version
+ *   of this interface (i.e. #U_DEVICE_SERIAL_VERSION).
  * - When done, uDeviceSerialDelete() should be called to release
  *   memory etc.
  */
@@ -67,6 +68,10 @@ extern "C" {
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
+
+/** The version of this API.
+ */
+#define U_DEVICE_SERIAL_VERSION 1
 
 /** The event which means that received data is available; this
  * will be sent if the receive buffer goes from empty to containing
@@ -80,24 +85,37 @@ extern "C" {
  * TYPES: THE FUNCTIONS OF A SERIAL INTERFACE
  * -------------------------------------------------------------- */
 
+/* NOTE TO MAINTAINERS:
+ *
+ * If you add a new function here, don't forget to add a default
+ * implementation for it in u_device_serial.c and include that
+ * default entry in the initialisation of the vector table in the
+ * same file.
+ *
+ * ALSO don't forget to increment #U_DEVICE_SERIAL_VERSION and
+ * please mention the version number from which a new function is
+ * available in the comment above the function (see
+ * #uDeviceSerialDiscardOnOverflow_t for an example of how to do this).
+ */
+
 // Forward declaration.
 struct uDeviceSerial_t;
 
 /** Open a serial device.  If the device has already been
  * opened this function returns an error.
  *
- * @param pDeviceSerial          the serial device; cannot be NULL.
- * @param[in] pReceiveBuffer     a receive buffer to use, should be
- *                               NULL and a buffer will be allocated
- *                               by the driver. If non-NULL then the
- *                               given buffer will be used.
- * @param receiveBufferSizeBytes the amount of memory to allocate
- *                               for the receive buffer.  If
- *                               pReceiveBuffer is not NULL then this
- *                               is the amount of memory at
- *                               pReceiveBuffer.
- * @return                       zero on success else negative error
- *                               code.
+ * @param pDeviceSerial               the serial device; cannot be NULL.
+ * @param[in] pReceiveBuffer          a receive buffer to use, should be
+ *                                    NULL and a buffer will be allocated
+ *                                    by the driver. If non-NULL then the
+ *                                    given buffer will be used.
+ * @param receiveBufferSizeBytes      the amount of memory to allocate
+ *                                    for the receive buffer.  If
+ *                                    pReceiveBuffer is not NULL then this
+ *                                    is the amount of memory at
+ *                                    pReceiveBuffer.
+ * @return                            zero on success else negative error
+ *                                    code.
  */
 typedef int32_t (*uDeviceSerialOpen_t)(struct uDeviceSerial_t *pDeviceSerial,
                                        void *pReceiveBuffer,
@@ -343,6 +361,37 @@ typedef int32_t (*uDeviceSerialCtsSuspend_t)(struct uDeviceSerial_t *pDeviceSeri
  */
 typedef void (*uDeviceSerialCtsResume_t)(struct uDeviceSerial_t *pDeviceSerial);
 
+/** If set to true then, should there be no room in the receive
+ * buffer for data arriving from the far end, that data will be
+ * discarded instead of causing a flow control signal to be sent
+ * to the far end.  This is useful when the received data is frequent
+ * and periodic in nature (e.g. GNSS information, where "stale"
+ * data is of no interest) and sending flow control on, for instance,
+ * a multiplexed bearer, might result in flow control being applied
+ * to other, more important, virtual serial devices.
+ * Where this is not supported #U_ERROR_COMMON_NOT_SUPPORTED will
+ * be returned.
+ *
+ * This function is only present in #U_DEVICE_SERIAL_VERSION 1 and later
+ *
+ * @param pDeviceSerial  the serial device; cannot be NULL.
+ * @param onNotOff       use true to enable discard on overflow, else
+ *                       false.
+ * @return               zero on success else negative error code.
+ */
+typedef int32_t (*uDeviceSerialDiscardOnOverflow_t)(struct uDeviceSerial_t *pDeviceSerial,
+                                                    bool onNotOff);
+
+/** Read the state of #uDeviceSerialDiscardOnOverflow_t.
+ *
+ * This function is only present in #U_DEVICE_SERIAL_VERSION 1 and later
+ *
+ * @param pDeviceSerial  the serial device; cannot be NULL.
+ * @return               true if discard on overflow is enabled,
+ *                       else false.
+ */
+typedef bool (*uDeviceSerialIsDiscardOnOverflowEnabled_t)(struct uDeviceSerial_t *pDeviceSerial);
+
 /* ----------------------------------------------------------------
  * TYPES: VECTOR TABLE
  * -------------------------------------------------------------- */
@@ -367,6 +416,8 @@ typedef struct uDeviceSerial_t {
     uDeviceSerialIsCtsFlowControlEnabled_t isCtsFlowControlEnabled;
     uDeviceSerialCtsSuspend_t ctsSuspend;
     uDeviceSerialCtsResume_t ctsResume;
+    uDeviceSerialDiscardOnOverflow_t discardOnFlowControl;
+    uDeviceSerialIsDiscardOnOverflowEnabled_t isDiscardOnFlowControlEnabled;
 } uDeviceSerial_t;
 
 /** The initialisation callback; this should populate the table

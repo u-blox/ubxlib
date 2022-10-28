@@ -300,13 +300,6 @@ static void serialEventCallbackRemove(struct uDeviceSerial_t *pDeviceSerial)
     uPortUartEventCallbackRemove(pContext->uartHandle);
 }
 
-// Get the serial event callback filter (just return not supported, we don't need this).
-static uint32_t serialEventCallbackFilterGet(struct uDeviceSerial_t *pDeviceSerial)
-{
-    (void) pDeviceSerial;
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
-}
-
 // Change the serial event callback filter bit-mask.
 static int32_t serialEventCallbackFilterSet(struct uDeviceSerial_t *pDeviceSerial,
                                             uint32_t filter)
@@ -314,45 +307,6 @@ static int32_t serialEventCallbackFilterSet(struct uDeviceSerial_t *pDeviceSeria
     uDeviceTestSerialContext_t *pContext = (uDeviceTestSerialContext_t *)
                                            pUInterfaceContext(pDeviceSerial);
     return uPortUartEventCallbackFilterSet(pContext->uartHandle, filter);
-}
-
-// Send an event to the serial event callback (just return not supported, we don't need this).
-static int32_t serialEventSend(struct uDeviceSerial_t *pDeviceSerial,
-                               uint32_t eventBitMap)
-{
-    (void) pDeviceSerial;
-    (void) eventBitMap;
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
-}
-
-// Try to send an event to the serial event callback (return not supported, we don't need this).
-static int32_t serialEventTrySend(struct uDeviceSerial_t *pDeviceSerial,
-                                  uint32_t eventBitMap, int32_t delayMs)
-{
-    (void) pDeviceSerial;
-    (void) eventBitMap;
-    (void) delayMs;
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
-}
-
-// Generic void-returning, single-parameter "not supported" returner.
-static void serialNotSupportedVoid(struct uDeviceSerial_t *pDeviceSerial)
-{
-    (void) pDeviceSerial;
-}
-
-// Generic int32_t-returning, single-parameter "not supported" returner.
-static int32_t serialNotSupportedInt32(struct uDeviceSerial_t *pDeviceSerial)
-{
-    (void) pDeviceSerial;
-    return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
-}
-
-// Generic false-returning, single-parameter "not supported" returner.
-static bool serialNotSupportedBool(struct uDeviceSerial_t *pDeviceSerial)
-{
-    (void) pDeviceSerial;
-    return false;
 }
 
 // Populate the vector table.
@@ -368,16 +322,7 @@ static void interfaceSerialInit(struct uDeviceSerial_t *pDeviceSerial)
     pDeviceSerial->write = serialWrite;
     pDeviceSerial->eventCallbackSet = serialEventCallbackSet;
     pDeviceSerial->eventCallbackRemove = serialEventCallbackRemove;
-    pDeviceSerial->eventCallbackFilterGet = serialEventCallbackFilterGet;
     pDeviceSerial->eventCallbackFilterSet = serialEventCallbackFilterSet;
-    pDeviceSerial->eventSend = serialEventSend;
-    pDeviceSerial->eventTrySend = serialEventTrySend;
-    pDeviceSerial->eventIsCallback = serialNotSupportedBool;
-    pDeviceSerial->eventStackMinFree = serialNotSupportedInt32;
-    pDeviceSerial->isRtsFlowControlEnabled = serialNotSupportedBool;
-    pDeviceSerial->isCtsFlowControlEnabled = serialNotSupportedBool;
-    pDeviceSerial->ctsSuspend = serialNotSupportedInt32;
-    pDeviceSerial->ctsResume = serialNotSupportedVoid;
 
     pContext->uartHandle = -1;
     pContext->uart = U_CFG_TEST_UART_A;
