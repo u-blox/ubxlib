@@ -27,6 +27,16 @@
  *  @{
  */
 
+/* NOTE TO MAINTAINERS: it is a general principle with this API that
+ * whatever can be set must be readable; this is because there are
+ * situations where the current AT client needs to be "copied" to a
+ * new AT client sitting on top of a different interface (this is
+ * the 3GPP 27.010 CMUX scenario encountered in cellular).
+ *
+ * This does not apply to the intercept/hijack functions, just the
+ * "settings" (including URC handlers).
+ */
+
 /** @file
  * @brief This header file defines the AT client API, designed to
  * send structured AT commands to an AT server and parse structured
@@ -380,6 +390,13 @@ extern "C" {
 # define U_AT_CLIENT_MAX_NUM 5
 #endif
 
+#ifndef U_AT_CLIENT_ACTIVITY_PIN_HYSTERESIS_INTERVAL_MS
+/** When performing hysteresis of the activity pin, the interval to use for each
+ * wait step; value in milliseconds.
+ */
+# define U_AT_CLIENT_ACTIVITY_PIN_HYSTERESIS_INTERVAL_MS 10
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -395,6 +412,7 @@ typedef void *uAtClientHandle_t;
 typedef enum {
     U_AT_CLIENT_STREAM_TYPE_UART,
     U_AT_CLIENT_STREAM_TYPE_EDM,
+    U_AT_CLIENT_STREAM_TYPE_VIRTUAL_SERIAL,
     U_AT_CLIENT_STREAM_TYPE_MAX
 } uAtClientStream_t;
 
@@ -576,6 +594,17 @@ void uAtClientTimeoutSet(uAtClientHandle_t atHandle,
 void uAtClientTimeoutCallbackSet(uAtClientHandle_t atHandle,
                                  void (*pCallback) (uAtClientHandle_t,
                                                     int32_t *));
+
+/** Get the current AT command timeout callback.
+ *
+ * @param atHandle         the handle of the AT client.
+ * @param[out] ppCallback  a pointer to a place to put the
+ *                         current AT command timeout callback;
+ *                         cannot be NULL.
+ */
+void uAtClientTimeoutCallbackGet(uAtClientHandle_t atHandle,
+                                 void (**ppCallback) (uAtClientHandle_t,
+                                                      int32_t *));
 
 /** Get the delimiter that is used between parameters in
  * an outgoing AT command or is expected between parameters in
@@ -1018,15 +1047,21 @@ int32_t uAtClientWaitCharacter(uAtClientHandle_t atHandle,
  * line terminator: if this is the case those parameters
  * should be specifically read or skipped to avoid them
  * getting in the way of subsequent reads.
+ *
  * IMPORTANT: don't do anything heavy in a handler, e.g. don't
  * printf() or, at most, print a few characters; URC handlers
  * have to run quickly as they are interleaved with everything
  * else handling incoming data and any delay may result in
  * buffer overflows.  If you need to do anything heavy then
  * have your handler call uAtClientCallback().
+ *
  * IMPORTANT: make sure that this function is only called
  * when you know that atHandle is not going to be pulled out
  * from underneath it.
+ *
+ * IMPORTANT: do not call this in the middle of calling the
+ * uAtClientUrcHandlerGetFirst() / uAtClientUrcHandlerGetNext()
+ * functions.
  *
  * @param atHandle           the handle of the AT client.
  * @param[in] pPrefix        the prefix for the URC. A prefix might
@@ -1046,6 +1081,7 @@ int32_t uAtClientSetUrcHandler(uAtClientHandle_t atHandle,
                                void *pHandlerParam);
 
 /** Remove an unsolicited response code handler.
+ *
  * IMPORTANT: make sure that this function is only called
  * when you know that atHandle is not going to be pulled out
  * from underneath it.
@@ -1056,6 +1092,95 @@ int32_t uAtClientSetUrcHandler(uAtClientHandle_t atHandle,
  */
 void uAtClientRemoveUrcHandler(uAtClientHandle_t atHandle,
                                const char *pPrefix);
+
+/** Get the first URC handler.  This may be called with
+ * uAtClientUrcHandlerGetNext() as follows to read
+ * all of the currently active URC handlers:
+ *
+ * ```
+ * char *pPrefix;
+ * void (*pHandler) (uAtClientHandle_t, void *);
+ * void *pHandlerParam;
+ *
+ * for (int32_t x = uAtClientUrcHandlerGetFirst(atHandle, &pPrefix, &pHandler, &pHandlerParam);
+ *      x >= 0;
+ *      x = uAtClientUrcHandlerGetNext(atHandle, &pPrefix, &pHandler, &pHandlerParam) {
+ *      printf("%s\n", pPrefix);
+ * }
+ * ```
+ *
+ * These functions are not thread-safe; don't call them when
+ * the URC list may change and don't call them from more than
+ * one task at any one time.
+ *
+ * @param atHandle             the handle of the AT client.
+ * @param[out] ppPrefix        a pointer to a place to put
+ *                             a pointer to the prefix of
+ *                             the first URC handler.
+ * @param[out] ppHandler       a pointer to a place to put the
+ *                             first URC handler function.
+ * @param[out] ppHandlerParam  a pointer to a place to put the void *
+ *                             parameter that is passed to the
+ *                             first URC handler function.
+ * @return                     the number of URC handlers
+ *                             remaining to be read (i.e.
+ *                             the total number minus one).
+ */
+int32_t uAtClientUrcHandlerGetFirst(uAtClientHandle_t atHandle,
+                                    const char **ppPrefix,
+                                    void (**ppHandler) (uAtClientHandle_t,
+                                                        void *),
+                                    void **ppHandlerParam);
+
+/** Get the next URC handler; to be used in conjunction with
+ * uAtClientUrcHandlerGetFirst(), see the description of that
+ * function for more details.  This function is not thread-safe.
+ *
+ * @param atHandle             the handle of the AT client.
+ * @param[out] ppPrefix        a pointer to a place to put
+ *                             a pointer to the prefix of
+ *                             the next URC handler.
+ * @param[out] ppHandler       a pointer to a place to put the
+ *                             next URC handler function.
+ * @param[out] ppHandlerParam  a pointer to a place to put the void *
+ *                             parameter that is passed to the
+ *                             next URC handler function.
+ * @return                     the number of URC handlers
+ *                             remaining to be read after this
+ *                             one is returned or negative error
+ *                             code if there were none to read.
+ */
+int32_t uAtClientUrcHandlerGetNext(uAtClientHandle_t atHandle,
+                                   const char **ppPrefix,
+                                   void (**ppHandler) (uAtClientHandle_t,
+                                                       void *),
+                                   void **ppHandlerParam);
+
+/** Hijack the URC handler, replacing it with the given URC handler.
+ * This is useful when the stream the AT transport was running on
+ * morphs into something else, i.e. it no longer contains stuff that
+ * is intended for this AT client.
+ *
+ * Note that this is not an intercept function, i.e. the URC handler
+ * of this AT client is not called afterwards, it is entirely out
+ * of circuit, you can't modify the data stream with this mechanism.
+ * If the stuff being received is intended for this AT client but
+ * just needs pre-processing somehow, use uAtClientStreamInterceptRx()
+ * instead.
+ *
+ * @param atHandle             the handle of the AT client.
+ * @param[in] pHandler         the event handler, the function
+ *                             parameters being the stream handle,
+ *                             the event bit-mask and a void *
+ *                             user parameter; use NULL to cancel
+ *                             a previous hijack.
+ * @param[in] pHandlerParam    the void * parameter that will be passed
+ *                             to pHandler as its last parameter.
+ */
+void uAtClientUrcHandlerHijack(uAtClientHandle_t atHandle,
+                               void (*pHandler)(int32_t, uint32_t,
+                                                void *),
+                               void *pHandlerParam);
 
 /** Get the stack high watermark for the URC task, the
  * minimum amount of free stack space.  If this gets close
@@ -1401,6 +1526,22 @@ int32_t uAtClientSetWakeUpHandler(uAtClientHandle_t atHandle,
  */
 bool uAtClientWakeUpHandlerIsSet(const uAtClientHandle_t atHandle);
 
+/** Get the current wake-up handler function and parameters.
+ *
+ * @param atHandle                   the handle of the AT client.
+ * @param[out] ppHandler             a pointer to a place to put the current
+ *                                   wake-up handler function.
+ * @param[out] ppHandlerParam        a pointer to a place to put the void *
+ *                                   parameter that is passed to the wake-up
+ *                                   function.
+ * @param[out] pInactivityTimeoutMs  a place to put the wake-up time-out.
+ */
+void uAtClientGetWakeUpHandler(uAtClientHandle_t atHandle,
+                               int32_t (**ppHandler) (uAtClientHandle_t,
+                                                      void *),
+                               void **ppHandlerParam,
+                               int32_t *pInactivityTimeoutMs);
+
 /** Set an "activity" pin.  This is useful where the module at the
  * other end of the link requires a pin to be raised or lowered while
  * this MCU is actively communicating over the AT interface (i.e.
@@ -1431,6 +1572,25 @@ int32_t uAtClientSetActivityPin(uAtClientHandle_t atHandle,
  *                  error code.
  */
 int32_t uAtClientGetActivityPin(const uAtClientHandle_t atHandle);
+
+/** Get the activity pin settings.
+ *
+ * @param atHandle           the handle of the AT client.
+ * @param[out] pReadyMs      a pointer to a place to put how long after the
+ *                           pin is set to wait until AT commands can continue;
+ *                           value in milliseconds, not populated if no pin is set.
+ * @param[out] pHysteresisMs a pointer to a place to put the minimum time between
+ *                           the pin being toggled; value in milliseconds, not
+ *                           populated if no pin is set.
+ * @param[out] pHighIsOn     a pointer to a place to put whether the pin is set
+ *                           set to high or low while an AT command is executed;
+ *                           not populated if no pin is set.
+ * @return                   the activity pin if one is set, else negative
+ *                           error code.
+ */
+int32_t uAtClientGetActivityPinSettings(const uAtClientHandle_t atHandle,
+                                        int32_t *pReadyMs, int32_t *pHysteresisMs,
+                                        bool *pHighIsOn);
 
 #ifdef __cplusplus
 }

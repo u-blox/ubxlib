@@ -56,6 +56,8 @@
 #include "u_port_uart.h"
 #include "u_port_event_queue.h"
 
+#include "u_device_serial.h"
+
 #include "u_at_client.h"
 #include "u_short_range_pbuf.h"
 #include "u_short_range_module_type.h"
@@ -396,6 +398,7 @@ typedef struct uAtClientInstance_t {
     uAtClientScope_t scope; /** The scope, where we're at in the AT command. */
     uAtClientTag_t stopTag; /** The stop tag for the current scope. */
     uAtClientUrc_t *pUrcList; /** Linked-list anchor for URC handlers. */
+    uAtClientUrc_t *pUrcRead;  /** Pointer used when reading the URC handlers. */
     int32_t lastResponseStopMs; /** The time the last response ended in milliseconds. */
     int32_t lockTimeMs; /** The time when the stream was locked. */
     int32_t lastTxTimeMs; /** The time when the last transmit activity was carried out, set to -1 initially. */
@@ -403,6 +406,8 @@ typedef struct uAtClientInstance_t {
     size_t maxRespLength; /** The max length of OK, (CME) (CMS) ERROR and URCs. */
     bool delimiterRequired; /** Is a delimiter to be inserted before the next parameter or not. */
     uAtClientMutexStack_t lockedStreamMutexStack; /** A place to store locked stream mutexes. */
+    void (*pUrcHijack)(int32_t, uint32_t, void *);
+    void *pUrcHijackParam;
     const char *(*pInterceptTx) (uAtClientHandle_t,
                                  const char **,
                                  size_t *,
@@ -709,6 +714,7 @@ static void removeAtClientInstance(const uAtClientInstance_t *pClient)
 static void removeClient(uAtClientInstance_t *pClient)
 {
     uAtClientUrc_t *pUrc;
+    uDeviceSerial_t *pDeviceSerial;
 
     // Must not be in a wake-up handler
     U_ASSERT((pClient->pWakeUp == NULL) ||
@@ -736,6 +742,10 @@ static void removeClient(uAtClientInstance_t *pClient)
     switch (pClient->streamType) {
         case U_AT_CLIENT_STREAM_TYPE_UART:
             uPortUartEventCallbackRemove(pClient->streamHandle);
+            break;
+        case U_AT_CLIENT_STREAM_TYPE_VIRTUAL_SERIAL:
+            pDeviceSerial = (uDeviceSerial_t *) pClient->streamHandle;
+            pDeviceSerial->eventCallbackRemove(pDeviceSerial);
             break;
         case U_AT_CLIENT_STREAM_TYPE_EDM:
             uShortRangeEdmStreamAtCallbackRemove(pClient->streamHandle);
@@ -789,6 +799,49 @@ static void removeClient(uAtClientInstance_t *pClient)
 
     // And finally free the client context.
     uPortFree(pClient);
+}
+
+// Get the next URC handler from pUrcRead.
+static int32_t urcHandlerGetNext(uAtClientInstance_t *pClient,
+                                 const char **ppPrefix,
+                                 void (**ppHandler) (uAtClientHandle_t,
+                                                     void *),
+                                 void **ppHandlerParam)
+{
+    uAtClientUrc_t *pCurrent;
+    int32_t count = -1;
+
+    if (ppPrefix != NULL) {
+        *ppPrefix = NULL;
+        if (pClient->pUrcRead != NULL) {
+            *ppPrefix = pClient->pUrcRead->pPrefix;
+        }
+    }
+    if (ppHandler != NULL) {
+        *ppHandler = NULL;
+        if (pClient->pUrcRead != NULL) {
+            *ppHandler = pClient->pUrcRead->pHandler;
+        }
+    }
+    if (ppHandlerParam != NULL) {
+        *ppHandlerParam = NULL;
+        if (pClient->pUrcRead != NULL) {
+            *ppHandlerParam = pClient->pUrcRead->pHandlerParam;
+        }
+    }
+
+    if (pClient->pUrcRead != NULL) {
+        pClient->pUrcRead = pClient->pUrcRead->pNext;
+        // Count how many remain now
+        count = 0;
+        pCurrent = pClient->pUrcRead;
+        while (pCurrent != NULL) {
+            count++;
+            pCurrent = pCurrent->pNext;
+        }
+    }
+
+    return count;
 }
 
 // Check if an asynchronous event should be processed
@@ -1123,13 +1176,14 @@ static void bufferRewind(const uAtClientInstance_t *pClient)
     }
 }
 
-// Read from the UART interface in nice coherent lines.
-static int32_t uartReadNoStutter(uAtClientInstance_t *pClient,
-                                 uAtClientBlockState_t blockState,
-                                 int32_t atTimeoutMs)
+// Read from the UART/serial interface in nice coherent lines.
+static int32_t serialReadNoStutter(uAtClientInstance_t *pClient,
+                                   uAtClientBlockState_t blockState,
+                                   int32_t atTimeoutMs)
 {
     int32_t readLength = 0;
     int32_t thisReadLength;
+    uDeviceSerial_t *pDeviceSerial;
     uAtClientReceiveBuffer_t *pReceiveBuffer = pClient->pReceiveBuffer;
     char *pBuffer = U_AT_CLIENT_DATA_BUFFER_PTR(pReceiveBuffer) +
                     pReceiveBuffer->lengthBuffered;
@@ -1138,8 +1192,19 @@ static int32_t uartReadNoStutter(uAtClientInstance_t *pClient,
 
     // Retry the read until we're sure there's nothing
     do {
-        thisReadLength = uPortUartRead(pClient->streamHandle,
-                                       pBuffer, bufferSize);
+        thisReadLength = 0;
+        switch (pClient->streamType) {
+            case U_AT_CLIENT_STREAM_TYPE_UART:
+                thisReadLength = uPortUartRead(pClient->streamHandle,
+                                               pBuffer, bufferSize);
+                break;
+            case U_AT_CLIENT_STREAM_TYPE_VIRTUAL_SERIAL:
+                pDeviceSerial = (uDeviceSerial_t *) pClient->streamHandle;
+                thisReadLength = pDeviceSerial->read(pDeviceSerial, pBuffer, bufferSize);
+                break;
+            default:
+                break;
+        }
         if (thisReadLength > 0) {
             readLength += thisReadLength;
             pBuffer += thisReadLength;
@@ -1179,6 +1244,7 @@ static bool bufferFill(uAtClientInstance_t *pClient,
     size_t y = 0;
     size_t z = 0;
     size_t length;
+    uDeviceSerial_t *pDeviceSerial;
     bool eventIsCallback = false;
     char *pData = NULL;
     //lint -esym(838, pDataIntercept) Suppress initial value not used: it
@@ -1190,6 +1256,10 @@ static bool bufferFill(uAtClientInstance_t *pClient,
     switch (pClient->streamType) {
         case U_AT_CLIENT_STREAM_TYPE_UART:
             eventIsCallback = uPortUartEventIsCallback(pClient->streamHandle);
+            break;
+        case U_AT_CLIENT_STREAM_TYPE_VIRTUAL_SERIAL:
+            pDeviceSerial = (uDeviceSerial_t *) pClient->streamHandle;
+            eventIsCallback = pDeviceSerial->eventIsCallback(pDeviceSerial);
             break;
         case U_AT_CLIENT_STREAM_TYPE_EDM:
             eventIsCallback = uShortRangeEdmStreamAtEventIsCallback(pClient->streamHandle);
@@ -1276,7 +1346,9 @@ static bool bufferFill(uAtClientInstance_t *pClient,
     do {
         switch (pClient->streamType) {
             case U_AT_CLIENT_STREAM_TYPE_UART:
-                readLength = uartReadNoStutter(pClient, blockState, atTimeoutMs);
+            //fall-through
+            case U_AT_CLIENT_STREAM_TYPE_VIRTUAL_SERIAL:
+                readLength = serialReadNoStutter(pClient, blockState, atTimeoutMs);
                 break;
             case U_AT_CLIENT_STREAM_TYPE_EDM:
                 readLength = uShortRangeEdmStreamAtRead(pClient->streamHandle,
@@ -1983,6 +2055,7 @@ static size_t write(uAtClientInstance_t *pClient,
     uAtClientTag_t savedStopTag;
     bool savedDelimiterRequired;
     uAtClientDeviceError_t savedDeviceError;
+    uDeviceSerial_t *pDeviceSerial;
 
     while (((pData < pDataStart + length) || andFlush) &&
            (pClient->error == U_ERROR_COMMON_SUCCESS)) {
@@ -2081,6 +2154,11 @@ static size_t write(uAtClientInstance_t *pClient,
                     case U_AT_CLIENT_STREAM_TYPE_UART:
                         thisLengthWritten = uPortUartWrite(pClient->streamHandle,
                                                            pDataToWrite, lengthToWrite);
+                        break;
+                    case U_AT_CLIENT_STREAM_TYPE_VIRTUAL_SERIAL:
+                        pDeviceSerial = (uDeviceSerial_t *) pClient->streamHandle;
+                        thisLengthWritten = pDeviceSerial->write(pDeviceSerial,
+                                                                 pDataToWrite, lengthToWrite);
                         break;
                     // Write handled in intercept
                     case U_AT_CLIENT_STREAM_TYPE_EDM:
@@ -2292,11 +2370,16 @@ static int32_t uint64ToString(char *pBuffer, size_t length,
 static int32_t getReceiveSizeForUrc(const uAtClientInstance_t *pClient)
 {
     int32_t receiveSize = 0;
+    uDeviceSerial_t *pDeviceSerial;
 
     if (processAsync(pClient->magicNumber)) {
         switch (pClient->streamType) {
             case U_AT_CLIENT_STREAM_TYPE_UART:
                 receiveSize = uPortUartGetReceiveSize(pClient->streamHandle);
+                break;
+            case U_AT_CLIENT_STREAM_TYPE_VIRTUAL_SERIAL:
+                pDeviceSerial = (uDeviceSerial_t *) pClient->streamHandle;
+                receiveSize = pDeviceSerial->getReceiveSize(pDeviceSerial);
                 break;
             case U_AT_CLIENT_STREAM_TYPE_EDM:
                 receiveSize = uShortRangeEdmStreamAtGetReceiveSize(pClient->streamHandle);
@@ -2322,83 +2405,105 @@ static void urcCallback(int32_t streamHandle, uint32_t eventBitmask,
     pClient = (uAtClientInstance_t *) pParameters;
 
     if ((pClient != NULL) &&
-        (pClient->streamHandle == streamHandle) &&
-        (eventBitmask & U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED) &&
-        (uPortMutexTryLock(pClient->urcPermittedMutex, 0) == 0)) {
+        (pClient->streamHandle == streamHandle)) {
+        if (uPortMutexTryLock(pClient->urcPermittedMutex, 0) == 0) {
 
-        // Potential URC data is available.  However,
-        // the main thread may already have taken the lock
-        // and be processing it, in which case just return.
-        streamMutex = tryLock(pClient);
-        if (streamMutex != NULL) {
-            // Loop until no received characters left to process
-            pReceiveBuffer = pClient->pReceiveBuffer;
-            while (((sizeOrError = getReceiveSizeForUrc(pClient)) > 0) ||
-                   (pReceiveBuffer->readIndex < pReceiveBuffer->length)) {
+            if (pClient->pUrcHijack != NULL) {
+                // We've been hijacked, do that thing instead
+                pClient->pUrcHijack(streamHandle, eventBitmask,
+                                    pClient->pUrcHijackParam);
+            } else {
+                if (eventBitmask & U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED) {
+                    // Potential URC data is available.  However,
+                    // the main thread may already have taken the lock
+                    // and be processing it, in which case just return.
+                    streamMutex = tryLock(pClient);
+                    if (streamMutex != NULL) {
+                        // Loop until no received characters left to process
+                        pReceiveBuffer = pClient->pReceiveBuffer;
+                        while (((sizeOrError = getReceiveSizeForUrc(pClient)) > 0) ||
+                               (pReceiveBuffer->readIndex < pReceiveBuffer->length)) {
 #if !U_CFG_OS_CLIB_LEAKS
-                // Don't do this if CLIB is leaky on this platform since it's
-                // the printf() that leaks
-                if (pClient->debugOn) {
-                    uPortLog("U_AT_CLIENT_%d-%d: possible URC data readable %d,"
-                             " already buffered %u.\n", pClient->streamType,
-                             pClient->streamHandle, sizeOrError,
-                             pReceiveBuffer->length - pReceiveBuffer->readIndex);
-                }
+                            // Don't do this if CLIB is leaky on this platform since
+                            // it is the printf() that leaks
+                            if (pClient->debugOn) {
+                                uPortLog("U_AT_CLIENT_%d-%d: possible URC data readable %d,"
+                                         " already buffered %u.\n", pClient->streamType,
+                                         pClient->streamHandle, sizeOrError,
+                                         pReceiveBuffer->length - pReceiveBuffer->readIndex);
+                            }
 #endif
-                pClient->scope = U_AT_CLIENT_SCOPE_NONE;
-                for (size_t x = 0; x < U_AT_CLIENT_URC_DATA_LOOP_GUARD; x++) {
-                    // Search through the URCs
-                    if (bufferMatchOneUrc(pClient)) {
-                        // If there's a bufferMatch, see if more data is available
-                        sizeOrError = getReceiveSizeForUrc(pClient);
-                        if ((sizeOrError <= 0) &&
-                            (pReceiveBuffer->readIndex >=
-                             pReceiveBuffer->dataBufferSize)) {
-                            // We have no more data to process, leave this loop
-                            break;
+                            pClient->scope = U_AT_CLIENT_SCOPE_NONE;
+                            for (size_t x = 0; x < U_AT_CLIENT_URC_DATA_LOOP_GUARD; x++) {
+                                // Search through the URCs
+                                if (bufferMatchOneUrc(pClient)) {
+                                    // If there's a bufferMatch, see if more data is available
+                                    sizeOrError = getReceiveSizeForUrc(pClient);
+                                    if ((sizeOrError <= 0) &&
+                                        (pReceiveBuffer->readIndex >=
+                                         pReceiveBuffer->dataBufferSize)) {
+                                        // We have no more data to process, leave this loop
+                                        break;
+                                    }
+                                    // If no bufferMatch was found, look for CR/LF
+                                } else if (pMemStr(U_AT_CLIENT_DATA_BUFFER_PTR(pReceiveBuffer) +
+                                                   pReceiveBuffer->readIndex,
+                                                   pReceiveBuffer->length,
+                                                   U_AT_CLIENT_CRLF, U_AT_CLIENT_CRLF_LENGTH_BYTES) != NULL) {
+                                    // Consume everything up to the CR/LF
+                                    consumeToString(pClient, U_AT_CLIENT_CRLF);
+                                } else {
+                                    // If no bufferMatch was found and there's no CR/LF to
+                                    // consume up to, bring in more data and we'll check
+                                    // it again
+                                    if (processAsync(pClient->magicNumber) && bufferFill(pClient, true)) {
+                                        // Start the cycle again as if we'd just done
+                                        // uAtClientLock()
+                                        pClient->lockTimeMs = uPortGetTickTimeMs();
+                                    } else {
+                                        // There is no more data: clear anything that
+                                        // could not be handled and leave this loop
+                                        bufferReset(pClient, false);
+                                        break;
+                                    }
+                                }
+                            }
+#if !U_CFG_OS_CLIB_LEAKS
+                            // Don't do this if CLIB is leaky on this platform since
+                            // it is the printf() that leaks
+                            if (pClient->debugOn) {
+                                uPortLog("U_AT_CLIENT_%d-%d: URC checking done.\n",
+                                         pClient->streamType, pClient->streamHandle);
+                            }
+#endif
                         }
-                        // If no bufferMatch was found, look for CR/LF
-                    } else if (pMemStr(U_AT_CLIENT_DATA_BUFFER_PTR(pReceiveBuffer) +
-                                       pReceiveBuffer->readIndex,
-                                       pReceiveBuffer->length,
-                                       U_AT_CLIENT_CRLF, U_AT_CLIENT_CRLF_LENGTH_BYTES) != NULL) {
-                        // Consume everything up to the CR/LF
-                        consumeToString(pClient, U_AT_CLIENT_CRLF);
-                    } else {
-                        // If no bufferMatch was found and there's no CR/LF to
-                        // consume up to, bring in more data and we'll check
-                        // it again
-                        if (processAsync(pClient->magicNumber) && bufferFill(pClient, true)) {
-                            // Start the cycle again as if we'd just done
-                            // uAtClientLock()
-                            pClient->lockTimeMs = uPortGetTickTimeMs();
-                        } else {
-                            // There is no more data: clear anything that
-                            // could not be handled and leave this loop
-                            bufferReset(pClient, false);
-                            break;
-                        }
+
+                        // Just unlock the stream without
+                        // checking for more data, which would try
+                        // to queue stuff on this task and I'm not
+                        // sure that's safe
+                        unlockNoDataCheck(pClient, streamMutex);
                     }
                 }
-#if !U_CFG_OS_CLIB_LEAKS
-                // Don't do this if CLIB is leaky on this platform since it's
-                // the printf() that leaks
-                if (pClient->debugOn) {
-                    uPortLog("U_AT_CLIENT_%d-%d: URC checking done.\n",
-                             pClient->streamType, pClient->streamHandle);
-                }
-#endif
             }
 
-            // Just unlock the stream without
-            // checking for more data, which would try
-            // to queue stuff on this task and I'm not
-            // sure that's safe
-            unlockNoDataCheck(pClient, streamMutex);
+            uPortMutexUnlock(pClient->urcPermittedMutex);
+        } else {
+            // If URCs are not currently permitted we do a dummy-read
+            // in any case: this is so that the UART knows we are still
+            // interested in getting notifications in future
+            getReceiveSizeForUrc(pClient);
         }
-
-        uPortMutexUnlock(pClient->urcPermittedMutex);
     }
+}
+
+// A version of urcCallback() that matches the function signature of
+// the uDeviceSerial_t-flavour event callback, set by eventCallbackSet().
+static void urcCallbackDeviceSerial(uDeviceSerial_t *pDeviceSerial, uint32_t eventBitmask,
+                                    void *pParameters)
+{
+    // Just call urcCallback() with an appropriate cast
+    urcCallback((int32_t) pDeviceSerial, eventBitmask, pParameters);
 }
 
 // Callback for the event queue.
@@ -2523,6 +2628,7 @@ uAtClientHandle_t uAtClientAdd(int32_t streamHandle,
     uAtClientInstance_t *pClient = NULL;
     bool receiveBufferIsMalloced = false;
     int32_t errorCode = -1;
+    uDeviceSerial_t *pDeviceSerial;
 
     U_PORT_MUTEX_LOCK(gMutex);
 
@@ -2585,6 +2691,14 @@ uAtClientHandle_t uAtClientAdd(int32_t streamHandle,
                                                                       urcCallback, pClient,
                                                                       U_AT_CLIENT_URC_TASK_STACK_SIZE_BYTES,
                                                                       U_AT_CLIENT_URC_TASK_PRIORITY);
+                                break;
+                            case U_AT_CLIENT_STREAM_TYPE_VIRTUAL_SERIAL:
+                                pDeviceSerial = (uDeviceSerial_t *) pClient->streamHandle;
+                                errorCode = pDeviceSerial->eventCallbackSet(pDeviceSerial,
+                                                                            U_DEVICE_SERIAL_EVENT_BITMASK_DATA_RECEIVED,
+                                                                            urcCallbackDeviceSerial, pClient,
+                                                                            U_AT_CLIENT_URC_TASK_STACK_SIZE_BYTES,
+                                                                            U_AT_CLIENT_URC_TASK_PRIORITY);
                                 break;
                             case U_AT_CLIENT_STREAM_TYPE_EDM:
                                 errorCode = uShortRangeEdmStreamAtCallbackSet(streamHandle, urcCallback, pClient);
@@ -2756,6 +2870,17 @@ void uAtClientTimeoutCallbackSet(uAtClientHandle_t atHandle,
     }
 }
 
+
+// Get the current AT command timeout callback.
+void uAtClientTimeoutCallbackGet(uAtClientHandle_t atHandle,
+                                 void (**ppCallback) (uAtClientHandle_t,
+                                                      int32_t *))
+{
+    if ((atHandle != NULL) && (ppCallback != NULL)) {
+        *ppCallback = ((uAtClientInstance_t *) atHandle)->pConsecutiveTimeoutsCallback;
+    }
+}
+
 // Get the delimiter.
 //lint -e{818} suppress "could be declared as pointing to const": it is!
 char uAtClientDelimiterGet(const uAtClientHandle_t atHandle)
@@ -2832,6 +2957,7 @@ int32_t uAtClientUnlock(uAtClientHandle_t atHandle)
     int32_t sizeBytes;
     uPortMutexHandle_t streamMutex;
     int32_t sendErrorCode;
+    uDeviceSerial_t *pDeviceSerial;
 
     U_AT_CLIENT_LOCK_CLIENT_MUTEX(pClient);
 
@@ -2860,6 +2986,30 @@ int32_t uAtClientUnlock(uAtClientHandle_t atHandle)
                         (sendErrorCode == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED)) {
                         uPortUartEventSend(pClient->streamHandle,
                                            U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED);
+                    }
+                }
+                break;
+            case U_AT_CLIENT_STREAM_TYPE_VIRTUAL_SERIAL:
+                pDeviceSerial = (uDeviceSerial_t *) pClient->streamHandle;
+                sizeBytes = pDeviceSerial->getReceiveSize(pDeviceSerial);
+                if ((sizeBytes > 0) ||
+                    (pClient->pReceiveBuffer->readIndex < pClient->pReceiveBuffer->length)) {
+                    // Note: we use the "try" version of the UART event
+                    // send function here, otherwise if the UART event queue
+                    // is full we may get stuck since (a) this function has
+                    // the AT client API locked and (b) the URC callback may
+                    // be running a URC handler which could also be calling
+                    // into the AT client API to read the elements of the URC;
+                    // there is no danger here since, if there are already
+                    // events in the UART queue, the URC callback will certainly
+                    // be run anyway.
+                    sendErrorCode = pDeviceSerial->eventTrySend(pDeviceSerial,
+                                                                U_DEVICE_SERIAL_EVENT_BITMASK_DATA_RECEIVED,
+                                                                0);
+                    if ((sendErrorCode == (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED) ||
+                        (sendErrorCode == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED)) {
+                        pDeviceSerial->eventSend(pDeviceSerial,
+                                                 U_DEVICE_SERIAL_EVENT_BITMASK_DATA_RECEIVED);
                     }
                 }
                 break;
@@ -3555,15 +3705,61 @@ void uAtClientRemoveUrcHandler(uAtClientHandle_t atHandle,
     }
 }
 
+// Get the first URC handler.
+int32_t uAtClientUrcHandlerGetFirst(uAtClientHandle_t atHandle,
+                                    const char **ppPrefix,
+                                    void (**ppHandler) (uAtClientHandle_t,
+                                                        void *),
+                                    void **ppHandlerParam)
+{
+    uAtClientInstance_t *pClient = (uAtClientInstance_t *) atHandle;
+
+    pClient->pUrcRead = pClient->pUrcList;
+    return urcHandlerGetNext(pClient, ppPrefix, ppHandler, ppHandlerParam);
+}
+
+// Get the next URC handler.
+int32_t uAtClientUrcHandlerGetNext(uAtClientHandle_t atHandle,
+                                   const char **ppPrefix,
+                                   void (**ppHandler) (uAtClientHandle_t,
+                                                       void *),
+                                   void **ppHandlerParam)
+{
+    return urcHandlerGetNext((uAtClientInstance_t *) atHandle, ppPrefix,
+                             ppHandler, ppHandlerParam);
+}
+
+// Hijack the URC handler.
+void uAtClientUrcHandlerHijack(uAtClientHandle_t atHandle,
+                               void (*pHandler)(int32_t, uint32_t,
+                                                void *),
+                               void *pHandlerParam)
+{
+    uAtClientInstance_t *pClient = (uAtClientInstance_t *) atHandle;
+
+    // Stop URCs while we fiddle
+    U_PORT_MUTEX_LOCK(pClient->urcPermittedMutex);
+
+    pClient->pUrcHijack = pHandler;
+    pClient->pUrcHijackParam = pHandlerParam;
+
+    U_PORT_MUTEX_UNLOCK(pClient->urcPermittedMutex);
+}
+
 // Get the stack high watermark for the URC task.
 int32_t uAtClientUrcHandlerStackMinFree(uAtClientHandle_t atHandle)
 {
     uAtClientInstance_t *pClient = (uAtClientInstance_t *) atHandle;
+    uDeviceSerial_t *pDeviceSerial;
     int32_t stackMinFree = -1;
 
     switch (pClient->streamType) {
         case U_AT_CLIENT_STREAM_TYPE_UART:
             stackMinFree = uPortUartEventStackMinFree(pClient->streamHandle);
+            break;
+        case U_AT_CLIENT_STREAM_TYPE_VIRTUAL_SERIAL:
+            pDeviceSerial = (uDeviceSerial_t *) pClient->streamHandle;
+            stackMinFree = pDeviceSerial->eventStackMinFree(pDeviceSerial);
             break;
         case U_AT_CLIENT_STREAM_TYPE_EDM:
             stackMinFree = uShortRangeEdmStreamAtEventStackMinFree(pClient->streamHandle);
@@ -3895,6 +4091,39 @@ bool uAtClientWakeUpHandlerIsSet(const uAtClientHandle_t atHandle)
     return ((const uAtClientInstance_t *) atHandle)->pWakeUp != NULL;
 }
 
+// Get the current wake-up handler function and parameters.
+void uAtClientGetWakeUpHandler(uAtClientHandle_t atHandle,
+                               int32_t (**ppHandler) (uAtClientHandle_t,
+                                                      void *),
+                               void **ppHandlerParam,
+                               int32_t *pInactivityTimeoutMs)
+{
+    uAtClientInstance_t *pClient = (uAtClientInstance_t *) atHandle;
+
+    U_AT_CLIENT_LOCK_CLIENT_MUTEX(pClient);
+
+    if (ppHandler != NULL) {
+        *ppHandler = NULL;
+        if (pClient->pWakeUp != NULL) {
+            *ppHandler = pClient->pWakeUp->pHandler;
+        }
+    }
+    if (ppHandlerParam != NULL) {
+        *ppHandlerParam = NULL;
+        if (pClient->pWakeUp != NULL) {
+            *ppHandlerParam = pClient->pWakeUp->pParam;
+        }
+    }
+    if (pInactivityTimeoutMs != NULL) {
+        *pInactivityTimeoutMs = 0;
+        if (pClient->pWakeUp != NULL) {
+            *pInactivityTimeoutMs = pClient->pWakeUp->inactivityTimeoutMs;
+        }
+    }
+
+    U_AT_CLIENT_UNLOCK_CLIENT_MUTEX(pClient);
+}
+
 // Set an "activity" pin.
 int32_t uAtClientSetActivityPin(uAtClientHandle_t atHandle,
                                 int32_t pin, int32_t readyMs,
@@ -3946,4 +4175,33 @@ int32_t uAtClientGetActivityPin(const uAtClientHandle_t atHandle)
 
     return activityPin;
 }
+
+// Get the activity pin settings.
+int32_t uAtClientGetActivityPinSettings(const uAtClientHandle_t atHandle,
+                                        int32_t *pReadyMs, int32_t *pHysteresisMs,
+                                        bool *pHighIsOn)
+{
+    int32_t activityPin = (int32_t) U_ERROR_COMMON_NOT_FOUND;
+    const uAtClientInstance_t *pClient = (uAtClientInstance_t *) atHandle;
+
+    U_AT_CLIENT_LOCK_CLIENT_MUTEX(pClient);
+
+    if (pClient->pActivityPin != NULL) {
+        activityPin = pClient->pActivityPin->pin;
+        if (pReadyMs != NULL) {
+            *pReadyMs =  pClient->pActivityPin->readyMs;
+        }
+        if (pHysteresisMs != NULL) {
+            *pHysteresisMs =  pClient->pActivityPin->hysteresisMs;
+        }
+        if (pHighIsOn != NULL) {
+            *pHighIsOn =  pClient->pActivityPin->highIsOn;
+        }
+    }
+
+    U_AT_CLIENT_UNLOCK_CLIENT_MUTEX(pClient);
+
+    return activityPin;
+}
+
 // End of file
