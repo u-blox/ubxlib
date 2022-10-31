@@ -422,6 +422,7 @@ typedef struct uCellPrivateInstance_t {
     bool socketsHexMode; /**< Set to true for sockets to use hex mode. */
     const char *pFileSystemTag; /**< The tagged area of the file system currently being addressed. */
     uCellPrivateDeepSleepState_t deepSleepState; /**< The current deep sleep state. */
+    int32_t deepSleepBlockedBy; /** Set to a positive integer if an app on the module is blocking deep sleep. */
     bool inWakeUpCallback; /**< So that we can avoid recursion. */
     uCellPrivateSleep_t *pSleepContext; /**< Context for sleep stuff. */
     uCellPrivateUartSleepCache_t uartSleepCache; /**< Used only by uCellPwrEnable/DisableUartSleep(). */

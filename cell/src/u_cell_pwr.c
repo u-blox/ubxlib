@@ -842,6 +842,10 @@ static void UUPSMR_urc(uAtClientHandle_t atHandle, void *pParameter)
     if (x == 1) {
         pInstance->deepSleepState = U_CELL_PRIVATE_DEEP_SLEEP_STATE_PROTOCOL_STACK_ASLEEP;
     }
+    pInstance->deepSleepBlockedBy = -1;
+    if (x == 2) {
+        pInstance->deepSleepBlockedBy = uAtClientReadInt(atHandle);
+    }
 }
 
 /* ----------------------------------------------------------------
@@ -1255,6 +1259,7 @@ int32_t uCellPwrPrivateOn(uCellPrivateInstance_t *pInstance,
     // we configure the module we will set the sleep state up
     // correctly once more
     pInstance->deepSleepState = U_CELL_PRIVATE_DEEP_SLEEP_STATE_UNKNOWN;
+    pInstance->deepSleepBlockedBy = -1;
 
     if (pInstance->pinEnablePower >= 0) {
         enablePowerAtStart = uPortGpioGet(pInstance->pinEnablePower);
@@ -2409,6 +2414,54 @@ int32_t uCellPwrSet3gppPowerSavingCallback(uDeviceHandle_t cellHandle,
     }
 
     return errorCode;
+}
+
+// Get the current state of 3GPP power saving.
+uCellPwr3gppPowerSavingState_t uCellPwrGet3gppPowerSavingState(uDeviceHandle_t cellHandle,
+                                                               int32_t *pApplication)
+{
+    uCellPwr3gppPowerSavingState_t powerSavingState3gpp = U_CELL_PWR_3GPP_POWER_SAVING_STATE_UNKNOWN;
+    uCellPrivateInstance_t *pInstance;
+
+    if (gUCellPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        pInstance = pUCellPrivateGetInstance(cellHandle);
+        if (pInstance != NULL) {
+            powerSavingState3gpp = U_CELL_PWR_3GPP_POWER_SAVING_STATE_NOT_SUPPORTED;
+            if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                   U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING)) {
+                powerSavingState3gpp = U_CELL_PWR_3GPP_POWER_SAVING_STATE_AVAILABLE;
+                if (pInstance->pSleepContext != NULL) {
+                    if (pInstance->pSleepContext->powerSaving3gppAgreed) {
+                        powerSavingState3gpp = U_CELL_PWR_3GPP_POWER_SAVING_STATE_AGREED_BY_NETWORK;
+                        if (pInstance->pSleepContext->powerSaving3gppOnNotOffCereg) {
+                            if (pInstance->deepSleepBlockedBy >= 0) {
+                                powerSavingState3gpp = U_CELL_PWR_3GPP_POWER_SAVING_STATE_BLOCKED_BY_MODULE;
+                                if (pApplication != NULL) {
+                                    *pApplication = pInstance->deepSleepBlockedBy;
+                                }
+                            } else {
+                                if (pInstance->deepSleepState == U_CELL_PRIVATE_DEEP_SLEEP_STATE_PROTOCOL_STACK_ASLEEP) {
+                                    powerSavingState3gpp = U_CELL_PWR_3GPP_POWER_SAVING_STATE_ACTIVE;
+                                    if (uCellPrivateIsDeepSleepActive(pInstance)) {
+                                        powerSavingState3gpp = U_CELL_PWR_3GPP_POWER_SAVING_STATE_ACTIVE_DEEP_SLEEP_ACTIVE;
+                                    }
+                                }
+                            }
+                        } else {
+                            powerSavingState3gpp = U_CELL_PWR_3GPP_POWER_SAVING_STATE_BLOCKED_BY_NETWORK;
+                        }
+                    }
+                }
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return powerSavingState3gpp;
 }
 
 // Set the requested E-DRX parameters.

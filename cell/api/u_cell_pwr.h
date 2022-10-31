@@ -182,6 +182,66 @@ extern "C" {
  * TYPES
  * -------------------------------------------------------------- */
 
+/** The possible 3GPP power saving states: not all modules that support
+ * 3GPP power saving are able to signal all states.
+ */
+typedef enum {
+    U_CELL_PWR_3GPP_POWER_SAVING_STATE_UNKNOWN = 0,
+    U_CELL_PWR_3GPP_POWER_SAVING_STATE_NOT_SUPPORTED, /**< 3GPP power saving
+                                                           is not supported
+                                                           by the module. */
+    U_CELL_PWR_3GPP_POWER_SAVING_STATE_AVAILABLE,    /**< 3GPP power saving is possible
+                                                          but is either not switched on
+                                                          or is not allowed by the
+                                                          network. */
+    U_CELL_PWR_3GPP_POWER_SAVING_STATE_AGREED_BY_NETWORK, /**< the 3GPP power
+                                                               saving parameters
+                                                               have been agreed
+                                                               with the network
+                                                               (use
+                                                               uCellPwrGet3gppPowerSaving()
+                                                               to read them)
+                                                               but 3GPP power
+                                                               saving is not
+                                                               currently active. */
+    U_CELL_PWR_3GPP_POWER_SAVING_STATE_BLOCKED_BY_NETWORK, /**< 3GPP power saving has been
+                                                                agreed with the network but
+                                                                is not currently allowed
+                                                                by the network (so the last
+                                                                registration indication
+                                                                received from the module does
+                                                                not include the 3GPP power
+                                                                saving parameters even though
+                                                                3GPP power saving was
+                                                                previously agreed). */
+    U_CELL_PWR_3GPP_POWER_SAVING_STATE_BLOCKED_BY_MODULE, /**< 3GPP power saving could be
+                                                               active but one or more
+                                                               applications (IP stack
+                                                               or MQTT or HTTP or LWM2M or
+                                                               GNSS) on the module is
+                                                               blocking it. */
+    U_CELL_PWR_3GPP_POWER_SAVING_STATE_ACTIVE,      /**< the cellular protocol stack on
+                                                         the module has entered 3GPP
+                                                         power saving. */
+    U_CELL_PWR_3GPP_POWER_SAVING_STATE_ACTIVE_DEEP_SLEEP_ACTIVE, /**< the cellular
+                                                                      protocol stack on
+                                                                      the module has
+                                                                      entered 3GPP power
+                                                                      saving and the
+                                                                      module HW has been
+                                                                      able to take
+                                                                      advantage of this
+                                                                      and has entered
+                                                                      deep sleep; this
+                                                                      state can only be
+                                                                      determined if a pin
+                                                                      of this MCU is
+                                                                      connected to the
+                                                                      VInt pin of the
+                                                                      module. */
+    U_CELL_PWR_3GPP_POWER_SAVING_STATE_MAX_NUM
+} uCellPwr3gppPowerSavingState_t;
+
 /* ----------------------------------------------------------------
  * FUNCTIONS
  * -------------------------------------------------------------- */
@@ -613,6 +673,29 @@ int32_t uCellPwrSet3gppPowerSavingCallback(uDeviceHandle_t cellHandle,
                                                               int32_t periodicWakeupSeconds,
                                                               void *pCallbackParam),
                                            void *pCallbackParam);
+
+/** Get the current state of 3GPP power saving.
+ *
+ * IMPORTANT: as explained in the comments against
+ * #uCellPwr3gppPowerSavingState_t and in the detailed description at
+ * the top of this file, 3GPP power saving and the sleep-state of the
+ * cellular module are _different_ things: 3GPP power saving can
+ * be active and the module can still be fully awake and consuming lots
+ * of power; please do not confuse the two.
+ *
+ * @param cellHandle        the handle of the cellular instance.
+ * @param[out] pApplication if the 3GPP power saving state is
+ *                          #U_CELL_PWR_3GPP_POWER_SAVING_STATE_BLOCKED_BY_MODULE
+ *                          then, if this parameter is non-NULL, it will be
+ *                          populated with the number of the application inside
+ *                          the module that is blocking entry to deep sleep; this
+ *                          number is module-specific, please refer to the power
+ *                          management section of the AT manual for your module
+ *                          for further information.
+ * @return                  the 3GPP power saving state.
+ */
+uCellPwr3gppPowerSavingState_t uCellPwrGet3gppPowerSavingState(uDeviceHandle_t cellHandle,
+                                                               int32_t *pApplication);
 
 /** Set the requested E-DRX parameters.  E-DRX is only effective
  * when the module is connected to the cellular network.  When

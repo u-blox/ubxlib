@@ -259,6 +259,7 @@ int32_t uCellAdd(uCellModuleType_t moduleType,
                     uCellPrivateClearRadioParameters(&(pInstance->radioParameters));
                     pInstance->pModule = &(gUCellPrivateModuleList[moduleType]);
                     pInstance->sockNextLocalPort = -1;
+                    pInstance->deepSleepBlockedBy = -1;
 
                     // Now set up the pins
                     uPortLog("U_CELL: initialising with enable power pin ");
