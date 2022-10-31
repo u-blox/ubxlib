@@ -16,13 +16,13 @@ Note: the directory structure here differs from that in the other platform direc
 # SDK Installation
 `ubxlib` is tested with the version of Zephyr that comes with `nRFConnect SDK version 1.6.1` which is the recommended version.
 
-Ubxlib has been tested to build with all newer versions nRFConnect SDK, up til 2.1.0. The test suite for ubxlib is however still only using 1.6.1. This is due to the fact that an update to 2.x requires modification of the board overlay files, which would imply a breaking change. In coming versions of ubxlib, newer version of nRFConnect will be used.
+`ubxlib` has been tested to build with all newer versions nRFConnect SDK, up til 2.1.0. The test suite for `ubxlib` is however still only using 1.6.1. This is due to the fact that an update to 2.x requires modification of the board overlay files, which would imply a breaking change. In coming versions of `ubxlib`, newer version of nRFConnect will be used.
 
 Follow the instructions to install the development tools:
 
 - Install nRF connect. https://www.nordicsemi.com/Software-and-Tools/Development-Tools/nRF-Connect-for-desktop
 - Start nRFConnect and use the tool chain manager to install the recommended SDK version (see above).
-- IMPORTANT!: Update SDK and toolchain using the dropdown menu for your SDK version.
+- IMPORTANT: update SDK and toolchain using the dropdown menu for your SDK version.
 
 If you intend to use Zephyr on Linux/posix then you must also follow the instructions here:
 
@@ -65,7 +65,7 @@ UART_1 connected to pseudotty: /dev/pts/5
 UART_0 connected to pseudotty: /dev/pts/3
 ```
 
-This indicates that two UARTS, 0 and 1 (the maximum for Linux/Posix builds) are available and that they emerge on the corresponding pseudo-terminals; these pseudo-terminals are assigned by the operating system and may change on each run.  You can use the Linux utility `socat` to redirect the pseudo-terminals to real devices.  For instance:
+This indicates that two UARTs, 0 and 1 (the maximum for Linux/Posix builds) are available and that they emerge on the corresponding pseudo-terminals; these pseudo-terminals are assigned by the operating system and may change on each run.  You can use the Linux utility `socat` to redirect the pseudo-terminals to real devices.  For instance:
 
 ```
 socat /dev/pts/5,echo=0,raw /dev/tty/0,echo=0,raw
@@ -80,7 +80,7 @@ socat /dev/pts/3,echo=0,raw /dev/pts/3,echo=0,raw
 ...would loop `/dev/pts/3` (in the example above UART 0) back on itself.
 
 ## Device Tree
-Zephyr pin choices for any HW peripheral managed by Zephyr (e.g. UART, I2C, SPI, etc.) are made at compile-time in the Zephyr device tree, they cannot be passed into the `ubxlib` functions as run-time variables.  Look in the `zephyr/zephyr.dts` file located in your build directory to find the resulting pin allocations for these peripherals.
+Zephyr pin choices for any HW peripheral managed by Zephyr (e.g. UART, I2C, SPI, etc.) are made at compile-time in the Zephyr device tree, they cannot be passed into the `` functions as run-time variables.  Look in the `zephyr/zephyr.dts` file located in your build directory to find the resulting pin allocations for these peripherals.
 
 If you want to find out more about device tree please see Zephyr [Introduction to devicetree](https://docs.zephyrproject.org/latest/guides/dts/intro.html)
 
@@ -88,8 +88,8 @@ If you want to find out more about device tree please see Zephyr [Introduction t
 Since pin assignment for UARTs are made in the device tree, functions such as `uPortUartOpen()` which take pin assignments as parameters, should have all the pins set to -1.  You can look through the resulting `zephyr/zephyr.dts` located in your build directory to find the UART you want to use.  The UARTs will be named `uart0`, `uart1`, ... in the device tree - the ending number is the value you should use to tell `ubxlib` what UART to open.
 
 ## Additional Notes
-- Unless compiled for use on Linux/Posix, Zephyr usee its own internal minimal C library, not [newlib](https://sourceware.org/newlib/libc.html); if you wish to use [newlib](https://sourceware.org/newlib/libc.html) then you should add `U_CFG_ZEPHYR_USE_NEWLIB` to the conditional compilation flags passed into the build (see below for how to do this without modifying `CMakeLists.txt`).
-- Always clean the build directory when upgrading to a new ubxlib version.
+- Unless compiled for use on Linux/Posix, Zephyr uses its own internal minimal C library, not [newlib](https://sourceware.org/newlib/libc.html); if you wish to use [newlib](https://sourceware.org/newlib/libc.html) then you should add `U_CFG_ZEPHYR_USE_NEWLIB` to the conditional compilation flags passed into the build (see below for how to do this without modifying `CMakeLists.txt`).
+- Always clean the build directory when upgrading to a new `ubxlib` version.
 - You may override or provide conditional compilation flags to CMake without modifying `CMakeLists.txt`.  Do this by setting an environment variable `U_FLAGS`, e.g.:
 
   ```
