@@ -410,9 +410,9 @@ int32_t uCellPwrResetHard(uDeviceHandle_t cellHandle, int32_t pinReset);
  * normally handled automatically, using activity on the UART transmit
  * data line to wake-up the module, however this is not supported on
  * LARA-R6.
- * There is also a specific case with the SARA-R5 module that
- * needs to be handled differently: when the UART flow control lines
- * are connected and UART power saving is entered the CTS line of the
+ * There is also a specific case with the SARA-R5 module that needs
+ * to be handled differently: when the UART flow control lines are
+ * connected and UART power saving is entered the CTS line of the
  * SARA-R5 module floats high and this prevents "AT" being sent to the
  * module to wake it up again. This can be avoided by temporarily
  * suspending CTS operation through the uPortUartCtsSuspend() API but
@@ -424,10 +424,12 @@ int32_t uCellPwrResetHard(uDeviceHandle_t cellHandle, int32_t pinReset);
  * just after uCellAdd() or, in the common network API, by defining
  * the structure member pinDtrPowerSaving to be the MCU pin that is
  * connected to the DTR pin of the cellular module.
+ *
  * Note: the same problem exists for SARA-U201 modules and, in theory,
  * the same solution applies.  However, since we are not able to
  * regression test that configuration it is not currently marked as
  * supported in the configuration structure in u_cell_private.c.
+ *
  * Note: the cellular module _remembers_ the UART power saving mode
  * and so, if you should ever change a module from DTR power saving
  * to a different UART power saving mode, you must keep the DTR pin
@@ -480,7 +482,7 @@ int32_t uCellPwrGetDtrPowerSavingPin(uDeviceHandle_t cellHandle);
  * by this code when any API is called.  Note that this means it
  * is a requirement that pinPwrOn is connected to this MCU and was
  * set in the call to uCellAdd(), as that pin is used to wake the
- * module from deep sleep, and also either that the VInt pin is
+ * module from deep sleep, and also that the VInt pin is
  * connected to this MCU and was set in the uCellAdd() call, so
  * that this code can detect when deep sleep has been entered.
  * Some modules (e.g. SARA-R4) require a re-boot for the setting
@@ -490,6 +492,7 @@ int32_t uCellPwrGetDtrPowerSavingPin(uDeviceHandle_t cellHandle);
  * allowed to operate, i.e. do not define
  * U_CFG_CELL_DISABLE_UART_POWER_SAVING if you want 3GPP sleep to
  * work.
+ *
  * Note: there is a corner case with SARA-R422 which is that, after
  * waking up from deep sleep, it will not re-enter deep sleep until
  * a radio connection has been made and then released.
@@ -657,6 +660,7 @@ int32_t uCellPwrSet3gppPowerSavingCallback(uDeviceHandle_t cellHandle,
  * also allowed to operate, i.e. do not define
  * U_CFG_CELL_DISABLE_UART_POWER_SAVING if you want E-DRX to
  * work.
+ *
  * Note: there is a corner case if both 3GPP power saving and E-DRX
  * are applied, which is that if the module enters deep sleep
  * as a result of 3GPP power saving and then is awoken to do
