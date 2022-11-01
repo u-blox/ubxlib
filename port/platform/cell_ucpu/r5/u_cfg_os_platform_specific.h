@@ -66,6 +66,12 @@ extern TX_BYTE_POOL *pHeapPool;
  * that it has alloced internally when a task is deleted.
  * For instance, newlib when it is compiled in a certain way
  * does this on some platforms.
+ *
+ * There is a down-side to setting this to 1, which is that URCs
+ * received from a module will not be printed-out by the AT client
+ * (since prints from a dynamic task often cause such leaks), and
+ * this can be a pain when debugging, so please set this to 0 if you
+ * can.
  */
 #define U_CFG_OS_CLIB_LEAKS 0
 
