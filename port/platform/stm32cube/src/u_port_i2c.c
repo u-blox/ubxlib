@@ -170,7 +170,7 @@ static int32_t clockEnable(I2C_TypeDef *pReg)
     return errorCodeOrI2c;
 }
 
-// Enable clock to an I2C block; these are macros so can't be
+// Disable clock to an I2C block; these are macros so can't be
 // entries in a table.
 static int32_t clockDisable(I2C_TypeDef *pReg)
 {
