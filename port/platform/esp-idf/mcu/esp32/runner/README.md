@@ -4,6 +4,20 @@ This directory contains a build which compiles and runs any or all of the exampl
 # Usage
 Make sure you have followed the instructions in the directory above this to install the ESP-IDF tools.
 
+Since we usually run under automation, we have the task watchdog switched on in `sdkconfig.defaults`:
+
+```
+CONFIG_ESP_TASK_WDT=y
+```
+
+When running manually you probably don't want this, or the target will panic before you press a key to select a test, so you might want to change it to:
+
+```
+CONFIG_ESP_TASK_WDT=n
+```
+
+...either in the generated `sdkconfig` after you have configured/built, or in our `sdkconfig.defaults` before you do your first build.  
+
 Then, to build and download this code, execute the following:
 
 ```
