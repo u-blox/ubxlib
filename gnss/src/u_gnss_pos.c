@@ -308,7 +308,7 @@ int32_t uGnssPosGet(uDeviceHandle_t gnssHandle,
 #ifdef U_CFG_SARA_R5_M8_WORKAROUND
             if (pInstance->transportType == U_GNSS_TRANSPORT_AT) {
                 // Temporary change: on prototype versions of the
-                // SARA-R10M8S module (production week (printed on the
+                // SARA-R510M8S module (production week (printed on the
                 // module label, upper right) earlier than 20/27)
                 // the LNA in the GNSS chip is not automatically switched
                 // on by the firmware in the cellular module, so we need
@@ -389,7 +389,7 @@ int32_t uGnssPosGetStart(uDeviceHandle_t gnssHandle,
 #ifdef U_CFG_SARA_R5_M8_WORKAROUND
                         if (pInstance->transportType == U_GNSS_TRANSPORT_AT) {
                             // Temporary change: on prototype versions of the
-                            // SARA-R10M8S module (production week (printed on the
+                            // SARA-R510M8S module (production week (printed on the
                             // module label, upper right) earlier than 20/27)
                             // the LNA in the GNSS chip is not automatically switched
                             // on by the firmware in the cellular module, so we need
@@ -502,7 +502,7 @@ int32_t uGnssPosGetRrlp(uDeviceHandle_t gnssHandle, char *pBuffer,
 #ifdef U_CFG_SARA_R5_M8_WORKAROUND
             if (pInstance->transportType == U_GNSS_TRANSPORT_AT) {
                 // Temporary change: on prototype versions of the
-                // SARA-R10M8S module (production week (printed on the
+                // SARA-R510M8S module (production week (printed on the
                 // module label, upper right) earlier than 20/27)
                 // the LNA in the GNSS chip is not automatically switched
                 // on by the firmware in the cellular module, so we need
