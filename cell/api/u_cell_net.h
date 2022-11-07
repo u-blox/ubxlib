@@ -554,10 +554,11 @@ int32_t uCellNetSetRegistrationStatusCallback(uDeviceHandle_t cellHandle,
  * parameter set to true when it enters connected state and
  * false when it leaves connected state.  It is module
  * dependent as to whether such an indication is supported:
- * SARA-R412M-02B (only when on an NB1 or cat-M1 RAT) and
- * SARA-R5 modules do support such an indication; if the
- * module does not support such an indication under any
- * circumstances an error will be returned by this function.
+ * for instance SARA-U201 and SARA-R410M-02B do NOT support
+ * such an indication; if the module does not support such
+ * an indication under any circumstances an error will be
+ * returned by this function.
+ *
  * Note that the state of the base station connection and
  * that of registration are not the same: the
  * base station connection will be active while the module
