@@ -2,6 +2,12 @@ TARGET = runner.elf
 
 OUTPUT_DIRECTORY ?= output
 
+ifeq ($(OS),Windows_NT)
+# Force Windows as otherise, if sh.exe is in the path, make
+# will use it and mess up on slashes/brackets in file paths 
+SHELL = cmd
+endif
+
 # Commands
 RM = rm
 ifdef ARM_GCC_TOOLCHAIN_PATH
@@ -10,7 +16,7 @@ else
 CC = arm-none-eabi-gcc
 endif
 
-ifeq ($(shell echo "check_quotes"),"check_quotes")
+ifeq ($(OS),Windows_NT)
 mkdir = mkdir $(subst /,\,$(1)) > nul 2>&1 || (exit 0)
 else
 mkdir = mkdir -p $(1)
@@ -35,6 +41,8 @@ define USAGE_MESSAGE
 You must set the following variables in order to build:
 	STM32CUBE_FW_PATH: Set this to the path of STM32CubeF4 (https://github.com/STMicroelectronics/STM32CubeF4.git)
 	UNITY_PATH:        Set this to the path of Unity (https://github.com/ThrowTheSwitch/Unity)
+You my also need to set this to point to your ARM GCC bin directory if arm-none-eabi-gcc is not on the path
+	ARM_GCC_TOOLCHAIN_PATH
 endef
 
 ifndef STM32CUBE_FW_PATH
