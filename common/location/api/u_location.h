@@ -347,7 +347,9 @@ int32_t uLocationGet(uDeviceHandle_t devHandle, uLocationType_t type,
 
 /** Get the current location, non-blocking version.  uNetworkInterfaceUp()
  * (see the network API) must have been called on the given networkHandle
- * for this function to work.
+ * for this function to work.  This is a one-shot establishment:
+ * once pCallback has been called it is over, you must call this
+ * function again to start a new location establishment attempt.
  * Note that if you have a GNSS chip inside your cellular module
  * (e.g. you have a SARA-R510M8S or SARA-R422M8S) then making a
  * location call on the cell network will use that GNSS chip, there is
