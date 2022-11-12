@@ -256,9 +256,7 @@ bool uCellPwrIsAlive(uDeviceHandle_t cellHandle);
  *                               If this function is forced to return
  *                               it is advisable to call
  *                               uCellPwrIsAlive() to confirm
- *                               the final state of the module. The
- *                               single int32_t parameter is the
- *                               cell handle.
+ *                               the final state of the module.
  * @return                       zero on success or negative error
  *                               code on failure.
  */
@@ -285,8 +283,7 @@ int32_t uCellPwrOn(uDeviceHandle_t cellHandle,
  *                               It is advisable for the callback
  *                               function to always return true,
  *                               allowing the cellular module to
- *                               power off cleanly. The single int32_t
- *                               parameter is the cell handle.
+ *                               power off cleanly.
  * @return                       zero on success or negative error
  *                               code on failure.
  */
@@ -327,9 +324,8 @@ int32_t uCellPwrOff(uDeviceHandle_t cellHandle,
  *                               It is advisable for the callback
  *                               function to always return true,
  *                               allowing the cellular module to
- *                               power off cleanly. The single int32_t
- *                               parameter is the cell handle.
- *                               Ignored if trulyHard is true.
+ *                               power off cleanly. Ignored if
+ *                               trulyHard is true.
  * @return                       zero on success or negative error
  *                               code on failure.
  */
@@ -375,9 +371,7 @@ bool uCellPwrRebootIsRequired(uDeviceHandle_t cellHandle);
  *                               If this function is forced to return
  *                               it is advisable to call
  *                               uCellPwrIsAlive() to confirm
- *                               the final state of the module. The
- *                               single int32_t parameter is the
- *                               cell handle.
+ *                               the final state of the module.
  * @return                       zero on success or negative error
  *                               code on failure.
  */
@@ -598,8 +592,8 @@ int32_t uCellPwrGet3gppPowerSaving(uDeviceHandle_t cellHandle,
  * @param[in] pCallback       a callback which will be called when
  *                            the assigned 3GPP power saving parameters
  *                            are changed by the network; the first
- *                            parameter will be cellHandle, the second
- *                            indicates whether 3GPP power saving
+ *                            parameter will be the cellular handle,
+ *                            the second indicates whether 3GPP power saving
  *                            is enabled or not, the third will be the
  *                            assigned active time in seconds, the
  *                            fourth the assigned periodic wake-up time
@@ -779,8 +773,8 @@ int32_t uCellPwrGetEDrx(uDeviceHandle_t cellHandle,
  * @param cellHandle          the handle of the cellular instance.
  * @param[in] pCallback       a callback which will be called when
  *                            the E-DRX parameters change; the first
- *                            parameter will be cellHandle, the
- *                            second the RAT to which the E-DRX
+ *                            parameter will be the cellular handle,
+ *                            the second the RAT to which the E-DRX
  *                            parameters apply, the third whether
  *                            E-DRX is on or off for that RAT, the
  *                            fourth the requested E-DRX value in
@@ -822,8 +816,8 @@ int32_t uCellPwrSetEDrxCallback(uDeviceHandle_t cellHandle,
  *                             the module leaves deep sleep; use
  *                             NULL to remove a previous wake-up
  *                             callback; the first parameter to the
- *                             callback will be cellHandle, the
- *                             second will be pCallbackParam.
+ *                             callback will be the cellular Handle,
+ *                             the second will be pCallbackParam.
  * @param[in] pCallbackParam   a parameter that will be passed
  *                             to pCallbackParam as its second
  *                             parameter when it is called; may be
@@ -874,16 +868,14 @@ int32_t uCellPwrGetDeepSleepActive(uDeviceHandle_t cellHandle,
  *                               then the wake-up process will
  *                               be abandoned.  Even when
  *                               this callback returns false it
- *                               this function may still take some
- *                               10's of seconds to return in order
- *                               to ensure that the module is in a
+ *                               may still take some 10's of
+ *                               seconds to return in order to
+ *                               ensure that the module is in a
  *                               cleanly powered (or not) state.
  *                               If this function is forced to return
  *                               it is advisable to call
  *                               uCellPwrIsAlive() to confirm
- *                               the final state of the module. The
- *                               single int32_t parameter is the
- *                               cell handle.
+ *                               the final state of the module.
  * @return                       zero on success or negative error
  *                               code on failure.
  */
