@@ -1,0 +1,38 @@
+{
+    "name": "ubxlib",
+    "description": " Portable C libraries which provide APIs to build applications with u-blox products and services. Delivered as add-on to existing microcontroller and RTOS SDKs.",
+    "keywords": "u-blox, ubxlib",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/u-blox/ubxlib.git"
+    },
+    "authors": {
+        "name": "u-blox",
+        "email": "support@u-blox.com",
+        "url": "https://www.u-blox.com",
+        "maintainer": true
+    },
+    "license": "Apache-2.0 license",
+    "homepage": "https://github.com/u-blox/ubxlib/",
+    "frameworks": [
+        "espidf",
+        "zephyr"
+    ],
+    "platforms": "*",
+    "build": {
+        "extraScript": "port/platform/platformio/pio_build.py",
+        "libLDFMode": "deep+"
+    },
+    "scripts": {
+        "postinstall": "port/platform/platformio/pio_post_install.py"
+    },
+    "examples": [
+        {
+            "name": "Blink",
+            "base": "port/platform/platformio/example",
+            "files": [
+                "blink.c"
+            ]
+        }
+    ]
+}

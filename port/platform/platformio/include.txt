@@ -1,0 +1,54 @@
+# This file should contain the paths to all header files that are
+# required for ubxlib on PlatformIO.  Do not include test or
+# example directories.
+# Paths are relative to the ubxlib root directory, forward-slashes
+# must be used.
+# Header files are included in the order listed.
+# Framework specific directories will only be included for the
+# actual framework used and ignored otherwise.
+.
+cfg
+common/error/api
+common/assert/api
+common/device/api
+common/device/src
+port/platform/common/mutex_debug
+port/api
+port/clib
+port/platform/common/event_queue
+port/platform/common/mbedtls
+port/platform/common/runner
+port/platform/common/debug_utils/api
+common/network/api
+common/network/src
+common/security/api
+common/sock/api
+common/mqtt_client/api
+common/http_client/api
+common/location/api
+common/location/src
+common/at_client/api
+common/at_client/src
+common/ubx_protocol/api
+common/short_range/api
+common/short_range/src
+common/spartn/api
+common/utils/api
+ble/api
+ble/src
+cell/api
+cell/src
+gnss/api
+gnss/src
+wifi/api
+wifi/src
+
+port/platform/$FRAMEWORK
+port/platform/$FRAMEWORK/src
+
+# Framework specific
+port/platform/zephyr/cfg
+port/platform/esp-idf/mcu/esp32/cfg
+
+port/platform/common/debug_utils/src/freertos/additions
+
