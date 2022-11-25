@@ -63,6 +63,7 @@
  * STATIC VARIABLES
  * -------------------------------------------------------------- */
 
+#if U_CFG_ENABLE_LOGGING
 /** To display some nice text.
  */
 //lint -esym(752, gpTransportTypeText) Suppress not referenced, which
@@ -74,6 +75,7 @@ static const char *const gpTransportTypeText[] = {"None",       // U_GNSS_TRANSP
                                                   "UBX UART",   // U_GNSS_TRANSPORT_UBX_UART
                                                   "UBX I2C"     // U_GNSS_TRANSPORT_UBX_I2C
                                                  };
+#endif
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS

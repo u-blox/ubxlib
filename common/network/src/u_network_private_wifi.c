@@ -182,7 +182,7 @@ static void wifiConnectionCallback(uDeviceHandle_t devHandle,
         }
     }
 
-#if defined(U_CFG_ENABLE_LOGGING) && !U_CFG_OS_CLIB_LEAKS
+#if U_CFG_ENABLE_LOGGING && !U_CFG_OS_CLIB_LEAKS
     if (status == U_WIFI_CON_STATUS_CONNECTED) {
         uPortLog(LOG_TAG "Wifi connected connId: %d, bssid: %s, channel: %d\n",
                  connId,

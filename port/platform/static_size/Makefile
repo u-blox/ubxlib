@@ -36,7 +36,7 @@ endif
 SILENT = @
 
 # Compiler flags
-override CFLAGS += -Os -g0
+override CFLAGS += -Os -g0 -Wall -Werror
 LDFLAGS += -Wl,--cref --specs=nano.specs -lc -lnosys
 
 # Compiler flags for no float
