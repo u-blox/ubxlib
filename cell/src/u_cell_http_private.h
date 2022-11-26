@@ -40,6 +40,7 @@ extern "C" {
  */
 typedef struct uCellHttpInstance_t {
     int32_t profileId;    /**< this will be the handle for the HTTP instance. */
+    uint16_t userSpecifiedPort;
     int32_t timeoutSeconds;
     uCellHttpCallback_t *pCallback;
     void *pCallbackParam;
