@@ -242,7 +242,8 @@ U_PORT_TEST_FUNCTION("[example]", "exampleHttpClient")
             // POST some data to the server; doesn't have to be text,
             // can be anything, including binary data, though obviously
             // you must give the appropriate content-type
-            statusCode = uHttpClientPostRequest(pContext, path, gpMyData, strlen(gpMyData), "text/plain");
+            statusCode = uHttpClientPostRequest(pContext, path, gpMyData, strlen(gpMyData),
+                                                "text/plain", NULL, NULL, NULL);
             if (statusCode == 200) {
 
                 uPortLog("POST some data to the file \"%s\" on %s.\n", path, MY_SERVER_NAME);
