@@ -154,10 +154,6 @@ static uint32_t gModemUartEventBitmap = 0;
  */
 static bool gModemUartReadBufferPlaced = false;
 
-/** Flag to indicate event callback is in process.
- */
-static bool gModemUartInEventCallback = false;
-
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -652,12 +648,10 @@ static void eventHandler(void *pParam, size_t paramLength)
         // the user callback will be able to access functions in this
         // API which will lock the mutex before doing any action.
 
-        gModemUartInEventCallback = true;
         // Call event callback
         gModemUartContext.pEventCallback(gModemUartEvent.uartHandle,
                                          gModemUartEvent.eventBitMap,
                                          gModemUartContext.pEventCallbackParam);
-        gModemUartInEventCallback = false;
     }
 }
 
@@ -849,7 +843,7 @@ bool uPortUartEventIsCallback(int32_t handle)
 
         if ((handle > 0) &&
             (gModemUartContext.eventQueueHandle >= 0)) {
-            isEventCallback = gModemUartInEventCallback;
+            isEventCallback = uPortEventQueueIsTask(gModemUartContext.eventQueueHandle);
         }
 
         U_PORT_MUTEX_UNLOCK(gModemUartMutex);
