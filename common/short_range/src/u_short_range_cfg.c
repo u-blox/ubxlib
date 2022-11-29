@@ -93,7 +93,7 @@ int32_t uShortRangeCfgFactoryReset(uDeviceHandle_t devHandle)
             uAtClientCommandStopReadResponse(atHandle);
             // Unlock mutex after using AT client.
             errorCode = uAtClientUnlock(atHandle);
-          }
+        }
         U_PORT_MUTEX_UNLOCK(gUShortRangePrivateMutex);
     }
 
