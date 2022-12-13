@@ -58,7 +58,7 @@ def get(filename):
     row = {}
     instance = []
 
-    file_handle = open(filename, "r")
+    file_handle = open(filename, "r", encoding="utf8")
     # Read lines from the file until we hit a row of our table,
     # which is defined as a line with at least six '|'
     # characters in it
@@ -129,7 +129,7 @@ def get(filename):
 def display(database):
     '''Print out the instances from database'''
 
-    print("{} {} instance(s) found:".format(PROMPT, len(database)))
+    print(f"{PROMPT} {len(database)} instance(s) found:")
     for row in database:
         # Instance first
         item = ""
@@ -140,30 +140,30 @@ def display(database):
                 item += "." + str(number)
         item = item.rjust(8)
         # Then description
-        item += ": \"{}\"".format(row["description"])
+        item += f": \"{row['description']}\""
         # Then duration
         if row["duration"] != "":
-            item += " {} duration with".format(row["duration"])
+            item += f" {row['duration']} duration with"
         else:
             item += " with"
         # Then MCU
         if row["mcu"] != "":
-            item += " {} MCU with".format(row["mcu"])
+            item += f" {row['mcu']} MCU with"
         else:
             item += " with"
         # Then board
         if row["board"] != "":
-            item += " {} board with".format(row["board"])
+            item += f" {row['board']} board with"
         else:
             item += " with"
         # Then platform
         if row["platform"] != "":
-            item += " {} platform with".format(row["platform"])
+            item += f" {row['platform']} platform with"
         else:
             item += " with"
         # Then toolchain
         if row["toolchain"] != "":
-            item += " toolchain \"{}\"".format(row["toolchain"])
+            item += f" toolchain \"{row['toolchain']}\""
         else:
             item += " default toolchain,"
         # Then modules
@@ -197,7 +197,7 @@ def display(database):
                     item += ", " + define
         else:
             item += " with no required #defines"
-        print("{}.".format(item))
+        print(f"{item}.")
 
 def get_instances_for_mcu(database, mcu):
     '''Return a list of instances that support the given MCU'''
@@ -324,7 +324,7 @@ def get_gnss_module_for_instance(database, instance):
 def get_defines_for_instance(database, instance):
     '''Return the defines that are required by the given instance'''
     defines = None
-    bandmaskAlreadyDefined = False
+    bandmask_already_defined = False
 
     for row in database:
         if instance == row["instance"]:
@@ -360,9 +360,9 @@ def get_defines_for_instance(database, instance):
 
     for define in defines:
         if define.startswith("U_CELL_TEST_CFG_BANDMASK1"):
-            bandmaskAlreadyDefined = True;
-            break;
-    if not bandmaskAlreadyDefined:
+            bandmask_already_defined = True
+            break
+    if not bandmask_already_defined:
         # When running tests on cellular LTE modules, so
         # SARA-R4 or SARA-R5, we need to set the RF band we
         # are running in to NOT include the public network,

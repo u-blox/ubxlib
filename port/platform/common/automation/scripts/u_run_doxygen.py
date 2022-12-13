@@ -43,9 +43,8 @@ def run(ubxlib_dir, reporter):
 
     if got_doxygen:
         # Sort out any subst
-        U_LOG.info("Doxygen finds no files if run from a" \
-                   " subst drive so convert {} to a real"      \
-                   " path".format(ubxlib_dir))
+        U_LOG.info("Doxygen finds no files if run from a aubst drive to" \
+                   f" convert {ubxlib_dir} to a real path")
         actual_ubxlib_dir = u_utils.get_actual_path(ubxlib_dir)
         U_LOG.info(f"Actual ubxlib directory is {actual_ubxlib_dir}")
         # Run Doxygen
@@ -53,7 +52,7 @@ def run(ubxlib_dir, reporter):
         U_LOG.info(f"CD to {actual_ubxlib_dir}...")
         with u_utils.ChangeDir(actual_ubxlib_dir):
             U_LOG.info("in directory {} calling doxygen {}.".
-                           format(os.getcwd(), config_path))
+                       format(os.getcwd(), config_path))
             try:
                 my_env = os.environ.copy()
                 my_env['UBX_WORKDIR'] = working_dir

@@ -16,7 +16,7 @@ def get_cflags_from_u_flags_yml(cfg_dir, platform, target, store_new_hash=True):
 
     # Load u_flags.yml
     if os.path.exists(file_path):
-        with open(file_path, 'r') as file:
+        with open(file_path, 'r', encoding='utf8') as file:
             u_flag_data = yaml.safe_load(os.path.expandvars(file.read()))
 
     # If things are missing in the structure - add them
@@ -40,7 +40,7 @@ def get_cflags_from_u_flags_yml(cfg_dir, platform, target, store_new_hash=True):
         u_flag_data[platform][target]["md5"] = new_hash
 
     # Write back the .yml file
-    with open(file_path, 'w') as file:
+    with open(file_path, 'w', encoding='utf8') as file:
         yaml.dump(u_flag_data, file, default_flow_style=False)
 
     # Add "-D" to each entry

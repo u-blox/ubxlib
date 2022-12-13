@@ -100,7 +100,7 @@ class UArchivePackage(UBasePackage):
         if not os.path.exists(version_file):
             return False
         current_version = ""
-        with open(version_file, 'r') as file:
+        with open(version_file, 'r', encoding='utf8') as file:
             current_version = file.read().rstrip()
         return current_version == version
 
@@ -116,6 +116,6 @@ class UArchivePackage(UBasePackage):
             shutil.rmtree(self.package_dir)
 
         u_pkg_utils.download_and_extract(url, self.package_dir, skip_first_subdir)
-        with open(version_file, 'w') as f:
+        with open(version_file, 'w', encoding='utf8') as f:
             f.write(self.version)
 

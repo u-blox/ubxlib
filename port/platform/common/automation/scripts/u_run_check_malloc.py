@@ -44,7 +44,7 @@ def run(ubxlib_dir, reporter):
 
     # Read in the excludes
     U_LOG.info("%s contains exclude paths:", excludes_file_path)
-    temp_list = [line.strip() for line in open(excludes_file_path, 'r')]
+    temp_list = [line.strip() for line in open(excludes_file_path, 'r', encoding='utf8')]
     for item in temp_list:
         # Throw away comment lines
         if item and not item.startswith("#"):
@@ -71,7 +71,7 @@ def run(ubxlib_dir, reporter):
 
         # Parse all of the files we now have checking for malloc()/free() calls
         for target_file in file_paths:
-            with open(target_file, "r") as file:
+            with open(target_file, "r", encoding="utf8") as file:
                 # Read the lot in
                 U_LOG.info("checking file %s...", target_file)
                 line_list = file.readlines()

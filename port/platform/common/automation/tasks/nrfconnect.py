@@ -29,7 +29,7 @@ def filter_compile_commands(input_json_file='compile_commands.json',
                             include_dirs=[],
                             exclude_patterns=[]):
     # Load input json file
-    with open(input_json_file) as f:
+    with open(input_json_file, encoding='utf8') as f:
         commands = json.load(f)
 
     # Convert and expand to posix path so the path format is the same
@@ -58,7 +58,7 @@ def filter_compile_commands(input_json_file='compile_commands.json',
             filtered_commands.append(cmd)
 
     # Write output json file
-    with open(output_json_file, 'w') as outfile:
+    with open(output_json_file, 'w', encoding='utf8') as outfile:
         json.dump(filtered_commands, outfile)
 
 @task()

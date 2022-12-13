@@ -29,7 +29,7 @@ def question(text):
         # Auto yes if stdin is not available
         return True
     while True:
-        sys.stdout.write("{} [y/n]: ".format(text))
+        sys.stdout.write(f"{text} [y/n]: ")
         choice = input().lower()
         if choice in yes:
             return True
@@ -91,7 +91,7 @@ def extract_tar(file, tar_mode, dest_dir, skip_first_sub_dir):
     archive = None
     temp_dir = None
     try:
-        archive = TarFile.open(fileobj=ProgressWrapper(file), mode=tar_mode)
+        archive = TarFile.open(fileobj=ProgressWrapper(file), mode=tar_mode, encoding="utf8")
         if skip_first_sub_dir:
             # We can't use the same trick as for the zip file since then symbolic links
             # in the tar file will break. Instead we extract to a temporary directory

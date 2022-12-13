@@ -235,7 +235,7 @@ with portalocker.Lock(__SETTINGS_FILE_DIRECTORY + os.sep + "settings.lock",
     # Read settings from the global configuration files
     if os.path.isfile(__SETTINGS_FILE_PATH_GENERAL):
         try:
-            with open(__SETTINGS_FILE_PATH_GENERAL) as f:
+            with open(__SETTINGS_FILE_PATH_GENERAL, encoding="utf8") as f:
                 __READ_SETTINGS = json.load(f)
         except Exception as ex:
             print("u_settings: ************************** WARNING ***************************")
@@ -248,7 +248,7 @@ with portalocker.Lock(__SETTINGS_FILE_DIRECTORY + os.sep + "settings.lock",
             __HOLD_THE_BUS = True
     if os.path.isfile(__SETTINGS_FILE_PATH_AGENT_SPECIFIC):
         try:
-            with open(__SETTINGS_FILE_PATH_AGENT_SPECIFIC) as f:
+            with open(__SETTINGS_FILE_PATH_AGENT_SPECIFIC, encoding="utf8") as f:
                 __READ_SETTINGS.update(json.load(f))
         except Exception as ex:
             print("u_settings: ************************** WARNING ***************************")
@@ -263,7 +263,7 @@ with portalocker.Lock(__SETTINGS_FILE_DIRECTORY + os.sep + "settings.lock",
         # For backwards-compatibility
         if os.path.isfile(__SETTINGS_FILE_PATH_OLD):
             try:
-                with open(__SETTINGS_FILE_PATH_OLD) as f:
+                with open(__SETTINGS_FILE_PATH_OLD, encoding="utf8") as f:
                     __READ_SETTINGS.update(json.load(f))
                     __FORCE_WRITE = True
             except Exception as ex:
@@ -372,9 +372,9 @@ with portalocker.Lock(__SETTINGS_FILE_DIRECTORY + os.sep + "settings.lock",
             __WRITE_SETTINGS = {}
     else:
         # Condition (a) above
-        print("u_settings: no settings at \"{}\", \"{}\" or \"{}\""
-              " using defaults.".format(__SETTINGS_FILE_PATH_GENERAL,
-              __SETTINGS_FILE_PATH_AGENT_SPECIFIC, __SETTINGS_FILE_PATH_OLD))
+        print(f"u_settings: no settings at \"{__SETTINGS_FILE_PATH_GENERAL}\","              \
+              f"\"{__SETTINGS_FILE_PATH_AGENT_SPECIFIC}\" or \"{__SETTINGS_FILE_PATH_OLD}\"" \
+              " using defaults.")
 
     # If we have __UPDATED_READ_SETTINGS we use it instead of __SETTINGS
     if __UPDATED_READ_SETTINGS:
@@ -394,8 +394,8 @@ with portalocker.Lock(__SETTINGS_FILE_DIRECTORY + os.sep + "settings.lock",
                 __LISTS_DIFFER = True
                 __local_write_settings[__key] = __WRITE_SETTINGS[__key]
                 if __key_root != __key:
-                    print("u_settings: *** WARNING agent specific setting {}"    \
-                          " not found in settings file.".format(__key_root))
+                    print(f"u_settings: *** WARNING agent specific setting {__key_root}"    \
+                          " not found in settings file.")
         __WRITE_SETTINGS = __local_write_settings
 
         # Don't want to lose the user's stuff, so add anything that
@@ -431,19 +431,19 @@ with portalocker.Lock(__SETTINGS_FILE_DIRECTORY + os.sep + "settings.lock",
             if __write_settings_general:
                 print("u_settings: creating/re-writing global settings file \"{}\".". \
                       format(__SETTINGS_FILE_PATH_GENERAL))
-                with open(__SETTINGS_FILE_PATH_GENERAL, 'w') as out:
+                with open(__SETTINGS_FILE_PATH_GENERAL, 'w', encoding='utf8') as out:
                     json.dump(__write_settings_general, out, indent=2)
             if __write_settings_agent_specific:
                 print("u_settings: creating/re-writing global settings file \"{}\".". \
                       format(__SETTINGS_FILE_PATH_AGENT_SPECIFIC))
-                with open(__SETTINGS_FILE_PATH_AGENT_SPECIFIC, 'w') as out:
+                with open(__SETTINGS_FILE_PATH_AGENT_SPECIFIC, 'w', encoding='utf8') as out:
                     json.dump(__write_settings_agent_specific, out, indent=2)
 
     # Populate this module with settings
     __current_module = sys.modules[__name__]
     for __key in __SETTINGS:
         __value = __replace_env_var(__SETTINGS[__key])
-        #print("u_settings: \"{}\" = \"{}\"".format(__key,  __value))
+        #print(f"u_settings: \"{__key}\" = \"{__value}\"")
         setattr(__current_module, __key, __value)
 
 def user_intervention_required():

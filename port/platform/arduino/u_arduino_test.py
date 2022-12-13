@@ -27,10 +27,10 @@ SENTENCE = "Unity/C-based tests for ubxlib."
 PARAGRAPH = ""
 
 # The comment at the top of the header file
-HEADER_COMMENT = "/** This empty file is automatically generated\n"   \
-                 " * by {0} as a means of bringing in the ubxlib\n"   \
-                 " * test files."                                     \
-                 " */\n\n".format(os.path.basename(__file__))
+HEADER_COMMENT =  "/** This empty file is automatically generated\n"   \
+                 f" * by {os.path.basename(__file__)} as a means of bringing in the ubxlib\n" \
+                  " * test files."                                     \
+                  " */\n\n"
 
 # The name to use for the ubxlib test header file
 UBXLIB_TEST_HEADER_FILE = u_arduino_common.LIBRARY_NAME + UBXLIB_TEST_POSTFIX + ".h"
@@ -81,7 +81,7 @@ def main(source_files, include_paths, platform_type, ubxlib_dir,
         # Next, create a "ubxlib_test" header file, which has no
         # contents, to include in the application in order to bring
         # this test stuff in
-        print("Creating \"{}\"...".format(UBXLIB_TEST_HEADER_FILE))
+        print(f"Creating \"{UBXLIB_TEST_HEADER_FILE}\"...")
         return_value = u_arduino_common.create_header_file(UBXLIB_TEST_HEADER_FILE,
                                                            HEADER_COMMENT, None)
 

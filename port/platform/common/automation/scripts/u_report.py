@@ -77,20 +77,20 @@ def event_as_string(event):
        (event["event"] == EVENT_TEST_SUITE_COMPLETED):
         string += ": "
         if "tests_run" in event and (event["tests_run"] is not None):
-            string += "{} run".format(event["tests_run"])
+            string += f"{event['tests_run']} run"
             need_comma = True
         if "tests_failed" in event and (event["tests_failed"] is not None):
             if need_comma:
                 string += ", "
             if event["tests_failed"] > 0:
-                string += "{} {}".format(event["tests_failed"], EVENT_FAILED)
+                string += f"{event['tests_failed']} {EVENT_FAILED}"
             else:
-                string += "{} failed".format(event["tests_failed"])
+                string += f"{event['tests_failed']} failed"
             need_comma = True
         if "tests_ignored" in event and (event["tests_ignored"] is not None):
             if need_comma:
                 string += ", "
-            string += "{} ignored".format(event["tests_ignored"])
+            string += f"{event['tests_ignored']} ignored"
 
     return string
 

@@ -1,3 +1,7 @@
+#!/usr/bin/env python
+
+'''Functions to help with packages in automation.'''
+
 import os
 import yaml
 
@@ -34,6 +38,6 @@ def load_config_yaml(file_path, is_linux):
     * If the yaml file contains environmental variables these will first be expanded.
     * The yaml file can also contain platform specific config.
       Please see parse_platform_specific() how these are handled."""
-    with open(file_path, 'r') as file:
+    with open(file_path, 'r', encoding='utf8') as file:
         cfg = yaml.safe_load(os.path.expandvars(file.read()))
     return parse_platform_specific(cfg, is_linux)

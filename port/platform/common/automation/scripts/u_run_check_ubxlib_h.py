@@ -43,7 +43,7 @@ def run(ubxlib_dir, reporter):
 
     # Read in ubxlib.h and assemble the list of header files in it
     U_LOG.info("%s contains headers:", ubxlib_h_file_path)
-    temp_list = [line.strip() for line in open(ubxlib_h_file_path, 'r')]
+    temp_list = [line.strip() for line in open(ubxlib_h_file_path, 'r', encoding='utf8')]
     for item in temp_list:
         header = None
         if item and item.startswith("#") and "include" in item:
@@ -65,7 +65,7 @@ def run(ubxlib_dir, reporter):
 
     # Read in the excludes
     U_LOG.info("%s contains excludes:", excludes_file_path)
-    temp_list = [line.strip() for line in open(excludes_file_path, 'r')]
+    temp_list = [line.strip() for line in open(excludes_file_path, 'r', encoding='utf8')]
     for item in temp_list:
         # Throw away comment lines
         if item and not item.startswith("#"):

@@ -289,7 +289,7 @@ def test(ctx, instance, build_dir=None,
     ctx.build_dir = build_dir
 
     # With a reporter
-    with open(summary_file, 'w') as summary_handle:
+    with open(summary_file, 'w', encoding='utf8') as summary_handle:
         with u_report.ReportToQueue(None, _instance,
                                     summary_handle) as reporter:
             ctx.filter = filter

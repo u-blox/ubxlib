@@ -92,7 +92,7 @@ def print_env(returned_env):
     U_LOG.info("environment will be:")
     if returned_env:
         for key, value in returned_env.items():
-            U_LOG.info("{}={}".format(key, value))
+            U_LOG.info(f"{key}={value}")
     else:
         U_LOG.info("EMPTY")
 
@@ -138,7 +138,7 @@ def set_up_environment(reporter):
     if not returned_env:
         reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
                        u_report.EVENT_FAILED,
-                       "{} failed".format(" ".join(MSVC_SETUP_BATCH_FILE)))
+                       f"{' '.join(MSVC_SETUP_BATCH_FILE)} failed")
     return returned_env
 
 def switch_list_create(u_flags, logger):

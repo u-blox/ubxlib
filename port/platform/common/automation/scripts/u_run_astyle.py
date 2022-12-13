@@ -67,7 +67,7 @@ def run(ubxlib_dir, reporter):
             tmp = ""
             for item in call_list:
                 tmp += " " + item
-            U_LOG.info("in directory {} calling{}".format(os.getcwd(), tmp))
+            U_LOG.info(f"in directory {os.getcwd()} calling{tmp}")
             try:
                 popen_keywords = {
                     'stderr': subprocess.STDOUT,
