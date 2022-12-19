@@ -1348,27 +1348,32 @@ int32_t uShortRangeEdmStreamAtRead(int32_t handle, void *pBuffer,
 
     if (gMutex != NULL) {
 
-        U_PORT_MUTEX_LOCK(gMutex);
-        sizeOrErrorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
-        if (gEdmStream.handle == handle && pBuffer != NULL && sizeBytes != 0) {
-            sizeOrErrorCode = (int32_t)(gEdmStream.atResponseLength - gEdmStream.atResponseRead);
-            if (sizeOrErrorCode > 0) {
-                if (sizeBytes < (uint32_t)sizeOrErrorCode) {
-                    sizeOrErrorCode = (int32_t)sizeBytes;
-                }
-                memcpy(pBuffer, gEdmStream.pAtResponseBuffer + gEdmStream.atResponseRead, sizeOrErrorCode);
-                gEdmStream.atResponseRead += sizeOrErrorCode;
+        if (!gEdmStream.ignoreUartCallback) {
+            U_PORT_MUTEX_LOCK(gMutex);
 
-                if (gEdmStream.atResponseRead >= gEdmStream.atResponseLength) {
-                    gEdmStream.atResponseLength = 0;
-                    gEdmStream.atResponseRead = 0;
-                    uEdmChLogLine(LOG_CH_AT_RX, "processed");
-                    processedEvent();
+            sizeOrErrorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
+            if (gEdmStream.handle == handle && pBuffer != NULL && sizeBytes != 0) {
+                sizeOrErrorCode = (int32_t)(gEdmStream.atResponseLength - gEdmStream.atResponseRead);
+                if (sizeOrErrorCode > 0) {
+                    if (sizeBytes < (uint32_t)sizeOrErrorCode) {
+                        sizeOrErrorCode = (int32_t)sizeBytes;
+                    }
+                    memcpy(pBuffer, gEdmStream.pAtResponseBuffer + gEdmStream.atResponseRead, sizeOrErrorCode);
+                    gEdmStream.atResponseRead += sizeOrErrorCode;
+
+                    if (gEdmStream.atResponseRead >= gEdmStream.atResponseLength) {
+                        gEdmStream.atResponseLength = 0;
+                        gEdmStream.atResponseRead = 0;
+                        uEdmChLogLine(LOG_CH_AT_RX, "processed");
+                        processedEvent();
+                    }
                 }
             }
-        }
 
-        U_PORT_MUTEX_UNLOCK(gMutex);
+            U_PORT_MUTEX_UNLOCK(gMutex);
+        } else {
+            sizeOrErrorCode = 0;
+        }
     }
 
     return sizeOrErrorCode;
