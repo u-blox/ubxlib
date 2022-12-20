@@ -612,7 +612,7 @@ If the server has no DNS entry on the public internet (required for some tests) 
 ### Cellular And Short Range Network Test Peers
 A Nutaq cellular network box is required for cellular Cat-M1 coverage; set up of this is out of scope of this document: provided an RF link gets to the relevant test instances and the Nutaq has public internet access, that is all that is required.  To be clear, the Nutaq box does _not_ have to be on the same network as the `ubxlib` test system (though it can be if desired).
 
-Some short-range test instances require BLE test peers; these just need to be configured, MAC addressses in [DATABASE.md](DATABASE.md) and then plugged into power from the shared resource Ethernet-based relay boxes so that they are powered up at the start of testing and powered down again afterwareds.
+Some short-range test instances require BLE test peers; these just need to be configured, MAC addressses in [DATABASE.md](DATABASE.md) and then plugged into power from the shared resource Ethernet-based relay boxes so that they are powered up at the start of testing and powered down again afterwards.
 
 Similarly, some of the short-range test instances require access to a Wi-Fi Access Point; any Wi-Fi AP that has public internet access is fine (see Wi-Fi passkey configuration above).
 
