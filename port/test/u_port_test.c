@@ -143,7 +143,7 @@
  * data to arrive back when allowing laziness (e.g. on
  * a heavily loaded Windoze machine).
  */
-#  define U_PORT_TEST_UART_TIME_TO_ARRIVE_MS 5000
+#  define U_PORT_TEST_UART_TIME_TO_ARRIVE_MS 10000
 # endif
 #endif
 

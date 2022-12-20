@@ -1,5 +1,6 @@
 import shutil
 import os
+import tempfile
 from invoke import Context
 from . import u_pkg_utils
 
@@ -82,10 +83,25 @@ class UAptPackage(UBasePackage):
     """Linux APT package"""
     def check_installed(self, ctx: Context):
         """Check if the apt package is installed"""
-        return ctx.run(f"{self.cfg['check_command']}", hide=True).ok
+        is_ok = False
+        try:
+            is_ok = ctx.run(f"{self.cfg['check_command']}", hide=True).ok
+        except:
+            pass
+        return is_ok
+
     def install(self, ctx):
         """Install the apt package"""
-        return ctx.run(f"sudo apt update && sudo apt install {self.cfg['package_name']}").ok
+        is_ok = False
+        if "url" in self.cfg:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                skip_first_subdir = self.cfg['skip_first_subdir'] if 'skip_first_subdir' in self.cfg else False
+                u_pkg_utils.download_and_extract(self.cfg['url'], temp_dir, skip_first_subdir)
+                pkg_path = os.path.join(temp_dir, self.cfg['package_name'])
+                is_ok = ctx.run(f"sudo apt update && sudo apt install -y {pkg_path}").ok
+        else:
+            is_ok = ctx.run(f"sudo apt update && sudo apt install -y {self.cfg['package_name']}").ok
+        return is_ok
 
 
 class UArchivePackage(UBasePackage):
@@ -118,4 +134,42 @@ class UArchivePackage(UBasePackage):
         u_pkg_utils.download_and_extract(url, self.package_dir, skip_first_subdir)
         with open(version_file, 'w', encoding='utf8') as f:
             f.write(self.version)
+
+class UExecutablePackage(UBasePackage):
+    """Executable package
+    Will download and run an executable from a URL.  The
+    executable may be in a zip or tar file, or just plain"""
+    def check_installed(self, ctx: Context):
+        """Check if the executable is installed
+        Note: Each installed archive will have a .ubxversion file containing the version number"""
+        version = self.cfg['version']
+        version_file = f"{self.package_dir}/.ubxversion"
+        if not os.path.exists(version_file):
+            return False
+        current_version = ""
+        with open(version_file, 'r', encoding='utf8') as file:
+            current_version = file.read().rstrip()
+        return current_version == version
+
+    def install(self, ctx: Context):
+        """Install the executable
+        Note: A .ubxversion file will be placed in the package dir containing the version number"""
+        url = self.cfg['url']
+        version_file = f"{self.package_dir}/.ubxversion"
+        skip_first_subdir = self.cfg['skip_first_subdir'] if 'skip_first_subdir' in self.cfg else False
+        if os.path.exists(self.package_dir):
+            if not u_pkg_utils.question("Do you want to remove the directory and re-install?"):
+                raise UAbortedException
+            shutil.rmtree(self.package_dir)
+
+        u_pkg_utils.download_and_extract(url, self.package_dir, skip_first_subdir)
+        if 'run_with_switches' in self.cfg:
+            run_path = os.path.join(self.package_dir, self.cfg['package_name'])
+            if (ctx.run(f"{run_path} {self.cfg['run_with_switches']}").ok):
+                with open(version_file, 'w', encoding='utf8') as f:
+                    f.write(self.version)
+            else:
+                print(f"Unable to run {run_path} with switches {self.cfg['run_with_switches']}")
+                shutil.rmtree(self.package_dir)
+
 

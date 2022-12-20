@@ -67,7 +67,7 @@ def check_installation(ctx):
     ctx.zephyr_pre_command = ""
 
     # Load required packages
-    pkgs = u_package.load(ctx, ["arm_embedded_gcc", "nrfconnectsdk", "make"])
+    pkgs = u_package.load(ctx, ["arm_embedded_gcc", "nrfconnectsdk", "make", "nrf_cli", "segger_jlink"])
     ncs_pkg = pkgs["nrfconnectsdk"]
     ae_gcc_pkg = pkgs["arm_embedded_gcc"]
 

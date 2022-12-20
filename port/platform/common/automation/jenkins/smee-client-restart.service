@@ -1,0 +1,12 @@
+# Service to restart a SMEE client
+
+[Unit]
+Description=Restart the SMEE client
+Wants=smee-client-restart.timer
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/docker_restart_container.sh smee-client
+
+[Install]
+WantedBy=multi-user.target

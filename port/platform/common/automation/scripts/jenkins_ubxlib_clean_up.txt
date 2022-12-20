@@ -1,0 +1,30 @@
+def timeout_minutes = 60
+
+// If we have a lock on all UBXLIB_TOKENs, so nothing can be
+// running, then delete the counter file of who has a token,
+// as a tidy-up, and make sure that the shared resources really
+// are off.
+try {
+    timeout(time: timeout_minutes, unit: 'MINUTES') {
+        // Lock _all_ of the UBXLIB_TOKENs, only possible
+        // when nothing is running
+        lock(label: "${env.UBXLIB_TOKEN}") {
+            stage("Clean Up") {
+                node("built-in") {
+                    ws("$UBXLIB_LOCAL_STATE_DIR") {
+                        try {
+                            sh "rm $UBXLIB_COUNTER_FILE"
+                            build job: "ubxlib_shared_resource_control", parameters: [booleanParam(name: "ON_NOT_OFF", value: false)]
+                            println "Clean-up completed."
+                        } catch (e) {
+                            println "$UBXLIB_LOCAL_STATE_DIR/$UBXLIB_COUNTER_FILE not found, no clean-up to do."
+                        }
+                    }
+                }
+            }
+        }
+    }
+} catch (e) {
+    currentBuild.result = 'ABORTED'
+    error("System still busy after ${timeout_minutes} minute(s), not able to clean up.")
+}

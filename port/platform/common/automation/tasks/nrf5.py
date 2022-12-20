@@ -22,7 +22,7 @@ def check_installation(ctx):
 
     # Load required packages
     pkgs = u_package.load(ctx, [
-        "make", "unity", "arm_embedded_gcc", "nrf5sdk"
+        "make", "unity", "arm_embedded_gcc", "nrf5sdk", "nrf_cli", "segger_jlink"
     ])
     nrf5sdk_pkg = pkgs["nrf5sdk"]
     ae_gcc_pkg = pkgs["arm_embedded_gcc"]

@@ -1,0 +1,30 @@
+# Rules to make all current known Devices Under Test of the ubxlib test farm accessible
+# to Docker and with sensible names
+
+# USB to UART bridge used by ESP32 boards as TTY (actually a Silicon Labs CP210x USB to UART Bridge)
+SUBSYSTEMS=="usb", ENV{ID_SILABS_UART_INTERFACE_NUMBER}="$attr{bInterfaceNumber}"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea60", ENV{ID_SILABS_UART_INTERFACE_NUMBER}=="00", MODE:="0666", SYMLINK+="silabs_cp210x_uart"
+
+# u-blox GNSS receiver as TTY
+SUBSYSTEMS=="usb", ENV{ID_UBLOX_GNSS_UART_INTERFACE_NUMBER}="$attr{bInterfaceNumber}"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="1546", ATTRS{idProduct}=="01a9", ENV{ID_UBLOX_GNSS_UART_INTERFACE_NUMBER}=="01", MODE:="0666", SYMLINK+="ublox_gnss"
+
+# u-blox NINA-W1 board as TTY (actually a Future Technology Devices International, Ltd FT4232H Quad HS USB-UART/FIFO IC)
+SUBSYSTEMS=="usb", ENV{ID_FTDI_FT4232H_UART_INTERFACE_NUMBER}="$attr{bInterfaceNumber}"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6011", ENV{ID_FTDI_FT4232H_UART_INTERFACE_NUMBER}=="02", MODE:="0666", SYMLINK+="ftdi_ft4232h"
+
+# STLink V2.1, as used on the u-blox C030 board and the STM32F407 Discovery board
+SUBSYSTEMS=="usb", ENV{ID_STLINK_V2_1_INTERFACE_NUMBER}="$attr{bInterfaceNumber}", MODE:="0666", SYMLINK+="stlink_v2_1"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="374b", ENV{ID_STLINK_V2_1_INTERFACE_NUMBER}=="03", MODE:="0666", SYMLINK+="stlink_v2_1_uart"
+
+# SEGGER JLink Base standalone debugger
+SUBSYSTEMS=="usb", ENV{ID_SEGGER_JLINK_BASE_1_INTERFACE_NUMBER}="$attr{bInterfaceNumber}", MODE:="0666", SYMLINK+="segger_jlink_base"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="1366", ATTRS{idProduct}=="0101", ENV{ID_SEGGER_JLINK__BASE_1_INTERFACE_NUMBER}=="04", MODE:="0666", SYMLINK+="segger_jlink_base_uart"
+
+# SEGGER JLink, as used on the Nordic NRF52840DK board
+SUBSYSTEMS=="usb", ENV{ID_SEGGER_JLINK_NRF52840DK_INTERFACE_NUMBER}="$attr{bInterfaceNumber}", MODE:="0666", SYMLINK+="segger_jlink_nrf52840"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="1366", ATTRS{idProduct}=="1015", ENV{ID_SEGGER_JLINK_NRF52840DK_INTERFACE_NUMBER}=="05", MODE:="0666", SYMLINK+="segger_jlink_nrf52840_uart"
+
+# SEGGER JLink, as used on the Nordic NRF5340DK board
+SUBSYSTEMS=="usb", ENV{ID_SEGGER_JLINK_NRF5240DK_INTERFACE_NUMBER}="$attr{bInterfaceNumber}", MODE:="0666", SYMLINK+="segger_jlink_nrf5340"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="1366", ATTRS{idProduct}=="1055", ENV{ID_SEGGER_JLINK_NRF5240DK_INTERFACE_NUMBER}=="06", MODE:="0666", SYMLINK+="segger_jlink_nrf5340_uart"

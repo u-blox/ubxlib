@@ -19,6 +19,10 @@ def is_linux():
     '''Returns True when system is Linux'''
     return platform.system() == 'Linux'
 
+def is_arm():
+    '''Returns True when we're on a 64-bit ARM (e.g. a Raspberry Pi 2.1 and above)'''
+    return platform.machine() == 'aarch64'
+
 def question(text):
     """ Prompt user for yes/no question
     returns True if user enter yes otherwise False
@@ -55,7 +59,7 @@ def download(url, file):
     else:
         file.write(response.content)
     print()
-
+    return content_length
 
 
 def extract_tar(file, tar_mode, dest_dir, skip_first_sub_dir):
@@ -159,21 +163,30 @@ def download_and_extract(url, dest_dir, skip_first_sub_dir=False):
                         will be skipped
     """
     tar_mode = None
+    zip = False
     if url.lower().endswith(".tar.bz2"):
         tar_mode = "r:bz2"
     elif url.lower().endswith(".tar.xz"):
         tar_mode = "r:xz"
     elif url.lower().endswith(".tar.gz"):
         tar_mode = "r:gz"
-    with tempfile.TemporaryFile() as file:
-        download(url, file)
-        file.seek(0)
+    elif url.lower().endswith(".zip"):
+        zip = True
 
+    with tempfile.TemporaryFile() as file:
+        length = download(url, file)
+        file.seek(0)
+        print(f"Downloaded {length} byte(s)")
         # Now when the file has been downloaded we start the extraction
         if tar_mode != None:
             extract_tar(file, tar_mode, dest_dir, skip_first_sub_dir)
-        else:
+        elif zip:
             extract_zip(file, dest_dir, skip_first_sub_dir)
+        else:
+            os.makedirs(dest_dir, exist_ok=True)
+            dest_file_path = os.path.join(dest_dir, os.path.basename(url))
+            with open(dest_file_path, 'wb') as dest_file:
+                dest_file.write(file.read())
 
 
 def add_dir_to_path(config, dir):

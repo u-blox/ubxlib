@@ -1,0 +1,16 @@
+# Restart SMEE client periodically, required because the
+# SMEE client will fail silently, and stay failed, if the
+# SMEE server happens to change its IP address, which occurs
+# every so often
+
+[Unit]
+Description=Restart the smee-client Docker container periodically
+Requires=smee-client-restart.service
+
+[Timer]
+# Restart at 3 a.m. daily
+Unit=smee-client-restart.service
+OnCalendar=*-*-* 03:00:00
+
+[Install]
+WantedBy=timers.target

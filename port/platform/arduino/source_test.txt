@@ -68,7 +68,6 @@ common/short_range/test/u_short_range_test.c
 common/short_range/test/u_short_range_test_preamble.c
 common/short_range/test/u_short_range_test_private.c
 common/mqtt_client/test/u_mqtt_client_test.c
-common/mqtt_client/test/u_mqtt_client_test.c
 common/utils/test/u_utils_test_mempool.c
 common/utils/test/u_utils_test_ringbuffer.c
 port/test/u_port_test.c

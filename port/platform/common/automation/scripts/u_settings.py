@@ -119,35 +119,35 @@ __DEFAULT_SETTINGS["USB_CUTTER_ID_STRS" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = N
 __DEFAULT_SETTINGS["HW_RESET_DURATION_SECONDS"] = 5
 # u_connection.py
 __DEFAULT_SETTINGS["CONNECTION_INSTANCE_10" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = \
-    {"serial_port":"COM28"}
+    {"serial_port": "/dev/ftdi_ft4232h"}
 __DEFAULT_SETTINGS["CONNECTION_INSTANCE_11" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = \
-    {"serial_port":"COM8"}
+    {"serial_port": "/dev/silabs_cp210x_uart"}
 __DEFAULT_SETTINGS["CONNECTION_INSTANCE_12" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = \
-    {"serial_port":"COM9"}
+    {"serial_port": "/dev/silabs_cp210x_uart"}
 __DEFAULT_SETTINGS["CONNECTION_INSTANCE_13" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = \
-    {"serial_port":"COM6", "debugger":"683253856"}
+    {"serial_port": "COM6", "debugger":"683253856"}
 __DEFAULT_SETTINGS["CONNECTION_INSTANCE_14" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = \
-    {"serial_port":"COM19", "debugger":"066EFF515551678367072825"}
+    {"serial_port": "/dev/stlink_v2_1", "debugger":"066EFF515551678367072825"}
 __DEFAULT_SETTINGS["CONNECTION_INSTANCE_15" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = \
-    {"serial_port":"COM7", "debugger":"683920969"}
+    {"serial_port": "/dev/segger_jlink_nrf52840", "debugger":"683920969"}
 __DEFAULT_SETTINGS["CONNECTION_INSTANCE_16" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = \
-    {"serial_port":"COM3", "debugger":"066AFF565053787567193251"}
+    {"serial_port": "COM3", "debugger":"066AFF565053787567193251"}
 __DEFAULT_SETTINGS["CONNECTION_INSTANCE_17" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = \
-    {"serial_port": "COM11", "debugger": "960160994"}
+    {"serial_port": "/dev/segger_jlink_base", "debugger": "50102100"}
 __DEFAULT_SETTINGS["CONNECTION_INSTANCE_18" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = \
-    {"serial_port": "COM5", "debugger": "960167723"}
+    {"serial_port": "/dev/segger_jlink_base", "debugger": "51014525"}
 __DEFAULT_SETTINGS["CONNECTION_INSTANCE_19" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = \
-    {"serial_port": "COM25", "debugger": "0672FF565053787567161452"}
+    {"serial_port": "/dev/stlink_v2_1", "debugger": "0672FF565053787567161452"}
 __DEFAULT_SETTINGS["CONNECTION_INSTANCE_20" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = \
-    {"serial_port":"COM59"}
+    {"serial_port": "/dev/ftdi_ft4232h"}
 __DEFAULT_SETTINGS["CONNECTION_INSTANCE_21" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = \
-    {"serial_port":"COM51"}
+    {"serial_port": "/dev/ftdi_ft4232h"}
 __DEFAULT_SETTINGS["CONNECTION_INSTANCE_22" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = \
-    {"serial_port": "COM63"}
+    {"serial_port": "/dev/ftdi_ft4232h"}
 # Don't need one for instance 23 [Windows] since there is nothing to program
 # Don't need one for instance 24 [Zephyr/Linux] since there is nothing to program
 __DEFAULT_SETTINGS["CONNECTION_INSTANCE_25" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = \
-    {"serial_port": "COM36"}
+    {"serial_port": "/dev/silabs_cp210x_uart"}
 # u_data.py
 __DEFAULT_SETTINGS["DATA_FILE"] = "DATABASE.md"
 __DEFAULT_SETTINGS["CELLULAR_MODULE_TYPE_PREFIX"] = "U_CELL_MODULE_TYPE_"
@@ -161,7 +161,7 @@ __DEFAULT_SETTINGS["ASTYLE_DIRS"] = ["."]
 __DEFAULT_SETTINGS["DOXYGEN_DOXYFILE"] = "Doxyfile"
 #u_run_static_size.py
 __DEFAULT_SETTINGS["STATIC_SIZE_ARM_GNU_INSTALL_ROOT" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = \
-    "C:/Program Files (x86)/GNU Arm Embedded Toolchain/10 2020-q4-major/bin"
+    "/home/ubxlib/.ubxlibpkg/arm_embedded_gcc-10-2020-q4-major/bin/"
 # u_run_windows.py
 __DEFAULT_SETTINGS["WINDOWS_MSVC_BUILD_TOOLS_PATH" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] =         \
     "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools"
@@ -193,8 +193,8 @@ __DEFAULT_SETTINGS["EXE_RUN_QUEUE_WAIT_SECONDS"] = 1
 
 # Switches that can be controlled under automation
 __DEFAULT_SETTINGS["SWITCH_LIST" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] =    \
-    [{"name":"RF_SWITCH_A", "ip":"10.20.4.169", "0":":SETA=0", "1":":SETA=1"},
-     {"name":"PWR_SWITCH_A", "ip":"10.20.4.143", "0":"FF0700", "1":"FF0701"}]
+    [{"name":"RF_SWITCH_A", "ip":"10.10.2.212", "0":":SETA=0", "1":":SETA=1"},
+     {"name":"PWR_SWITCH_A", "ip":"10.10.2.210", "0":"FF0700", "1":"FF0701"}]
 
 # Other stuff
 __USER_INTERVENTION_REQUIRED = False

@@ -1,6 +1,5 @@
-Docker Host Setup
-================
-The files here are used for preparing a Ubuntu machine for running `ubxlib_builder` docker container.
+# Docker Host Setup: UBUNTU ONLY, NO LONGER USED
+The files here are used for preparing a Ubuntu machine for running `ubxlib_builder` docker container.  They are NO LONGER USED in the test system, but are kepy here in case they are of use in the future.
 
 Simply run `host_setup.sh`:
 

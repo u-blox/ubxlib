@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+
 #pragma once
 
 //#include "sdkconfig.h"
@@ -19,7 +20,7 @@
 extern "C" {
 #endif
 
-#if CONFIG_FREERTOS_ENABLE_TASK_SNAPSHOT || defined __DOXYGEN__
+#if (CONFIG_FREERTOS_ENABLE_TASK_SNAPSHOT || defined __DOXYGEN__) 
 /**
  * @brief Task Snapshot structure
  *

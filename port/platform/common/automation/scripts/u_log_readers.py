@@ -3,7 +3,7 @@
 import time
 import os
 from serial import Serial
-from pylink import JLink, jlock
+from pylink import JLink, jlock, library
 from pylink.enums import JLinkInterfaces
 
 class URttReader:
@@ -19,7 +19,14 @@ class URttReader:
         """
         self.device = device
         self.serial = jlink_serial
-        self.jlink = JLink()
+        try:
+            # This is normally what we want to do...
+            self.jlink = JLink()
+        except:
+            # ...except on ARM 64 bit where PyLink picks up a 32-bit library that is
+            # hanging around in the SEGGER directory for some reason, so we have to
+            # point it to the right location
+            self.jlink = JLink(lib=library.Library(dllpath="/opt/SEGGER/JLink/libjlinkarm.so"))
         self.jlink_logfile = jlink_logfile
         self.reset_on_connect = reset_on_connect
         self.block_address = rtt_block_address

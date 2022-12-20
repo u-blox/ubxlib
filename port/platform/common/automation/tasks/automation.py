@@ -217,12 +217,15 @@ def instance_command(ctx, instance_str, cmd):
         elif instance[0] == 3:
             return_code = u_run_pylint.run(u_utils.UBXLIB_DIR, ctx.reporter)
         elif instance[0] == 4:
+            u_package.load(ctx, ["make", "arm_embedded_gcc"])
             return_code = u_run_static_size.run(defines, u_utils.UBXLIB_DIR, ctx.reporter)
         elif instance[0] == 5:
+            u_package.load(ctx, ["make", "arm_embedded_gcc"])
             return_code = u_run_no_floating_point.run(defines, u_utils.UBXLIB_DIR, ctx.reporter)
         # instance 6 is codechecker and that will be handled by the platforms above
         elif instance[0] == 7:
             print(defines)
+            u_package.load(ctx, ["make", "arm_embedded_gcc"])
             return_code = u_run_static_size.run(defines, u_utils.UBXLIB_DIR, ctx.reporter)
         elif instance[0] == 8:
             return_code = u_run_check_ubxlib_h.run(u_utils.UBXLIB_DIR, ctx.reporter)

@@ -6,7 +6,7 @@ import ssl
 
 SEND_DATA = "Hello world"
 RECEIVE_DATA = ""
-HOST = "ubxlib.it-sgn.u-blox.com"
+HOST = "ubxlib.redirectme.net"
 PORT = 5065
 WAIT = True
 

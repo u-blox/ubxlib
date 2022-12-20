@@ -9,3 +9,4 @@ coloredlogs
 verboselogs
 portalocker
 lxml
+dataclasses

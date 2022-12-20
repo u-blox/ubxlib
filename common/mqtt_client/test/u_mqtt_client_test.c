@@ -100,7 +100,7 @@
 //lint -esym(773, U_MQTT_CLIENT_TEST_MQTT_BROKER_URL) Suppress not fully
 // bracketed, Lint is wary of the "-" in here but we can't have brackets
 // around this since it is used directly.
-# define U_MQTT_CLIENT_TEST_MQTT_BROKER_URL ubxlib.it-sgn.u-blox.com
+# define U_MQTT_CLIENT_TEST_MQTT_BROKER_URL ubxlib.redirectme.net
 #endif
 
 #ifndef U_MQTT_CLIENT_TEST_MQTT_SECURE_BROKER_URL
@@ -110,7 +110,7 @@
 //lint -esym(773, U_MQTT_CLIENT_TEST_MQTT_SECURE_BROKER_URL) Suppress not
 // fully bracketed, Lint is wary of the "-" in here but we can't have
 // brackets around this since it is used directly.
-# define U_MQTT_CLIENT_TEST_MQTT_SECURE_BROKER_URL ubxlib.it-sgn.u-blox.com:8883
+# define U_MQTT_CLIENT_TEST_MQTT_SECURE_BROKER_URL ubxlib.redirectme.net:8883
 #endif
 
 #ifndef U_MQTT_CLIENT_TEST_READ_TOPIC_MAX_LENGTH_BYTES
@@ -579,6 +579,8 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClient")
     uNetworkTestListFree();
 }
 
+#ifndef U_CFG_TEST_MQTT_CLIENT_SN_DISABLE_CONNECTIVITY_TEST
+
 /** Test MQTT-SN connectivity.
  */
 U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClientSn")
@@ -930,6 +932,8 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClientSn")
     }
     uNetworkTestListFree();
 }
+
+#endif // #ifndef U_CFG_TEST_MQTT_CLIENT_SN_DISABLE_CONNECTIVITY_TEST
 
 /** Clean-up to be run at the end of this round of tests, just
  * in case there were test failures which would have resulted

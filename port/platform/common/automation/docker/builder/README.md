@@ -1,7 +1,5 @@
-`ubxlib_builder` Docker Container
-================
-The `ubxlib_builder` container is used by all the Linux machines used in the test automation for ubxlib.
-The image is based on Ubuntu 20.04 and contains all the dependencies that are required for ubxlib automation except the things that are handled by [u_packages](../../u_packages.yml).
+#`ubxlib_builder` Docker Container
+The `ubxlib_builder` container is used by all the Linux machines used in the test automation for `ubxlib`. The image is based on Ubuntu 20.04 and contains all the dependencies that are required for `ubxlib` automation except the things that are handled by [u_packages](../../u_packages.yml).
 
 
 # Building `ubxlib_builder` Locally
@@ -29,7 +27,7 @@ $ echo hello world
 hello world
 ```
 
-To use it with ubxlib you also need to mount the ubxlib- and home directory:
+To use it with `ubxlib` you also need to mount the `ubxlib` work and home directories:
 
 ```sh
 $ docker-compose run --rm -v $HOME/git/ubxlib_priv:/workdir/ubxlib -v $HOME:/home/ubxlib ubxlib_builder sh
@@ -51,6 +49,7 @@ Available tasks:
 
 # Updating the Linux Jenkins Slaves
 For various reasons we are currently not using a Docker repo for handling our `ubxlib_builder`.
-Instead a Jenkins job have been setup that will build the `ubxlib_builder` image for all the ubxlib Linux-based Jenkins slaves which can be found in the Jenkin classic mode under `Dashboard -> ubxlib -> ubxlib_docker_build`. To build the image press `Build with Parameters`, enter the branch where the new `Dockerfile` is located in the field `UBXLIB_PRIV_REV`, then press `Build`. When the images has been successfully built it will get used next time a ubxlib Jenkins job has been started.
 
-NOTE: Before updating the slaves it is a good idea to first try building it locally as described above.
+Instead a Jenkins job have been setup that will build the `ubxlib_builder` image for all the `ubxlib` Linux-based Jenkins slaves which can be found in the Jenkin classic mode under `Dashboard -> ubxlib -> ubxlib_docker_build`. To build the image press `Build with Parameters`, enter the branch where the new `Dockerfile` is located in the field `UBXLIB_PRIV_REV`, then press `Build`. When the images has been successfully built it will get used next time a `ubxlib` Jenkins job has been started.
+
+NOTE: before updating the slaves it is a good idea to first try building locally as described above.

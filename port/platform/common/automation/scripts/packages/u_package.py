@@ -3,10 +3,11 @@ from invoke import Context
 from portalocker import Lock
 from portalocker.exceptions import AlreadyLocked
 from .. import u_config
-from .u_pkg_utils import is_automation, is_linux
+from .u_pkg_utils import is_automation, is_linux, is_arm
 from .u_base_package import *
 from .u_nrfconnectsdk_package import UNrfConnectSdkPackage
 from .u_esp_idf_package import UEspIdfPackage
+from .u_segger_jlink_package import USeggerJlinkPackage
 from typing import List, Dict
 
 AUTOMATION_LOCK_TIMEOUT = 60 * 15
@@ -19,7 +20,7 @@ def get_u_packages_config(ctx: Context):
         if is_linux():
             pkg_dir = "${HOME}/.ubxlibpkg"
         else:
-            pkg_dir = "${UserProfile}/.ubxlibpkg"
+            pkg_dir = "${UserProfile}\\.ubxlibpkg"
         os.environ["UBXLIB_PKG_DIR"] = os.path.expandvars(pkg_dir)
         ctx.config.run.env["UBXLIB_PKG_DIR"] = os.environ["UBXLIB_PKG_DIR"]
 
@@ -27,11 +28,11 @@ def get_u_packages_config(ctx: Context):
     if not 'cfg_dir' in ctx.config:
         ctx.config['cfg_dir'] = os.getcwd()
     cfg_file = os.path.join(ctx.config['cfg_dir'], "u_packages.yml")
-    pkg_cfg = u_config.load_config_yaml(cfg_file, is_linux())
+    pkg_cfg = u_config.load_config_yaml(cfg_file, is_linux(), is_arm())
     # For all packages that doesn't specify package_dir we add a default value
     for pkg_name in pkg_cfg:
         if not "package_dir" in pkg_cfg[pkg_name]:
-            dir = os.path.expandvars("${UBXLIB_PKG_DIR}/" + f"{pkg_name}")
+            dir = os.path.join(os.path.expandvars("${UBXLIB_PKG_DIR}"), os.path.expandvars(f"{pkg_name}"))
             if "version" in pkg_cfg[pkg_name]:
                 dir = dir + f"-{pkg_cfg[pkg_name]['version']}"
             pkg_cfg[pkg_name]["package_dir"] = dir
@@ -77,8 +78,12 @@ def load(ctx: Context, packages: List[str]) -> Dict[str,UBasePackage]:
                     pkg = UAptPackage()
                 elif type == "git":
                     pkg = UGitPackage()
+                elif type == "executable":
+                    pkg = UExecutablePackage()
                 elif type == "esp_idf":
                     pkg = UEspIdfPackage()
+                elif type == "segger_jlink":
+                    pkg = USeggerJlinkPackage()
                 else:
                     raise UPackageException(f"Unknown package type: {type}")
                 pkg.name = pkg_name
