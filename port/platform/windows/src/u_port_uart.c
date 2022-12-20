@@ -92,10 +92,6 @@ typedef struct uPortUartData_t {
     uint32_t eventFilter;
     void (*pEventCallback)(int32_t, uint32_t, void *);
     void *pEventCallbackParam;
-    bool userNeedsNotify; /**< set this when all the data has
-                           * been read and hence the user
-                           * would like a notification
-                           * when new data arrives. */
     struct uPortUartData_t *pNext;
 } uPortUartData_t;
 
@@ -363,10 +359,8 @@ static DWORD handleThreadUartEvent(uPortUartData_t *pUartData,
     }
 
     if ((totalSize > 0) &&
-        (pUartData->userNeedsNotify) &&
         (pUartData->eventQueueHandle >= 0)) {
         // Call the user callback
-        pUartData->userNeedsNotify = false;
         event.uartHandle = pUartData->uartHandle;
         event.eventBitMap = U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED;
         event.pEventCallback = pUartData->pEventCallback;
@@ -565,7 +559,6 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
             pUartData = pUartAdd();
             if (pUartData != NULL) {
                 pUartData->markedForDeletion = false;
-                pUartData->userNeedsNotify = true;
                 pUartData->pRxBufferStart = (char *) pReceiveBuffer;
                 if (pUartData->pRxBufferStart == NULL) {
                     // Malloc memory for the read buffer
@@ -733,10 +726,6 @@ int32_t uPortUartGetReceiveSize(int32_t handle)
                                    pUartData->pRxBufferRead) +
                                   (pRxBufferWrite - pUartData->pRxBufferStart);
             }
-
-            if (sizeOrErrorCode == 0) {
-                pUartData->userNeedsNotify = true;
-            }
         }
 
         U_PORT_MUTEX_UNLOCK(gMutex);
@@ -808,10 +797,6 @@ int32_t uPortUartRead(int32_t handle, void *pBuffer,
                     // Move the read pointer on
                     pUartData->pRxBufferRead += thisSize;
                 }
-            }
-
-            if (sizeOrErrorCode == 0) {
-                pUartData->userNeedsNotify = true;
             }
         }
 

@@ -127,9 +127,6 @@ typedef struct uPortUartData_t {
     char *pRxBufferStart;
     char *pRxBufferRead;
     volatile char *pRxBufferWrite;
-    volatile bool userNeedsNotify; /**!< set this if there is no data to read
-                                    * so that the user is notified when new
-                                    * data arrives. */
     struct uPortUartData_t *pNext;
 } uPortUartData_t;
 
@@ -625,18 +622,14 @@ static inline void dataIrqHandler(uPortUartData_t *pUartData,
                                     pUartData->rxBufferSizeBytes;
     }
 
-    // If there is new data and the user wanted to know
-    // then send a message to let them know.
-    if ((uartSizeOrError > 0) && pUartData->userNeedsNotify) {
-        if ((pUartData->eventQueueHandle >= 0) &&
-            (pUartData->eventFilter & U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED)) {
-            uPortUartEvent_t event;
-            event.uartHandle = pUartData->uartHandle;
-            event.eventBitMap = U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED;
-            uPortEventQueueSendIrq(pUartData->eventQueueHandle,
-                                   &event, sizeof(event));
-        }
-        pUartData->userNeedsNotify = false;
+    // Let the user know
+    if ((uartSizeOrError > 0) && (pUartData->eventQueueHandle >= 0) &&
+        (pUartData->eventFilter & U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED)) {
+        uPortUartEvent_t event;
+        event.uartHandle = pUartData->uartHandle;
+        event.eventBitMap = U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED;
+        uPortEventQueueSendIrq(pUartData->eventQueueHandle,
+                               &event, sizeof(event));
     }
 }
 
@@ -983,7 +976,6 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
                     uartData.pRxBufferWrite = uartData.pRxBufferStart;
                     uartData.ctsSuspended = false;
                     uartData.eventQueueHandle = -1;
-                    uartData.userNeedsNotify = true;
 
                     pUartReg = gUartCfg[uart].pReg;
                     dmaEngine = gUartCfg[uart].dmaEngine;
@@ -1214,12 +1206,6 @@ int32_t uPortUartGetReceiveSize(int32_t handle)
                                    pUartData->pRxBufferRead) +
                                   (pRxBufferWrite - pUartData->pRxBufferStart);
             }
-
-            // If there's nothing left waiting, need to inform
-            // the user when something arrives
-            if (sizeOrErrorCode == 0) {
-                pUartData->userNeedsNotify = true;
-            }
         }
 
         U_PORT_MUTEX_UNLOCK(gMutex);
@@ -1245,9 +1231,6 @@ int32_t uPortUartRead(int32_t handle, void *pBuffer,
         sizeOrErrorCode = U_ERROR_COMMON_INVALID_PARAMETER;
         pUartData = pGetUartDataByHandle(handle);
         if (pUartData != NULL) {
-            // Right before we take a sample of pRxBufferWrite we need to re-enable
-            // UART receive events
-            pUartData->userNeedsNotify = true;
             pRxBufferWrite = pUartData->pRxBufferWrite;
             if (pUartData->pRxBufferRead < pRxBufferWrite) {
                 // Read pointer is behind write, just take as much
