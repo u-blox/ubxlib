@@ -987,8 +987,8 @@ void uCellPrivateSetDeepSleepState(uCellPrivateInstance_t *pInstance)
     // deep sleep URC was received), then we don't need to do anything.
     if ((pInstance->deepSleepState != U_CELL_PRIVATE_DEEP_SLEEP_STATE_ASLEEP) &&
         (pInstance->deepSleepState != U_CELL_PRIVATE_DEEP_SLEEP_STATE_PROTOCOL_STACK_ASLEEP)) {
-        if (U_CELL_PRIVATE_HAS(pInstance->pModule,
-                               U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING)) {
+        if (!U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING)) {
             // If 3GPP power saving is not supported then deep sleep is plainly unavailable
             pInstance->deepSleepState = U_CELL_PRIVATE_DEEP_SLEEP_STATE_UNAVAILABLE;
         } else {
