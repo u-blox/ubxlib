@@ -1590,6 +1590,16 @@ int32_t uCellSockWrite(uDeviceHandle_t cellHandle,
                             // Bytes sent
                             sentSize = uAtClientReadInt(atHandle);
                             uAtClientResponseStop(atHandle);
+                            // Note: the sentSize check below is because we have seen cases
+                            // where the module returns just "OK", missing out the "+USOWR: x"
+                            // response; what to do when this happens?  The AT unlock check
+                            // will pass because it has been sent an "OK", but has the data
+                            // been sent or was the OK for a previous "AT" and we have somehow
+                            // or other become unsynchronised with the module? Gonna assume
+                            // the worst, that the data has not been sent.
+                            if (sentSize < 0) {
+                                sentSize = 0;
+                            }
                             if (uAtClientUnlock(atHandle) == 0) {
                                 dataOffset += sentSize;
                                 leftToSendSize -= sentSize;
