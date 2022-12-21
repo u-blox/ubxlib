@@ -343,7 +343,14 @@ Set up a `udev` rule so that `uhubctl` can be called without `sudo` as follows:
 
 If the above doesn't work, enter `sudo udevadm control --log-priority=debug` then `sudo udevadm trigger --attr-match=subsystem=usb` followed by `sudo journalctl -n 1000` and scroll down to the end of the log to check for `52-usb.rules` being read and then lines saying something like `Setting permissions /dev/bus/usb/001/001, uid=0, gid=20, mode=0664` for each USB hub, where `gid` should match the ID of the `dialout` group (`getent group | grep dialout` and it is the number in the middle).  If you don't see that, it might be that Raspbian has changed its `udev` strings \[again\]: to obtain the `udev` attributes of the USB hubs, enter `sudo uhubctl` to get the `idVendor:idProduct` of the hubs that `uhubctl` supports and then \[for a Raspberry Pi 4\] enter `sudo udevadm info -a -n /dev/bus/usb/001/001` to check the `udev` attributes of the first USB hub (a single USB2 port which just chains the next one), `sudo udevadm info -a -n /dev/bus/usb/001/002` for that next one (which has four ports) and `sudo udevadm info -a -n /dev/bus/usb/002/001` for the four-port USB3 hub (cross-match the IDs to be sure); you can check that the attributes match-up with the ones used in `52-usb.rules`.
 
-FYI, on the Raspberry Pi the power to **all** USB ports is controlled at once; switch them off with `uhubctl -a 0 -l 1-1 -r 100` and on again with `uhubctl -a 1 -l 1-1`.  The `-r` on the "off" option is necessary with some Segger J-Link boxes because they try to switch themselves back on again; `-r` makes `uhubctl` retry to really shut them down.
+On the Raspberry Pi the power to **all** USB ports is controlled at once; switch them off with `uhubctl -a 0 -l 1-1 -r 100` and on again with `uhubctl -a 1 -l 1-1`.  The `-r` on the "off" option is necessary with some Segger J-Link boxes because they try to switch themselves back on again; `-r` makes `uhubctl` retry to really shut them down.  Even then some can stay on so, as another fix, following the [advice here](https://github.com/mvp/uhubctl#power-comes-back-on-after-few-seconds-on-linux) do the following:
+
+```
+echo 0 > sudo tee /sys/bus/usb/devices/1-1.1/authorized
+echo 0 > sudo tee /sys/bus/usb/devices/1-1.2/authorized
+echo 0 > sudo tee /sys/bus/usb/devices/1-1.3/authorized
+echo 0 > sudo tee /sys/bus/usb/devices/1-1.4/authorized
+```
 
 Note: if you have just added a new Raspberry Pi and are having trouble matching the thing you are SSH'ed-into with the real world, switching the USB hub off and on again, assuming there is a board attached with LEDs on it, is a good way of determining what's what/who's who/which is which.
 
