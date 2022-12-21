@@ -1,6 +1,6 @@
 <img src="/readme_images/ubxlib-logo.svg" width="400">
 
-[![important message](/readme_images/important_msg.svg)](/HOW_TO_UPGRADE.md)
+[![important message](/readme_images/important_msg.svg)](/UPCOMING.md)
 
 # Introduction to `ubxlib`
 
