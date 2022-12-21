@@ -101,8 +101,6 @@ extern TX_BYTE_POOL *pHeapPool;
 
 #define U_CFG_OS_APP_TASK_PRIORITY (U_CFG_OS_PRIORITY_MAX - 2)
 
-#define U_AT_CLIENT_URC_TASK_PRIORITY (U_CFG_OS_PRIORITY_MAX - 1)
-
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS FOR SARAR5UCPU: EVENT QUEUE
  * -------------------------------------------------------------- */
