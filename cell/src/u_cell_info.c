@@ -986,8 +986,8 @@ int64_t uCellInfoGetTimeUtc(uDeviceHandle_t cellHandle)
                 if ((timeUtc >= 0) && (bytesRead >= 20)) {
                     // There's a timezone, expressed in 15 minute intervals,
                     // subtract it to get UTC
-                    offset = 18;
-                    buffer[offset + 2] = 0;
+                    offset = 17;
+                    buffer[offset + 3] = 0;
                     timeUtc -= ((int64_t) atoi(&(buffer[offset]))) * 15 * 60;
                 }
 
