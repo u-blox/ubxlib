@@ -1,6 +1,8 @@
 # Introduction
 This document describes how to configure and then operate secure external access to the automated test system. See [ACCESS_REQUEST](ACCESS_REQUEST.md) for instructions on how a u-blox employee may request access to the system.
 
+*** PLEASE KEEP THESE INSTRUCTIONS (AND THOSE IN ACCESS_REQUEST.MD) UP TO DATE IF YOU MAKE ANY CHANGES TO THE ACCESS MECHANISMS ***
+
 # Description
 Generic HTTPS access to the Jenkins server is protected as follows:
 - a private key is created on the Jenkins machine,
@@ -112,7 +114,7 @@ openssl ca -gencrl -keyfile /etc/ssl/private/ubxlib_test_system.key -cert /etc/s
 - Install an NGINX Docker container with:
 
 ```
-docker run --name nginx --mount type=bind,source=/etc/ssl,target=/etc/ssl,readonly --mount type=bind,source=/etc/pki,target=/etc/pki,readonly --mount type=bind,source=/etc/letsencrypt,target=/etc/letsencrypt,readonly -p 443:443 -d nginx
+docker run --name nginx  --restart=on-failure --detach --mount type=bind,source=/etc/ssl,target=/etc/ssl,readonly --mount type=bind,source=/etc/pki,target=/etc/pki,readonly --mount type=bind,source=/etc/letsencrypt,target=/etc/letsencrypt,readonly -p 443:443 -d nginx
 ```
 
 - Install `nano` in the container with :
