@@ -1073,6 +1073,7 @@ static void runUartTest(int32_t size, int32_t speed, bool flowControlOn)
     }
 
     // Send data over the UART N times, the callback will check it
+    U_TEST_PRINT_LINE("sending data.");
     while (bytesSent < size) {
         // -1 to omit gUartTestData string terminator
         bytesToSend = sizeof(gUartTestData) - 1;
@@ -1095,6 +1096,8 @@ static void runUartTest(int32_t size, int32_t speed, bool flowControlOn)
     }
 
     // Wait long enough for everything to have been received
+    U_TEST_PRINT_LINE("waiting %d ms for everything to arrive back.",
+                      U_PORT_TEST_UART_TIME_TO_ARRIVE_MS);
     uPortTaskBlock(U_PORT_TEST_UART_TIME_TO_ARRIVE_MS);
 
     // Print out some useful stuff

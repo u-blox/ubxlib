@@ -1285,7 +1285,7 @@ U_PORT_TEST_FUNCTION("[network]", "networkOutage")
                 uPortLog("AUTOMATION_SET_SWITCH CELL 1\n");
 # endif
                 U_TEST_PRINT_LINE_X("waiting for all network types to come back up...", a);
-                uPortTaskBlock(15000);
+                uPortTaskBlock(20000);
             } else {
                 for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
                     pCallbackParameters = &(gNetworkStatusCallbackParameters[pTmp->networkType]);

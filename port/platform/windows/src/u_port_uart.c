@@ -415,7 +415,7 @@ static int32_t waitCommEventThread(void *pParam)
             // Finally, last in the array, add a timer that we can
             // use to periodically poll the UART for received data
             // in case we were unable to process any events (e.g.
-            // if our  buffer was full at the time).
+            // if our buffer was full at the time).
             eventHandles[2] = CreateWaitableTimer(NULL, false, NULL);
             if (eventHandles[2] != INVALID_HANDLE_VALUE) {
                 // Start the periodic timer, a relative timeout value
@@ -443,9 +443,9 @@ static int32_t waitCommEventThread(void *pParam)
                             // eventHandles[1] flag when something has happened
                             // while a terminate event might arrive on eventHandles[0]
                             // and the periodic poll timer on eventHandles[2]
-                            x = WaitForMultipleObjects(sizeof(eventHandles) / sizeof(eventHandles[0]),
-                                                       eventHandles,
-                                                       false, INFINITE);
+                            x = WaitForMultipleObjectsEx(sizeof(eventHandles) / sizeof(eventHandles[0]),
+                                                         eventHandles,
+                                                         false, INFINITE, true);
                             switch (x) {
                                 case WAIT_OBJECT_0 + 0:
                                     // Terminate thread was signalled
@@ -453,8 +453,7 @@ static int32_t waitCommEventThread(void *pParam)
                                     break;
                                 case WAIT_OBJECT_0 + 1:
                                     // UART event was signaled, go get it
-                                    // Have to provide x but it is not used
-                                    if (GetOverlappedResult(windowsUartHandle, &overlap, &x, true)) {
+                                    if (GetOverlappedResult(windowsUartHandle, &overlap, &uartEvent, true)) {
                                         handleThreadUartEvent(pUartData, uartEvent);
                                     }
                                     break;
@@ -624,15 +623,15 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
                                                                                                     false,
                                                                                                     NULL);
                                         if (pUartData->waitCommEventThreadTerminateHandle != INVALID_HANDLE_VALUE) {
-                                            // ...then create the WaitCom thread
-                                            pUartData->waitCommEventThreadHandle = CreateThread(NULL, 0,
-                                                                                                (LPTHREAD_START_ROUTINE) waitCommEventThread,
-                                                                                                (PVOID) pUartData->uartHandle,
-                                                                                                0, NULL);
-                                            if (pUartData->waitCommEventThreadHandle != INVALID_HANDLE_VALUE) {
-                                                // Now mask-in the receive event flag as that's the only
-                                                // one we support/care about
-                                                if (SetCommMask(pUartData->windowsUartHandle, EV_RXCHAR)) {
+                                            // Now mask-in the receive event flag as that's the only
+                                            // one we support/care about
+                                            if (SetCommMask(pUartData->windowsUartHandle, EV_RXCHAR)) {
+                                                // ...then create the WaitCom thread
+                                                pUartData->waitCommEventThreadHandle = CreateThread(NULL, 0,
+                                                                                                    (LPTHREAD_START_ROUTINE) waitCommEventThread,
+                                                                                                    (PVOID) pUartData->uartHandle,
+                                                                                                    0, NULL);
+                                                if (pUartData->waitCommEventThreadHandle != INVALID_HANDLE_VALUE) {
                                                     // Done!
                                                     handleOrErrorCode = pUartData->uartHandle;
                                                 }
