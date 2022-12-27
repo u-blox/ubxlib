@@ -633,6 +633,24 @@ void uAtClientDelaySet(uAtClientHandle_t atHandle,
  */
 void uAtClientLock(uAtClientHandle_t atHandle);
 
+/** There are [rare] situations where you might not want other
+ * tasks to get in and begin an AT operation while, at the same
+ * time, you need your code to behave as if a lock has just
+ * been taken, resetting errors and restarting the lock time.
+ * This function may be used in those rare cases; where you
+ * would unlock and relock the AT client with a pair of
+ * uAtClientUnlock() / uAtClientLock() functions, use a single
+ * uAtClientLockExtend() instead, not forgetting of course
+ * to call uAtClientUnlock() as normal in the end.
+ *
+ * If the AT client is not currently locked this function does nothing.
+ *
+ * @param atHandle  the handle of the AT client.
+ * @return          the last error that happened on the
+ *                  AT interface of this AT client.
+ */
+int32_t uAtClientLockExtend(uAtClientHandle_t atHandle);
+
 /** Unlock the stream.  This MUST be called to release
  * the AT client lock, otherwise the AT client will hang
  * on a subsequent call to uAtClientLock().

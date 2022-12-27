@@ -2859,6 +2859,32 @@ void uAtClientLock(uAtClientHandle_t atHandle)
     }
 }
 
+// Extend a mutex lock
+int32_t uAtClientLockExtend(uAtClientHandle_t atHandle)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+    uAtClientInstance_t *pClient = (uAtClientInstance_t *) atHandle;
+    uPortMutexHandle_t streamMutex;
+
+    if ((pClient != NULL) && (pClient->streamMutex != NULL)) {
+        streamMutex = streamTryLock(pClient, 0);
+        if (streamMutex == NULL) {
+            // We were not able to lock the mutex so we definitely
+            // are in a lock - reset errors and reset the lock
+            // time
+            errorCode = (int32_t) pClient->error;
+            clearError(pClient);
+            pClient->lockTimeMs = uPortGetTickTimeMs();
+        } else {
+            // We were able to lock the stream mutex, we are obviously
+            // not currently in a lock, so do nothing
+            uPortMutexUnlock(streamMutex);
+        }
+    }
+
+    return errorCode;
+}
+
 // Unlock the stream and kick off a receive
 // if there is some data lounging around.
 int32_t uAtClientUnlock(uAtClientHandle_t atHandle)

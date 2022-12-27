@@ -1436,6 +1436,14 @@ static int32_t getApnStrUpsd(const uCellPrivateInstance_t *pInstance,
 
 // Activate context using 3GPP commands, required
 // for SARA-R4/R5/R6 and TOBY modules.
+// IMPORTANT: this function must run a single uAtClientLock(),
+// i.e. take it at the start and then not relinquish it until
+// the end.  This is because it may be called on return to
+// service from an outage, in a callback which runs at the
+// same priority as the rest of the application, and must run
+// to completion before the rest of the application is schedule
+// again, which it might be if the mutex that is uAtClientLock()
+// is unlocked.
 static int32_t activateContext(const uCellPrivateInstance_t *pInstance,
                                int32_t contextId, int32_t profileId)
 {
@@ -1446,11 +1454,12 @@ static int32_t activateContext(const uCellPrivateInstance_t *pInstance,
     bool ours;
 
     deviceError.type = U_AT_CLIENT_DEVICE_ERROR_TYPE_NO_ERROR;
+    uAtClientLock(atHandle);
     for (size_t x = 5; (x > 0) && keepGoingLocalCb(pInstance) &&
          (errorCode != 0) &&
          ((deviceError.type == U_AT_CLIENT_DEVICE_ERROR_TYPE_NO_ERROR) ||
           (deviceError.type == U_AT_CLIENT_DEVICE_ERROR_TYPE_ERROR)); x--) {
-        uAtClientLock(atHandle);
+        uAtClientLockExtend(atHandle);
         uAtClientTimeoutSet(atHandle,
                             pInstance->pModule->responseMaxWaitMs);
         uAtClientCommandStart(atHandle, "AT+CGACT?");
@@ -1467,17 +1476,14 @@ static int32_t activateContext(const uCellPrivateInstance_t *pInstance,
             }
         }
         uAtClientResponseStop(atHandle);
-        // Don't check for errors here as we will likely
-        // have a timeout through waiting for a +CGACT that
-        // didn't come.
-        uAtClientUnlock(atHandle);
+        // Do NOT unlock the AT client here
         if (activated) {
-            errorCode = uCellPrivateActivateProfile(pInstance, contextId,
-                                                    profileId, 5, keepGoingLocalCb);
+            errorCode = uCellPrivateActivateProfileNoAtLock(pInstance, contextId,
+                                                            profileId, 5, keepGoingLocalCb);
         } else {
             uPortTaskBlock(2000);
             // Help it on its way.
-            uAtClientLock(atHandle);
+            uAtClientLockExtend(atHandle);
             uAtClientCommandStart(atHandle, "AT+CGACT=");
             uAtClientWriteInt(atHandle, 1);
             uAtClientWriteInt(atHandle, contextId);
@@ -1487,9 +1493,9 @@ static int32_t activateContext(const uCellPrivateInstance_t *pInstance,
             // likely the network has actively rejected us,
             // e.g. due to an invalid APN
             uAtClientDeviceErrorGet(atHandle, &deviceError);
-            uAtClientUnlock(atHandle);
         }
     }
+    uAtClientUnlock(atHandle);
 
     return errorCode;
 }

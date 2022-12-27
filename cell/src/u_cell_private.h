@@ -639,6 +639,28 @@ int32_t uCellPrivateActivateProfile(const uCellPrivateInstance_t *pInstance,
                                     int32_t contextId, int32_t profileId, size_t tries,
                                     bool (*pKeepGoing) (const uCellPrivateInstance_t *));
 
+/** As uCellPrivateActivateProfile() but this one does NOT lock or unlock
+ * the AT client as it works: this is useful if you do not want other tasks to
+ * get in and use the AT client while the profile activation is in progress, e.g.
+ * if you are recovering from loss of service and don't want other tasks at the
+ * same priority to get in half way through.
+ *
+ * IMPORTANT: it is up to YOU to lock the AT client before calling this function
+ * and to unlock the AT client again afterwards.
+ *
+ * @param pInstance   a pointer to the cellular instance.
+ * @param contextId   the ID for the PDP context.
+ * @param profileId   the ID of the profile to associate with the PDP context.
+ * @param tries       the number of times to try doing this, should be at
+ *                    least 1.
+ * @param pKeepGoing  a callback which should return true if the profile
+ *                    activation process is to continue, or can be NULL.
+ * @return            zero on success else negative error code.
+ */
+int32_t uCellPrivateActivateProfileNoAtLock(const uCellPrivateInstance_t *pInstance,
+                                            int32_t contextId, int32_t profileId, size_t tries,
+                                            bool (*pKeepGoing) (const uCellPrivateInstance_t *));
+
 /** Determine whether deep sleep is active, i.e. VInt has gone
  * low; the +UUPSMR URC doesn't count here, it's only actual deep sleep
  * that we care about.
