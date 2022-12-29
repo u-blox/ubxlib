@@ -62,6 +62,7 @@
 #include "u_gnss_module_type.h"
 #include "u_gnss_type.h"
 #include "u_gnss.h"
+#include "u_gnss_cfg.h"   // For uGnssCfgSetProtocolOut()
 #include "u_gnss_info.h"  // For uGnssInfoGetFirmwareVersionStr()
 #include "u_gnss_util.h"
 #include "u_gnss_private.h"

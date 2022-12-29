@@ -254,10 +254,7 @@ int32_t uGnssCfgGetProtocolOut(uDeviceHandle_t gnssHandle);
  *                   supported by the GNSS chip (though using this
  *                   with onNotOff set to false will return an error).
  *                   UBX protocol output cannot be switched off
- *                   since it is used by this code. The range of
- *                   the parameter is NOT checked, hence you may set
- *                   a value which is known to the GNSS chip but not
- *                   to this code.
+ *                   since it is used by this code.
  * @param onNotOff   whether the given protocol should be on or off.
  * @return           zero on succes or negative error code.
  */

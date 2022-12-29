@@ -55,7 +55,7 @@ extern "C" {
 
 /** The protocol version for the CFG VAL entities.
  */
-#define U_GNSS_CFG_VAL_VERSION 34.00
+#define U_GNSS_CFG_VAL_VERSION 34.10
 
 /** A key group ID which means "all groups", the wildcard.
  */
@@ -320,9 +320,23 @@ typedef enum {
                                                                     a shunt for current measurement). */
     U_GNSS_CFG_VAL_KEY_ITEM_HW_ANT_SUP_SHORT_THR_U1    = 0x55, /**< antenna supervisor MADC engine short detection
                                                                     threshold in milliVolts. */
-    U_GNSS_CFG_VAL_KEY_ITEM_HW_ANT_SUP_OPEN_THR_U1     = 0x56  /**< antenna supervisor MADC engine open/disconnect
+    U_GNSS_CFG_VAL_KEY_ITEM_HW_ANT_SUP_OPEN_THR_U1     = 0x56, /**< antenna supervisor MADC engine open/disconnect
                                                                     detection threshold in milliVolts. */
+    U_GNSS_CFG_VAL_KEY_ITEM_HW_RF_LNA_MODE_E1          = 0x57  /**< sets the operating mode for the RF LNA (all RFs).
+                                                                    Lowgain or bypass options can be used if there is
+                                                                    already an external LNA in front of the chip with
+                                                                    sufficient gain; applicable to M10 and later only.
+                                                                    See #uGnssCfgValKeyItemValueHwRfLnaMode_t. */
 } uGnssCfgValKeyItemHw_t;
+
+/** Values for #U_GNSS_CFG_VAL_KEY_ITEM_HW_RF_LNA_MODE_E1, see
+ * #uGnssCfgValKeyItemHw_t.
+ */
+typedef enum {
+    U_GNSS_CFG_VAL_KEY_ITEM_VALUE_HW_RF_LNA_MODE_NORMAL    = 0, /**< normal operation, internal LNA enabled at full gain. */
+    U_GNSS_CFG_VAL_KEY_ITEM_VALUE_HW_RF_LNA_MODE_LOWGAIN   = 1, /**< LNA enabled in low gain mode. */
+    U_GNSS_CFG_VAL_KEY_ITEM_VALUE_HW_RF_LNA_MODE_BYPASS    = 2  /**< bypass LNA. */
+} uGnssCfgValKeyItemValueHwRfLnaMode_t;
 
 /** Item IDs for #U_GNSS_CFG_VAL_KEY_GROUP_ID_I2C.
  */
@@ -1316,7 +1330,7 @@ typedef enum  {
     U_GNSS_CFG_VAL_KEY_ITEM_PM_MINACQTIME_U1        = 0x06, /**< minimum time to spend in acquisition state in seconds. */
     U_GNSS_CFG_VAL_KEY_ITEM_PM_MAXACQTIME_U1        = 0x07, /**< maximum time to spend in acquisition state in seconds;
                                                                  if set to 0 the bound is disabled. */
-    U_GNSS_CFG_VAL_KEY_ITEM_PM_ONOTENTEROFF_L       = 0x08, /**< disable to make the receiver enter (inactive) awaiting
+    U_GNSS_CFG_VAL_KEY_ITEM_PM_DONOTENTEROFF_L      = 0x08, /**< disable to make the receiver enter (inactive) awaiting
                                                                  next search state, enable to make the receiver not enter
                                                                  (inactive) awaiting next search state but keep trying to
                                                                  acquire a fix instead. */
@@ -2044,11 +2058,12 @@ typedef enum {
 /** Values for #U_GNSS_CFG_VAL_KEY_ITEM_TP_TIMEGRID_TP1_E1 and #U_GNSS_CFG_VAL_KEY_ITEM_TP_TIMEGRID_TP2_E1.
  */
 typedef enum {
-    U_GNSS_CFG_VAL_KEY_ITEM_VALUE_TP_TIMEGRID_UTC  = 0, /**< use UTC time reference. */
-    U_GNSS_CFG_VAL_KEY_ITEM_VALUE_TP_TIMEGRID_GPS  = 1, /**< use GPS time reference. */
-    U_GNSS_CFG_VAL_KEY_ITEM_VALUE_TP_TIMEGRID_GLO  = 2, /**< use GLONASS time reference. */
-    U_GNSS_CFG_VAL_KEY_ITEM_VALUE_TP_TIMEGRID_BDS  = 3, /**< use BeiDou time reference. */
-    U_GNSS_CFG_VAL_KEY_ITEM_VALUE_TP_TIMEGRID_GAL  = 4  /**< use Galileo time reference. */
+    U_GNSS_CFG_VAL_KEY_ITEM_VALUE_TP_TIMEGRID_UTC   = 0, /**< use UTC time reference. */
+    U_GNSS_CFG_VAL_KEY_ITEM_VALUE_TP_TIMEGRID_GPS   = 1, /**< use GPS time reference. */
+    U_GNSS_CFG_VAL_KEY_ITEM_VALUE_TP_TIMEGRID_GLO   = 2, /**< use GLONASS time reference. */
+    U_GNSS_CFG_VAL_KEY_ITEM_VALUE_TP_TIMEGRID_BDS   = 3, /**< use BeiDou time reference. */
+    U_GNSS_CFG_VAL_KEY_ITEM_VALUE_TP_TIMEGRID_GAL   = 4, /**< use Galileo time reference. */
+    U_GNSS_CFG_VAL_KEY_ITEM_VALUE_TP_TIMEGRID_NAVIC = 5  /**< use NavIC time reference. */
 } uGnssCfgValKeyItemValueTpTimegrid_t;
 
 /** Values for #U_GNSS_CFG_VAL_KEY_ITEM_TP_DRSTR_TP1_E1 and #U_GNSS_CFG_VAL_KEY_ITEM_TP_DRSTR_TP2_E1.
@@ -2271,6 +2286,7 @@ typedef enum {
 #define U_GNSS_CFG_VAL_KEY_ID_HW_ANT_SUP_ENGINE_E1               0x20a30054
 #define U_GNSS_CFG_VAL_KEY_ID_HW_ANT_SUP_SHORT_THR_U1            0x20a30055
 #define U_GNSS_CFG_VAL_KEY_ID_HW_ANT_SUP_OPEN_THR_U1             0x20a30056
+#define U_GNSS_CFG_VAL_KEY_ID_HW_RF_LNA_MODE_E1                  0x20a30057
 #define U_GNSS_CFG_VAL_KEY_ID_I2C_ADDRESS_U1                     0x20510001
 #define U_GNSS_CFG_VAL_KEY_ID_I2C_EXTENDEDTIMEOUT_L              0x10510002
 #define U_GNSS_CFG_VAL_KEY_ID_I2C_ENABLED_L                      0x10510003
@@ -2968,7 +2984,7 @@ typedef enum {
 #define U_GNSS_CFG_VAL_KEY_ID_PM_ONTIME_U2                       0x30d00005
 #define U_GNSS_CFG_VAL_KEY_ID_PM_MINACQTIME_U1                   0x20d00006
 #define U_GNSS_CFG_VAL_KEY_ID_PM_MAXACQTIME_U1                   0x20d00007
-#define U_GNSS_CFG_VAL_KEY_ID_PM_ONOTENTEROFF_L                  0x10d00008
+#define U_GNSS_CFG_VAL_KEY_ID_PM_DONOTENTEROFF_L                 0x10d00008
 #define U_GNSS_CFG_VAL_KEY_ID_PM_WAITTIMEFIX_L                   0x10d00009
 #define U_GNSS_CFG_VAL_KEY_ID_PM_UPDATEEPH_L                     0x10d0000a
 #define U_GNSS_CFG_VAL_KEY_ID_PM_EXTINTSEL_E1                    0x20d0000b

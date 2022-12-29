@@ -494,190 +494,194 @@ U_PORT_TEST_FUNCTION("[gnssCfg]", "gnssCfgValBasic")
             }
 #endif
 
-            // Enough showing off: do the rest of the testing on the GeoFence
-            // configuration as it has a nice range of values (except an 8-byte
-            // one, which we test separately below) and changing it won't screw
-            // anything up
-            U_TEST_PRINT_LINE("reading the GEOFENCE configuration with VALGET.");
-            groupId = U_GNSS_CFG_VAL_KEY_GROUP_ID_GEOFENCE;
-            keyId = U_GNSS_CFG_VAL_KEY(groupId, U_GNSS_CFG_VAL_KEY_ITEM_ID_ALL,
-                                       U_GNSS_CFG_VAL_KEY_SIZE_EIGHT_BYTES);
-            numValues = uGnssCfgValGetAlloc(gnssHandle, keyId, &pCfgValList, U_GNSS_CFG_VAL_LAYER_RAM);
-            // For the rest of this test to work, we need the number of
-            // entries in GEOFENCE to be as expected
-            U_PORT_TEST_ASSERT(numValues == sizeof(gKeyIdGeofence) / sizeof(gKeyIdGeofence[0]));
-            U_TEST_PRINT_LINE("GEOFENCE (0x%04x) contains %d item(s):",
-                              U_GNSS_CFG_VAL_KEY_GROUP_ID_GEOFENCE, numValues);
-            printCfgValList(pCfgValList, numValues, &groupId);
+            if (U_GNSS_PRIVATE_HAS(pModule, U_GNSS_PRIVATE_FEATURE_GEOFENCE)) {
+                // Enough showing off: do the rest of the testing on the GeoFence
+                // configuration as it has a nice range of values (except an 8-byte
+                // one, which we test separately below) and changing it won't screw
+                // anything up
+                U_TEST_PRINT_LINE("reading the GEOFENCE configuration with VALGET.");
+                groupId = U_GNSS_CFG_VAL_KEY_GROUP_ID_GEOFENCE;
+                keyId = U_GNSS_CFG_VAL_KEY(groupId, U_GNSS_CFG_VAL_KEY_ITEM_ID_ALL,
+                                           U_GNSS_CFG_VAL_KEY_SIZE_EIGHT_BYTES);
+                numValues = uGnssCfgValGetAlloc(gnssHandle, keyId, &pCfgValList, U_GNSS_CFG_VAL_LAYER_RAM);
+                // For the rest of this test to work, we need the number of
+                // entries in GEOFENCE to be as expected
+                U_PORT_TEST_ASSERT(numValues == sizeof(gKeyIdGeofence) / sizeof(gKeyIdGeofence[0]));
+                U_TEST_PRINT_LINE("GEOFENCE (0x%04x) contains %d item(s):",
+                                  U_GNSS_CFG_VAL_KEY_GROUP_ID_GEOFENCE, numValues);
+                printCfgValList(pCfgValList, numValues, &groupId);
 
-            // Modify every value
-            U_TEST_PRINT_LINE("modifying all the GEOFENCE values.");
-            modValues(pCfgValList, numValues);
+                // Modify every value
+                U_TEST_PRINT_LINE("modifying all the GEOFENCE values.");
+                modValues(pCfgValList, numValues);
 
-            // Write the new values back, list-style
-            // Note that we don't test transactions here since they are
-            // handled entirely inside the GNSS chip
-            U_TEST_PRINT_LINE("writing GEOFENCE values.");
-            U_PORT_TEST_ASSERT(uGnssCfgValSetList(gnssHandle, pCfgValList, numValues,
-                                                  U_GNSS_CFG_VAL_TRANSACTION_NONE,
-                                                  U_GNSS_CFG_VAL_LAYER_RAM) == 0);
-            U_TEST_PRINT_LINE("reading back the modified GEOFENCE values.");
-            for (int32_t x = 0; x < numValues; x++) {
-                // Read the new values, entry by entry this time, and check
-                // that they have been modified
-                value = 0;
-                U_PORT_TEST_ASSERT(uGnssCfgValGet(gnssHandle, gKeyIdGeofence[x],
-                                                  &value, storageSizeBytes(gKeyIdGeofence[x]),
-                                                  U_GNSS_CFG_VAL_LAYER_RAM) == 0);
-                U_TEST_PRINT_LINE("0x%08x value read is 0x%08x.", gKeyIdGeofence[x], (int) value);
-                U_PORT_TEST_ASSERT(valueMatches(gKeyIdGeofence[x], value,  pCfgValList, numValues));
-                // Don't overload logging
-                uPortTaskBlock(10);
-            }
-
-            // Now modify one value, non-list style, using the helper macro
-            value = 0xFFFFFFFF;
-            U_TEST_PRINT_LINE("modifying one GEOFENCE value 0x%08x to 0x%08x.",
-                              U_GNSS_CFG_VAL_KEY_ID_GEOFENCE_FENCE4_RAD_U4, value);
-            U_PORT_TEST_ASSERT(U_GNSS_CFG_SET_VAL_RAM(gnssHandle, GEOFENCE_FENCE4_RAD_U4, value) == 0);
-            savedValue = value;
-            value = 0;
-            for (int32_t x = 0; x < numValues; x++) {
-                // Read the values again and check that only the one has changed
-                U_PORT_TEST_ASSERT(uGnssCfgValGet(gnssHandle, gKeyIdGeofence[x],
-                                                  &value, storageSizeBytes(gKeyIdGeofence[x]),
-                                                  U_GNSS_CFG_VAL_LAYER_RAM) == 0);
-                U_TEST_PRINT_LINE("value read back for 0x%08x is 0x%08x.",
-                                  gKeyIdGeofence[x], value);
-                if (gKeyIdGeofence[x] != U_GNSS_CFG_VAL_KEY_ID_GEOFENCE_FENCE4_RAD_U4) {
+                // Write the new values back, list-style
+                // Note that we don't test transactions here since they are
+                // handled entirely inside the GNSS chip
+                U_TEST_PRINT_LINE("writing GEOFENCE values.");
+                U_PORT_TEST_ASSERT(uGnssCfgValSetList(gnssHandle, pCfgValList, numValues,
+                                                      U_GNSS_CFG_VAL_TRANSACTION_NONE,
+                                                      U_GNSS_CFG_VAL_LAYER_RAM) == 0);
+                U_TEST_PRINT_LINE("reading back the modified GEOFENCE values.");
+                for (int32_t x = 0; x < numValues; x++) {
+                    // Read the new values, entry by entry this time, and check
+                    // that they have been modified
+                    value = 0;
+                    U_PORT_TEST_ASSERT(uGnssCfgValGet(gnssHandle, gKeyIdGeofence[x],
+                                                      &value, storageSizeBytes(gKeyIdGeofence[x]),
+                                                      U_GNSS_CFG_VAL_LAYER_RAM) == 0);
+                    U_TEST_PRINT_LINE("0x%08x value read is 0x%08x.", gKeyIdGeofence[x], (int) value);
                     U_PORT_TEST_ASSERT(valueMatches(gKeyIdGeofence[x], value,  pCfgValList, numValues));
-                } else {
-                    U_PORT_TEST_ASSERT(value == savedValue);
+                    // Don't overload logging
+                    uPortTaskBlock(10);
                 }
-                // Don't overload logging
-                uPortTaskBlock(10);
-            }
 
-            // To test a 64-bit value, use one of the USB entries as that's pretty harmless
-            U_TEST_PRINT_LINE("modifying 0x%08x (a 64-bit value).", U_GNSS_CFG_VAL_KEY_ID_USB_VENDOR_STR0_X8);
-            U_PORT_TEST_ASSERT(uGnssCfgValGet(gnssHandle, U_GNSS_CFG_VAL_KEY_ID_USB_VENDOR_STR0_X8,
-                                              (void *) &value, 8, U_GNSS_CFG_VAL_LAYER_RAM) == 0);
-            U_TEST_PRINT_LINE("original value 0x%08x%08x", (int) (value >> 32), (int) value);
-            value = ~value;
-            U_TEST_PRINT_LINE("setting new value 0x%08x%08x", (int) (value >> 32), (int) value);
-            savedValue = value;
-            U_PORT_TEST_ASSERT(uGnssCfgValSet(gnssHandle,
-                                              U_GNSS_CFG_VAL_KEY_ID_USB_VENDOR_STR0_X8,
-                                              value, U_GNSS_CFG_VAL_TRANSACTION_NONE,
-                                              U_GNSS_CFG_VAL_LAYER_RAM) == 0);
-            value = ~value;
-            U_PORT_TEST_ASSERT(uGnssCfgValGet(gnssHandle, U_GNSS_CFG_VAL_KEY_ID_USB_VENDOR_STR0_X8,
-                                              (void *) &value, 8, U_GNSS_CFG_VAL_LAYER_RAM) == 0);
-            U_TEST_PRINT_LINE("value read back is 0x%08x%08x", (int) (value >> 32), (int) value);
-            U_PORT_TEST_ASSERT(value == savedValue);
+                // Now modify one value, non-list style, using the helper macro
+                value = 0xFFFFFFFF;
+                U_TEST_PRINT_LINE("modifying one GEOFENCE value 0x%08x to 0x%08x.",
+                                  U_GNSS_CFG_VAL_KEY_ID_GEOFENCE_FENCE4_RAD_U4, value);
+                U_PORT_TEST_ASSERT(U_GNSS_CFG_SET_VAL_RAM(gnssHandle, GEOFENCE_FENCE4_RAD_U4, value) == 0);
+                savedValue = value;
+                value = 0;
+                for (int32_t x = 0; x < numValues; x++) {
+                    // Read the values again and check that only the one has changed
+                    U_PORT_TEST_ASSERT(uGnssCfgValGet(gnssHandle, gKeyIdGeofence[x],
+                                                      &value, storageSizeBytes(gKeyIdGeofence[x]),
+                                                      U_GNSS_CFG_VAL_LAYER_RAM) == 0);
+                    U_TEST_PRINT_LINE("value read back for 0x%08x is 0x%08x.",
+                                      gKeyIdGeofence[x], value);
+                    if (gKeyIdGeofence[x] != U_GNSS_CFG_VAL_KEY_ID_GEOFENCE_FENCE4_RAD_U4) {
+                        U_PORT_TEST_ASSERT(valueMatches(gKeyIdGeofence[x], value,  pCfgValList, numValues));
+                    } else {
+                        U_PORT_TEST_ASSERT(value == savedValue);
+                    }
+                    // Don't overload logging
+                    uPortTaskBlock(10);
+                }
 
-            // And finally, deleting, using a different USB field for variety
-            // First a single value
-            value = 0;
-            U_TEST_PRINT_LINE("reading 0x%08x (a 64-bit value) from BBRAM.",
-                              U_GNSS_CFG_VAL_KEY_ID_USB_PRODUCT_STR3_X8);
-            if (uGnssCfgValGet(gnssHandle, U_GNSS_CFG_VAL_KEY_ID_USB_PRODUCT_STR3_X8,
-                               (void *) &value, 8, U_GNSS_CFG_VAL_LAYER_BBRAM) < 0) {
-                U_TEST_PRINT_LINE("no value in BBRAM currently");
-            }
-            U_TEST_PRINT_LINE("value 0x%08x%08x", (int) (value >> 32), (int) value);
-            value = ~value;
-            U_TEST_PRINT_LINE("setting new value 0x%08x%08x in BBRAM", (int) (value >> 32), (int) value);
-            savedValue = value;
-            U_PORT_TEST_ASSERT(uGnssCfgValSet(gnssHandle,
-                                              U_GNSS_CFG_VAL_KEY_ID_USB_PRODUCT_STR3_X8,
-                                              value, U_GNSS_CFG_VAL_TRANSACTION_NONE,
-                                              U_GNSS_CFG_VAL_LAYER_BBRAM) == 0);
-            value = ~value;
-            U_PORT_TEST_ASSERT(uGnssCfgValGet(gnssHandle, U_GNSS_CFG_VAL_KEY_ID_USB_PRODUCT_STR3_X8,
-                                              (void *) &value, 8, U_GNSS_CFG_VAL_LAYER_BBRAM) == 0);
-            U_TEST_PRINT_LINE("value read back from BBRAM is 0x%08x%08x", (int) (value >> 32), (int) value);
-            U_PORT_TEST_ASSERT(value == savedValue);
-            U_TEST_PRINT_LINE("deleting value for 0x%08x from BBRAM.",
-                              U_GNSS_CFG_VAL_KEY_ID_USB_PRODUCT_STR3_X8);
-            U_PORT_TEST_ASSERT(uGnssCfgValDel(gnssHandle, U_GNSS_CFG_VAL_KEY_ID_USB_PRODUCT_STR3_X8,
-                                              U_GNSS_CFG_VAL_TRANSACTION_NONE,
-                                              U_GNSS_CFG_VAL_LAYER_BBRAM) == 0);
-            U_PORT_TEST_ASSERT(uGnssCfgValGet(gnssHandle, U_GNSS_CFG_VAL_KEY_ID_USB_PRODUCT_STR3_X8,
-                                              (void *) &value, 8, U_GNSS_CFG_VAL_LAYER_BBRAM) < 0);
+                // To test a 64-bit value, use one of the USB entries as that's pretty harmless
+                U_TEST_PRINT_LINE("modifying 0x%08x (a 64-bit value).", U_GNSS_CFG_VAL_KEY_ID_USB_VENDOR_STR0_X8);
+                U_PORT_TEST_ASSERT(uGnssCfgValGet(gnssHandle, U_GNSS_CFG_VAL_KEY_ID_USB_VENDOR_STR0_X8,
+                                                  (void *) &value, 8, U_GNSS_CFG_VAL_LAYER_RAM) == 0);
+                U_TEST_PRINT_LINE("original value 0x%08x%08x", (int) (value >> 32), (int) value);
+                value = ~value;
+                U_TEST_PRINT_LINE("setting new value 0x%08x%08x", (int) (value >> 32), (int) value);
+                savedValue = value;
+                U_PORT_TEST_ASSERT(uGnssCfgValSet(gnssHandle,
+                                                  U_GNSS_CFG_VAL_KEY_ID_USB_VENDOR_STR0_X8,
+                                                  value, U_GNSS_CFG_VAL_TRANSACTION_NONE,
+                                                  U_GNSS_CFG_VAL_LAYER_RAM) == 0);
+                value = ~value;
+                U_PORT_TEST_ASSERT(uGnssCfgValGet(gnssHandle, U_GNSS_CFG_VAL_KEY_ID_USB_VENDOR_STR0_X8,
+                                                  (void *) &value, 8, U_GNSS_CFG_VAL_LAYER_RAM) == 0);
+                U_TEST_PRINT_LINE("value read back is 0x%08x%08x", (int) (value >> 32), (int) value);
+                U_PORT_TEST_ASSERT(value == savedValue);
 
-            // Now a list of key IDs, so back to using GEOFENCE
-            U_TEST_PRINT_LINE("deleting current GEOFENCE values in BBRAM.");
-            groupId = U_GNSS_CFG_VAL_KEY_GROUP_ID_GEOFENCE;
-            keyId = U_GNSS_CFG_VAL_KEY(groupId, U_GNSS_CFG_VAL_KEY_ITEM_ID_ALL,
-                                       U_GNSS_CFG_VAL_KEY_SIZE_EIGHT_BYTES);
-            uGnssCfgValDel(gnssHandle, keyId, U_GNSS_CFG_VAL_TRANSACTION_NONE, U_GNSS_CFG_VAL_LAYER_BBRAM);
-            // Getting the values from BBRAM should fail for all GEOFENCE entries
-            U_TEST_PRINT_LINE("checking that no GEOFENCE values can be read from BBRAM.");
-            for (size_t x = 0; x < sizeof(gKeyIdGeofence) / sizeof(gKeyIdGeofence[0]); x++) {
-                U_PORT_TEST_ASSERT(uGnssCfgValGet(gnssHandle, gKeyIdGeofence[x],
-                                                  &value, storageSizeBytes(gKeyIdGeofence[x]),
-                                                  U_GNSS_CFG_VAL_LAYER_BBRAM) < 0);
-                // Don't overload logging
-                uPortTaskBlock(10);
-            }
-            // Write the values we already have to BBRAM
-            U_TEST_PRINT_LINE("writing GEOFENCE values to BBRAM.");
-            U_PORT_TEST_ASSERT(uGnssCfgValSetList(gnssHandle, pCfgValList,
-                                                  sizeof(gKeyIdGeofence) / sizeof(gKeyIdGeofence[0]),
+                // And finally, deleting, using a different USB field for variety
+                // First a single value
+                value = 0;
+                U_TEST_PRINT_LINE("reading 0x%08x (a 64-bit value) from BBRAM.",
+                                  U_GNSS_CFG_VAL_KEY_ID_USB_PRODUCT_STR3_X8);
+                if (uGnssCfgValGet(gnssHandle, U_GNSS_CFG_VAL_KEY_ID_USB_PRODUCT_STR3_X8,
+                                   (void *) &value, 8, U_GNSS_CFG_VAL_LAYER_BBRAM) < 0) {
+                    U_TEST_PRINT_LINE("no value in BBRAM currently");
+                }
+                U_TEST_PRINT_LINE("value 0x%08x%08x", (int) (value >> 32), (int) value);
+                value = ~value;
+                U_TEST_PRINT_LINE("setting new value 0x%08x%08x in BBRAM", (int) (value >> 32), (int) value);
+                savedValue = value;
+                U_PORT_TEST_ASSERT(uGnssCfgValSet(gnssHandle,
+                                                  U_GNSS_CFG_VAL_KEY_ID_USB_PRODUCT_STR3_X8,
+                                                  value, U_GNSS_CFG_VAL_TRANSACTION_NONE,
+                                                  U_GNSS_CFG_VAL_LAYER_BBRAM) == 0);
+                value = ~value;
+                U_PORT_TEST_ASSERT(uGnssCfgValGet(gnssHandle, U_GNSS_CFG_VAL_KEY_ID_USB_PRODUCT_STR3_X8,
+                                                  (void *) &value, 8, U_GNSS_CFG_VAL_LAYER_BBRAM) == 0);
+                U_TEST_PRINT_LINE("value read back from BBRAM is 0x%08x%08x", (int) (value >> 32), (int) value);
+                U_PORT_TEST_ASSERT(value == savedValue);
+                U_TEST_PRINT_LINE("deleting value for 0x%08x from BBRAM.",
+                                  U_GNSS_CFG_VAL_KEY_ID_USB_PRODUCT_STR3_X8);
+                U_PORT_TEST_ASSERT(uGnssCfgValDel(gnssHandle, U_GNSS_CFG_VAL_KEY_ID_USB_PRODUCT_STR3_X8,
                                                   U_GNSS_CFG_VAL_TRANSACTION_NONE,
                                                   U_GNSS_CFG_VAL_LAYER_BBRAM) == 0);
-            U_TEST_PRINT_LINE("checking that GEOFENCE values can now be read from BBRAM.");
-            for (size_t x = 0; x < sizeof(gKeyIdGeofence) / sizeof(gKeyIdGeofence[0]); x++) {
-                U_PORT_TEST_ASSERT(uGnssCfgValGet(gnssHandle, gKeyIdGeofence[x],
-                                                  &value, storageSizeBytes(gKeyIdGeofence[x]),
-                                                  U_GNSS_CFG_VAL_LAYER_BBRAM) == 0);
-                // Don't overload logging
-                uPortTaskBlock(10);
-            }
-            U_TEST_PRINT_LINE("deleting GEOFENCE values from BBRAM once more.");
-            U_PORT_TEST_ASSERT(uGnssCfgValDelList(gnssHandle, gKeyIdGeofence,
-                                                  sizeof(gKeyIdGeofence) / sizeof(gKeyIdGeofence[0]),
-                                                  U_GNSS_CFG_VAL_TRANSACTION_NONE,
-                                                  U_GNSS_CFG_VAL_LAYER_BBRAM) == 0);
-            U_TEST_PRINT_LINE("checking that GEOFENCE values cannot be read from BBRAM again.");
-            for (size_t x = 0; x < sizeof(gKeyIdGeofence) / sizeof(gKeyIdGeofence[0]); x++) {
-                U_PORT_TEST_ASSERT(uGnssCfgValGet(gnssHandle, gKeyIdGeofence[x],
-                                                  &value, storageSizeBytes(gKeyIdGeofence[x]),
-                                                  U_GNSS_CFG_VAL_LAYER_BBRAM) < 0);
-            }
+                U_PORT_TEST_ASSERT(uGnssCfgValGet(gnssHandle, U_GNSS_CFG_VAL_KEY_ID_USB_PRODUCT_STR3_X8,
+                                                  (void *) &value, 8, U_GNSS_CFG_VAL_LAYER_BBRAM) < 0);
 
-            // Last of the last, delete using a configuration item array
-            U_TEST_PRINT_LINE("writing GEOFENCE values to BBRAM.");
-            U_PORT_TEST_ASSERT(uGnssCfgValSetList(gnssHandle, pCfgValList,
-                                                  sizeof(gKeyIdGeofence) / sizeof(gKeyIdGeofence[0]),
-                                                  U_GNSS_CFG_VAL_TRANSACTION_NONE,
-                                                  U_GNSS_CFG_VAL_LAYER_BBRAM) == 0);
-            U_TEST_PRINT_LINE("checking that GEOFENCE values can now be read from BBRAM.");
-            for (size_t x = 0; x < sizeof(gKeyIdGeofence) / sizeof(gKeyIdGeofence[0]); x++) {
-                U_PORT_TEST_ASSERT(uGnssCfgValGet(gnssHandle, gKeyIdGeofence[x],
-                                                  &value, storageSizeBytes(gKeyIdGeofence[x]),
-                                                  U_GNSS_CFG_VAL_LAYER_BBRAM) == 0);
-                // Don't overload logging
-                uPortTaskBlock(10);
-            }
-            U_TEST_PRINT_LINE("deleting GEOFENCE values from BBRAM using a configuration"
-                              " item list this time.");
-            U_PORT_TEST_ASSERT(uGnssCfgValDelListX(gnssHandle, pCfgValList,
-                                                   sizeof(gKeyIdGeofence) / sizeof(gKeyIdGeofence[0]),
-                                                   U_GNSS_CFG_VAL_TRANSACTION_NONE,
-                                                   U_GNSS_CFG_VAL_LAYER_BBRAM) == 0);
-            U_TEST_PRINT_LINE("checking that GEOFENCE values cannot be read from BBRAM again.");
-            for (size_t x = 0; x < sizeof(gKeyIdGeofence) / sizeof(gKeyIdGeofence[0]); x++) {
-                U_PORT_TEST_ASSERT(uGnssCfgValGet(gnssHandle, gKeyIdGeofence[x],
-                                                  &value, storageSizeBytes(gKeyIdGeofence[x]),
-                                                  U_GNSS_CFG_VAL_LAYER_BBRAM) < 0);
-                // Don't overload logging
-                uPortTaskBlock(10);
-            }
+                // Now a list of key IDs, so back to using GEOFENCE
+                U_TEST_PRINT_LINE("deleting current GEOFENCE values in BBRAM.");
+                groupId = U_GNSS_CFG_VAL_KEY_GROUP_ID_GEOFENCE;
+                keyId = U_GNSS_CFG_VAL_KEY(groupId, U_GNSS_CFG_VAL_KEY_ITEM_ID_ALL,
+                                           U_GNSS_CFG_VAL_KEY_SIZE_EIGHT_BYTES);
+                uGnssCfgValDel(gnssHandle, keyId, U_GNSS_CFG_VAL_TRANSACTION_NONE, U_GNSS_CFG_VAL_LAYER_BBRAM);
+                // Getting the values from BBRAM should fail for all GEOFENCE entries
+                U_TEST_PRINT_LINE("checking that no GEOFENCE values can be read from BBRAM.");
+                for (size_t x = 0; x < sizeof(gKeyIdGeofence) / sizeof(gKeyIdGeofence[0]); x++) {
+                    U_PORT_TEST_ASSERT(uGnssCfgValGet(gnssHandle, gKeyIdGeofence[x],
+                                                      &value, storageSizeBytes(gKeyIdGeofence[x]),
+                                                      U_GNSS_CFG_VAL_LAYER_BBRAM) < 0);
+                    // Don't overload logging
+                    uPortTaskBlock(10);
+                }
+                // Write the values we already have to BBRAM
+                U_TEST_PRINT_LINE("writing GEOFENCE values to BBRAM.");
+                U_PORT_TEST_ASSERT(uGnssCfgValSetList(gnssHandle, pCfgValList,
+                                                      sizeof(gKeyIdGeofence) / sizeof(gKeyIdGeofence[0]),
+                                                      U_GNSS_CFG_VAL_TRANSACTION_NONE,
+                                                      U_GNSS_CFG_VAL_LAYER_BBRAM) == 0);
+                U_TEST_PRINT_LINE("checking that GEOFENCE values can now be read from BBRAM.");
+                for (size_t x = 0; x < sizeof(gKeyIdGeofence) / sizeof(gKeyIdGeofence[0]); x++) {
+                    U_PORT_TEST_ASSERT(uGnssCfgValGet(gnssHandle, gKeyIdGeofence[x],
+                                                      &value, storageSizeBytes(gKeyIdGeofence[x]),
+                                                      U_GNSS_CFG_VAL_LAYER_BBRAM) == 0);
+                    // Don't overload logging
+                    uPortTaskBlock(10);
+                }
+                U_TEST_PRINT_LINE("deleting GEOFENCE values from BBRAM once more.");
+                U_PORT_TEST_ASSERT(uGnssCfgValDelList(gnssHandle, gKeyIdGeofence,
+                                                      sizeof(gKeyIdGeofence) / sizeof(gKeyIdGeofence[0]),
+                                                      U_GNSS_CFG_VAL_TRANSACTION_NONE,
+                                                      U_GNSS_CFG_VAL_LAYER_BBRAM) == 0);
+                U_TEST_PRINT_LINE("checking that GEOFENCE values cannot be read from BBRAM again.");
+                for (size_t x = 0; x < sizeof(gKeyIdGeofence) / sizeof(gKeyIdGeofence[0]); x++) {
+                    U_PORT_TEST_ASSERT(uGnssCfgValGet(gnssHandle, gKeyIdGeofence[x],
+                                                      &value, storageSizeBytes(gKeyIdGeofence[x]),
+                                                      U_GNSS_CFG_VAL_LAYER_BBRAM) < 0);
+                }
 
-            // Free memory
-            uPortFree(pCfgValList);
+                // Last of the last, delete using a configuration item array
+                U_TEST_PRINT_LINE("writing GEOFENCE values to BBRAM.");
+                U_PORT_TEST_ASSERT(uGnssCfgValSetList(gnssHandle, pCfgValList,
+                                                      sizeof(gKeyIdGeofence) / sizeof(gKeyIdGeofence[0]),
+                                                      U_GNSS_CFG_VAL_TRANSACTION_NONE,
+                                                      U_GNSS_CFG_VAL_LAYER_BBRAM) == 0);
+                U_TEST_PRINT_LINE("checking that GEOFENCE values can now be read from BBRAM.");
+                for (size_t x = 0; x < sizeof(gKeyIdGeofence) / sizeof(gKeyIdGeofence[0]); x++) {
+                    U_PORT_TEST_ASSERT(uGnssCfgValGet(gnssHandle, gKeyIdGeofence[x],
+                                                      &value, storageSizeBytes(gKeyIdGeofence[x]),
+                                                      U_GNSS_CFG_VAL_LAYER_BBRAM) == 0);
+                    // Don't overload logging
+                    uPortTaskBlock(10);
+                }
+                U_TEST_PRINT_LINE("deleting GEOFENCE values from BBRAM using a configuration"
+                                  " item list this time.");
+                U_PORT_TEST_ASSERT(uGnssCfgValDelListX(gnssHandle, pCfgValList,
+                                                       sizeof(gKeyIdGeofence) / sizeof(gKeyIdGeofence[0]),
+                                                       U_GNSS_CFG_VAL_TRANSACTION_NONE,
+                                                       U_GNSS_CFG_VAL_LAYER_BBRAM) == 0);
+                U_TEST_PRINT_LINE("checking that GEOFENCE values cannot be read from BBRAM again.");
+                for (size_t x = 0; x < sizeof(gKeyIdGeofence) / sizeof(gKeyIdGeofence[0]); x++) {
+                    U_PORT_TEST_ASSERT(uGnssCfgValGet(gnssHandle, gKeyIdGeofence[x],
+                                                      &value, storageSizeBytes(gKeyIdGeofence[x]),
+                                                      U_GNSS_CFG_VAL_LAYER_BBRAM) < 0);
+                    // Don't overload logging
+                    uPortTaskBlock(10);
+                }
+
+                // Free memory
+                uPortFree(pCfgValList);
+            } else {
+                U_TEST_PRINT_LINE("this module does not support Geofence, can't fully test VALXXX.");
+            }
 
             // Check that we haven't dropped any incoming data
             y = uGnssMsgReceiveStatStreamLoss(gnssHandle);

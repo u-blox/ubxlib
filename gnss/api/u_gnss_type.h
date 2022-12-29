@@ -196,8 +196,8 @@ typedef enum {
     U_GNSS_PROTOCOL_UBX = 0,
     U_GNSS_PROTOCOL_NMEA = 1,
     U_GNSS_PROTOCOL_RTCM = 2,
-    U_GNSS_PROTOCOL_UNKNOWN = 3,
-    U_GNSS_PROTOCOL_MAX_NUM,
+    U_GNSS_PROTOCOL_UNKNOWN = 3, // Must have this value as it is used to mark
+    U_GNSS_PROTOCOL_MAX_NUM,     // the end of the known output protocols
     U_GNSS_PROTOCOL_NONE,
     U_GNSS_PROTOCOL_ALL,
     U_GNSS_PROTOCOL_ANY
@@ -232,7 +232,7 @@ typedef struct {
     } id;
 } uGnssMessageId_t;
 
-/** The types of dynamic platform model.
+/** The types of dynamic platform model; not all types are available on all modules.
  */
 typedef enum {
     U_GNSS_DYNAMIC_PORTABLE = 0,
@@ -244,7 +244,9 @@ typedef enum {
     U_GNSS_DYNAMIC_AIRBORNE_2G = 7,
     U_GNSS_DYNAMIC_AIRBORNE_4G = 8,
     U_GNSS_DYNAMIC_WRIST = 9,
-    U_GNSS_DYNAMIC_BIKE = 10
+    U_GNSS_DYNAMIC_BIKE = 10,
+    U_GNSS_DYNAMIC_MOWER = 11,
+    U_GNSS_DYNAMIC_ESCOOTER = 12
 } uGnssDynamic_t;
 
 /** The fix modes.
@@ -255,7 +257,7 @@ typedef enum {
     U_GNSS_FIX_MODE_AUTO = 3
 } uGnssFixMode_t;
 
-/** The possible GNSS UTC standards.
+/** The possible GNSS UTC standards; not all types are available on all modules.
  */
 typedef enum {
     U_GNSS_UTC_STANDARD_AUTOMATIC = 0,  /**< automatic. */
@@ -263,7 +265,9 @@ typedef enum {
     U_GNSS_UTC_STANDARD_GALILEO = 5,
     U_GNSS_UTC_STANDARD_GLONASS = 6,
     U_GNSS_UTC_STANDARD_NTSC = 7, /**< National Time Service Center (NTSC), China; derived from BeiDou time. */
-    U_GNSS_UTC_STANDARD_NPLI = 8 /**< National Physics Laboratory India. */
+    U_GNSS_UTC_STANDARD_NPLI = 8, /**< National Physics Laboratory India. */
+    U_GNSS_UTC_STANDARD_NICT = 9 /**< National Institute of Information and Communications Technology, Japan;
+                                      derived from QZSS time. */
 } uGnssUtcStandard_t;
 
 /** @}*/

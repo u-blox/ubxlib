@@ -548,9 +548,11 @@ void uGnssTestPrivateCleanup(uGnssTestPrivate_t *pParameters)
 // - start with a $GNRMC message, followed by a $GNVTG message, followed by
 //   a $GNGGA message,
 // - one or more $GNGSA message will follow, where the digit before the *
-//   at the end starts at 1 and increments by one for each message,
-// - sets of $G?GSV,y,z messages will follow where y is the number of each
-//   type and z the count of the messages within that type,
+//   at the end starts at 1 and increments by one for each message, except
+//   that in the M10 case number 2 is missing,
+// - sets of $G?GSV,y,z messages may follow where y is the number of each
+//   type and z the count of the messages within that type, though all of
+//   these may be MISSING in some cases for M10,
 // - end with a $GNGLL message.
 int32_t uGnssTestPrivateNmeaComprehender(const char *pNmeaMessage, size_t size,
                                          void **ppContext, bool printErrors)
@@ -626,6 +628,10 @@ int32_t uGnssTestPrivateNmeaComprehender(const char *pNmeaMessage, size_t size,
                         // $GNGSA continues
                         pContext->lastGngsa = thisGngsa;
                         errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
+                    } else if ((thisGngsa == 3) && (pContext->lastGngsa == 1)) {
+                        // Must be M10, where number 2 is missing
+                        pContext->lastGngsa = thisGngsa;
+                        errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
                     } else if (printErrors) {
                         U_TEST_PRINT_LINE("NMEA sequence error: expecting"
                                           " $GNGSA ... %d* but got $GNGSA ... %d*.",
@@ -674,11 +680,11 @@ int32_t uGnssTestPrivateNmeaComprehender(const char *pNmeaMessage, size_t size,
                                               pContext->lastInGxgsv);
                         }
                     }
-                } else if ((pContext->state == U_GNSS_TEST_PRIVATE_NMEA_STATE_GOT_GXGSV_5) &&
+                } else if (((pContext->state == U_GNSS_TEST_PRIVATE_NMEA_STATE_GOT_GNGSA_4) ||
+                            (pContext->state == U_GNSS_TEST_PRIVATE_NMEA_STATE_GOT_GXGSV_5)) &&
                            (pContext->xInGxgsv == 0) &&
                            (strstr(pNmeaMessage, "$GNGLL") == pNmeaMessage)) {
-                    // We're not currently in a $G?GSV but we have been in one and we've now
-                    // hit a $GNGLL: we're done
+                    // We're not in a $G?GSV and we've now hit a $GNGLL: we're done
                     errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
                 } else if (printErrors) {
                     if (pContext->xInGxgsv > 0) {

@@ -104,7 +104,8 @@ extern "C" {
 //lint -esym(756, uGnssPrivateFeature_t) Suppress not referenced,
 // Lint can't seem to find it inside macros.
 typedef enum {
-    U_GNSS_PRIVATE_FEATURE_CFGVALXXX
+    U_GNSS_PRIVATE_FEATURE_CFGVALXXX,
+    U_GNSS_PRIVATE_FEATURE_GEOFENCE
 } uGnssPrivateFeature_t;
 
 /** The characteristics that may differ between GNSS modules.
@@ -300,9 +301,6 @@ int32_t uGnssPrivateGetProtocolOut(uGnssPrivateInstance_t *pInstance);
  *                       with onNotOff set to false will return an error).
  *                       UBX protocol output cannot be switched off
  *                       since it is used by this code.
- *                       The range of the parameter is NOT checked, hence
- *                       you may set a value which is known to the GNSS
- *                       chip but not to this code.
  * @param onNotOff       whether the given protocol should be on or off.
  * @return               zero on succes or negative error code.
  */

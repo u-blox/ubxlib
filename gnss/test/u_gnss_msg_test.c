@@ -287,10 +287,10 @@ static void messageReceiveCallback(uDeviceHandle_t gnssHandle,
                                             errorCodeOrLength) == errorCodeOrLength) {
                 pMsgReceive->numRead++;
                 pMsgReceive->numDecoded++;
-                // NOTE: uGnssTestPrivateNmeaComprehender() currently only supports
-                // M9, hence this check
+                // NOTE: uGnssTestPrivateNmeaComprehender() doesn't support
+                // M8, hence this check
                 if ((pMsgReceive->messageId.type == U_GNSS_PROTOCOL_NMEA) &&
-                    (pMsgReceive->moduleType == U_GNSS_MODULE_TYPE_M9) &&
+                    (pMsgReceive->moduleType != U_GNSS_MODULE_TYPE_M8) &&
                     (pMsgReceive->useNmeaComprehender)) {
 #ifdef U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_PRINT
                     // It's often useful to see these messages but the load is
@@ -666,10 +666,10 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveNonBlocking")
                     if (pTmp->numDecoded + pTmp->numOutsize < pTmp->numDecodedMin) {
                         bad = true;
                     }
-                    // Can currently only check the NMEA sequence for M9
-                    // modules, hence the check below
+                    // Can't check the NMEA sequence for M8 modules,
+                    // hence the check below
                     if ((pTmp->messageId.type != U_GNSS_PROTOCOL_UBX) &&
-                        (pTmp->moduleType == U_GNSS_MODULE_TYPE_M9) &&
+                        (pTmp->moduleType != U_GNSS_MODULE_TYPE_M8) &&
                         (pTmp->useNmeaComprehender == true) &&
                         (pTmp->numNmeaSequence == 0)) {
                         bad = true;
