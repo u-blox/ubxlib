@@ -587,6 +587,8 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
                             dcb.Parity = NOPARITY;        //  parity bit
                             dcb.StopBits = ONESTOPBIT;    //  stop bit
                             dcb.fDtrControl = DTR_CONTROL_DISABLE;
+                            dcb.fOutX = false;  // make sure SW flow control is off both
+                            dcb.fInX = false;   // for output and input
                             dcb.fOutxCtsFlow = 0;
                             // On windows the CTS pin is simply a flag
                             // indicating whether CTS flow control should be on
