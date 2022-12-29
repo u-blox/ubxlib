@@ -478,7 +478,7 @@ static int32_t valSetList(uDeviceHandle_t gnssHandle,
                 pMessage = (char *) pUPortMalloc(messageSize);
                 if (pMessage != NULL) {
                     // Assemble the message
-                    *pMessage       = 0; // Version
+                    *pMessage       = 0x01; // Version
                     *(pMessage + 1) = layers;
                     *(pMessage + 2) = transaction;
                     *(pMessage + 3) = 0; // Reserved
