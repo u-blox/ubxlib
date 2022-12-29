@@ -139,7 +139,7 @@ const size_t gUGnssPrivateModuleListSize = sizeof(gUGnssPrivateModuleList) /
 
 /** Table to convert a GNSS transport type into a streaming transport type.
  */
-const uGnssPrivateStreamType_t gGnssPrivateTransportTypeToStream[] = {
+static const uGnssPrivateStreamType_t gGnssPrivateTransportTypeToStream[] = {
     U_GNSS_PRIVATE_STREAM_TYPE_NONE, // U_GNSS_TRANSPORT_NONE
     U_GNSS_PRIVATE_STREAM_TYPE_UART, // U_GNSS_TRANSPORT_UART
     U_GNSS_PRIVATE_STREAM_TYPE_NONE, // U_GNSS_TRANSPORT_AT
@@ -955,6 +955,10 @@ int32_t uGnssPrivateSetProtocolOut(uGnssPrivateInstance_t *pInstance,
                 if (protocol == U_GNSS_PROTOCOL_ALL) {
                     mask = 0xFFFF; // Everything out
                 } else {
+                    if (protocol == U_GNSS_PROTOCOL_RTCM) {
+                        // RTCM is the odd one out
+                        protocol = 5;
+                    }
                     if (onNotOff) {
                         mask |= 1 << protocol;
                     } else {
@@ -1009,7 +1013,13 @@ int32_t uGnssPrivateGetProtocolOut(uGnssPrivateInstance_t *pInstance)
                                                   sizeof(message)) == sizeof(message)) {
                 // Offsets 14 and 15 contain the output protocol bit-map
                 errorCodeOrBitMap = (int32_t) uUbxProtocolUint16Decode((const char *) & (message[14]));
-                if (errorCodeOrBitMap < 0) {
+                if (errorCodeOrBitMap >= 0) {
+                    // Handle RTCM, the odd one out
+                    if (errorCodeOrBitMap & (1 << 5)) {
+                        errorCodeOrBitMap &= ~(1 << 5);
+                        errorCodeOrBitMap |= (1 << U_GNSS_PROTOCOL_RTCM);
+                    }
+                } else {
                     // Don't expect to have the top-bit set so flag an error
                     errorCodeOrBitMap = U_ERROR_COMMON_PLATFORM;
                 }
