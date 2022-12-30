@@ -206,7 +206,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleGnssCfgVal")
     uGnssCfgVal_t *pCfgValList = NULL;
     int32_t numValues = 0;
 
-    if (gDeviceCfg.deviceCfg.cfgGnss.moduleType >= U_GNSS_MODULE_TYPE_M9) {
+    if (gDeviceCfg.deviceCfg.cfgGnss.moduleType == U_GNSS_MODULE_TYPE_M9) {
         // Initialise the APIs we will need
         uPortInit();
         uPortI2cInit(); // You only need this if an I2C interface is used
@@ -299,7 +299,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleGnssCfgVal")
         // For u-blox internal testing only
         EXAMPLE_FINAL_STATE((numValues > 0) && (returnCode == 0) && boolValue);
     } else {
-        uPortLog("The CFGVALXXX API is only supported on M9 modules and later.\n");
+        uPortLog("The GEOFENCE fields of the CFGVALXXX API are only supported on M9 modules.\n");
     }
 }
 
