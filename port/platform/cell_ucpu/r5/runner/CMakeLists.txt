@@ -100,6 +100,7 @@ set(UBXLIB_SRC_PORT
     ${UBXLIB_BASE}/port/platform/${UBXLIB_PLATFORM}/src/u_port_gpio.c
     ${UBXLIB_BASE}/port/platform/${UBXLIB_PLATFORM}/src/u_port_uart.c
     ${UBXLIB_BASE}/port/platform/${UBXLIB_PLATFORM}/src/u_port_i2c.c
+    ${UBXLIB_BASE}/port/platform/${UBXLIB_PLATFORM}/src/u_port_spi.c
     ${UBXLIB_BASE}/port/platform/${UBXLIB_PLATFORM}/src/u_port_clib.c
     ${UBXLIB_BASE}/port/platform/${UBXLIB_PLATFORM}/src/u_port_private.c
     ${UBXLIB_BASE}/port/platform/common/mbedtls/u_port_crypto.c

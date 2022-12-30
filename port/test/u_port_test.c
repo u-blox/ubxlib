@@ -59,6 +59,11 @@
 #include "u_port_uart.h"
 #if (U_CFG_APP_GNSS_I2C >= 0)
 # include "u_port_i2c.h"
+#endif
+#if (U_CFG_APP_GNSS_SPI >= 0)
+# include "u_port_spi.h"
+#endif
+#if (U_CFG_APP_GNSS_I2C >= 0) || (U_CFG_APP_GNSS_SPI >= 0)
 # include "u_ubx_protocol.h"
 #endif
 #include "u_port_crypto.h"
@@ -153,6 +158,15 @@
  * default I2C address of a u-blox GNSS device.
  */
 #  define U_PORT_TEST_I2C_ADDRESS 0x42
+# endif
+#endif
+
+#if (U_CFG_APP_GNSS_SPI >= 0)
+# ifndef U_PORT_TEST_SPI_TRIES
+/** How many attempts we make while waiting for the GNSS
+ * chip to respond with an ack.
+ */
+#  define U_PORT_TEST_SPI_TRIES 10
 # endif
 #endif
 
@@ -349,6 +363,12 @@ static char gUartBuffer[(U_CFG_TEST_UART_BUFFER_LENGTH_BYTES / 2) +
  * I2C buses can easily get stuck, it would seem.
  */
 static int32_t gI2cHandle = -1;
+#endif
+
+#if (U_CFG_APP_GNSS_SPI >= 0)
+/** SPI handle, global so that we can tidy up on failure.
+ */
+static int32_t gSpiHandle = -1;
 #endif
 
 /** Data for mktime64() testing.
@@ -1134,6 +1154,35 @@ static void runUartTest(int32_t size, int32_t speed, bool flowControlOn)
 }
 
 #endif // (U_CFG_TEST_UART_A >= 0) && (U_CFG_TEST_UART_B < 0)
+
+#if (U_CFG_APP_GNSS_SPI >= 0)
+
+// Compare SPI fill words, doing it for the right word length.
+static bool fillWordSame(uint16_t wordA, uint16_t wordB, size_t lengthBytes)
+{
+    bool isSame = false;
+
+    switch (lengthBytes) {
+        case 1:
+            isSame = ((wordA & 0xFF) == (wordB & 0xFF));
+            break;
+        case 2:
+            isSame = ((wordA & 0xFFFF) == (wordB & 0xFFFF));
+            break;
+        case 3:
+            isSame = ((wordA & 0xFFFFFF) == (wordB & 0xFFFFFF));
+            break;
+        case 4:
+            isSame = ((wordA & 0xFFFFFFFF) == (wordB & 0xFFFFFFFF));
+            break;
+        default:
+            break;
+    }
+
+    return isSame;
+}
+
+#endif
 
 // Timer callback
 static void timerCallback(const uPortTimerHandle_t timerHandle, void *pParameter)
@@ -2516,6 +2565,198 @@ U_PORT_TEST_FUNCTION("[port]", "portI2cRequiresSpecificWiring")
 }
 #endif
 
+#if (U_CFG_APP_GNSS_SPI >= 0)
+/** Test SPI.
+ */
+U_PORT_TEST_FUNCTION("[port]", "portSpiRequiresSpecificWiring")
+{
+    uCommonSpiControllerDevice_t device = U_COMMON_SPI_CONTROLLER_DEVICE_DEFAULTS(
+                                              U_CFG_APP_PIN_GNSS_SPI_SELECT);
+    uCommonSpiControllerDevice_t tmp = {0};
+    int32_t y = 0;
+    int32_t messageClass = -1;
+    int32_t messageId = -1;
+    int32_t heapUsed;
+    int32_t heapClibLossOffset = (int32_t) gSystemHeapLost;
+    char buffer1[20]; // Enough room the body of a UBX-CFG-PRT message
+    char buffer2[20 +
+                    U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES]; // Enough room for the full UBX-CFG-PRT message
+    char *pBuffer = buffer2;
+    char buffer3[sizeof(uint64_t)];
+
+    // Whatever called us likely initialised the
+    // port so deinitialise it here to obtain the
+    // correct initial heap size
+    uPortDeinit();
+    heapUsed = uPortGetHeapFree();
+    U_PORT_TEST_ASSERT(uPortInit() == 0);
+
+    U_TEST_PRINT_LINE("testing SPI, assuming a u-blox GNSS device is connected to it.");
+
+    // Try to open an SPI instance without having initialised SPI, should fail
+    U_PORT_TEST_ASSERT(uPortSpiOpen(U_CFG_APP_GNSS_SPI, U_CFG_APP_PIN_GNSS_SPI_MOSI,
+                                    U_CFG_APP_PIN_GNSS_SPI_MISO, U_CFG_APP_PIN_GNSS_SPI_CLK,
+                                    true) < 0);
+
+    // Now initialise SPI
+    U_PORT_TEST_ASSERT(uPortSpiInit() == 0);
+# ifndef __ZEPHYR__
+    // Try to open an SPI instance without a valid combination of pins, should fail
+    U_PORT_TEST_ASSERT(uPortSpiOpen(U_CFG_APP_GNSS_SPI, -1, -1,
+                                    U_CFG_APP_PIN_GNSS_SPI_CLK, true) < 0);
+    U_PORT_TEST_ASSERT(uPortSpiOpen(U_CFG_APP_GNSS_SPI, U_CFG_APP_PIN_GNSS_SPI_MOSI,
+                                    U_CFG_APP_PIN_GNSS_SPI_MISO, -1, true) < 0);
+# endif
+    // Try to open an SPI instance not as controller, should fail
+    U_PORT_TEST_ASSERT(uPortSpiOpen(U_CFG_APP_GNSS_SPI, U_CFG_APP_PIN_GNSS_SPI_MOSI,
+                                    U_CFG_APP_PIN_GNSS_SPI_MISO, U_CFG_APP_PIN_GNSS_SPI_CLK,
+                                    false) < 0);
+    // Now do it properly
+    gSpiHandle = uPortSpiOpen(U_CFG_APP_GNSS_SPI, U_CFG_APP_PIN_GNSS_SPI_MOSI,
+                              U_CFG_APP_PIN_GNSS_SPI_MISO, U_CFG_APP_PIN_GNSS_SPI_CLK, true);
+    U_PORT_TEST_ASSERT(gSpiHandle >= 0);
+
+    // Close again and deinit SPI
+    uPortSpiClose(gSpiHandle);
+    uPortSpiDeinit();
+    // Try to open an SPI instance without having initialised SPI again, should fail
+    U_PORT_TEST_ASSERT(uPortSpiOpen(U_CFG_APP_GNSS_SPI, U_CFG_APP_PIN_GNSS_SPI_MOSI,
+                                    U_CFG_APP_PIN_GNSS_SPI_MISO, U_CFG_APP_PIN_GNSS_SPI_CLK,
+                                    true) < 0);
+
+    // Initialise and open again
+    U_PORT_TEST_ASSERT(uPortSpiInit() == 0);
+    gSpiHandle = uPortSpiOpen(U_CFG_APP_GNSS_SPI, U_CFG_APP_PIN_GNSS_SPI_MOSI,
+                              U_CFG_APP_PIN_GNSS_SPI_MISO, U_CFG_APP_PIN_GNSS_SPI_CLK, true);
+    U_PORT_TEST_ASSERT(gSpiHandle >= 0);
+
+    // Configure SPI for the M8/M9 GNSS chip we will test against
+    // Settings should all be left at defaults apart from chip select pin
+    U_TEST_PRINT_LINE("chip select is on pin %d (0x%02x).", device.pinSelect, device.pinSelect);
+    U_PORT_TEST_ASSERT(uPortSpiControllerSetDevice(gSpiHandle, &device) == 0);
+    // Get the settings back and check that they are all as expected; the
+    // defaults are chosen to match the settings of platforms that do not
+    // support one or more parameters
+    U_PORT_TEST_ASSERT(uPortSpiControllerGetDevice(gSpiHandle, &tmp) == 0);
+    U_PORT_TEST_ASSERT(tmp.pinSelect == device.pinSelect);
+    U_PORT_TEST_ASSERT(tmp.frequencyHertz <= device.frequencyHertz);
+    U_PORT_TEST_ASSERT(tmp.mode == device.mode);
+    U_PORT_TEST_ASSERT(tmp.wordSizeBytes == device.wordSizeBytes);
+    U_PORT_TEST_ASSERT(tmp.lsbFirst == device.lsbFirst);
+    U_PORT_TEST_ASSERT(tmp.startOffsetNanoseconds == device.startOffsetNanoseconds);
+    U_PORT_TEST_ASSERT(tmp.stopOffsetNanoseconds == device.stopOffsetNanoseconds);
+    U_PORT_TEST_ASSERT(tmp.sampleDelayNanoseconds == device.sampleDelayNanoseconds);
+    U_PORT_TEST_ASSERT(fillWordSame(tmp.fillWord, device.fillWord, device.wordSizeBytes));
+
+    U_TEST_PRINT_LINE("talking to M8/M9 GNSS chip over SPI...");
+    // Write to the GNSS chip; this switches on only UBX messages with the
+    // 20 byte UBX-CFG-PRT message (see section 32.11.23.5 of the u-blox
+    // M8 receiver manual); message class 6, message ID 0.
+    // NOTE: this works for M8 and M9 but not 10, where setval replaces it.
+    memset(buffer1, 0, sizeof(buffer1));
+    buffer1[0] = 4; // This means the SPI port
+    buffer1[12] = 0x01; // UBX protocol only
+    buffer1[14] = 0x01; // UBX protocol only
+    y = uUbxProtocolEncode(0x06, 0x00, buffer1, sizeof(buffer1), buffer2);
+    U_PORT_TEST_ASSERT(y == sizeof(buffer2));
+    // There is no real use-case for a single word send/receive when talking
+    // to a GNSS chip so, in order to do a word-test as well as a block-test,
+    // we send the above in two segments: a "word" of three bytes, then the
+    // second half of the buffer minus the three bytes.  If there's an
+    // endianness mismatch between what we've requested of the SPI protocol
+    // and this processor, we also need to perform pre-reversal of the bytes
+    // we are sending as a single word, since uPortSpiControllerSendReceiveWord()
+    // will be helpfully byte-reversing them for us.
+    U_TEST_PRINT_LINE("this MCU is %s-endian and we are sending"
+                      " %s first.", U_PORT_IS_LITTLE_ENDIAN ? "little" : "big",
+                      tmp.lsbFirst ? "LSB" : "MSB");
+    if (tmp.lsbFirst != U_PORT_IS_LITTLE_ENDIAN) {
+        U_TEST_PRINT_LINE("pre-reversing word to compensate for endiannness conversion.");
+        for (size_t x = 0; x < 3; x++) {
+            buffer3[x] = buffer2[(3 - 1) - x];
+        }
+    } else {
+        memcpy(buffer3, buffer2, 3);
+    }
+    uPortSpiControllerSendReceiveWord(gSpiHandle, *((uint64_t *) &buffer3), 3);
+    U_PORT_TEST_ASSERT(uPortSpiControllerSendReceiveBlock(gSpiHandle,
+                                                          &(buffer2[3]),
+                                                          y - 3,
+                                                          NULL, 0) == 0);
+
+    // There should now be a 10 byte ack waiting for us, which we will
+    // receive into buffer2 and decode into buffer1; question is, when
+    // does it start to arrive?
+    memset(buffer1, 0, sizeof(buffer1));
+    memset(buffer2, 0, sizeof(buffer2));
+    // In order to test both single word and block receives, we do a short
+    // block receive, a word send/receive, then another block receive for
+    // the remainder of the buffer and after this we try to decode the
+    // ack message. The pattern below works because buffer2 is more
+    // than twice the size of the expected message.
+    // Wait a tiny amount first make sure the answer is ready and so should
+    // definitely be spread across the three function calls.
+    uPortTaskBlock(10);
+    // The messageClass for an ack/nack is 0x05 and the message ID is 1 for an ack
+    for (size_t x = 0; (messageClass != 0x05) && (messageId != 0x01) &&
+         (x < U_PORT_TEST_SPI_TRIES); x++) {
+        // 4 chosen her because receiving 4 bytes is a special case for ESP32
+        y = 4;
+        U_PORT_TEST_ASSERT(uPortSpiControllerSendReceiveBlock(gSpiHandle, NULL, 0,
+                                                              pBuffer, y) == y);
+        pBuffer += y;
+        // Only a two-byte word here, rather than three, just for the sake
+        // of variety
+        *((uint64_t *) &buffer3) = uPortSpiControllerSendReceiveWord(gSpiHandle, 0xFFFF, 2);
+        if (tmp.lsbFirst != U_PORT_IS_LITTLE_ENDIAN) {
+            *pBuffer = buffer3[1];
+            pBuffer++;
+            *pBuffer = buffer3[0];
+        } else {
+            *pBuffer = buffer3[0];
+            pBuffer++;
+            *pBuffer = buffer3[1];
+        }
+        pBuffer++;
+        y = (sizeof(buffer2) - (pBuffer - buffer2)) / 2;
+        U_PORT_TEST_ASSERT(uPortSpiControllerSendReceiveBlock(gSpiHandle, NULL, 0,
+                                                              pBuffer, y) == y);
+        pBuffer += y;
+        y = uUbxProtocolDecode(buffer2, pBuffer - buffer2, &messageClass, &messageId,
+                               buffer1, sizeof(buffer1), (const char **) &pBuffer);
+        if (y == (int32_t) U_ERROR_COMMON_NOT_FOUND) {
+            // Got nothing, reset the buffer pointer for the next try
+            pBuffer = buffer2;
+        }
+    }
+
+    U_PORT_TEST_ASSERT(messageClass == 0x05);
+    U_PORT_TEST_ASSERT(messageId == 0x01);
+    // The body of both the ack and nack messages is 2 bytes long and contains the message
+    // class and message ID of the message that is being acked or nacked,
+    U_PORT_TEST_ASSERT(y == 2);
+    U_PORT_TEST_ASSERT(buffer1[0] == 0x06);
+    U_PORT_TEST_ASSERT(buffer1[1] == 0x00);
+
+    // Deinit SPI without closing the open instance; should tidy itself up
+    uPortSpiDeinit();
+
+    // Now we're done
+    uPortDeinit();
+
+    // Check for memory leaks
+    heapUsed -= uPortGetHeapFree();
+    U_TEST_PRINT_LINE("%d byte(s) of heap were lost to the C library"
+                      " during this test and we have leaked %d byte(s).",
+                      gSystemHeapLost - heapClibLossOffset,
+                      heapUsed - (gSystemHeapLost - heapClibLossOffset));
+    // heapUsed < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT((heapUsed < 0) ||
+                       (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
+}
+#endif
+
 /** Test crypto: not a rigorous test, more a "hello world".
  */
 U_PORT_TEST_FUNCTION("[port]", "portCrypto")
@@ -2864,6 +3105,14 @@ U_PORT_TEST_FUNCTION("[port]", "portCleanUp")
         uPortI2cCloseRecoverBus(gI2cHandle);
     }
     uPortI2cDeinit();
+#endif
+
+#if (U_CFG_APP_GNSS_SPI >= 0)
+    if (gSpiHandle >= 0) {
+        // Clean up SPI
+        uPortSpiClose(gSpiHandle);
+    }
+    uPortSpiDeinit();
 #endif
 
     uPortDeinit();

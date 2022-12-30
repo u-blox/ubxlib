@@ -24,16 +24,21 @@
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
+#include "string.h"    // strncpy()
 
 #include "u_cfg_os_platform_specific.h"
 #include "u_error_common.h"
 #include "u_port.h"
 #include "u_port_heap.h"
 #include "u_port_os.h"
-#include "u_port_private.h"
 #include "u_port_event_queue.h"
 
 #include "zephyr.h"
+#include "device.h"
+#include "drivers/gpio.h"
+#include "version.h"
+
+#include "u_port_private.h"  // Down here because it needs to know about the Zephyr device tree
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -264,6 +269,29 @@ void uPortPrivateDeinit()
         uPortMutexDelete(gMutex);
         gMutex = NULL;
     }
+}
+
+// Get a GPIO device
+const struct device *pUPortPrivateGetGpioDevice(int32_t pin)
+{
+    const struct device *pDev = NULL;
+    // common practice in device trees that one gpio port holds 32 pins
+#if KERNEL_VERSION_MAJOR < 3
+    char dtDeviceNodeLabel[7];
+    strncpy(dtDeviceNodeLabel, "GPIO_x", sizeof(dtDeviceNodeLabel));
+    // replace x with corresponding port number
+    dtDeviceNodeLabel[5] = '0' + (pin / GPIO_MAX_PINS_PER_PORT);
+    dtDeviceNodeLabel[6] = 0;
+    pDev = device_get_binding(dtDeviceNodeLabel);
+#else
+    int32_t port = pin / GPIO_MAX_PINS_PER_PORT;
+    if (port == 0) {
+        pDev = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(gpio0));
+    } else if (port == 1) {
+        pDev = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(gpio1));
+    }
+#endif
+    return pDev;
 }
 
 /* ----------------------------------------------------------------

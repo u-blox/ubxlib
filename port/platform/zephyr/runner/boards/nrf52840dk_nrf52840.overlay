@@ -24,3 +24,14 @@
     status = "okay";
     /* Otherwise board default settings are good. */
 };
+/* When SPI is enabled we need to remove SPI1 to continue to have I2C1, otherwise the main .dts file brings it in. */
+&spi1 {
+	status = "disabled";
+};
+&spi3 {
+	compatible = "nordic,nrf-spim";
+	status = "okay";
+	sck-pin = <28>;
+	miso-pin = <27>;
+	mosi-pin = <26>;
+};

@@ -104,6 +104,7 @@ u_add_source_dir(base ${UBXLIB_BASE}/port/platform/common/log_ram)
 list(APPEND UBXLIB_INC
   ${UBXLIB_BASE}
   ${UBXLIB_BASE}/cfg
+  ${UBXLIB_BASE}/common/type/api
   ${UBXLIB_BASE}/port/api
 )
 

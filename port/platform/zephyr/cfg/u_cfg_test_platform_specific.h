@@ -143,7 +143,7 @@
 /** UART HW block for UART driver loopback testing on nRF53.
  */
 # ifndef U_CFG_TEST_UART_A
-#  define U_CFG_TEST_UART_A          2
+#  define U_CFG_TEST_UART_A          3
 # endif
 #else
 /** UART HW block for UART driver loopback testing on everything else.

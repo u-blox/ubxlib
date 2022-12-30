@@ -35,6 +35,7 @@ set(COMPONENT_SRCS
     ${PLATFORM_DIR}/src/u_port_os.c
     ${PLATFORM_DIR}/src/u_port_uart.c
     ${PLATFORM_DIR}/src/u_port_i2c.c
+    ${PLATFORM_DIR}/src/u_port_spi.c
     ${PLATFORM_DIR}/src/u_port_private.c
     ${PLATFORM_DIR}/../../clib/u_port_clib_mktime64.c
     ${PLATFORM_DIR}/../common/mbedtls/u_port_crypto.c

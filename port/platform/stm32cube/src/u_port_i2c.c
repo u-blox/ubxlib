@@ -587,7 +587,7 @@ static int32_t openI2c(int32_t i2c, int32_t pinSda, int32_t pinSdc,
         U_PORT_MUTEX_LOCK(gMutex);
 
         handleOrErrorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-        // > 0 rather than >= 0 below 'cos ST number their UARTs from 1
+        // > 0 rather than >= 0 below 'cos ST number their SPIs from 1
         if ((i2c > 0) && (i2c < sizeof(gI2cData) / sizeof(gI2cData[0])) &&
             (gI2cData[i2c].pReg == NULL) && controller &&
             (adopt || ((pinSda >= 0) && (pinSdc >= 0)))) {

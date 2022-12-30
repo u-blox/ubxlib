@@ -128,11 +128,13 @@
  * communicating with a cellular module.
  * NOTE: this used to be 1 however, with I2C added, which has to
  * be on 1 because that's the only I2C port that has DMA, it was
- * moved to 2 as you can't have I2C and UART on the same HW block
- * and there are more UARTs available on NRF53.
+ * moved to 2, but then we added SPI and that is best off using
+ * the exising Zephyr-mapped SPI 2 so we have bumped it to 3 as
+ * you can't have I2C/SPI and UART on the same HW block and there
+ * are more UARTs available on NRF53.
  */
 # ifndef U_CFG_APP_CELL_UART
-#  define U_CFG_APP_CELL_UART       2
+#  define U_CFG_APP_CELL_UART       3
 # endif
 #else
 /** The UARTE HW block to use inside the NRF52 chip or on Linux
@@ -278,6 +280,30 @@
 # define U_CFG_APP_GNSS_I2C                  -1
 #endif
 
+#ifndef U_CFG_APP_GNSS_SPI
+/** The SPI HW block to use inside the NRF5x chip to communicate
+ * with a GNSS module.  NRF53 has up to five SPIs while NRF52 has
+ * four; SPI 0 cannot be used at the same time as I2C 0 and there
+ * are other restrictions, for instance SPI 2 and UART 2 can't
+ * be used at the same time, etc.  In the default Zephyr NRF5340DK
+ * board configuration SPI 2 is brought out on pins P1.13 [45, MOSI],
+ * P1.14 [46, MISO] and P1.15 [47, SCLK], making it a good choice,
+ * but in the default Zephyr NRF52840DK board configuration this is
+ * the SPI port that is by default electrically connected to the
+ * on-board flash chip. Hence, in order to avoid cutting/shorting
+ * jumpers and to still allow I2C 1 to be used at the same time,
+ * the overlay files used by the runner build here for NRF52840
+ * adds SPI 3, coming out on pins P0.26 [MOSI], P0.27 [MISO] and
+ * P0.28 [SCLK] (though note that P0.26 and P0.27 are the default
+ * pins for I2C 0, which is OK since we're not using it).
+ *
+ * You will also need to set the following in your prj.cnf file:
+ *
+ * CONFIG_SPI=y
+ */
+# define U_CFG_APP_GNSS_SPI                  -1
+#endif
+
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS FOR ZEPHYR/NRF5x: PINS FOR GNSS
  * -------------------------------------------------------------- */
@@ -319,6 +345,22 @@
 
 #ifndef U_CFG_APP_PIN_GNSS_SCL
 # define U_CFG_APP_PIN_GNSS_SCL               -1
+#endif
+
+#ifndef U_CFG_APP_PIN_GNSS_SPI_MOSI
+# define U_CFG_APP_PIN_GNSS_SPI_MOSI          -1
+#endif
+
+#ifndef U_CFG_APP_PIN_GNSS_SPI_MISO
+# define U_CFG_APP_PIN_GNSS_SPI_MISO          -1
+#endif
+
+#ifndef U_CFG_APP_PIN_GNSS_SPI_CLK
+# define U_CFG_APP_PIN_GNSS_SPI_CLK           -1
+#endif
+
+#ifndef U_CFG_APP_PIN_GNSS_SPI_SELECT
+# define U_CFG_APP_PIN_GNSS_SPI_SELECT        -1
 #endif
 
 /* ----------------------------------------------------------------

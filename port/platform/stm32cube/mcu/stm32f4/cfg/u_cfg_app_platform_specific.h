@@ -255,6 +255,15 @@
 # define U_CFG_APP_GNSS_I2C                  -1
 #endif
 
+#ifndef U_CFG_APP_GNSS_SPI
+/** The SPI HW block to use inside the STM32F4 chip to communicate
+ * with a GNSS module.  Note that ST number their HW SPI blocks
+ * starting at 1 rather than 0.  If you have SPI SELECT on PA_4,
+ * CLK on PA_5, MISO on PA_6 and MOSI on PA_7, use SPI 1.
+ */
+# define U_CFG_APP_GNSS_SPI                  -1
+#endif
+
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS FOR A GNSS MODULE ON STM32F4: PINS
  * -------------------------------------------------------------- */
@@ -315,6 +324,34 @@
  * use -1 where there is no such connection.
  */
 # define U_CFG_APP_PIN_GNSS_SCL               0x16  // AKA PB_6 (I2C 1)
+#endif
+
+#ifndef U_CFG_APP_PIN_GNSS_SPI_MOSI
+/** The GPIO output pin for SPI towards the GNSS module;
+ * not relevant for Windows and so set to -1.
+ */
+# define U_CFG_APP_PIN_GNSS_SPI_MOSI          0x07  // AKA PA_7 (SPI 1)
+#endif
+
+#ifndef U_CFG_APP_PIN_GNSS_SPI_MISO
+/** The GPIO input pin for SPI from the GNSS module;
+ * use -1 where there is no such connection.
+ */
+# define U_CFG_APP_PIN_GNSS_SPI_MISO          0x06  // AKA PA_6 (SPI 1)
+#endif
+
+#ifndef U_CFG_APP_PIN_GNSS_SPI_CLK
+/** The GPIO output pin that is the clock for SPI;
+ * use -1 where there is no such connection.
+ */
+# define U_CFG_APP_PIN_GNSS_SPI_CLK           0x05  // AKA PA_5 (SPI 1)
+#endif
+
+#ifndef U_CFG_APP_PIN_GNSS_SPI_SELECT
+/** The GPIO output pin that is the chip select for the GNSS
+ * module; use -1 where there is no such connection.
+ */
+# define U_CFG_APP_PIN_GNSS_SPI_SELECT        0x04  // AKA PA_4 (SPI 1)
 #endif
 
 /* ----------------------------------------------------------------

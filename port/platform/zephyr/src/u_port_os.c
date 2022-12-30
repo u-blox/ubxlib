@@ -72,9 +72,11 @@
 #include "u_port_debug.h"
 #include "u_port.h"
 #include "u_port_os.h"
-#include "u_port_private.h"
 
 #include <zephyr.h>
+#include "device.h"
+
+#include "u_port_private.h"  // Down here because it needs to know about the Zephyr device tree
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS

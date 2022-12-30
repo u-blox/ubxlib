@@ -50,6 +50,36 @@ extern "C" {
  */
 #define U_PORT_STRINGIFY_QUOTED(x) U_PORT_STRINGIFY_LITERAL(x)
 
+/** Endianness check: evaluates to 1 if this processor is little-endian,
+ * else 0.
+ */
+#define U_PORT_IS_LITTLE_ENDIAN ((union {                 \
+                                      uint16_t uint16;    \
+                                      unsigned char c;    \
+                                 }) {.uint16 = 1}.c)
+
+/** Byte-reverse a uint64_t; may be required for endianness
+ * conversion.  valueUint64 must be a uint64_t, lengthBytes of it
+ * will be byte-reversed.
+ */
+#define U_PORT_BYTE_REVERSE(valueUint64, lengthBytes) {                 \
+    uint64_t newValue;                                                  \
+    size_t lengthReversed = lengthBytes;                                \
+    if (lengthReversed > sizeof(newValue)) {                            \
+        lengthReversed = sizeof(newValue);                              \
+    }                                                                   \
+    if (lengthReversed > 0) {                                           \
+       uint8_t *pSrc = (uint8_t *) &valueUint64;                        \
+       uint8_t *pDest = (((uint8_t *) &newValue) + lengthReversed - 1); \
+       for (size_t x = 0; x < lengthReversed; x++) {                    \
+           *pDest = *pSrc;                                              \
+           pDest--;                                                     \
+           pSrc++;                                                      \
+       }                                                                \
+       valueUint64 = newValue;                                          \
+    }                                                                   \
+}
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */

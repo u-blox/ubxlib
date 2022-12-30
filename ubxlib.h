@@ -48,6 +48,7 @@
 #include <u_compiler.h>
 #include <u_error_common.h>
 #include <u_assert.h>
+#include <u_common_spi.h>
 
 // Porting APIs
 #include <u_port.h>
@@ -60,6 +61,7 @@
 #include <u_port_os.h>
 #include <u_port_uart.h>
 #include <u_port_i2c.h>
+#include <u_port_spi.h>
 
 // Module types: used in common APIs hence must come first
 #include <u_ble_module_type.h>

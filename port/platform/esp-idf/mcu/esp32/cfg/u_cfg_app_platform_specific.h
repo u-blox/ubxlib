@@ -208,6 +208,20 @@
 # define U_CFG_APP_GNSS_I2C                  -1
 #endif
 
+#ifndef U_CFG_APP_GNSS_SPI
+/** The SPI HW block to use inside the ESP32 chip to communicate
+ * with a GNSS module.  Though there are four SPIs, the first two
+ * are used to talk to the ESP32's own flash memory and hence
+ * CANNOT BE USED here; please use only SPI 2 or 3.  Also, the
+ * choice of GPIO line to be used with a given SPI has an impact
+ * on how fast that SPI can be driven, see the ESP-IDF
+ * documentation on SPI for more details.  To avoid collisions
+ * with other pins here use SPI 3 with select on pin 5, SCLK on
+ * pin 18, MISO on pin 19 and MOSI on pin 23.
+ */
+# define U_CFG_APP_GNSS_SPI                  -1
+#endif
+
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS FOR A GNSS MODULE ON ESP32: PINS
  * -------------------------------------------------------------- */
@@ -265,6 +279,34 @@
  * use -1 where there is no such connection.
  */
 # define U_CFG_APP_PIN_GNSS_SCL               22
+#endif
+
+#ifndef U_CFG_APP_PIN_GNSS_SPI_MOSI
+/** The ESP32 output pin for SPI towards the GNSS module;
+ * use -1 where there is no such connection.
+ */
+# define U_CFG_APP_PIN_GNSS_SPI_MOSI          23
+#endif
+
+#ifndef U_CFG_APP_PIN_GNSS_SPI_MISO
+/** The ESP32 input pin for SPI from the GNSS module;
+ * use -1 where there is no such connection.
+ */
+# define U_CFG_APP_PIN_GNSS_SPI_MISO          19
+#endif
+
+#ifndef U_CFG_APP_PIN_GNSS_SPI_CLK
+/** The ESP32 output pin that is the clock for SPI;
+ * use -1 where there is no such connection.
+ */
+# define U_CFG_APP_PIN_GNSS_SPI_CLK           18
+#endif
+
+#ifndef U_CFG_APP_PIN_GNSS_SPI_SELECT
+/** The ESP32 output pin that is the chip select for the GNSS
+ * module; use -1 where there is no such connection.
+ */
+# define U_CFG_APP_PIN_GNSS_SPI_SELECT         5
 #endif
 
 /* ----------------------------------------------------------------

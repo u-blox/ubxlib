@@ -22,6 +22,7 @@ UBXLIB_SRC += \
 	$(PLATFORM_PATH)/src/u_port_private.c \
 	$(PLATFORM_PATH)/src/u_port_uart.c \
 	$(PLATFORM_PATH)/src/u_port_i2c.c \
+	$(PLATFORM_PATH)/src/u_port_spi.c \
 	$(PLATFORM_PATH)/src/u_port.c \
 	$(PLATFORM_PATH)/src/heap_useNewlib.c
 

@@ -86,6 +86,7 @@ port/platform/esp-idf/src/u_port_os.c
 port/platform/esp-idf/src/u_port_gpio.c
 port/platform/esp-idf/src/u_port_uart.c
 port/platform/esp-idf/src/u_port_i2c.c
+port/platform/esp-idf/src/u_port_spi.c
 port/platform/esp-idf/src/u_port_private.c
 port/platform/common/mutex_debug/u_mutex_debug.c
 port/platform/common/log_ram/u_log_ram.c

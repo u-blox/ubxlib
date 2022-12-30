@@ -101,6 +101,7 @@ STM32CUBE_FW_SRC += \
 	$(STM32_HAL_PATH)/Src/stm32f4xx_ll_rcc.c \
 	$(STM32_HAL_PATH)/Src/stm32f4xx_ll_gpio.c \
 	$(STM32_HAL_PATH)/Src/stm32f4xx_ll_dma.c \
+	$(STM32_HAL_PATH)/Src/stm32f4xx_ll_spi.c \
 	$(STM32_HAL_PATH)/Src/stm32f4xx_ll_usart.c
 
 STM32CUBE_FW_INC += \
