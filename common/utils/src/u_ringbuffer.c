@@ -517,6 +517,32 @@ void uRingBufferFlush(uRingBuffer_t *pRingBuffer)
     }
 }
 
+void uRingBufferFlushValue(uRingBuffer_t *pRingBuffer, char value, size_t length)
+{
+    size_t bytesRead = 0;
+    size_t dataSize;
+    const char *pData;
+
+    if (pRingBuffer->pBuffer != NULL) {
+
+        U_PORT_MUTEX_LOCK((uPortMutexHandle_t) pRingBuffer->mutex);
+
+        pData = pRingBuffer->pDataRead[0];
+        dataSize = ptrDiff(pData, pRingBuffer->pDataWrite, pRingBuffer->size);
+        if (dataSize >= length) {
+            while ((bytesRead < dataSize) && (*pData == value)) {
+                pData = pPtrInc(pData, pRingBuffer->pBuffer, pRingBuffer->size);
+                bytesRead++;
+            }
+            if (bytesRead >= length) {
+                pRingBuffer->pDataRead[0] = pData;
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK((uPortMutexHandle_t) pRingBuffer->mutex);
+    }
+}
+
 void uRingBufferReset(uRingBuffer_t *pRingBuffer)
 {
     if (pRingBuffer->pBuffer != NULL) {
