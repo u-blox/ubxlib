@@ -537,10 +537,12 @@ void uAtClientPrintAtSet(uAtClientHandle_t atHandle,
  */
 int32_t uAtClientTimeoutGet(const uAtClientHandle_t atHandle);
 
-/** Set the timeout for completion of an AT command,
- * from uAtClientLock() to uAtClientUnlock().
- * If this is not called the timeout will be
- * #U_AT_CLIENT_DEFAULT_TIMEOUT_MS.
+/** Set the timeout for completion of an AT command; the
+ * timeout begins when uAtClientLock() is called and ends
+ * when uAtClientUnlock() is called.
+ *
+ * If uAtClientTimeoutSet() is not called the timeout will
+ * be #U_AT_CLIENT_DEFAULT_TIMEOUT_MS.
  *
  * If this is called between uAtClientLock() and
  * uAtClientUnlock() the given timeout will apply only
