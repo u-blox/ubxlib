@@ -189,12 +189,11 @@ typedef enum {
     U_GNSS_PORT_MAX_NUM
 } uGnssPort_t;
 
-/** The protocol types for exchanges with a GNSS chip,
- * values chosen to match the bit-map used on the GNSS interface.
+/** The protocol types for exchanges with a GNSS chip.
  */
 typedef enum {
-    U_GNSS_PROTOCOL_UBX = 0,
-    U_GNSS_PROTOCOL_NMEA = 1,
+    U_GNSS_PROTOCOL_UBX = 0,     // Value chosen to match encoded version for the GNSS chip
+    U_GNSS_PROTOCOL_NMEA = 1,    // Value chosen to match encoded version for the GNSS chip
     U_GNSS_PROTOCOL_RTCM = 2,
     U_GNSS_PROTOCOL_UNKNOWN = 3, // Must have this value as it is used to mark
     U_GNSS_PROTOCOL_MAX_NUM,     // the end of the known output protocols
