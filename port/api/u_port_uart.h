@@ -151,6 +151,10 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
 /** Close a UART.  Note that this should NOT be called if
  * a UART read or write could be in progress.
  *
+ * Note: when a UART is closed not all memory associated with it
+ * is immediately reclaimed; if you wish to reclaim memory before
+ * uPortDeinit() you may do so by calling uPortEventQueueCleanUp().
+ *
  * @param handle the handle of the UART instance to close.
  */
 void uPortUartClose(int32_t handle);

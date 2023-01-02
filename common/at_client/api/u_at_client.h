@@ -429,6 +429,11 @@ int32_t uAtClientInit();
 /** Shut down all AT clients.  No AT client function other than
  * uAtClientInit() should be called afterwards and all data transfer
  * should have been completed before this is called.
+ *
+ * Note: when AT clients are deinitialised not all memory associated
+ * the them is immediately reclaimed; if you wish to reclaim memory before
+ * uPortDeinit() you may do so by calling uPortEventQueueCleanUp().
+ *
  */
 void uAtClientDeinit();
 

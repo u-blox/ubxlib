@@ -1108,6 +1108,7 @@ void uBleSpsPrivateDeinit(void)
         }
 
         uPortEventQueueClose(gSpsEventQueue);
+        uPortEventQueueCleanUp();
         gSpsEventQueue = (int32_t)U_ERROR_COMMON_NOT_INITIALISED;
         uPortMutexDelete(gBleSpsMutex);
         gBleSpsMutex = NULL;

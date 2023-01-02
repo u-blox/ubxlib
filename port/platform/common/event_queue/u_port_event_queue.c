@@ -59,6 +59,7 @@
 /** The info for an event queue.
  */
 typedef struct uEventQueue_t {
+    bool closed; /** true if this event queue has been closed. */
     void (*pFunction)(void *, size_t); /** The function to be called. */
     int32_t handle;            /** Handle for this event queue. */
     uPortQueueHandle_t queue; /** Handle for the OS queue. */
@@ -84,12 +85,11 @@ typedef enum {
  * VARIABLES
  * -------------------------------------------------------------- */
 
-/** Mutex to protect the table.
+/** Mutex to protect the array.
  */
 static uPortMutexHandle_t gMutex = NULL;
 
-/** Jump table, allowing an event queue to be found
- * without the need for a loop.
+/** Array of event queues.
  */
 static uEventQueue_t *gpEventQueue[U_PORT_EVENT_QUEUE_MAX_NUM];
 
@@ -149,25 +149,9 @@ static void eventQueueTask(void *pParam)
     uPortTaskDelete(NULL);
 }
 
-// Get the next free event handle.
-static int32_t nextEventHandleGet()
-{
-    int32_t handle = -1;
-
-    for (size_t x = 0; (handle < 0) &&
-         x < sizeof(gpEventQueue) / sizeof(gpEventQueue[0]);
-         x++) {
-        if (gpEventQueue[x] == NULL) {
-            handle = (int32_t) x;
-        }
-    }
-
-    return handle;
-}
-
-// Close an event queue.
+// Free memory held by an event queue.
 // The mutex must be locked before this is called.
-static int32_t eventQueueClose(uEventQueue_t *pEventQueue)
+static int32_t eventQueueFree(uEventQueue_t *pEventQueue)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
     void *pControl;
@@ -209,14 +193,37 @@ static int32_t eventQueueClose(uEventQueue_t *pEventQueue)
     return errorCode;
 }
 
-// Find an event queue's structure in the table.
+// Get the next free event handle.
 // The mutex must be locked before this is called.
+static int32_t nextEventHandleGet()
+{
+    int32_t handle = -1;
+
+    for (size_t x = 0; (handle < 0) &&
+         x < sizeof(gpEventQueue) / sizeof(gpEventQueue[0]);
+         x++) {
+        if (gpEventQueue[x] == NULL) {
+            handle = (int32_t) x;
+        } else {
+            if (gpEventQueue[x]->closed) {
+                eventQueueFree(gpEventQueue[x]);
+                gpEventQueue[x] = NULL;
+                handle = (int32_t) x;
+            }
+        }
+    }
+
+    return handle;
+}
+
+// Find an event queue's structure in the table.
 static inline uEventQueue_t *pEventQueueGet(int32_t handle)
 {
     uEventQueue_t *pEventQueue = NULL;
 
     if ((handle >= 0) &&
-        (handle < (int32_t) (sizeof(gpEventQueue) / sizeof(gpEventQueue[0])))) {
+        (handle < (int32_t) (sizeof(gpEventQueue) / sizeof(gpEventQueue[0]))) &&
+        ((gpEventQueue[handle] == NULL) || !gpEventQueue[handle]->closed)) {
         pEventQueue = gpEventQueue[handle];
     }
 
@@ -267,7 +274,7 @@ void uPortEventQueuePrivateDeinit(void)
              x < sizeof(gpEventQueue) / sizeof(gpEventQueue[0]);
              x++) {
             if (gpEventQueue[x] != NULL) {
-                U_ASSERT(eventQueueClose(gpEventQueue[x]) == 0);
+                U_ASSERT(eventQueueFree(gpEventQueue[x]) == 0);
             }
         }
 
@@ -315,6 +322,7 @@ int32_t uPortEventQueueOpen(void (*pFunction) (void *, size_t),
                 // Malloc a structure to represent the event queue
                 pEventQueue = (uEventQueue_t *) pUPortMalloc(sizeof(uEventQueue_t));
                 if (pEventQueue != NULL) {
+                    pEventQueue->closed = false;
                     pEventQueue->pFunction = pFunction;
                     pEventQueue->paramMaxLengthBytes = paramMaxLengthBytes;
                     // Create the queue
@@ -542,7 +550,19 @@ int32_t uPortEventQueueClose(int32_t handle)
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         pEventQueue = pEventQueueGet(handle);
         if (pEventQueue != NULL) {
-            errorCode = eventQueueClose(pEventQueue);
+            // You might expect this function to actually close the
+            // queue and free memory etc. but there is a problem with
+            // that, which is it would have to wait for the task at
+            // the end of the event queue to complete all its actions
+            // and that task _might_ call back into this API, which
+            // would lead to a mutex lock-up on gMutex.  Hence we simply
+            // mark the event queue as closeable and return.  The event
+            // queue task then gets to run to completion in its own time.
+            // Memory is recovered when we need to (e.g. if we need
+            // another event queue or we are deinitialised or
+            // uPortEventQueueCleanUp() is called).
+            pEventQueue->closed = true;
+            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
         }
 
         U_PORT_MUTEX_UNLOCK(gMutex);
@@ -570,6 +590,26 @@ int32_t uPortEventQueueGetFree(int32_t handle)
     }
 
     return errorCodeOrFree;
+}
+
+// Free memory in closed event queues
+void uPortEventQueueCleanUp(void)
+{
+    if (gMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gMutex);
+
+        // Free any closed event queues
+        for (size_t x = 0;
+             x < sizeof(gpEventQueue) / sizeof(gpEventQueue[0]);
+             x++) {
+            if ((gpEventQueue[x] != NULL) && (gpEventQueue[x]->closed)) {
+                eventQueueFree(gpEventQueue[x]);
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gMutex);
+    }
 }
 
 // End of file

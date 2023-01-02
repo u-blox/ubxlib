@@ -2346,6 +2346,7 @@ static void urcCallback(int32_t streamHandle, uint32_t eventBitmask,
     uAtClientReceiveBuffer_t *pReceiveBuffer;
     uPortMutexHandle_t streamMutex;
     int32_t sizeOrError;
+    int32_t x;
 
     pClient = (uAtClientInstance_t *) pParameters;
 
@@ -2424,7 +2425,8 @@ static void urcCallback(int32_t streamHandle, uint32_t eventBitmask,
             // sure that's safe
             unlockNoDataCheck(pClient, streamMutex);
 
-            if (uPortEventQueueGetFree(gEventQueueHandle) < U_AT_CLIENT_CALLBACK_QUEUE_FREE_THRESHOLD) {
+            x = uPortEventQueueGetFree(gEventQueueHandle);
+            if ((x >= 0) && (x < U_AT_CLIENT_CALLBACK_QUEUE_FREE_THRESHOLD)) {
                 // If the AT client callback queue is getting full, give the
                 // task at the end of it time to execute or we may fill up
                 // the queue and get stuck

@@ -2071,6 +2071,7 @@ U_PORT_TEST_FUNCTION("[port]", "portEventQueue")
 
     U_TEST_PRINT_LINE("closing the event queues...");
     U_PORT_TEST_ASSERT(uPortEventQueueClose(gEventQueueMaxHandle) == 0);
+    uPortEventQueueCleanUp();
     U_PORT_TEST_ASSERT(uPortEventQueueClose(gEventQueueMinHandle) == 0);
 
     // Check that they are no longer available

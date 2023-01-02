@@ -89,6 +89,10 @@ int32_t uBleInit(void);
 
 /** Shut-down BLE.  All instances will be removed internally
  * with calls to uBleRemove().
+ *
+ * Note: when BLE is deinitialised not all memory associated with it
+ * is immediately reclaimed; if you wish to reclaim memory before
+ * uPortDeinit() you may do so by calling uPortEventQueueCleanUp().
  */
 void uBleDeinit(void);
 

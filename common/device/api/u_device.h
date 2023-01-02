@@ -373,6 +373,10 @@ int32_t uDeviceOpen(const uDeviceCfg_t *pDeviceCfg,
 
 /** Close an open device instance, optionally powering it down.
  *
+ * Note: when a device is closed not all memory associated with it
+ * is immediately reclaimed; if you wish to reclaim memory before
+ * uPortDeinit() you may do so by calling uPortEventQueueCleanUp().
+ *
  * @param devHandle handle to a previously opened device.
  * @param powerOff  if true then also power the device off; leave
  *                  this as false to simply logically disconnect

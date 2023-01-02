@@ -240,6 +240,10 @@ int32_t uMqttClientOpenResetLastError();
 /** Close the given MQTT client session.  If the session is
  * connected it will be disconnected first.
  *
+ * Note: when MQTT is deinitialised not all memory associated with it
+ * is always immediately reclaimed; if you wish to reclaim memory before
+ * uPortDeinit() you may do so by calling uPortEventQueueCleanUp().
+ *
  * @param[in] pContext   a pointer to the internal MQTT context
  *                       structure that was originally returned by
  *                       pUMqttClientOpen().

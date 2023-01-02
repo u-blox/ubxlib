@@ -166,6 +166,10 @@ int32_t uWifiMqttUnsubscribe(const uMqttClientContext_t *pContext,
 /** Close connected MQTT session. This API will disconnect from the broker if connected
  * followed by releasing all the resources associated to that particular session
  *
+ * Note: when MQTT is deinitialised not all memory associated with it
+ * is immediately reclaimed; if you wish to reclaim memory before
+ * uPortDeinit() you may do so by calling uPortEventQueueCleanUp().
+ *
  * @param[in] pContext client context returned by pUMqttClientOpen().
  */
 void uWifiMqttClose(uMqttClientContext_t *pContext);
