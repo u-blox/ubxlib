@@ -134,7 +134,7 @@ U_PORT_TEST_FUNCTION("[gnssInfo]", "gnssInfoStatic")
 
     // Repeat for all transport types
     iterations = uGnssTestPrivateTransportTypesSet(transportTypes, U_CFG_APP_GNSS_UART,
-                                                   U_CFG_APP_GNSS_I2C);
+                                                   U_CFG_APP_GNSS_I2C, U_CFG_APP_GNSS_SPI);
     for (size_t w = 0; w < iterations; w++) {
         // Do the standard preamble
         U_TEST_PRINT_LINE("testing on transport %s...",
@@ -263,7 +263,7 @@ U_PORT_TEST_FUNCTION("[gnssInfo]", "gnssInfoTime")
 
     // Repeat for all transport types
     iterations = uGnssTestPrivateTransportTypesSet(transportTypes, U_CFG_APP_GNSS_UART,
-                                                   U_CFG_APP_GNSS_I2C);
+                                                   U_CFG_APP_GNSS_I2C, U_CFG_APP_GNSS_SPI);
     for (size_t w = 0; w < iterations; w++) {
         // Do the standard preamble
         U_TEST_PRINT_LINE("testing on transport %s...",

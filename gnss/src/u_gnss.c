@@ -71,6 +71,7 @@ static const char *const gpTransportTypeText[] = {"None",       // U_GNSS_TRANSP
                                                   "UART",       // U_GNSS_TRANSPORT_UART
                                                   "AT",         // U_GNSS_TRANSPORT_AT
                                                   "I2C",        // U_GNSS_TRANSPORT_I2C
+                                                  "SPI",        // U_GNSS_TRANSPORT_SPI
                                                   "UBX UART",   // U_GNSS_TRANSPORT_UBX_UART
                                                   "UBX I2C"     // U_GNSS_TRANSPORT_UBX_I2C
                                                  };
@@ -104,6 +105,9 @@ static uGnssPrivateInstance_t *pGetGnssInstanceTransportHandle(uGnssTransportTyp
                 //lint -fallthrough
                 case U_GNSS_TRANSPORT_UBX_I2C:
                     match = (pInstance->transportHandle.i2c == transportHandle.i2c);
+                    break;
+                case U_GNSS_TRANSPORT_SPI:
+                    match = (pInstance->transportHandle.spi == transportHandle.spi);
                     break;
                 default:
                     break;
@@ -140,8 +144,14 @@ static void deleteGnssInstance(uGnssPrivateInstance_t *pInstance)
             uGnssPrivateCleanUpPosTask(pInstance);
             // Stop asynchronus message receive from happening
             uGnssPrivateStopMsgReceive(pInstance);
+            // Free the SPI buffer, if there is one
+            if (pInstance->pSpiRingBuffer != NULL) {
+                uRingBufferDelete(pInstance->pSpiRingBuffer);
+                uPortFree(pInstance->pSpiRingBuffer);
+            }
+            uPortFree(pInstance->pSpiLinearBuffer);
             if (pInstance->pLinearBuffer != NULL) {
-                // Free the streaming buffer
+                // Free the ring buffer
                 uRingBufferDelete(&(pInstance->ringBuffer));
                 uPortFree(pInstance->pLinearBuffer);
             }
@@ -270,15 +280,15 @@ int32_t uGnssAdd(uGnssModuleType_t moduleType,
                     pInstance->transportMutex = NULL;
                     errorCode = uPortMutexCreate(&pInstance->transportMutex);
                     if (errorCode == 0) {
+                        // Populate the things that aren't good with just the memset()
                         pInstance->transportType = transportType;
-                        pInstance->pLinearBuffer = NULL;
-                        pInstance->pTemporaryBuffer = NULL;
                         pInstance->ringBufferReadHandlePrivate = -1;
                         pInstance->ringBufferReadHandleMsgReceive = -1;
                         pInstance->pModule = &(gUGnssPrivateModuleList[moduleType]);
                         pInstance->transportHandle = transportHandle;
                         pInstance->i2cAddress = U_GNSS_I2C_ADDRESS;
                         pInstance->timeoutMs = U_GNSS_DEFAULT_TIMEOUT_MS;
+                        pInstance->spiFillThreshold = U_GNSS_DEFAULT_SPI_FILL_THRESHOLD;
                         pInstance->printUbxMessages = false;
                         pInstance->pinGnssEnablePower = pinGnssEnablePower;
                         pInstance->atModulePinPwr = -1;
@@ -287,6 +297,8 @@ int32_t uGnssAdd(uGnssModuleType_t moduleType,
                         if ((transportType == U_GNSS_TRANSPORT_UART) ||
                             (transportType == U_GNSS_TRANSPORT_UBX_UART)) {
                             pInstance->portNumber = U_GNSS_PORT_UART;
+                        } else if (transportType == U_GNSS_TRANSPORT_SPI) {
+                            pInstance->portNumber = U_GNSS_PORT_SPI;
                         }
 #if defined(_WIN32) || (defined(__ZEPHYR__) && defined(CONFIG_UART_NATIVE_POSIX))
                         // For Windows and Linux the GNSS-side connection is assumed to be USB
@@ -296,11 +308,6 @@ int32_t uGnssAdd(uGnssModuleType_t moduleType,
                         // Force the port number
                         pInstance->portNumber = U_CFG_GNSS_PORT_NUMBER;
 #endif
-                        pInstance->posTask = NULL;
-                        pInstance->posMutex = NULL;
-                        pInstance->posTaskFlags = 0;
-                        pInstance->pMsgReceive = NULL;
-                        pInstance->pNext = NULL;
 
                         // Now set up the pins
                         uPortLog("U_GNSS: initialising with ENABLE_POWER pin ");
@@ -351,7 +358,7 @@ int32_t uGnssAdd(uGnssModuleType_t moduleType,
                             pInstance->pLinearBuffer = (char *) pUPortMalloc(U_GNSS_MSG_RING_BUFFER_LENGTH_BYTES);
                             if (pInstance->pLinearBuffer != NULL) {
                                 // Also need a temporary buffer to get stuff out
-                                // of the UART/I2C in the first place
+                                // of the UART/I2C/SPI in the first place
                                 pInstance->pTemporaryBuffer = (char *) pUPortMalloc(U_GNSS_MSG_TEMPORARY_BUFFER_LENGTH_BYTES);
                                 if (pInstance->pTemporaryBuffer != NULL) {
                                     // +2 below to keep one for ourselves and one for the
@@ -371,7 +378,25 @@ int32_t uGnssAdd(uGnssModuleType_t moduleType,
                                             errorCode = uRingBufferTakeReadHandle(&(pInstance->ringBuffer));
                                             if (errorCode >= 0) {
                                                 pInstance->ringBufferReadHandleMsgReceive = errorCode;
-                                                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                                                if (pInstance->transportType == U_GNSS_TRANSPORT_SPI) {
+                                                    // Finally, if we are on SPI, we need a local receive
+                                                    // buffer to keep stuff that we receive while we are
+                                                    // just sending
+                                                    // +1 below since we lose one byte in the ring buffer implementation
+                                                    pInstance->pSpiLinearBuffer = (char *) pUPortMalloc(U_GNSS_SPI_BUFFER_LENGTH_BYTES + 1);
+                                                    if (pInstance->pSpiLinearBuffer != NULL) {
+                                                        pInstance->pSpiRingBuffer = (uRingBuffer_t *) pUPortMalloc(sizeof(uRingBuffer_t));
+                                                        if (pInstance->pSpiRingBuffer != NULL) {
+                                                            errorCode = uRingBufferCreate(pInstance->pSpiRingBuffer,
+                                                                                          pInstance->pSpiLinearBuffer,
+                                                                                          U_GNSS_SPI_BUFFER_LENGTH_BYTES + 1);
+                                                        }
+                                                    } else {
+                                                        uRingBufferDelete(&(pInstance->ringBuffer));
+                                                    }
+                                                } else {
+                                                    errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                                                }
                                             } else {
                                                 uRingBufferDelete(&(pInstance->ringBuffer));
                                             }
@@ -391,13 +416,16 @@ int32_t uGnssAdd(uGnssModuleType_t moduleType,
                     }
                     if ((errorCode != 0) || (platformError != 0)) {
                         // If we hit an error, free memory again
+                        if (pInstance->pSpiRingBuffer != NULL) {
+                            uRingBufferDelete(pInstance->pSpiRingBuffer);
+                            uPortFree(pInstance->pSpiRingBuffer);
+                        }
+                        uPortFree(pInstance->pSpiLinearBuffer);
                         if (pInstance->pLinearBuffer != NULL) {
                             uRingBufferDelete(&(pInstance->ringBuffer));
                             uPortFree(pInstance->pLinearBuffer);
                         }
-                        if (pInstance->pTemporaryBuffer != NULL) {
-                            uPortFree(pInstance->pTemporaryBuffer);
-                        }
+                        uPortFree(pInstance->pTemporaryBuffer);
                         if (pInstance->transportMutex != NULL) {
                             uPortMutexDelete(pInstance->transportMutex);
                         }
@@ -587,6 +615,51 @@ void uGnssSetTimeout(uDeviceHandle_t gnssHandle, int32_t timeoutMs)
 
         U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
     }
+}
+
+// Get the SPI fill threshold.
+int32_t uGnssGetSpiFillThreshold(uDeviceHandle_t gnssHandle)
+{
+    int32_t errorCodeOrCount = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uGnssPrivateInstance_t *pInstance;
+
+    if (gUGnssPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
+
+        errorCodeOrCount = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        pInstance = pUGnssPrivateGetInstance(gnssHandle);
+        if (pInstance != NULL) {
+            errorCodeOrCount = pInstance->spiFillThreshold;
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
+    }
+
+    return errorCodeOrCount;
+}
+
+// Set SPI fill threshold.
+int32_t uGnssSetSpiFillThreshold(uDeviceHandle_t gnssHandle, int32_t count)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uGnssPrivateInstance_t *pInstance;
+
+    if (gUGnssPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
+
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        pInstance = pUGnssPrivateGetInstance(gnssHandle);
+        if ((pInstance != NULL) && (count <= U_GNSS_SPI_FILL_THRESHOLD_MAX)) {
+            pInstance->spiFillThreshold = count;
+            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
+    }
+
+    return errorCode;
 }
 
 // Get whether printing of UBX commands and responses is on or off.

@@ -259,7 +259,11 @@
 /** The SPI HW block to use inside the STM32F4 chip to communicate
  * with a GNSS module.  Note that ST number their HW SPI blocks
  * starting at 1 rather than 0.  If you have SPI SELECT on PA_4,
- * CLK on PA_5, MISO on PA_6 and MOSI on PA_7, use SPI 1.
+ * CLK on PA_5, MISO on PA_6 and MOSI on PA_7, use SPI 1, though
+ * note that on the STM32F407 Discover board those pins are hard-
+ * wired to the on-board motion sensor; in that case you might
+ * prefer to use SPI 2 with SPI SELECT on PB_12, CLK on PB_13,
+ * MISO on PB_14 and MOSI on PB_15.
  */
 # define U_CFG_APP_GNSS_SPI                  -1
 #endif
@@ -328,7 +332,7 @@
 
 #ifndef U_CFG_APP_PIN_GNSS_SPI_MOSI
 /** The GPIO output pin for SPI towards the GNSS module;
- * not relevant for Windows and so set to -1.
+ * use -1 where there is no such connection.
  */
 # define U_CFG_APP_PIN_GNSS_SPI_MOSI          0x07  // AKA PA_7 (SPI 1)
 #endif

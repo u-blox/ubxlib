@@ -131,11 +131,16 @@ U_PORT_TEST_FUNCTION("[gnssUtil]", "gnssUtilTransparent")
     heapUsed = uPortGetHeapFree();
 
     iterations = uGnssTestPrivateTransportTypesSet(transportTypes, U_CFG_APP_GNSS_UART,
-                                                   U_CFG_APP_GNSS_I2C);
+                                                   U_CFG_APP_GNSS_I2C, U_CFG_APP_GNSS_SPI);
     for (size_t w = 0; w < iterations; w++) {
-        // Can't do this when the NMEA stream is active, just too messy
+        // Can't do this when the NMEA stream is active, just too messy, and also can't
+        // do this for SPI as we don't know where the response message starts in
+        // the continuous SPI receive stream (OK, we could work it out, but there's little
+        // point as the transparent receive mechanism is not the right thing to do for
+        // SPI in any case)
         if ((transportTypes[w] != U_GNSS_TRANSPORT_NMEA_UART) &&
-            (transportTypes[w] != U_GNSS_TRANSPORT_NMEA_I2C)) {
+            (transportTypes[w] != U_GNSS_TRANSPORT_NMEA_I2C) &&
+            (transportTypes[w] != U_GNSS_TRANSPORT_SPI)) {
             // Do the standard preamble
             U_TEST_PRINT_LINE("testing on transport %s...",
                               pGnssTestPrivateTransportTypeName(transportTypes[w]));

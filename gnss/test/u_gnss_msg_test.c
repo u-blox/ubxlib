@@ -361,7 +361,7 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveBlocking")
 
     // Repeat for all transport types except U_GNSS_TRANSPORT_AT
     iterations = uGnssTestPrivateTransportTypesSet(transportTypes, U_CFG_APP_GNSS_UART,
-                                                   U_CFG_APP_GNSS_I2C);
+                                                   U_CFG_APP_GNSS_I2C, U_CFG_APP_GNSS_SPI);
     for (size_t w = 0; w < iterations; w++) {
         // Only do this for non-message-filtered transport since that is the worst case
         if ((transportTypes[w] == U_GNSS_TRANSPORT_UART) ||
@@ -496,7 +496,7 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveNonBlocking")
 
     // Repeat for all transport types except U_GNSS_TRANSPORT_AT
     iterations = uGnssTestPrivateTransportTypesSet(transportTypes, U_CFG_APP_GNSS_UART,
-                                                   U_CFG_APP_GNSS_I2C);
+                                                   U_CFG_APP_GNSS_I2C, U_CFG_APP_GNSS_SPI);
     for (size_t w = 0; w < iterations; w++) {
         // Only do this for non-message-filtered transport since we need all
         // protocol types for a stress test

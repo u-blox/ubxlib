@@ -67,9 +67,9 @@
 // for the module is likely different that from the MCU: check
 // the data sheet for the module to determine the mapping.
 
-#if defined(U_CFG_TEST_GNSS_MODULE_TYPE) && ((U_CFG_APP_GNSS_UART >= 0) || (U_CFG_APP_GNSS_I2C >= 0))
+#if defined(U_CFG_TEST_GNSS_MODULE_TYPE) && ((U_CFG_APP_GNSS_UART >= 0) || (U_CFG_APP_GNSS_I2C >= 0) || (U_CFG_APP_GNSS_SPI >= 0))
 // DEVICE i.e. module/chip configuration: in this case a GNSS
-// module connected via UART or I2C
+// module connected via UART or I2C or SPI
 static const uDeviceCfg_t gDeviceCfg = {
     .deviceType = U_DEVICE_TYPE_GNSS,
     .deviceCfg = {
@@ -117,6 +117,17 @@ static const uDeviceCfg_t gDeviceCfg = {
             // if alreadyOpen is set to true then
             // pinSda, pinScl and clockHertz will
             // be ignored.
+        },
+    },
+# elif (U_CFG_APP_GNSS_SPI >= 0)
+    .transportType = U_DEVICE_TRANSPORT_TYPE_SPI,
+    .transportCfg = {
+        .cfgSpi = {
+            .spi = U_CFG_APP_GNSS_SPI,
+            .pinMosi = U_CFG_APP_PIN_GNSS_SPI_MOSI,
+            .pinMiso = U_CFG_APP_PIN_GNSS_SPI_MISO,
+            .pinClk = U_CFG_APP_PIN_GNSS_SPI_CLK,
+            .device = U_COMMON_SPI_CONTROLLER_DEVICE_DEFAULTS(U_CFG_APP_PIN_GNSS_SPI_SELECT)
         },
     },
 # else
@@ -210,6 +221,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleGnssCfgVal")
         // Initialise the APIs we will need
         uPortInit();
         uPortI2cInit(); // You only need this if an I2C interface is used
+        uPortSpiInit(); // You only need this if an SPI interface is used
         uDeviceInit();
 
         // Open the device
@@ -291,6 +303,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleGnssCfgVal")
 
         // Tidy up
         uDeviceDeinit();
+        uPortSpiDeinit(); // You only need this if an SPI interface is used
         uPortI2cDeinit(); // You only need this if an I2C interface is used
         uPortDeinit();
 

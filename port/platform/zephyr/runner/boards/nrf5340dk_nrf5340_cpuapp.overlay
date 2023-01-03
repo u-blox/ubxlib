@@ -1,4 +1,4 @@
-/* This used to be on 2 but we need to put the SPI there so it has moved to 3 */
+/* This used to be on 2 but we need to put the SPI there so it has moved to 3. */
 &uart3 {
     status = "okay";
     current-speed = <115200>;
@@ -16,4 +16,12 @@
 &uart2 {
     /* Disable UART2 so that we can use SPI2 */
     status = "disabled";
+};
+/* Can't use the default SPI pins as they overlap with the flow control pins we use for the UART. */
+&spi2 {
+    compatible = "nordic,nrf-spim";
+    status = "okay";
+    sck-pin = <27>;
+    miso-pin = <25>;
+    mosi-pin = <26>;
 };

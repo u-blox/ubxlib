@@ -21,7 +21,7 @@ If you have a GNSS chip attached directly to this MCU then you can run the [main
 
 `U_CFG_APP_PIN_GNSS_xxx`: the default values for the MCU pins connecting your GNSS module to your MCU are \#defined in the file [port/platform](/port/platform)`/<platform>/mcu/<mcu>/cfg/cfg_app_platform_specific.h`.  You should check if these are correct for your board and, if not, override the values of the \#defines (where -1 means "not connected").
 
-`U_CFG_APP_GNSS_UART`: this sets the internal HW UART block that your chosen MCU will use to talk to the GNSS module.  The default is usually acceptable but if you wish to change it then consult the file [port/platform](/port/platform)`/<platform>/mcu/<mcu>/cfg/cfg_hw_platform_specific.h` for other options.
+`U_CFG_APP_GNSS_UART` / `U_CFG_APP_GNSS_I2C` / `U_CFG_APP_GNSS_SPI`: this sets the internal HW block that your chosen MCU will use to talk to the GNSS module.  For a UART the default is usually acceptable while for I2C and SPI we usually set our default value to -1 and so you must set a value yourself: consult the file [port/platform](/port/platform)`/<platform>/mcu/<mcu>/cfg/cfg_hw_platform_specific.h` for options.
 
 You will also need an antenna connected to the GNSS chip.
 

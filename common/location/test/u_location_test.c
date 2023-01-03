@@ -48,6 +48,7 @@
 #include "u_port_debug.h"
 #include "u_port_os.h"
 #include "u_port_i2c.h"
+#include "u_port_spi.h"
 
 #include "u_network.h"
 #include "u_network_test_shared_cfg.h"
@@ -122,8 +123,9 @@ static uNetworkTestList_t *pStdPreamble()
     uNetworkTestList_t *pList;
 
     U_PORT_TEST_ASSERT(uPortInit() == 0);
-    // Don't check this for success as not all platforms support I2C
+    // Don't check these for success as not all platforms support I2C or SPI
     uPortI2cInit();
+    uPortSpiInit();
     U_PORT_TEST_ASSERT(uDeviceInit() == 0);
 
     // Get all of the networks
@@ -516,6 +518,7 @@ U_PORT_TEST_FUNCTION("[location]", "locationCleanUp")
     }
 
     uPortI2cDeinit();
+    uPortSpiDeinit();
     uPortDeinit();
 
     x = uPortGetHeapMinFree();

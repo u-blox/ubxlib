@@ -233,8 +233,11 @@ static void modValues(uGnssCfgVal_t *pCfgValList, size_t numValues)
         // Values are changed to 1 if 0 or 0 if 1, can't safely
         // do much more than that as the permitted range for
         // different fields can be limited and we'd just
-        // get a Nack
-        if (pCfgValList->value == 0) {
+        // get a Nack; also, I've seen some of the GEOFENCE
+        // radius fields get stuck at 0xFFFFFFFF (probably due to a bug
+        // while SPI testing) and those fields don't like being set
+        // to zero, so catch that specific case here also
+        if ((pCfgValList->value == 0) || (pCfgValList->value == 0xFFFFFFFF)) {
             pCfgValList->value = 1;
         } else {
             pCfgValList->value = 0;
@@ -293,7 +296,7 @@ U_PORT_TEST_FUNCTION("[gnssCfg]", "gnssCfgBasic")
 
     // Repeat for all transport types
     iterations = uGnssTestPrivateTransportTypesSet(transportTypes, U_CFG_APP_GNSS_UART,
-                                                   U_CFG_APP_GNSS_I2C);
+                                                   U_CFG_APP_GNSS_I2C, U_CFG_APP_GNSS_SPI);
     for (size_t x = 0; x < iterations; x++) {
         // Do the standard preamble
         U_TEST_PRINT_LINE("testing on transport %s...",
@@ -444,7 +447,7 @@ U_PORT_TEST_FUNCTION("[gnssCfg]", "gnssCfgValBasic")
 
     // Repeat for all transport types
     iterations = uGnssTestPrivateTransportTypesSet(transportTypes, U_CFG_APP_GNSS_UART,
-                                                   U_CFG_APP_GNSS_I2C);
+                                                   U_CFG_APP_GNSS_I2C, U_CFG_APP_GNSS_SPI);
     for (size_t x = 0; x < iterations; x++) {
         // Do the standard preamble
         U_TEST_PRINT_LINE("testing on transport %s...",

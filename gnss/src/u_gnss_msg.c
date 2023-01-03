@@ -28,7 +28,7 @@
  * to a GNSS chip as follows:
  *
  *           reader    <--|
- *           reader    <--|-- ring-buffer <-- source (e.g. UART/I2C)
+ *           reader    <--|-- ring-buffer <-- source (e.g. UART/I2C/SPI/USB)
  *           reader    <--|
  *
  * There is a single ring-buffer for any GNSS device which is populated by
@@ -75,6 +75,7 @@
 #include "u_port_debug.h"
 #include "u_port_uart.h"
 #include "u_port_i2c.h"
+#include "u_port_spi.h"
 
 #include "u_at_client.h"
 
@@ -350,7 +351,7 @@ int32_t uGnssMsgSend(uDeviceHandle_t gnssHandle, const char *pBuffer, size_t siz
 {
     int32_t errorCodeOrLength = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uGnssPrivateInstance_t *pInstance;
-    int32_t streamType;
+    int32_t privateStreamType;
     int32_t streamHandle = -1;
 
     if (gUGnssPrivateMutex != NULL) {
@@ -362,36 +363,61 @@ int32_t uGnssMsgSend(uDeviceHandle_t gnssHandle, const char *pBuffer, size_t siz
         if ((pInstance != NULL) && (pBuffer != NULL)) {
 
             errorCodeOrLength = (int32_t) U_GNSS_ERROR_TRANSPORT;
-            streamType = uGnssPrivateGetStreamType(pInstance->transportType);
+            privateStreamType = uGnssPrivateGetStreamType(pInstance->transportType);
+            streamHandle = uGnssPrivateGetStreamHandle(privateStreamType,
+                                                       pInstance->transportHandle);
 
             U_PORT_MUTEX_LOCK(pInstance->transportMutex);
 
-            switch (streamType) {
-                case U_GNSS_PRIVATE_STREAM_TYPE_UART:
-                    streamHandle = pInstance->transportHandle.uart;
-                    break;
-                case U_GNSS_PRIVATE_STREAM_TYPE_I2C:
-                    streamHandle = pInstance->transportHandle.i2c;
-                    break;
-                default:
-                    break;
-            }
-
             if (streamHandle >= 0) {
                 // Streaming transport
-                switch (streamType) {
-                    case U_GNSS_PRIVATE_STREAM_TYPE_UART:
+                switch (privateStreamType) {
+                    case U_GNSS_PRIVATE_STREAM_TYPE_UART: {
                         errorCodeOrLength = uPortUartWrite(streamHandle,
                                                            pBuffer, size);
-                        break;
-                    case U_GNSS_PRIVATE_STREAM_TYPE_I2C:
+                    }
+                    break;
+                    case U_GNSS_PRIVATE_STREAM_TYPE_I2C: {
                         errorCodeOrLength = uPortI2cControllerSend(streamHandle,
                                                                    pInstance->i2cAddress,
                                                                    pBuffer, size, false);
                         if (errorCodeOrLength == 0) {
                             errorCodeOrLength = (int32_t) size;
                         }
-                        break;
+                    }
+                    break;
+                    case U_GNSS_PRIVATE_STREAM_TYPE_SPI: {
+                        char spiBuffer[U_GNSS_SPI_FILL_THRESHOLD_MAX];
+                        size_t offset = 0;
+                        size_t thisSize;
+                        // Since SPI is symmetrical, we must necessarily receive
+                        // when we send.  We don't want to allocate a receive
+                        // buffer here though, so we send in chunks of length
+                        // up to our SPI fill-checking buffer ('cos it's a
+                        // convenient length).
+                        errorCodeOrLength = 0;
+                        for (size_t x = 0; (offset < size) && (errorCodeOrLength >= 0); x++) {
+                            thisSize = size - offset;
+                            if (thisSize > U_GNSS_SPI_FILL_THRESHOLD_MAX) {
+                                thisSize = U_GNSS_SPI_FILL_THRESHOLD_MAX;
+                            }
+                            errorCodeOrLength = uPortSpiControllerSendReceiveBlock(streamHandle,
+                                                                                   pBuffer + offset,
+                                                                                   thisSize,
+                                                                                   spiBuffer,
+                                                                                   thisSize);
+                            if (errorCodeOrLength > 0) {
+                                offset += errorCodeOrLength;
+                                // This will add any non-fill SPI received data to the
+                                // internal SPI ring buffer
+                                uGnssPrivateSpiAddReceivedData(pInstance, spiBuffer, errorCodeOrLength);
+                            }
+                        }
+                        if (errorCodeOrLength >= 0) {
+                            errorCodeOrLength = offset;
+                        }
+                    }
+                    break;
                     default:
                         break;
                 }
@@ -734,6 +760,9 @@ size_t uGnssMsgReceiveStatStreamLoss(uDeviceHandle_t gnssHandle)
         pInstance = pUGnssPrivateGetInstance(gnssHandle);
         if (pInstance != NULL) {
             bytesLost = uRingBufferStatAddLoss(&(pInstance->ringBuffer));
+            if (pInstance->pSpiRingBuffer != NULL) {
+                bytesLost += uRingBufferStatAddLoss(pInstance->pSpiRingBuffer);
+            }
         }
 
         U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);

@@ -48,6 +48,7 @@
 #include "u_port_os.h"
 #include "u_port_uart.h"
 #include "u_port_i2c.h"
+#include "u_port_spi.h"
 #include "u_port_debug.h"
 
 #include "u_hex_bin_convert.h"
@@ -78,6 +79,30 @@
  */
 # define U_GNSS_AT_BUFFER_LENGTH_BYTES ((U_GNSS_MAX_UBX_PROTOCOL_MESSAGE_BODY_LENGTH_BYTES + \
                                          U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES) * 2)
+#endif
+
+#ifndef U_GNSS_PRIVATE_SPI_READ_LENGTH_MIN_BYTES
+/** The minimum number of bytes to read on an SPI transport when
+ * trying to determine if there's anything valid to read.
+ */
+# define U_GNSS_PRIVATE_SPI_READ_LENGTH_MIN_BYTES 1
+#endif
+
+// Do some cross-checking
+#if U_GNSS_PRIVATE_SPI_READ_LENGTH_MIN_BYTES > U_GNSS_DEFAULT_SPI_FILL_THRESHOLD
+# error U_GNSS_PRIVATE_SPI_READ_LENGTH_MIN_BYTES must be less than or equal to U_GNSS_DEFAULT_SPI_FILL_THRESHOLD
+#endif
+
+#if U_GNSS_PRIVATE_SPI_READ_LENGTH_MIN_BYTES > U_GNSS_SPI_FILL_THRESHOLD_MAX
+# error U_GNSS_PRIVATE_SPI_READ_LENGTH_MIN_BYTES must be less than or equal to U_GNSS_SPI_FILL_THRESHOLD_MAX
+#endif
+
+#if U_GNSS_DEFAULT_SPI_FILL_THRESHOLD > U_GNSS_SPI_BUFFER_LENGTH_BYTES
+# error U_GNSS_DEFAULT_SPI_FILL_THRESHOLD must be less than or equal to U_GNSS_SPI_BUFFER_LENGTH_BYTES
+#endif
+
+#if U_GNSS_DEFAULT_SPI_FILL_THRESHOLD > U_GNSS_SPI_FILL_THRESHOLD_MAX
+# error U_GNSS_DEFAULT_SPI_FILL_THRESHOLD must be less than or equal to U_GNSS_SPI_FILL_THRESHOLD_MAX
 #endif
 
 /* ----------------------------------------------------------------
@@ -147,13 +172,14 @@ const size_t gUGnssPrivateModuleListSize = sizeof(gUGnssPrivateModuleList) /
 
 /** Table to convert a GNSS transport type into a streaming transport type.
  */
-static const uGnssPrivateStreamType_t gGnssPrivateTransportTypeToStream[] = {
-    U_GNSS_PRIVATE_STREAM_TYPE_NONE, // U_GNSS_TRANSPORT_NONE
-    U_GNSS_PRIVATE_STREAM_TYPE_UART, // U_GNSS_TRANSPORT_UART
-    U_GNSS_PRIVATE_STREAM_TYPE_NONE, // U_GNSS_TRANSPORT_AT
-    U_GNSS_PRIVATE_STREAM_TYPE_I2C,  // U_GNSS_TRANSPORT_I2C
-    U_GNSS_PRIVATE_STREAM_TYPE_UART, // U_GNSS_TRANSPORT_UBX_UART
-    U_GNSS_PRIVATE_STREAM_TYPE_I2C   // U_GNSS_TRANSPORT_UBX_I2C
+static const int32_t gGnssPrivateTransportTypeToStream[] = {
+    U_GNSS_PRIVATE_STREAM_TYPE_NONE,  // U_GNSS_TRANSPORT_NONE
+    U_GNSS_PRIVATE_STREAM_TYPE_UART,  // U_GNSS_TRANSPORT_UART
+    U_ERROR_COMMON_INVALID_PARAMETER, // U_GNSS_TRANSPORT_AT
+    U_GNSS_PRIVATE_STREAM_TYPE_I2C,   // U_GNSS_TRANSPORT_I2C
+    U_GNSS_PRIVATE_STREAM_TYPE_SPI,   // U_GNSS_TRANSPORT_SPI
+    U_GNSS_PRIVATE_STREAM_TYPE_UART,  // U_GNSS_TRANSPORT_UBX_UART
+    U_GNSS_PRIVATE_STREAM_TYPE_I2C    // U_GNSS_TRANSPORT_UBX_I2C
 };
 
 /** Table to convert a port number to the UBX-CFG-VAL group ID that
@@ -231,6 +257,24 @@ static bool rtcmIdMatch(uint16_t rtcmIdActual, uint16_t rtcmIdWanted)
     return (rtcmIdActual == rtcmIdWanted) || (rtcmIdWanted == U_GNSS_RTCM_MESSAGE_ID_ALL);
 }
 
+#ifdef U_GNSS_PRIVATE_DEBUG_PARSING
+// Print out a message ID, only used when debugging message parsing.
+static void printId(uGnssPrivateMessageId_t *pId)
+{
+    if (pId->type == U_GNSS_PROTOCOL_UBX) {
+        uPortLog("UBX %04x", pId->id.ubx);
+    } else if (pId->type == U_GNSS_PROTOCOL_NMEA) {
+        uPortLog("NMEA %s", pId->id.nmea);
+    } else if (pId->type == U_GNSS_PROTOCOL_RTCM) {
+        uPortLog("RTCM %d", pId->id.rtcm);
+    } else if (pId->type == U_GNSS_PROTOCOL_UNKNOWN) {
+        uPortLog("UNKNOWN");
+    } else {
+        uPortLog("ERROR");
+    }
+}
+#endif
+
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS: STREAMING TRANSPORT ONLY
  * -------------------------------------------------------------- */
@@ -288,26 +332,64 @@ static int32_t streamGetFromRingBuffer(uGnssPrivateInstance_t *pInstance,
     return errorCodeOrLength;
 }
 
-// Send a message over UART or I2C.
-static int32_t sendMessageStream(int32_t streamHandle,
-                                 uGnssPrivateStreamType_t streamType,
-                                 uint16_t i2cAddress,
+// Send a message over UART or I2C or SPI.
+static int32_t sendMessageStream(uGnssPrivateInstance_t *pInstance,
                                  const char *pMessage,
                                  size_t messageLengthBytes, bool printIt)
 {
     int32_t errorCodeOrSentLength = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    int32_t privateStreamTypeOrError;
+    int32_t streamHandle;
 
-    switch (streamType) {
-        case U_GNSS_PRIVATE_STREAM_TYPE_UART:
+    privateStreamTypeOrError = uGnssPrivateGetStreamType(pInstance->transportType);
+    streamHandle = uGnssPrivateGetStreamHandle((uGnssPrivateStreamType_t) privateStreamTypeOrError,
+                                               pInstance->transportHandle);
+    switch (privateStreamTypeOrError) {
+        case U_GNSS_PRIVATE_STREAM_TYPE_UART: {
             errorCodeOrSentLength = uPortUartWrite(streamHandle, pMessage, messageLengthBytes);
-            break;
-        case U_GNSS_PRIVATE_STREAM_TYPE_I2C:
-            errorCodeOrSentLength = uPortI2cControllerSend(streamHandle, i2cAddress,
+        }
+        break;
+        case U_GNSS_PRIVATE_STREAM_TYPE_I2C: {
+            errorCodeOrSentLength = uPortI2cControllerSend(streamHandle, pInstance->i2cAddress,
                                                            pMessage, messageLengthBytes, false);
             if (errorCodeOrSentLength == 0) {
                 errorCodeOrSentLength = messageLengthBytes;
             }
-            break;
+        }
+        break;
+        case U_GNSS_PRIVATE_STREAM_TYPE_SPI: {
+            char spiBuffer[U_GNSS_SPI_FILL_THRESHOLD_MAX];
+            size_t offset = 0;
+            size_t thisLength;
+            // In the SPI case we are always necessarily receiving while
+            // we send, so we have to capture that data and store it in
+            // our internal SPI buffer so as not to lose anything; we
+            // don't want to allocate another receive buffer here though,
+            // so we send in chunks of length up to our SPI fill-checking
+            // buffer ('cos it's a convenient length).
+            errorCodeOrSentLength = 0;
+            for (size_t x = 0; (offset < messageLengthBytes) && (errorCodeOrSentLength >= 0); x++) {
+                thisLength = messageLengthBytes - offset;
+                if (thisLength > U_GNSS_SPI_FILL_THRESHOLD_MAX) {
+                    thisLength = U_GNSS_SPI_FILL_THRESHOLD_MAX;
+                }
+                errorCodeOrSentLength = uPortSpiControllerSendReceiveBlock(streamHandle,
+                                                                           pMessage + offset,
+                                                                           thisLength,
+                                                                           spiBuffer,
+                                                                           thisLength);
+                if (errorCodeOrSentLength > 0) {
+                    offset += errorCodeOrSentLength;
+                    // This will add any non-fill SPI received data to the
+                    // internal SPI ring buffer
+                    uGnssPrivateSpiAddReceivedData(pInstance, spiBuffer, errorCodeOrSentLength);
+                }
+            }
+            if (errorCodeOrSentLength >= 0) {
+                errorCodeOrSentLength = offset;
+            }
+        }
+        break;
         default:
             break;
     }
@@ -321,7 +403,7 @@ static int32_t sendMessageStream(int32_t streamHandle,
     return errorCodeOrSentLength;
 }
 
-// Receive a UBX format message over UART or I2C.
+// Receive a UBX format message over UART or I2C or SPI.
 // On entry pResponse should be set to the message class and ID of the
 // expected response, wild cards permitted.  On success it will
 // be set to the message ID received and the UBX message body length
@@ -539,6 +621,7 @@ static int32_t sendReceiveUbxMessage(uGnssPrivateInstance_t *pInstance,
                                      uGnssPrivateUbxReceiveMessage_t *pResponse)
 {
     int32_t errorCodeOrResponseLength = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    int32_t privateStreamTypeOrError;
     int32_t bytesToSend = 0;
     char *pBuffer;
 
@@ -547,6 +630,7 @@ static int32_t sendReceiveUbxMessage(uGnssPrivateInstance_t *pInstance,
          (messageBodyLengthBytes > 0)) &&
         ((pResponse->bodySize == 0) || (pResponse->ppBody != NULL))) {
         errorCodeOrResponseLength = (int32_t) U_ERROR_COMMON_NO_MEMORY;
+        privateStreamTypeOrError = uGnssPrivateGetStreamType(pInstance->transportType);
         // Allocate a buffer big enough to encode the outgoing message
         pBuffer = (char *) pUPortMalloc(messageBodyLengthBytes + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES);
         if (pBuffer != NULL) {
@@ -559,7 +643,7 @@ static int32_t sendReceiveUbxMessage(uGnssPrivateInstance_t *pInstance,
                 U_PORT_MUTEX_LOCK(pInstance->transportMutex);
 
                 if ((pResponse != NULL) && (pResponse->ppBody != NULL) &&
-                    (uGnssPrivateGetStreamType(pInstance->transportType) >= 0)) {
+                    (privateStreamTypeOrError >= 0)) {
                     // For a streaming transport, if we're going to wait for
                     // a response, make sure that any historical data is
                     // cleared from our handle in the ring buffer so that
@@ -574,45 +658,22 @@ static int32_t sendReceiveUbxMessage(uGnssPrivateInstance_t *pInstance,
                     uRingBufferFlushHandle(&(pInstance->ringBuffer),
                                            pInstance->ringBufferReadHandlePrivate);
                 }
-                switch (pInstance->transportType) {
-                    case U_GNSS_TRANSPORT_UART:
-                    //lint -fallthrough
-                    case U_GNSS_TRANSPORT_UBX_UART:
-                        errorCodeOrResponseLength = sendMessageStream(pInstance->transportHandle.uart,
-                                                                      U_GNSS_PRIVATE_STREAM_TYPE_UART,
-                                                                      pInstance->i2cAddress,
-                                                                      pBuffer, bytesToSend,
-                                                                      pInstance->printUbxMessages);
-                        if (errorCodeOrResponseLength >= 0) {
-                            errorCodeOrResponseLength = receiveUbxMessageStream(pInstance, pResponse,
-                                                                                pInstance->timeoutMs,
-                                                                                pInstance->printUbxMessages);
-                        }
-                        break;
-                    case U_GNSS_TRANSPORT_I2C:
-                    //lint -fallthrough
-                    case U_GNSS_TRANSPORT_UBX_I2C:
-                        errorCodeOrResponseLength = sendMessageStream(pInstance->transportHandle.i2c,
-                                                                      U_GNSS_PRIVATE_STREAM_TYPE_I2C,
-                                                                      pInstance->i2cAddress,
-                                                                      pBuffer, bytesToSend,
-                                                                      pInstance->printUbxMessages);
-                        if (errorCodeOrResponseLength >= 0) {
-                            errorCodeOrResponseLength = receiveUbxMessageStream(pInstance, pResponse,
-                                                                                pInstance->timeoutMs,
-                                                                                pInstance->printUbxMessages);
-                        }
-                        break;
-                    case U_GNSS_TRANSPORT_AT:
-                        //lint -e{1773} Suppress attempt to cast away const: I'm not!
-                        errorCodeOrResponseLength = sendReceiveUbxMessageAt((const uAtClientHandle_t)
-                                                                            pInstance->transportHandle.pAt,
-                                                                            pBuffer, bytesToSend,
-                                                                            pResponse, pInstance->timeoutMs,
+                if (privateStreamTypeOrError >= 0) {
+                    errorCodeOrResponseLength = sendMessageStream(pInstance, pBuffer, bytesToSend,
+                                                                  pInstance->printUbxMessages);
+                    if (errorCodeOrResponseLength >= 0) {
+                        errorCodeOrResponseLength = receiveUbxMessageStream(pInstance, pResponse,
+                                                                            pInstance->timeoutMs,
                                                                             pInstance->printUbxMessages);
-                        break;
-                    default:
-                        break;
+                    }
+                } else {
+                    // Not a stream, we're on AT
+                    //lint -e{1773} Suppress attempt to cast away const: I'm not!
+                    errorCodeOrResponseLength = sendReceiveUbxMessageAt((const uAtClientHandle_t)
+                                                                        pInstance->transportHandle.pAt,
+                                                                        pBuffer, bytesToSend,
+                                                                        pResponse, pInstance->timeoutMs,
+                                                                        pInstance->printUbxMessages);
                 }
 
                 // Make sure the read handle is always unlocked afterwards
@@ -1467,18 +1528,41 @@ bool uGnssPrivateMessageIdIsWanted(uGnssPrivateMessageId_t *pMessageId,
  * PUBLIC FUNCTIONS THAT ARE PRIVATE TO GNSS: STREAMING TRANSPORT ONLY
  * -------------------------------------------------------------- */
 
-// Get the streaming transport type from a given GNSS transport type.
+// Get the private stream type from a given GNSS transport type.
 int32_t uGnssPrivateGetStreamType(uGnssTransportType_t transportType)
 {
-    int32_t errorCodeOrStreamType = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    int32_t errorCodeOrPrivateStreamType = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
 
     if ((transportType >= 0) &&
         (transportType < sizeof(gGnssPrivateTransportTypeToStream) /
          sizeof(gGnssPrivateTransportTypeToStream[0]))) {
-        errorCodeOrStreamType = (int32_t) gGnssPrivateTransportTypeToStream[transportType];
+        errorCodeOrPrivateStreamType = gGnssPrivateTransportTypeToStream[transportType];
     }
 
-    return errorCodeOrStreamType;
+    return errorCodeOrPrivateStreamType;
+}
+
+// Get the stream handle from the transport handle.
+int32_t uGnssPrivateGetStreamHandle(uGnssPrivateStreamType_t privateStreamType,
+                                    uGnssTransportHandle_t transportHandle)
+{
+    int32_t errorCodeOrStreamHandle = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+
+    switch (privateStreamType) {
+        case U_GNSS_PRIVATE_STREAM_TYPE_UART:
+            errorCodeOrStreamHandle = transportHandle.uart;
+            break;
+        case U_GNSS_PRIVATE_STREAM_TYPE_I2C:
+            errorCodeOrStreamHandle = transportHandle.i2c;
+            break;
+        case U_GNSS_PRIVATE_STREAM_TYPE_SPI:
+            errorCodeOrStreamHandle = transportHandle.spi;
+            break;
+        default:
+            break;
+    }
+
+    return errorCodeOrStreamHandle;
 }
 
 // Get the number of bytes waiting for us when using a streaming transport.
@@ -1486,36 +1570,71 @@ int32_t uGnssPrivateGetStreamType(uGnssTransportType_t transportType)
 // effect on the instance data since it is called by
 // uGnssPrivateStreamFillRingBuffer() which may be called at any time by
 // the message receive task over in u_gnss_msg.c
-int32_t uGnssPrivateStreamGetReceiveSize(int32_t streamHandle,
-                                         uGnssPrivateStreamType_t streamType,
-                                         uint16_t i2cAddress)
+int32_t uGnssPrivateStreamGetReceiveSize(uGnssPrivateInstance_t *pInstance)
 {
     int32_t errorCodeOrReceiveSize = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    int32_t streamHandle;
+    int32_t privateStreamTypeOrError;
     char buffer[2];
 
-    switch (streamType) {
-        case U_GNSS_PRIVATE_STREAM_TYPE_UART:
-            errorCodeOrReceiveSize = uPortUartGetReceiveSize(streamHandle);
+    if (pInstance != NULL) {
+        privateStreamTypeOrError = uGnssPrivateGetStreamType(pInstance->transportType);
+        streamHandle = uGnssPrivateGetStreamHandle((uGnssPrivateStreamType_t) privateStreamTypeOrError,
+                                                   pInstance->transportHandle);
+        switch (privateStreamTypeOrError) {
+            case U_GNSS_PRIVATE_STREAM_TYPE_UART: {
+                errorCodeOrReceiveSize = uPortUartGetReceiveSize(streamHandle);
+            }
             break;
-        case U_GNSS_PRIVATE_STREAM_TYPE_I2C:
-            // The number of bytes waiting for us is available by a read of
-            // I2C register addresses 0xFD and 0xFE in the GNSS chip.
-            // The register address in the GNSS chip auto-increments, so sending
-            // 0xFD, with no stop bit, and then a read request for two bytes
-            // should get us the [big-endian] length
-            buffer[0] = 0xFD;
-            errorCodeOrReceiveSize = uPortI2cControllerSend(streamHandle, i2cAddress,
-                                                            buffer, 1, true);
-            if (errorCodeOrReceiveSize == 0) {
-                errorCodeOrReceiveSize = uPortI2cControllerSendReceive(streamHandle, i2cAddress,
-                                                                       NULL, 0, buffer, sizeof(buffer));
-                if (errorCodeOrReceiveSize == sizeof(buffer)) {
-                    errorCodeOrReceiveSize = (int32_t) ((((uint32_t) buffer[0]) << 8) + (uint32_t) buffer[1]);
+            case U_GNSS_PRIVATE_STREAM_TYPE_I2C: {
+                int32_t i2cAddress = pInstance->i2cAddress;
+                // The number of bytes waiting for us is available by a read of
+                // I2C register addresses 0xFD and 0xFE in the GNSS chip.
+                // The register address in the GNSS chip auto-increments, so sending
+                // 0xFD, with no stop bit, and then a read request for two bytes
+                // should get us the [big-endian] length
+                buffer[0] = 0xFD;
+                errorCodeOrReceiveSize = uPortI2cControllerSend(streamHandle, i2cAddress,
+                                                                buffer, 1, true);
+                if (errorCodeOrReceiveSize == 0) {
+                    errorCodeOrReceiveSize = uPortI2cControllerSendReceive(streamHandle, i2cAddress,
+                                                                           NULL, 0, buffer, sizeof(buffer));
+                    if (errorCodeOrReceiveSize == sizeof(buffer)) {
+                        errorCodeOrReceiveSize = (int32_t) ((((uint32_t) buffer[0]) << 8) + (uint32_t) buffer[1]);
+                    }
                 }
             }
             break;
-        default:
+            case U_GNSS_PRIVATE_STREAM_TYPE_SPI: {
+                char spiBuffer[U_GNSS_SPI_FILL_THRESHOLD_MAX];
+                size_t spiReadLength;
+                // SPI handling is a little different: since there is no way
+                // to tell if there is any valid data, one just has to read
+                // it and see if it is not 0xFF fill, we actually do a read
+                // of up to spiFillThreshold bytes here, then we can determine
+                // whether there is any real stuff.  The data that is read is
+                // stored in the internal SPI ring buffer and can be read out
+                // by whoever called this function
+                spiReadLength = pInstance->spiFillThreshold;
+                if (spiReadLength < U_GNSS_PRIVATE_SPI_READ_LENGTH_MIN_BYTES) {
+                    spiReadLength = U_GNSS_PRIVATE_SPI_READ_LENGTH_MIN_BYTES;
+                }
+                errorCodeOrReceiveSize = uPortSpiControllerSendReceiveBlock(streamHandle,
+                                                                            NULL, 0,
+                                                                            spiBuffer,
+                                                                            spiReadLength);
+                if (errorCodeOrReceiveSize > 0) {
+                    // This will add any non-fill SPI received data to the
+                    // internal SPI ring buffer
+                    errorCodeOrReceiveSize = uGnssPrivateSpiAddReceivedData(pInstance,
+                                                                            spiBuffer,
+                                                                            errorCodeOrReceiveSize);
+                }
+            }
             break;
+            default:
+                break;
+        }
     }
 
     return errorCodeOrReceiveSize;
@@ -1531,6 +1650,8 @@ int32_t uGnssPrivateStreamDecodeRingBuffer(uRingBuffer_t *pRingBuffer,
                                            uGnssPrivateMessageId_t *pPrivateMessageId)
 {
     int32_t errorCodeOrLength = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    char *pDiscard = NULL;
+
     if ((pRingBuffer != NULL) && (pPrivateMessageId != NULL)) {
         while (1) {
             U_RING_BUFFER_PARSER_f parserList[] = {
@@ -1548,22 +1669,18 @@ int32_t uGnssPrivateStreamDecodeRingBuffer(uRingBuffer_t *pRingBuffer,
             } else if (uGnssPrivateMessageIdIsWanted(&msg, pPrivateMessageId)) {
                 memcpy(pPrivateMessageId, &msg, sizeof(uGnssPrivateMessageId_t));
 #ifdef U_GNSS_PRIVATE_DEBUG_PARSING
-                if (msg.type == U_GNSS_PROTOCOL_UBX) {
-                    uPortLog("** UBX %04X size %d\n", msg.id.ubx, errorCodeOrLength);
-                } else if (msg.type == U_GNSS_PROTOCOL_NMEA) {
-                    uPortLog("** NMEA %s size %d\n", msg.id.nmea, errorCodeOrLength);
-                } else if (msg.type == U_GNSS_PROTOCOL_RTCM) {
-                    uPortLog("** RTCM %d size %d\n", msg.id.rtcm, errorCodeOrLength);
-                } else if (msg.type == U_GNSS_PROTOCOL_UNKNOWN) {
-                    uPortLog("** UNKNOWN size %d\n", errorCodeOrLength);
-                } else {
-                    uPortLog("** ERROR size %d\n", errorCodeOrLength);
-                }
+                uPortLog("** ");
+                printId(&msg);
+                uPortLog(" size %d\n", errorCodeOrLength);
 #endif
                 break;
             } else {
 #ifdef U_GNSS_PRIVATE_DEBUG_PARSING
-                uPortLog("** DISCARD %d %d size %d\n", msg, pPrivateMessageId->type, errorCodeOrLength);
+                uPortLog("** DISCARD: wanted ");
+                printId(pPrivateMessageId);
+                uPortLog(", got ");
+                printId(&msg);
+                uPortLog(", %d byte(s)\n", errorCodeOrLength);
 #endif
                 if ((pPrivateMessageId->type == U_GNSS_PROTOCOL_UBX) &&
                     (msg.type == U_GNSS_PROTOCOL_UBX) &&
@@ -1573,15 +1690,26 @@ int32_t uGnssPrivateStreamDecodeRingBuffer(uRingBuffer_t *pRingBuffer,
                         uint16_t ubxId = (msg[6]/*CLS*/ << 8) | msg[7]/*ID*/;
                         if (ubxIdMatch(ubxId, pPrivateMessageId->id.ubx)) {
 #ifdef U_GNSS_PRIVATE_DEBUG_PARSING
-                            uPortLog("** ACK-NACK %04X => U_GNSS_ERROR_NACK\n", ubxId);
+                            uPortLog("** ...but noting a UBX ACK-NACK for %04x => U_GNSS_ERROR_NACK\n", ubxId);
 #endif
                             errorCodeOrLength = U_GNSS_ERROR_NACK;
                             break;
                         }
                     }
                 } else {
+#ifdef U_GNSS_PRIVATE_DEBUG_PARSING
+                    pDiscard = (char *) pUPortMalloc(errorCodeOrLength);
+#endif
                     // Discard what is not wanted by the caller
-                    uRingBufferReadHandle(pRingBuffer, readHandle, NULL, errorCodeOrLength);
+                    uRingBufferReadHandle(pRingBuffer, readHandle, pDiscard, errorCodeOrLength);
+#ifdef U_GNSS_PRIVATE_DEBUG_PARSING
+                    if (pDiscard != NULL) {
+                        uPortLog("** Discarded contents:");
+                        uGnssPrivatePrintBuffer(pDiscard, errorCodeOrLength);
+                        uPortLog("\n");
+                        uPortFree(pDiscard);
+                    }
+#endif
                 }
             }
         };
@@ -1598,7 +1726,7 @@ int32_t uGnssPrivateStreamFillRingBuffer(uGnssPrivateInstance_t *pInstance,
 {
     int32_t errorCodeOrLength = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
     int32_t startTimeMs;
-    int32_t streamType;
+    int32_t privateStreamTypeOrError;
     int32_t streamHandle = -1;
     int32_t receiveSize;
     int32_t totalReceiveSize = 0;
@@ -1616,26 +1744,16 @@ int32_t uGnssPrivateStreamFillRingBuffer(uGnssPrivateInstance_t *pInstance,
             pTemporaryBuffer = pInstance->pMsgReceive->pTemporaryBuffer;
         }
         errorCodeOrLength = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
-        streamType = uGnssPrivateGetStreamType(pInstance->transportType);
-        switch (streamType) {
-            case U_GNSS_PRIVATE_STREAM_TYPE_UART:
-                streamHandle = pInstance->transportHandle.uart;
-                break;
-            case U_GNSS_PRIVATE_STREAM_TYPE_I2C:
-                streamHandle = pInstance->transportHandle.i2c;
-                break;
-            default:
-                break;
-        }
+        privateStreamTypeOrError = uGnssPrivateGetStreamType(pInstance->transportType);
+        streamHandle = uGnssPrivateGetStreamHandle((uGnssPrivateStreamType_t) privateStreamTypeOrError,
+                                                   pInstance->transportHandle);
         if (streamHandle >= 0) {
             errorCodeOrLength = (int32_t) U_ERROR_COMMON_TIMEOUT;
             startTimeMs = uPortGetTickTimeMs();
             // This is constructed as a do()/while() so that
             // it always has one go even with a zero timeout
             do {
-                receiveSize = uGnssPrivateStreamGetReceiveSize(streamHandle,
-                                                               (uGnssPrivateStreamType_t) streamType,
-                                                               pInstance->i2cAddress);
+                receiveSize = uGnssPrivateStreamGetReceiveSize(pInstance);
                 // Don't try to read in more than uRingBufferForceAdd()
                 // can put into the ring buffer
                 ringBufferAvailableSize = uRingBufferAvailableSizeMax(&(pInstance->ringBuffer));
@@ -1647,7 +1765,7 @@ int32_t uGnssPrivateStreamFillRingBuffer(uGnssPrivateInstance_t *pInstance,
                     if (receiveSize > U_GNSS_MSG_TEMPORARY_BUFFER_LENGTH_BYTES) {
                         receiveSize = U_GNSS_MSG_TEMPORARY_BUFFER_LENGTH_BYTES;
                     }
-                    switch (streamType) {
+                    switch (privateStreamTypeOrError) {
                         case U_GNSS_PRIVATE_STREAM_TYPE_UART:
                             // For UART we ask for as much data as we can, it will just
                             // bring in more if more has arrived between the "receive
@@ -1666,6 +1784,12 @@ int32_t uGnssPrivateStreamFillRingBuffer(uGnssPrivateInstance_t *pInstance,
                                                                         pTemporaryBuffer,
                                                                         receiveSize);
                             break;
+                        case U_GNSS_PRIVATE_STREAM_TYPE_SPI:
+                            // For the SPI case, we need to pull the data that was
+                            // received in uGnssPrivateStreamGetReceiveSize() back
+                            // out of the SPI ring buffer and into our temporary buffer
+                            receiveSize = (int32_t) uRingBufferRead(pInstance->pSpiRingBuffer,
+                                                                    pTemporaryBuffer, receiveSize);
                         default:
                             break;
                     }
@@ -1730,21 +1854,18 @@ int32_t uGnssPrivateStreamPeekRingBuffer(uGnssPrivateInstance_t *pInstance,
 }
 
 // Send a UBX format message over UART or I2C.
-int32_t uGnssPrivateSendOnlyStreamUbxMessage(const uGnssPrivateInstance_t *pInstance,
+int32_t uGnssPrivateSendOnlyStreamUbxMessage(uGnssPrivateInstance_t *pInstance,
                                              int32_t messageClass,
                                              int32_t messageId,
                                              const char *pMessageBody,
                                              size_t messageBodyLengthBytes)
 {
     int32_t errorCodeOrSentLength = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-    int32_t transportTypeStream;
-    int32_t streamHandle = -1;
     int32_t bytesToSend = 0;
     char *pBuffer;
 
     if (pInstance != NULL) {
-        transportTypeStream = uGnssPrivateGetStreamType(pInstance->transportType);
-        if ((transportTypeStream >= 0) &&
+        if ((uGnssPrivateGetStreamType(pInstance->transportType) >= 0) &&
             (((pMessageBody == NULL) && (messageBodyLengthBytes == 0)) ||
              (messageBodyLengthBytes > 0))) {
             errorCodeOrSentLength = (int32_t) U_ERROR_COMMON_NO_MEMORY;
@@ -1758,21 +1879,7 @@ int32_t uGnssPrivateSendOnlyStreamUbxMessage(const uGnssPrivateInstance_t *pInst
 
                 U_PORT_MUTEX_LOCK(pInstance->transportMutex);
 
-                switch (transportTypeStream) {
-                    case U_GNSS_PRIVATE_STREAM_TYPE_UART:
-                        streamHandle = pInstance->transportHandle.uart;
-                        break;
-                    case U_GNSS_PRIVATE_STREAM_TYPE_I2C:
-                        streamHandle = pInstance->transportHandle.i2c;
-                        break;
-                    default:
-                        break;
-                }
-
-                errorCodeOrSentLength = sendMessageStream(streamHandle,
-                                                          (uGnssPrivateStreamType_t) transportTypeStream,
-                                                          pInstance->i2cAddress,
-                                                          pBuffer, bytesToSend,
+                errorCodeOrSentLength = sendMessageStream(pInstance, pBuffer, bytesToSend,
                                                           pInstance->printUbxMessages);
 
                 U_PORT_MUTEX_UNLOCK(pInstance->transportMutex);
@@ -1928,6 +2035,42 @@ int32_t uGnssPrivateReceiveStreamMessage(uGnssPrivateInstance_t *pInstance,
 
         // Read pointer can be unlocked now
         uRingBufferUnlockReadHandle(&(pInstance->ringBuffer), readHandle);
+    }
+
+    return errorCodeOrLength;
+}
+
+// Add received data to the internal SPI buffer.
+int32_t uGnssPrivateSpiAddReceivedData(uGnssPrivateInstance_t *pInstance,
+                                       const char *pBuffer, size_t size)
+{
+    int32_t errorCodeOrLength = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    const char *pTmp = pBuffer;
+    int32_t y;
+
+    if ((pInstance != NULL) && (pInstance->pSpiRingBuffer != NULL) &&
+        (pBuffer != NULL) && (size > 0)) {
+        if ((pInstance->spiFillThreshold > 0) && (size >= (size_t) pInstance->spiFillThreshold)) {
+            // Check if all we have is fill and chuck stuff away if so
+            for (size_t x = 0; (x < size) && (*pTmp == U_GNSS_PRIVATE_SPI_FILL); x++) {
+                pTmp++;
+            }
+            y = pTmp - pBuffer;
+            if (y >= pInstance->spiFillThreshold) {
+                pBuffer += y;
+                size -= y;
+            }
+        }
+        // Do a forced add so we always keep the most recent data
+        uRingBufferForceAdd(pInstance->pSpiRingBuffer, pBuffer, size);
+        if (pInstance->spiFillThreshold > 0) {
+            // Fill might still have got into the ring buffer, e.g. if
+            // we are receiving data in chunks smaller than the fill
+            // threshold, so check for any fill in the buffer also
+            uRingBufferFlushValue(pInstance->pSpiRingBuffer, U_GNSS_PRIVATE_SPI_FILL,
+                                  pInstance->spiFillThreshold);
+        }
+        errorCodeOrLength = (int32_t) uRingBufferDataSize(pInstance->pSpiRingBuffer);
     }
 
     return errorCodeOrLength;

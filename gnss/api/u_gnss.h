@@ -204,6 +204,35 @@ int32_t uGnssGetTimeout(uDeviceHandle_t gnssHandle);
  */
 void uGnssSetTimeout(uDeviceHandle_t gnssHandle, int32_t timeoutMs);
 
+/** When using an SPI interface the only way to tell if the
+ * byte-stream received from the GNSS chip contains useful data or not
+ * is to check for one or more 0xFF fill bytes; of course, since 0xFF can
+ * legimitately occur in the stream it must be more than one fill
+ * byte, but how many?  Use this function to get the current setting.
+ *
+ * @param gnssHandle  the handle of the GNSS instance.
+ * @return            the number of 0xFF bytes which constitue fill.
+ */
+int32_t uGnssGetSpiFillThreshold(uDeviceHandle_t gnssHandle);
+
+/** Set the number of 0xFF bytes which, if received from the GNSS
+ * chip in a row when using an SPI transport, constitute fill rather
+ * than useful data.  If this is not called #U_GNSS_DEFAULT_SPI_FILL_THRESHOLD
+ * will apply.  It is not advisable to set the threshold to zero, meaning
+ * no thresholding, since that will result in message reads always
+ * continuing for the maximum time (since there will always be "valid"
+ * [but 0xFF] data to read).  Setting the threshold to a small value
+ * is equally inadvisable, since it may result in valid data (i.e.
+ * consecutive genuine 0xFF 0xFF bytes contained in a message body)
+ * being discarded as fill.
+ *
+ * @param gnssHandle  the handle of the GNSS instance.
+ * @param count       the number of 0xFF bytes which constitute fill,
+ *                    can be no more than #U_GNSS_SPI_FILL_THRESHOLD_MAX.
+ * @return            zero on success else negative error code.
+ */
+int32_t uGnssSetSpiFillThreshold(uDeviceHandle_t gnssHandle, int32_t count);
+
 /** Get whether printing of UBX commands and responses
  * is on or off.
  *

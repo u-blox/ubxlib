@@ -49,12 +49,36 @@
 # define U_GNSS_UART_BUFFER_LENGTH_BYTES 1024
 #endif
 
+#ifndef U_GNSS_SPI_BUFFER_LENGTH_BYTES
+/** The recommended SPI buffer length for the GNSS driver;
+ * just go with the UART one for consistency, and since SPI
+ * is much faster than a 9600 baud UART a "USB-sized" receive
+ * buffer, which #U_GNSS_UART_BUFFER_LENGTH_BYTES is, is
+ * probably about right.
+ */
+# define U_GNSS_SPI_BUFFER_LENGTH_BYTES U_GNSS_UART_BUFFER_LENGTH_BYTES
+#endif
+
 #ifndef U_GNSS_DEFAULT_TIMEOUT_MS
 /** The default time-out to use on the GNSS interface in
  * milliseconds; note that the separate #U_GNSS_POS_TIMEOUT_SECONDS
  * is used for the GNSS position establishment calls.
  */
 # define U_GNSS_DEFAULT_TIMEOUT_MS 10000
+#endif
+
+#ifndef U_GNSS_DEFAULT_SPI_FILL_THRESHOLD
+/** The default number of 0xFF bytes which, if received on an
+ * SPI transport, constitue fill rather than valid data.
+ */
+# define U_GNSS_DEFAULT_SPI_FILL_THRESHOLD 48
+#endif
+
+#ifndef U_GNSS_SPI_FILL_THRESHOLD_MAX
+/** The maximum value for the SPI fill threshold; note that an
+ * array of this size is placed on the stack.
+ */
+# define U_GNSS_SPI_FILL_THRESHOLD_MAX 128
 #endif
 
 /** There can be an inverter in-line between an MCU pin
@@ -132,6 +156,7 @@ typedef enum {
                                      handle; currently only UBX-format messages may
                                      be received when this transport type is in use. */
     U_GNSS_TRANSPORT_I2C,       /**< the transport handle should be an I2C handle. */
+    U_GNSS_TRANSPORT_SPI,       /**< the transport handle should be an SPI handle. */
     U_GNSS_TRANSPORT_UBX_UART,  /**< \deprecated the transport handle should be a UART handle
                                      over which UBX commands will be transferred;
                                      NMEA will be switched off; THIS IS DEPRECATED,
@@ -169,6 +194,7 @@ typedef union {
     void *pAt;      /**< for transport type #U_GNSS_TRANSPORT_AT. */
     int32_t uart;   /**< for transport type #U_GNSS_TRANSPORT_UART. */
     int32_t i2c;    /**< for transport type #U_GNSS_TRANSPORT_I2C. */
+    int32_t spi;    /**< for transport type #U_GNSS_TRANSPORT_SPI. */
 } uGnssTransportHandle_t;
 
 /** The port type on the GNSS chip itself; this is different

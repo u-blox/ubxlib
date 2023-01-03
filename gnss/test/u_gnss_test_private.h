@@ -93,12 +93,17 @@ const char *pGnssTestPrivateTransportTypeName(uGnssTransportType_t transportType
  *                         on which the GNSS chip is connected or -1
  *                         if there is no direct I2C connection to the
  *                         GNSS chip (i.e. if the GNSS chip is connected
- *                         via a cellular module or via UART).
+ *                         via a cellular module or via UART/SPI).
+ * @param spi              the value of U_CFG_APP_GNSS_SPI, the SPI block
+ *                         on which the GNSS chip is connected or -1
+ *                         if there is no direct SPI connection to the
+ *                         GNSS chip (i.e. if the GNSS chip is connected
+ *                         via a cellular module or via UART/I2C).
  * @return                 the number of entries that have been populated in
  *                         pTransportTypes by this function.
  */
 size_t uGnssTestPrivateTransportTypesSet(uGnssTransportType_t *pTransportTypes,
-                                         int32_t uart, int32_t i2c);
+                                         int32_t uart, int32_t i2c, int32_t spi);
 
 /** Return a string representing the name of the given protocol.
  *

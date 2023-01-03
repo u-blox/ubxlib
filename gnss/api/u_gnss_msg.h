@@ -33,14 +33,14 @@
  * functions of the GNSS API.
  *
  * IMPORTANT: the functions in this API currently only work for GNSS
- * chips directly connected to this MCU (e.g. via I2C or UART), they
- * do NOT work for GNSS chips connected via an intermediate
+ * chips directly connected to this MCU (e.g. via I2C or UART or SPI),
+ * they do NOT work for GNSS chips connected via an intermediate
  * [e.g. cellular] module.  To send and receive messages to a GNSS
  * module connected via an intermediate module please use
  * uGnssUtilUbxTransparentSendReceive().
  *
  * It is planned, in future, to make transport via an intermediate
- * cellular module work in the same way as the UART and I2C streaming
+ * cellular module work in the same way as the UART/I2C/SPI streaming
  * interfaces (by implementing support for 3GPP TS 27.010 +CMUX in this
  * code), at which point this function will be deprecated.
  */
@@ -55,8 +55,8 @@ extern "C" {
 
 #ifndef U_GNSS_MSG_RING_BUFFER_LENGTH_BYTES
 /** The size of the ring buffer that is used to hold messages
- * streamed (e.g. over I2C or UART) from the GNSS chip.  Should
- * be big enough to hold a few long messages from the device
+ * streamed (e.g. over I2C or UART or SPI) from the GNSS chip.
+ * Should be big enough to hold a few long messages from the device
  * while these are read asynchronously in task-space by the
  * application.
  */
@@ -64,10 +64,10 @@ extern "C" {
 #endif
 
 #ifndef U_GNSS_MSG_TEMPORARY_BUFFER_LENGTH_BYTES
-/** A temporary buffer, used as a staging post to
- * get stuff from a streaming source (e.g. I2C or UART)
- * into the ring buffer; must be less than
- * U_GNSS_MSG_RING_BUFFER_LENGTH_BYTES - 1 but, since this
+/** A temporary buffer, used as a staging post to get stuff
+ * from a streaming source (e.g. I2C or UART or SPI) into the
+ * ring buffer; must be less than
+ * #U_GNSS_MSG_RING_BUFFER_LENGTH_BYTES - 1 but, since this
  * is just a "chunking" temporary buffer, a rather smaller
  * value is usually a good idea anyway.
  */
@@ -246,7 +246,13 @@ void uGnssMsgReceiveFlush(uDeviceHandle_t gnssHandle, bool asyncAlso);
  *
  * @param gnssHandle      the handle of the GNSS instance.
  * @param[in] pBuffer     the message to send; cannot be NULL.
- * @param size            the amount of data at pBuffer.
+ * @param size            the amount of data at pBuffer; if
+ *                        you are using SPI then size should
+ *                        not be greater than
+ *                        #U_GNSS_SPI_BUFFER_LENGTH_BYTES or there
+ *                        is a risk that you will lose some of
+ *                        the SPI data that is inevitably received
+ *                        while you are sending.
  * @return                on success the number of bytes sent, else
  *                        negative error code.
  */
@@ -450,7 +456,7 @@ int32_t uGnssMsgReceiveStopAll(uDeviceHandle_t gnssHandle);
 int32_t uGnssMsgReceiveStackMinFree(uDeviceHandle_t gnssHandle);
 
 /** Check if any message data bytes from a streaming source (for
- * example I2C or UART) have been lost to the non-blocking message
+ * example I2C or UART or SPI) have been lost to the non-blocking message
  * receive handler as a result of it not keeping up with the data flow
  * out of the ring buffer; if this returns non-zero then you may be doing
  * too much in your callback or you may have too many callbacks active.
@@ -464,10 +470,10 @@ int32_t uGnssMsgReceiveStackMinFree(uDeviceHandle_t gnssHandle);
 size_t uGnssMsgReceiveStatReadLoss(uDeviceHandle_t gnssHandle);
 
 /** Check the number of bytes lost between a streaming source (for
- * instance I2C or UART) and the input of the ring buffer as a result
- * of the ring buffer not being emptied fast enough.  This is a more
- * serious loss than uGnssMsgReceiveStatReadLoss() since the data is
- * lost to all destinations.
+ * instance I2C or UART or SPI) and the input of the ring buffer as a
+ * result of the ring buffer not being emptied fast enough.  This is a
+ * more serious loss than uGnssMsgReceiveStatReadLoss() since the data
+ * is lost to all destinations.
  *
  * @param gnssHandle   the handle of the GNSS instance.
  * @return             the number of bytes lost.

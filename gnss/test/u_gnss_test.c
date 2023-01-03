@@ -51,6 +51,7 @@
 #include "u_port_os.h"
 #include "u_port_uart.h"
 #include "u_port_i2c.h"
+#include "u_port_spi.h"
 
 #include "u_gnss_module_type.h"
 #include "u_gnss_type.h"
@@ -124,14 +125,18 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssInitialisation")
     uPortDeinit();
 }
 
-#if (U_CFG_TEST_UART_A >= 0) || (U_CFG_APP_GNSS_I2C >= 0)
-/** Add a streaming GNSS instance, e.g. UART or I2C,
+#if (U_CFG_TEST_UART_A >= 0) || (U_CFG_APP_GNSS_I2C >= 0) || (U_CFG_APP_GNSS_SPI >= 0)
+/** Add a streaming GNSS instance, e.g. UART or I2C or SPI,
  * and remove it again.
  */
 U_PORT_TEST_FUNCTION("[gnss]", "gnssAddStream")
 {
     uDeviceHandle_t gnssHandleA;
-# if (U_CFG_APP_GNSS_I2C < 0) || (U_CFG_TEST_UART_B >= 0)
+# if (U_CFG_APP_GNSS_SPI >= 0)
+    uCommonSpiControllerDevice_t device = U_COMMON_SPI_CONTROLLER_DEVICE_DEFAULTS(
+                                              U_CFG_APP_PIN_GNSS_SPI_SELECT);
+# endif
+# if ((U_CFG_APP_GNSS_SPI < 0) && (U_CFG_APP_GNSS_I2C < 0)) || (U_CFG_TEST_UART_B >= 0)
     uDeviceHandle_t dummyHandle;
 # endif
     uGnssTransportHandle_t transportHandleA;
@@ -163,6 +168,17 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssAddStream")
     U_PORT_TEST_ASSERT(gStreamAHandle >= 0);
     gTransportTypeA = U_GNSS_TRANSPORT_I2C;
     transportHandleA.i2c = gStreamAHandle;
+# elif (U_CFG_APP_GNSS_SPI >= 0)
+    U_PORT_TEST_ASSERT(uPortSpiInit() == 0);
+    gStreamAHandle = uPortSpiOpen(U_CFG_APP_GNSS_SPI,
+                                  U_CFG_APP_PIN_GNSS_SPI_MOSI,
+                                  U_CFG_APP_PIN_GNSS_SPI_MISO,
+                                  U_CFG_APP_PIN_GNSS_SPI_CLK,
+                                  true);
+    U_PORT_TEST_ASSERT(gStreamAHandle >= 0);
+    U_PORT_TEST_ASSERT(uPortSpiControllerSetDevice(gStreamAHandle, &device) == 0);
+    gTransportTypeA = U_GNSS_TRANSPORT_SPI;
+    transportHandleA.spi = gStreamAHandle;
 # else
     gStreamAHandle = uPortUartOpen(U_CFG_TEST_UART_A,
                                    U_CFG_TEST_BAUD_RATE,
@@ -198,6 +214,10 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssAddStream")
             U_PORT_TEST_ASSERT(transportType == U_GNSS_TRANSPORT_I2C);
             U_PORT_TEST_ASSERT(transportHandle.i2c == transportHandleA.i2c);
             break;
+        case U_GNSS_TRANSPORT_SPI:
+            U_PORT_TEST_ASSERT(transportType == U_GNSS_TRANSPORT_SPI);
+            U_PORT_TEST_ASSERT(transportHandle.spi == transportHandleA.spi);
+            break;
         default:
             U_PORT_TEST_ASSERT(false);
             break;
@@ -211,7 +231,7 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssAddStream")
         U_PORT_TEST_ASSERT(uGnssGetUbxMessagePrint(gnssHandleA));
     }
 
-# if (U_CFG_APP_GNSS_I2C < 0)
+# if (U_CFG_APP_GNSS_I2C < 0) && (U_CFG_APP_GNSS_SPI < 0)
     U_TEST_PRINT_LINE("adding another instance on the same UART"
                       " port, should fail...");
     U_PORT_TEST_ASSERT(uGnssAdd(U_GNSS_MODULE_TYPE_M8,
@@ -291,6 +311,10 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssAddStream")
             U_PORT_TEST_ASSERT(transportType == U_GNSS_TRANSPORT_UBX_I2C);
             U_PORT_TEST_ASSERT(transportHandle.i2c == transportHandleA.i2c);
             break;
+        case U_GNSS_TRANSPORT_SPI:
+            U_PORT_TEST_ASSERT(transportType == U_GNSS_TRANSPORT_SPI);
+            U_PORT_TEST_ASSERT(transportHandle.spi == transportHandleA.spi);
+            break;
         default:
             U_PORT_TEST_ASSERT(false);
             break;
@@ -311,6 +335,9 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssAddStream")
         case U_GNSS_TRANSPORT_UBX_I2C:
             uPortI2cClose(gStreamAHandle);
             break;
+        case U_GNSS_TRANSPORT_SPI:
+            uPortSpiClose(gStreamAHandle);
+            break;
         default:
             break;
     }
@@ -321,6 +348,7 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssAddStream")
     gUartBHandle = -1;
 # endif
 
+    uPortSpiDeinit();
     uPortI2cDeinit();
     uPortDeinit();
 
@@ -501,6 +529,9 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssCleanUp")
             case U_GNSS_TRANSPORT_UBX_I2C:
                 uPortI2cClose(gStreamAHandle);
                 break;
+            case U_GNSS_TRANSPORT_SPI:
+                uPortSpiClose(gStreamAHandle);
+                break;
             default:
                 break;
         }
@@ -516,6 +547,7 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssCleanUp")
         U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
     }
 
+    uPortSpiDeinit();
     uPortI2cDeinit();
     uPortDeinit();
 

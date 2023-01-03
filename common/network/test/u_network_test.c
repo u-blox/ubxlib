@@ -55,6 +55,7 @@
 #include "u_port_debug.h"
 #include "u_port_os.h"
 #include "u_port_i2c.h"
+#include "u_port_spi.h"
 
 #ifdef U_CFG_TEST_CELL_MODULE_TYPE
 # include "u_cell_module_type.h"
@@ -837,8 +838,9 @@ U_PORT_TEST_FUNCTION("[network]", "networkLoc")
     heapUsed = uPortGetHeapFree();
 
     U_PORT_TEST_ASSERT(uPortInit() == 0);
-    // Don't check this for success as not all platforms support I2C
+    // Don't check these for success as not all platforms support I2C or SPI
     uPortI2cInit();
+    uPortSpiInit();
     U_PORT_TEST_ASSERT(uDeviceInit() == 0);
 
     // Get a list of all things
@@ -928,6 +930,7 @@ U_PORT_TEST_FUNCTION("[network]", "networkLoc")
     uNetworkTestListFree();
 
     uDeviceDeinit();
+    uPortSpiDeinit();
     uPortI2cDeinit();
     uPortDeinit();
 
@@ -1406,6 +1409,7 @@ U_PORT_TEST_FUNCTION("[network]", "networkCleanUp")
         U_PORT_TEST_ASSERT(y >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
     }
 
+    uPortSpiDeinit();
     uPortI2cDeinit();
     uPortDeinit();
 
