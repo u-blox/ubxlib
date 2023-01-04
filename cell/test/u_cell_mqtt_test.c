@@ -94,26 +94,26 @@
 #ifndef U_CELL_MQTT_TEST_MQTT_SERVER_IP_ADDRESS
 /** Server to use for MQTT testing.
  */
-# define U_CELL_MQTT_TEST_MQTT_SERVER_IP_ADDRESS  ubxlib.it-sgn.u-blox.com
+# define U_CELL_MQTT_TEST_MQTT_SERVER_IP_ADDRESS  ubxlib.redirectme.net
 #endif
 
 #ifndef U_CELL_MQTT_TEST_MQTT_SERVER_IP_ADDRESS_SECURED
 /** Server to use for MQTT testing on a secured connection,
  * can't be hivemq as that doesn't support security.
  */
-# define U_CELL_MQTT_TEST_MQTT_SERVER_IP_ADDRESS_SECURED  ubxlib.it-sgn.u-blox.com:8883
+# define U_CELL_MQTT_TEST_MQTT_SERVER_IP_ADDRESS_SECURED  ubxlib.redirectme.net:8883
 #endif
 
 #ifndef U_CELL_MQTT_TEST_MQTTSN_SERVER_IP_ADDRESS
 /** Server to use for MQTT-SN testing.
  */
-# define U_CELL_MQTT_TEST_MQTTSN_SERVER_IP_ADDRESS  ubxlib.it-sgn.u-blox.com
+# define U_CELL_MQTT_TEST_MQTTSN_SERVER_IP_ADDRESS  ubxlib.redirectme.net
 #endif
 
 #ifndef U_CELL_MQTT_TEST_MQTTSN_SERVER_IP_ADDRESS_SECURED
 /** Server to use for MQTT-SN testing on a secured connection.
  */
-# define U_CELL_MQTT_TEST_MQTTSN_SERVER_IP_ADDRESS_SECURED  ubxlib.it-sgn.u-blox.com:8883
+# define U_CELL_MQTT_TEST_MQTTSN_SERVER_IP_ADDRESS_SECURED  ubxlib.redirectme.net:8883
 #endif
 
 /* ----------------------------------------------------------------
@@ -132,6 +132,7 @@ static int64_t gStopTimeMs;
  */
 static uCellTestPrivate_t gHandles = U_CELL_TEST_PRIVATE_DEFAULTS;
 
+#ifdef U_CELL_MQTT_TEST_ENABLE_WILL_TEST
 /** A string of all possible characters, including strings
  * that might appear as terminators in an AT interface, that
  * is less than 128 characters long.
@@ -146,6 +147,7 @@ static const char gAllChars[] = "\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0
  */
 static const char gPrintableChars[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
                                       "0123456789!#$%&'()*+,-./:;<=>?@[\\]^_`{|}~";
+#endif
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -183,13 +185,15 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqtt")
     int32_t heapUsed;
     char buffer1[32];
     char buffer2[32];
-    char *pBuffer;
     int32_t x;
     int32_t y;
     size_t z;
+    const char *pServerAddress = U_PORT_STRINGIFY_QUOTED(U_CELL_MQTT_TEST_MQTT_SERVER_IP_ADDRESS);
+#ifdef U_CELL_MQTT_TEST_ENABLE_WILL_TEST
     uCellMqttQos_t qos = U_CELL_MQTT_QOS_MAX_NUM;
     bool retained = false;
-    const char *pServerAddress = U_PORT_STRINGIFY_QUOTED(U_CELL_MQTT_TEST_MQTT_SERVER_IP_ADDRESS);
+    char *pBuffer;
+#endif
 
     // In case a previous test failed
     uCellTestPrivateCleanup(&gHandles);
@@ -356,6 +360,10 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqtt")
             U_PORT_TEST_ASSERT(!y);
         }
 
+
+        // Can't set/get a "will" message as the test broker we use
+        // doesn't connect if you set one
+#ifdef U_CELL_MQTT_TEST_ENABLE_WILL_TEST
         // Set/get a "will" message
         if (U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_MQTT_WILL)) {
             U_TEST_PRINT_LINE("testing getting/setting \"will\"...");
@@ -381,6 +389,7 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqtt")
             U_PORT_TEST_ASSERT(retained);
             uPortFree(pBuffer);
         }
+#endif
 
         // Test that we can get and set the inactivity timeout
         z = 60;
@@ -492,14 +501,16 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqttSn")
     const uCellPrivateModule_t *pModule;
     int32_t heapUsed;
     char buffer1[32];
-    char buffer2[32];
-    char *pBuffer;
     int32_t x;
     int32_t y;
     size_t z;
+    const char *pServerAddress = U_PORT_STRINGIFY_QUOTED(U_CELL_MQTT_TEST_MQTTSN_SERVER_IP_ADDRESS);
+#ifdef U_CELL_MQTT_TEST_ENABLE_WILL_TEST
     uCellMqttQos_t qos = U_CELL_MQTT_QOS_MAX_NUM;
     bool retained = false;
-    const char *pServerAddress = U_PORT_STRINGIFY_QUOTED(U_CELL_MQTT_TEST_MQTTSN_SERVER_IP_ADDRESS);
+    char buffer2[32];
+    char *pBuffer;
+#endif
 
     // In case a previous test failed
     uCellTestPrivateCleanup(&gHandles);
@@ -608,6 +619,9 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqttSn")
         U_TEST_PRINT_LINE_SN("security is now %s.", y ? "on" : "off");
         U_PORT_TEST_ASSERT(!y);
 
+        // Can't set/get a "will" message as the test broker we use
+        // doesn't connect if you set one
+#ifdef U_CELL_MQTT_TEST_ENABLE_WILL_TEST
         // Set/get a "will" message
         if (U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_MQTT_WILL)) {
             U_TEST_PRINT_LINE_SN("testing getting/setting \"will\"...");
@@ -635,6 +649,7 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqttSn")
             U_PORT_TEST_ASSERT(retained);
             uPortFree(pBuffer);
         }
+#endif
 
         // Test that we can get and set the inactivity timeout
         z = 60;

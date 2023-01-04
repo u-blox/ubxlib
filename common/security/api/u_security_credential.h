@@ -128,9 +128,14 @@ typedef struct {
  * FUNCTIONS
  * -------------------------------------------------------------- */
 
-/** Store the given X.509 certificate or security key.  For an X.509
- * certificate PEM or DER format may be used; for a security key
- * unencrypted PEM format, specifically with the header
+/** Store the given X.509 certificate or security key.
+ *
+ * If you are using a cellular module and wish to import a certificate
+ * that is already stored in the cellular module's file system, please see
+ * uSecurityCredentialImportFromFile().
+ *
+ * For an X.509 certificate PEM or DER format may be used; for a
+ * security key unencrypted PEM format, specifically with the header
  * "BEGIN RSA PRIVATE KEY" rather than just "BEGIN PRIVATE KEY",
  * should preferably be used since use of a password, or the generic
  * "BEGIN PRIVATE KEY" header, or DER format, for security key storage
@@ -199,6 +204,46 @@ int32_t uSecurityCredentialStore(uDeviceHandle_t devHandle,
                                  size_t size,
                                  const char *pPassword,
                                  char *pMd5);
+
+/** As uSecurityCredentialStore() but can be used ONLY with cellular modules
+ * where you have already stored a certificate in the file system of the
+ * cellular module and you want to import that certificate into the security
+ * sub-system.
+ *
+ * @param devHandle            the handle of the instance to be used,
+ *                             for example obtained using uDeviceOpen().
+ * @param type                 the type of credential to be stored.
+ * @param pName                the null-terminated name for the
+ *                             X.509 certificate or security key, of
+ *                             maximum length
+ *                             #U_SECURITY_CREDENTIAL_NAME_MAX_LENGTH_BYTES.
+ *                             IMPORTANT: if the name already exists
+ *                             then the existing X.509 certificate or
+ *                             security key will be overwritten with
+ *                             this one.
+ * @param pFileName            the null-terminated file name of the file
+ *                             already stored in the module's file system
+ *                             that you wish to import.
+ * @param pPassword            if required, the null-terminated password
+ *                             for a PKCS8 encrypted private key, of
+ *                             maximum length
+ *                             #U_SECURITY_CREDENTIAL_PASSWORD_MAX_LENGTH_BYTES;
+ *                             SARA-U201 and SARA-R4xx modules do not support
+ *                             use of a password.
+ * @param pMd5                 pointer to #U_SECURITY_CREDENTIAL_MD5_LENGTH_BYTES
+ *                             of storage where the MD5 hash of the DER-format
+ *                             credential as stored in the module can be
+ *                             placed: this can be stored by the caller and
+ *                             used later to verify that the credential is
+ *                             unchanged; may be NULL.
+ * @return                     zero on success else negative error code.
+ */
+int32_t uSecurityCredentialImportFromFile(uDeviceHandle_t devHandle,
+                                          uSecurityCredentialType_t type,
+                                          const char *pName,
+                                          const char *pFileName,
+                                          const char *pPassword,
+                                          char *pMd5);
 
 /** Read the MD5 hash of a stored X.509 certificate or security key
  * to compare with that originally returned by uSecurityCredentialStore().

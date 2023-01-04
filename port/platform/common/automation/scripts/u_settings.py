@@ -119,35 +119,35 @@ __DEFAULT_SETTINGS["USB_CUTTER_ID_STRS" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = N
 __DEFAULT_SETTINGS["HW_RESET_DURATION_SECONDS"] = 5
 # u_connection.py
 __DEFAULT_SETTINGS["CONNECTION_INSTANCE_10" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = \
-    {"serial_port":"COM28"}
+    {"serial_port": "/dev/silabs_cp210x_uart"}
 __DEFAULT_SETTINGS["CONNECTION_INSTANCE_11" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = \
-    {"serial_port":"COM8"}
+    {"serial_port": "/dev/silabs_cp210x_uart"}
 __DEFAULT_SETTINGS["CONNECTION_INSTANCE_12" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = \
-    {"serial_port":"COM9"}
+    {"serial_port": "/dev/silabs_cp210x_uart"}
 __DEFAULT_SETTINGS["CONNECTION_INSTANCE_13" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = \
-    {"serial_port":"COM6", "debugger":"683253856"}
+    {"serial_port": "COM6", "debugger":"683253856"}
 __DEFAULT_SETTINGS["CONNECTION_INSTANCE_14" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = \
-    {"serial_port":"COM19", "debugger":"066EFF515551678367072825"}
+    {"serial_port": "/dev/stlink_v2_1", "debugger":"066EFF515551678367072825"}
 __DEFAULT_SETTINGS["CONNECTION_INSTANCE_15" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = \
-    {"serial_port":"COM7", "debugger":"683920969"}
+    {"serial_port": "/dev/segger_jlink_nrf52840", "debugger":"683920969"}
 __DEFAULT_SETTINGS["CONNECTION_INSTANCE_16" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = \
-    {"serial_port":"COM3", "debugger":"066AFF565053787567193251"}
+    {"serial_port": "/dev/stlink_v2_1", "debugger": "0668FF383032534E43184418"}
 __DEFAULT_SETTINGS["CONNECTION_INSTANCE_17" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = \
-    {"serial_port": "COM11", "debugger": "960160994"}
+    {"serial_port": "/dev/segger_jlink_base", "debugger": "50102100"}
 __DEFAULT_SETTINGS["CONNECTION_INSTANCE_18" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = \
-    {"serial_port": "COM5", "debugger": "960167723"}
+    {"serial_port": "/dev/segger_jlink_base", "debugger": "51014525"}
 __DEFAULT_SETTINGS["CONNECTION_INSTANCE_19" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = \
-    {"serial_port": "COM25", "debugger": "0672FF565053787567161452"}
+    {"serial_port": "/dev/stlink_v2_1", "debugger": "0672FF565053787567161452"}
 __DEFAULT_SETTINGS["CONNECTION_INSTANCE_20" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = \
-    {"serial_port":"COM59"}
+    {"serial_port": "/dev/ftdi_ft4232h"}
 __DEFAULT_SETTINGS["CONNECTION_INSTANCE_21" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = \
-    {"serial_port":"COM51"}
+    {"serial_port": "/dev/ftdi_ft4232h"}
 __DEFAULT_SETTINGS["CONNECTION_INSTANCE_22" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = \
-    {"serial_port": "COM63"}
+    {"serial_port": "/dev/ftdi_ft4232h"}
 # Don't need one for instance 23 [Windows] since there is nothing to program
 # Don't need one for instance 24 [Zephyr/Linux] since there is nothing to program
 __DEFAULT_SETTINGS["CONNECTION_INSTANCE_25" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = \
-    {"serial_port": "COM36"}
+    {"serial_port": "/dev/silabs_cp210x_uart"}
 # u_data.py
 __DEFAULT_SETTINGS["DATA_FILE"] = "DATABASE.md"
 __DEFAULT_SETTINGS["CELLULAR_MODULE_TYPE_PREFIX"] = "U_CELL_MODULE_TYPE_"
@@ -161,7 +161,7 @@ __DEFAULT_SETTINGS["ASTYLE_DIRS"] = ["."]
 __DEFAULT_SETTINGS["DOXYGEN_DOXYFILE"] = "Doxyfile"
 #u_run_static_size.py
 __DEFAULT_SETTINGS["STATIC_SIZE_ARM_GNU_INSTALL_ROOT" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = \
-    "C:/Program Files (x86)/GNU Arm Embedded Toolchain/10 2020-q4-major/bin"
+    "/home/ubxlib/.ubxlibpkg/arm_embedded_gcc-10-2020-q4-major/bin/"
 # u_run_windows.py
 __DEFAULT_SETTINGS["WINDOWS_MSVC_BUILD_TOOLS_PATH" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] =         \
     "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools"
@@ -193,8 +193,8 @@ __DEFAULT_SETTINGS["EXE_RUN_QUEUE_WAIT_SECONDS"] = 1
 
 # Switches that can be controlled under automation
 __DEFAULT_SETTINGS["SWITCH_LIST" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] =    \
-    [{"name":"RF_SWITCH_A", "ip":"10.20.4.169", "0":":SETA=0", "1":":SETA=1"},
-     {"name":"PWR_SWITCH_A", "ip":"10.20.4.143", "0":"FF0700", "1":"FF0701"}]
+    [{"name":"RF_SWITCH_A", "ip":"10.10.2.212", "0":":SETA=0", "1":":SETA=1"},
+     {"name":"PWR_SWITCH_A", "ip":"10.10.2.210", "0":"FF0700", "1":"FF0701"}]
 
 # Other stuff
 __USER_INTERVENTION_REQUIRED = False
@@ -235,7 +235,7 @@ with portalocker.Lock(__SETTINGS_FILE_DIRECTORY + os.sep + "settings.lock",
     # Read settings from the global configuration files
     if os.path.isfile(__SETTINGS_FILE_PATH_GENERAL):
         try:
-            with open(__SETTINGS_FILE_PATH_GENERAL) as f:
+            with open(__SETTINGS_FILE_PATH_GENERAL, encoding="utf8") as f:
                 __READ_SETTINGS = json.load(f)
         except Exception as ex:
             print("u_settings: ************************** WARNING ***************************")
@@ -248,7 +248,7 @@ with portalocker.Lock(__SETTINGS_FILE_DIRECTORY + os.sep + "settings.lock",
             __HOLD_THE_BUS = True
     if os.path.isfile(__SETTINGS_FILE_PATH_AGENT_SPECIFIC):
         try:
-            with open(__SETTINGS_FILE_PATH_AGENT_SPECIFIC) as f:
+            with open(__SETTINGS_FILE_PATH_AGENT_SPECIFIC, encoding="utf8") as f:
                 __READ_SETTINGS.update(json.load(f))
         except Exception as ex:
             print("u_settings: ************************** WARNING ***************************")
@@ -263,7 +263,7 @@ with portalocker.Lock(__SETTINGS_FILE_DIRECTORY + os.sep + "settings.lock",
         # For backwards-compatibility
         if os.path.isfile(__SETTINGS_FILE_PATH_OLD):
             try:
-                with open(__SETTINGS_FILE_PATH_OLD) as f:
+                with open(__SETTINGS_FILE_PATH_OLD, encoding="utf8") as f:
                     __READ_SETTINGS.update(json.load(f))
                     __FORCE_WRITE = True
             except Exception as ex:
@@ -372,9 +372,9 @@ with portalocker.Lock(__SETTINGS_FILE_DIRECTORY + os.sep + "settings.lock",
             __WRITE_SETTINGS = {}
     else:
         # Condition (a) above
-        print("u_settings: no settings at \"{}\", \"{}\" or \"{}\""
-              " using defaults.".format(__SETTINGS_FILE_PATH_GENERAL,
-              __SETTINGS_FILE_PATH_AGENT_SPECIFIC, __SETTINGS_FILE_PATH_OLD))
+        print(f"u_settings: no settings at \"{__SETTINGS_FILE_PATH_GENERAL}\","              \
+              f"\"{__SETTINGS_FILE_PATH_AGENT_SPECIFIC}\" or \"{__SETTINGS_FILE_PATH_OLD}\"" \
+              " using defaults.")
 
     # If we have __UPDATED_READ_SETTINGS we use it instead of __SETTINGS
     if __UPDATED_READ_SETTINGS:
@@ -394,8 +394,8 @@ with portalocker.Lock(__SETTINGS_FILE_DIRECTORY + os.sep + "settings.lock",
                 __LISTS_DIFFER = True
                 __local_write_settings[__key] = __WRITE_SETTINGS[__key]
                 if __key_root != __key:
-                    print("u_settings: *** WARNING agent specific setting {}"    \
-                          " not found in settings file.".format(__key_root))
+                    print(f"u_settings: *** WARNING agent specific setting {__key_root}"    \
+                          " not found in settings file.")
         __WRITE_SETTINGS = __local_write_settings
 
         # Don't want to lose the user's stuff, so add anything that
@@ -431,19 +431,19 @@ with portalocker.Lock(__SETTINGS_FILE_DIRECTORY + os.sep + "settings.lock",
             if __write_settings_general:
                 print("u_settings: creating/re-writing global settings file \"{}\".". \
                       format(__SETTINGS_FILE_PATH_GENERAL))
-                with open(__SETTINGS_FILE_PATH_GENERAL, 'w') as out:
+                with open(__SETTINGS_FILE_PATH_GENERAL, 'w', encoding='utf8') as out:
                     json.dump(__write_settings_general, out, indent=2)
             if __write_settings_agent_specific:
                 print("u_settings: creating/re-writing global settings file \"{}\".". \
                       format(__SETTINGS_FILE_PATH_AGENT_SPECIFIC))
-                with open(__SETTINGS_FILE_PATH_AGENT_SPECIFIC, 'w') as out:
+                with open(__SETTINGS_FILE_PATH_AGENT_SPECIFIC, 'w', encoding='utf8') as out:
                     json.dump(__write_settings_agent_specific, out, indent=2)
 
     # Populate this module with settings
     __current_module = sys.modules[__name__]
     for __key in __SETTINGS:
         __value = __replace_env_var(__SETTINGS[__key])
-        #print("u_settings: \"{}\" = \"{}\"".format(__key,  __value))
+        #print(f"u_settings: \"{__key}\" = \"{__value}\"")
         setattr(__current_module, __key, __value)
 
 def user_intervention_required():

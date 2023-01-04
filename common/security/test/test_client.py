@@ -6,7 +6,7 @@ import ssl
 
 SEND_DATA = "Hello world"
 RECEIVE_DATA = ""
-HOST = "ubxlib.it-sgn.u-blox.com"
+HOST = "ubxlib.redirectme.net"
 PORT = 5065
 WAIT = True
 
@@ -21,9 +21,9 @@ sock.settimeout(5)
 secure_sock = ssl.wrap_socket(sock, ssl_version=ssl.PROTOCOL_TLSv1_2)
 
 # Connect and send echo
-print("Connecting to {}:{}".format(HOST, PORT))
+print(f"Connecting to {HOST}:{PORT}")
 secure_sock.connect((HOST, PORT))
-print("Sending: {}".format(SEND_DATA))
+print(f"Sending: {SEND_DATA}")
 secure_sock.send(SEND_DATA.encode())
 print("Receiving: ", end = "")
 while WAIT:

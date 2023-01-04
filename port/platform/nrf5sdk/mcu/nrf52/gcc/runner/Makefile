@@ -67,6 +67,7 @@ SRC_FILES += \
   $(NRF5_PATH)/modules/nrfx/drivers/src/nrfx_timer.c \
   $(NRF5_PATH)/modules/nrfx/drivers/src/nrfx_clock.c \
   $(NRF5_PATH)/modules/nrfx/drivers/src/nrfx_twim.c \
+  $(NRF5_PATH)/modules/nrfx/drivers/src/nrfx_spim.c \
   $(NRF5_PATH)/external/fprintf/nrf_fprintf.c \
   $(NRF5_PATH)/external/fprintf/nrf_fprintf_format.c \
   $(NRF5_PATH)/integration/nrfx/legacy/nrf_drv_clock.c \
@@ -92,13 +93,14 @@ SRC_FILES += \
   $(UBXLIB_TEST_SRC) \
   $(UBXLIB_PATH)/port/clib/u_port_clib_mktime64.c \
   $(UBXLIB_PATH)/port/platform/common/heap_check/u_heap_check.c \
-  ${UBXLIB_BASE}/port/platform/common/mbedtls/u_port_crypto.c \
+  $(UBXLIB_BASE)/port/platform/common/mbedtls/u_port_crypto.c \
   $(NRF5_PORT_PATH)/src/u_port.c \
   $(NRF5_PORT_PATH)/src/u_port_debug.c \
   $(NRF5_PORT_PATH)/src/u_port_gpio.c \
   $(NRF5_PORT_PATH)/src/u_port_os.c \
   $(NRF5_PORT_PATH)/src/u_port_uart.c \
   $(NRF5_PORT_PATH)/src/u_port_i2c.c \
+  $(NRF5_PORT_PATH)/src/u_port_spi.c \
   $(NRF5_PORT_PATH)/src/u_port_private.c \
   $(NRF5_PORT_PATH)/src/u_exception_handler.c \
   $(NRF5_PORT_PATH)/src/heap_useNewlib.c \

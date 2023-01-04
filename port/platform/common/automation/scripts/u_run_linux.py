@@ -3,9 +3,9 @@
 '''Build/run ubxlib for Linux and report results.'''
 import os                    # For sep(), getcwd(), listdir()
 from logging import Logger
+from tasks import nrfconnect
 from scripts import u_connection, u_monitor, u_report, u_utils
 from scripts.u_logging import ULog
-from tasks import nrfconnect
 
 # Prefix to put at the start of all prints
 PROMPT = "u_run_linux_"

@@ -26,7 +26,14 @@
 #ifdef ESP_PLATFORM
 # include "freertos/FreeRTOS.h"
 # include "freertos/task.h"
-# include "freertos/additions/task_snapshot.h"
+// This code is not present in v4.3 ESP-IDF, hence we include a copy,
+// otherwise we can just use their version
+# include "esp_idf_version.h"
+# if (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(4, 4, 0))
+#  include "freertos/additions/task_snapshot.h"
+# else
+#  include "task_snapshot.h"
+#endif
 #else
 # include "FreeRTOS.h"
 # include "task.h"

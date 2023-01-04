@@ -59,6 +59,11 @@
 #include "u_port_uart.h"
 #if (U_CFG_APP_GNSS_I2C >= 0)
 # include "u_port_i2c.h"
+#endif
+#if (U_CFG_APP_GNSS_SPI >= 0)
+# include "u_port_spi.h"
+#endif
+#if (U_CFG_APP_GNSS_I2C >= 0) || (U_CFG_APP_GNSS_SPI >= 0)
 # include "u_ubx_protocol.h"
 #endif
 #include "u_port_crypto.h"
@@ -143,7 +148,7 @@
  * data to arrive back when allowing laziness (e.g. on
  * a heavily loaded Windoze machine).
  */
-#  define U_PORT_TEST_UART_TIME_TO_ARRIVE_MS 5000
+#  define U_PORT_TEST_UART_TIME_TO_ARRIVE_MS 10000
 # endif
 #endif
 
@@ -153,6 +158,15 @@
  * default I2C address of a u-blox GNSS device.
  */
 #  define U_PORT_TEST_I2C_ADDRESS 0x42
+# endif
+#endif
+
+#if (U_CFG_APP_GNSS_SPI >= 0)
+# ifndef U_PORT_TEST_SPI_TRIES
+/** How many attempts we make while waiting for the GNSS
+ * chip to respond with an ack.
+ */
+#  define U_PORT_TEST_SPI_TRIES 10
 # endif
 #endif
 
@@ -349,6 +363,12 @@ static char gUartBuffer[(U_CFG_TEST_UART_BUFFER_LENGTH_BYTES / 2) +
  * I2C buses can easily get stuck, it would seem.
  */
 static int32_t gI2cHandle = -1;
+#endif
+
+#if (U_CFG_APP_GNSS_SPI >= 0)
+/** SPI handle, global so that we can tidy up on failure.
+ */
+static int32_t gSpiHandle = -1;
 #endif
 
 /** Data for mktime64() testing.
@@ -1073,6 +1093,7 @@ static void runUartTest(int32_t size, int32_t speed, bool flowControlOn)
     }
 
     // Send data over the UART N times, the callback will check it
+    U_TEST_PRINT_LINE("sending data.");
     while (bytesSent < size) {
         // -1 to omit gUartTestData string terminator
         bytesToSend = sizeof(gUartTestData) - 1;
@@ -1095,6 +1116,8 @@ static void runUartTest(int32_t size, int32_t speed, bool flowControlOn)
     }
 
     // Wait long enough for everything to have been received
+    U_TEST_PRINT_LINE("waiting %d ms for everything to arrive back.",
+                      U_PORT_TEST_UART_TIME_TO_ARRIVE_MS);
     uPortTaskBlock(U_PORT_TEST_UART_TIME_TO_ARRIVE_MS);
 
     // Print out some useful stuff
@@ -1132,6 +1155,35 @@ static void runUartTest(int32_t size, int32_t speed, bool flowControlOn)
 
 #endif // (U_CFG_TEST_UART_A >= 0) && (U_CFG_TEST_UART_B < 0)
 
+#if (U_CFG_APP_GNSS_SPI >= 0)
+
+// Compare SPI fill words, doing it for the right word length.
+static bool fillWordSame(uint16_t wordA, uint16_t wordB, size_t lengthBytes)
+{
+    bool isSame = false;
+
+    switch (lengthBytes) {
+        case 1:
+            isSame = ((wordA & 0xFF) == (wordB & 0xFF));
+            break;
+        case 2:
+            isSame = ((wordA & 0xFFFF) == (wordB & 0xFFFF));
+            break;
+        case 3:
+            isSame = ((wordA & 0xFFFFFF) == (wordB & 0xFFFFFF));
+            break;
+        case 4:
+            isSame = ((wordA & 0xFFFFFFFF) == (wordB & 0xFFFFFFFF));
+            break;
+        default:
+            break;
+    }
+
+    return isSame;
+}
+
+#endif
+
 // Timer callback
 static void timerCallback(const uPortTimerHandle_t timerHandle, void *pParameter)
 {
@@ -1162,6 +1214,39 @@ static void criticalSectionTestTask(void *pParameter)
 
     uPortTaskDelete(NULL);
 }
+
+#if (U_CFG_APP_GNSS_I2C >= 0)
+// Reset a GNSS chip attached via I2C
+static bool gnssReset()
+{
+    bool resetDone = false;
+
+# if defined(U_CFG_TEST_PIN_GNSS_RESET_N) && (U_CFG_TEST_PIN_GNSS_RESET_N >= 0)
+    uPortGpioConfig_t gpioConfig = U_PORT_GPIO_CONFIG_DEFAULT;
+
+    // If there is a GNSS module attached that has a RESET_N line
+    // wired to it then pull that line low to reset the GNSS module,
+    // nice and clean
+    U_TEST_PRINT_LINE("resetting GNSS module by toggling pin %d (0x%0x) low.",
+                      U_CFG_TEST_PIN_GNSS_RESET_N, U_CFG_TEST_PIN_GNSS_RESET_N);
+    // Make the pin an open-drain output, and low
+    if (uPortGpioSet(U_CFG_TEST_PIN_GNSS_RESET_N, 0) == 0) {
+        gpioConfig.pin = U_CFG_TEST_PIN_GNSS_RESET_N;
+        gpioConfig.direction = U_PORT_GPIO_DIRECTION_OUTPUT;
+        gpioConfig.driveMode = U_PORT_GPIO_DRIVE_MODE_OPEN_DRAIN;
+        uPortGpioConfig(&gpioConfig);
+        // Leave it low for half a second and release
+        uPortTaskBlock(500);
+        uPortGpioSet(U_CFG_TEST_PIN_GNSS_RESET_N, 1);
+        // Let the chip recover
+        uPortTaskBlock(2000);
+        resetDone = true;
+    }
+# endif
+
+    return resetDone;
+}
+#endif
 
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS: TESTS
@@ -2019,6 +2104,7 @@ U_PORT_TEST_FUNCTION("[port]", "portEventQueue")
 
     U_TEST_PRINT_LINE("closing the event queues...");
     U_PORT_TEST_ASSERT(uPortEventQueueClose(gEventQueueMaxHandle) == 0);
+    uPortEventQueueCleanUp();
     U_PORT_TEST_ASSERT(uPortEventQueueClose(gEventQueueMinHandle) == 0);
 
     // Check that they are no longer available
@@ -2341,9 +2427,8 @@ U_PORT_TEST_FUNCTION("[port]", "portI2cRequiresSpecificWiring")
     int32_t messageId = -1;
     int32_t heapUsed;
     int32_t heapClibLossOffset = (int32_t) gSystemHeapLost;
-    char buffer1[20]; // Enough room the body of a UBX-CFG-PRT message
-    char buffer2[20 +
-                    U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES]; // Enough room for the full UBX-CFG-PRT message
+    // Enough room for the UBX-MON-BATCH message
+    char buffer[12 + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES];
 
     // Whatever called us likely initialised the
     // port so deinitialise it here to obtain the
@@ -2352,153 +2437,337 @@ U_PORT_TEST_FUNCTION("[port]", "portI2cRequiresSpecificWiring")
     heapUsed = uPortGetHeapFree();
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
-    U_TEST_PRINT_LINE("testing I2C, assuming a u-blox GNSS device on the I2C bus at address 0x%02x.",
-                      U_PORT_TEST_I2C_ADDRESS);
+    // Reset the GNSS chip as otherwise it might have queued up
+    // other data which would mess this test up
+    if (gnssReset()) {
 
-    // Try to open an I2C instance without having initialised I2C, should fail
-    U_PORT_TEST_ASSERT(uPortI2cOpen(U_CFG_APP_GNSS_I2C, U_CFG_APP_PIN_GNSS_SDA,
-                                    U_CFG_APP_PIN_GNSS_SCL, true) < 0);
-    // Now initialise I2C
-    U_PORT_TEST_ASSERT(uPortI2cInit() == 0);
+        U_TEST_PRINT_LINE("testing I2C, assuming a u-blox GNSS device on the I2C bus at address 0x%02x.",
+                          U_PORT_TEST_I2C_ADDRESS);
+
+        // Try to open an I2C instance without having initialised I2C, should fail
+        U_PORT_TEST_ASSERT(uPortI2cOpen(U_CFG_APP_GNSS_I2C, U_CFG_APP_PIN_GNSS_SDA,
+                                        U_CFG_APP_PIN_GNSS_SCL, true) < 0);
+        // Now initialise I2C
+        U_PORT_TEST_ASSERT(uPortI2cInit() == 0);
 # ifndef __ZEPHYR__
-    // Try to open an I2C instance without pins, should fail
-    U_PORT_TEST_ASSERT(uPortI2cOpen(U_CFG_APP_GNSS_I2C, -1, U_CFG_APP_PIN_GNSS_SCL, true) < 0);
-    U_PORT_TEST_ASSERT(uPortI2cOpen(U_CFG_APP_GNSS_I2C, U_CFG_APP_PIN_GNSS_SDA, -1, true) < 0);
+        // Try to open an I2C instance without pins, should fail
+        U_PORT_TEST_ASSERT(uPortI2cOpen(U_CFG_APP_GNSS_I2C, -1, U_CFG_APP_PIN_GNSS_SCL, true) < 0);
+        U_PORT_TEST_ASSERT(uPortI2cOpen(U_CFG_APP_GNSS_I2C, U_CFG_APP_PIN_GNSS_SDA, -1, true) < 0);
 # endif
-    // Try to open an I2C instance not as controller, should fail
-    U_PORT_TEST_ASSERT(uPortI2cOpen(U_CFG_APP_GNSS_I2C, U_CFG_APP_PIN_GNSS_SDA,
-                                    U_CFG_APP_PIN_GNSS_SCL, false) < 0);
-    // Now do it properly
-    gI2cHandle = uPortI2cOpen(U_CFG_APP_GNSS_I2C, U_CFG_APP_PIN_GNSS_SDA, U_CFG_APP_PIN_GNSS_SCL, true);
-    U_PORT_TEST_ASSERT(gI2cHandle >= 0);
+        // Try to open an I2C instance not as controller, should fail
+        U_PORT_TEST_ASSERT(uPortI2cOpen(U_CFG_APP_GNSS_I2C, U_CFG_APP_PIN_GNSS_SDA,
+                                        U_CFG_APP_PIN_GNSS_SCL, false) < 0);
+        // Now do it properly
+        gI2cHandle = uPortI2cOpen(U_CFG_APP_GNSS_I2C, U_CFG_APP_PIN_GNSS_SDA, U_CFG_APP_PIN_GNSS_SCL, true);
+        U_PORT_TEST_ASSERT(gI2cHandle >= 0);
 
-    // Note: no real way of testing uPortI2cAdopt() here since
-    // it would require platform specific test code.
+        // Note: no real way of testing uPortI2cAdopt() here since
+        // it would require platform specific test code.
 
-    // Close again and deinit I2C, using the bus-recovery version in case of
-    // previous test failures
-    uPortI2cCloseRecoverBus(gI2cHandle);
-    uPortI2cDeinit();
-    // Try to open an I2C instance without having initialised I2C again, should fail
-    U_PORT_TEST_ASSERT(uPortI2cOpen(U_CFG_APP_GNSS_I2C, U_CFG_APP_PIN_GNSS_SDA,
-                                    U_CFG_APP_PIN_GNSS_SCL, true) < 0);
+        // Close again and deinit I2C, using the bus-recovery version in case of
+        // previous test failures
+        uPortI2cCloseRecoverBus(gI2cHandle);
+        uPortI2cDeinit();
+        // Try to open an I2C instance without having initialised I2C again, should fail
+        U_PORT_TEST_ASSERT(uPortI2cOpen(U_CFG_APP_GNSS_I2C, U_CFG_APP_PIN_GNSS_SDA,
+                                        U_CFG_APP_PIN_GNSS_SCL, true) < 0);
 
-    // Initialise and open again
-    uPortI2cInit();
-    gI2cHandle = uPortI2cOpen(U_CFG_APP_GNSS_I2C, U_CFG_APP_PIN_GNSS_SDA, U_CFG_APP_PIN_GNSS_SCL, true);
-    U_PORT_TEST_ASSERT(gI2cHandle >= 0);
+        // Initialise and open again
+        uPortI2cInit();
+        gI2cHandle = uPortI2cOpen(U_CFG_APP_GNSS_I2C, U_CFG_APP_PIN_GNSS_SDA, U_CFG_APP_PIN_GNSS_SCL, true);
+        U_PORT_TEST_ASSERT(gI2cHandle >= 0);
 
-    // Test getting and setting the clock rate
+        // Test getting and setting the clock rate
 
 #if U_PORT_I2C_CLOCK_FREQUENCY_HERTZ == 400000
 # error This test needs updating: U_PORT_I2C_CLOCK_FREQUENCY_HERTZ is now 400,000!
 #endif
 
-    U_PORT_TEST_ASSERT(uPortI2cGetClock(gI2cHandle) == U_PORT_I2C_CLOCK_FREQUENCY_HERTZ);
-    // All platforms support setting at least 400,000
-    U_PORT_TEST_ASSERT(uPortI2cSetClock(gI2cHandle, 400000) == 0);
-    U_PORT_TEST_ASSERT(uPortI2cGetClock(gI2cHandle) == 400000);
-    // Close, re-open and check that we're back at the default clock rate
-    uPortI2cClose(gI2cHandle);
-    gI2cHandle = uPortI2cOpen(U_CFG_APP_GNSS_I2C, U_CFG_APP_PIN_GNSS_SDA, U_CFG_APP_PIN_GNSS_SCL, true);
-    U_PORT_TEST_ASSERT(gI2cHandle >= 0);
-    U_PORT_TEST_ASSERT(uPortI2cGetClock(gI2cHandle) == U_PORT_I2C_CLOCK_FREQUENCY_HERTZ);
-
-    // Test getting and setting the timeout
-    y = uPortI2cGetTimeout(gI2cHandle);
-    if (y > 0) {
-        U_PORT_TEST_ASSERT(y == U_PORT_I2C_TIMEOUT_MILLISECONDS);
-        U_PORT_TEST_ASSERT(uPortI2cSetTimeout(gI2cHandle, U_PORT_I2C_TIMEOUT_MILLISECONDS + 1) == 0);
-        U_PORT_TEST_ASSERT(uPortI2cGetTimeout(gI2cHandle) == U_PORT_I2C_TIMEOUT_MILLISECONDS + 1);
-        // Close, re-open and check that we're back at the default timeout
+        U_PORT_TEST_ASSERT(uPortI2cGetClock(gI2cHandle) == U_PORT_I2C_CLOCK_FREQUENCY_HERTZ);
+        // All platforms support setting at least 400,000
+        U_PORT_TEST_ASSERT(uPortI2cSetClock(gI2cHandle, 400000) == 0);
+        U_PORT_TEST_ASSERT(uPortI2cGetClock(gI2cHandle) == 400000);
+        // Close, re-open and check that we're back at the default clock rate
         uPortI2cClose(gI2cHandle);
         gI2cHandle = uPortI2cOpen(U_CFG_APP_GNSS_I2C, U_CFG_APP_PIN_GNSS_SDA, U_CFG_APP_PIN_GNSS_SCL, true);
         U_PORT_TEST_ASSERT(gI2cHandle >= 0);
-        U_PORT_TEST_ASSERT(uPortI2cGetTimeout(gI2cHandle) == U_PORT_I2C_TIMEOUT_MILLISECONDS);
-    } else {
-        U_PORT_TEST_ASSERT((y == U_ERROR_COMMON_NOT_SUPPORTED) || (y == U_ERROR_COMMON_NOT_IMPLEMENTED));
-        U_TEST_PRINT_LINE("get of I2C timeout not supported/implemented, not testing I2C timeout.");
-    }
+        U_PORT_TEST_ASSERT(uPortI2cGetClock(gI2cHandle) == U_PORT_I2C_CLOCK_FREQUENCY_HERTZ);
 
-    U_TEST_PRINT_LINE("talking to M8/M9 GNSS chip over I2C...");
-    // Set buffer up to contain the REGSTREAM address, which is valid for all u-blox GNSS devices
-    // and means that any I2C read from the GNSS chip will get the next byte it wants to stream at us
-    buffer1[0] = 0xFF;
-    // First talk to an I2C address that is not present
-    U_TEST_PRINT_LINE("deliberately using an invalid address (0x%02x).", U_PORT_TEST_I2C_ADDRESS - 1);
-    U_PORT_TEST_ASSERT(uPortI2cControllerSend(gI2cHandle, U_PORT_TEST_I2C_ADDRESS - 1, NULL, 0,
-                                              false) < 0);
-    U_PORT_TEST_ASSERT(uPortI2cControllerSendReceive(gI2cHandle, U_PORT_TEST_I2C_ADDRESS - 1,
-                                                     buffer1, 1, NULL, 0) < 0);
+        // Test getting and setting the timeout
+        y = uPortI2cGetTimeout(gI2cHandle);
+        if (y > 0) {
+            U_PORT_TEST_ASSERT(y == U_PORT_I2C_TIMEOUT_MILLISECONDS);
+            U_PORT_TEST_ASSERT(uPortI2cSetTimeout(gI2cHandle, U_PORT_I2C_TIMEOUT_MILLISECONDS + 1) == 0);
+            U_PORT_TEST_ASSERT(uPortI2cGetTimeout(gI2cHandle) == U_PORT_I2C_TIMEOUT_MILLISECONDS + 1);
+            // Close, re-open and check that we're back at the default timeout
+            uPortI2cClose(gI2cHandle);
+            gI2cHandle = uPortI2cOpen(U_CFG_APP_GNSS_I2C, U_CFG_APP_PIN_GNSS_SDA, U_CFG_APP_PIN_GNSS_SCL, true);
+            U_PORT_TEST_ASSERT(gI2cHandle >= 0);
+            U_PORT_TEST_ASSERT(uPortI2cGetTimeout(gI2cHandle) == U_PORT_I2C_TIMEOUT_MILLISECONDS);
+        } else {
+            U_PORT_TEST_ASSERT((y == U_ERROR_COMMON_NOT_SUPPORTED) || (y == U_ERROR_COMMON_NOT_IMPLEMENTED));
+            U_TEST_PRINT_LINE("get of I2C timeout not supported/implemented, not testing I2C timeout.");
+        }
 
-    // The following should do nothing and return success
-    U_PORT_TEST_ASSERT(uPortI2cControllerSendReceive(gI2cHandle, U_PORT_TEST_I2C_ADDRESS - 1,
-                                                     NULL, 0, NULL, 0) == 0);
-    U_TEST_PRINT_LINE("now using the valid address (0x%02x).", U_PORT_TEST_I2C_ADDRESS);
+        U_TEST_PRINT_LINE("talking to GNSS chip over I2C...");
+        // Set buffer up to contain the REGSTREAM address, which is valid for all u-blox GNSS devices
+        // and means that any I2C read from the GNSS chip will get the next byte it wants to stream at us
+        buffer[0] = 0xFF;
+        // First talk to an I2C address that is not present
+        U_TEST_PRINT_LINE("deliberately using an invalid address (0x%02x).", U_PORT_TEST_I2C_ADDRESS - 1);
+        U_PORT_TEST_ASSERT(uPortI2cControllerSend(gI2cHandle, U_PORT_TEST_I2C_ADDRESS - 1, NULL, 0,
+                                                  false) < 0);
+        U_PORT_TEST_ASSERT(uPortI2cControllerSendReceive(gI2cHandle, U_PORT_TEST_I2C_ADDRESS - 1,
+                                                         buffer, 1, NULL, 0) < 0);
+
+        // The following should do nothing and return success
+        U_PORT_TEST_ASSERT(uPortI2cControllerSendReceive(gI2cHandle, U_PORT_TEST_I2C_ADDRESS - 1,
+                                                         NULL, 0, NULL, 0) == 0);
+        U_TEST_PRINT_LINE("now using the valid address (0x%02x).", U_PORT_TEST_I2C_ADDRESS);
 # if !defined(U_CFG_TEST_USING_NRF5SDK) && !defined(__ZEPHYR__)
-    // Now do a NULL send which will succeed only if the GNSS device is there;
-    // note that the NRFX drivers used on NRF52 and NRF53 don't support sending
-    // only the address, data must follow
-    U_PORT_TEST_ASSERT(uPortI2cControllerSend(gI2cHandle, U_PORT_TEST_I2C_ADDRESS, NULL, 0,
-                                              false) == 0);
+        // Now do a NULL send which will succeed only if the GNSS device is there;
+        // note that the NRFX drivers used on NRF52 and NRF53 don't support sending
+        // only the address, data must follow
+        U_PORT_TEST_ASSERT(uPortI2cControllerSend(gI2cHandle, U_PORT_TEST_I2C_ADDRESS, NULL, 0,
+                                                  false) == 0);
 # endif
-    // Write to the REGSTREAM address on the GNSS device
-    U_PORT_TEST_ASSERT(uPortI2cControllerSend(gI2cHandle, U_PORT_TEST_I2C_ADDRESS, buffer1, 1,
-                                              false) == 0);
-    // Write a longer thing; this switches on only UBX messages with the
-    // 20 byte UBX-CFG-PRT message (see section 32.11.23.5 of the u-blox
-    // M8 receiver manual); message class 6, message ID 0.
-    // NOTE: this works for M8 and M9 but not 10, where setval replaces it.
-    memset(buffer1, 0, sizeof(buffer1));
-    buffer1[4] = U_PORT_TEST_I2C_ADDRESS << 1; // The I2C address, shifted
-    buffer1[12] = 0x01; // UBX protocol only
-    buffer1[14] = 0x01; // UBX protocol only
-    y = uUbxProtocolEncode(0x06, 0x00, buffer1, sizeof(buffer1), buffer2);
-    // Send
-    U_PORT_TEST_ASSERT(uPortI2cControllerSend(gI2cHandle, U_PORT_TEST_I2C_ADDRESS, buffer2, y,
-                                              false) == 0);
-    // There should now be a 10 byte ack waiting for us.  The number of bytes waiting
-    // for us is available by a read of register addresses 0xFD and 0xFE in the GNSS chip.
-    // The register address in the GNSS chip auto-increments, so sending 0xFD, with no stop bit, and
-    // then a read request for two bytes should get us the [big-endian] length
-    buffer1[0] = 0xFD;
-    U_PORT_TEST_ASSERT(uPortI2cControllerSend(gI2cHandle, U_PORT_TEST_I2C_ADDRESS, buffer1, 1,
-                                              true) == 0);
-    U_PORT_TEST_ASSERT(uPortI2cControllerSendReceive(gI2cHandle, U_PORT_TEST_I2C_ADDRESS, NULL, 0,
-                                                     buffer1,
-                                                     2) == 2);
-    y = (int32_t) ((((uint32_t) buffer1[0]) << 8) + (uint32_t) buffer1[1]);
-    U_TEST_PRINT_LINE("read of number of bytes waiting returned 0x[%02x][%02x] (%d).", buffer1[0],
-                      buffer1[1], y);
-    U_PORT_TEST_ASSERT(y == 10);
-    // With the register address auto-incremented to 0xFF we can now just read out the ack
-    memset(buffer1, 0xFF, sizeof(buffer1));
-    memset(buffer2, 0xFF, sizeof(buffer2));
-    U_PORT_TEST_ASSERT(uPortI2cControllerSendReceive(gI2cHandle, U_PORT_TEST_I2C_ADDRESS, NULL, 0,
-                                                     buffer1,
-                                                     y) == y);
-    y = uUbxProtocolDecode(buffer1, y, &messageClass, &messageId, buffer2, sizeof(buffer2), NULL);
-    // The messageClass for an ack/nack is 0x05 and the message ID is 1 for an ack, 0 for a nack
-    U_PORT_TEST_ASSERT(messageClass == 0x05);
-    U_PORT_TEST_ASSERT(messageId == 0x01);
-    // The body of both the ack and nack messages is 2 bytes long and contains the message
-    // class and message ID of the message that is being acked or nacked,
-    U_PORT_TEST_ASSERT(y == 2);
-    U_PORT_TEST_ASSERT(buffer2[0] == 0x06);
-    U_PORT_TEST_ASSERT(buffer2[1] == 0x00);
+        // Write to the REGSTREAM address on the GNSS device
+        U_PORT_TEST_ASSERT(uPortI2cControllerSend(gI2cHandle, U_PORT_TEST_I2C_ADDRESS, buffer, 1,
+                                                  false) == 0);
+        // Write a longer thing; UBX-MON-BATCH polls the GNSS device for a
+        // 20 byte UBX-MON-BATCH response containing a 12 byte body (see section 32.16
+        // of the u-blox M8 receiver manual); message class 0x0a, message ID 0x32.
+        memset(buffer, 0xFF, sizeof(buffer));
+        y = uUbxProtocolEncode(0x0a, 0x32, NULL, 0, buffer);
+        // Send
+        U_PORT_TEST_ASSERT(uPortI2cControllerSend(gI2cHandle, U_PORT_TEST_I2C_ADDRESS, buffer, y,
+                                                  false) == 0);
+        // There should now be a 20 byte UBX-MON-BATCH message waiting for us.  The number of
+        // bytes waiting for us is available by a read of register addresses 0xFD and 0xFE in
+        // the GNSS chip.  The register address in the GNSS chip auto-increments, so sending
+        // 0xFD, with no stop bit, and then a read request for two bytes should get us the
+        // [big-endian] length
+        buffer[0] = 0xFD;
+        U_PORT_TEST_ASSERT(uPortI2cControllerSend(gI2cHandle, U_PORT_TEST_I2C_ADDRESS, buffer, 1,
+                                                  true) == 0);
+        U_PORT_TEST_ASSERT(uPortI2cControllerSendReceive(gI2cHandle, U_PORT_TEST_I2C_ADDRESS, NULL, 0,
+                                                         buffer, 2) == 2);
+        y = (int32_t) ((((uint32_t) buffer[0]) << 8) + (uint32_t) buffer[1]);
+        U_TEST_PRINT_LINE("read of number of bytes waiting returned 0x%02x%02x (%d).", buffer[0],
+                          buffer[1], y);
+        U_PORT_TEST_ASSERT(y == sizeof(buffer));
+        // With the register address auto-incremented to 0xFF we can now just read out the
+        // UBX-MON-BATCH response
+        memset(buffer, 0xFF, sizeof(buffer));
+        U_PORT_TEST_ASSERT(uPortI2cControllerSendReceive(gI2cHandle, U_PORT_TEST_I2C_ADDRESS, NULL, 0,
+                                                         buffer, y) == y);
+        y = uUbxProtocolDecode(buffer, y, &messageClass, &messageId, buffer, sizeof(buffer), NULL);
+        U_PORT_TEST_ASSERT(messageClass == 0x0a);
+        U_PORT_TEST_ASSERT(messageId == 0x32);
+        U_PORT_TEST_ASSERT(y == 12);
 
-    // Deinit I2C without closing the open instance; should tidy itself up
-    uPortI2cDeinit();
-    U_PORT_TEST_ASSERT(uPortI2cGetClock(gI2cHandle) < 0);
-    U_PORT_TEST_ASSERT(uPortI2cSetClock(gI2cHandle, U_PORT_I2C_CLOCK_FREQUENCY_HERTZ) < 0);
-    U_PORT_TEST_ASSERT(uPortI2cGetTimeout(gI2cHandle) < 0);
-    U_PORT_TEST_ASSERT(uPortI2cSetTimeout(gI2cHandle, U_PORT_I2C_TIMEOUT_MILLISECONDS) < 0);
-    U_PORT_TEST_ASSERT(uPortI2cOpen(U_CFG_APP_GNSS_I2C, U_CFG_APP_PIN_GNSS_SDA,
-                                    U_CFG_APP_PIN_GNSS_SCL, true) < 0);
+        // Deinit I2C without closing the open instance; should tidy itself up
+        uPortI2cDeinit();
+        U_PORT_TEST_ASSERT(uPortI2cGetClock(gI2cHandle) < 0);
+        U_PORT_TEST_ASSERT(uPortI2cSetClock(gI2cHandle, U_PORT_I2C_CLOCK_FREQUENCY_HERTZ) < 0);
+        U_PORT_TEST_ASSERT(uPortI2cGetTimeout(gI2cHandle) < 0);
+        U_PORT_TEST_ASSERT(uPortI2cSetTimeout(gI2cHandle, U_PORT_I2C_TIMEOUT_MILLISECONDS) < 0);
+        U_PORT_TEST_ASSERT(uPortI2cOpen(U_CFG_APP_GNSS_I2C, U_CFG_APP_PIN_GNSS_SDA,
+                                        U_CFG_APP_PIN_GNSS_SCL, true) < 0);
+    } else {
+        U_TEST_PRINT_LINE("not testing I2C as we can't reset GNSS chip.");
+    }
 
     // Now we're done
     uPortDeinit();
     gI2cHandle = -1;
+
+    // Check for memory leaks
+    heapUsed -= uPortGetHeapFree();
+    U_TEST_PRINT_LINE("%d byte(s) of heap were lost to the C library"
+                      " during this test and we have leaked %d byte(s).",
+                      gSystemHeapLost - heapClibLossOffset,
+                      heapUsed - (gSystemHeapLost - heapClibLossOffset));
+    // heapUsed < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT((heapUsed < 0) ||
+                       (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
+}
+#endif
+
+#if (U_CFG_APP_GNSS_SPI >= 0)
+/** Test SPI.
+ */
+U_PORT_TEST_FUNCTION("[port]", "portSpiRequiresSpecificWiring")
+{
+
+    // *INDENT-OFF* (otherwise AStyle makes a mess of this)
+    uCommonSpiControllerDevice_t device = U_COMMON_SPI_CONTROLLER_DEVICE_DEFAULTS(U_CFG_APP_PIN_GNSS_SPI_SELECT);
+    // *INDENT-ON*
+    uCommonSpiControllerDevice_t tmp = {0};
+    int32_t y = 0;
+    int32_t messageClass = -1;
+    int32_t messageId = -1;
+    int32_t heapUsed;
+    int32_t heapClibLossOffset = (int32_t) gSystemHeapLost;
+    char buffer1[12]; // Enough room for the body of a UBX-MON-BATCH message
+    char buffer2[(12 +
+                  U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES) *
+                 2]; // Enough room for the two UBX-MON-BATCH messages, allowing overlap
+    char *pBuffer = buffer2;
+    char buffer3[sizeof(uint64_t)];
+
+    // Whatever called us likely initialised the
+    // port so deinitialise it here to obtain the
+    // correct initial heap size
+    uPortDeinit();
+    heapUsed = uPortGetHeapFree();
+    U_PORT_TEST_ASSERT(uPortInit() == 0);
+
+    U_TEST_PRINT_LINE("testing SPI, assuming a u-blox GNSS device is connected to it.");
+
+    // Try to open an SPI instance without having initialised SPI, should fail
+    U_PORT_TEST_ASSERT(uPortSpiOpen(U_CFG_APP_GNSS_SPI, U_CFG_APP_PIN_GNSS_SPI_MOSI,
+                                    U_CFG_APP_PIN_GNSS_SPI_MISO, U_CFG_APP_PIN_GNSS_SPI_CLK,
+                                    true) < 0);
+
+    // Now initialise SPI
+    U_PORT_TEST_ASSERT(uPortSpiInit() == 0);
+# ifndef __ZEPHYR__
+    // Try to open an SPI instance without a valid combination of pins, should fail
+    U_PORT_TEST_ASSERT(uPortSpiOpen(U_CFG_APP_GNSS_SPI, -1, -1,
+                                    U_CFG_APP_PIN_GNSS_SPI_CLK, true) < 0);
+    U_PORT_TEST_ASSERT(uPortSpiOpen(U_CFG_APP_GNSS_SPI, U_CFG_APP_PIN_GNSS_SPI_MOSI,
+                                    U_CFG_APP_PIN_GNSS_SPI_MISO, -1, true) < 0);
+# endif
+    // Try to open an SPI instance not as controller, should fail
+    U_PORT_TEST_ASSERT(uPortSpiOpen(U_CFG_APP_GNSS_SPI, U_CFG_APP_PIN_GNSS_SPI_MOSI,
+                                    U_CFG_APP_PIN_GNSS_SPI_MISO, U_CFG_APP_PIN_GNSS_SPI_CLK,
+                                    false) < 0);
+    // Now do it properly
+    gSpiHandle = uPortSpiOpen(U_CFG_APP_GNSS_SPI, U_CFG_APP_PIN_GNSS_SPI_MOSI,
+                              U_CFG_APP_PIN_GNSS_SPI_MISO, U_CFG_APP_PIN_GNSS_SPI_CLK, true);
+    U_PORT_TEST_ASSERT(gSpiHandle >= 0);
+
+    // Close again and deinit SPI
+    uPortSpiClose(gSpiHandle);
+    uPortSpiDeinit();
+    // Try to open an SPI instance without having initialised SPI again, should fail
+    U_PORT_TEST_ASSERT(uPortSpiOpen(U_CFG_APP_GNSS_SPI, U_CFG_APP_PIN_GNSS_SPI_MOSI,
+                                    U_CFG_APP_PIN_GNSS_SPI_MISO, U_CFG_APP_PIN_GNSS_SPI_CLK,
+                                    true) < 0);
+
+    // Initialise and open again
+    U_PORT_TEST_ASSERT(uPortSpiInit() == 0);
+    gSpiHandle = uPortSpiOpen(U_CFG_APP_GNSS_SPI, U_CFG_APP_PIN_GNSS_SPI_MOSI,
+                              U_CFG_APP_PIN_GNSS_SPI_MISO, U_CFG_APP_PIN_GNSS_SPI_CLK, true);
+    U_PORT_TEST_ASSERT(gSpiHandle >= 0);
+
+    // Configure SPI for the M8/M9/M10 GNSS chip we will test against
+    // Settings should all be left at defaults apart from chip select pin
+    U_TEST_PRINT_LINE("chip select is on pin %d (0x%02x).", device.pinSelect, device.pinSelect);
+    U_PORT_TEST_ASSERT(uPortSpiControllerSetDevice(gSpiHandle, &device) == 0);
+    // Get the settings back and check that they are all as expected; the
+    // defaults are chosen to match the settings of platforms that do not
+    // support one or more parameters
+    U_PORT_TEST_ASSERT(uPortSpiControllerGetDevice(gSpiHandle, &tmp) == 0);
+    U_PORT_TEST_ASSERT(tmp.pinSelect == device.pinSelect);
+    U_PORT_TEST_ASSERT(tmp.frequencyHertz <= device.frequencyHertz);
+    U_PORT_TEST_ASSERT(tmp.mode == device.mode);
+    U_PORT_TEST_ASSERT(tmp.wordSizeBytes == device.wordSizeBytes);
+    U_PORT_TEST_ASSERT(tmp.lsbFirst == device.lsbFirst);
+    U_PORT_TEST_ASSERT(tmp.startOffsetNanoseconds == device.startOffsetNanoseconds);
+    U_PORT_TEST_ASSERT(tmp.stopOffsetNanoseconds == device.stopOffsetNanoseconds);
+    U_PORT_TEST_ASSERT(tmp.sampleDelayNanoseconds == device.sampleDelayNanoseconds);
+    U_PORT_TEST_ASSERT(fillWordSame(tmp.fillWord, device.fillWord, device.wordSizeBytes));
+
+    U_TEST_PRINT_LINE("talking to GNSS chip over SPI...");
+    // Write to the GNSS chip; polls for a UBX-MON-BATCH message which should
+    // get back a 20 byte response containing a 12 byte body (see section 32.16
+    // of the u-blox M8 receiver manual); message class 0x0a, message ID 0x32.
+    memset(buffer1, 0, sizeof(buffer1));
+    y = uUbxProtocolEncode(0x0a, 0x32, NULL, 0, buffer2);
+    U_PORT_TEST_ASSERT(y == U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES);
+    // There is no real use-case for a single word send/receive when talking
+    // to a GNSS chip so, in order to do a word-test as well as a block-test,
+    // we send the above in two segments: a "word" of three bytes, then the
+    // second half of the buffer minus the three bytes.  If there's an
+    // endianness mismatch between what we've requested of the SPI protocol
+    // and this processor, we also need to perform pre-reversal of the bytes
+    // we are sending as a single word, since uPortSpiControllerSendReceiveWord()
+    // will be helpfully byte-reversing them for us.
+    U_TEST_PRINT_LINE("this MCU is %s-endian and we are sending"
+                      " %s first.", U_PORT_IS_LITTLE_ENDIAN ? "little" : "big",
+                      tmp.lsbFirst ? "LSB" : "MSB");
+    if (tmp.lsbFirst != U_PORT_IS_LITTLE_ENDIAN) {
+        U_TEST_PRINT_LINE("pre-reversing word to compensate for endiannness conversion.");
+        for (size_t x = 0; x < 3; x++) {
+            buffer3[x] = buffer2[(3 - 1) - x];
+        }
+    } else {
+        memcpy(buffer3, buffer2, 3);
+    }
+    uPortSpiControllerSendReceiveWord(gSpiHandle, *((uint64_t *) &buffer3), 3);
+    U_PORT_TEST_ASSERT(uPortSpiControllerSendReceiveBlock(gSpiHandle,
+                                                          &(buffer2[3]),
+                                                          y - 3,
+                                                          NULL, 0) == 0);
+
+    // There should now be a 20 byte response waiting for us, which we will
+    // receive into buffer2 and decode into buffer1; question is, when
+    // does it start to arrive?
+    memset(buffer1, 0, sizeof(buffer1));
+    memset(buffer2, 0, sizeof(buffer2));
+    // In order to test both single word and block receives, we do a short
+    // block receive, a word send/receive, then another block receive for
+    // the remainder of the buffer and after this we try to decode the
+    // ack message.
+    // Wait a tiny amount first to make sure the answer is ready and so should
+    // definitely be spread across the three function calls.
+    uPortTaskBlock(10);
+    // We're looking for messageClass 0x0a and message ID 0x32
+    for (size_t x = 0; (messageClass != 0x0a) && (messageId != 0x32) &&
+         (x < U_PORT_TEST_SPI_TRIES); x++) {
+        // 4 chosen here because receiving 4 bytes is a special case for ESP32
+        y = 4;
+        U_PORT_TEST_ASSERT(uPortSpiControllerSendReceiveBlock(gSpiHandle, NULL, 0,
+                                                              pBuffer, y) == y);
+        pBuffer += y;
+        // Only a two-byte word here, rather than three, just for the sake
+        // of variety
+        *((uint64_t *) buffer3) = uPortSpiControllerSendReceiveWord(gSpiHandle, 0xFFFF, 2);
+        if (tmp.lsbFirst != U_PORT_IS_LITTLE_ENDIAN) {
+            *pBuffer = buffer3[1];
+            pBuffer++;
+            *pBuffer = buffer3[0];
+        } else {
+            *pBuffer = buffer3[0];
+            pBuffer++;
+            *pBuffer = buffer3[1];
+        }
+        pBuffer++;
+        y = (sizeof(buffer2) - (pBuffer - buffer2)) / 2;
+        U_PORT_TEST_ASSERT(uPortSpiControllerSendReceiveBlock(gSpiHandle, NULL, 0,
+                                                              pBuffer, y) == y);
+        pBuffer += y;
+        y = uUbxProtocolDecode(buffer2, pBuffer - buffer2, &messageClass, &messageId,
+                               buffer1, sizeof(buffer1), (const char **) &pBuffer);
+        if (y == (int32_t) U_ERROR_COMMON_NOT_FOUND) {
+            // Got nothing at all, reset the buffer pointer for the next try
+            pBuffer = buffer2;
+        }
+    }
+
+    U_PORT_TEST_ASSERT(messageClass == 0x0a);
+    U_PORT_TEST_ASSERT(messageId == 0x32);
+    // The body of both the response is 12 bytes long
+    U_PORT_TEST_ASSERT(y == 12);
+
+    // Deinit SPI without closing the open instance; should tidy itself up
+    uPortSpiDeinit();
+
+    // Now we're done
+    uPortDeinit();
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
@@ -2861,6 +3130,14 @@ U_PORT_TEST_FUNCTION("[port]", "portCleanUp")
         uPortI2cCloseRecoverBus(gI2cHandle);
     }
     uPortI2cDeinit();
+#endif
+
+#if (U_CFG_APP_GNSS_SPI >= 0)
+    if (gSpiHandle >= 0) {
+        // Clean up SPI
+        uPortSpiClose(gSpiHandle);
+    }
+    uPortSpiDeinit();
 #endif
 
     uPortDeinit();

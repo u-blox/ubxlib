@@ -12,7 +12,7 @@ To build and run these examples on a supported platform you need to travel down 
 
 `U_CFG_TEST_GNSS_MODULE_TYPE`: consult [u_gnss_module_type.h](/gnss/api/u_gnss_module_type.h) to determine the type name for the GNSS chip you intend to use.  For instance, to use a ZED-F9P you would set `U_CFG_TEST_GNSS_MODULE_TYPE` to `U_GNSS_MODULE_TYPE_M9`.
 
-`U_CFG_APP_GNSS_UART` / `U_CFG_APP_GNSS_I2C`: this sets the internal HW block that your chosen MCU will use to talk to the GNSS module.  The default from the file [port/platform](/port/platform)`/<platform>/mcu/<mcu>/cfg/cfg_app_platform_specific.h` may be acceptable; if you wish to change it then consult the specification for your MCU and the file [port/platform](/port/platform)`/<platform>/mcu/<mcu>/cfg/cfg_hw_platform_specific.h` for other options.
+`U_CFG_APP_GNSS_UART` / `U_CFG_APP_GNSS_I2C`/ `U_CFG_APP_GNSS_SPI`: this sets the internal HW block that your chosen MCU will use to talk to the GNSS module.  The default from the file [port/platform](/port/platform)`/<platform>/mcu/<mcu>/cfg/cfg_app_platform_specific.h` may be acceptable; if you wish to change it then consult the specification for your MCU and the file [port/platform](/port/platform)`/<platform>/mcu/<mcu>/cfg/cfg_hw_platform_specific.h` for other options.
 
 For the remainder of the \#defines you may either override their values in the same way or, if you are only running these examples, you may edit the values directly in the example source files before compiling.
 

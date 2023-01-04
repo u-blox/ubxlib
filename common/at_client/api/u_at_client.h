@@ -447,6 +447,11 @@ int32_t uAtClientInit();
 /** Shut down all AT clients.  No AT client function other than
  * uAtClientInit() should be called afterwards and all data transfer
  * should have been completed before this is called.
+ *
+ * Note: when AT clients are deinitialised not all memory associated
+ * the them is immediately reclaimed; if you wish to reclaim memory before
+ * uPortDeinit() you may do so by calling uPortEventQueueCleanUp().
+ *
  */
 void uAtClientDeinit();
 
@@ -555,10 +560,12 @@ void uAtClientPrintAtSet(uAtClientHandle_t atHandle,
  */
 int32_t uAtClientTimeoutGet(const uAtClientHandle_t atHandle);
 
-/** Set the timeout for completion of an AT command,
- * from uAtClientLock() to uAtClientUnlock().
- * If this is not called the timeout will be
- * #U_AT_CLIENT_DEFAULT_TIMEOUT_MS.
+/** Set the timeout for completion of an AT command; the
+ * timeout begins when uAtClientLock() is called and ends
+ * when uAtClientUnlock() is called.
+ *
+ * If uAtClientTimeoutSet() is not called the timeout will
+ * be #U_AT_CLIENT_DEFAULT_TIMEOUT_MS.
  *
  * If this is called between uAtClientLock() and
  * uAtClientUnlock() the given timeout will apply only
@@ -661,6 +668,24 @@ void uAtClientDelaySet(uAtClientHandle_t atHandle,
  * @param atHandle  the handle of the AT client.
  */
 void uAtClientLock(uAtClientHandle_t atHandle);
+
+/** There are [rare] situations where you might not want other
+ * tasks to get in and begin an AT operation while, at the same
+ * time, you need your code to behave as if a lock has just
+ * been taken, resetting errors and restarting the lock time.
+ * This function may be used in those rare cases; where you
+ * would unlock and relock the AT client with a pair of
+ * uAtClientUnlock() / uAtClientLock() functions, use a single
+ * uAtClientLockExtend() instead, not forgetting of course
+ * to call uAtClientUnlock() as normal in the end.
+ *
+ * If the AT client is not currently locked this function does nothing.
+ *
+ * @param atHandle  the handle of the AT client.
+ * @return          the last error that happened on the
+ *                  AT interface of this AT client.
+ */
+int32_t uAtClientLockExtend(uAtClientHandle_t atHandle);
 
 /** Unlock the stream.  This MUST be called to release
  * the AT client lock, otherwise the AT client will hang

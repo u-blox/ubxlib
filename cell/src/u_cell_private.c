@@ -463,6 +463,85 @@ static void fileListClear(uCellPrivateFileListContainer_t **ppFileContainer)
     }
 }
 
+
+// [Re]attach a PDP context to an internal module profile with an
+// option on whether the AT client is locked/released or not.
+int32_t privateActivateProfile(const uCellPrivateInstance_t *pInstance,
+                               int32_t contextId, int32_t profileId, size_t tries,
+                               bool (*pKeepGoing) (const uCellPrivateInstance_t *),
+                               bool noAtLock)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+    uAtClientHandle_t atHandle = pInstance->atHandle;
+    int32_t uupsdaUrcResult = -1;
+
+    if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                           U_CELL_PRIVATE_FEATURE_CONTEXT_MAPPING_REQUIRED)) {
+        errorCode = (int32_t) U_CELL_ERROR_CONTEXT_ACTIVATION_FAILURE;
+        for (size_t x = tries; (x > 0) && (errorCode != 0) &&
+             ((pKeepGoing == NULL) || pKeepGoing(pInstance)); x--) {
+            // Need to map the context to an internal modem profile
+            // e.g. AT+UPSD=0,100,1
+            if (noAtLock) {
+                uAtClientLockExtend(atHandle);
+            } else {
+                uAtClientLock(atHandle);
+            }
+            // The IP type used here must be the same as
+            // that used by AT+CGDCONT, hence set it to IP
+            // to be sure as some versions of SARA-R5 software
+            // have the default as IPV4V6.
+            uAtClientCommandStart(atHandle, "AT+UPSD=");
+            uAtClientWriteInt(atHandle, profileId);
+            uAtClientWriteInt(atHandle, 0);
+            uAtClientWriteInt(atHandle, 0);
+            uAtClientCommandStopReadResponse(atHandle);
+            uAtClientCommandStart(atHandle, "AT+UPSD=");
+            uAtClientWriteInt(atHandle, profileId);
+            uAtClientWriteInt(atHandle, 100);
+            uAtClientWriteInt(atHandle, contextId);
+            uAtClientCommandStopReadResponse(atHandle);
+            if (noAtLock) {
+                errorCode = uAtClientErrorGet(atHandle);
+            } else {
+                errorCode = uAtClientUnlock(atHandle);
+            }
+            if ((errorCode == 0) &&
+                (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R5)) {
+                errorCode = (int32_t) U_CELL_ERROR_CONTEXT_ACTIVATION_FAILURE;
+                // SARA-R5 pattern: the context also has to be
+                // activated and we're not actually done
+                // until the +UUPSDA URC comes back,
+                if (noAtLock) {
+                    uAtClientLockExtend(atHandle);
+                } else {
+                    uAtClientLock(atHandle);
+                }
+                uAtClientCommandStart(atHandle, "AT+UPSDA=");
+                uAtClientWriteInt(atHandle, profileId);
+                uAtClientWriteInt(atHandle, 3);
+                uAtClientCommandStopReadResponse(atHandle);
+                // We wait for the URC "in-line" because this
+                // function may be called when waking the
+                // module up from sleep, at which point URCs
+                // handled asynchronously would be held back
+                // Should be pretty quick
+                uAtClientTimeoutSet(atHandle, 3000);
+                uAtClientUrcDirect(atHandle, "+UUPSDA:", UUPSDA_urc,
+                                   &uupsdaUrcResult);
+                if (uupsdaUrcResult == 0) {
+                    errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                }
+                if (!noAtLock) {
+                    uAtClientUnlock(atHandle);
+                }
+            }
+        }
+    }
+
+    return errorCode;
+}
+
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS THAT ARE PRIVATE TO CELLULAR
  * -------------------------------------------------------------- */
@@ -842,61 +921,17 @@ int32_t uCellPrivateActivateProfile(const uCellPrivateInstance_t *pInstance,
                                     int32_t contextId, int32_t profileId, size_t tries,
                                     bool (*pKeepGoing) (const uCellPrivateInstance_t *))
 {
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-    uAtClientHandle_t atHandle = pInstance->atHandle;
-    int32_t uupsdaUrcResult = -1;
+    return privateActivateProfile(pInstance, contextId, profileId, tries,
+                                  pKeepGoing, false);
+}
 
-    if (U_CELL_PRIVATE_HAS(pInstance->pModule,
-                           U_CELL_PRIVATE_FEATURE_CONTEXT_MAPPING_REQUIRED)) {
-        errorCode = (int32_t) U_CELL_ERROR_CONTEXT_ACTIVATION_FAILURE;
-        for (size_t x = tries; (x > 0) && (errorCode != 0) &&
-             ((pKeepGoing == NULL) || pKeepGoing(pInstance)); x--) {
-            // Need to map the context to an internal modem profile
-            // e.g. AT+UPSD=0,100,1
-            uAtClientLock(atHandle);
-            // The IP type used here must be the same as
-            // that used by AT+CGDCONT, hence set it to IP
-            // to be sure as some versions of SARA-R5 software
-            // have the default as IPV4V6.
-            uAtClientCommandStart(atHandle, "AT+UPSD=");
-            uAtClientWriteInt(atHandle, profileId);
-            uAtClientWriteInt(atHandle, 0);
-            uAtClientWriteInt(atHandle, 0);
-            uAtClientCommandStopReadResponse(atHandle);
-            uAtClientCommandStart(atHandle, "AT+UPSD=");
-            uAtClientWriteInt(atHandle, profileId);
-            uAtClientWriteInt(atHandle, 100);
-            uAtClientWriteInt(atHandle, contextId);
-            uAtClientCommandStopReadResponse(atHandle);
-            errorCode = uAtClientUnlock(atHandle);
-            if ((errorCode == 0) &&
-                (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R5)) {
-                errorCode = (int32_t) U_CELL_ERROR_CONTEXT_ACTIVATION_FAILURE;
-                // SARA-R5 pattern: the context also has to be
-                // activated and we're not actually done
-                // until the +UUPSDA URC comes back,
-                uAtClientLock(atHandle);
-                uAtClientCommandStart(atHandle, "AT+UPSDA=");
-                uAtClientWriteInt(atHandle, profileId);
-                uAtClientWriteInt(atHandle, 3);
-                uAtClientCommandStopReadResponse(atHandle);
-                // We wait for the URC "in-line" because this
-                // function may be called when waking the
-                // module up from sleep, at which point URCs
-                // handled asynchronously would be held back
-                // Should be pretty quick
-                uAtClientTimeoutSet(atHandle, 3000);
-                uAtClientUrcDirect(atHandle, "+UUPSDA:", UUPSDA_urc,
-                                   &uupsdaUrcResult);
-                if (uupsdaUrcResult == 0) {
-                    errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-                }
-                uAtClientUnlock(atHandle);
-            }
-        }
-    }
-
-    return errorCode;
+// As uCellPrivateActivateProfile() but without locking/unlocking the AT client.
+int32_t uCellPrivateActivateProfileNoAtLock(const uCellPrivateInstance_t *pInstance,
+                                            int32_t contextId, int32_t profileId, size_t tries,
+                                            bool (*pKeepGoing) (const uCellPrivateInstance_t *))
+{
+    return privateActivateProfile(pInstance, contextId, profileId, tries,
+                                  pKeepGoing, true);
 }
 
 // Determine whether deep sleep is active, i.e. the module is asleep.
@@ -990,8 +1025,8 @@ void uCellPrivateSetDeepSleepState(uCellPrivateInstance_t *pInstance)
     // deep sleep URC was received), then we don't need to do anything.
     if ((pInstance->deepSleepState != U_CELL_PRIVATE_DEEP_SLEEP_STATE_ASLEEP) &&
         (pInstance->deepSleepState != U_CELL_PRIVATE_DEEP_SLEEP_STATE_PROTOCOL_STACK_ASLEEP)) {
-        if (U_CELL_PRIVATE_HAS(pInstance->pModule,
-                               U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING)) {
+        if (!U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING)) {
             // If 3GPP power saving is not supported then deep sleep is plainly unavailable
             pInstance->deepSleepState = U_CELL_PRIVATE_DEEP_SLEEP_STATE_UNAVAILABLE;
         } else {

@@ -262,10 +262,7 @@ bool uGnssPwrIsAlive(uDeviceHandle_t gnssHandle)
     bool isAlive = false;
     uGnssPrivateInstance_t *pInstance;
     int32_t timeoutMs;
-    // Message buffer for a UBX-CFG-ANT response
-    // (antenna settings), chosen just because it
-    // is nice and short
-    char message[4] = {0};
+    char buffer[1];
 
     if (gUGnssPrivateMutex != NULL) {
 
@@ -276,13 +273,14 @@ bool uGnssPwrIsAlive(uDeviceHandle_t gnssHandle)
             // Set a short timeout for this
             timeoutMs = pInstance->timeoutMs;
             pInstance->timeoutMs = U_GNSS_PWR_IS_ALIVE_TIMEOUT_MS;
-            // UBX-CFG-ANT (0x06 0x13)
+            // UBX-MON-VER (0x0a 0x04) is the only thing that all
+            // GNSS modules are guaranteed to respond to; capture just
+            // one token byte of the response, throwing the rest away:
+            // provided an answer comes back we're good
             if (uGnssPrivateSendReceiveUbxMessage(pInstance,
-                                                  0x06, 0x13,
-                                                  NULL, 0, message,
-                                                  sizeof(message)) == sizeof(message)) {
-                // Don't care what the answer is; if we get
-                // one then the GNSS chip is alive
+                                                  0x0a, 0x04,
+                                                  NULL, 0,
+                                                  buffer, sizeof(buffer)) > 0) {
                 isAlive = true;
             }
             pInstance->timeoutMs = timeoutMs;

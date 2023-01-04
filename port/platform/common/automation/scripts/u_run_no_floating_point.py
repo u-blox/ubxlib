@@ -127,7 +127,7 @@ def run(defines, ubxlib_dir, reporter):
         # Having performed the build, open the .map file
         U_LOG.info(f"opening map file {map_file_path}...")
         if os.path.exists(map_file_path):
-            map_file = open(map_file_path, "r")
+            map_file = open(map_file_path, "r", encoding="utf8")
             if map_file:
                 # Parse the cross-reference section to seek
                 # if any of the functions that indicate the
@@ -138,9 +138,9 @@ def run(defines, ubxlib_dir, reporter):
                     if got_xref:
                         for function in FLOAT_FUNCTIONS:
                             if line.startswith(function):
-                                U_LOG.info("found {} in map file which" \
+                                U_LOG.info(f"found {function} in map file which" \
                                            " indicates floating point is"  \
-                                           " in use: {}".format(function, line))
+                                           f" in use: {line}")
                                 got_fp = True
                     else:
                         if line.startswith("Cross Reference Table"):

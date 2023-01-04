@@ -22,7 +22,7 @@ DEFAULT_BUILD_DIR = os.path.join("_build","esp_idf")
 # To solve this we parse the flasher_args.json like idf.py
 # and call esptool.py manually.
 def _get_idf_flash_command(idf_path, build_dir, port, baudrate):
-    with open(os.path.join(build_dir, 'flasher_args.json')) as f:
+    with open(os.path.join(build_dir, 'flasher_args.json'), encoding='utf8') as f:
         flasher_args = json.load(f)
 
     def flasher_path(f):

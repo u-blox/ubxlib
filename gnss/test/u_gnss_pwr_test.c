@@ -114,7 +114,7 @@ U_PORT_TEST_FUNCTION("[gnssPwr]", "gnssPwrBasic")
 
     // Repeat for all transport types
     iterations = uGnssTestPrivateTransportTypesSet(transportTypes, U_CFG_APP_GNSS_UART,
-                                                   U_CFG_APP_GNSS_I2C);
+                                                   U_CFG_APP_GNSS_I2C, U_CFG_APP_GNSS_SPI);
     for (size_t x = 0; x < iterations; x++) {
         // Do the standard preamble
         U_TEST_PRINT_LINE("testing on transport %s...",
@@ -138,8 +138,10 @@ U_PORT_TEST_FUNCTION("[gnssPwr]", "gnssPwrBasic")
             case U_GNSS_TRANSPORT_UART:
             //lint -fallthrough
             case U_GNSS_TRANSPORT_UBX_UART:
-                // If we are communicating via UART we can also test the
-                // power-off-to-back-up version
+            //lint -fallthrough
+            case U_GNSS_TRANSPORT_SPI:
+                // If we are communicating via UART or SPI we can
+                // also test the power-off-to-back-up version
                 U_TEST_PRINT_LINE("powering on GNSS...");
                 U_PORT_TEST_ASSERT(uGnssPwrOn(gnssHandle) == 0);
 

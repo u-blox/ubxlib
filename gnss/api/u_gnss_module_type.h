@@ -48,8 +48,9 @@
 //lint -estring(788, uGnssModuleType_t::U_GNSS_MODULE_TYPE_MAX_NUM)
 // Suppress not used within defaulted switch
 typedef enum {
-    U_GNSS_MODULE_TYPE_M8 = 0,
-    U_GNSS_MODULE_TYPE_M9 = 1,
+    U_GNSS_MODULE_TYPE_M8  = 0,
+    U_GNSS_MODULE_TYPE_M9  = 1,
+    U_GNSS_MODULE_TYPE_M10 = 2,
     U_GNSS_MODULE_TYPE_MAX_NUM
 } uGnssModuleType_t;
 

@@ -103,9 +103,10 @@ int32_t uWifiMqttPublish(const uMqttClientContext_t *pContext,
                          uMqttQos_t qos,
                          bool retain);
 
-/** Set a callback to be called when new messages are
- * available to be read.  The callback may then call
- * uMqttClientGetUnread() to read the messages.
+/** Set a callback to be called when new messages are available to
+ * be read.  The callback may then call uWifiMqttGetUnread() to read
+ * the messages.  Note that this callback will only be called when
+ * the number of unread messages has increased.
  *
  * @param[in] pContext       client context returned by pUMqttClientOpen().
  * @param[in] pCallback      the callback. The first parameter to
@@ -164,6 +165,10 @@ int32_t uWifiMqttUnsubscribe(const uMqttClientContext_t *pContext,
 
 /** Close connected MQTT session. This API will disconnect from the broker if connected
  * followed by releasing all the resources associated to that particular session
+ *
+ * Note: when MQTT is deinitialised not all memory associated with it
+ * is immediately reclaimed; if you wish to reclaim memory before
+ * uPortDeinit() you may do so by calling uPortEventQueueCleanUp().
  *
  * @param[in] pContext client context returned by pUMqttClientOpen().
  */

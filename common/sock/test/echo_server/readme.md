@@ -3,13 +3,13 @@ This folder contains the source code for the UDP portion of a `go` based echo se
 
 https://github.com/aws/amazon-freertos/tree/master/tools/echo_server
 
-A UDP echo server using this `go` code, plus a TCP echo server and a secure TCP echo server using the AWS FreeRTOS `go` code and the certificates, are running on a publicly accessible server `ubxlib.it-sgn.u-blox.com`.
+A UDP echo server using this `go` code, plus a TCP echo server and a secure TCP echo server using the AWS FreeRTOS `go` code and the certificates, are running on a publicly accessible server `ubxlib.redirectme.net`.
 
 The running echo servers can be found at the following addresses:
 
-- UDP:        `ubxlib.it-sgn.u-blox.com:5050`
-- TCP:        `ubxlib.it-sgn.u-blox.com:5055`
-- Secure TCP: `ubxlib.it-sgn.u-blox.com:5065`
+- UDP:        `ubxlib.redirectme.net:5050`
+- TCP:        `ubxlib.redirectme.net:5055`
+- Secure TCP: `ubxlib.redirectme.net:5065`
 
 Note: used to use port 5060 for secure TCP but that port is commonly used by non-secure SIP and hence can be blocked by firewalls which want to exclude SIP, so port 5065 is now used instead.
 

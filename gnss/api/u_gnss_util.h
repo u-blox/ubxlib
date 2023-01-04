@@ -52,13 +52,13 @@ extern "C" {
  * wait for the response; THIS FUNCTION SHOULD ONLY BE USED IF
  * YOUR GNSS CHIP IS CONNECTED VIA AN INTERMEDIATE (e.g. CELLULAR)
  * MODULE.  While it _will_ work for the directly-connected case
- * for sending, for the receive direction, for the UART/I2C
- * transport case, it internally pulls data directly from the UART/I2C
+ * for sending, for the receive direction, for the UART/I2C/SPI
+ * transport case, it internally pulls data directly from the UART/I2C/SPI
  * port layer rather than going via the ring buffer and hence could
  * end up reading and potentially discarding data that other bits
  * of this system probably wanted.  So if your GNSS device is connected
- * directly to this MCU using a streaming transport (e.g. UART or I2C)
- * you should use uGnssMsgSend() in conjunction with uGnssMsgReceive()
+ * directly to this MCU using a streaming transport (e.g. UART or I2C or
+ * SPI) you should use uGnssMsgSend() in conjunction with uGnssMsgReceive()
  * or uGnssMsgReceiveStart() instead.
  *
  * You must encode the message correctly (e.g. using the encode/decode
@@ -69,7 +69,8 @@ extern "C" {
  * the sent message.  It is up to you to pick the exact response
  * message out of the stream and parse it; if you are only using UBX
  * format messages you may like to call uGnssCfgSetProtocolOut() to
- * filter out NMEA messages.
+ * filter out NMEA messages.  If you are using an SPI interface, fill
+ * bytes (0xFF) may be included in the response.
  *
  * IMPORTANT: when the GNSS chip is connected via an intermediate
  * [e.g. cellular] module (i.e. you are using #U_GNSS_TRANSPORT_AT)
@@ -85,7 +86,7 @@ extern "C" {
  * to the outgoing message buffer.
  *
  * It is planned, in future, to make transport via an intermediate
- * cellular module work in the same way as the UART and I2C streaming
+ * cellular module work in the same way as the UART/I2C/SPI streaming
  * interfaces (by implementing support for 3GPP TS 27.010 +CMUX in this
  * code), at which point this function will be deprecated.
  *

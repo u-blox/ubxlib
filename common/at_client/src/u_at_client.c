@@ -143,11 +143,39 @@
  */
 #define U_AT_CLIENT_MAX_LENGTH_INFORMATION_RESPONSE_PREFIX 64
 
+#ifndef U_AT_CLIENT_CALLBACK_QUEUE_LENGTH
 /** The maximum length of the callback queue.
  * Each item in the queue will be
  * sizeof(uAtClientCallback_t) bytes big.
  */
-#define U_AT_CLIENT_CALLBACK_QUEUE_LENGTH 10
+# define U_AT_CLIENT_CALLBACK_QUEUE_LENGTH 10
+#endif
+
+#ifndef U_AT_CLIENT_CALLBACK_QUEUE_FREE_THRESHOLD
+/** The urcCallback() relies on being able to put things into
+ * the AT client callback event queue.  If a load of URCs arrive at
+ * once, all of which trigger callbacks, there is a danger the
+ * queue could fill up, which would cause urcCallback() to block,
+ * which is not good.  So if the AT client callback event queue
+ * has fewer than this many entries free, the urcCallback() yields
+ * (after unlocking the stream mutex) for
+ * #U_AT_CLIENT_CALLBACK_QUEUE_YIELD_MS.
+ */
+# define U_AT_CLIENT_CALLBACK_QUEUE_FREE_THRESHOLD 3
+#endif
+
+#ifndef U_AT_CLIENT_CALLBACK_QUEUE_YIELD_MS
+/** How long the urcCallback() should yield for if
+ * the AT client callback event queue has fewer than
+ * #U_AT_CLIENT_CALLBACK_QUEUE_FREE_THRESHOLD entries free.
+ * Note: the process of filling the AT client buffer includes
+ * delays of 10 to 20 ms if the UART buffer turns out to be
+ * empty (in order to grab a good chunk of data rather than
+ * snatching at it characyer by character) hence this must be
+ * more like 50 ms than 20 ms to be effective.
+ */
+# define U_AT_CLIENT_CALLBACK_QUEUE_YIELD_MS 50
+#endif
 
 /** Guard for the URC task data receive loop to make
  * sure it can't be drowned by the incoming stream,
@@ -2401,6 +2429,7 @@ static void urcCallback(int32_t streamHandle, uint32_t eventBitmask,
     uAtClientReceiveBuffer_t *pReceiveBuffer;
     uPortMutexHandle_t streamMutex;
     int32_t sizeOrError;
+    int32_t x;
 
     pClient = (uAtClientInstance_t *) pParameters;
 
@@ -2483,6 +2512,14 @@ static void urcCallback(int32_t streamHandle, uint32_t eventBitmask,
                         // to queue stuff on this task and I'm not
                         // sure that's safe
                         unlockNoDataCheck(pClient, streamMutex);
+
+                        x = uPortEventQueueGetFree(gEventQueueHandle);
+                        if ((x >= 0) && (x < U_AT_CLIENT_CALLBACK_QUEUE_FREE_THRESHOLD)) {
+                            // If the AT client callback queue is getting full, give the
+                            // task at the end of it time to execute or we may fill up
+                            // the queue and get stuck
+                            uPortTaskBlock(U_AT_CLIENT_CALLBACK_QUEUE_YIELD_MS);
+                        }
                     }
                 }
             }
@@ -2947,6 +2984,32 @@ void uAtClientLock(uAtClientHandle_t atHandle)
         clearError(pClient);
         pClient->lockTimeMs = uPortGetTickTimeMs();
     }
+}
+
+// Extend a mutex lock
+int32_t uAtClientLockExtend(uAtClientHandle_t atHandle)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+    uAtClientInstance_t *pClient = (uAtClientInstance_t *) atHandle;
+    uPortMutexHandle_t streamMutex;
+
+    if ((pClient != NULL) && (pClient->streamMutex != NULL)) {
+        streamMutex = streamTryLock(pClient, 0);
+        if (streamMutex == NULL) {
+            // We were not able to lock the mutex so we definitely
+            // are in a lock - reset errors and reset the lock
+            // time
+            errorCode = (int32_t) pClient->error;
+            clearError(pClient);
+            pClient->lockTimeMs = uPortGetTickTimeMs();
+        } else {
+            // We were able to lock the stream mutex, we are obviously
+            // not currently in a lock, so do nothing
+            uPortMutexUnlock(streamMutex);
+        }
+    }
+
+    return errorCode;
 }
 
 // Unlock the stream and kick off a receive

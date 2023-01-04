@@ -23,6 +23,7 @@
  * please keep #includes to your .c files. */
 
 #include "u_device_serial.h"
+#include "u_common_spi.h"
 
 /** \addtogroup device Device
  *  @{
@@ -69,6 +70,7 @@ typedef enum {
     U_DEVICE_TRANSPORT_TYPE_NONE,
     U_DEVICE_TRANSPORT_TYPE_UART,
     U_DEVICE_TRANSPORT_TYPE_I2C,
+    U_DEVICE_TRANSPORT_TYPE_SPI,
     U_DEVICE_TRANSPORT_TYPE_VIRTUAL_SERIAL,
     U_DEVICE_TRANSPORT_TYPE_MAX_NUM
 } uDeviceTransportType_t;
@@ -182,6 +184,29 @@ typedef struct {
        field is populated then the version field of
        this structure must be set to 1 or higher". */
 } uDeviceCfgI2c_t;
+
+/** SPI transport configuration.
+ */
+typedef struct {
+    uDeviceVersion_t version;            /**< Version of this structure; allow your
+                                              compiler to initialise this to zero
+                                              unless otherwise specified below. */
+    int32_t spi;                         /**< The SPI HW block to use. */
+    int32_t pinMosi;                     /**< The master-in, slave-out data pin. */
+    int32_t pinMiso;                     /**< The master-out, slave-in data pin. */
+    int32_t pinClk;                      /**< The clock pin. */
+    uCommonSpiControllerDevice_t device; /**< The device configuration. */
+    /* This is the end of version 0 of this structure:
+       should any fields be added to this structure in
+       future they must be added AFTER this point and
+       instructions must be given against each one
+       as to how to set the version field if any of
+       the new fields are populated. For example,
+       if int32_t pinMagic were added, the comment
+       against it might end with the clause "; if this
+       field is populated then the version field of
+       this structure must be set to 1 or higher". */
+} uDeviceCfgSpi_t;
 
 /** Cellular device configuration.
 */
@@ -306,6 +331,7 @@ typedef struct {
     union {
         uDeviceCfgUart_t cfgUart;
         uDeviceCfgI2c_t cfgI2c;
+        uDeviceCfgSpi_t cfgSpi;
         uDeviceCfgVirtualSerial_t cfgVirtualSerial;
     } transportCfg;
     /* This is the end of version 0 of this structure:
@@ -370,6 +396,10 @@ int32_t uDeviceOpen(const uDeviceCfg_t *pDeviceCfg,
                     uDeviceHandle_t *pDeviceHandle);
 
 /** Close an open device instance, optionally powering it down.
+ *
+ * Note: when a device is closed not all memory associated with it
+ * is immediately reclaimed; if you wish to reclaim memory before
+ * uPortDeinit() you may do so by calling uPortEventQueueCleanUp().
  *
  * @param devHandle handle to a previously opened device.
  * @param powerOff  if true then also power the device off; leave

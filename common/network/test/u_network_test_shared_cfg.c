@@ -221,7 +221,7 @@ static const uNetworkCfgBle_t gNetworkCfgBle = {
  */
 static const uDeviceCfg_t gDeviceCfgGnss = {
     // Deliberately don't set version to test that the compiler zeroes the field
-#if defined(U_CFG_TEST_GNSS_MODULE_TYPE) && ((U_CFG_APP_GNSS_UART >= 0) || (U_CFG_APP_GNSS_I2C >= 0))
+#if defined(U_CFG_TEST_GNSS_MODULE_TYPE) && ((U_CFG_APP_GNSS_UART >= 0) || (U_CFG_APP_GNSS_I2C >= 0) || (U_CFG_APP_GNSS_SPI >= 0))
     .deviceType = U_DEVICE_TYPE_GNSS,
     .deviceCfg = {
         .cfgGnss = {
@@ -237,6 +237,17 @@ static const uDeviceCfg_t gDeviceCfgGnss = {
             .i2c = U_CFG_APP_GNSS_I2C,
             .pinSda = U_CFG_APP_PIN_GNSS_SDA,
             .pinScl = U_CFG_APP_PIN_GNSS_SCL
+        }
+    }
+# elif (U_CFG_APP_GNSS_SPI >= 0)
+    .transportType = U_DEVICE_TRANSPORT_TYPE_SPI,
+    .transportCfg = {
+        .cfgSpi = {
+            .spi = U_CFG_APP_GNSS_SPI,
+            .pinMosi = U_CFG_APP_PIN_GNSS_SPI_MOSI,
+            .pinMiso = U_CFG_APP_PIN_GNSS_SPI_MISO,
+            .pinClk = U_CFG_APP_PIN_GNSS_SPI_CLK,
+            .device = U_COMMON_SPI_CONTROLLER_DEVICE_DEFAULTS(U_CFG_APP_PIN_GNSS_SPI_SELECT)
         }
     }
 # else

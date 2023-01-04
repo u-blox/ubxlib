@@ -5,8 +5,9 @@ services:
   ubxlib_builder:
     image: ubxlib_builder
     build: .
-    environment:
-      SSH_AUTH_SOCK: '/run/user/keyring/ssh'
+# Note: used to define the environment variable SSH_AUTH_SOCK
+# here but for some reason that doesn't work when composing
+# on Raspbian, hence moved them to the .env file which _does_ work
     volumes:
       - '/opt/ubxlib_sdks:/home/ubxlib/ubxlib_sdks'
       - '$SSH_AUTH_SOCK:/run/user/keyring/ssh'

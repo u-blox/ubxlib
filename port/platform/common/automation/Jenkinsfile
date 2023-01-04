@@ -8,12 +8,131 @@ ubxlib_dir = "ubxlib"
 working_dir = "_jenkins_work"
 automation_subdir = "port/platform/common/automation"
 scripts_subdir = "${automation_subdir}/scripts"
-pyTasks_subdir = automation_subdir // The "tasks" dir used for PyInvoke is located in automation dir
+py_tasks_subdir = automation_subdir // The "tasks" dir used for PyInvoke is located in automation dir
 
 default_summary_file = "summary.txt"
 default_test_report_file = "test_report.xml"
 default_debug_file = "debug.log"
 default_build_sub_dir = "build"
+// timeout_overall_seconds is just a default timeout for the entire script, allowing
+// it to wait for agents to become available that might be Raspberry Pi's
+// running 40-minute-long sets of tests.  The individual stages have their own
+// timeouts (below) which are the guards against more prevalent dangers, for instance
+// tests running forever or a board getting into a boot-loop
+timeout_overall_seconds = 60 * 60 * 12
+timeout_checkout_seconds = 60 * 5
+timeout_build_seconds = 60 * 10
+timeout_power_up_seconds = 60
+timeout_flash_seconds = 60 * 10 // Long because on first run tools may have to be installed
+timeout_test_seconds = 60 * 60
+check_instance_max = 9
+dut_start_time_seconds = 10
+
+// Check for required environment variables
+def environment_check() {
+    def is_good = true;
+
+    if ("${env.UBXLIB_LOCAL_STATE_DIR}" == "") {
+        println "Environment variable UBXLIB_LOCAL_STATE_DIR not set, cannot continue."
+        is_good = false
+    }
+    if ("${env.UBXLIB_COUNTER_FILE}" == "") {
+        println "Environment variable UBXLIB_COUNTER_FILE not set, cannot continue."
+        is_good = false
+    }
+    if ("${env.UBXLIB_TOKEN}" == "") {
+        println "Environment variable UBXLIB_TOKEN not set, cannot continue."
+        is_good = false
+    }
+
+    return is_good
+}
+
+def isCodeChecker(json_entry) {
+    return json_entry.platform.toLowerCase().startsWith("codechecker:")
+}
+
+def isFirmware(json_entry) {
+    def m = json_entry.mcu.toLowerCase()
+    return !isCodeChecker(json_entry) && m != "win32" && m != "linux32" && m != ""
+}
+
+def isWindows(json_entry) {
+    def m = json_entry.mcu.toLowerCase()
+    return m == "win32"
+}
+
+// If a Windows or Linux MCU is specified then we do the building on the
+// test machine so that the architectures match
+def buildOnTest(json_entry) {
+    def m = json_entry.mcu.toLowerCase()
+    return m == "win32" || m == "linux32"
+}
+
+// Read a string representing a single integer value from a file and return
+// it as an integer, 0 if there is no file or it does not contain a string
+// which can be converted to an integer
+def readIntegerFromFile(file_path) {
+    def value_int = 0
+    if (fileExists("${file_path}")) {
+        try {
+            def value_str = readFile(file: "${file_path}")
+            value_int =  value_str as int
+        } catch(e) {
+        }
+    }
+    return value_int
+}
+
+// Write a single integer value to a file as a string
+def writeIntegerToFile(file_path, value_int) {
+    def value_str = value_int as String
+    writeFile(file: "${file_path}", text: value_str)
+}
+
+// Acquire any shared resources
+def sharedResourceAcquire() {
+    powered_up = false
+
+    lock("shared_resource") {
+        node("built-in") { 
+            ws("${env.UBXLIB_LOCAL_STATE_DIR}") {
+                def counter = readIntegerFromFile("${env.UBXLIB_COUNTER_FILE}")
+                if (counter == 0) {
+                    build job: "ubxlib_shared_resource_control", parameters: [booleanParam(name: "ON_NOT_OFF", value: true)]
+                    powered_up = true
+                }
+                counter++
+                writeIntegerToFile("${env.UBXLIB_COUNTER_FILE}", counter)
+            }
+        }
+    }
+
+    return powered_up
+}
+
+// Release any shared resources
+def sharedResourceRelease() {
+    powered_down = false
+
+    lock("shared_resource") {
+        node("built-in") { 
+            ws("${env.UBXLIB_LOCAL_STATE_DIR}") {
+                def counter = readIntegerFromFile("${env.UBXLIB_COUNTER_FILE}")
+                if (counter > 0) {
+                    counter--
+                }
+                if (counter == 0) {
+                    build job: "ubxlib_shared_resource_control", parameters: [booleanParam(name: "ON_NOT_OFF", value: false)]
+                    powered_down = true
+                }
+                writeIntegerToFile("${env.UBXLIB_COUNTER_FILE}", counter)
+            }
+        }
+    }
+
+    return powered_down
+}
 
 // Helper function for converting an instance (e.g. [12,1]) to string (e.g. "12.1")
 // Can't use join() on json structs so we need to do this manually
@@ -28,27 +147,13 @@ def instanceToStr(instance) {
     return str
 }
 
-def isCodeChecker(json_entry) {
-    return json_entry.platform.toLowerCase().startsWith("codechecker:")
-}
-
-def isFirmware(json_entry) {
-    def m = json_entry.mcu.toLowerCase()
-    return !isCodeChecker(json_entry) && m != "win32" && m != "linux32" && m != ""
-}
-
-def testOnLinux(json_entry) {
-    def mcuIsLinux = json_entry.mcu.toLowerCase() == "linux32"
-    return mcuIsLinux || isCodeChecker(json_entry)
-}
-
-// This is helper function for executing commands inside the "ubxlib_builder" docker container.
-// Jenkins does have own support for running docker containers, however starting up an container
+// This is a helper function for executing commands inside the "ubxlib_builder" docker container.
+// Jenkins does have its own support for running docker containers, however starting up a container
 // using this method is very slow. So to speed up the build process we simply use "docker run"
 // in this function instead.
 def dockerCommand(cmd, relWorkspaceDir=".", extra_env=[]) {
     def volume_args = [
-        "${env.HOME}/ubxlib:/home/ubxlib:rw",
+        "${env.HOME}:/home/ubxlib:rw",
         "${env.WORKSPACE}:${env.WORKSPACE}:rw"
     ].collect { "-v $it" }.join(' ')
     def env_args = ([
@@ -59,7 +164,6 @@ def dockerCommand(cmd, relWorkspaceDir=".", extra_env=[]) {
         "BUILD_URL=${env.BUILD_URL}",
         "WORKSPACE=${env.WORKSPACE}"
     ] + extra_env).collect { "-e $it" }.join(' ')
-    sh "mkdir -p ${env.HOME}/ubxlib"
     def uid = sh(script: "id -u", returnStdout: true).trim()
     def gid = sh(script: "id -g", returnStdout: true).trim()
     // Needs --privileged to access TTY devices (since there is no dialout group
@@ -67,138 +171,57 @@ def dockerCommand(cmd, relWorkspaceDir=".", extra_env=[]) {
     sh "docker run -i -u ${uid}:${gid} --rm --privileged -v /dev:/dev -w ${env.WORKSPACE}/$relWorkspaceDir $volume_args $env_args ubxlib_builder /bin/bash -c \"$cmd\""
 }
 
-// This is the build pipeline for one instance
-// It will be runned on a node with "docker" label and use the "ubxlib_builder"
-// docker image for building.
-// The firmware artifacts for each build will be stashed as "<instance>_fw"
-// so it later on can be used in the test stage which is run on another node
-def dockerBuildPipeline(instance_str, platform, filter) {
-    return {
-        def build_dir = "${working_dir}/${instance_str}/build"
-        node('docker') {
-            stage("Checkout (${env.NODE_NAME})") {
-                dir(ubxlib_dir) {
-                    checkout([
-                        $class: 'GitSCM',
-                        branches: scm.branches,
-                        doGenerateSubmoduleConfigurations: true,
-                        extensions: scm.extensions + [[$class: 'SubmoduleOption', parentCredentials: true]],
-                        userRemoteConfigs: scm.userRemoteConfigs
-                    ])
-                }
-            }
-            stage("Build ${platform}") {
-                // Continue even if the build process fails
-                catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
-                    echo "Build dir: ${build_dir}"
-                    def includes = [
-                        "**/*.hex","**/*.bin","**/*.elf","**/*.map","**/*.out"
-                    ].collect { "${build_dir}/$it" }.join(', ') // Add "${build_dir}/" prefix to all entries
-                    def stash_includes = [
-                        // Needed for Zephyr flashing using west command:
-                        "**/CMakeCache.txt", "**/.config", "**/*.yaml",
-                        // Needed for ESP-IDF flashing using esptool.py:
-                        "**/flasher_args.json"
-                    ].collect { "${build_dir}/$it" }.join(', ')
-                    stash_includes += ", ${includes}"
-                    def excludes = [
-                        "**/*prebuilt*", "**/*libfibonacci*", "**/*hci_rpmsg*",
-                        "**/isrList.bin", "**/*Determine*", "**/*partition-table*"
-                    ].join(', ')
-                    def stash_excludes = [
-                        "**/*prebuilt*", "**/*libfibonacci*", "**/*hci_rpmsg*",
-                        "**/isrList.bin", "**/*Determine*"
-                    ].join(', ')
-
-                    // Make sure to clean before build
-                    sh "rm -rf ${build_dir}"
-
-                    // Create U_UBXLIB_DEFINES from the Jenkins master secrets and env variable
-                    def extra_env = []
-                    withCredentials([string(credentialsId: 'ubxlib_wifi_passkey', variable: 'WIFI_PASSKEY')]) {
-                        extra_env.add("U_UBXLIB_DEFINES=\"${env.U_UBXLIB_EXTRA_DEFINES};U_WIFI_TEST_CFG_WPA2_PASSPHRASE=${WIFI_PASSKEY}\"")
-                    }
-
-                    // Check if there is a test filter
-                    def filter_arg = filter ? "--filter \"${filter}\"" : ""
-
-                    // Start building
-                    dockerCommand("inv -r ${ubxlib_dir}/${pyTasks_subdir} -e automation.build --build-dir ${build_dir} ${filter_arg} ${instance_str}", ".", extra_env)
-                    stash name: "${instance_str}_fw", includes: stash_includes, excludes: stash_excludes
-                    archiveArtifacts artifacts: includes, excludes: excludes
-                }
+// Perform a check-out stage
+def stageCheckout() {
+    stage("Checkout (${env.NODE_NAME})") {
+        timeout(time: timeout_checkout_seconds, unit: 'SECONDS') {
+            dir(ubxlib_dir) {
+                checkout([
+                    $class: 'GitSCM',
+                    branches: scm.branches,
+                    doGenerateSubmoduleConfigurations: true,
+                    extensions: scm.extensions + [[$class: 'SubmoduleOption', parentCredentials: true]],
+                    userRemoteConfigs: scm.userRemoteConfigs
+                ])
             }
         }
     }
 }
 
-// This function returns parallel test pipelines for all instances
-def parallelBuild(json) {
-    def parallel_pipelines = [:]
-    for (instance in json.instances) {
-        def instance_str = instanceToStr(instance.id)
-        if (isFirmware(instance)) { // Only build for embedded devices (windows and Linux are built in the test stage for now)
-            parallel_pipelines["$instance_str"] = dockerBuildPipeline(instance_str, instance.platform, json.filter)
-        }
-    }
-
-    parallel parallel_pipelines
-}
-
-// This is the test pipeline for one instance
-// It will do the unstash and flash stage for embedded targets
-// and the test stage for all instance variants
-// NOTE: if you make any changes here, check if testPipelineOnLinux()
-// needs to change also
-def testPipelineOnWindows(instance_str, json_entry, subst_dir, filter) {
+// This is the check pipeline for one instance
+// It will check-out the code for and run the
+// PC-based check stage for "check" instances
+def checkPipeline(instance_str, json_entry, filter) {
     return {
         def summary_file = default_summary_file
-        def test_report_file = default_test_report_file
         def debug_file = default_debug_file
+        def instance_index = "instance_${json_entry.id[0]}"
 
-        def build_dir = "${working_dir}/${instance_str}/" + default_build_sub_dir
-        def hw_label = "INSTANCE_${json_entry.id[0]}"
-        lock(hw_label) {
-            if (isFirmware(json_entry)) {
-                stage("Unstash (${env.NODE_NAME})") {
-                    unstash name: "${instance_str}_fw"
-                }
-
-                stage("Flash (${json_entry.mcu})") {
-                    retry(3) {
-                        bat "inv -r ${ubxlib_dir}/${pyTasks_subdir} -e automation.flash --build-dir ${build_dir} ${instance_str}"
-                    }
-                }
-            }
-            stage('Test') {
-                echo "Starting tests on ${env.NODE_NAME}"
-                def instance_workdir = "${working_dir}/${instance_str}"
-                def test_report_arg = "--test-report ${test_report_file}"
-                def workspace_path = env.WORKSPACE
-                if (json_entry.id[0] <= 9) {
-                    // Some special care is needed for instances <= 9
-                    // * Lint must use subst as the command line otherwise exceeds Windows max lengh
-                    // * Instances <= 9 doesn't write any .xml report data
-                    test_report_arg = ""
-                    workspace_path = subst_dir
-                }
-                try {
-                    // Start the test
-                    def abs_instance_workdir = "${workspace_path}/${instance_workdir}"
-                    def abs_ubxlib_dir = "${workspace_path}/${ubxlib_dir}"
-                    dir("${abs_instance_workdir}") {
-                        ansiColor('xterm') {
-                            // Check if there is a test filter
-                            def filter_arg = filter ? "--filter \"${filter}\"" : ""
-                            bat "inv -r ${abs_ubxlib_dir}/${pyTasks_subdir} automation.test --build-dir=. ${test_report_arg} ${filter_arg} ${instance_str}"
+        // Run checks on the build nodes since they are big and beefy
+        node('ubxlib && linux && docker && build') {
+            lock(instance_index) {
+                stageCheckout()
+                stage('Check') {
+                    echo "Starting checks on ${env.NODE_NAME}"
+                    def instance_workdir = "${working_dir}/${instance_str}"
+                    def workspace_path = env.WORKSPACE
+                    def test_report_arg = ""
+                    try {
+                        // Start the check
+                        def abs_ubxlib_dir = "${workspace_path}/${ubxlib_dir}"
+                        def abs_instance_workdir = "${workspace_path}/${instance_workdir}"
+                        // Make sure to clean first
+                        sh "rm -rf ${abs_instance_workdir}"
+                        dir("${abs_instance_workdir}") {
+                            ansiColor('xterm') {
+                                // Check if there is a test filter
+                                def filter_arg = filter ? "--filter \"${filter}\"" : ""
+                                dockerCommand("inv -r ${abs_ubxlib_dir}/${py_tasks_subdir} automation.test --build-dir=. ${filter_arg} ${instance_str}", instance_workdir)
+                            }
                         }
-                    }
-                } finally {
-                    // Store summary-, debug- and test report file as artifacts
-                    archiveArtifacts artifacts: "${instance_workdir}/**/${summary_file}, ${instance_workdir}/**/${test_report_file}, ${instance_workdir}/**/${debug_file}", allowEmptyArchive: true
-                    if (test_report_arg != "") {
-                        // Record the test results
-                        junit "${working_dir}/${instance_str}/${test_report_file}"
+                    } finally {
+                        // Store summary- and debug- files as artifacts
+                        archiveArtifacts artifacts: "${instance_workdir}/**/${summary_file}, ${instance_workdir}/**/${debug_file}, ${instance_workdir}/**/*.hex, ${instance_workdir}/**/*.bin, ${instance_workdir}/**/*.elf, ${instance_workdir}/**/*.exe, ${instance_workdir}/**/*.map, ${instance_workdir}/**/analyze_html/*", allowEmptyArchive: true
                     }
                 }
             }
@@ -206,182 +229,313 @@ def testPipelineOnWindows(instance_str, json_entry, subst_dir, filter) {
     }
 }
 
-// This is the test pipeline for an instance that is run, 
-// as well as built, on a Linux host.  In the future this
-// and testPipelineOnWindows() should be merged into a
-// common testPipeline() when we have more stuff being
-// tested from a Linux host.
-// NOTE: if you make any changes here, check if testPipelineOnWindows()
-// needs to change also
-def testPipelineOnLinux(instance_str, json_entry, subst_dir, filter) {
-    return {
-        def summary_file = default_summary_file
-        def test_report_file = default_test_report_file
-        def debug_file = default_debug_file
-
-        def build_dir = "${working_dir}/${instance_str}/" + default_build_sub_dir
-        def hw_label = "INSTANCE_${json_entry.id[0]}"
-
-        // Select the only Linux test agent that is designated
-        // for testing (as well as building)
-        node('TEST-gb-cmb-dt-052') {
-            lock(hw_label) {
-                // Don't currently do FW on Linux
-                if (!isFirmware(json_entry)) {
-                    stage("Checkout (${env.NODE_NAME})") {
-                        dir(ubxlib_dir) {
-                            checkout([
-                                $class: 'GitSCM',
-                                branches: scm.branches,
-                                doGenerateSubmoduleConfigurations: true,
-                                extensions: scm.extensions + [[$class: 'SubmoduleOption', parentCredentials: true]],
-                                userRemoteConfigs: scm.userRemoteConfigs
-                            ])
-                        }
-                    }
-                    stage('Test') {
-                        echo "Starting tests on ${env.NODE_NAME}"
-                        def instance_workdir = "${working_dir}/${instance_str}"
-                        def workspace_path = env.WORKSPACE
-                        def test_report_arg = ""
-                        if (!isCodeChecker(json_entry)) {
-                            test_report_arg = "--test-report ${test_report_file}"
-                        }
-                        try {
-                            // Start the test
-                            def abs_ubxlib_dir = "${workspace_path}/${ubxlib_dir}"
-                            def abs_instance_workdir = "${workspace_path}/${instance_workdir}"
-                            // Make sure to clean first
-                            sh "rm -rf ${abs_instance_workdir}"
-                            dir("${abs_instance_workdir}") {
-                                ansiColor('xterm') {
-                                    // Check if there is a test filter
-                                    def filter_arg = filter ? "--filter \"${filter}\"" : ""
-                                    dockerCommand("inv -r ${abs_ubxlib_dir}/${pyTasks_subdir} automation.test --build-dir=. ${test_report_arg} ${filter_arg} ${instance_str}", instance_workdir)
-                                }
-                            }
-                        } finally {
-                            // Store summary-, debug- and test report file as artifacts
-                            archiveArtifacts artifacts: "${instance_workdir}/**/${summary_file}, ${instance_workdir}/**/${test_report_file}, ${instance_workdir}/**/${debug_file}, ${instance_workdir}/**/*.hex, ${instance_workdir}/**/*.bin, ${instance_workdir}/**/*.elf, ${instance_workdir}/**/*.exe, ${instance_workdir}/**/*.map, ${instance_workdir}/**/analyze_html/*", allowEmptyArchive: true
-                            if (test_report_arg != "")  {
-                                // Record the test results
-                                junit "${working_dir}/${instance_str}/${test_report_file}"
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-def parallelTest(json, subst_dir) {
-    // This function returns parallel test pipelines for all instances
+// Return parallel pipelines for all of the "check" instances
+def parallelCheck(json) {
     def parallel_pipelines = [:]
     for (json_entry in json.instances) {
-        def instance_str = instanceToStr(json_entry.id)
-        def desc = json_entry.description.toLowerCase()
-        if (desc != "reserved") { // Skipp "reserved" instances
-            def stage_name = instance_str
-            if (json_entry.id[0] <= 9) {
-                // For instances <= 9 we show the description from DATABASE.md as stage name
-                stage_name = "${json_entry.description} (${instance_str})"
+        if (json_entry.id[0] <= check_instance_max) {
+            def instance_str = instanceToStr(json_entry.id)
+            def desc = json_entry.description.toLowerCase()
+            if (desc != "reserved") { // Skip "reserved" instances
+                def stage_name = "${instance_str} ${json_entry.description}"
+                parallel_pipelines[stage_name] = checkPipeline(instance_str, json_entry, json.filter)
             }
-
-            if (testOnLinux(json_entry)) {
-                // At the moment only a single case is tested (i.e. run, as well as built)
-                // on a Linux host, so we have a specific test pipeline for that, currently
-                // locked to a specific test agent
-                parallel_pipelines[stage_name] = testPipelineOnLinux(instance_str, json_entry, subst_dir, json.filter)
-            } else {
-                parallel_pipelines[stage_name] = testPipelineOnWindows(instance_str, json_entry, subst_dir, json.filter)
-            }
-
         }
     }
 
-    parallel parallel_pipelines
+    return parallel_pipelines
 }
 
-node('TEST-gb-cmb-dt-022')
+// This is the build and test pipeline for one instance.
+// Note: I did try to find a way to define the build and test pipelines
+// separately and then combine them programmatically but unfortunately my
+// game of "guess the syntax" failed.
+// The build part will be run on a node with "docker" label and use the
+// "ubxlib_builder" docker image for building; the test part will be run
+// on a node that reflects the required test instance.
+// The firmware artifacts for each build will be stashed as "<instance>_fw"
+// between the two parts, since they may be run on different machines.
+def buildAndTestPipeline(instance_str, json_entry, filter) {
+    return {
+        def build_dir = "${working_dir}/${instance_str}/" + default_build_sub_dir
+        def platform = json_entry.platform
+        def summary_file = default_summary_file
+        def test_report_file = default_test_report_file
+        def debug_file = default_debug_file
+        def instance_string = "instance_${json_entry.id[0]}"
+        def extra_env = []
+
+        // Create U_UBXLIB_DEFINES from the Jenkins master secrets and env variable
+        // and add it to extra_env for dockerCommand() and directly to the environment
+        // for the Windows bat command
+        withCredentials([string(credentialsId: 'ubxlib_wifi_passkey', variable: 'WIFI_PASSKEY'),
+                         string(credentialsId: 'ubxlib_cloud_locate_mqtt_password', variable: 'CLOUD_LOCATE_MQTT_PASSWORD')]) {
+            def value = "${env.UBXLIB_EXTRA_DEFINES};U_WIFI_TEST_CFG_WPA2_PASSPHRASE=${WIFI_PASSKEY};U_CFG_APP_CLOUD_LOCATE_MQTT_PASSWORD=${CLOUD_LOCATE_MQTT_PASSWORD}"
+            extra_env.add("U_UBXLIB_DEFINES=\"${value}\"")
+            env.U_UBXLIB_DEFINES = value
+        }
+
+        if (!buildOnTest(json_entry)) {
+            // The build part
+            node("ubxlib && build && linux && docker") {
+                stageCheckout()
+                stage("Build ${platform}") {
+                    timeout(time: timeout_build_seconds, unit: 'SECONDS') {
+                        echo "Build dir: ${build_dir}"
+                        def includes = [
+                            "**/*.hex","**/*.bin","**/*.elf","**/*.map","**/*.out"
+                        ].collect { "${build_dir}/$it" }.join(', ') // Add "${build_dir}/" prefix to all entries
+                        def stash_includes = [
+                            // Needed for Zephyr flashing using west command:
+                            "**/CMakeCache.txt", "**/.config", "**/*.yaml",
+                            // Needed for ESP-IDF flashing using esptool.py:
+                            "**/flasher_args.json"
+                        ].collect { "${build_dir}/$it" }.join(', ')
+                        stash_includes += ", ${includes}"
+                        def excludes = [
+                            "**/*prebuilt*", "**/*libfibonacci*", "**/*hci_rpmsg*",
+                            "**/isrList.bin", "**/*Determine*", "**/*partition-table*"
+                        ].join(', ')
+                        def stash_excludes = [
+                            "**/*prebuilt*", "**/*libfibonacci*", "**/*hci_rpmsg*",
+                            "**/isrList.bin", "**/*Determine*"
+                        ].join(', ')
+
+                        // Make sure to clean before build
+                        dir("${build_dir}") {
+                            // Make sure nothing is hanging over from a previous run
+                            deleteDir()
+                        }
+
+                        // Check if there is a test filter
+                        def filter_arg = filter ? "--filter \"${filter}\"" : ""
+
+                        // Start building
+                        dockerCommand("inv -r ${ubxlib_dir}/${py_tasks_subdir} -e automation.build --build-dir ${build_dir} ${filter_arg} ${instance_str}", ".", extra_env)
+                        // Stash binaries so that they can be used on another machine in the Test stage
+                        stash name: "${instance_str}_fw", includes: stash_includes, excludes: stash_excludes
+                        archiveArtifacts artifacts: includes, excludes: excludes
+                    }
+                }
+            }
+        }
+
+        // The test part
+        node("ubxlib && ${instance_string}") {
+            // Take one token: this is so that we can have a clean-up script
+            // which takes the lot to prevent anything from starting while it
+            // performs its work
+            lock(label: "${env.UBXLIB_TOKEN}", quantity: 1) {
+                // Lock the entire node for this bit as there will be one set of physical
+                // HW attached and we don't want collisions
+                lock("${env.NODE_NAME}_" + instance_string) {
+                    def usb_on = false
+                    def shared_resources_acquired = false
+                    def workspace_path = env.WORKSPACE
+                    def instance_workdir = "${working_dir}/${instance_str}"
+                    def abs_ubxlib_dir = "${workspace_path}/${ubxlib_dir}"
+                    def abs_instance_workdir = "${workspace_path}/${instance_workdir}"
+                    try {
+                        stageCheckout()
+                        stage("Power-up") {
+                            timeout(time: timeout_power_up_seconds, unit: 'SECONDS') {
+                                if (sharedResourceAcquire()) {
+                                    println "Powering-up shared resources."
+                                } else {
+                                    println "Shared resources already powered up."
+                                }
+                                shared_resources_acquired = true
+                                if (isFirmware(json_entry)) {
+                                    println "Powering-up DUT on instance_${instance_str}."
+                                    // Switch on USB
+                                    sh(script: "uhubctl -a 1 -l 1-1")
+                                    usb_on = true
+                                    println "Waiting for DUT to connect (for which we allow ${dut_start_time_seconds} second(s))."
+                                    sleep(time: dut_start_time_seconds, unit: 'SECONDS')
+                                }
+                            }
+                        }
+                        if (isFirmware(json_entry)) {
+                            stage("Flash ${json_entry.mcu}") {
+                                timeout(time: timeout_flash_seconds, unit: 'SECONDS') {
+                                    dir("${abs_instance_workdir}") {
+                                        // Make sure nothing is hanging over from a previous run
+                                        deleteDir()
+                                    }
+                                    // Unstash files
+                                    unstash name: "${instance_str}_fw"
+                                    dir("${abs_instance_workdir}") {
+                                        def flash_command = "inv -r ${abs_ubxlib_dir}/${py_tasks_subdir} -e automation.flash --build-dir=${default_build_sub_dir} ${instance_str}"
+                                        retry(3) {
+                                            if (isWindows(json_entry)) {
+                                                bat flash_command
+                                            } else {
+                                                dockerCommand(flash_command, instance_workdir, extra_env)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        stage('Test') {
+                            timeout(time: timeout_test_seconds, unit: 'SECONDS') {
+                                echo "Starting tests on ${instance_str} (${env.NODE_NAME})."
+                                def test_report_arg = "--test-report ${test_report_file}"
+                                try {
+                                    // Start the test
+                                    dir("${abs_instance_workdir}") {
+                                        ansiColor('xterm') {
+                                            // Check if there is a test filter
+                                            def filter_arg = filter ? "--filter \"${filter}\"" : ""
+                                            def test_command = "inv -r ${abs_ubxlib_dir}/${py_tasks_subdir} automation.test --build-dir=. ${test_report_arg} ${filter_arg} ${instance_str}"
+                                            if (isWindows(json_entry)) {
+                                                bat test_command
+                                            } else {
+                                                dockerCommand(test_command, instance_workdir, extra_env)
+                                            }
+                                        }
+                                    }
+                                } finally {
+                                    // Store summary-, debug- and test report file as artifacts
+                                    archiveArtifacts artifacts: "${instance_workdir}/**/${summary_file}, ${instance_workdir}/**/${test_report_file}, ${instance_workdir}/**/${debug_file}, ${instance_workdir}/**/*.hex, ${instance_workdir}/**/*.bin, ${instance_workdir}/**/*.elf, ${instance_workdir}/**/*.exe, ${instance_workdir}/**/*.map, ${instance_workdir}/**/analyze_html/*", allowEmptyArchive: true
+                                    if (test_report_arg != "")  {
+                                        // Record the test results
+                                        junit "${working_dir}/${instance_str}/${test_report_file}"
+                                    }
+                                }
+                            }
+                        }
+                    } finally {
+                        // Clean up
+                        if (usb_on) {
+                            // Make sure to switch off USB
+                            // Following https://github.com/mvp/uhubctl#power-comes-back-on-after-few-seconds-on-linux,
+                            // also do another few tricks to make some boxes which won't stay off, stay off
+                            sh(script: "echo 0 > sudo tee /sys/bus/usb/devices/1-1.1/authorized")
+                            sh(script: "echo 0 > sudo tee /sys/bus/usb/devices/1-1.2/authorized")
+                            sh(script: "echo 0 > sudo tee /sys/bus/usb/devices/1-1.3/authorized")
+                            sh(script: "echo 0 > sudo tee /sys/bus/usb/devices/1-1.4/authorized")
+                            // Set return status to true so that it doesn't cause an exception if this instance doesn't
+                            // happen to have a C030 board or an STM32F407 Discovery board or a Segger J-Link attached
+                            sh(script: "sudo udisksctl power-off --block-device  /dev/disk/by-label/UBLOX-R412M", returnStatus : true)
+                            sh(script: "sudo udisksctl power-off --block-device  /dev/disk/by-label/DIS_F407VG", returnStatus : true)
+                            sh(script: "sudo udisksctl power-off --block-device  /dev/disk/by-label/JLINK", returnStatus : true)
+                            sh(script: "uhubctl -a 0 -l 1-1 -r 100")
+                        }
+                        println "DUT attached to instance_${instance_str} (${env.NODE_NAME}) is powered down."
+                        if (shared_resources_acquired) {
+                            if (sharedResourceRelease()) {
+                                println "Shared resources powered down."
+                            } else {
+                                println "Shared resources left on for other test instances."
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Return parallel build and test pipelines for all instances
+def parallelBuildAndTest(json) {
+    def parallel_pipelines = [:]
+    for (json_entry in json.instances) {
+        if (json_entry.id[0] > check_instance_max) {
+            def instance_str = instanceToStr(json_entry.id)
+            // Deliberately add a space at the start of stage_name so that
+            // these are sorted to the top; we're generally more interested
+            // in them
+            def stage_name = " ${instance_str} ${json_entry.mcu} (${json_entry.platform})"
+            parallel_pipelines[stage_name] = buildAndTestPipeline(instance_str, json_entry, json.filter)
+        }
+    }
+
+    return parallel_pipelines
+}
+
+// The main thing: distribute all of the above over all nodes
+node('ubxlib && linux && distributor')
 {
     def known_branches = [ 'master', 'development' ]
     def git_commit_text
     def changed_files
-    def subst_drive = "z:"
-    // The KMTronic web relays on 10.20.4.157 and 10.20.4.143
-    // control power to the 12 V supply of each of the EVKs.  The
-    // last byte of the URL is a bit-map of the outputs where 0 sets
-    // off and 1 sets on
-    def power_switch_1_on = new URL("http://10.20.4.157/FFE0FF")
-    def power_switch_1_off = new URL("http://10.20.4.157/FFE000")
-    def power_switch_2_on = new URL("http://10.20.4.143/FFE0FF")
-    def power_switch_2_off = new URL("http://10.20.4.143/FFE000")
 
     // All the stages go here
-    timeout(time: 100, unit: 'MINUTES') {
+    timeout(time: timeout_overall_seconds, unit: 'SECONDS') {
         stage("Info") {
-            environment = bat(script: "set", returnStdout: true).trim()
+            def environment = sh(script: "printenv", returnStdout: true).trim()
+            def environment_good = true
+
             println "Environment variables are: \n" + environment
 
-            // For debug purposes, print out the entries in the scm map
+            // Do some checking
+            if (!environment_check()) {
+                currentBuild.result = 'ABORTED'
+                error("Missing environment variable(s), aborting.")
+            }
+
+            // Uncomment the line below to print out the entries in the scm map
             // passed to us from the CloudBees magic
-            println "scm contains: " + scm.properties.each{entry -> "$entry.key = $entry.value"} + "\n"
+            // [this will trigger you to ask for additional script approvals in Jenkins]
+            //println "scm contains: " + scm.properties.each{entry -> "$entry.key = $entry.value"} + "\n"
         }
 
         stage("Fetch") {
-            dir(ubxlib_dir) {
-                // Create a modified version of the remote configs in scm to
-                // add known branches. With these fetched as well as the
-                // branch-under-test we can get the file difference between the two
-                println "Creating scmPlus to add fetch of known branches...\n"
-                refspec = scm.userRemoteConfigs[0].refspec
-                known_branches.each {
-                    println "Add fetch of ${it}...\n"
-                    if (!scm.userRemoteConfigs[0].refspec.contains("/${it}:")) {
-                        refspec += " refs/heads/${it}:refs/remotes/origin/${it}"
+            timeout(time: timeout_checkout_seconds, unit: 'SECONDS') {
+                dir(ubxlib_dir) {
+                    // Create a modified version of the remote configs in scm to
+                    // add known branches. With these fetched as well as the
+                    // branch-under-test we can get the file difference between the two
+                    println "Creating scmPlus to add fetch of known branches...\n"
+                    refspec = scm.userRemoteConfigs[0].refspec
+                    known_branches.each {
+                        println "Add fetch of ${it}...\n"
+                        if (!scm.userRemoteConfigs[0].refspec.contains("/${it}:")) {
+                            refspec += " refs/heads/${it}:refs/remotes/origin/${it}"
+                        }
                     }
-                }
 
-                userRemoteConfigPlus = new UserRemoteConfig(scm.userRemoteConfigs[0].url,
-                                                            scm.userRemoteConfigs[0].name,
-                                                            refspec,
-                                                            scm.userRemoteConfigs[0].credentialsId)
+                    userRemoteConfigPlus = new UserRemoteConfig(scm.userRemoteConfigs[0].url,
+                                                                scm.userRemoteConfigs[0].name,
+                                                                refspec,
+                                                                scm.userRemoteConfigs[0].credentialsId)
 
-                scmPlus = new GitSCM([userRemoteConfigPlus],
-                                    scm.branches,
-                                    scm.doGenerateSubmoduleConfigurations,
-                                    scm.submoduleCfg,
-                                    scm.browser,
-                                    scm.gitTool,
-                                    scm.extensions)
+                    scmPlus = new GitSCM([userRemoteConfigPlus],
+                                         scm.branches,
+                                         scm.doGenerateSubmoduleConfigurations,
+                                         scm.submoduleCfg,
+                                         scm.browser,
+                                         scm.gitTool,
+                                         scm.extensions)
 
-                // For debug purposes, print out scmPlus
-                println "scmPlus contains: " + scmPlus.properties.each{entry -> "$entry.key = $entry.value"} + "\n"
+                    // Uncomment the line below to print out scmPlus
+                    // [this will trigger you to ask for additional script approvals in Jenkins]
+                    // println "scmPlus contains: " + scmPlus.properties.each{entry -> "$entry.key = $entry.value"} + "\n"
 
-                // Get the code
-                println "checkout() branch \"" + scmPlus.branches[0] + "\" and also fetch known branches...\n"
-                scmMap = checkout scmPlus
+                    // Get the code
+                    println "checkout() branch \"" + scmPlus.branches[0] + "\" and also fetch known branches...\n"
+                    scmMap = checkout scmPlus
 
-                // Recurse submodules
-                println "Recursing submodules..."
-                bat "git submodule update --init"
+                    // Recurse submodules
+                    println "Recursing submodules..."
+                    sh "git submodule update --init"
 
-                // For debug purposes, print out the entries in the scm
-                // map returned by checkout
-                println "checkout() returned: " + scmMap.each{entry -> "$entry.key = $entry.value"}
+                    // For debug purposes, print out the entries in the scm
+                    // map returned by checkout
+                    println "checkout() returned: " + scmMap.each{entry -> "$entry.key = $entry.value"}
 
-                // Use git to get the last commit message, @echo off to avoid capturing the command
-                // output as well as the returned text
-                git_commit_text = bat(script: "@echo off & git log -1 --pretty=%%B", returnStdout: true)
+                    // Use git to get the last commit message
+                    git_commit_text = sh(script: "git log -1 --pretty=%B", returnStdout: true)
 
-                if (git_commit_text) {
-                    // Convert newlines to "/n" and quotation marks to back-ticks to prevent them
-                    // screwing up the command-line they get passed to lower down
-                    git_commit_text = git_commit_text.replaceAll("\\n", "\\\\n").replaceAll("\"", "`")
-                    println "Last commit message was: \"" + git_commit_text + "\""
-                } else {
-                    println "Unable to get last commit message."
+                    if (git_commit_text) {
+                        // Convert newlines to "/n" and remove marks to prevent them
+                        // screwing up the command-line they get passed to lower down
+                        git_commit_text = git_commit_text.replaceAll("\\n", "\\\\n").replaceAll("\"", "")
+                        println "Last commit message was: \"" + git_commit_text + "\""
+                    } else {
+                        println "Unable to get last commit message."
+                    }
                 }
             }
         }
@@ -389,7 +543,7 @@ node('TEST-gb-cmb-dt-022')
         dir(ubxlib_dir) {
             // Prefix each branch name with "origin/" and separate with " "
             branch_line = known_branches.collect { "origin/$it" }.join(' ')
-            likely_branch = bat(script: "@python ${scripts_subdir}/u_get_likely_base_branch.py --rev origin/${env.JOB_BASE_NAME} ${branch_line}", returnStdout: true).trim()
+            likely_branch = sh(script: "python3 ${scripts_subdir}/u_get_likely_base_branch.py --rev origin/${env.JOB_BASE_NAME} ${branch_line}", returnStdout: true).trim()
         }
         println "CHANGE_TARGET: ${env.CHANGE_TARGET}, CHANGE_ID: ${env.CHANGE_ID}"
         println "JOB_BASE_NAME: ${env.JOB_BASE_NAME}, likely_branch: ${likely_branch}"
@@ -406,7 +560,7 @@ node('TEST-gb-cmb-dt-022')
                         // of file differences from main, @echo off to avoid
                         // capturing the command output as well as the  returned text
                         println "Checking for changed files between ${likely_branch} and ${env.JOB_BASE_NAME}..."
-                        changed_files = bat(script: "@echo off & git diff --name-only ${likely_branch}", returnStdout: true).trim()
+                        changed_files = sh(script: "git diff --name-only ${likely_branch}", returnStdout: true).trim()
                         changed_files = changed_files.replaceAll("\n", " ");
                         println "Changed file(s) were: " + changed_files
                     }
@@ -420,11 +574,11 @@ node('TEST-gb-cmb-dt-022')
             // Fetch the test selection as JSON data
             // The JSON object also contains description, platform etc for each instance fetched from DATABASE.md
             def output = ''
-            dir("${ubxlib_dir}/${pyTasks_subdir}") {
+            dir("${ubxlib_dir}/${py_tasks_subdir}") {
                 // If changed_files is null we run everything
                 def changed_files_arg = changed_files ? "--files \"${changed_files}\"" : ""
                 def run_everything_arg = changed_files ? "" : "--run-everything"
-                output = bat(script: "@inv automation.get-test-selection ${changed_files_arg} ${run_everything_arg} --message \"${git_commit_text}\"", returnStdout: true).trim()
+                output = sh(script: "inv automation.get-test-selection ${changed_files_arg} ${run_everything_arg} --message \"${git_commit_text}\"", returnStdout: true).trim()
             }
             println output
             def jsonStr = output.split('JSON_DATA: ')[1]
@@ -439,57 +593,9 @@ node('TEST-gb-cmb-dt-022')
             }
         }
 
-        stage("Build") {
-            parallelBuild(jsonObj)
-        }
-
-        // Build is complete - we will now switch back to the original Jenkins node
-        // We take a lock here that will prevent simultaneous Jenkins jobs on this node to interfere
-        // during the testing phase
-        lock("UBXLIB-TESTAUTOMATION") {
-            def subst_dir = pwd()
-            // Delete any previously subst'ed drive, no check for errors 'cos there might not be one
-            try {
-                bat(script: "@echo off & subst ${subst_drive} /D")
-            } catch (err) {
-                // Do nothing
-            }
-            // Now subst the drive
-            if (bat(script: "subst ${subst_drive} ${subst_dir}", returnStatus: true) == 0) {
-                // Need to add the "\" to the drive name or if something CD's to it they may not end up in the root
-                subst_dir = subst_drive + "\\"
-            } else {
-                error("Unable to subst ${subst_drive} for \"${subst_dir}\", builds with long path lengths may fail.")
-            }
-
-            stage("USB Reset (${env.NODE_NAME})") {
-                // usbswitchcmd sets a return value of 1 if it was given the
-                // parameter 1 and a return value of 0 if it was given the
-                // parameter 0. However Groovy insists on treating a non-zero
-                // return value as an error, no matter what I do, so here
-                // each "1" step has to be wrapped in try/catch.
-
-                // Disconnect USBs and switch off power
-                try {
-                    bat(script: "usbswitchcmd -s -n 1750664 1")
-                } catch (err) {
-                }
-                try {
-                    bat(script: "usbswitchcmd -s -n 1750665 1")
-                } catch (err) {
-                }
-                println "Switching off power to EVKs returned HTTP responses " + power_switch_1_off.openConnection().getResponseCode() + " and " + power_switch_2_off.openConnection().getResponseCode() + "."
-                sleep(time: 5, unit: 'SECONDS')
-                // Switch on power and reconnect USBs
-                println "Switching on power to EVKs again returned HTTP responses " + power_switch_1_on.openConnection().getResponseCode() + " and " + power_switch_2_on.openConnection().getResponseCode() + "."
-                bat(script: "usbswitchcmd -s -n 1750664 0")
-                bat(script: "usbswitchcmd -s -n 1750665 0")
-                sleep(time: 25, unit: 'SECONDS')
-            }
-
-            stage("Test") {
-                parallelTest(jsonObj, subst_dir)
-            }
+        stage("Check & Build/Test") {
+            // Now do everything at once, in parallel, all the time
+            parallel parallelCheck(jsonObj) + parallelBuildAndTest(jsonObj)
         }
     }
 }

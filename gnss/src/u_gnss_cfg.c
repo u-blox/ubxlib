@@ -88,73 +88,45 @@ typedef struct {
  * STATIC FUNCTIONS: OLDE WORLDE
  * -------------------------------------------------------------- */
 
-// Get the contents of UBX-CFG-NAV5.
-// pBuffer must point to a buffer of length 36 bytes.
-static int32_t getUbxCfgNav5(uDeviceHandle_t gnssHandle,
-                             char *pBuffer)
-{
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
-    uGnssPrivateInstance_t *pInstance;
-
-    if (gUGnssPrivateMutex != NULL) {
-
-        U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
-
-        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-        pInstance = pUGnssPrivateGetInstance(gnssHandle);
-        if (pInstance != NULL) {
-            errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
-            // Poll with the message class and ID of the
-            // UBX-CFG-NAV5 message
-            if (uGnssPrivateSendReceiveUbxMessage(pInstance,
-                                                  0x06, 0x24,
-                                                  NULL, 0,
-                                                  pBuffer, 36) == 36) {
-                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-            }
-        }
-
-        U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
-    }
-
-    return errorCode;
-}
-
-// Set the contents of UBX-CFG-NAV5.
-static int32_t setUbxCfgNav5(uDeviceHandle_t gnssHandle,
-                             uint16_t mask,
-                             const char *pBuffer,
-                             size_t size,
+// Get a single byte value from a UBX-CFG-NAV5 message.
+// Note: gUGnssPrivateMutex must be locked before this is called.
+static int32_t getUbxCfgNav5(uGnssPrivateInstance_t *pInstance,
                              size_t offset)
 {
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
-    uGnssPrivateInstance_t *pInstance;
+    int32_t errorCodeOrValue = (int32_t) U_ERROR_COMMON_PLATFORM;
+    // Enough room for the body of the UBX-CFG-NAV5 message
+    char message[36];
+
+    // Poll with the message class and ID of the
+    // UBX-CFG-NAV5 message
+    if (uGnssPrivateSendReceiveUbxMessage(pInstance,
+                                          0x06, 0x24,
+                                          NULL, 0,
+                                          message, sizeof(message)) == sizeof(message)) {
+        errorCodeOrValue = message[offset];
+    }
+
+    return errorCodeOrValue;
+}
+
+// Set a single byte value with a UBX-CFG-NAV5 message.
+// Note: gUGnssPrivateMutex must be locked before this is called.
+static int32_t setUbxCfgNav5(uGnssPrivateInstance_t *pInstance,
+                             uint16_t mask, size_t offset, uint8_t value)
+{
     // Enough room for the body of the UBX-CFG-NAV5 message
     char message[36] = {0};
 
-    if (gUGnssPrivateMutex != NULL) {
+    // Set the mask at the start of the message
+    *((uint16_t *) message) = uUbxProtocolUint16Encode(mask);
+    // Copy in the byte we want to change at the given offset
+    message[offset] = (char) value;
 
-        U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
-
-        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-        pInstance = pUGnssPrivateGetInstance(gnssHandle);
-        if (pInstance != NULL) {
-            // Set the mask bytes at the start of the message
-            *((uint16_t *) message) = uUbxProtocolUint16Encode(mask);
-            // Copy in the contents, which must have already
-            // been correctly encoded
-            memcpy(message + offset, pBuffer, size);
-            // Send the UBX-CFG-NAV5 message
-            errorCode = uGnssPrivateSendUbxMessage(pInstance,
-                                                   0x06, 0x24,
-                                                   message,
-                                                   sizeof(message));
-        }
-
-        U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
-    }
-
-    return errorCode;
+    // Send the UBX-CFG-NAV5 message
+    return uGnssPrivateSendUbxMessage(pInstance,
+                                      0x06, 0x24,
+                                      message,
+                                      sizeof(message));
 }
 
 /* ----------------------------------------------------------------
@@ -478,7 +450,7 @@ static int32_t valSetList(uDeviceHandle_t gnssHandle,
                 pMessage = (char *) pUPortMalloc(messageSize);
                 if (pMessage != NULL) {
                     // Assemble the message
-                    *pMessage       = 0; // Version
+                    *pMessage       = 0x01; // Version
                     *(pMessage + 1) = layers;
                     *(pMessage + 2) = transaction;
                     *(pMessage + 3) = 0; // Reserved
@@ -556,6 +528,82 @@ static int32_t valDelList(uDeviceHandle_t gnssHandle,
     return errorCode;
 }
 
+// Get the current value of a single E1-type configuration item using
+// UBX-CFG-VALGET, used by the likes of uGnssCfgGetDynamic(),
+// uGnssCfgGetFixMode() and uGnssCfgGetUtcStandard().
+// Note: gUGnssPrivateMutex must be locked before this is called.
+static int32_t valGetE1(uGnssPrivateInstance_t *pInstance,
+                        uint32_t keyId)
+{
+    int32_t errorCodeOrE1Value;
+    // Message buffer for the UBX-CFG-VALGET message body:
+    // four bytes of header and four bytes for the key ID
+    char messageOut[4 + 4] = {0};
+    char *pMessageIn = NULL;
+    char *pMessage;
+    size_t messageInSizeBytes;
+    uint32_t y;
+
+    // The 4-byte message header is all zeroes: version 0,
+    // 0 for the RAM layer, position 0, so all we have to
+    // do is copy in the key Id
+    *((uint32_t *) &(messageOut[4])) = uUbxProtocolUint32Encode(keyId); // *NOPAD*
+    // Send it off and wait for the response
+    errorCodeOrE1Value = uGnssPrivateSendReceiveUbxMessageAlloc(pInstance,
+                                                                0x06, 0x8b,
+                                                                messageOut,
+                                                                sizeof(messageOut),
+                                                                &pMessageIn);
+    // 4 below since there must be at least four bytes of header
+    if ((errorCodeOrE1Value >= 4) && (pMessageIn != NULL)) {
+        messageInSizeBytes = (size_t) errorCodeOrE1Value;
+        errorCodeOrE1Value = (int32_t) U_ERROR_COMMON_PLATFORM;
+        pMessage = pMessageIn + 4;
+        // After a four byte header, which we can ignore,
+        // find in the received message our key ID and the E1 value
+        while ((errorCodeOrE1Value < 0) &&
+               (messageInSizeBytes - (pMessage - pMessageIn) >= 4 + 1)) {
+            y = uUbxProtocolUint32Decode(pMessage);
+            pMessage += sizeof(uint32_t);
+            if (y == keyId) {
+                errorCodeOrE1Value = *pMessage;
+            }
+            pMessage += getStorageSizeBytes(keyId >> 24);
+        }
+    }
+
+    // Free memory from uGnssPrivateSendReceiveUbxMessageAlloc()
+    uPortFree(pMessageIn);
+
+    return errorCodeOrE1Value;
+}
+
+// Set the current value of a single E1-type configuration item using
+// UBX-CFG-VALSET, used by the likes of uGnssCfgSetDynamic(),
+// uGnssCfgSetFixMode() and uGnssCfgSetUtcStandard().
+// Note: gUGnssPrivateMutex must be locked before this is called.
+static int32_t valSetE1(uGnssPrivateInstance_t *pInstance,
+                        uint32_t keyId, uint8_t value)
+{
+    // Message buffer for the UBX-CFG-VALSET message body:
+    // four bytes of header, four bytes for the key ID and
+    // one byte for the value
+    char message[4 + 4 + 1];
+
+    // Assemble the message
+    message[0] = 0; // version
+    message[1] = U_GNSS_CFG_VAL_LAYER_RAM;
+    message[2] = 0; // reserved
+    message[3] = 0;
+    // Add the key ID and value
+    *((uint32_t *) &(message[4])) = uUbxProtocolUint32Encode(keyId); // *NOPAD*
+    message[8] = (char) value;
+
+    // Send the message off
+    return uGnssPrivateSendUbxMessage(pInstance, 0x06, 0x8a,
+                                      message, sizeof(message));
+}
+
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS: SPECIFIC CONFIGURATION FUNCTIONS
  * -------------------------------------------------------------- */
@@ -563,14 +611,26 @@ static int32_t valDelList(uDeviceHandle_t gnssHandle,
 // Get the dynamic platform model from the GNSS chip.
 int32_t uGnssCfgGetDynamic(uDeviceHandle_t gnssHandle)
 {
-    int32_t errorCodeOrDynamic;
-    // Enough room for the body of the UBX-CFG-NAV5 message
-    char message[36];
+    int32_t errorCodeOrDynamic = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uGnssPrivateInstance_t *pInstance;
 
-    errorCodeOrDynamic = getUbxCfgNav5(gnssHandle, message);
-    if (errorCodeOrDynamic == 0) {
-        // The dynamic platform model is at offset 2
-        errorCodeOrDynamic = message[2];
+    if (gUGnssPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
+
+        errorCodeOrDynamic = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        pInstance = pUGnssPrivateGetInstance(gnssHandle);
+        if (pInstance != NULL) {
+            if (U_GNSS_PRIVATE_HAS(pInstance->pModule, U_GNSS_PRIVATE_FEATURE_CFGVALXXX)) {
+                errorCodeOrDynamic = valGetE1(pInstance,
+                                              U_GNSS_CFG_VAL_KEY_ID_NAVSPG_DYNMODEL_E1);
+            } else {
+                // The dynamic platform model is at offset 2
+                errorCodeOrDynamic = getUbxCfgNav5(pInstance, 2);
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
     }
 
     return errorCodeOrDynamic;
@@ -579,23 +639,55 @@ int32_t uGnssCfgGetDynamic(uDeviceHandle_t gnssHandle)
 // Set the dynamic platform model of the GNSS chip.
 int32_t uGnssCfgSetDynamic(uDeviceHandle_t gnssHandle, uGnssDynamic_t dynamic)
 {
-    return setUbxCfgNav5(gnssHandle,
-                         0x01, /* Mask for dynamic model */
-                         (char *) &dynamic,
-                         1, 2 /* One byte at offset 2 */);
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uGnssPrivateInstance_t *pInstance;
+
+    if (gUGnssPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
+
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        pInstance = pUGnssPrivateGetInstance(gnssHandle);
+        if (pInstance != NULL) {
+            if (U_GNSS_PRIVATE_HAS(pInstance->pModule, U_GNSS_PRIVATE_FEATURE_CFGVALXXX)) {
+                errorCode = valSetE1(pInstance,
+                                     U_GNSS_CFG_VAL_KEY_ID_NAVSPG_DYNMODEL_E1,
+                                     (uint8_t) dynamic);
+            } else {
+                // Set the dynamic model with the right mask and offset
+                errorCode = setUbxCfgNav5(pInstance, 0x01, 2, (uint8_t) dynamic);
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
+    }
+
+    return errorCode;
 }
 
 // Get the fix mode from the GNSS chip.
 int32_t uGnssCfgGetFixMode(uDeviceHandle_t gnssHandle)
 {
-    int32_t errorCodeOrFixMode;
-    // Enough room for the body of the UBX-CFG-NAV5 message
-    char message[36];
+    int32_t errorCodeOrFixMode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uGnssPrivateInstance_t *pInstance;
 
-    errorCodeOrFixMode = getUbxCfgNav5(gnssHandle, message);
-    if (errorCodeOrFixMode == 0) {
-        // The fix mode is at offset 3
-        errorCodeOrFixMode = message[3];
+    if (gUGnssPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
+
+        errorCodeOrFixMode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        pInstance = pUGnssPrivateGetInstance(gnssHandle);
+        if (pInstance != NULL) {
+            if (U_GNSS_PRIVATE_HAS(pInstance->pModule, U_GNSS_PRIVATE_FEATURE_CFGVALXXX)) {
+                errorCodeOrFixMode = valGetE1(pInstance,
+                                              U_GNSS_CFG_VAL_KEY_ID_NAVSPG_FIXMODE_E1);
+            } else {
+                // The fix mode is at offset 3
+                errorCodeOrFixMode = getUbxCfgNav5(pInstance, 3);
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
     }
 
     return errorCodeOrFixMode;
@@ -604,23 +696,55 @@ int32_t uGnssCfgGetFixMode(uDeviceHandle_t gnssHandle)
 // Set the fix mode of the GNSS chip.
 int32_t uGnssCfgSetFixMode(uDeviceHandle_t gnssHandle, uGnssFixMode_t fixMode)
 {
-    return setUbxCfgNav5(gnssHandle,
-                         0x04, /* Mask for fix mode */
-                         (char *) &fixMode,
-                         1, 3 /* One byte at offset 3 */);
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uGnssPrivateInstance_t *pInstance;
+
+    if (gUGnssPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
+
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        pInstance = pUGnssPrivateGetInstance(gnssHandle);
+        if (pInstance != NULL) {
+            if (U_GNSS_PRIVATE_HAS(pInstance->pModule, U_GNSS_PRIVATE_FEATURE_CFGVALXXX)) {
+                errorCode = valSetE1(pInstance,
+                                     U_GNSS_CFG_VAL_KEY_ID_NAVSPG_FIXMODE_E1,
+                                     (uint8_t) fixMode);
+            } else {
+                // Set the fix mode with the right mask and offset
+                errorCode = setUbxCfgNav5(pInstance, 0x04, 3, (uint8_t) fixMode);
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
+    }
+
+    return errorCode;
 }
 
 // Get the UTC standard from the GNSS chip.
 int32_t uGnssCfgGetUtcStandard(uDeviceHandle_t gnssHandle)
 {
-    int32_t errorCodeOrUtcStandard;
-    // Enough room for the body of the UBX-CFG-NAV5 message
-    char message[36];
+    int32_t errorCodeOrUtcStandard = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uGnssPrivateInstance_t *pInstance;
 
-    errorCodeOrUtcStandard = getUbxCfgNav5(gnssHandle, message);
-    if (errorCodeOrUtcStandard == 0) {
-        // The UTC standard is at offset 30
-        errorCodeOrUtcStandard = message[30];
+    if (gUGnssPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
+
+        errorCodeOrUtcStandard = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        pInstance = pUGnssPrivateGetInstance(gnssHandle);
+        if (pInstance != NULL) {
+            if (U_GNSS_PRIVATE_HAS(pInstance->pModule, U_GNSS_PRIVATE_FEATURE_CFGVALXXX)) {
+                errorCodeOrUtcStandard = valGetE1(pInstance,
+                                                  U_GNSS_CFG_VAL_KEY_ID_NAVSPG_UTCSTANDARD_E1);
+            } else {
+                // The UTC standard is at offset 30
+                errorCodeOrUtcStandard = getUbxCfgNav5(pInstance, 30);
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
     }
 
     return errorCodeOrUtcStandard;
@@ -630,10 +754,30 @@ int32_t uGnssCfgGetUtcStandard(uDeviceHandle_t gnssHandle)
 int32_t uGnssCfgSetUtcStandard(uDeviceHandle_t gnssHandle,
                                uGnssUtcStandard_t utcStandard)
 {
-    return setUbxCfgNav5(gnssHandle,
-                         0x0400, /* Mask for UTC standard */
-                         (char *) &utcStandard,
-                         1, 30 /* One byte at offset 30 */);
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uGnssPrivateInstance_t *pInstance;
+
+    if (gUGnssPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
+
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        pInstance = pUGnssPrivateGetInstance(gnssHandle);
+        if (pInstance != NULL) {
+            if (U_GNSS_PRIVATE_HAS(pInstance->pModule, U_GNSS_PRIVATE_FEATURE_CFGVALXXX)) {
+                errorCode = valSetE1(pInstance,
+                                     U_GNSS_CFG_VAL_KEY_ID_NAVSPG_UTCSTANDARD_E1,
+                                     (uint8_t) utcStandard);
+            } else {
+                // Set the UTC standard with the right mask and offset
+                errorCode = setUbxCfgNav5(pInstance, 0x0400, 30, (uint8_t) utcStandard);
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
+    }
+
+    return errorCode;
 }
 
 // Get the protocol types output by the GNSS chip.

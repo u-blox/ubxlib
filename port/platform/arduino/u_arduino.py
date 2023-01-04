@@ -60,14 +60,14 @@ def add_examples(example_dir_root, forced):
                         break
                     count += return_value
                 else:
-                    print("Duplicate example sketch file name \"{}\"".format(file))
+                    print(f"Duplicate example sketch file name \"{file}\"")
                     return_value = -2
                     break
 
     if return_value >= 0:
         return_value = count
 
-    print("{} example(s) copied.".format(count))
+    print(f"{count} example(s) copied.")
 
     return return_value
 

@@ -3,14 +3,11 @@
 '''Generally useful bits and bobs.'''
 
 import queue                    # For PrintThread and exe_run
-from time import sleep, time, gmtime, strftime   # For lock timeout, exe_run timeout and logging
-from multiprocessing import RLock
-from copy import copy
+from time import sleep, time    # For lock timeout, exe_run timeout and logging
 import threading                # For PrintThread
 import sys
 import os                       # For ChangeDir, has_admin
 import stat                     # To help deltree out
-from collections import deque   # For storing a window of debug
 from telnetlib import Telnet    # For talking to JLink server
 from logging import Logger
 import logging
@@ -142,9 +139,9 @@ def subprocess_osify(cmd, shell=True):
         for item in cmd:
             # Put everything in a single string and quote args containing spaces
             if ' ' in item:
-                line += '\"{}\" '.format(item)
+                line += f'\"{item}\" '
             else:
-                line += '{} '.format(item)
+                line += f'{item} '
         cmd = line
     return cmd
 
@@ -192,7 +189,7 @@ def get_instances_text(instances):
     instances_text = ""
     for instance in instances:
         if instance:
-            instances_text += " {}".format(get_instance_text(instance))
+            instances_text += f" {get_instance_text(instance)}"
     return instances_text
 
 def remove_readonly(func, path, exec_info):
@@ -219,8 +216,7 @@ def deltree(directory, logger: Logger = DEFAULT_LOGGER):
                 shutil.rmtree(directory, onerror=remove_readonly)
                 success = True
             except OSError as ex:
-                logger.error('ERROR unable to delete "{}" {}: "{}"'.
-                                   format(directory, ex.errno, ex.strerror))
+                logger.error(f'ERROR unable to delete "{directory}" {ex.errno}: "{ex.strerror}"')
                 sleep(1)
             tries -= 1
     else:
@@ -233,8 +229,7 @@ def open_serial(serial_name, speed, logger: Logger = DEFAULT_LOGGER,
                 dtr_set_on=None, rts_set_on=None):
     '''Open serial port'''
     serial_handle = None
-    text = "trying to open \"{}\" as a serial port".    \
-           format(serial_name)
+    text = f"trying to open \"{serial_name}\" as a serial port"
     if dtr_set_on is not None:
         text += ", DTR forced"
         if dtr_set_on:
@@ -257,28 +252,23 @@ def open_serial(serial_name, speed, logger: Logger = DEFAULT_LOGGER,
         return_value.port = serial_name
         return_value.open()
         serial_handle = return_value
-        logger.info("{} opened.".format(text))
+        logger.info(f"{text} opened.")
     except (ValueError, serial.SerialException) as ex:
-        logger.warning("{} while accessing port {}: {}.".
-                       format(type(ex).__name__,
-                              serial_name, str(ex)))
+        logger.warning(f"{type(ex).__name__} while accessing port {serial_name}: {str(ex)}.")
     return serial_handle
 
 def open_telnet(port_number, logger: Logger = DEFAULT_LOGGER):
     '''Open telnet port on localhost'''
     telnet_handle = None
-    text = "trying to open \"{}\" as a telnet port on localhost...".  \
-           format(port_number)
+    text = f"trying to open \"{port_number}\" as a telnet port on localhost..."
     try:
         telnet_handle = Telnet("localhost", int(port_number), timeout=5)
         if telnet_handle is not None:
-            logger.info("{} opened.".format(text))
+            logger.info(f"{text} opened.")
         else:
-            logger.warning("{} failed.".format(text))
+            logger.warning(f"{text} failed.")
     except (socket.error, socket.timeout, ValueError) as ex:
-        logger.warning("{} failed to open telnet {}: {}.".
-                       format(type(ex).__name__,
-                              port_number, str(ex)))
+        logger.warning(f"{type(ex).__name__} failed to open telnet {port_number}: {str(ex)}.")
     return telnet_handle
 
 def run_call(call_list, logger: Logger = DEFAULT_LOGGER, shell_cmd=False):
@@ -295,10 +285,7 @@ def run_call(call_list, logger: Logger = DEFAULT_LOGGER, shell_cmd=False):
             logger.info(line)
         success = True
     except subprocess.CalledProcessError as error:
-        logger.error("{} returned error {}: \"{}\"".
-                           format(call_list[0],
-                                  error.returncode,
-                                  error.output))
+        logger.error(f"{call_list[0]} returned error {error}: \"{error.output}\"")
     return success
 
 def git_cleanup(logger: Logger = DEFAULT_LOGGER, shell_cmd=False):
@@ -324,8 +311,7 @@ def fetch_repo(url, directory, branch, logger: Logger = DEFAULT_LOGGER,
     if dir_text == ".":
         dir_text = "this directory"
 
-    logger.info("in directory {}, fetching {} to {}.".
-        format(os.getcwd(), url, dir_text))
+    logger.info(f"in directory {os.getcwd()}, fetching {url} to {dir_text}.")
     if not branch:
         branch = "master"
     if os.path.isdir(directory):
@@ -399,7 +385,7 @@ def exe_where(exe_name, help_text, set_env=None,
         # passing things which might have spaces in them.
         # It is the only thing that works.
         if is_linux():
-            cmd = ["which {}".format(exe_name.replace(":", "/"))]
+            cmd = [f"which {exe_name.replace(':', '/')}"]
             logger.info(f'detected linux, calling "{cmd}"...')
         else:
             cmd = ["where", "".join(exe_name)]
@@ -408,15 +394,13 @@ def exe_where(exe_name, help_text, set_env=None,
                                        env=set_env,
                                        shell=True) # Jenkins hangs without this
         for line in text.splitlines():
-            logger.info("{} found in {}".format(exe_name, line))
+            logger.info(f"{exe_name} found in {line}")
         success = True
     except subprocess.CalledProcessError:
         if help_text:
-            logger.error("ERROR {} not found: {}".  \
-                           format(exe_name, help_text))
+            logger.error(f"ERROR {exe_name} not found: {help_text}")
         else:
-            logger.error("ERROR {} not found".      \
-                           format(exe_name))
+            logger.error(f"ERROR {exe_name} not found")
 
     return success
 
@@ -435,8 +419,7 @@ def exe_version(exe_name, version_switch,
             logger.info(line)
         success = True
     except subprocess.CalledProcessError:
-        logger.error("ERROR {} either not found or didn't like {}". \
-                       format(exe_name, version_switch))
+        logger.error(f"ERROR {exe_name} either not found or didn't like {version_switch}")
 
     return success
 
@@ -495,8 +478,7 @@ def exe_run(call_list, guard_time_seconds=None,
     read_time = start_time
 
     # Print what we're gonna do
-    logger.info("in directory {} calling {}".         \
-                format(os.getcwd(), " ".join(call_list)))
+    logger.info(f"in directory {os.getcwd()} calling {' '.join(call_list)}")
 
     if returned_env is not None:
         # The caller wants the environment after the
@@ -539,9 +521,8 @@ def exe_run(call_list, guard_time_seconds=None,
         process = subprocess.Popen(subprocess_osify(call_list, shell=shell_cmd),
                                    **popen_keywords)
 
-        logger.info("{}, pid {} started with guard time {} second(s)". \
-                           format(call_list[0], process.pid,
-                                  guard_time_seconds))
+        logger.info(f"{call_list[0]}, pid {process.pid} started with guard" \
+                    f" time {guard_time_seconds} second(s)")
         # This is over complex but, unfortunately, necessary.
         # At least one thing that we try to run, nrfjprog, can
         # crash silently: just hangs and sends no output.  However
@@ -562,9 +543,8 @@ def exe_run(call_list, guard_time_seconds=None,
                ((time() - start_time > guard_time_seconds) or
                 (time() - read_time > guard_time_seconds)):
                 kill_time = time()
-                logger.warning("guard time of {} second(s) expired, stopping {}...".
-                                   format(guard_time_seconds,
-                                          call_list[0]))
+                logger.warning(f"guard time of {guard_time_seconds} second(s) expired," \
+                               f" stopping {call_list[0]}...")
                 exe_terminate(process.pid)
             line = queue_get_no_exception(read_queue, True, EXE_RUN_QUEUE_WAIT_SECONDS)
             read_time = time()
@@ -616,12 +596,10 @@ def exe_run(call_list, guard_time_seconds=None,
 
         if (process.poll() == 0) and kill_time is None:
             success = True
-        logger.info("{}, pid {} ended with return value {}.".    \
-                           format(call_list[0],
-                                  process.pid, process.poll()))
+        logger.info(f"{call_list[0]}, pid {process.pid} ended with return" \
+                    f" value {process.poll()}.")
     except ValueError as ex:
-        logger.error("failed: {} while trying to execute {}.". \
-                           format(type(ex).__name__, str(ex)))
+        logger.error(f"failed: {type(ex).__name__} while trying to execute {str(ex)}.")
     except KeyboardInterrupt as ex:
         process.kill()
         raise KeyboardInterrupt from ex
@@ -663,7 +641,7 @@ class ExeRun():
             if idx == 0:
                 text = item
             else:
-                text += " {}".format(item)
+                text += f" {item}"
         self._logger.info(f'starting "{text}"...')
         try:
             # Start exe
@@ -681,11 +659,9 @@ class ExeRun():
                                                               shell=self._shell_cmd),
                                              **popen_keywords)
 
-            self._logger.info("{} pid {} started".format(self._call_list[0],
-                                                         self._process.pid))
+            self._logger.info(f"{self._call_list[0]} pid {self._process.pid} started")
         except (OSError, subprocess.CalledProcessError, ValueError) as ex:
-            self._logger.error("failed: {} to start {}.". \
-                                format(type(ex).__name__, str(ex)))
+            self._logger.error(f"failed: {type(ex).__name__} to start {str(ex)}.")
         except KeyboardInterrupt as ex:
             self._process.kill()
             raise KeyboardInterrupt from ex
@@ -714,14 +690,11 @@ class ExeRun():
                 self._process.terminate()
                 while self._process.poll() is None:
                     sleep(0.1)
-                self._logger.info("{} pid {} terminated".format(self._call_list[0],
-                                                                self._process.pid))
+                self._logger.info(f"{self._call_list[0]} pid {self._process.pid} terminated")
             else:
-                self._logger.info("{} pid {} CTRL-C'd".format(self._call_list[0],
-                                                              self._process.pid))
+                self._logger.info(f"{self._call_list[0]} pid {self._process.pid} CTRL-C'd")
         else:
-            self._logger.info("{} pid {} already ended".format(self._call_list[0],
-                                                               self._process.pid))
+            self._logger.info(f"{self._call_list[0]} pid {self._process.pid} already ended")
 
 # Simple SWO decoder: only handles single bytes of application
 # data at a time, i.e. what ITM_SendChar() sends.
@@ -809,8 +782,7 @@ def usb_cutter_reset(usb_cutter_id_strs, logger: Logger=DEFAULT_LOGGER):
             exe_run(call_list, 0, logger=logger, shell_cmd=True)
 
         # Wait 5ish seconds
-        logger.info("waiting {} second(s)...".         \
-                        format(HW_RESET_DURATION_SECONDS))
+        logger.info(f"waiting {HW_RESET_DURATION_SECONDS} second(s)...")
         sleep(HW_RESET_DURATION_SECONDS)
 
         # "0" to switch the USB cutters on again
@@ -837,8 +809,8 @@ def kmtronic_reset(ip_address, hex_bitmap, logger: Logger=DEFAULT_LOGGER):
         response = requests.get(kmtronic_off)
         # Wait 5ish seconds
 
-        logger.info("...received response {}, waiting {} second(s)...". \
-                        format(response.status_code, HW_RESET_DURATION_SECONDS))
+        logger.info(f"...received response {response.status_code}, waiting "  \
+                    f" {HW_RESET_DURATION_SECONDS} second(s)...")
         sleep(HW_RESET_DURATION_SECONDS)
         # Switch the given bit positions on
         logger.info(f"sending {kmtronic_on}")
@@ -882,12 +854,11 @@ def commit_message_parse(message, instances, printer=None, prompt=None):
         # Search through message for a line beginning
         # with "test:"
         if printer:
-            printer.string("{}### parsing message to see if it contains a test directive...". \
-                           format(prompt))
+            printer.string(f"{prompt}### parsing message to see if it contains a test directive...")
         lines = message.split("\\n")
         for idx1, line in enumerate(lines):
             if printer:
-                printer.string("{}text line {}: \"{}\"".format(prompt, idx1 + 1, line))
+                printer.string(f"{prompt}text line {idx1 + 1}: \"{line}\"")
             if line.lower().startswith("test:"):
                 found = True
                 instances_all = False
@@ -902,8 +873,7 @@ def commit_message_parse(message, instances, printer=None, prompt=None):
                         instances_local = []
                         filter_string_local = None
                         if printer:
-                            printer.string("{}...badly formed test directive, ignoring.". \
-                                           format(prompt))
+                            printer.string(f"{prompt}...badly formed test directive, ignoring.")
                             found = False
                         break
                     if filter_string_local:
@@ -913,8 +883,8 @@ def commit_message_parse(message, instances, printer=None, prompt=None):
                         instances_local = []
                         filter_string_local = None
                         if printer:
-                            printer.string("{}...extraneous characters after test directive," \
-                                           " ignoring.".format(prompt))
+                            printer.string(f"{prompt}...extraneous characters after test directive," \
+                                           " ignoring.")
                             found = False
                         break
                     if part[0].isdigit():
@@ -935,8 +905,7 @@ def commit_message_parse(message, instances, printer=None, prompt=None):
                             instances_local = []
                             filter_string_local = None
                             if printer:
-                                printer.string("{}...badly formed test directive, ignoring.". \
-                                               format(prompt))
+                                printer.string(f"{prompt}...badly formed test directive, ignoring.")
                             found = False
                             break
                         if instance:
@@ -949,8 +918,7 @@ def commit_message_parse(message, instances, printer=None, prompt=None):
                             instances_local = []
                             filter_string_local = None
                             if printer:
-                                printer.string("{}...badly formed test directive, ignoring.". \
-                                               format(prompt))
+                                printer.string(f"{prompt}...badly formed test directive, ignoring.")
                                 found = False
                             break
                         # If we haven't had any instances and
@@ -963,8 +931,7 @@ def commit_message_parse(message, instances, printer=None, prompt=None):
                             # this is obviously not a test line,
                             # leave the loop and try again
                             if printer:
-                                printer.string("{}...badly formed test directive, ignoring.". \
-                                               format(prompt))
+                                printer.string(f"{prompt}...badly formed test directive, ignoring.")
                                 found = False
                         instances_local = []
                         filter_string_local = None
@@ -981,8 +948,7 @@ def commit_message_parse(message, instances, printer=None, prompt=None):
                         instances_local = []
                         filter_string_local = None
                         if printer:
-                            printer.string("{}...badly formed test directive, ignoring.". \
-                                           format(prompt))
+                            printer.string(f"{prompt}...badly formed test directive, ignoring.")
                             found = False
                         break
                 if found:
@@ -994,10 +960,10 @@ def commit_message_parse(message, instances, printer=None, prompt=None):
                     else:
                         text += " instances \"None\""
                     if printer:
-                        printer.string("{}{}.".format(prompt, text))
+                        printer.string(f"{prompt}{text}.")
                     break
                 if printer:
-                    printer.string("{}no test directive found".format(prompt))
+                    printer.string(f"{prompt}no test directive found")
 
     if found and instances_local:
         instances.extend(instances_local[:])
@@ -1044,7 +1010,7 @@ def device_redirect_thread(device_a, device_b, baud_rate, terminateQueue, logger
     baud_rate_str = ""
 
     if baud_rate:
-       baud_rate_str = ",b" + str(baud_rate)
+        baud_rate_str = ",b" + str(baud_rate)
 
     call_list = ["socat", device_a + ",echo=0,raw" + baud_rate_str, \
                  device_b + ",echo=0,raw" + baud_rate_str]

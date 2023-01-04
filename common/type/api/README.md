@@ -1,0 +1,4 @@
+# Introduction
+This directory contains header files that define types/macros common across `ubxlib`. They may safely be included in other header files.
+
+NOTE TO MAINTAINERS: it is REALLY important that any header files here do NOT bring in headers from elsewhere and only rely on basic types (i.e. those from `stddef.h`, `stdint.h` and `stdbool.h`); this is because they may be included in ANY code, including other header files, and so must not drag in the kitchen sink with them, otherwise `ubxlib` becomes one big ball of string.  Don't put anything here unless you have to (e.g. to avoid duplication) and only put stuff here that obeys these rules.

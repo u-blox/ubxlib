@@ -396,6 +396,7 @@ static void UUMQTTC_UUMQTTSNC_urc(uAtClientHandle_t atHandle,
 {
     volatile uCellMqttUrcStatus_t *pUrcStatus = &(pContext->urcStatus);
     bool mqttSn = pContext->mqttSn;
+    bool invokeMessageIndCb = false;
     int32_t urcType;
     int32_t urcParam1;
     int32_t urcParam2;
@@ -493,9 +494,13 @@ static void UUMQTTC_UUMQTTSNC_urc(uAtClientHandle_t atHandle,
         pUrcStatus->flagsBitmap |= 1 << U_CELL_MQTT_URC_FLAG_UNSUBSCRIBE_UPDATED;
     } else if (urcType == MQTT_COMMAND_OPCODE_READ(mqttSn)) {
         // Read: urcParam1 contains the number of unread messages
-        if (urcParam1 >= 0) {
+        if (urcParam1 > 0) {
+            // Upon reading a received message, module receives the URC showing that
+            // number of unread messages is decreased. In this case, we do not want
+            // to invoke message indication callback.
+            invokeMessageIndCb = (urcParam1 >= (int32_t) (pContext->numUnreadMessages));
             pContext->numUnreadMessages = urcParam1;
-            if (pContext->pMessageIndicationCallback != NULL) {
+            if ((pContext->pMessageIndicationCallback != NULL) && (invokeMessageIndCb)) {
                 // Launch our local callback via the AT
                 // parser's callback facility.
                 // GCC can complain here that
@@ -507,8 +512,11 @@ static void UUMQTTC_UUMQTTSNC_urc(uAtClientHandle_t atHandle,
                 uAtClientCallback(atHandle, messageIndicationCallback,
                                   (void *) pContext);
             }
+            pUrcStatus->flagsBitmap |= 1 << U_CELL_MQTT_URC_FLAG_UNREAD_MESSAGES_UPDATED;
+        } else {
+            uPortLog("U_CELL_MQTT: error receiving a message.\n");
         }
-        pUrcStatus->flagsBitmap |= 1 << U_CELL_MQTT_URC_FLAG_UNREAD_MESSAGES_UPDATED;
+
     } else {
         if (mqttSn) {
             // For MQTT-SN there are some additional possibilities
@@ -1933,7 +1941,12 @@ static int32_t readMessage(const uCellPrivateInstance_t *pInstance,
                     uPortTaskBlock(1000);
                 }
                 if (pUrcMessage->messageRead) {
-                    if (pContext->numUnreadMessages > 0) {
+                    // Decrement only if the number of unread messages was 1, because
+                    // pContext->numUnreadMessages would be updated in UUMQTTC callback
+                    // handler after a successful read of a message. However, when
+                    // number of unread messages is 1, then, no URC is received against
+                    // the reading of that one message.
+                    if (pContext->numUnreadMessages == 1) {
                         pContext->numUnreadMessages--;
                     }
                     if (pMessageSizeBytes != NULL) {
@@ -2025,7 +2038,12 @@ static int32_t readMessage(const uCellPrivateInstance_t *pInstance,
                     if (pTopicNameType != NULL) {
                         *pTopicNameType = topicNameType;
                     }
-                    if (pContext->numUnreadMessages > 0) {
+                    // Decrement only if the number of unread messages was 1, because
+                    // pContext->numUnreadMessages would be updated in UUMQTTC callback
+                    // handler after a successful read of a message. However, when
+                    // number of unread messages is 1, then, no URC is received against
+                    // the reading of that one message.
+                    if (pContext->numUnreadMessages == 1) {
                         pContext->numUnreadMessages--;
                     }
                     errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;

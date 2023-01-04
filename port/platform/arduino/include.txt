@@ -11,6 +11,7 @@
 cfg
 common/error/api
 common/assert/api
+common/type/api
 common/device/api
 common/device/src
 port/platform/common/mutex_debug

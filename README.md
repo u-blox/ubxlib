@@ -1,6 +1,6 @@
 <img src="/readme_images/ubxlib-logo.svg" width="400">
 
-[![important message](/readme_images/important_msg.svg)](/HOW_TO_UPGRADE.md)
+[![important message](/readme_images/important_msg.svg)](/UPCOMING.md)
 
 # Introduction to `ubxlib`
 
@@ -69,7 +69,7 @@ If your MCU is not on the list:
 
 Peripherals are u-blox modules which accept commands (e.g. AT-commands) over a serial interface and have no open MCU environment. To run the APIs they need to be attached to a host which runs `ubxlib`. For example in the [test farm](/port/platform/common/automation/DATABASE.md) combinations of hosts and peripherals are listed.
 
-|`ubxlib` peripherals |NINA-B41 series<br />NINA-B31 series<br />NINA-B1 series<br />ANNA-B1|NINA-W13|NINA-W15|SARA-U2 series|SARA-R4 series<br />SARA-R5 series<br />|SARA-R510M8S<br />SARA-R422M8S|M8/M9 series|
+|`ubxlib` peripherals |NINA-B41 series<br />NINA-B31 series<br />NINA-B1 series<br />ANNA-B1|NINA-W13|NINA-W15|SARA-U2 series|SARA-R4 series<br />SARA-R5 series<br />LARA-R6 series<br />|SARA-R510M8S<br />SARA-R422M8S|M8/M9/M10 series|
 |-----------|-----------|--------------|-----|-----|------|------|------|
 |**APIs provided by host with peripheral attached**|[ble](/ble "ble API")<br />[device](/common/device "device API")<br />[network](/common/network "network API")|[wifi](/wifi)<br />[device](/common/device "device API")<br />[network](/common/network "network API")<br />[sock](/common/sock "sock API")<br />[tls&nbsp;security](/common/security "security API")<br />[mqtt_client](/common/mqtt_client "MQTT client API")|[wifi](/wifi)<br />[ble](/ble "ble API")<br />[device](/common/device "device API")<br />[network](/common/network "network API")<br />[sock](/common/sock "sock API")<br />[tls&nbsp;security](/common/security "security API")<br />[mqtt_client](/common/mqtt_client "MQTT client API")|[cell](/cell "cell API")<br />[device](/common/device "device API")<br />[network](/common/network "network API")<br />[sock](/common/sock "sock API")<br />[location*](/common/location "location API")<br />[tls&nbsp;security](/common/security "security API")<br />[http_client](/common/http_client "HTTP client API")|[cell](/cell "cell API")<br />[device](/common/device "device API")<br />[network](/common/network "network API")<br />[sock](/common/sock "sock API")<br />[location<sup>**</sup>](/common/location "location API")<br />[security](/common/security "security API")<br />[mqtt_client](/common/mqtt_client "MQTT client API")<br />[http_client](/common/httpt_client "HTTP client API")|All APIs of<br />SARA-R4,<br />SARA-R5 series&nbsp;+<br />[gnss](/gnss "GNSS API")<br />[location](/common/location "location API")|[gnss](/gnss "GNSS API")<br />[location](/common/location "location API")|
 
@@ -197,5 +197,5 @@ The software in this repository is Apache 2.0 licensed and copyright u-blox with
 In all cases copyright, and our thanks, remain with the original authors.
 
 # Disclaimer
-The software in this repository assumes the module is in a state equal to a factory reset.
-If you modify the AT command sequences employed by `ubxlib` please take the time to debug/test those changes as we can't easily support you.
+- The software in this repository assumes the module is in a state equal to a factory reset.
+- If you modify the AT command sequences employed by `ubxlib` please take the time to debug/test those changes as we can't easily support you.

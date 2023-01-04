@@ -2474,6 +2474,8 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAsyncUdpEchoMayFailDueToInternetDatagramLoss
         }
 
         U_PORT_TEST_ASSERT(gTestConfig.packetsReceived > 0);
+        // Free memory from event queues
+        uPortEventQueueCleanUp();
 
 #if !U_CFG_OS_CLIB_LEAKS
         // Check for memory leaks but only
@@ -2720,6 +2722,7 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAsyncTcpEcho")
         // Close the event queue
         U_PORT_TEST_ASSERT(uPortEventQueueClose(gTestConfig.eventQueueHandle) == 0);
         gTestConfig.eventQueueHandle = -1;
+        uPortEventQueueCleanUp();
 
         // Free memory
         uPortFree(gTestConfig.pBuffer);

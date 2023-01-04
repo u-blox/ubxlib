@@ -1,38 +1,30 @@
 # Introduction
 The files in here are used internally within u-blox to automate testing of `ubxlib`.  They are not supported externally.  However, if you find them useful please help yourselves.
 
-# Installation
-To run the test automation or other PyInvoke tasks locally you need to setup a few things.
-The following steps should work for both Windows and Ubuntu:
-1. Make sure you have Python 3.x installed and that it is in your `PATH` environment.
-2. Make sure that `pip3` is accessable through your `PATH` environment.
-3. For Windows make sure that your `<python3_dir>/Scripts` is accessable through your `PATH` environment.
-4. Run either [setup_linux.sh](setup_linux.sh) or [setup_windows.bat](setup_windows.bat) depending on your platform. These scripts will install all Python modules needed for the test automation. The modules we are using are listed in [requirements.txt](requirements.txt)
-5. Verify that you can execute the command `invoke` from your terminal. If the command is not found, for Windows double check step 3. For Ubuntu just logout and login again (Python modules are placed in `~/.local/bin` and this directory is only added to PATH if it existed when user logs in).
-6. If you intend to run the Linux-under-Zephyr executable and have it drive a real module you will need to set up a `udev` rule to make the module available to `docker` as a known TTY; an example [50-tty-evk-cell.rules](50-tty-evk-cell.rules) is provided, which is appropriate for a cellular EVK; this or similar should be copied to the `/etc/udev/rules.d/` directory of the Linux machine and the `udev` rules reloaded.
+The complete set up of the automated test system, from scratch, is described in [SETUP.md](SETUP.md); how to request access is described in [ACCESS_REQUEST.md](ACCESS_REQUEST.md).  The remainder of this document describes how to use the system and how to run the same stuff locally on your Windows/Linux PC.
 
-**NOTE** You may need to re-run `setup_windows.bat`/`setup_linux.sh` when test automation is upgraded as new Python module may be added.
+# The Instances
+The automated test system runs several instances all defined in [DATABASE.md](DATABASE.md). Each row in [DATABASE.md](DATABASE.md) corresponds to an instance that runs in parallel on Jenkins. The process for each instance is divided into the stages: build, flash and test. However, some of the instances only use the test stage.
 
-# The Test Instances
-The automated testsystem runs several test instances all defined in [DATABASE.md](DATABASE.md). Each row in [DATABASE.md](DATABASE.md) corresponds to an instance that runs in parallel on Jenkins. The test process for each instance is divided into the stages: build, flash and test. However, some of the instances only use the test stage.
-
-Each test instance (i.e. each row in [DATABASE.md](DATABASE.md) or each parallel test) has an ID with format `x.y.z` where x-z are integer values. `x` is mandatory while `y` and `z` are optional. The `x` is used for referring to a specific HW configuration and `y` & `z` are used to for defining variants of tests performed on the same HW config.
+Each instance (i.e. each row in [DATABASE.md](DATABASE.md) or each parallel test) has an ID with format `x.y.z` where x-z are integer values. `x` is mandatory while `y` and `z` are optional. The `x` is used for referring to a specific HW configuration and `y` & `z` are used to for defining variants of tests performed on the same HW config.
 
 Example:
-11.0: ESP32-DevKitC HW, Build, flash and test ubxlib for ESP-IDF
-11.1: ESP32-DevKitC HW (i.e. same HW as above), Build, flash and test ubxlib for Arduino
+11.0: ESP32-DevKitC HW, build, flash and test `ubxlib` for ESP-IDF
+11.1: ESP32-DevKitC HW (i.e. same HW as above), build, flash and test `ubxlib` for Arduino
 
-I.e. 11 in the above example identifies the HW and `.0` & `.1` are used for testing ubxlib built for both ESP-IDF and Arduino on the same HW.
-When running on Jenkins the test system will run these two test instances in sequence if there are not another `11` HW available.
+i.e. 11 in the above example identifies the HW and `.0` & `.1` are used for testing `ubxlib` built for both ESP-IDF and Arduino on the same HW.
+When running on Jenkins the test system will run these two test instances in sequence if there is only one instance of `11` HW available.
 
-**NOTE:** It is important to note that the values set for the instances in [DATABASE.md](DATABASE.md) are used as input to the build, flash and test stage.
+**NOTE:** it is important to note that the values set for the instances in [DATABASE.md](DATABASE.md) are used as input to the build, flash and test stage.
 
 # Reading The Jenkins Output
-You can follow the testing in realtime on Jenkins. You will get a nice overview in the BlueOcean UI:
+Whenever a push is made to the `ubxlib_priv` repository, Jenkins will be triggered to test it.
+
+You can follow the testing in real-time on Jenkins. You will get a nice overview in the BlueOcean UI:
 
 ![Pipeline](/readme_images/pipeline.png)
 
-If there is a failure the stage will be marked red and in this case click on that stage and expand the script outputs at the bottom. For all stages except the `test` stage the output there should be all you need to identify the problem. For the `test` stage the output may look something like this:
+If there is a failure the stage will be marked red, or if there is a timeout it will be marked grey; in this case click on that stage and expand the script outputs at the bottom. For all stages except the `test` stage the output there should be all you need to identify the problem. For the `test` stage the output may look something like this:
 
 ![Test output](/readme_images/test_output.png)
 
@@ -41,6 +33,16 @@ To understand why the test failed you will likely need the debug output from the
 ![Test tab](/readme_images/test_tab.png)
 
 You can also find the full target log for the specific instance under the `Artifacts` tab: `_jenkins_work/<instance>/debug.log`.
+
+# Local Installation
+To run the test automation or other PyInvoke tasks locally you need to setup a few things. The following steps should work for both Windows and Ubuntu:
+1. Make sure you have Python 3.x installed and that it is in your `PATH` environment.
+2. Make sure that `pip3` is accessable through your `PATH` environment.
+3. For Windows make sure that your `<python3_dir>/Scripts` is accessable through your `PATH` environment.
+4. Run either [setup_linux.sh](setup_linux.sh) or [setup_windows.bat](setup_windows.bat) depending on your platform. These scripts will install all Python modules needed for the test automation. The modules we are using are listed in [requirements.txt](requirements.txt)
+5. Verify that you can execute the command `invoke` from your terminal. If the command is not found, for Windows double check step 3. For Ubuntu just logout and login again (Python modules are placed in `~/.local/bin` and this directory is only added to the `PATH` if it existed when the user logged in).
+
+**NOTE** You may need to re-run `setup_windows.bat`/`setup_linux.sh` when the test automation is upgraded as new Python modules may be added.
 
 # PyInvoke Tasks
 A central part in the test automation are the [PyInvoke](https://www.pyinvoke.org/) tasks. You can view each PyInvoke task as a shell command that in our case executes a step in the test automation. The PyInvoke tasks are located in the [port/platform/common/automation/tasks](./tasks/) directory. To execute a PyInvoke task you use the [invoke](https://docs.pyinvoke.org/en/stable/invoke.html) (or `inv`) command. This command will look for a `tasks` directory in the current working directory so to execute our automation task you either need to change working directory to `port/platform/common/automation` or use the [-r](https://docs.pyinvoke.org/en/stable/invoke.html#cmdoption-r) flag to specify the automation directory to `invoke`.
@@ -67,7 +69,7 @@ Available tasks:
 inv --list
 ```
 
-### Show Help for a PyInvoke Tasks
+### Show Help For A PyInvoke Tasks
 ```sh
 inv -r <ubxlibdir>/port/platform/common/automation --help automation.build
 Usage: inv[oke] [--core-opts] automation.build [--options] [other tasks here ...]
@@ -83,7 +85,7 @@ Options:
 inv --help automation.build
 ```
 
-### Execute a PyInvoke Task
+### Execute A PyInvoke Task
 ```sh
 inv -r <ubxlibdir>/port/platform/common/automation automation.build 12.0
 === Loading u_packages ===
@@ -105,7 +107,7 @@ Added the following directories to PATH:
 inv --help automation.build 12.0
 ```
 
-### Shell Tab Completion for invoke Command
+### Shell Tab Completion For Invoke Command
 Since the PyInvoke task name are quite long, it can be convenient to enable shell tab completion.
 The `invoke` command is already prepared for this, but you need to do some steps to enable it:
 1. Generate the needed shell script for your shell by using executing `invoke --print-completion-script <name of your shell> > ~/.invoke-completion.sh`.
@@ -161,7 +163,7 @@ If you want to completely turn off a specific checker you can do this by adding 
 ## Suppressing Clang Static Analyzer Warning
 This can only be done by the normal compiler ways. Please see Clang Static Analyzer [FAQ](https://clang-analyzer.llvm.org/faq.html).
 
-# Running Tests Locally
+# Running A Specified Test Instance
 As described in the previous section Jenkins uses the `automation.<command>` PyInvoke tasks. These tasks can be run locally and this is described in the [`automation` Tasks](#automation-tasks) section.
 
 **NOTE:** If you want to use hardware dependent task such as `automation.flash` you will likely need to adjust the files in `$HOME/.ubx_automation`.
@@ -187,10 +189,9 @@ For instance, to run instance 16 locally you might open that file and change:
   }
 ```
 
-By setting `debugger` to `None`, the script will simply pick the one and only connected board. Would there be multiple boards connected to the PC, one must specify corresponding serial number for debugger.
+By setting `debugger` to `None`, the script will simply pick the one and only connected board. Should there be multiple boards connected to the PC, one must specify the correct serial number for the debugger.
 
 # Jenkins Test Selection
-
 As a first step in the Jenkins pipeline there is a script that decides what instances and tests suites to run. This is handled by the `automation.get-test-selection` PyInvoke task. This task returns a JSON struct with a list of instances to run and a test filter. The input to this script is the last commit message and what files have been modified like (for more details on how to use PyInvoke tasks see [PyInvoke Tasks](#pyinvoke-tasks) section):
 
 `invoke automation.get-test-selection --message="some text" --files="<a list of file paths, unquoted, separated with spaces>"`
@@ -239,9 +240,8 @@ If the commit text does *not* contain a line starting with `test:` (the usual ca
 [scripts/u_get_arm_toolchain.py](./scripts/u_get_arm_toolchain.py): script used by vscode to get the ARM toolchain path via `u_packages`.
 
 # Maintenance
-- If you add a new API make sure that it is listed in the `APIs available` column of at least one row in [DATABASE.md](DATABASE.md), otherwise [u_select.py](./scripts/u_select.py) will **not**  select it for testing on a Pull Request.
-- If you add a new board to the test machine or change the COM port or debugger serial number that an existing board uses on the test machine, update [u_connection.py](./scripts/u_connection.py) to match.
+- If you add a new API make sure that it is listed in the `APIs available` column of at least one row in [DATABASE.md](DATABASE.md), otherwise [u_select.py](./scripts/u_select.py) will **not**  select it for automated-testing of a branch.
+- If you add a new board to the test system, update [u_connection.py](./scripts/u_connection.py) to include it.
 - If you add a new platform or test suite, add it to [DATABASE.md](DATABASE.md) and make sure that the result is parsed correctly by [u_data.py](./scripts/u_data.py) (e.g. by running `automation.<command>` PyInvoke tasks) from the command-line and checking that everything is correct).
 - If you add a new item in the range 0 to 9 (i.e. a checker with no platform), update [automation.py](./tasks/automation.py) to include it.
 - If you add a new directory OFF THE ROOT of `ubxlib`, i.e. something like `ubxlib/blah`, add it to the `ASTYLE_DIRS` variable of the [u_run_astyle.py](./scripts/u_run_astyle.py) script.
-- If you add a new source file in platform-independent, non-test, non-example code make sure that the source file list (and if necessary the include file list) down in [port/platform/static_size](/port/platform/static_size) is updated to include it, or it will be missed out of the size estimate.

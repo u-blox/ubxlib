@@ -7,7 +7,7 @@ enable_language(CXX C ASM)
 set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS} --apcs=/ropi/rwpi --lower_ropi")
 set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} --show_cmdline --apcs=/ropi/rwpi")
 
-add_definitions(-DU_CFG_APP_FILTER=${U_CFG_APP_FILTER} -DU_AT_CLIENT_URC_TASK_PRIORITY -DU_CFG_TEST_CELL_MODULE_TYPE=U_CELL_MODULE_TYPE_SARA_R5 -DUNITY_INCLUDE_CONFIG_H)
+add_definitions(-DU_CFG_APP_FILTER=${U_CFG_APP_FILTER} -DU_AT_CLIENT_URC_TASK_PRIORITY=U_CFG_OS_PRIORITY_MAX-1 -DU_AT_CLIENT_CALLBACK_TASK_PRIORITY=U_CFG_OS_PRIORITY_MAX-2 -DU_CFG_TEST_CELL_MODULE_TYPE=U_CELL_MODULE_TYPE_SARA_R5 -DUNITY_INCLUDE_CONFIG_H)
 
 # Tell everyone where ubxlib is
 set(UBXLIB_BASE "${CMAKE_CURRENT_LIST_DIR}/../../../../.." CACHE PATH "the path to the ubxlib root directory")
@@ -100,6 +100,7 @@ set(UBXLIB_SRC_PORT
     ${UBXLIB_BASE}/port/platform/${UBXLIB_PLATFORM}/src/u_port_gpio.c
     ${UBXLIB_BASE}/port/platform/${UBXLIB_PLATFORM}/src/u_port_uart.c
     ${UBXLIB_BASE}/port/platform/${UBXLIB_PLATFORM}/src/u_port_i2c.c
+    ${UBXLIB_BASE}/port/platform/${UBXLIB_PLATFORM}/src/u_port_spi.c
     ${UBXLIB_BASE}/port/platform/${UBXLIB_PLATFORM}/src/u_port_clib.c
     ${UBXLIB_BASE}/port/platform/${UBXLIB_PLATFORM}/src/u_port_private.c
     ${UBXLIB_BASE}/port/platform/common/mbedtls/u_port_crypto.c

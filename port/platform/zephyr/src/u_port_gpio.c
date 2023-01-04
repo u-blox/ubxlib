@@ -28,12 +28,15 @@
 
 #include "u_error_common.h"
 #include "u_port.h"
+#include "u_port_os.h"      // Needed by u_port_private.h
 #include "u_port_gpio.h"
 
 #include "zephyr.h"
 #include "device.h"
 #include "drivers/gpio.h"
 #include "version.h"
+
+#include "u_port_private.h"  // Down here because it needs to know about the Zephyr device tree
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -65,28 +68,6 @@
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-static const struct device *getGpioDevice(uint32_t pin)
-{
-    const struct device *pDev = NULL;
-    // common practice in device trees that one gpio port holds 32 pins
-#if KERNEL_VERSION_MAJOR < 3
-    char dtDeviceNodeLabel[7];
-    strncpy(dtDeviceNodeLabel, "GPIO_x", sizeof(dtDeviceNodeLabel));
-    // replace x with corresponding port number
-    dtDeviceNodeLabel[5] = '0' + (pin / GPIO_MAX_PINS_PER_PORT);
-    dtDeviceNodeLabel[6] = 0;
-    pDev = device_get_binding(dtDeviceNodeLabel);
-#else
-    int32_t port = pin / GPIO_MAX_PINS_PER_PORT;
-    if (port == 0) {
-        pDev = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(gpio0));
-    } else if (port == 1) {
-        pDev = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(gpio1));
-    }
-#endif
-    return pDev;
-}
-
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -100,7 +81,7 @@ int32_t uPortGpioConfig(uPortGpioConfig_t *pConfig)
     gpio_flags_t flags = 0;
     int zerr;
 
-    pPort = getGpioDevice(pConfig->pin);
+    pPort = pUPortPrivateGetGpioDevice(pConfig->pin);
     if (pPort == NULL) {
         return errorCode;
     }
@@ -185,7 +166,7 @@ int32_t uPortGpioSet(int32_t pin, int32_t level)
     const struct device *pPort;
     int zerr;
 
-    pPort = getGpioDevice(pin);
+    pPort = pUPortPrivateGetGpioDevice(pin);
     if (pPort == NULL) {
         return (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
     }
@@ -205,7 +186,7 @@ int32_t uPortGpioGet(int32_t pin)
     int zerr;
     gpio_port_value_t val;
 
-    pPort = getGpioDevice(pin);
+    pPort = pUPortPrivateGetGpioDevice(pin);
     if (pPort == NULL) {
         return (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
     }

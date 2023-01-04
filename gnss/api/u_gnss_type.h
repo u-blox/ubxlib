@@ -49,12 +49,36 @@
 # define U_GNSS_UART_BUFFER_LENGTH_BYTES 1024
 #endif
 
+#ifndef U_GNSS_SPI_BUFFER_LENGTH_BYTES
+/** The recommended SPI buffer length for the GNSS driver;
+ * just go with the UART one for consistency, and since SPI
+ * is much faster than a 9600 baud UART a "USB-sized" receive
+ * buffer, which #U_GNSS_UART_BUFFER_LENGTH_BYTES is, is
+ * probably about right.
+ */
+# define U_GNSS_SPI_BUFFER_LENGTH_BYTES U_GNSS_UART_BUFFER_LENGTH_BYTES
+#endif
+
 #ifndef U_GNSS_DEFAULT_TIMEOUT_MS
 /** The default time-out to use on the GNSS interface in
  * milliseconds; note that the separate #U_GNSS_POS_TIMEOUT_SECONDS
  * is used for the GNSS position establishment calls.
  */
 # define U_GNSS_DEFAULT_TIMEOUT_MS 10000
+#endif
+
+#ifndef U_GNSS_DEFAULT_SPI_FILL_THRESHOLD
+/** The default number of 0xFF bytes which, if received on an
+ * SPI transport, constitue fill rather than valid data.
+ */
+# define U_GNSS_DEFAULT_SPI_FILL_THRESHOLD 48
+#endif
+
+#ifndef U_GNSS_SPI_FILL_THRESHOLD_MAX
+/** The maximum value for the SPI fill threshold; note that an
+ * array of this size is placed on the stack.
+ */
+# define U_GNSS_SPI_FILL_THRESHOLD_MAX 128
 #endif
 
 /** There can be an inverter in-line between an MCU pin
@@ -132,6 +156,7 @@ typedef enum {
                                      handle; currently only UBX-format messages may
                                      be received when this transport type is in use. */
     U_GNSS_TRANSPORT_I2C,       /**< the transport handle should be an I2C handle. */
+    U_GNSS_TRANSPORT_SPI,       /**< the transport handle should be an SPI handle. */
     U_GNSS_TRANSPORT_UBX_UART,  /**< \deprecated the transport handle should be a UART handle
                                      over which UBX commands will be transferred;
                                      NMEA will be switched off; THIS IS DEPRECATED,
@@ -169,6 +194,7 @@ typedef union {
     void *pAt;      /**< for transport type #U_GNSS_TRANSPORT_AT. */
     int32_t uart;   /**< for transport type #U_GNSS_TRANSPORT_UART. */
     int32_t i2c;    /**< for transport type #U_GNSS_TRANSPORT_I2C. */
+    int32_t spi;    /**< for transport type #U_GNSS_TRANSPORT_SPI. */
 } uGnssTransportHandle_t;
 
 /** The port type on the GNSS chip itself; this is different
@@ -189,15 +215,14 @@ typedef enum {
     U_GNSS_PORT_MAX_NUM
 } uGnssPort_t;
 
-/** The protocol types for exchanges with a GNSS chip,
- * values chosen to match the bit-map used on the GNSS interface.
+/** The protocol types for exchanges with a GNSS chip.
  */
 typedef enum {
-    U_GNSS_PROTOCOL_UBX = 0,
-    U_GNSS_PROTOCOL_NMEA = 1,
+    U_GNSS_PROTOCOL_UBX = 0,     // Value chosen to match encoded version for the GNSS chip
+    U_GNSS_PROTOCOL_NMEA = 1,    // Value chosen to match encoded version for the GNSS chip
     U_GNSS_PROTOCOL_RTCM = 2,
-    U_GNSS_PROTOCOL_UNKNOWN = 3,
-    U_GNSS_PROTOCOL_MAX_NUM,
+    U_GNSS_PROTOCOL_UNKNOWN = 3, // Must have this value as it is used to mark
+    U_GNSS_PROTOCOL_MAX_NUM,     // the end of the known output protocols
     U_GNSS_PROTOCOL_NONE,
     U_GNSS_PROTOCOL_ALL,
     U_GNSS_PROTOCOL_ANY
@@ -232,7 +257,7 @@ typedef struct {
     } id;
 } uGnssMessageId_t;
 
-/** The types of dynamic platform model.
+/** The types of dynamic platform model; not all types are available on all modules.
  */
 typedef enum {
     U_GNSS_DYNAMIC_PORTABLE = 0,
@@ -244,7 +269,9 @@ typedef enum {
     U_GNSS_DYNAMIC_AIRBORNE_2G = 7,
     U_GNSS_DYNAMIC_AIRBORNE_4G = 8,
     U_GNSS_DYNAMIC_WRIST = 9,
-    U_GNSS_DYNAMIC_BIKE = 10
+    U_GNSS_DYNAMIC_BIKE = 10,
+    U_GNSS_DYNAMIC_MOWER = 11,
+    U_GNSS_DYNAMIC_ESCOOTER = 12
 } uGnssDynamic_t;
 
 /** The fix modes.
@@ -255,7 +282,7 @@ typedef enum {
     U_GNSS_FIX_MODE_AUTO = 3
 } uGnssFixMode_t;
 
-/** The possible GNSS UTC standards.
+/** The possible GNSS UTC standards; not all types are available on all modules.
  */
 typedef enum {
     U_GNSS_UTC_STANDARD_AUTOMATIC = 0,  /**< automatic. */
@@ -263,7 +290,9 @@ typedef enum {
     U_GNSS_UTC_STANDARD_GALILEO = 5,
     U_GNSS_UTC_STANDARD_GLONASS = 6,
     U_GNSS_UTC_STANDARD_NTSC = 7, /**< National Time Service Center (NTSC), China; derived from BeiDou time. */
-    U_GNSS_UTC_STANDARD_NPLI = 8 /**< National Physics Laboratory India. */
+    U_GNSS_UTC_STANDARD_NPLI = 8, /**< National Physics Laboratory India. */
+    U_GNSS_UTC_STANDARD_NICT = 9 /**< National Institute of Information and Communications Technology, Japan;
+                                      derived from QZSS time. */
 } uGnssUtcStandard_t;
 
 /** @}*/

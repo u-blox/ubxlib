@@ -38,7 +38,7 @@ extern "C" {
  * -------------------------------------------------------------- */
 
 /* ----------------------------------------------------------------
- * FUNCTIONS
+ * FUNCTIONS: MISC
  * -------------------------------------------------------------- */
 
 /** Initialise the os private stuff.
@@ -51,13 +51,24 @@ void uPortOsPrivateDeinit();
 
 /** Initialise the private bits of the porting layer.
  *
- * @return: zero on success else negative error code.
+ * @return zero on success else negative error code.
  */
 int32_t uPortPrivateInit(void);
 
 /** Deinitialise the private bits of the porting layer.
  */
 void uPortPrivateDeinit(void);
+
+/** Get a GPIO device.
+ *
+ * @param pin  the pin number
+ * @return     a pointer to a struture in the device tree.
+ */
+const struct device *pUPortPrivateGetGpioDevice(int32_t pin);
+
+/* ----------------------------------------------------------------
+ * FUNCTIONS: TIMERS
+ * -------------------------------------------------------------- */
 
 /** Add a timer entry to the list.  IMPORTANT: pCallback
  * is executed in the Zephyr system queue and hence it is

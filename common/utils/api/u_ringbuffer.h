@@ -232,6 +232,20 @@ size_t uRingBufferAvailableSize(const uRingBuffer_t *pRingBuffer);
  */
 void uRingBufferFlush(uRingBuffer_t *pRingBuffer);
 
+/** Flush any data in the ring buffer that matches "value", stopping
+ * at the first byte that does not match "value", but only do this if there
+ * are "length" or more of them; useful if, for instance, the ring buffer
+ * contains fill bytes that should be removed; does not affect the data
+ * of any uRingBufferTakeReadHandle().
+ *
+ * @param[in] pRingBuffer a pointer to the ring buffer, cannot be NULL.
+ * @param value           the value to be flushed.
+ * @param length          the number of bytes of the given value that must
+ *                        be present for the values to be flushed.
+ */
+void uRingBufferFlushValue(uRingBuffer_t *pRingBuffer, char value,
+                           size_t length);
+
 /** Reset a ring buffer.  This resets the data only; any read handles
  * returned by uRingBufferTakeReadHandle() will remain valid, the
  * stats on the buffer will remain as they are.

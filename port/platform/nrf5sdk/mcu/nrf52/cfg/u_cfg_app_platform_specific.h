@@ -221,6 +221,25 @@
 # define U_CFG_APP_GNSS_I2C                  -1
 #endif
 
+#ifndef U_CFG_APP_GNSS_SPI
+/** The SPI HW block to use inside the NRF52 chip to communicate
+ * with a GNSS module.  IMPORTANT: the same HW blocks, and code, are
+ * used by I2C (AKA TWI) and SPI, so you must be careful not to
+ * choose the same HW block for both; because the code is the same
+ * for both you will get a linker error if you enable, for instance,
+ * SPI 1 and I2C 1.
+ *
+ * Don't forget to set ALL of the following things to 1 in your
+ * sdk_config.h file:
+ *
+ * - SPI_ENABLED, NRFX_SPI_ENABLED, NRFX_SPIM_ENABLED
+ * - SPIx_ENABLED, NRFX_SPIx_ENABLED, NRFX_SPIMx_ENABLED, where x is
+ *   the SPI HW block you set below.
+ * - NRFX_SPIM_EXTENDED_ENABLED
+ */
+# define U_CFG_APP_GNSS_SPI                  -1
+#endif
+
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS FOR A GNSS MODULE ON NRF52: PINS
  * -------------------------------------------------------------- */
@@ -280,6 +299,34 @@
  * as it is the default for the NRF52840 DK board.
  */
 # define U_CFG_APP_PIN_GNSS_SCL               31 // AKA 0.31
+#endif
+
+#ifndef U_CFG_APP_PIN_GNSS_SPI_MOSI
+/** The GPIO output pin for SPI towards the GNSS module;
+ * use -1 where there is no such connection.
+ */
+# define U_CFG_APP_PIN_GNSS_SPI_MOSI          26 // AKA 0.26
+#endif
+
+#ifndef U_CFG_APP_PIN_GNSS_SPI_MISO
+/** The GPIO input pin for SPI from the GNSS module;
+ * use -1 where there is no such connection.
+ */
+# define U_CFG_APP_PIN_GNSS_SPI_MISO          27 // AKA 0.27
+#endif
+
+#ifndef U_CFG_APP_PIN_GNSS_SPI_CLK
+/** The GPIO output pin that is the clock for SPI;
+ * use -1 where there is no such connection.
+ */
+# define U_CFG_APP_PIN_GNSS_SPI_CLK           28 // AKA 0.28
+#endif
+
+#ifndef U_CFG_APP_PIN_GNSS_SPI_SELECT
+/** The GPIO output pin that is the chip select for the GNSS
+ * module; use -1 where there is no such connection.
+ */
+# define U_CFG_APP_PIN_GNSS_SPI_SELECT        29  // AKA 0.29
 #endif
 
 /* ----------------------------------------------------------------

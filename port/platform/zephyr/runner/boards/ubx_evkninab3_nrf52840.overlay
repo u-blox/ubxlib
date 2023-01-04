@@ -12,3 +12,10 @@
     status = "okay";
     /* Otherwise board default settings are good. */
 };
+&spi3 {
+	compatible = "nordic,nrf-spim";
+	status = "okay";
+	sck-pin = <28>;
+	miso-pin = <27>;
+	mosi-pin = <26>;
+};

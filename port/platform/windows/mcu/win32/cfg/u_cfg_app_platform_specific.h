@@ -185,11 +185,16 @@
 #endif
 
 #ifndef U_CFG_APP_GNSS_I2C
-/** The COM port that ends up as I2C to use for a GNSS module;
- * e.g. to use COM1 set this to 1.  Specify -1 where there is no
- * such connection.
+/** Not available on Windows.
  */
 # define U_CFG_APP_GNSS_I2C                  -1
+#endif
+
+
+#ifndef U_CFG_APP_GNSS_SPI
+/** Not available on Windows.
+ */
+# define U_CFG_APP_GNSS_SPI                  -1
 #endif
 
 /* ----------------------------------------------------------------
@@ -245,6 +250,34 @@
  * module; not relevant for Windows and so set to -1.
  */
 # define U_CFG_APP_PIN_GNSS_SCL              -1
+#endif
+
+#ifndef U_CFG_APP_PIN_GNSS_SPI_MOSI
+/** The GPIO output pin for SPI towards the GNSS module;
+ * not relevant for Windows and so set to -1.
+ */
+# define U_CFG_APP_PIN_GNSS_SPI_MOSI              -1
+#endif
+
+#ifndef U_CFG_APP_PIN_GNSS_SPI_MISO
+/** The GPIO input pin for SPI from the GNSS module; not
+ * relevant for Windows and so set to -1.
+ */
+# define U_CFG_APP_PIN_GNSS_SPI_MISO              -1
+#endif
+
+#ifndef U_CFG_APP_PIN_GNSS_SPI_CLK
+/** The GPIO output pin that is the clock for SPI; not relevant
+ * for Windows and so set to -1.
+ */
+# define U_CFG_APP_PIN_GNSS_SPI_CLK              -1
+#endif
+
+#ifndef U_CFG_APP_PIN_GNSS_SPI_SELECT
+/** The GPIO output pin that is the chip select for the GNSS
+ * module; not relevant for Windows and so set to -1.
+ */
+# define U_CFG_APP_PIN_GNSS_SPI_SELECT           -1
 #endif
 
 /* ----------------------------------------------------------------

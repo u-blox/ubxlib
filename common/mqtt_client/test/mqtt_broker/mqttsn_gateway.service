@@ -1,10 +1,11 @@
-[Unit]
+Unit]
 Description=MQTT-SN gateway
 After=mosquitto.service
 
 [Service]
-# Modify this to point to wherever the UDP binary for the Paho MQTT-SN gateway and assocated config file have been placed
-ExecStart=/home/rmea/paho.mqtt-sn.embedded-c/MQTTSNGateway/bin.udp/MQTT-SNGateway -f /home/rmea/mosquitto/gateway.conf
+# Modify these lines to point to wherever the UDP binary for the Paho MQTT-SN gateway and assocated config file have been placed
+WorkingDirectory=/home/ubxlib/mqtt_broker
+ExecStart=/home/ubxlib/paho.mqtt-sn.embedded-c/MQTTSNGateway/bin/MQTT-SNGateway -f /home/ubxlib/mqtt_broker/gateway.conf
 
 [Install]
 WantedBy=multi-user.target

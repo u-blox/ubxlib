@@ -16,6 +16,8 @@ arm_embedded_gcc:
         url: https://developer.arm.com/-/media/Files/downloads/gnu-rm/10-2020q4/gcc-arm-none-eabi-10-2020-q4-major-win32.zip
     linux:
         url: https://developer.arm.com/-/media/Files/downloads/gnu-rm/10-2020q4/gcc-arm-none-eabi-10-2020-q4-major-x86_64-linux.tar.bz2
+    linux_arm:
+        url: https://developer.arm.com/-/media/Files/downloads/gnu-rm/10-2020q4/gcc-arm-none-eabi-10-2020-q4-major-aarch64-linux.tar.bz2
 
 openocd:
     type: archive
@@ -25,6 +27,8 @@ openocd:
         url: https://github.com/xpack-dev-tools/openocd-xpack/releases/download/v0.11.0-3/xpack-openocd-0.11.0-3-win32-x64.zip
     linux:
         url: https://github.com/xpack-dev-tools/openocd-xpack/releases/download/v0.11.0-3/xpack-openocd-0.11.0-3-linux-x64.tar.gz
+    linux_arm:
+        url: https://github.com/xpack-dev-tools/openocd-xpack/releases/download/v0.11.0-3/xpack-openocd-0.11.0-3-linux-arm64.tar.gz
     add_to_path: bin
 
 nrf5sdk:
@@ -33,6 +37,37 @@ nrf5sdk:
     version: 15.3.0_59ac345
     skip_first_subdir: True
 
+nrf_cli:
+    version: 10.18.1
+    check_command: nrfjprog -v
+    windows:
+        type: executable
+        url: https://nsscprodmedia.blob.core.windows.net/prod/software-and-other-downloads/desktop-software/nrf-command-line-tools/sw/versions-10-x-x/10-18-1/nrf-command-line-tools-10.18.1-x64.exe
+        package_name: nrf-command-line-tools-10.18.1-x64.exe
+        run_with_switches: /passive /quiet
+        add_to_path: "%homedrive%Program Files\Nordic Semiconductor\nrf-command-line-tools\bin"
+    linux:
+        type: apt
+        url: https://nsscprodmedia.blob.core.windows.net/prod/software-and-other-downloads/desktop-software/nrf-command-line-tools/sw/versions-10-x-x/10-18-1/nrf-command-line-tools_10.18.1_amd64.deb
+        package_name: nrf-command-line-tools_10.18.1_amd64.deb
+    linux_arm:
+        type: apt
+        url: https://nsscprodmedia.blob.core.windows.net/prod/software-and-other-downloads/desktop-software/nrf-command-line-tools/sw/versions-10-x-x/10-18-1/nrf-command-line-tools_10.18.1_arm64.deb
+        package_name: nrf-command-line-tools_10.18.1_arm64.deb
+
+segger_jlink:
+    type: segger_jlink
+    windows:
+        check_command: where jlink /Q
+    linux:
+        url: https://nsscprodmedia.blob.core.windows.net/prod/software-and-other-downloads/desktop-software/nrf-command-line-tools/sw/versions-10-x-x/10-18-1/nrf-command-line-tools-10.18.1_linux-amd64.tar.gz
+        package_name: JLink_Linux_V780c_x86_64.deb
+        check_command: whereis JLinkExe
+    linux_arm:
+        url: https://nsscprodmedia.blob.core.windows.net/prod/software-and-other-downloads/desktop-software/nrf-command-line-tools/sw/versions-10-x-x/10-18-1/nrf-command-line-tools-10.18.1_linux-arm64.tar.gz
+        package_name: JLink_Linux_V780c_arm64.deb
+        check_command: whereis JLinkExe
+
 stm32cubef4:
     type: git
     url: https://github.com/STMicroelectronics/STM32CubeF4.git
@@ -40,8 +75,15 @@ stm32cubef4:
 
 esp_idf:
     type: esp_idf
-    url: https://github.com/espressif/esp-idf
-    version: v4.3.2
+    windows:
+        version: v4.3.2
+        url: https://github.com/espressif/esp-idf
+    linux:
+        version: v4.3.2
+        url: https://github.com/espressif/esp-idf
+    linux_arm:
+        version: v4.4
+        url: https://github.com/espressif/esp-idf
 
 make:
     windows:
@@ -54,12 +96,20 @@ make:
         type: apt
         package_name: make
         check_command: command -v make
+    linux_arm:
+        type: apt
+        package_name: make
+        check_command: command -v make
 
 arduino-cli:
     linux:
         type: archive
         version: 0.20.2
         url: https://github.com/arduino/arduino-cli/releases/download/0.20.2/arduino-cli_0.20.2_Linux_64bit.tar.gz
+    linux_arm:
+        type: archive
+        version: 0.20.2
+        url: https://github.com/arduino/arduino-cli/releases/download/0.20.2/arduino-cli_0.20.2_Linux_ARM64.tar.gz
     windows:
         type: archive
         version: 0.20.2

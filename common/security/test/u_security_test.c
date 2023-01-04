@@ -857,6 +857,7 @@ U_PORT_TEST_FUNCTION("[security]", "securityC2cSockAsync")
             gEventQueueHandle = -1;
 
             uPortFree(gpBuffer);
+            uPortEventQueueCleanUp();
 
             U_TEST_PRINT_LINE("closing the session again...");
             U_PORT_TEST_ASSERT(uSecurityC2cClose(devHandle) == 0);

@@ -96,6 +96,10 @@ int32_t uShortRangeEdmStreamOpen(int32_t uartHandle);
 
 /** Close a stream.
  *
+ * Note: when an EDM stream is closed not all memory associated with it
+ * is immediately reclaimed; if you wish to reclaim memory before
+ * uPortDeinit() you may do so by calling uPortEventQueueCleanUp().
+ *
  * @param handle  the handle of the stream instance to close.
  */
 void uShortRangeEdmStreamClose(int32_t handle);

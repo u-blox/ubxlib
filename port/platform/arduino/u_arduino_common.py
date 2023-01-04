@@ -31,7 +31,7 @@ def read_list_from_file(file, wanted_platform):
     output_list = []
 
     # Read list
-    temp_list = [line.strip() for line in open(file, 'r')]
+    temp_list = [line.strip() for line in open(file, 'r', encoding='utf8')]
     for item in temp_list:
         # Throw away comment lines
         item = item.strip()
@@ -57,9 +57,9 @@ def subprocess_osify(cmd, shell=True):
         for command in cmd:
             # Put everything in a single string and quote args containing spaces
             if ' ' in command:
-                line += '\"{}\" '.format(command)
+                line += f'\"{command}\" '
             else:
-                line += '{} '.format(command)
+                line += f'{command} '
         cmd = line
     return cmd
 
@@ -82,7 +82,7 @@ def copy_file(source, destination, forced):
                 if destination_timestamp == source_timestamp:
                     do_copy = False
                     return_value = 0
-                    print("{} is already up to date.".format(destination))
+                    print(f"{destination} is already up to date.")
                 else:
                     if destination_timestamp > source_timestamp:
                         do_copy = False
@@ -97,7 +97,7 @@ def copy_file(source, destination, forced):
                 try:
                     os.makedirs(directories)
                 except OSError:
-                    print("Unable to create directory {}.".format(directories))
+                    print(f"Unable to create directory {directories}.")
                     do_copy = False
             if do_copy:
                 call_list = []
@@ -109,7 +109,7 @@ def copy_file(source, destination, forced):
                 call_list.append(source)
                 call_list.append(destination)
                 try:
-                    print("Copying {} to {}...".format(source, destination))
+                    print(f"Copying {source} to {destination}...")
                     subprocess.check_output(subprocess_osify(call_list), shell=True)
                     return_value = 1
                 except subprocess.CalledProcessError as error:
@@ -117,7 +117,7 @@ def copy_file(source, destination, forced):
                           format(source, destination, error.cmd,
                                  error.returncode, error.output))
     else:
-        print("{} is not a file.".format(source))
+        print(f"{source} is not a file.")
 
     return return_value
 
@@ -154,7 +154,7 @@ def copy_files(source_list, include_list, ubxlib_dir, forced, include_files):
         file_count += 1
         src_files_copied_count += copied
 
-    print("{} source file(s) copied.".format(src_files_copied_count))
+    print(f"{src_files_copied_count} source file(s) copied.")
     if file_count == len(source_list):
         # Must have succeeded, now do the include files
         for file_path in include_list:
@@ -191,7 +191,7 @@ def copy_files(source_list, include_list, ubxlib_dir, forced, include_files):
         if path_count == len(include_list):
             # Must have succeeded
             return_value = 0
-        print("{} header file(s) copied.".format(header_files_copied_count))
+        print(f"{header_files_copied_count} header file(s) copied.")
 
     if return_value >= 0:
         return_value = src_files_copied_count + header_files_copied_count
@@ -204,15 +204,15 @@ def create_header_file(filename, comment_text, include_files):
     return_value = -1
     filename_no_ext = filename.split(".")[0].upper()
 
-    with open(os.path.join("src", filename), "w") as file:
+    with open(os.path.join("src", filename), "w", encoding="utf8") as file:
         file.write(comment_text)
-        file.write("#ifndef _U_{}_H_\n".format(filename_no_ext))
-        file.write("#define _U_{}_H_\n\n".format(filename_no_ext))
+        file.write(f"#ifndef _U_{filename_no_ext}_H_\n")
+        file.write(f"#define _U_{filename_no_ext}_H_\n\n")
         if include_files:
             for include_file in include_files:
-                file.write("#include <{}>\n".format(include_file))
-        file.write("\n#endif // _U_{}_H_\n\n".format(filename_no_ext))
-        file.write("// End of file\n".format(filename_no_ext))
+                file.write(f"#include <{include_file}>\n")
+        file.write(f"\n#endif // _U_{filename_no_ext}_H_\n\n")
+        file.write("// End of file\n")
         return_value = 0
 
     return return_value
@@ -236,19 +236,19 @@ def create_metadata(library_name, version_string, sentence, paragraph, precompil
                 architecture_list += item
 
     if architecture_list:
-        with open(PROPERTIES_FILE, "w") as file:
-            file.write("name={}\n".format(library_name))
+        with open(PROPERTIES_FILE, "w", encoding="utf8") as file:
+            file.write(f"name={library_name}\n")
             if not version_string:
                 # version is a mandatory field, have to put in something
                 version_string = "0.0.0"
-            file.write("version={}\n".format(version_string))
-            file.write("author={}\n".format(UBXLIB_EMAIL))
-            file.write("maintainer={}\n".format(UBXLIB_EMAIL))
-            file.write("sentence={}\n".format(sentence))
-            file.write("paragraph={}\n".format(paragraph))
+            file.write(f"version={version_string}\n")
+            file.write(f"author={UBXLIB_EMAIL}\n")
+            file.write(f"maintainer={UBXLIB_EMAIL}\n")
+            file.write(f"sentence={sentence}\n")
+            file.write(f"paragraph={paragraph}\n")
             file.write("category=Communication\n")
             file.write("url=https://github.com/u-blox/ubxlib\n")
-            file.write("architectures={}\n".format(architecture_list))
+            file.write(f"architectures={architecture_list}\n")
             if precompiled:
                 file.write("dot_a_linkage=true\n")
                 # precompiled is set to full so that, if a version of the library
@@ -262,7 +262,7 @@ def create_metadata(library_name, version_string, sentence, paragraph, precompil
                 if len(text) > 0:
                     text += ", "
                 text += include_file
-            file.write("includes={}\n".format(text))
+            file.write(f"includes={text}\n")
             return_value = 0
 
     return return_value

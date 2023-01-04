@@ -31,6 +31,7 @@ UBXLIB_SRC_DIRS += \
 UBXLIB_INC += \
 	${UBXLIB_BASE} \
 	${UBXLIB_BASE}/cfg \
+	${UBXLIB_BASE}/common/type/api \
 	${UBXLIB_BASE}/port/api
 
 UBXLIB_PRIVATE_INC += \

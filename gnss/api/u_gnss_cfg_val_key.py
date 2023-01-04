@@ -131,9 +131,9 @@ def subprocess_osify(cmd, shell=True):
         for command in cmd:
             # Put everything in a single string and quote args containing spaces
             if " " in command:
-                line += "\"{}\" ".format(command)
+                line += f"\"{command}\" "
             else:
-                line += "{} ".format(command)
+                line += f"{command} "
         cmd = line
     return cmd
 
@@ -301,13 +301,12 @@ def copy_file(source, destination):
     call_list.append(source)
     call_list.append(destination)
     try:
-        print("Copying {} to {}...".format(source, destination))
+        print(f"Copying {source} to {destination}...")
         subprocess.check_output(subprocess_osify(call_list), shell=True)
         success = True
     except subprocess.CalledProcessError as error:
-        print("Error when copying {} to {}, {} {}: \"{}\"".
-              format(source, destination, error.cmd,
-                     error.returncode, error.output))
+        print(f"Error when copying {source} to {destination}," \
+              f"{error.cmd} {error.returncode}: \"{ error.output}\"")
     return success
 
 def main(target_file):
@@ -321,9 +320,9 @@ def main(target_file):
     signal(SIGINT, signal_handler)
 
     if os.path.isfile(target_file):
-        with open(target_file, "r") as file:
+        with open(target_file, "r", encoding="utf8") as file:
             # Read the lot in
-            print("Reading file {}...".format(target_file))
+            print(f"Reading file {target_file}...")
             line_list = file.readlines()
         if line_list:
             print("Looking for the key size and group ID enums {} and {}...". \
@@ -345,9 +344,8 @@ def main(target_file):
             # Read the whole group ID enum from the file
             group_id_list = read_enum(ENUM_NAME_GROUP_ID, ENUM_ENTRY_PREFIX_GROUP_ID, line_list)
             if group_id_list:
-                print("Looking for each item enum pointed-to by {}, all of which" \
-                      " should begin with \"{}\"...".format(ENUM_NAME_GROUP_ID,
-                                                            ENUM_NAME_PREFIX_ITEMS))
+                print(f"Looking for each item enum pointed-to by {ENUM_NAME_GROUP_ID}, " \
+                      f" all of which should begin with \"{ENUM_NAME_PREFIX_ITEMS}\"...")
                 # For each group ID, find the enum giving its items in the file;
                 # do it reversed as an "append" actually adds to the front, this
                 # we the IDs are in the right order.
@@ -391,19 +389,19 @@ def main(target_file):
                    format(ENUM_NAME_KEY_SIZE, target_file))
 
         if key_id_list:
-            print("{} key ID macros created, re-writing file...".format(len(key_id_list)))
+            print(f"{len(key_id_list)} key ID macros created, re-writing file...")
             # Have a list of key IDs, re-write the line-list using it
             line_list = rewrite_line_list(key_id_list, line_list)
             if line_list:
                 # Done everything; make a back-up copy of the file
                 if copy_file(target_file, target_file + BACKUP_EXTENSION):
                     #... and write line_list back to the file
-                    with open(target_file, "w") as file:
+                    with open(target_file, "w", encoding="utf8") as file:
                         file.writelines(line_list)
                         print("{} has been re-written.".format(target_file))
                         return_value = 0
     else:
-        print("\"{}\" is not a file.".format(target_file))
+        print(f"\"{target_file}\" is not a file.")
 
     return return_value
 

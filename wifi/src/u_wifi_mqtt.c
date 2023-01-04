@@ -507,6 +507,7 @@ static void edmMqttDataCallback(int32_t edmHandle, int32_t edmChannel,
     int32_t i;
     (void) edmHandle;
     (void)pCallbackParameter;
+    bool doCallback;
 
     U_PORT_MUTEX_LOCK(gMqttSessionMutex);
 
@@ -521,9 +522,10 @@ static void edmMqttDataCallback(int32_t edmHandle, int32_t edmChannel,
                 uPortLog("U_WIFI_MQTT: EDM data event for channel %d\n", edmChannel);
                 if (uShortRangePktListAppend(&pMqttSession->rxPkt,
                                              pBufList) == (int32_t)U_ERROR_COMMON_SUCCESS) {
+                    doCallback = (pMqttSession->rxPkt.pktCount > pMqttSession->unreadMsgsCount);
                     pMqttSession->unreadMsgsCount = pMqttSession->rxPkt.pktCount;
                     // Schedule user data pDataCb
-                    if (pMqttSession->pDataCb) {
+                    if ((pMqttSession->pDataCb) && doCallback) {
                         //lint -save -e785
                         uCallbackEvent_t event = {
                             .pDataCb = pMqttSession->pDataCb,

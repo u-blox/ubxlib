@@ -37,6 +37,12 @@
  * time it will allocate 1468 bytes of memory and will never give
  * that back, even if you delete the task.  So either don't printf()
  * from the task at all or don't delete it.
+ *
+ * There is a down-side to setting this to 1, which is that URCs
+ * received from a module will not be printed-out by the AT client
+ * (since prints from a dynamic task often cause such leaks), and
+ * this can be a pain when debugging, so please set this to 0 if you
+ * can.
  */
 #define U_CFG_OS_CLIB_LEAKS 0
 

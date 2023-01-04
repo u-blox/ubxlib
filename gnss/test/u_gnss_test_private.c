@@ -46,6 +46,7 @@
 #include "u_port_os.h"
 #include "u_port_uart.h"
 #include "u_port_i2c.h"
+#include "u_port_spi.h"
 
 #include "u_at_client.h"
 
@@ -114,7 +115,7 @@ typedef struct {
 /** The names of the transport types.
  */
 static const char *const gpTransportTypeString[] = {"none", "UART",
-                                                    "AT", "I2C",
+                                                    "AT", "I2C", "SPI",
                                                     "UBX UART", "UBX I2C"
                                                    };
 
@@ -268,7 +269,7 @@ const char *pGnssTestPrivateTransportTypeName(uGnssTransportType_t transportType
 
 // Set the transport types to be tested.
 size_t uGnssTestPrivateTransportTypesSet(uGnssTransportType_t *pTransportTypes,
-                                         int32_t uart, int32_t i2c)
+                                         int32_t uart, int32_t i2c, int32_t spi)
 {
     size_t numEntries = 0;
 
@@ -286,6 +287,11 @@ size_t uGnssTestPrivateTransportTypesSet(uGnssTransportType_t *pTransportTypes,
             *pTransportTypes = U_GNSS_TRANSPORT_UBX_I2C;
             pTransportTypes++;
             numEntries += 2;
+        }
+        if (spi >= 0) {
+            *pTransportTypes = U_GNSS_TRANSPORT_SPI;
+            pTransportTypes++;
+            numEntries++;
         }
         if (numEntries == 0) {
             *pTransportTypes = U_GNSS_TRANSPORT_AT;
@@ -319,6 +325,8 @@ int32_t uGnssTestPrivatePreamble(uGnssModuleType_t moduleType,
 {
     int32_t errorCode;
     uGnssTransportHandle_t transportHandle;
+    uCommonSpiControllerDevice_t spiDevice = U_COMMON_SPI_CONTROLLER_DEVICE_DEFAULTS(
+                                                 U_CFG_APP_PIN_GNSS_SPI_SELECT);
 
     // Set some defaults
     pParameters->transportType = transportType;
@@ -366,6 +374,23 @@ int32_t uGnssTestPrivatePreamble(uGnssModuleType_t moduleType,
                     if (errorCode >= 0) {
                         pParameters->streamHandle = errorCode;
                         transportHandle.i2c = pParameters->streamHandle;
+                    }
+                }
+                break;
+            case U_GNSS_TRANSPORT_SPI:
+                U_TEST_PRINT_LINE("opening GNSS SPI %d...", U_CFG_APP_GNSS_SPI);
+                errorCode = uPortSpiInit();
+                if (errorCode == 0) {
+                    // Open the SPI with the standard parameters
+                    errorCode = uPortSpiOpen(U_CFG_APP_GNSS_SPI,
+                                             U_CFG_APP_PIN_GNSS_SPI_MOSI,
+                                             U_CFG_APP_PIN_GNSS_SPI_MISO,
+                                             U_CFG_APP_PIN_GNSS_SPI_CLK,
+                                             true);
+                    if ((errorCode >= 0) &&
+                        (uPortSpiControllerSetDevice(errorCode, &spiDevice) == 0)) {
+                        pParameters->streamHandle = errorCode;
+                        transportHandle.spi = pParameters->streamHandle;
                     }
                 }
                 break;
@@ -462,6 +487,11 @@ void uGnssTestPrivatePostamble(uGnssTestPrivate_t *pParameters,
                 case U_GNSS_TRANSPORT_UBX_I2C:
                     uPortI2cClose(pParameters->streamHandle);
                     uPortI2cDeinit();
+                    break;
+                case U_GNSS_TRANSPORT_SPI:
+                    uPortSpiClose(pParameters->streamHandle);
+                    uPortSpiDeinit();
+                    break;
                 default:
                     break;
             }
@@ -499,6 +529,11 @@ void uGnssTestPrivateCleanup(uGnssTestPrivate_t *pParameters)
                 case U_GNSS_TRANSPORT_UBX_I2C:
                     uPortI2cClose(pParameters->streamHandle);
                     uPortI2cDeinit();
+                    break;
+                case U_GNSS_TRANSPORT_SPI:
+                    uPortSpiClose(pParameters->streamHandle);
+                    uPortSpiDeinit();
+                    break;
                 default:
                     break;
             }
@@ -548,9 +583,11 @@ void uGnssTestPrivateCleanup(uGnssTestPrivate_t *pParameters)
 // - start with a $GNRMC message, followed by a $GNVTG message, followed by
 //   a $GNGGA message,
 // - one or more $GNGSA message will follow, where the digit before the *
-//   at the end starts at 1 and increments by one for each message,
-// - sets of $G?GSV,y,z messages will follow where y is the number of each
-//   type and z the count of the messages within that type,
+//   at the end starts at 1 and increments by one for each message, except
+//   that in the M10 case number 2 is missing,
+// - sets of $G?GSV,y,z messages may follow where y is the number of each
+//   type and z the count of the messages within that type, though all of
+//   these may be MISSING in some cases for M10,
 // - end with a $GNGLL message.
 int32_t uGnssTestPrivateNmeaComprehender(const char *pNmeaMessage, size_t size,
                                          void **ppContext, bool printErrors)
@@ -626,6 +663,10 @@ int32_t uGnssTestPrivateNmeaComprehender(const char *pNmeaMessage, size_t size,
                         // $GNGSA continues
                         pContext->lastGngsa = thisGngsa;
                         errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
+                    } else if ((thisGngsa == 3) && (pContext->lastGngsa == 1)) {
+                        // Must be M10, where number 2 is missing
+                        pContext->lastGngsa = thisGngsa;
+                        errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
                     } else if (printErrors) {
                         U_TEST_PRINT_LINE("NMEA sequence error: expecting"
                                           " $GNGSA ... %d* but got $GNGSA ... %d*.",
@@ -674,11 +715,11 @@ int32_t uGnssTestPrivateNmeaComprehender(const char *pNmeaMessage, size_t size,
                                               pContext->lastInGxgsv);
                         }
                     }
-                } else if ((pContext->state == U_GNSS_TEST_PRIVATE_NMEA_STATE_GOT_GXGSV_5) &&
+                } else if (((pContext->state == U_GNSS_TEST_PRIVATE_NMEA_STATE_GOT_GNGSA_4) ||
+                            (pContext->state == U_GNSS_TEST_PRIVATE_NMEA_STATE_GOT_GXGSV_5)) &&
                            (pContext->xInGxgsv == 0) &&
                            (strstr(pNmeaMessage, "$GNGLL") == pNmeaMessage)) {
-                    // We're not currently in a $G?GSV but we have been in one and we've now
-                    // hit a $GNGLL: we're done
+                    // We're not in a $G?GSV and we've now hit a $GNGLL: we're done
                     errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
                 } else if (printErrors) {
                     if (pContext->xInGxgsv > 0) {

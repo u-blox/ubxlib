@@ -67,7 +67,7 @@
 // for the module is likely different that from the MCU: check
 // the data sheet for the module to determine the mapping.
 
-#if defined(U_CFG_TEST_CELL_MODULE_TYPE) && defined(U_CFG_TEST_GNSS_MODULE_TYPE) && (U_CFG_APP_GNSS_UART < 0) && (U_CFG_APP_GNSS_I2C < 0)
+#if defined(U_CFG_TEST_CELL_MODULE_TYPE) && defined(U_CFG_TEST_GNSS_MODULE_TYPE) && (U_CFG_APP_GNSS_UART < 0) && (U_CFG_APP_GNSS_I2C < 0) && (U_CFG_APP_GNSS_SPI < 0)
 // DEVICE i.e. module/chip configuration: in this case a cellular
 // module connected via UART
 static const uDeviceCfg_t gDeviceCfg = {
@@ -222,7 +222,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocGnssCell")
     uPortDeinit();
 
     uPortLog("Done.\n");
-#if defined(U_CFG_TEST_GNSS_MODULE_TYPE) && (U_CFG_APP_GNSS_UART < 0)  && (U_CFG_APP_GNSS_I2C < 0)
+#if defined(U_CFG_TEST_CELL_MODULE_TYPE) && defined(U_CFG_TEST_GNSS_MODULE_TYPE) && (U_CFG_APP_GNSS_UART < 0) && (U_CFG_APP_GNSS_I2C < 0) && (U_CFG_APP_GNSS_SPI < 0)
     EXAMPLE_FINAL_STATE(location.timeUtc > 0);
 #endif
 }

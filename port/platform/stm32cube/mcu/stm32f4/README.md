@@ -8,8 +8,8 @@ https://www.st.com/en/embedded-software/stm32cubef4.html
 
 You will need to specify the directory where you extracted this `.zip` file when you compile `ubxlib` [runner](runner).
 
-# Chip Resource Requirements
-The SysTick of the STM32F4 is assumed to provide a 1 ms RTOS tick which is used as a source of time for `uPortGetTickTimeMs()`.  Note that this means that if you want to use FreeRTOS in tickless mode you will need to either find another source of tick for `uPortGetTickTimeMs()` or put in a call that updates `gTickTimerRtosCount` when FreeRTOS resumes after a tickless period.
+# Tickless Mode
+In the porting layer for this platform the `SysTick_Handler()` of the STM32F4 (see the bottom of [u_exception_handler.c](/port/platform/stm32cube/src/u_exception_handler.c)) is assumed to provide a 1 ms RTOS tick which is used as a source of time for `uPortGetTickTimeMs()`.  This means that **if you want to use FreeRTOS in tickless mode** you will need to modify the port either to find another source of tick for `uPortGetTickTimeMs()`, or to put in a call that updates `gTickTimerRtosCount` when FreeRTOS resumes after a tickless period, otherwise time will go wrong and things like wake-up from power-saving mode in a cellular module may not work correctly.
 
 # Trace Output
 In order to conserve HW resources the trace output from this platform is sent over SWD using an ITM channel. There are many ways to read out the ITM trace output:

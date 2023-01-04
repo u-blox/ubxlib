@@ -53,7 +53,10 @@ def run(ubxlib_dir, reporter):
         U_LOG.info(f"CD to {ubxlib_dir}...")
         with u_utils.ChangeDir(ubxlib_dir):
             # Assemble the call list
-            call_list.append("astyle.exe")
+            if u_utils.is_linux():
+                call_list.append("astyle")
+            else:
+                call_list.append("astyle.exe")
             call_list.append("--options=" + CONFIG_FILE) # Options file
             call_list.append("--dry-run") # Don't make changes
             call_list.append("--formatted") # Only list changed files
@@ -67,7 +70,7 @@ def run(ubxlib_dir, reporter):
             tmp = ""
             for item in call_list:
                 tmp += " " + item
-            U_LOG.info("in directory {} calling{}".format(os.getcwd(), tmp))
+            U_LOG.info(f"in directory {os.getcwd()} calling{tmp}")
             try:
                 popen_keywords = {
                     'stderr': subprocess.STDOUT,

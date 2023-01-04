@@ -248,6 +248,10 @@ int32_t uPortEventQueueStackMinFree(int32_t handle);
 
 /** Close an event queue.
  *
+ * Note: this function does not free memory, that is done
+ * on de-initialisation; if you want to free memory before
+ * then, call uPortEventQueueCleanUp().
+ *
  * COMMON CODING ERROR: there is a common coding error
  * in the use of this function which can lead to a mutex
  * deadlock.  It goes as follows:
@@ -295,6 +299,10 @@ int32_t uPortEventQueueClose(int32_t handle);
  *                negative error code.
  */
 int32_t uPortEventQueueGetFree(int32_t handle);
+
+/** Free memory occupied by closed event queues.
+ */
+void uPortEventQueueCleanUp(void);
 
 #ifdef __cplusplus
 }

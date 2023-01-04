@@ -173,8 +173,9 @@ int32_t uGnssInfoGetIdStr(uDeviceHandle_t gnssHandle,
 {
     int32_t errorCodeOrLength = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uGnssPrivateInstance_t *pInstance;
+    int32_t version;
     // Enough room for the body of the UBX-SEC-UNIQID message
-    char message[9];
+    char message[10];
 
     if (gUGnssPrivateMutex != NULL) {
 
@@ -187,9 +188,13 @@ int32_t uGnssInfoGetIdStr(uDeviceHandle_t gnssHandle,
                                                                   0x27, 0x03,
                                                                   NULL, 0, message,
                                                                   sizeof(message));
-            if (errorCodeOrLength >= (int32_t) sizeof(message)) {
-                // The first byte of the first uint32_t should indicate version 1
-                if ((uUbxProtocolUint32Decode(message) & 0xFF) == 1) {
+            // For M9 and earlier (version 1) the body of the UBX-SEC-UNIQID
+            // message is only 9 bytes long, for M10 (version 2) it is 10 bytes
+            // long
+            if (errorCodeOrLength >= (int32_t) sizeof(message) - 1) {
+                // The first byte of the first uint32_t should indicate the version
+                version = uUbxProtocolUint32Decode(message) & 0xFF;
+                if ((version == 1) || (version == 2)) {
                     // The remaining bytes are the chip ID
                     errorCodeOrLength -= 4;
                     // Copy them in and add a terminator

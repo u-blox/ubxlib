@@ -1,0 +1,18 @@
+# Introduction
+This document describes the network arrangements of the automated test system.  There is nothing mandatory about any of this; provided the Jenkins master is able to open an SSH connection to any Jenkins agent, the Jenkins agents are able to open a TCP connection to the relatively small number of shared resources (RF/power switches etc.) and the SMEE Client is able to contact Github on the public internet, all should be good.
+
+# Description
+![network](/readme_images/network.png)
+- A router sits between the test system and the wider world, isolating and protecting it.
+- The LAN-side of the router uses the IP address range 10.10.2.x, with the router on 10.10.2.1.
+- The RF/power switches and all of the desktop-type PCs, including the one that the Jenkins master and SMEE client are running on, are statically assigned IP addresses in the range 10.10.2.200 to 10.10.2.254, PCs in the range 10.10.2.200 to 10.10.209 with the Jenkins master machine on 10.10.2.200 (so that it is easy to remember), the rest in the range 10.10.2.210 and up.
+- The Raspberry Pi 4's are statically assigned IP addresses in the range 10.10.2.100 to 10.10.2.199, the last digit of the static IP address being reflected in the host name used by that Raspberry Pi;  for instance `raspberrypi-100` has IP address 10.10.2.100 (this way it is easy to match an SSH connection to the real world).
+- All PCs and Raspberry Pis are labelled with their host name; should a host name not infer the host's IP address then the IP address should be on the label too.
+- IP addresses in the range 10.10.2.2 to 10.10.2.99 are assigned dynamically.
+
+# Set Up Hints
+- When moving a Windows agent onto the network, don't forget to tell Windows that this is a private network, or it will refuse to do anything useful.
+- When connecting a Raspberry Pi to the network, let it obtain an address by DHCP, assign the correct static address on the router, then SSH into the Raspberry Pi on the current address and persuade it to release and renew its IP address with `sudo ifconfig eth0 down; sudo ifconfig eth0 up`.
+- When moving a KMTronic Ethernet-based relay box onto the network, reset it and first connect it to a PC/laptop where you have disabled Wifi and \[temporarily\] hard-coded the laptop's Ethernet interface to 192.168.1.1; open a browser to 192.168.1.199 and configure the box to do DHCP, then on the router add a static address for it (take a photo of the Ethernet MAC address and then type it in) before connecting the KMTronic to the network.
+- When moving a MiniCircuits Ethernet-based RF switch onto the network, you _may_ need to first connect it to a laptop via USB and talk to it using [their application](https://www.minicircuits.com/softwaredownload/rfswitchcontroller.html) to configure it before connecting it to the network.
+- When moving a Nutaq network simulator onto the network, these things have a plethora of Ethernet connections in them: plug the network into the first of the two Ethernet ports on the front panel, then on the router move the assigned IP address to the correct static address and reboot the Nutaq box (the separate LTE application running on the Nutaq will be confused otherwise; you could possibly restart the application but if you have it starting on boot it is simpler to just reboot).  Repeat for the second Ethernet port on the front panel (e.g. assigned to the next-up IP address) so that they are both moved in case you ever plug into the wrong one.

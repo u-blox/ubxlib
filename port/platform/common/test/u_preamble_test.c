@@ -55,6 +55,7 @@
 #include "u_port_gpio.h"
 #endif
 #include "u_port_uart.h"
+#include "u_port_i2c.h"
 #include "u_port_crypto.h"
 
 #ifdef U_CFG_TEST_CELL_MODULE_TYPE
@@ -124,7 +125,7 @@ U_PORT_TEST_FUNCTION("[preamble]", "preambleHeapDefence")
 #if U_CFG_ENABLE_LOGGING
     int32_t heapPlatformLoss;
 #endif
-#if (U_CFG_TEST_UART_A >= 0) || (U_CFG_TEST_UART_B >= 0)
+#if (U_CFG_TEST_UART_A >= 0) || (U_CFG_TEST_UART_B >= 0) || (U_CFG_APP_GNSS_I2C >= 0)
     int32_t handle;
 #endif
     char buffer[64];
@@ -177,6 +178,14 @@ U_PORT_TEST_FUNCTION("[preamble]", "preambleHeapDefence")
                            U_CFG_TEST_PIN_UART_B_CTS,
                            U_CFG_TEST_PIN_UART_B_RTS);
     uPortUartClose(handle);
+#endif
+
+#if (U_CFG_APP_GNSS_I2C >= 0)
+    uPortI2cInit();
+    handle = uPortI2cOpen(U_CFG_APP_GNSS_I2C, U_CFG_APP_PIN_GNSS_SDA,
+                          U_CFG_APP_PIN_GNSS_SCL, true);
+    uPortI2cClose(handle);
+    uPortI2cDeinit();
 #endif
 
     // On some platforms (e.g. ESP-IDF) the crypto libraries

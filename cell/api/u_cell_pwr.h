@@ -182,6 +182,66 @@ extern "C" {
  * TYPES
  * -------------------------------------------------------------- */
 
+/** The possible 3GPP power saving states: not all modules that support
+ * 3GPP power saving are able to signal all states.
+ */
+typedef enum {
+    U_CELL_PWR_3GPP_POWER_SAVING_STATE_UNKNOWN = 0,
+    U_CELL_PWR_3GPP_POWER_SAVING_STATE_NOT_SUPPORTED, /**< 3GPP power saving
+                                                           is not supported
+                                                           by the module. */
+    U_CELL_PWR_3GPP_POWER_SAVING_STATE_AVAILABLE,    /**< 3GPP power saving is possible
+                                                          but is either not switched on
+                                                          or is not allowed by the
+                                                          network. */
+    U_CELL_PWR_3GPP_POWER_SAVING_STATE_AGREED_BY_NETWORK, /**< the 3GPP power
+                                                               saving parameters
+                                                               have been agreed
+                                                               with the network
+                                                               (use
+                                                               uCellPwrGet3gppPowerSaving()
+                                                               to read them)
+                                                               but 3GPP power
+                                                               saving is not
+                                                               currently active. */
+    U_CELL_PWR_3GPP_POWER_SAVING_STATE_BLOCKED_BY_NETWORK, /**< 3GPP power saving has been
+                                                                agreed with the network but
+                                                                is not currently allowed
+                                                                by the network (so the last
+                                                                registration indication
+                                                                received from the module does
+                                                                not include the 3GPP power
+                                                                saving parameters even though
+                                                                3GPP power saving was
+                                                                previously agreed). */
+    U_CELL_PWR_3GPP_POWER_SAVING_STATE_BLOCKED_BY_MODULE, /**< 3GPP power saving could be
+                                                               active but one or more
+                                                               applications (IP stack
+                                                               or MQTT or HTTP or LWM2M or
+                                                               GNSS) on the module is
+                                                               blocking it. */
+    U_CELL_PWR_3GPP_POWER_SAVING_STATE_ACTIVE,      /**< the cellular protocol stack on
+                                                         the module has entered 3GPP
+                                                         power saving. */
+    U_CELL_PWR_3GPP_POWER_SAVING_STATE_ACTIVE_DEEP_SLEEP_ACTIVE, /**< the cellular
+                                                                      protocol stack on
+                                                                      the module has
+                                                                      entered 3GPP power
+                                                                      saving and the
+                                                                      module HW has been
+                                                                      able to take
+                                                                      advantage of this
+                                                                      and has entered
+                                                                      deep sleep; this
+                                                                      state can only be
+                                                                      determined if a pin
+                                                                      of this MCU is
+                                                                      connected to the
+                                                                      VInt pin of the
+                                                                      module. */
+    U_CELL_PWR_3GPP_POWER_SAVING_STATE_MAX_NUM
+} uCellPwr3gppPowerSavingState_t;
+
 /* ----------------------------------------------------------------
  * FUNCTIONS
  * -------------------------------------------------------------- */
@@ -256,9 +316,7 @@ bool uCellPwrIsAlive(uDeviceHandle_t cellHandle);
  *                               If this function is forced to return
  *                               it is advisable to call
  *                               uCellPwrIsAlive() to confirm
- *                               the final state of the module. The
- *                               single int32_t parameter is the
- *                               cell handle.
+ *                               the final state of the module.
  * @return                       zero on success or negative error
  *                               code on failure.
  */
@@ -285,8 +343,7 @@ int32_t uCellPwrOn(uDeviceHandle_t cellHandle,
  *                               It is advisable for the callback
  *                               function to always return true,
  *                               allowing the cellular module to
- *                               power off cleanly. The single int32_t
- *                               parameter is the cell handle.
+ *                               power off cleanly.
  * @return                       zero on success or negative error
  *                               code on failure.
  */
@@ -327,9 +384,8 @@ int32_t uCellPwrOff(uDeviceHandle_t cellHandle,
  *                               It is advisable for the callback
  *                               function to always return true,
  *                               allowing the cellular module to
- *                               power off cleanly. The single int32_t
- *                               parameter is the cell handle.
- *                               Ignored if trulyHard is true.
+ *                               power off cleanly. Ignored if
+ *                               trulyHard is true.
  * @return                       zero on success or negative error
  *                               code on failure.
  */
@@ -375,9 +431,7 @@ bool uCellPwrRebootIsRequired(uDeviceHandle_t cellHandle);
  *                               If this function is forced to return
  *                               it is advisable to call
  *                               uCellPwrIsAlive() to confirm
- *                               the final state of the module. The
- *                               single int32_t parameter is the
- *                               cell handle.
+ *                               the final state of the module.
  * @return                       zero on success or negative error
  *                               code on failure.
  */
@@ -410,9 +464,9 @@ int32_t uCellPwrResetHard(uDeviceHandle_t cellHandle, int32_t pinReset);
  * normally handled automatically, using activity on the UART transmit
  * data line to wake-up the module, however this is not supported on
  * LARA-R6.
- * There is also a specific case with the SARA-R5 module that
- * needs to be handled differently: when the UART flow control lines
- * are connected and UART power saving is entered the CTS line of the
+ * There is also a specific case with the SARA-R5 module that needs
+ * to be handled differently: when the UART flow control lines are
+ * connected and UART power saving is entered the CTS line of the
  * SARA-R5 module floats high and this prevents "AT" being sent to the
  * module to wake it up again. This can be avoided by temporarily
  * suspending CTS operation through the uPortUartCtsSuspend() API but
@@ -424,10 +478,12 @@ int32_t uCellPwrResetHard(uDeviceHandle_t cellHandle, int32_t pinReset);
  * just after uCellAdd() or, in the common network API, by defining
  * the structure member pinDtrPowerSaving to be the MCU pin that is
  * connected to the DTR pin of the cellular module.
+ *
  * Note: the same problem exists for SARA-U201 modules and, in theory,
  * the same solution applies.  However, since we are not able to
  * regression test that configuration it is not currently marked as
  * supported in the configuration structure in u_cell_private.c.
+ *
  * Note: the cellular module _remembers_ the UART power saving mode
  * and so, if you should ever change a module from DTR power saving
  * to a different UART power saving mode, you must keep the DTR pin
@@ -480,7 +536,7 @@ int32_t uCellPwrGetDtrPowerSavingPin(uDeviceHandle_t cellHandle);
  * by this code when any API is called.  Note that this means it
  * is a requirement that pinPwrOn is connected to this MCU and was
  * set in the call to uCellAdd(), as that pin is used to wake the
- * module from deep sleep, and also either that the VInt pin is
+ * module from deep sleep, and also that the VInt pin is
  * connected to this MCU and was set in the uCellAdd() call, so
  * that this code can detect when deep sleep has been entered.
  * Some modules (e.g. SARA-R4) require a re-boot for the setting
@@ -490,6 +546,7 @@ int32_t uCellPwrGetDtrPowerSavingPin(uDeviceHandle_t cellHandle);
  * allowed to operate, i.e. do not define
  * U_CFG_CELL_DISABLE_UART_POWER_SAVING if you want 3GPP sleep to
  * work.
+ *
  * Note: there is a corner case with SARA-R422 which is that, after
  * waking up from deep sleep, it will not re-enter deep sleep until
  * a radio connection has been made and then released.
@@ -595,8 +652,8 @@ int32_t uCellPwrGet3gppPowerSaving(uDeviceHandle_t cellHandle,
  * @param[in] pCallback       a callback which will be called when
  *                            the assigned 3GPP power saving parameters
  *                            are changed by the network; the first
- *                            parameter will be cellHandle, the second
- *                            indicates whether 3GPP power saving
+ *                            parameter will be the cellular handle,
+ *                            the second indicates whether 3GPP power saving
  *                            is enabled or not, the third will be the
  *                            assigned active time in seconds, the
  *                            fourth the assigned periodic wake-up time
@@ -616,6 +673,29 @@ int32_t uCellPwrSet3gppPowerSavingCallback(uDeviceHandle_t cellHandle,
                                                               int32_t periodicWakeupSeconds,
                                                               void *pCallbackParam),
                                            void *pCallbackParam);
+
+/** Get the current state of 3GPP power saving.
+ *
+ * IMPORTANT: as explained in the comments against
+ * #uCellPwr3gppPowerSavingState_t and in the detailed description at
+ * the top of this file, 3GPP power saving and the sleep-state of the
+ * cellular module are _different_ things: 3GPP power saving can
+ * be active and the module can still be fully awake and consuming lots
+ * of power; please do not confuse the two.
+ *
+ * @param cellHandle        the handle of the cellular instance.
+ * @param[out] pApplication if the 3GPP power saving state is
+ *                          #U_CELL_PWR_3GPP_POWER_SAVING_STATE_BLOCKED_BY_MODULE
+ *                          then, if this parameter is non-NULL, it will be
+ *                          populated with the number of the application inside
+ *                          the module that is blocking entry to deep sleep; this
+ *                          number is module-specific, please refer to the power
+ *                          management section of the AT manual for your module
+ *                          for further information.
+ * @return                  the 3GPP power saving state.
+ */
+uCellPwr3gppPowerSavingState_t uCellPwrGet3gppPowerSavingState(uDeviceHandle_t cellHandle,
+                                                               int32_t *pApplication);
 
 /** Set the requested E-DRX parameters.  E-DRX is only effective
  * when the module is connected to the cellular network.  When
@@ -657,6 +737,7 @@ int32_t uCellPwrSet3gppPowerSavingCallback(uDeviceHandle_t cellHandle,
  * also allowed to operate, i.e. do not define
  * U_CFG_CELL_DISABLE_UART_POWER_SAVING if you want E-DRX to
  * work.
+ *
  * Note: there is a corner case if both 3GPP power saving and E-DRX
  * are applied, which is that if the module enters deep sleep
  * as a result of 3GPP power saving and then is awoken to do
@@ -775,8 +856,8 @@ int32_t uCellPwrGetEDrx(uDeviceHandle_t cellHandle,
  * @param cellHandle          the handle of the cellular instance.
  * @param[in] pCallback       a callback which will be called when
  *                            the E-DRX parameters change; the first
- *                            parameter will be cellHandle, the
- *                            second the RAT to which the E-DRX
+ *                            parameter will be the cellular handle,
+ *                            the second the RAT to which the E-DRX
  *                            parameters apply, the third whether
  *                            E-DRX is on or off for that RAT, the
  *                            fourth the requested E-DRX value in
@@ -818,8 +899,8 @@ int32_t uCellPwrSetEDrxCallback(uDeviceHandle_t cellHandle,
  *                             the module leaves deep sleep; use
  *                             NULL to remove a previous wake-up
  *                             callback; the first parameter to the
- *                             callback will be cellHandle, the
- *                             second will be pCallbackParam.
+ *                             callback will be the cellular Handle,
+ *                             the second will be pCallbackParam.
  * @param[in] pCallbackParam   a parameter that will be passed
  *                             to pCallbackParam as its second
  *                             parameter when it is called; may be
@@ -870,16 +951,14 @@ int32_t uCellPwrGetDeepSleepActive(uDeviceHandle_t cellHandle,
  *                               then the wake-up process will
  *                               be abandoned.  Even when
  *                               this callback returns false it
- *                               this function may still take some
- *                               10's of seconds to return in order
- *                               to ensure that the module is in a
+ *                               may still take some 10's of
+ *                               seconds to return in order to
+ *                               ensure that the module is in a
  *                               cleanly powered (or not) state.
  *                               If this function is forced to return
  *                               it is advisable to call
  *                               uCellPwrIsAlive() to confirm
- *                               the final state of the module. The
- *                               single int32_t parameter is the
- *                               cell handle.
+ *                               the final state of the module.
  * @return                       zero on success or negative error
  *                               code on failure.
  */

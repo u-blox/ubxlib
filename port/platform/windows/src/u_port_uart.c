@@ -92,10 +92,6 @@ typedef struct uPortUartData_t {
     uint32_t eventFilter;
     void (*pEventCallback)(int32_t, uint32_t, void *);
     void *pEventCallbackParam;
-    bool userNeedsNotify; /**< set this when all the data has
-                           * been read and hence the user
-                           * would like a notification
-                           * when new data arrives. */
     struct uPortUartData_t *pNext;
 } uPortUartData_t;
 
@@ -363,10 +359,8 @@ static DWORD handleThreadUartEvent(uPortUartData_t *pUartData,
     }
 
     if ((totalSize > 0) &&
-        (pUartData->userNeedsNotify) &&
         (pUartData->eventQueueHandle >= 0)) {
         // Call the user callback
-        pUartData->userNeedsNotify = false;
         event.uartHandle = pUartData->uartHandle;
         event.eventBitMap = U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED;
         event.pEventCallback = pUartData->pEventCallback;
@@ -421,7 +415,7 @@ static int32_t waitCommEventThread(void *pParam)
             // Finally, last in the array, add a timer that we can
             // use to periodically poll the UART for received data
             // in case we were unable to process any events (e.g.
-            // if our  buffer was full at the time).
+            // if our buffer was full at the time).
             eventHandles[2] = CreateWaitableTimer(NULL, false, NULL);
             if (eventHandles[2] != INVALID_HANDLE_VALUE) {
                 // Start the periodic timer, a relative timeout value
@@ -449,9 +443,9 @@ static int32_t waitCommEventThread(void *pParam)
                             // eventHandles[1] flag when something has happened
                             // while a terminate event might arrive on eventHandles[0]
                             // and the periodic poll timer on eventHandles[2]
-                            x = WaitForMultipleObjects(sizeof(eventHandles) / sizeof(eventHandles[0]),
-                                                       eventHandles,
-                                                       false, INFINITE);
+                            x = WaitForMultipleObjectsEx(sizeof(eventHandles) / sizeof(eventHandles[0]),
+                                                         eventHandles,
+                                                         false, INFINITE, true);
                             switch (x) {
                                 case WAIT_OBJECT_0 + 0:
                                     // Terminate thread was signalled
@@ -459,8 +453,7 @@ static int32_t waitCommEventThread(void *pParam)
                                     break;
                                 case WAIT_OBJECT_0 + 1:
                                     // UART event was signaled, go get it
-                                    // Have to provide x but it is not used
-                                    if (GetOverlappedResult(windowsUartHandle, &overlap, &x, true)) {
+                                    if (GetOverlappedResult(windowsUartHandle, &overlap, &uartEvent, true)) {
                                         handleThreadUartEvent(pUartData, uartEvent);
                                     }
                                     break;
@@ -565,7 +558,6 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
             pUartData = pUartAdd();
             if (pUartData != NULL) {
                 pUartData->markedForDeletion = false;
-                pUartData->userNeedsNotify = true;
                 pUartData->pRxBufferStart = (char *) pReceiveBuffer;
                 if (pUartData->pRxBufferStart == NULL) {
                     // Malloc memory for the read buffer
@@ -595,6 +587,8 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
                             dcb.Parity = NOPARITY;        //  parity bit
                             dcb.StopBits = ONESTOPBIT;    //  stop bit
                             dcb.fDtrControl = DTR_CONTROL_DISABLE;
+                            dcb.fOutX = false;  // make sure SW flow control is off both
+                            dcb.fInX = false;   // for output and input
                             dcb.fOutxCtsFlow = 0;
                             // On windows the CTS pin is simply a flag
                             // indicating whether CTS flow control should be on
@@ -631,15 +625,15 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
                                                                                                     false,
                                                                                                     NULL);
                                         if (pUartData->waitCommEventThreadTerminateHandle != INVALID_HANDLE_VALUE) {
-                                            // ...then create the WaitCom thread
-                                            pUartData->waitCommEventThreadHandle = CreateThread(NULL, 0,
-                                                                                                (LPTHREAD_START_ROUTINE) waitCommEventThread,
-                                                                                                (PVOID) pUartData->uartHandle,
-                                                                                                0, NULL);
-                                            if (pUartData->waitCommEventThreadHandle != INVALID_HANDLE_VALUE) {
-                                                // Now mask-in the receive event flag as that's the only
-                                                // one we support/care about
-                                                if (SetCommMask(pUartData->windowsUartHandle, EV_RXCHAR)) {
+                                            // Now mask-in the receive event flag as that's the only
+                                            // one we support/care about
+                                            if (SetCommMask(pUartData->windowsUartHandle, EV_RXCHAR)) {
+                                                // ...then create the WaitCom thread
+                                                pUartData->waitCommEventThreadHandle = CreateThread(NULL, 0,
+                                                                                                    (LPTHREAD_START_ROUTINE) waitCommEventThread,
+                                                                                                    (PVOID) pUartData->uartHandle,
+                                                                                                    0, NULL);
+                                                if (pUartData->waitCommEventThreadHandle != INVALID_HANDLE_VALUE) {
                                                     // Done!
                                                     handleOrErrorCode = pUartData->uartHandle;
                                                 }
@@ -733,10 +727,6 @@ int32_t uPortUartGetReceiveSize(int32_t handle)
                                    pUartData->pRxBufferRead) +
                                   (pRxBufferWrite - pUartData->pRxBufferStart);
             }
-
-            if (sizeOrErrorCode == 0) {
-                pUartData->userNeedsNotify = true;
-            }
         }
 
         U_PORT_MUTEX_UNLOCK(gMutex);
@@ -808,10 +798,6 @@ int32_t uPortUartRead(int32_t handle, void *pBuffer,
                     // Move the read pointer on
                     pUartData->pRxBufferRead += thisSize;
                 }
-            }
-
-            if (sizeOrErrorCode == 0) {
-                pUartData->userNeedsNotify = true;
             }
         }
 

@@ -50,8 +50,8 @@ extern "C" {
 
 #ifndef U_GNSS_MSG_RING_BUFFER_LENGTH_BYTES
 /** The size of the ring buffer that is used to hold messages
- * streamed (e.g. over I2C or UART) from the GNSS chip.  Should
- * be big enough to hold a few long messages from the device
+ * streamed (e.g. over I2C or UART or SPI) from the GNSS chip.
+ * Should be big enough to hold a few long messages from the device
  * while these are read asynchronously in task-space by the
  * application.
  */
@@ -61,7 +61,7 @@ extern "C" {
 #ifndef U_GNSS_RING_BUFFER_MAX_FILL_TIME_MS
 /** A useful maximum for the amount of time spent pulling
  * data into the ring buffer (for streamed sources such as
- * I2C and UART).
+ * I2C, UART or SPI).
  */
 # define U_GNSS_RING_BUFFER_MAX_FILL_TIME_MS 2000
 #endif
@@ -69,7 +69,7 @@ extern "C" {
 #ifndef U_GNSS_RING_BUFFER_MIN_FILL_TIME_MS
 /** A useful minimum for the amount of time spent pulling
  * data into the ring buffer (for streamed sources such as
- * I2C and UART), if you aren't just going to read what's
+ * I2C, UART or SPI), if you aren't just going to read what's
  * already there (in which case use 0).
  */
 # define U_GNSS_RING_BUFFER_MIN_FILL_TIME_MS 100
@@ -94,6 +94,10 @@ extern "C" {
  */
 #define U_GNSS_POS_TASK_FLAG_KEEP_GOING 0x02
 
+/** The value that constitues "no data" on SPI.
+ */
+#define U_GNSS_PRIVATE_SPI_FILL 0xFF
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -104,7 +108,8 @@ extern "C" {
 //lint -esym(756, uGnssPrivateFeature_t) Suppress not referenced,
 // Lint can't seem to find it inside macros.
 typedef enum {
-    U_GNSS_PRIVATE_FEATURE_CFGVALXXX
+    U_GNSS_PRIVATE_FEATURE_CFGVALXXX,
+    U_GNSS_PRIVATE_FEATURE_GEOFENCE
 } uGnssPrivateFeature_t;
 
 /** The characteristics that may differ between GNSS modules.
@@ -126,6 +131,7 @@ typedef enum {
     U_GNSS_PRIVATE_STREAM_TYPE_NONE,
     U_GNSS_PRIVATE_STREAM_TYPE_UART,
     U_GNSS_PRIVATE_STREAM_TYPE_I2C,
+    U_GNSS_PRIVATE_STREAM_TYPE_SPI,
     U_GNSS_PRIVATE_STREAM_TYPE_MAX_NUM
 } uGnssPrivateStreamType_t;
 
@@ -192,6 +198,8 @@ typedef struct uGnssPrivateInstance_t {
     const uGnssPrivateModule_t *pModule; /**< pointer to the module type. */
     uGnssTransportType_t transportType; /**< the type of transport to use. */
     uGnssTransportHandle_t transportHandle; /**< the handle of the transport to use. */
+    uRingBuffer_t *pSpiRingBuffer; /**< local ring buffer needed for SPI data received while we're sending. */
+    char *pSpiLinearBuffer; /**< the linear buffer that will be used by pSpiRingBuffer. */
     uRingBuffer_t ringBuffer; /**< the ring buffer where we put messages from the GNSS chip. */
     char *pLinearBuffer; /**< the linear buffer that will be used by ringBuffer. */
     char *pTemporaryBuffer; /**< a temporary buffer, used to get stuff into ringBuffer. */
@@ -199,6 +207,7 @@ typedef struct uGnssPrivateInstance_t {
     int32_t ringBufferReadHandleMsgReceive; /**< the read handle for uGnssUtilTransparentReceive(). */
     uint16_t i2cAddress; /**< the I2C address of the GNSS chip, only relevant if the transport is I2C. */
     int32_t timeoutMs; /**< the timeout for responses from the GNSS chip in milliseconds. */
+    int32_t spiFillThreshold; /**< the number of 0xFF fill bytes which constitute "no data" on SPI. */
     bool printUbxMessages; /**< whether debug printing of UBX messages is on or off. */
     int32_t pinGnssEnablePower; /**< the pin of the MCU that enables power to the GNSS module. */
     int32_t pinGnssEnablePowerOnState; /**< the value to set pinGnssEnablePower to for "on". */
@@ -300,9 +309,6 @@ int32_t uGnssPrivateGetProtocolOut(uGnssPrivateInstance_t *pInstance);
  *                       with onNotOff set to false will return an error).
  *                       UBX protocol output cannot be switched off
  *                       since it is used by this code.
- *                       The range of the parameter is NOT checked, hence
- *                       you may set a value which is known to the GNSS
- *                       chip but not to this code.
  * @param onNotOff       whether the given protocol should be on or off.
  * @return               zero on succes or negative error code.
  */
@@ -389,31 +395,40 @@ bool uGnssPrivateMessageIdIsWanted(uGnssPrivateMessageId_t *pMessageId,
  * FUNCTIONS: STREAMING TRANSPORT ONLY
  * -------------------------------------------------------------- */
 
-/** Get the stream type from a given GNSS transport type.
+/** Get the private stream type from a given GNSS transport type.
  *
  * @param transportType the GNSS transport type.
- * @return              the stream type or negative error
- *                      code if transportType is not a streaming transport type.
+ * @return              the prviate stream type or negative error
+ *                      code if transportType is not a streaming
+ *                      transport type.
  */
 int32_t uGnssPrivateGetStreamType(uGnssTransportType_t transportType);
 
-/** Get the number of bytes waiting for us from the GNSS chip when using
- * a streaming transport (e.g. UART or I2C).
+/** Get the stream handle from the GNSS transport handle.
  *
- * @param streamHandle  the handle of the streaming transport.
- * @param streamType    the streaming transport type.
- * @param i2cAddress    the I2C address of the GNSS device, must be
- *                      populated if streamType is
- *                      #U_GNSS_PRIVATE_STREAM_TYPE_I2C.
- * @return              the number of bytes available to be received,
- *                      else negative error code.
+ * @param privateStreamType  the private stream type.
+ * @param transportHandle    the transport handle union.
+ * @return                   the stream handle else negative error.
  */
-int32_t uGnssPrivateStreamGetReceiveSize(int32_t streamHandle,
-                                         uGnssPrivateStreamType_t streamType,
-                                         uint16_t i2cAddress);
+int32_t uGnssPrivateGetStreamHandle(uGnssPrivateStreamType_t privateStreamType,
+                                    uGnssTransportHandle_t transportHandle);
+
+/** Get the number of bytes waiting for us from the GNSS chip when using
+ * a streaming transport (e.g. UART or I2C or SPI).
+ *
+ * Note: in the case of SPI it is not possible to determine whether
+ * there is any data to be received without actually reading it, hence
+ * this function does that and stores the data the internal pSpiRingBuffer
+ * from which the caller can extract it.
+ *
+ * @param[in] pInstance  a pointer to the GNSS instance, cannot be NULL.
+ * @return               the number of bytes available to be received,
+ *                       else negative error code.
+ */
+int32_t uGnssPrivateStreamGetReceiveSize(uGnssPrivateInstance_t *pInstance);
 
 /** Fill the internal ring buffer with as much data as possible from
- * the GNSS chip when using a streaming transport (e.g. UART or I2C).
+ * the GNSS chip when using a streaming transport (e.g. UART or I2C or SPI).
  *
  * Note that the total maximum time that this function might take is
  * timeoutMs + maxTimeMs.  For a "quick check", to just read in a
@@ -536,7 +551,8 @@ int32_t uGnssPrivateStreamPeekRingBuffer(uGnssPrivateInstance_t *pInstance,
                                          size_t offset,
                                          int32_t maxTimeMs);
 
-/** Send a UBX format message over UART or I2C (do not wait for the response).
+/** Send a UBX format message over UART or I2C or SPI (do not wait for the
+ * response).
  *
  * Note: gUGnssPrivateMutex should be locked before this is called.
  *
@@ -552,7 +568,7 @@ int32_t uGnssPrivateStreamPeekRingBuffer(uGnssPrivateInstance_t *pInstance,
  *                                   UBX protocol coding overhead, else negative
  *                                   error code.
  */
-int32_t uGnssPrivateSendOnlyStreamUbxMessage(const uGnssPrivateInstance_t *pInstance,
+int32_t uGnssPrivateSendOnlyStreamUbxMessage(uGnssPrivateInstance_t *pInstance,
                                              int32_t messageClass,
                                              int32_t messageId,
                                              const char *pMessageBody,
@@ -645,6 +661,22 @@ int32_t uGnssPrivateReceiveStreamMessage(uGnssPrivateInstance_t *pInstance,
                                          char **ppBuffer, size_t size,
                                          int32_t timeoutMs,
                                          bool (*pKeepGoingCallback)(uDeviceHandle_t gnssHandle));
+
+/** Add received data to the internal SPI buffer.
+ *
+ * Note: gUGnssPrivateMutex should be locked before this is called.
+ *
+ * @param[in] pInstance a pointer to the GNSS instance, cannot be NULL.
+ * @param[in] pBuffer   pointer to the data to be added.
+ * @param size          the amount of data at pBuffer.
+ * @return              the amount of data now available in the internal
+ *                      SPI buffer, else negative error code; note that
+ *                      this may be less than "size" bytes if a GNSS SPI
+ *                      fill threshold is in use (see
+ *                      uGnssSetSpiFillThreshold()).
+ */
+int32_t uGnssPrivateSpiAddReceivedData(uGnssPrivateInstance_t *pInstance,
+                                       const char *pBuffer, size_t size);
 
 /* ----------------------------------------------------------------
  * FUNCTIONS: ANY TRANSPORT

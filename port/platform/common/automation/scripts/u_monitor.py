@@ -11,16 +11,16 @@ import threading
 import os
 from datetime import datetime
 from time import time, ctime, sleep
+from typing import List
+from dataclasses import dataclass, field
+from curses import ascii
+import traceback
 import subprocess
 import psutil
 import serial                # Pyserial (make sure to do pip install pyserial)
+from lxml import etree
 from scripts import u_report, u_utils
 from scripts.u_logging import ULog
-from typing import List
-from dataclasses import dataclass, field
-from lxml import etree
-from curses import ascii
-import traceback
 
 # Prefix to put at the start of all prints
 PROMPT = "u_monitor"
@@ -135,7 +135,7 @@ def record_outcome(results: TestResults, status, reporter, message=None):
                        "passed" if status == "PASS" else status, \
                        results.current.end_time.time(), \
                        results.current.duration)
-        U_LOG.info("progress update - item {}.".format(string))
+        U_LOG.info(f"progress update - item {string}.")
 
         if message:
             string += f": {message}"
@@ -348,7 +348,7 @@ def start_exe(exe_name):
         }
         return_value = subprocess.Popen(exe_name, **popen_keywords)
     except (ValueError, serial.SerialException, WindowsError):
-        U_LOG.error("{} failed.".format(text))
+        U_LOG.error(f"{text} failed.")
     return return_value
 
 # Send the given string before running, only used on ESP32 platforms.
@@ -377,10 +377,10 @@ def esp32_send_first(send_string, in_handle, connection_type):
             if line is not None:
                 U_LOG.info(line)
         # Now send the string
-        U_LOG.info("sending {}".format(send_string))
+        U_LOG.info(f"sending {send_string}")
         in_handle.write(send_string.encode("ascii"))
         in_handle.write("\r\n".encode("ascii"))
-        U_LOG.info("run started on {}.".format(ctime(time())))
+        U_LOG.info(f"run started on {ctime(time())}.")
         success = True
     except serial.SerialException as ex:
         U_LOG.error("{} while accessing port {}: {}.".
@@ -544,7 +544,7 @@ def main(connection_handle, connection_type, guard_time_seconds,
                 # Now write the XML tree to file
                 tree.write(file, encoding='utf-8', pretty_print=True)
 
-    U_LOG.info("end with return value {}.".format(return_value))
+    U_LOG.info(f"end with return value {return_value}.")
 
     return return_value
 

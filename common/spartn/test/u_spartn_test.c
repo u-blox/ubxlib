@@ -433,6 +433,7 @@ U_PORT_TEST_FUNCTION("[spartn]", "spartnMessage")
     }
 
     // Check that we can call the functions with pMessage left as NULL
+    memcpy(pBuffer, gpSpartnMessage, sizeof(gpSpartnMessage));
     U_PORT_TEST_ASSERT(uSpartnDetect(pBuffer,
                                      U_SPARTN_TEST_BUFFER_SIZE_BYTES,
                                      NULL) == sizeof(gpSpartnMessage));
