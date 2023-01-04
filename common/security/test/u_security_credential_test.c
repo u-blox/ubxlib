@@ -45,8 +45,9 @@
 #include "u_port_os.h"
 
 #ifdef U_CFG_TEST_CELL_MODULE_TYPE
-#include "u_cell_module_type.h"
-#include "u_cell_test_cfg.h" // For the cellular test macros
+# include "u_cell_module_type.h"
+# include "u_cell_test_cfg.h" // For the cellular test macros
+# include "u_cell_file.h"
 #endif
 
 #include "u_network.h"
@@ -420,6 +421,89 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialTest")
         U_PORT_TEST_ASSERT(z == otherCredentialCount + 1);
         U_TEST_PRINT_LINE_X("%d credential(s) listed.", x, z);
 
+        if (pTmp->networkType == U_NETWORK_TYPE_CELL) {
+#ifdef U_CFG_TEST_CELL_MODULE_TYPE
+            // For a cellular module, save the file to the module's file system and then
+            // import it from there as a certificate
+            U_TEST_PRINT_LINE_X("writing certificate to file system and importing it from there.", x);
+            // Delete first, just in case
+            uCellFileDelete(devHandle, "ubxlib_test_cert_file");
+            U_PORT_TEST_ASSERT(uCellFileWrite(devHandle, "ubxlib_test_cert_file",
+                                              (const char *) gUSecurityCredentialTestClientX509Pem,
+                                              gUSecurityCredentialTestClientX509PemSize) == gUSecurityCredentialTestClientX509PemSize);
+            U_PORT_TEST_ASSERT(uSecurityCredentialImportFromFile(devHandle,
+                                                                 U_SECURITY_CREDENTIAL_CLIENT_X509,
+                                                                 "ubxlib_test_cert",
+                                                                 "ubxlib_test_cert_file",
+                                                                 NULL, hash) == 0);
+            U_PORT_TEST_ASSERT(uCellFileDelete(devHandle, "ubxlib_test_cert_file") == 0);
+            // Read MD5 hash and compare with expected
+            U_TEST_PRINT_LINE_X("reading MD5 hash of certificate...", x);
+            U_PORT_TEST_ASSERT(uSecurityCredentialGetHash(devHandle,
+                                                          U_SECURITY_CREDENTIAL_CLIENT_X509,
+                                                          "ubxlib_test_cert",
+                                                          buffer) == 0);
+            // Compare
+            U_TEST_PRINT_LINE_X("checking MD5 hash of certificate...", x);
+            for (size_t y = 0; y < sizeof(buffer); y++) {
+                U_PORT_TEST_ASSERT((uint8_t) buffer[y] == hash[y]);
+            }
+
+            // Check that the certificate is listed
+            U_TEST_PRINT_LINE_X("listing credentials...", x);
+            z = 0;
+            for (int32_t y = uSecurityCredentialListFirst(devHandle, &credential);
+                 y >= 0;
+                 y = uSecurityCredentialListNext(devHandle, &credential)) {
+                if (strcmp(credential.name, "ubxlib_test_key") != 0) {
+                    // Do the check above in case there's a ubxlib_test_key
+                    // left in the system from a previous test
+                    z++;
+                }
+                U_TEST_PRINT_LINE_X_Y("credential name \"%s\".", x, z, credential.name);
+                U_TEST_PRINT_LINE_X_Y("type %d.", x, z, credential.type);
+                U_TEST_PRINT_LINE_X_Y("subject \"%s\".", x, z, credential.subject);
+                U_TEST_PRINT_LINE_X_Y("expiration %d UTC.", x, z, credential.expirationUtc);
+                if (strcmp(credential.name, "ubxlib_test_cert") == 0) {
+                    U_PORT_TEST_ASSERT(credential.type == U_SECURITY_CREDENTIAL_CLIENT_X509);
+                    // Used to check the subject here but V5 uConnectExpress doesn't
+                    // give what we would expect (the subject of ubxlib_test_cert should
+                    // be "ubxlib client" but uConnectExpress V5 has it as "CN=ubxlib ca",
+                    // while earlier version of uConnectExpress don't report it at all),
+                    // so we can't check it
+                    if (credential.expirationUtc != 0) {
+                        U_PORT_TEST_ASSERT(credential.expirationUtc == U_SECURITY_CREDENTIAL_TEST_X509_EXPIRATION_UTC);
+                    }
+                }
+            }
+            U_PORT_TEST_ASSERT(z == otherCredentialCount + 1);
+            U_TEST_PRINT_LINE_X("%d credential(s) listed.", x, z);
+            // Delete the certificate
+            U_TEST_PRINT_LINE_X("deleting certificate...", x);
+            U_PORT_TEST_ASSERT(uSecurityCredentialRemove(devHandle,
+                                                         U_SECURITY_CREDENTIAL_CLIENT_X509,
+                                                         "ubxlib_test_cert") == 0);
+
+            // Check that it is no longer listed
+            U_TEST_PRINT_LINE_X("listing credentials...", x);
+            z = 0;
+            for (int32_t y = uSecurityCredentialListFirst(devHandle, &credential);
+                 y >= 0;
+                 y = uSecurityCredentialListNext(devHandle, &credential)) {
+                z++;
+                U_TEST_PRINT_LINE_X_Y("credential name \"%s\".", x, z, credential.name);
+                U_TEST_PRINT_LINE_X_Y("type %d.", x, z, credential.type);
+                U_PORT_TEST_ASSERT(strcmp(credential.name, "ubxlib_test_cert") != 0);
+                if (strcmp(credential.name, "ubxlib_test_key") == 0) {
+                    U_PORT_TEST_ASSERT(credential.type == U_SECURITY_CREDENTIAL_CLIENT_KEY_PRIVATE);
+                    U_PORT_TEST_ASSERT(strcmp(credential.subject, "") == 0);
+                    U_PORT_TEST_ASSERT(credential.expirationUtc == 0);
+                }
+            }
+            U_PORT_TEST_ASSERT(z == otherCredentialCount + 1);
+            U_TEST_PRINT_LINE_X("%d credential(s) listed.", x, z);
+#endif
+        }
         // Delete the security key with a bad name
         U_TEST_PRINT_LINE_X("deleting private key with bad name...", x);
         U_PORT_TEST_ASSERT(uSecurityCredentialRemove(devHandle,

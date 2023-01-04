@@ -317,23 +317,22 @@ static size_t stripWhitespace(char *pString, size_t stringLength)
     return newLength;
 }
 
-/* ----------------------------------------------------------------
- * PUBLIC FUNCTIONS
- * -------------------------------------------------------------- */
-
-// Store the given X.509 certificate or security key.
-int32_t uSecurityCredentialStore(uDeviceHandle_t devHandle,
-                                 uSecurityCredentialType_t type,
-                                 const char *pName,
-                                 const char *pContents,
-                                 size_t size,
-                                 const char *pPassword,
-                                 char *pMd5)
+// Store an X.509 certificate or security key from buffer or file.
+static int32_t securityCredentialStoreOrImport(uDeviceHandle_t devHandle,
+                                               uSecurityCredentialType_t type,
+                                               const char *pName,
+                                               const char *pContents,
+                                               size_t size,
+                                               const char *pFileName,
+                                               const char *pPassword,
+                                               char *pMd5)
 {
     uAtClientHandle_t atHandle;
     int32_t errorCode = getAtClient(devHandle, &atHandle);
     char hashHexRead[U_SECURITY_CREDENTIAL_MD5_LENGTH_BYTES * 2 + 1]; // +1 for terminator
     int32_t hashHexReadSize;
+    int32_t operation = 0;
+    bool outgoingPartSuccessful = true;
 
     if (errorCode == 0) {
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
@@ -345,35 +344,53 @@ int32_t uSecurityCredentialStore(uDeviceHandle_t devHandle,
             ((size > 0) || (pContents == NULL)) &&
             (size <= U_SECURITY_CREDENTIAL_MAX_LENGTH_BYTES) &&
             ((pPassword == NULL) ||
-             ((pContents != NULL) &&
+             (((pContents != NULL) || (pFileName != NULL)) &&
               (type == U_SECURITY_CREDENTIAL_CLIENT_KEY_PRIVATE) &&
               (strlen(pPassword) <= U_SECURITY_CREDENTIAL_PASSWORD_MAX_LENGTH_BYTES)))) {
-            if (pContents != NULL) {
+            if ((pContents != NULL) || (pFileName != NULL)) {
+                if (pFileName != NULL) {
+                    operation = 1;
+                }
                 errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
                 // Do the USECMNG thang with the AT interface
                 uAtClientLock(atHandle);
                 uAtClientCommandStart(atHandle, "AT+USECMNG=");
                 // Write credential operation
-                uAtClientWriteInt(atHandle, 0);
+                uAtClientWriteInt(atHandle, operation);
                 // Type
                 uAtClientWriteInt(atHandle, (int32_t) type);
                 // Name
                 uAtClientWriteString(atHandle, pName, true);
-                // Number of bytes to follow
-                uAtClientWriteInt(atHandle, (int32_t) size);
+                if (pFileName != NULL) {
+                    // File name
+                    uAtClientWriteString(atHandle, pFileName, true);
+                } else {
+                    // Number of bytes to follow
+                    uAtClientWriteInt(atHandle, (int32_t) size);
+                }
                 if (pPassword) {
                     // Password, if present
                     uAtClientWriteString(atHandle, pPassword, true);
                 }
                 uAtClientCommandStop(atHandle);
-                // Wait for the prompt
-                if (uAtClientWaitCharacter(atHandle, '>') == 0) {
-                    // Allow plenty of time for this to complete
-                    uAtClientTimeoutSet(atHandle, 10000);
-                    // Wait for it...
-                    uPortTaskBlock(50);
-                    // Write the contents
-                    uAtClientWriteBytes(atHandle, pContents, size, true);
+                if (pContents != NULL) {
+                    // Gonna store from buffer, wait for the prompt
+                    if (uAtClientWaitCharacter(atHandle, '>') == 0) {
+                        // Allow plenty of time for this to complete
+                        uAtClientTimeoutSet(atHandle, 10000);
+                        // Wait for it...
+                        uPortTaskBlock(50);
+                        // Write the contents
+                        uAtClientWriteBytes(atHandle, pContents, size, true);
+                    } else {
+                        // Best to tidy whatever might have arrived instead
+                        // of the prompt before exiting
+                        uAtClientResponseStop(atHandle);
+                        uAtClientUnlock(atHandle);
+                        outgoingPartSuccessful = false;
+                    }
+                }
+                if (outgoingPartSuccessful) {
                     // Grab the response
                     uAtClientResponseStart(atHandle, "+USECMNG:");
                     // Skip the first three parameters
@@ -395,11 +412,6 @@ int32_t uSecurityCredentialStore(uDeviceHandle_t devHandle,
                             errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
                         }
                     }
-                } else {
-                    // Best to tidy whatever might have arrived instead
-                    // of the prompt before exitting
-                    uAtClientResponseStop(atHandle);
-                    uAtClientUnlock(atHandle);
                 }
             } else {
                 // Nothing to do
@@ -409,6 +421,37 @@ int32_t uSecurityCredentialStore(uDeviceHandle_t devHandle,
     }
 
     return errorCode;
+}
+
+/* ----------------------------------------------------------------
+ * PUBLIC FUNCTIONS
+ * -------------------------------------------------------------- */
+
+// Store the given X.509 certificate or security key from a buffer.
+int32_t uSecurityCredentialStore(uDeviceHandle_t devHandle,
+                                 uSecurityCredentialType_t type,
+                                 const char *pName,
+                                 const char *pContents,
+                                 size_t size,
+                                 const char *pPassword,
+                                 char *pMd5)
+{
+    return securityCredentialStoreOrImport(devHandle, type, pName,
+                                           pContents, size, NULL,
+                                           pPassword, pMd5);
+}
+
+// Import the given X.509 certificate or security key from a file.
+int32_t uSecurityCredentialImportFromFile(uDeviceHandle_t devHandle,
+                                          uSecurityCredentialType_t type,
+                                          const char *pName,
+                                          const char *pFileName,
+                                          const char *pPassword,
+                                          char *pMd5)
+{
+    return securityCredentialStoreOrImport(devHandle, type, pName,
+                                           NULL, 0, pFileName,
+                                           pPassword, pMd5);
 }
 
 // Read the MD5 hash of a stored X.509 certificate
