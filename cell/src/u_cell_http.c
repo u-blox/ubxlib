@@ -506,81 +506,89 @@ int32_t uCellHttpOpen(uDeviceHandle_t cellHandle, const char *pServerName,
                             pHttpInstance->pCallback = pCallback;
                             pHttpInstance->pCallbackParam = pCallbackParam;
                             atHandle = pCellInstance->atHandle;
-                            // Determine if the server name given
-                            // is an IP address or a domain name
-                            // by processing it as an IP address
-                            memset(&address, 0, sizeof(address));
-                            if (uSockStringToAddress(pServerName,
-                                                     &address) == 0) {
-                                // We have an IP address
-                                // Convert the bit that isn't a port
-                                // number back into a string
-                                if (uSockIpAddressToString(&(address.ipAddress),
-                                                           pServerNameTmp,
-                                                           U_CELL_HTTP_SERVER_NAME_MAX_LEN_BYTES + 1) > 0) {
-                                    // Set the server IP address
-                                    errorCodeOrHandle = doUhttpString(atHandle, profileId, 0, pServerNameTmp);
-                                    // The server port number is written later
+                            // Reset the HTTP profile
+                            uAtClientLock(atHandle);
+                            uAtClientCommandStart(atHandle, "AT+UHTTP=");
+                            uAtClientWriteInt(atHandle, profileId);
+                            uAtClientCommandStopReadResponse(atHandle);
+                            errorCodeOrHandle = uAtClientUnlock(atHandle);
+                            if (errorCodeOrHandle == 0) {
+                                // Determine if the server name given
+                                // is an IP address or a domain name
+                                // by processing it as an IP address
+                                memset(&address, 0, sizeof(address));
+                                if (uSockStringToAddress(pServerName,
+                                                         &address) == 0) {
+                                    // We have an IP address
+                                    // Convert the bit that isn't a port
+                                    // number back into a string
+                                    if (uSockIpAddressToString(&(address.ipAddress),
+                                                               pServerNameTmp,
+                                                               U_CELL_HTTP_SERVER_NAME_MAX_LEN_BYTES + 1) > 0) {
+                                        // Set the server IP address
+                                        errorCodeOrHandle = doUhttpString(atHandle, profileId, 0, pServerNameTmp);
+                                        // The server port number is written later
+                                    }
+                                } else {
+                                    // We must have a domain name,
+                                    // make a copy of it as we need to
+                                    // manipulate it
+                                    strncpy(pServerNameTmp, pServerName,
+                                            U_CELL_HTTP_SERVER_NAME_MAX_LEN_BYTES);
+                                    // Grab any port number off the end
+                                    // and then remove it from the string
+                                    address.port = uSockDomainGetPort(pServerNameTmp);
+                                    pTmp = pUSockDomainRemovePort(pServerNameTmp);
+                                    // Set the domain name address
+                                    errorCodeOrHandle = doUhttpString(atHandle, profileId, 1, pTmp);
                                 }
-                            } else {
-                                // We must have a domain name,
-                                // make a copy of it as we need to
-                                // manipulate it
-                                strncpy(pServerNameTmp, pServerName,
-                                        U_CELL_HTTP_SERVER_NAME_MAX_LEN_BYTES);
-                                // Grab any port number off the end
-                                // and then remove it from the string
-                                address.port = uSockDomainGetPort(pServerNameTmp);
-                                pTmp = pUSockDomainRemovePort(pServerNameTmp);
-                                // Set the domain name address
-                                errorCodeOrHandle = doUhttpString(atHandle, profileId, 1, pTmp);
-                            }
-                            if (errorCodeOrHandle == 0) {
-                                if (address.port == 0) {
-                                    address.port = 80;
+                                if (errorCodeOrHandle == 0) {
+                                    if (address.port == 0) {
+                                        address.port = 80;
+                                    }
+                                    // If that went well, write the server port number
+                                    errorCodeOrHandle = doUhttpInteger(atHandle, profileId, 5, address.port);
                                 }
-                                // If that went well, write the server port number
-                                errorCodeOrHandle = doUhttpInteger(atHandle, profileId, 5, address.port);
-                            }
-                            if ((errorCodeOrHandle == 0) && (pUserName != NULL)) {
-                                // Deal with credentials: user name
-                                errorCodeOrHandle = doUhttpString(atHandle, profileId, 2, pUserName);
-                            }
-                            if ((errorCodeOrHandle == 0) && (pPassword != NULL)) {
-                                // Deal with credentials: password
-                                errorCodeOrHandle = doUhttpString(atHandle, profileId, 3, pPassword);
-                            }
-                            if (errorCodeOrHandle == 0) {
-                                // Deal with credentials: set the authentication type
-                                if (pUserName != NULL) {
-                                    authenticationType = 1;
+                                if ((errorCodeOrHandle == 0) && (pUserName != NULL)) {
+                                    // Deal with credentials: user name
+                                    errorCodeOrHandle = doUhttpString(atHandle, profileId, 2, pUserName);
                                 }
-                                errorCodeOrHandle = doUhttpInteger(atHandle, profileId, 4, authenticationType);
-                            }
-                            if (errorCodeOrHandle == 0) {
-                                // Finally: set the timeout.
-                                errorCodeOrHandle = doUhttpInteger(atHandle, profileId, 7, timeoutSeconds);
-                            }
-                            if (errorCodeOrHandle == 0) {
-                                // Done: hook in the URC
-                                errorCodeOrHandle = uAtClientSetUrcHandler(atHandle, "+UUHTTPCR:",
-                                                                           UUHTTPCR_urc, pCellInstance);
-                            }
-                            if (errorCodeOrHandle == 0) {
-                                // Slot us into the linked list
+                                if ((errorCodeOrHandle == 0) && (pPassword != NULL)) {
+                                    // Deal with credentials: password
+                                    errorCodeOrHandle = doUhttpString(atHandle, profileId, 3, pPassword);
+                                }
+                                if (errorCodeOrHandle == 0) {
+                                    // Deal with credentials: set the authentication type
+                                    if (pUserName != NULL) {
+                                        authenticationType = 1;
+                                    }
+                                    errorCodeOrHandle = doUhttpInteger(atHandle, profileId, 4, authenticationType);
+                                }
+                                if (errorCodeOrHandle == 0) {
+                                    // Finally: set the timeout.
+                                    errorCodeOrHandle = doUhttpInteger(atHandle, profileId, 7, timeoutSeconds);
+                                }
+                                if (errorCodeOrHandle == 0) {
+                                    // Done: hook in the URC
+                                    errorCodeOrHandle = uAtClientSetUrcHandler(atHandle, "+UUHTTPCR:",
+                                                                               UUHTTPCR_urc, pCellInstance);
+                                }
+                                if (errorCodeOrHandle == 0) {
+                                    // Slot us into the linked list
 
-                                U_PORT_MUTEX_LOCK(pHttpContext->linkedListMutex);
+                                    U_PORT_MUTEX_LOCK(pHttpContext->linkedListMutex);
 
-                                pHttpInstance->pNext = pHttpContext->pInstanceList;
-                                pHttpContext->pInstanceList = pHttpInstance;
+                                    pHttpInstance->pNext = pHttpContext->pInstanceList;
+                                    pHttpContext->pInstanceList = pHttpInstance;
 
-                                U_PORT_MUTEX_UNLOCK(pHttpContext->linkedListMutex);
+                                    U_PORT_MUTEX_UNLOCK(pHttpContext->linkedListMutex);
 
-                                // Return the profile ID as the handle
-                                errorCodeOrHandle = profileId;
-                            } else {
-                                // Free memory
-                                uPortFree(pHttpInstance);
+                                    // Return the profile ID as the handle
+                                    errorCodeOrHandle = profileId;
+                                } else {
+                                    // Free memory
+                                    uPortFree(pHttpInstance);
+                                }
                             }
                         }
                         // Free temporary memory
