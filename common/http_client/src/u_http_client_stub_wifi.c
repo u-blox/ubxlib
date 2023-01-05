@@ -21,11 +21,15 @@
  */
 
 /** @file
- * @brief Stubs to allow the network API to be compiled without Wi-Fi;
- * if you call a Wi-Fi API function from the source code here you must also
- * include a weak stub for it which will return #U_ERROR_COMMON_NOT_SUPPORTED
- * for when Wi-Fi is not included in the build.
+ * @brief Stubs to allow the HTTP Client API to be compiled without Wi-Fi;
+ * if you call a Wi-Fi API function from the source code here you must
+ * also include a weak stub for it which will return
+ * #U_ERROR_COMMON_NOT_SUPPORTED when Wi-Fi is not included in the build.
  */
+
+#ifdef U_CFG_OVERRIDE
+# include "u_cfg_override.h" // For a customer's configuration override
+#endif
 
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
@@ -33,27 +37,10 @@
 
 #include "u_compiler.h" // U_WEAK
 #include "u_error_common.h"
-#include "u_network.h"
-#include "u_network_config_wifi.h"
-#include "u_network_private_wifi.h"
+#include "u_device.h"
 
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-U_WEAK int32_t uNetworkPrivateChangeStateWifi(uDeviceHandle_t devHandle,
-                                              const uNetworkCfgWifi_t *pCfg,
-                                              bool upNotDown)
-{
-    (void) devHandle;
-    (void) pCfg;
-    (void) upNotDown;
-    return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
-}
-
-U_WEAK int32_t uNetworkSetStatusCallbackWifi(uDeviceHandle_t devHandle)
-{
-    (void) devHandle;
-    return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
-}
 // End of file

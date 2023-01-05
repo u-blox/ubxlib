@@ -100,6 +100,18 @@ extern "C" {
 typedef void (*uWifiSockCallback_t)(uDeviceHandle_t devHandle, int32_t sockHandle);
 
 /* ----------------------------------------------------------------
+ * FUNCTIONS:  WORKAROUND FOR LINKER ISSUE
+ * -------------------------------------------------------------- */
+
+/** Workaround for Espressif linker missing out files that
+ * only contain functions which also have weak alternatives
+ * (see https://www.esp32.com/viewtopic.php?f=13&t=8418&p=35899).
+ *
+ * You can ignore this function.
+ */
+void uWifiSockPrivateLink(void);
+
+/* ----------------------------------------------------------------
  * FUNCTIONS: INIT/DEINIT
  * -------------------------------------------------------------- */
 

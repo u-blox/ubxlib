@@ -2058,6 +2058,15 @@ static int32_t readMessage(const uCellPrivateInstance_t *pInstance,
 }
 
 /* ----------------------------------------------------------------
+ * PUBLIC FUNCTIONS: WORKAROUND FOR LINKER ISSUE
+ * -------------------------------------------------------------- */
+
+void uCellMqttPrivateLink()
+{
+    //dummy
+}
+
+/* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS: MQTT AND MQTT-SN
  * -------------------------------------------------------------- */
 

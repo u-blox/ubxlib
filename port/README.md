@@ -41,8 +41,6 @@ Available features currently are:
 * `cell`: Include `cell` API
 * `gnss`: Include `gnss` API
 
-**IMPORTANT:** This is under development so `short_range`, `cell` and `gnss` must currently always be enabled.
-
 ## Example
 ```cmake
 set(UBXLIB_BASE <path_to_ubxlib>)

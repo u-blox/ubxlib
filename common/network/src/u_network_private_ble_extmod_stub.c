@@ -21,16 +21,19 @@
  */
 
 /** @file
- * @brief Stub of the ble portion of the network API.
- * Include this if the ble network is not used in the application.
+ * @brief Stubs to allow the network API to be compiled without BLE;
+ * if you call a BLE API function from the source code here you must
+ * also include a weak stub for it which will return
+ * #U_ERROR_COMMON_NOT_SUPPORTED when BLE is not included in the
+ * build.
  */
 
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 
+#include "u_compiler.h" // U_WEAK
 #include "u_error_common.h"
-
 #include "u_network.h"
 #include "u_network_config_ble.h"
 #include "u_network_private_ble.h"
@@ -39,20 +42,20 @@
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-int32_t uNetworkPrivateChangeStateBle(uDeviceHandle_t devHandle,
-                                      const uNetworkCfgBle_t *pCfg,
-                                      bool upNotDown)
+U_WEAK int32_t uNetworkPrivateChangeStateBle(uDeviceHandle_t devHandle,
+                                             const uNetworkCfgBle_t *pCfg,
+                                             bool upNotDown)
 {
     (void) devHandle;
     (void) pCfg;
     (void) upNotDown;
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
+    return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
 }
 
-int32_t uNetworkSetStatusCallbackBle(uDeviceHandle_t devHandle)
+U_WEAK int32_t uNetworkSetStatusCallbackBle(uDeviceHandle_t devHandle)
 {
     (void) devHandle;
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
+    return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
 }
 
 // End of file

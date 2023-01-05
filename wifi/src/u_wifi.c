@@ -51,6 +51,16 @@
 
 #include "u_hex_bin_convert.h"
 
+// THe headers below are necessary to work around an Espressif linker problem, see uWifiInit()
+#include "u_network.h"
+#include "u_network_config_wifi.h"
+#include "u_network_private_wifi.h"
+#include "u_sock.h"
+#include "u_wifi_sock.h"     // For uWifiSockPrivateLink()
+#include "u_mqtt_common.h"
+#include "u_mqtt_client.h"
+#include "u_wifi_mqtt.h"     // For uWifiMqttPrivateLink()
+
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
@@ -464,6 +474,18 @@ static void UUND_urc(uAtClientHandle_t atHandle,
 // Initialise the wifi driver.
 int32_t uWifiInit()
 {
+    // Workaround for Espressif linker missing out files that
+    // only contain functions which also have weak alternatives
+    // (see https://www.esp32.com/viewtopic.php?f=13&t=8418&p=35899)
+    // Basically any file that might end up containing only functions
+    // that also have WEAK linked counterparts will be lost, so we need
+    // to add a dummy function in those files and call it from somewhere
+    // that will always be present in the build, which for Wifi we
+    // choose to be here
+    uNetworkPrivateWifiLink();
+    uWifiSockPrivateLink();
+    uWifiMqttPrivateLink();
+
     return uShortRangeInit();
 }
 

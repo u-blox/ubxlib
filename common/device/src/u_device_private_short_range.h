@@ -49,6 +49,12 @@ extern "C" {
  * FUNCTIONS
  * -------------------------------------------------------------- */
 
+/** Workaround for Espressif linker missing out files that
+ * only contain functions which also have weak alternatives
+ * (see https://www.esp32.com/viewtopic.php?f=13&t=8418&p=35899).
+ */
+void uDevicePrivateShortRangeLink(void);
+
 /** Initialise short-range.  If short-range is already initialised
  * this function will return without doing anything.
  *

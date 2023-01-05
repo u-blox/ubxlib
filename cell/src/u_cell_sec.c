@@ -316,6 +316,15 @@ static size_t encryptC2cConfirmationTag(const char *pC2cConfirmationTagHex,
 }
 
 /* ----------------------------------------------------------------
+ * PUBLIC FUNCTIONS: WORKAROUND FOR LINKER ISSUE
+ * -------------------------------------------------------------- */
+
+void uCellSecPrivateLink()
+{
+    //dummy
+}
+
+/* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS: INFORMATION
  * -------------------------------------------------------------- */
 

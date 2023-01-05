@@ -191,7 +191,7 @@ uMqttClientContext_t *pUMqttClientOpen(uDeviceHandle_t devHandle,
             pContext->totalMessagesSent = 0;
             pContext->totalMessagesReceived = 0;
             pContext->pPriv = pPriv;
-            if (uPortMutexCreate((uPortMutexHandle_t *) & (pContext->mutexHandle)) == 0) {
+            if (uPortMutexCreate((uPortMutexHandle_t *) &(pContext->mutexHandle)) == 0) { // *NOPAD*
                 gLastOpenError = U_ERROR_COMMON_SUCCESS;
                 if (pSecurityTlsSettings != NULL) {
                     // Call the common security layer

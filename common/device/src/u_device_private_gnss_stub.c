@@ -15,9 +15,11 @@
  */
 
 /** @file
- * @brief Stub of the GNSS portion of the device API.
- * Build this instead of u_device_private_gnss.c if you want to avoid
- * linking GNSS features into your application.
+ * @brief Stubs to allow the device API to be compiled without GNSS; if
+ * you call a GNSS API function from the source code here you must
+ * also include a weak stub for it which will return
+ * #U_ERROR_COMMON_NOT_SUPPORTED when GNSS is not included in the
+ * build.
  */
 
 #ifdef U_CFG_OVERRIDE
@@ -28,53 +30,38 @@
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 
+#include "u_compiler.h" // U_WEAK
 #include "u_error_common.h"
 #include "u_device.h"
 #include "u_device_shared.h"
 
 /* ----------------------------------------------------------------
- * COMPILE-TIME MACROS
- * -------------------------------------------------------------- */
-
-/* ----------------------------------------------------------------
- * TYPES
- * -------------------------------------------------------------- */
-
-/* ----------------------------------------------------------------
- * STATIC VARIABLES
- * -------------------------------------------------------------- */
-
-/* ----------------------------------------------------------------
- * STATIC FUNCTIONS
- * -------------------------------------------------------------- */
-
-/* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-int32_t uDevicePrivateGnssInit()
+U_WEAK int32_t uDevicePrivateGnssInit()
 {
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
+    return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
 }
 
-void uDevicePrivateGnssDeinit()
+U_WEAK void uDevicePrivateGnssDeinit()
 {
 }
 
-int32_t uDevicePrivateGnssAdd(const uDeviceCfg_t *pDevCfg,
-                              uDeviceHandle_t *pDeviceHandle)
+U_WEAK int32_t uDevicePrivateGnssAdd(const uDeviceCfg_t *pDevCfg,
+                                     uDeviceHandle_t *pDeviceHandle)
 {
     (void) pDevCfg;
     (void) pDeviceHandle;
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;;
+    return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
 }
 
-int32_t uDevicePrivateGnssRemove(uDeviceHandle_t devHandle,
-                                 bool powerOff)
+U_WEAK int32_t uDevicePrivateGnssRemove(uDeviceHandle_t devHandle,
+                                        bool powerOff)
 {
     (void) devHandle;
     (void) powerOff;
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;;
+    return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
 }
 
 // End of file

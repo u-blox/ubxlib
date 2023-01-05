@@ -22,31 +22,33 @@
  * instructions.
  */
 
+#ifdef U_CFG_TEST_GNSS_MODULE_TYPE
+
 // Bring in all of the ubxlib public header files
-#include "ubxlib.h"
+# include "ubxlib.h"
 
 // Bring in the application settings
-#include "u_cfg_app_platform_specific.h"
+# include "u_cfg_app_platform_specific.h"
 
-#ifndef U_CFG_DISABLE_TEST_AUTOMATION
+# ifndef U_CFG_DISABLE_TEST_AUTOMATION
 // This purely for internal u-blox testing
-# include "u_cfg_test_platform_specific.h"
-#endif
+#  include "u_cfg_test_platform_specific.h"
+# endif
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
 // For u-blox internal testing only
-#ifdef U_PORT_TEST_ASSERT
-# define EXAMPLE_FINAL_STATE(x) U_PORT_TEST_ASSERT(x);
-#else
-# define EXAMPLE_FINAL_STATE(x)
-#endif
+# ifdef U_PORT_TEST_ASSERT
+#  define EXAMPLE_FINAL_STATE(x) U_PORT_TEST_ASSERT(x);
+# else
+#  define EXAMPLE_FINAL_STATE(x)
+# endif
 
-#ifndef U_PORT_TEST_FUNCTION
-# error if you are not using the unit test framework to run this code you must ensure that the platform clocks/RTOS are set up and either define U_PORT_TEST_FUNCTION yourself or replace it as necessary.
-#endif
+# ifndef U_PORT_TEST_FUNCTION
+#  error if you are not using the unit test framework to run this code you must ensure that the platform clocks/RTOS are set up and either define U_PORT_TEST_FUNCTION yourself or replace it as necessary.
+# endif
 
 /* ----------------------------------------------------------------
  * TYPES
@@ -67,7 +69,7 @@
 // for the module is likely different that from the MCU: check
 // the data sheet for the module to determine the mapping.
 
-#if defined(U_CFG_TEST_GNSS_MODULE_TYPE) && ((U_CFG_APP_GNSS_UART >= 0) || (U_CFG_APP_GNSS_I2C >= 0) || (U_CFG_APP_GNSS_SPI >= 0))
+#if ((U_CFG_APP_GNSS_UART >= 0) || (U_CFG_APP_GNSS_I2C >= 0) || (U_CFG_APP_GNSS_SPI >= 0))
 // DEVICE i.e. module/chip configuration: in this case a GNSS
 // module connected via UART or I2C or SPI
 static const uDeviceCfg_t gDeviceCfg = {
@@ -89,7 +91,7 @@ static const uDeviceCfg_t gDeviceCfg = {
             // .i2cAddress = 0x43
         },
     },
-# if (U_CFG_APP_GNSS_I2C >= 0)
+#  if (U_CFG_APP_GNSS_I2C >= 0)
     .transportType = U_DEVICE_TRANSPORT_TYPE_I2C,
     .transportCfg = {
         .cfgI2c = {
@@ -130,7 +132,7 @@ static const uDeviceCfg_t gDeviceCfg = {
             .device = U_COMMON_SPI_CONTROLLER_DEVICE_DEFAULTS(U_CFG_APP_PIN_GNSS_SPI_SELECT)
         },
     },
-# else
+#  else
     .transportType = U_DEVICE_TRANSPORT_TYPE_UART,
     .transportCfg = {
         .cfgUart = {
@@ -142,11 +144,11 @@ static const uDeviceCfg_t gDeviceCfg = {
             .pinRts = U_CFG_APP_PIN_GNSS_RTS
         },
     },
-# endif
+#  endif
 };
-#else
+# else
 static const uDeviceCfg_t gDeviceCfg = {.deviceType = U_DEVICE_TYPE_NONE};
-#endif
+# endif
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -309,11 +311,15 @@ U_PORT_TEST_FUNCTION("[example]", "exampleGnssCfgVal")
 
         uPortLog("Done.\n");
 
+# if ((U_CFG_APP_GNSS_UART >= 0) || (U_CFG_APP_GNSS_I2C >= 0))
         // For u-blox internal testing only
         EXAMPLE_FINAL_STATE((numValues > 0) && (returnCode == 0) && boolValue);
+# endif
     } else {
         uPortLog("The GEOFENCE fields of the CFGVALXXX API are only supported on M9 modules.\n");
     }
 }
+
+#endif // #ifdef U_CFG_TEST_GNSS_MODULE_TYPE
 
 // End of file

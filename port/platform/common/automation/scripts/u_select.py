@@ -41,7 +41,7 @@ NEVER_DISCARD = ["DATABASE.md", "CMakeLists.txt", "source.txt", "include.txt"]
 EXT_CODE = ["c", "cpp", "h", "hpp"]
 
 # The instances to always run: CodeChecker, Doxygen, AStyle, size, ubxlib.h and malloc checking
-INSTANCES_ALWAYS = [[1], [2], [4], [5], [6,1], [6,2], [7], [8], [9]]
+INSTANCES_ALWAYS = [[1], [2], [4,1], [4,2], [4,3], [4,4], [5], [6,1], [6,2], [7], [8], [9]]
 
 def instances_string(instances):
     '''Return a string of the form "1.2.3, 0.1"'''

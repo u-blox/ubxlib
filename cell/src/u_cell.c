@@ -51,6 +51,19 @@
 #include "u_cell_net.h"     // important here
 #include "u_cell_private.h" // don't change it
 
+// The headers below necessary to work around an Espressif linker problem, see uCellInit()
+#include "u_device_private_cell.h"
+#include "u_network.h"
+#include "u_network_config_cell.h"
+#include "u_network_private_cell.h"
+#include "u_sock.h"
+#include "u_cell_sock.h"     // For uCellSockPrivateLink()
+#include "u_cell_sec.h"      // For uCellSecPrivateLink()
+#include "u_cell_sec_tls.h"  // For uCellSecTlsPrivateLink()
+#include "u_cell_mqtt.h"     // For uCellMqttPrivateLink()
+#include "u_cell_http.h"     // For uCellHttpPrivateLink()
+#include "u_cell_loc.h"      // For uCellLocPrivateLink()
+
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
@@ -144,6 +157,24 @@ static void removeCellInstance(uCellPrivateInstance_t *pInstance)
 int32_t uCellInit()
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+
+    // Workaround for Espressif linker missing out files that
+    // only contain functions which also have weak alternatives
+    // (see https://www.esp32.com/viewtopic.php?f=13&t=8418&p=35899).
+    // Basically any file that might end up containing only functions
+    // that also have WEAK linked counterparts will be lost, so we need
+    // to add a dummy function in those files and call it from somewhere
+    // that will always be present in the build, which for cellular we
+    // choose to be here
+    uDevicePrivateCellLink();
+    uNetworkPrivateCellLink();
+    uCellSockPrivateLink();
+    uCellSecPrivateLink();
+    uCellSecTlsPrivateLink();
+    uCellMqttPrivateLink();
+    uCellHttpPrivateLink();
+    uCellLocPrivateLink();
+
 
     if (gUCellPrivateMutex == NULL) {
         // Create the mutex that protects the linked list

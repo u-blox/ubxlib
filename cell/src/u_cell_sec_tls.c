@@ -569,6 +569,15 @@ static int32_t setGeneratePsk(const uCellSecTlsContext_t *pContext,
 }
 
 /* ----------------------------------------------------------------
+ * PUBLIC FUNCTIONS: WORKAROUND FOR LINKER ISSUE
+ * -------------------------------------------------------------- */
+
+void uCellSecTlsPrivateLink()
+{
+    //dummy
+}
+
+/* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS: ADD/REMOVE A TLS SECURITY CONTEXT
  * -------------------------------------------------------------- */
 

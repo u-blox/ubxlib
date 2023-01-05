@@ -130,6 +130,21 @@ static void statusCallback(uCellNetRegDomain_t domain,
 }
 
 /* ----------------------------------------------------------------
+ * PUBLIC FUNCTIONS: WORKAROUND FOR LINKER ISSUE
+ * -------------------------------------------------------------- */
+
+/* If this file turns out to only have functions in it that also have
+ * WEAK alternatives then the Espressif linker may ignore the entire
+ * file (see https://www.esp32.com/viewtopic.php?f=13&t=8418&p=35899).
+ * To fix this we declare a dummy function here which the CMake file
+ * for ESP-IDF forces the linker to take notice of.
+ */
+void uNetworkPrivateCellLink()
+{
+    //dummy
+}
+
+/* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 

@@ -44,6 +44,12 @@ extern "C" {
  * FUNCTIONS
  * -------------------------------------------------------------- */
 
+/** Workaround for Espressif linker missing out files that
+ * only contain functions which also have weak alternatives
+ * (see https://www.esp32.com/viewtopic.php?f=13&t=8418&p=35899).
+ */
+void uNetworkPrivateBleLink(void);
+
 /** Take up or down the given BLE network instance. uDeviceOpen()
  * must have been called first to create the device handle.
  *

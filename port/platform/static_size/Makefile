@@ -47,8 +47,16 @@ LDFLAGS_NO_FLOAT += -Wl,-Map=$(OUTDIR_NO_FLOAT)/static_size_no_float.map
 CFLAGS_FLOAT += -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16
 LDFLAGS_FLOAT += -Wl,-Map=$(OUTDIR_FLOAT)/static_size.map -lm
 
-# Include ubxlib src and inc
+# Include ubxlib src and inc, allowing -DUBXLIB_FEATURES to specify a single one of
+# cell, gnss or short_range as a -Dblah value in CFLAGS, e.g.
+# CFLAGS= -DUBXLIB_FEATURES=cell -DU_CFG_TEST_CELL_MODULE_TYPE=U_CELL_MODULE_TYPE_SARA_R5 ...
+DEF = $(filter -DUBXLIB_FEATURES=%,$(CFLAGS))
+ifneq "$(DEF)" ""
+UBXLIB_FEATURES = $(subst -DUBXLIB_FEATURES=,,$(DEF))
+else
 UBXLIB_FEATURES = cell gnss short_range
+endif
+$(info UBXLIB_FEATURES is ${UBXLIB_FEATURES})
 # ubxlib.mk will define UBXLIB_INC, UBXLIB_PRIVATE_INC and UBXLIB_SRC for us
 include $(UBXLIB_BASE)/port/ubxlib.mk
 

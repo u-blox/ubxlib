@@ -651,6 +651,15 @@ static int32_t doUsoctl(uDeviceHandle_t cellHandle, int32_t sockHandle,
 }
 
 /* ----------------------------------------------------------------
+ * PUBLIC FUNCTIONS: WORKAROUND FOR LINKER ISSUE
+ * -------------------------------------------------------------- */
+
+void uCellSockPrivateLink()
+{
+    //dummy
+}
+
+/* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS: INIT/DEINIT
  * -------------------------------------------------------------- */
 

@@ -103,24 +103,28 @@ int32_t uDeviceInit()
     if (errorCode == 0) {
         uDevicePrivateInit();
         errorCode = uDevicePrivateCellInit();
-        if (errorCode == (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED) {
+        if ((errorCode == (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED) ||
+            (errorCode == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED)) {
             errorCode = 0;
         }
     }
     if (errorCode == 0) {
         errorCode = uDevicePrivateGnssInit();
-        if (errorCode == (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED) {
+        if ((errorCode == (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED) ||
+            (errorCode == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED)) {
             errorCode = 0;
         }
     }
     if (errorCode == 0) {
         errorCode = uDevicePrivateShortRangeInit();
-        if (errorCode == (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED) {
+        if ((errorCode == (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED) ||
+            (errorCode == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED)) {
             errorCode = 0;
         }
     }
 
-    if ((errorCode == 0) || (errorCode == (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED)) {
+    if ((errorCode == 0) || (errorCode == (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED) ||
+        (errorCode == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED)) {
         // Initialise the internally shared location API
         errorCode = uLocationSharedInit();
     }

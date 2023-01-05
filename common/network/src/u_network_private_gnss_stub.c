@@ -21,28 +21,34 @@
  */
 
 /** @file
- * @brief Stub of the GNSS portion of the network API.
- * Include this if the GNS network is not used in the application.
+ * @brief Stubs to allow the network API to be compiled without GNSS;
+ * if you call a GNSS API function from the source code here you must also
+ * include a weak stub for it which will return #U_ERROR_COMMON_NOT_SUPPORTED
+ * when GNSS is not included in the build.
  */
 
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 
+#include "u_compiler.h" // U_WEAK
 #include "u_error_common.h"
-
 #include "u_network.h"
 #include "u_network_config_gnss.h"
 #include "u_network_private_gnss.h"
 
-int32_t uNetworkPrivateChangeStateGnss(uDeviceHandle_t devHandle,
-                                       const uNetworkCfgGnss_t *pCfg,
-                                       bool upNotDown)
+/* ----------------------------------------------------------------
+ * PUBLIC FUNCTIONS
+ * -------------------------------------------------------------- */
+
+U_WEAK int32_t uNetworkPrivateChangeStateGnss(uDeviceHandle_t devHandle,
+                                              const uNetworkCfgGnss_t *pCfg,
+                                              bool upNotDown)
 {
     (void) devHandle;
     (void) pCfg;
     (void) upNotDown;
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
+    return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
 }
 
 // End of file
