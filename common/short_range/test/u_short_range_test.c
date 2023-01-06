@@ -283,10 +283,10 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeMemFullRecovery")
     U_PORT_TEST_ASSERT(uShortRangeGetUartHandle(gHandles.devHandle) == gHandles.uartHandle);
 
     // run into the wall
-    for (nrOfPbufs = 0; (sizeOfBlk == U_SHORT_RANGE_EDM_BLK_SIZE); nrOfPbufs++) {
+    for (nrOfPbufs = 0; sizeOfBlk == U_SHORT_RANGE_EDM_BLK_SIZE; nrOfPbufs++) {
         sizeOfBlk = uShortRangePbufAlloc(&pBuf);
         if (sizeOfBlk == U_SHORT_RANGE_EDM_BLK_SIZE) {
-            errCode = uShortRangePbufListAppend(pPbufList, pBuf);
+            uShortRangePbufListAppend(pPbufList, pBuf);
         }
     }
     U_TEST_PRINT_LINE("Allocated %d pbufs.", nrOfPbufs);
