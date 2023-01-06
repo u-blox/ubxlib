@@ -30,6 +30,15 @@
  */
 
 /* ----------------------------------------------------------------
+ * COMPILE-TIME MACROS: HOW TO TELL IF WE'RE USING THE STM32F4
+ * -------------------------------------------------------------- */
+
+/** I couldn't find a macro that lets us know we're using the STM32F4
+ * FW, hence we define one of our own.
+ */
+#define U_CFG_TEST_USING_ST32F4
+
+/* ----------------------------------------------------------------
  * COMPILE-TIME MACROS: UNITY RELATED
  * -------------------------------------------------------------- */
 

@@ -2509,6 +2509,17 @@ U_PORT_TEST_FUNCTION("[port]", "portI2cRequiresSpecificWiring")
             U_TEST_PRINT_LINE("get of I2C timeout not supported/implemented, not testing I2C timeout.");
         }
 
+#ifdef U_CFG_TEST_USING_ST32F4
+        // There is errata for STM32F4:
+        //
+        // https://www.st.com/resource/en/errata_sheet/es0206-stm32f427437-and-stm32f429439-line-limitations-stmicroelectronics.pdf
+        //
+        // ...which suggests that using a 100 kHz I2C clock might not work in some circumstances, hence
+        // switch to 400 kHz for these tests
+        U_TEST_PRINT_LINE("STM32F4, switching to 400 kHz clock for greater reliability/compatibility...");
+        U_PORT_TEST_ASSERT(uPortI2cSetClock(gI2cHandle, 400000) == 0);
+#endif
+
         U_TEST_PRINT_LINE("talking to GNSS chip over I2C...");
         // Set buffer up to contain the REGSTREAM address, which is valid for all u-blox GNSS devices
         // and means that any I2C read from the GNSS chip will get the next byte it wants to stream at us
