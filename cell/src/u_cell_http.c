@@ -150,7 +150,7 @@ static void printErrorCodes(uAtClientHandle_t atHandle,
     int32_t err2;
 
     uAtClientLock(atHandle);
-    uAtClientCommandStart(atHandle, "+UHTTPER=");
+    uAtClientCommandStart(atHandle, "AT+UHTTPER=");
     uAtClientWriteInt(atHandle, profileId);
     uAtClientCommandStop(atHandle);
     uAtClientResponseStart(atHandle, "+UHTTPER:");
