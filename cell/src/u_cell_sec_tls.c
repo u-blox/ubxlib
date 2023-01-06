@@ -34,7 +34,7 @@
 #include "stdbool.h"
 #include "ctype.h"     // isxdigit(), isprint()
 #include "stdio.h"     // snprintf()
-#include "string.h"    // memcpy()
+#include "string.h"    // memcpy(), strncpy()
 
 #include "u_error_common.h"
 
@@ -44,6 +44,9 @@
 #include "u_hex_bin_convert.h"
 
 #include "u_at_client.h"
+
+#include "u_sock.h"           // Needed to remove the port
+#include "u_security_tls.h"   // from the end of an SNI address
 
 #include "u_cell_module_type.h"
 #include "u_cell_file.h"         // Order is
@@ -1224,15 +1227,26 @@ int32_t uCellSecTlsSniSet(const uCellSecTlsContext_t *pContext,
                           const char *pSni)
 {
     const uCellPrivateModule_t *pModule;
+    char *pTmp;
 
     gLastErrorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-    if ((pContext != NULL) && (pSni != NULL)) {
+    if ((pContext != NULL) && (pSni != NULL) && (strlen(pSni) <= U_SECURITY_TLS_SNI_MAX_LENGTH_BYTES)) {
         gLastErrorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
         pModule = pUCellPrivateGetModule(pContext->cellHandle);
         if (U_CELL_PRIVATE_HAS(pModule,
                                U_CELL_PRIVATE_FEATURE_SECURITY_TLS_SERVER_NAME_INDICATION)) {
-            // Operation 10 is the SNI operation
-            gLastErrorCode = setString(pContext, pSni, 10);
+            gLastErrorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
+            // The caller may have put a port number on the end of
+            // the SNI address we are given, for other reasons,
+            // so as a courtesy remove that here
+            pTmp = (char *) pUPortMalloc(U_SECURITY_TLS_SNI_MAX_LENGTH_BYTES + 1);
+            if (pTmp != NULL) {
+                strncpy(pTmp, pSni, U_SECURITY_TLS_SNI_MAX_LENGTH_BYTES + 1);
+                pUSockDomainRemovePort(pTmp);
+                // Operation 10 is the SNI operation
+                gLastErrorCode = setString(pContext, pTmp, 10);
+                uPortFree(pTmp);
+            }
         }
     }
 
