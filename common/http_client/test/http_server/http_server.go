@@ -18,8 +18,9 @@
  * @brief HTTP server used for testing the ubxlib HTTP client,
  * implemented in go, see README.md for how to build and run.
  *
- * HEAD, PUT, POST, GET and DELETE requests are accepted; PUT and POST
- * simply write the body to file, GET retrieves the file, DELETE deletes
+ * HEAD, PUT, POST, GET and DELETE requests are accepted; PUT simply writes
+ * the file, POST writes the body to file and also returns the body of the
+ * file in the response, GET retrieves the file, DELETE deletes
  * the file or the file is automatically deleted some time (default 60
  * seconds) after it was written.  File size is limited (default 10 kbytes)
  * and a 1 second delay to responses is applied if more than 1000 files
@@ -123,6 +124,10 @@ func handler(response http.ResponseWriter, request *http.Request) {
                 if file, err := os.Create(path); err == nil {
                     defer file.Close()
                     _, err = io.Copy(file, request.Body)
+                    if request.Method == "POST" {
+                        // For a POST we return the file in the body of the response
+                        http.ServeFile(response, request, path)
+                    }
                     // Add the file to the list of paths to delete
                     pathDelete.path = path
                     pathDelete.timeCreated = time.Now()

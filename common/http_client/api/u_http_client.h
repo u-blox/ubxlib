@@ -134,14 +134,17 @@ typedef struct {
                                                            has been sent and pResponseCallback
                                                            will be called when the response
                                                            arrives or a timeout occurs; critically,
-                                                           for an uHttpClientGetRequest() or
-                                                           an uHttpClientHeadRequest(),
-                                                           the data buffer pointed to by
+                                                           for an uHttpClientPostRequest(), an
+                                                           uHttpClientGetRequest() or an
+                                                           uHttpClientHeadRequest(), the
+                                                           data buffer pointed to by
                                                            pResponseBody/pResponseHead
                                                            MUST REMAIN VALID until the
                                                            response callback function is
                                                            called; the same goes for the data
                                                            buffer pointed-to by the
+                                                           pResponseContentType of
+                                                           uHttpClientPostRequest() and the
                                                            pContentType parameter of
                                                            uHttpClientGetRequest().  Note
                                                            that you can still only have
@@ -198,9 +201,9 @@ typedef struct {
     uHttpClientResponseCallback_t *pResponseCallback; /* populated from uHttpClientConnection_t. */
     void *pResponseCallbackParam;                     /* populated from uHttpClientConnection_t. */
     bool (*pKeepGoingCallback) (void);                /* populated from uHttpClientConnection_t. */
-    char *pResponse;       /* set when a HTTP GET or HEAD is being carried out. */
-    size_t *pResponseSize; /* set when a HTTP GET or HEAD is being carried out. */
-    char *pContentType;    /* set when a HTTP GET is being carried out. */
+    char *pResponse;       /* set when a HTTP POST, GET or HEAD is being carried out. */
+    size_t *pResponseSize; /* set when a HTTP POST, GET or HEAD is being carried out. */
+    char *pContentType;    /* set when a HTTP POST or GET is being carried out. */
 } uHttpClientContext_t;
 
 /* ----------------------------------------------------------------
@@ -302,6 +305,9 @@ int32_t uHttpClientPutRequest(uHttpClientContext_t *pContext,
  *
  * Only one HTTP request, of any kind, may be outstanding at a time.
  *
+ * IMPORTANT: see warning below about the validity of the pResponseBody and
+ * pResponseContentType pointers.
+ *
  * If you are going to perform large POST requests (e.g. more than 1024
  * bytes) then you should ensure that you have flow control on the interface
  * to the module or you might experience data loss.
@@ -319,6 +325,28 @@ int32_t uHttpClientPutRequest(uHttpClientContext_t *pContext,
  * @param[in] pContentType           null-terminated content type, for example
  *                                   "application/text"; must be non-NULL if
  *                                   pData is non-NULL.
+ * @param[out] pResponseBody         a pointer to a place to put the HTTP response
+ *                                   body; in the non-blocking case this storage MUST
+ *                                   REMAIN VALID until pResponseCallback is called,
+ *                                   which will happen on a timeout, as well as in
+ *                                   the success case; best not put the storage on
+ *                                   the stack, just in case.  The same goes for
+ *                                   pResponseContentType below.  This may point
+ *                                   to the same buffer as pData if you don't mind
+ *                                   that data being over-written.
+ * @param[in,out] pResponseSize      on entry the amount of storage at pResponseBody;
+ *                                   on return, in the blocking case, the amount of
+ *                                   data copied to pResponseBody (in the non-blocking
+ *                                   case the callback function is instead given the
+ *                                   amount of data returned).
+ * @param[out] pResponseContentType  a place to put the content type of the response,
+ *                                   for example "application/text". In the non-blocking
+ *                                   case this storage MUST REMAIN VALID until
+ *                                   pResponseCallback is called, which will happen on
+ *                                   a timeout, as well as in the success case.  Will
+ *                                   always be null-terminated.  AT LEAST
+ *                                   #U_HTTP_CLIENT_CONTENT_TYPE_LENGTH_BYTES of storage
+ *                                   must be provided.
  * @return                           in the blocking case the HTTP status code or
  *                                   negative error code; in the non-blocking case
  *                                   zero or negative error code.  If
@@ -330,7 +358,9 @@ int32_t uHttpClientPutRequest(uHttpClientContext_t *pContext,
 int32_t uHttpClientPostRequest(uHttpClientContext_t *pContext,
                                const char *pPath,
                                const char *pData, size_t size,
-                               const char *pContentType);
+                               const char *pContentType,
+                               char *pResponseBody, size_t *pResponseSize,
+                               char *pResponseContentType);
 
 /** Make an HTTP GET request.  If this is a blocking call (i.e.
  * pResponseCallback in the pConnection structure passed to pUHttpClientOpen()

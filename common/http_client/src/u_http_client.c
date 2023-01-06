@@ -320,6 +320,8 @@ static void cellCallback(uDeviceHandle_t cellHandle, int32_t httpHandle,
                                                                     NULL);
                             break;
                         case U_CELL_HTTP_REQUEST_GET:
+                        //fall-through
+                        case U_CELL_HTTP_REQUEST_POST:
                             // Read the headers to get the content type and allow
                             // us to work out the offset to the start of the body
                             responseSize = cellFileResponseReadHead(cellHandle,
@@ -770,7 +772,9 @@ int32_t uHttpClientPutRequest(uHttpClientContext_t *pContext,
 int32_t uHttpClientPostRequest(uHttpClientContext_t *pContext,
                                const char *pPath,
                                const char *pData, size_t size,
-                               const char *pContentType)
+                               const char *pContentType,
+                               char *pResponseBody, size_t *pResponseSize,
+                               char *pResponseContentType)
 {
     int32_t errorCode;
 
@@ -783,10 +787,19 @@ int32_t uHttpClientPostRequest(uHttpClientContext_t *pContext,
             ((pContentType != NULL) || (pData == NULL))) {
             errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
             if (U_DEVICE_IS_TYPE(pContext->devHandle, U_DEVICE_TYPE_CELL)) {
+                pContext->pResponse = pResponseBody;
+                pContext->pResponseSize = pResponseSize;
+                pContext->pContentType = pResponseContentType;
                 errorCode = cellPutPost(pContext->devHandle,
                                         ((uHttpClientContextCell_t *) pContext->pPriv)->httpHandle,
                                         U_CELL_HTTP_REQUEST_POST,
                                         pPath, pData, size, pContentType);
+                if (errorCode != 0) {
+                    // Make sure to forget the user's pointers on error
+                    pContext->pResponse = NULL;
+                    pContext->pResponseSize = NULL;
+                    pContext->pContentType = NULL;
+                }
             } else if (U_DEVICE_IS_TYPE(pContext->devHandle, U_DEVICE_TYPE_SHORT_RANGE)) {
                 // TODO
             }
