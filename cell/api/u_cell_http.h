@@ -193,7 +193,8 @@ int32_t uCellHttpOpen(uDeviceHandle_t cellHandle, const char *pServerName,
 void uCellHttpClose(uDeviceHandle_t cellHandle, int32_t httpHandle);
 
 /** Switch to HTTPS (with TLS-based security); if this is not called
- * HTTP is assumed.
+ * HTTP is assumed.  If no port number was included with the server name
+ * in the call to uCellHttpOpen() the port number will also be set to 443.
  *
  * @param cellHandle        the handle of the cellular instance to be used.
  * @param httpHandle        the handle of the HTTP instance, as returned by
@@ -206,7 +207,9 @@ void uCellHttpClose(uDeviceHandle_t cellHandle, int32_t httpHandle);
 int32_t uCellHttpSetSecurityOn(uDeviceHandle_t cellHandle, int32_t httpHandle,
                                int32_t securityProfileId);
 
-/** Switch to HTTP (no TLS-based security).
+/** Switch to HTTP (no TLS-based security).  If no port number was included
+ * with the server name in the call to uCellHttpOpen() the port number will
+ * also be set to 80.
  *
  * @param cellHandle        the handle of the cellular instance to be used.
  * @param httpHandle        the handle of the HTTP instance, as returned by

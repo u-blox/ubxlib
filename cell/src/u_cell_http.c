@@ -274,6 +274,7 @@ static int32_t setSecurity(uDeviceHandle_t cellHandle, int32_t httpHandle,
     uCellPrivateInstance_t *pCellInstance = NULL;
     uCellHttpInstance_t *pHttpInstance;
     uAtClientHandle_t atHandle;
+    uint16_t port = 80;
 
     U_CELL_HTTP_ENTRY_FUNCTION(cellHandle, httpHandle, &pCellInstance,
                                &pHttpInstance, &errorCode);
@@ -286,10 +287,22 @@ static int32_t setSecurity(uDeviceHandle_t cellHandle, int32_t httpHandle,
         uAtClientWriteInt(atHandle, 6);
         uAtClientWriteInt(atHandle, onNotOff);
         if (onNotOff) {
+            port = 443;
             uAtClientWriteInt(atHandle, securityProfileId);
         }
         uAtClientCommandStopReadResponse(atHandle);
         errorCode = uAtClientUnlock(atHandle);
+        if ((errorCode == 0) && (pHttpInstance->userSpecifiedPort == 0)) {
+            // Set the port number as appropriate for security
+            // or not, but only if the user hasn't specified their own
+            uAtClientLock(atHandle);
+            uAtClientCommandStart(atHandle, "AT+UHTTP=");
+            uAtClientWriteInt(atHandle, pHttpInstance->profileId);
+            uAtClientWriteInt(atHandle, 5);
+            uAtClientWriteInt(atHandle, port);
+            uAtClientCommandStopReadResponse(atHandle);
+            errorCode = uAtClientUnlock(atHandle);
+        }
     }
 
     U_CELL_HTTP_EXIT_FUNCTION();
@@ -444,11 +457,12 @@ int32_t uCellHttpOpen(uDeviceHandle_t cellHandle, const char *pServerName,
     uCellHttpContext_t *pHttpContext;
     uCellHttpInstance_t *pHttpInstance;
     int32_t profileId = -1;
-    uSockAddress_t address;
+    uSockAddress_t address = {0};
     char *pServerNameTmp;
     char *pTmp;
     int32_t authenticationType = 0;
     uAtClientHandle_t atHandle;
+    int32_t y;
 
     U_CELL_HTTP_ENTRY_FUNCTION(cellHandle, -1, &pCellInstance, NULL,
                                &errorCodeOrHandle);
@@ -525,7 +539,6 @@ int32_t uCellHttpOpen(uDeviceHandle_t cellHandle, const char *pServerName,
                                 // Determine if the server name given
                                 // is an IP address or a domain name
                                 // by processing it as an IP address
-                                memset(&address, 0, sizeof(address));
                                 if (uSockStringToAddress(pServerName,
                                                          &address) == 0) {
                                     // We have an IP address
@@ -546,17 +559,19 @@ int32_t uCellHttpOpen(uDeviceHandle_t cellHandle, const char *pServerName,
                                             U_CELL_HTTP_SERVER_NAME_MAX_LEN_BYTES);
                                     // Grab any port number off the end
                                     // and then remove it from the string
-                                    address.port = uSockDomainGetPort(pServerNameTmp);
+                                    y = uSockDomainGetPort(pServerNameTmp);
+                                    if (y >= 0) {
+                                        address.port = y;
+                                    }
                                     pTmp = pUSockDomainRemovePort(pServerNameTmp);
                                     // Set the domain name address
                                     errorCodeOrHandle = doUhttpString(atHandle, profileId, 1, pTmp);
                                 }
-                                if (errorCodeOrHandle == 0) {
-                                    if (address.port == 0) {
-                                        address.port = 80;
-                                    }
-                                    // If that went well, write the server port number
+                                if ((errorCodeOrHandle == 0) && (address.port != 0)) {
+                                    // If that went well, write the server port number,
+                                    // if one was specified
                                     errorCodeOrHandle = doUhttpInteger(atHandle, profileId, 5, address.port);
+                                    pHttpInstance->userSpecifiedPort = address.port;
                                 }
                                 if ((errorCodeOrHandle == 0) && (pUserName != NULL)) {
                                     // Deal with credentials: user name
