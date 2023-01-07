@@ -374,6 +374,10 @@ int32_t uGnssTestPrivatePreamble(uGnssModuleType_t moduleType,
                     if (errorCode >= 0) {
                         pParameters->streamHandle = errorCode;
                         transportHandle.i2c = pParameters->streamHandle;
+                        // Since STM32F4 I2C has problems running at 100 kHz
+                        // (see https://www.st.com/resource/en/errata_sheet/es0206-stm32f427437-and-stm32f429439-line-limitations-stmicroelectronics.pdf),
+                        // switch to 400 kHz for our testing
+                        uPortI2cSetClock(pParameters->streamHandle, 400000);
                     }
                 }
                 break;
