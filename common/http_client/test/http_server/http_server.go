@@ -56,7 +56,7 @@ const DEFAUT_PORT_HTTP = 80
 const DEFAUT_PORT_HTTPS = 443
 
 // Default file deletion delay.
-const DEFAULT_FILE_DELETE_DELAY = 60 * time.Second
+const DEFAULT_FILE_DELETE_DELAY = 240 * time.Second
 
 // Default PUT/POST maximum file size.
 const DEFAULT_FILE_SIZE_MAX = 1024 * 10

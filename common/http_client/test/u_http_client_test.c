@@ -141,6 +141,12 @@
 # define HTTP_CLIENT_TEST_MAX_TRIES_UNKNOWN 3
 #endif
 
+#ifndef HTTP_CLIENT_TEST_OVERALL_TRIES_COUNT
+/** An overall guard limit for trying any given HTTP request type.
+ */
+# define HTTP_CLIENT_TEST_OVERALL_TRIES_COUNT 10
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -465,6 +471,7 @@ U_PORT_TEST_FUNCTION("[httpClient]", "httpClient")
     int32_t outcome;
     size_t busyCount;
     size_t moduleErrorCount;
+    size_t tries;
 
     // In case a previous test failed
     uNetworkTestCleanUp();
@@ -562,6 +569,7 @@ U_PORT_TEST_FUNCTION("[httpClient]", "httpClient")
                 for (int32_t requestOperation = 0;
                      requestOperation < (int32_t) U_HTTP_CLIENT_TEST_OPERATION_MAX_NUM;
                      requestOperation++) {
+                    tries = 0;
                     do {
                         switch (requestOperation) {
                             case U_HTTP_CLIENT_TEST_OPERATION_PUT:
@@ -653,18 +661,24 @@ U_PORT_TEST_FUNCTION("[httpClient]", "httpClient")
                                                 gpDataBufferIn, U_HTTP_CLIENT_TEST_DATA_SIZE_BYTES,
                                                 gSizeDataBufferIn, gpContentTypeBuffer,
                                                 (volatile uHttpClientTestCallback_t *) &callbackData);
-                        if (outcome == (int32_t) U_ERROR_COMMON_UNKNOWN) {
-                            // U_ERROR_COMMON_UNKNOWN is what we report when the module
-                            // indicates that the HTTP request has failed for some reason
+                        if ((outcome == (int32_t) U_ERROR_COMMON_UNKNOWN) ||
+                            (outcome == (int32_t) U_ERROR_COMMON_DEVICE_ERROR)) {
+                            // U_ERROR_COMMON_UNKNOWN or U_ERROR_COMMON_UNKNOWN is reported
+                            // when the module indicates that the HTTP request has failed
+                            // for some reason
                             moduleErrorCount++;
                         } else if (outcome == (int32_t) U_ERROR_COMMON_BUSY) {
                             // U_ERROR_COMMON_BUSY is what we get when error-on-busy
                             // is used and so we just need to retry
                             busyCount++;
                         }
+                        tries++;
+                        // Give the module a rest betweeen tries
+                        uPortTaskBlock(1000);
                     } while ((outcome < 0) &&
                              (moduleErrorCount < HTTP_CLIENT_TEST_MAX_TRIES_UNKNOWN) &&
-                             (busyCount < HTTP_CLIENT_TEST_MAX_TRIES_ON_BUSY));
+                             (busyCount < HTTP_CLIENT_TEST_MAX_TRIES_ON_BUSY) &&
+                             (tries < HTTP_CLIENT_TEST_OVERALL_TRIES_COUNT));
                     U_PORT_TEST_ASSERT(outcome == 0);
                 }  // for (request operation)
             } // for (HTTP/HTTPS instance)
