@@ -146,6 +146,12 @@ typedef struct {
  * an X.509 certificate; consult the security section of your u-blox
  * module AT manual, command AT+USECMNG, for further information.
  *
+ * Note: there is an issue with cellular SARA-R422 modules before the 02B
+ * version where a "fresh" module, one which you have not yet written any
+ * certificates to, may return an error; a workaround for this is to call
+ * uCellFileListFirst() followed by uCellFileListLast() before writing
+ * the first certificate.
+ *
  * OpenSSL can be used to decrypt a PEM-format security key and
  * write it as PEM-with-RSA-format as follows:
  *
