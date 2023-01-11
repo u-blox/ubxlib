@@ -34,7 +34,7 @@ These steps are carried out on the same machine as the Jenkins Docker container 
 ### External Access
 - By whatever means at your disposal give the externally-visible IP address of the `ubxlib` test system's router a DNS address on the public internet.  For instance, you might use a service such as [noip](https://www.noip.com/), with the router running the necessary dynamic DNS client (most routers support this).
 
-- With that done, on the router, set up port forwarding so that requests arriving on the WAN side for ports 80 or 443 are forwarded to the same ports on the LAN-side address of the Jenkins machine.
+- With that done, on the router, set up port forwarding so that requests arriving on the WAN side for port 443 are forwarded to the same port on the LAN-side address of the Jenkins machine.  If the WAN-side of your router is behind a firewall, see #tunnelling.
 
 - Obtain a private key for the Jenkins machine and get it signed by a CA by running Certbot in a Docker container as follows:
 
@@ -114,7 +114,7 @@ openssl ca -gencrl -keyfile /etc/ssl/private/ubxlib_test_system.key -cert /etc/s
 - Install an NGINX Docker container with:
 
 ```
-docker run --name nginx  --restart=on-failure --detach --mount type=bind,source=/etc/ssl,target=/etc/ssl,readonly --mount type=bind,source=/etc/pki,target=/etc/pki,readonly --mount type=bind,source=/etc/letsencrypt,target=/etc/letsencrypt,readonly -p 443:443 -d nginx
+docker run --name nginx  --restart=always --detach --mount type=bind,source=/etc/ssl,target=/etc/ssl,readonly --mount type=bind,source=/etc/pki,target=/etc/pki,readonly --mount type=bind,source=/etc/letsencrypt,target=/etc/letsencrypt,readonly -p 443:443 -d nginx
 ```
 
 - Install `nano` in the container with :
@@ -256,7 +256,7 @@ These steps need to be performed once for the server and once for each client to
 Note: this is deliberately a single account, not really intended for many/multiple users, more the main system administrator and occasional others.
 
 ## External Access
-Assuming that you have already performed the steps to get HTTPS access working, the `ubxlib` test system's router will already have a DNS address on the public internet.  All that needs to be done for SSH/SFTP access is to set up port forwarding on the router so that requests arriving on the WAN side for `<ssh_port>` are forwarded to the same port on the LAN-side address of the Jenkins machine.
+Assuming that you have already performed the steps to get HTTPS access working, the `ubxlib` test system's router will already have a DNS address on the public internet.  All that needs to be done for SSH/SFTP access is to set up port forwarding on the router so that requests arriving on the WAN side for `<ssh_port>` are forwarded to the same port on the LAN-side address of the Jenkins machine.  If the WAN-side of your router is behind a firewall, see #tunnelling.
 
 ## Server
 On the Jenkins server machine (Centos 8 assumed), set up a second SSH daemon as follows (a version of the instructions [here](https://access.redhat.com/solutions/1166283)):
@@ -332,3 +332,66 @@ cat ~/ubxlib_test_system_client_key.pub >> /home/ubxlib/.ssh/authorized_keys
 - Similarly, the client should be able to SFTP into the Jenkins machine with something like `sftp -i path/to/ubxlib_test_system_client_key -P <ssh_port> ubxlib@jenkinsurl` (noting the capital `-P` this time) or, if a GUI is preferred, using something like [FileZilla](https://filezilla-project.org/).
 
 - Note: should you need to revoke access for a client, simply delete the relevant line in `/home/ubxlib/.ssh/authorized_keys` on the Jenkins machine; to kill an active SSH session from the server-side, `ps -aux | grep sshd` to find an active session that is logged in as the `ubxlib` user and `kill <pid>` where `<pid>` is replaced with the process ID, which is the first number on the line.
+
+# Tunnelling
+If the WAN-side of your router is not on the public internet and you don't have access to the router(s) that are between you and the public internet to forward ports, you may use an SSH reverse tunnel to achieve the same effect.  For this you will need a machine on the public internet to which you already have SSH access.  Effectively you SSH into that remote machine from the local machine with a command-line which, rather than opening an interactive SSH session, tells the SSH server on the remote machine to forward any packets sent to a given port number on that machine down the SSH tunnel to the local machine.
+
+Let's say you want port 443 on your local machine to be available to someone who accesses `<remote_machine>:8888`, where `<remote_machine>` is the machine you are able to SSH into.  To do this, on your local machine execute the following command-line:
+
+```
+ssh -N -f -R 8888:localhost:443 user@<remote_machine>
+```
+
+This tells the SSH server on `<remote_machine>` to send any packets headed for port 8888 on that machine to the machine where you ran the above command, port 443. `-N` means don't do an interactive login and `-f` tells it to run in the background.  Note that, on Linux, you will not be able to tell the remote machine to forward ports lower in number than 1024, that's the way it is, so with this mechanism you would, for instance, no longer be able to have the browser connect to the usual default HTTPS port of 443.  There are ways around this (using `socat`) but probably better to just use a non-standard port.
+
+Obviously it is important to make sure that you only SSH-forward to ports where you know you have, for instance, NGINX or an SSH-key-protected SSH server listening on the local machine.  You may also need to make sure that, on the remote machine, `/etc/ssh/sshd_config` has `GatewayPorts` set to `yes`.  And obvously the port (8888 in this case) would need to be open to the public internet for incoming TCP connections both on the remote machine and on its own network firewall.  Then, if you do the above command from the Jenkins machine, users will be able to access the Jenkins web pages, secured through NGINX, at the URL of the remote machine.  Obviously you will need to do the same for SSH/SFTP access.
+
+IMPORTANT: don't forget to update the Jenkins configuration to refer to itself as being at this new port number: in Jenkins go to `Manage Jenkins` -> `Configure System` find `Jenkins Location` and set `Jenkins URL` to have the port number, for instance, 8888 on the end; you may need to restart the Jenkins container with `docker restart jenkins-custom` for this change to take effect.
+
+Note: with this approach you don't actually need any port-forwarding on your router at all, since all TCP connections (i.e. the SSH tunnel) are outward.
+
+To set this up to run at boot on the Jenkins machine, make sure that you authenticate with the SSH server machine using a key pair so that you don't need to type in a password (then you can give you key to the `ssh` command line with the `-i` option).  Rather than just running `ssh` as a service directly, the favoured approach seems to be to install [autossh](https://www.harding.motd.ca/autossh/) with:
+
+```
+wget -c https://www.harding.motd.ca/autossh/autossh-1.4g.tgz
+gunzip -c autossh-1.4g.tgz | tar xvf -
+cd autossh-1.4g
+sudo yum -y install gcc make
+./configure
+make
+sudo make install
+```
+
+...run `autossh` once as `sudo` in order to accept the signature of the remote server with something like:
+
+```
+sudo /usr/local/bin/autossh -M 2000 -N -R 8888:localhost:443 user@<remote_machine> -i path/to/ssh_key
+```
+
+...and start `autossh` with a `systemd` file named something like `/etc/systemd/system/tunnel-https.service` containing something like the following:
+
+```
+[Unit]
+Description=Persistent SSH Tunnel for Jenkins access
+After=network.target
+
+[Service]
+Restart=on-failure
+RestartSec=5
+Environment=AUTOSSH_GATETIME=0
+ExecStart=/usr/local/bin/autossh -M 2000 -N -R 8888:localhost:443 user@<remote_machine> -i path/to/ssh_key
+ExecStop= /usr/bin/killall autossh
+
+[Install]
+WantedBy=multi-user.target
+```
+
+...then:
+
+```
+sudo systemctl daemon-reload
+sudo systemctl enable tunnel-https.service
+sudo systemctl start tunnel-https.service
+```
+
+...and the same with a `tunnel-ssh` `systemd` file for the SSH tunnel also (incrementing the monitoring port number used by `autossh` by 2, e.g. `-M 2002`).
