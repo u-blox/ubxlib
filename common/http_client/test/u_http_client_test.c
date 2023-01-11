@@ -118,10 +118,9 @@
 #endif
 
 #ifndef U_HTTP_CLIENT_TEST_RESPONSE_TIMEOUT_EXTRA_SECONDS
-/** The amount of slack to add to the response timeout when testing;
- * a bit bigger than #U_HTTP_CLIENT_ADDITIONAL_TIMEOUT_SECONDS.
+/** The amount of slack to add to the response timeout when testing.
  */
-# define U_HTTP_CLIENT_TEST_RESPONSE_TIMEOUT_EXTRA_SECONDS 7
+# define U_HTTP_CLIENT_TEST_RESPONSE_TIMEOUT_EXTRA_SECONDS 5
 #endif
 
 #ifndef HTTP_CLIENT_TEST_MAX_TRIES_ON_BUSY
@@ -330,10 +329,13 @@ static int32_t checkResponse(uHttpClientTestOperation_t operation,
         // error code of zero
         if (errorOrStatusCode == 0) {
             startTimeMs = uPortGetTickTimeMs();
+            // Wait for twice as long as the timeout as a guard
             U_TEST_PRINT_LINE("waiting for asynchronous response for up to"
-                              " %d second(s)...", pConnection->timeoutSeconds);
+                              " %d second(s)...", (pConnection->timeoutSeconds * 2) +
+                              U_HTTP_CLIENT_TEST_RESPONSE_TIMEOUT_EXTRA_SECONDS);
             while (!pCallbackData->called &&
-                   (uPortGetTickTimeMs() - startTimeMs < pConnection->timeoutSeconds * 1000)) {
+                   (uPortGetTickTimeMs() - startTimeMs < ((pConnection->timeoutSeconds * 2) +
+                                                          U_HTTP_CLIENT_TEST_RESPONSE_TIMEOUT_EXTRA_SECONDS) * 1000)) {
                 uPortTaskBlock(100);
             }
 
@@ -663,7 +665,7 @@ U_PORT_TEST_FUNCTION("[httpClient]", "httpClient")
                                                 (volatile uHttpClientTestCallback_t *) &callbackData);
                         if ((outcome == (int32_t) U_ERROR_COMMON_UNKNOWN) ||
                             (outcome == (int32_t) U_ERROR_COMMON_DEVICE_ERROR)) {
-                            // U_ERROR_COMMON_UNKNOWN or U_ERROR_COMMON_UNKNOWN is reported
+                            // U_ERROR_COMMON_UNKNOWN or U_ERROR_COMMON_DEVICE_ERROR is reported
                             // when the module indicates that the HTTP request has failed
                             // for some reason
                             moduleErrorCount++;

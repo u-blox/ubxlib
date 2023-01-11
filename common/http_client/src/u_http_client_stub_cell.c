@@ -179,4 +179,11 @@ U_WEAK int32_t uCellHttpRequestFile(uDeviceHandle_t cellHandle, int32_t httpHand
     return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
 }
 
+U_WEAK int32_t uCellHttpGetLastErrorCode(uDeviceHandle_t cellHandle, int32_t httpHandle)
+{
+    (void) cellHandle;
+    (void) httpHandle;
+    return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+}
+
 // End of file

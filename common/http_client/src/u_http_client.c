@@ -97,14 +97,6 @@
                                             exitFunctionRequest(pContext, \
                                                                 errorCode)
 
-#ifndef U_HTTP_CLIENT_ADDITIONAL_TIMEOUT_SECONDS
-/** The underlying layer/module should do the timeout however we also
- * run a local timeout, just in case, but with an additional guard time
- * of this many seconds.
- */
-# define U_HTTP_CLIENT_ADDITIONAL_TIMEOUT_SECONDS  5
-#endif
-
 /** The length of buffer to use for the cellular case to store
  * a file name used in PUT/POST operations.  This buffer is populated
  * by cellPutPost(); must include room for a null terminator.
@@ -369,6 +361,9 @@ static void cellCallback(uDeviceHandle_t cellHandle, int32_t httpHandle,
             if (atPrintOn) {
                 uAtClientPrintAtSet(atHandle, true);
             }
+        } else {
+            // Call this to make the error code visible in the AT stream
+            uCellHttpGetLastErrorCode(cellHandle, httpHandle);
         }
 
         // Call the callback, if required
@@ -542,7 +537,8 @@ static void entryFunctionRequest(uHttpClientContext_t *pContext, int32_t *pError
         // Work out how long we've been waiting
         if (pContext->lastRequestTimeMs >= 0) {
             waitTimeMs = uPortGetTickTimeMs() - pContext->lastRequestTimeMs;
-            timeoutMs = (pContext->timeoutSeconds + U_HTTP_CLIENT_ADDITIONAL_TIMEOUT_SECONDS) * 1000;
+            // Run an extra guard timer of twice that in the underlying layer
+            timeoutMs = (pContext->timeoutSeconds * 2) * 1000;
             if (waitTimeMs >= 0) {
                 if (waitTimeMs < timeoutMs) {
                     waitTimeMs = timeoutMs - waitTimeMs;
@@ -601,13 +597,13 @@ static int32_t block(volatile uHttpClientContext_t *pContext)
         startTimeMs = uPortGetTickTimeMs();
         errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
         // Wait for the underlying layer to give a response
-        // or pKeepGoingCallback=false or the timeout to occur
+        // or pKeepGoingCallback=false or a timeout of twice the
+        // underlying layer's timeout to occur
         // A status code of 0 means no result: no error, no
         // HTTP status code
         while ((statusCodeOrError == 0) &&
                ((pContext->pKeepGoingCallback == NULL) || pContext->pKeepGoingCallback()) &&
-               (uPortGetTickTimeMs() - startTimeMs < (pContext->timeoutSeconds +
-                                                      U_HTTP_CLIENT_ADDITIONAL_TIMEOUT_SECONDS) * 1000)) {
+               (uPortGetTickTimeMs() - startTimeMs < (pContext->timeoutSeconds * 2) * 1000)) {
             if (uPortSemaphoreTryTake((uPortSemaphoreHandle_t) pContext->semaphoreHandle, 100) == 0) {
                 statusCodeOrError = pContext->statusCodeOrError;
             }

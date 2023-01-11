@@ -574,10 +574,11 @@ bool uNetworkTestHasHttp(uDeviceType_t deviceType,
     (void) deviceType;
     (void) moduleType;
     // TODO: add Wi-Fi
-    // A couple of SARA-R5 cellular modules on the test system
-    // fail this test intermittently, no obvious reason why,
-    // hence allowing the option of disabling the test for
-    // cellular for now.
+    // The LARA-R6 module on the test system fails this
+    // test intermittently; LARA-R6 seems to forget the
+    // server host name part of the way through the test run,
+    // no obvious reason why, hence allowing the option of
+    // disabling the test for cellular for now.
 #ifndef U_HTTP_CLIENT_CELL_DISABLE_TEST
     return (networkType == U_NETWORK_TYPE_CELL);
 #else
