@@ -235,7 +235,7 @@ There are a few global variables and a label to set in Jenkines:
 - Add `UBXLIB_LOCAL_STATE_DIR` with value `local_state`.
 - Add `UBXLIB_COUNTER_FILE` with value `counter`.
 - Add `UBXLIB_TOKEN` with value `ubxlib_token`.
-- Add `UBXLIB_EXTRA_DEFINES` and, if you have your own Wifi network that you wish to test with (so not the default value defined in [u_wifi_test_cfg.h](/wifi/test/u_wifi_test_cfg.h)), enter the value here, i.e.
+- Add `UBXLIB_EXTRA_DEFINES` and enter the value of the Wi-Fi network you are going to use for test purposes, i.e.
   `U_WIFI_TEST_CFG_SSID=mySsid`; any other defines you need to pass into the build can be added here, separated by semicolons and leaving **no** spaces or, if there are none, simply leave the value empty.
 - Press `Save`.
 

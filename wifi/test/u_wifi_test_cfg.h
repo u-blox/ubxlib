@@ -35,8 +35,11 @@
 #ifndef U_WIFI_TEST_CFG_SSID
 /** The SSID to connect to for testing WiFi
  * Must be WITHOUT quotes.
+ * Either pass this in as an environment variable
+ * or set the value below (without quotes) and
+ * uncomment the line
  */
-# define U_WIFI_TEST_CFG_SSID ubx
+//# define U_WIFI_TEST_CFG_SSID ubx
 #endif
 
 #ifndef U_WIFI_TEST_CFG_AUTHENTICATION
