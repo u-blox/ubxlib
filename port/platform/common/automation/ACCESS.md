@@ -109,7 +109,7 @@ openssl ca -gencrl -keyfile /etc/ssl/private/ubxlib_test_system.key -cert /etc/s
 ```
 
 ### Install NGINX Inside Docker
-- Install an NGINX Docker container with the following command-line, where `xxxx` is the port number NGINX should listen on (if you will be #tunnelling this must be 1024 or greater, e.g. 8888):
+- Install an NGINX Docker container with the following command-line, where `xxxx` is the port number NGINX should listen on (if you will be [Tunneling](#tunneling) this must be 1024 or greater, e.g. 8888):
 
 ```
 docker run --name nginx  --restart=always --detach --mount type=bind,source=/etc/ssl,target=/etc/ssl,readonly --mount type=bind,source=/etc/pki,target=/etc/pki,readonly --mount type=bind,source=/etc/letsencrypt,target=/etc/letsencrypt,readonly -p xxxx:xxxx -d nginx
@@ -159,7 +159,7 @@ docker exec -u root -t -i nginx nano /etc/nginx/conf.d/default.conf
 
   ...(`172.17.0.1` being the IP address of the `jenkins-custom` docker container on the Docker network), save the file and `exit` the Docker container.
 
-- On the router, set up port forwarding so that requests arriving on the WAN side for port `xxxx` are forwarded to the same port on the LAN-side address of the Jenkins machine.  If the WAN-side of your router is behind a firewall, see #tunnelling.
+- On the router, set up port forwarding so that requests arriving on the WAN side for port `xxxx` are forwarded to the same port on the LAN-side address of the Jenkins machine.  If the WAN-side of your router is behind a firewall, see [Tunneling](#tunneling).
 
 - Run `docker restart nginx` and open a browser window to `https://ubxlib-test-system.redirectme.net:xxxx`: you should see a message something like `400 Bad Request: No required SSL certificate was sent`; this is because we've not yet set up your client device as one that is permitted to log in (if you comment out the line `ssl_verify_client on` above and restart NGINX you will get to the Jenkins log-in prompt, but don't do that 'cos were open to the internet now).
 
@@ -256,7 +256,7 @@ These steps need to be performed once for the server and once for each client to
 Note: this is deliberately a single account, not really intended for many/multiple users, more the main system administrator and occasional others.
 
 ## External Access
-Assuming that you have already performed the steps to get HTTPS access working, the `ubxlib` test system's router will already have a DNS address on the public internet.  All that needs to be done for SSH/SFTP access is to set up port forwarding on the router so that requests arriving on the WAN side for `<ssh_port>` are forwarded to the same port on the LAN-side address of the Jenkins machine.  If the WAN-side of your router is behind a firewall, see #tunnelling.
+Assuming that you have already performed the steps to get HTTPS access working, the `ubxlib` test system's router will already have a DNS address on the public internet.  All that needs to be done for SSH/SFTP access is to set up port forwarding on the router so that requests arriving on the WAN side for `<ssh_port>` are forwarded to the same port on the LAN-side address of the Jenkins machine.  If the WAN-side of your router is behind a firewall, see [Tunneling](#tunneling).
 
 ## Server
 On the Jenkins server machine (Centos 8 assumed), set up a second SSH daemon as follows (a version of the instructions [here](https://access.redhat.com/solutions/1166283)):
@@ -333,7 +333,7 @@ cat ~/ubxlib_test_system_client_key.pub >> /home/ubxlib/.ssh/authorized_keys
 
 - Note: should you need to revoke access for a client, simply delete the relevant line in `/home/ubxlib/.ssh/authorized_keys` on the Jenkins machine; to kill an active SSH session from the server-side, `ps -aux | grep sshd` to find an active session that is logged in as the `ubxlib` user and `kill <pid>` where `<pid>` is replaced with the process ID, which is the first number on the line.
 
-# Tunnelling
+# Tunneling
 If the WAN-side of your router is not on the public internet and you don't have access to the router(s) that are between you and the public internet to forward ports, you may use an SSH reverse tunnel to achieve the same effect.  For this you will need a machine on the public internet to which you already have SSH access.  Effectively you SSH into that remote machine from the local machine with a command-line which, rather than opening an interactive SSH session, tells the SSH server on the remote machine to forward any packets sent to a given port number on that machine down the SSH tunnel to the local machine.
 
 Linux does not permit a remote machine to forward ports lower in number than 1024, that's just the way it is; there are ways around this (using `socat`) but it is probably better just to use a non-standard port.  Also, for the links in the Jenkins web pages to operate correctly, the local port number that NGINX is listening on (`xxxx` above) and the remote port number that the user will put on the end of their URL must be the same.
