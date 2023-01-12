@@ -94,7 +94,7 @@ docker build -t jenkins-custom .
 - Execute this docker image with:
 
 ```
-docker run --name jenkins-custom --restart=on-failure --detach --network jenkins --network-alias jenkins-custom --env DOCKER_HOST=tcp://docker:2376 --env DOCKER_CERT_PATH=/certs/client --env DOCKER_TLS_VERIFY=1 --publish 8080:8080 --publish 50000:50000 --volume $HOME/jenkins:/var/jenkins_home --volume jenkins-docker-certs:/certs/client:ro --log-driver=journald jenkins-custom 
+docker run --name jenkins-custom --restart=always --detach --network jenkins --network-alias jenkins-custom --env DOCKER_HOST=tcp://docker:2376 --env DOCKER_CERT_PATH=/certs/client --env DOCKER_TLS_VERIFY=1 --publish 8080:8080 --publish 50000:50000 --volume $HOME/jenkins:/var/jenkins_home --volume jenkins-docker-certs:/certs/client:ro --log-driver=journald jenkins-custom 
 ```
 
 - Note: you can start a command shell _inside_ this running Docker container (you will need this to read the `initialAdminPassword` in the next step) with:
@@ -128,7 +128,7 @@ In order to interact with Github automagically from behind a firewall you need t
 - To run a SMEE client, in this case on the same machine as the Jenkins Docker container but inside a Docker container of its own, connected to your SMEE channel, and able to talk to the `jenkins-custom` container on the machine's local Docker `jenkins` network, use the following Docker command:
 
 ```
-docker run --name smee-client --restart=on-failure --detach --network jenkins --network-alias smee-client ---log-driver=journald deltaprojects/smee-client -u https://smee.io/thestringfromsmee -t http://jenkins-custom:8080/github-webhook/
+docker run --name smee-client --restart=always --detach --network jenkins --network-alias smee-client ---log-driver=journald deltaprojects/smee-client -u https://smee.io/thestringfromsmee -t http://jenkins-custom:8080/github-webhook/
 ```
 
 ### Workaround For SMEE Client Silent Failure
@@ -235,7 +235,7 @@ There are a few global variables and a label to set in Jenkines:
 - Add `UBXLIB_LOCAL_STATE_DIR` with value `local_state`.
 - Add `UBXLIB_COUNTER_FILE` with value `counter`.
 - Add `UBXLIB_TOKEN` with value `ubxlib_token`.
-- Add `UBXLIB_EXTRA_DEFINES` and, if you have your own Wifi network that you wish to test with (so not the default value defined in [u_wifi_test_cfg.h](/wifi/test/u_wifi_test_cfg.h)), enter the value here, i.e.
+- Add `UBXLIB_EXTRA_DEFINES` and enter the value of the Wi-Fi network you are going to use for test purposes, i.e.
   `U_WIFI_TEST_CFG_SSID=mySsid`; any other defines you need to pass into the build can be added here, separated by semicolons and leaving **no** spaces or, if there are none, simply leave the value empty.
 - Press `Save`.
 
