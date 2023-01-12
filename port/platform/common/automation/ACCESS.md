@@ -34,8 +34,6 @@ These steps are carried out on the same machine as the Jenkins Docker container 
 ### External Access
 - By whatever means at your disposal give the externally-visible IP address of the `ubxlib` test system's router a DNS address on the public internet.  For instance, you might use a service such as [noip](https://www.noip.com/), with the router running the necessary dynamic DNS client (most routers support this).
 
-- With that done, on the router, set up port forwarding so that requests arriving on the WAN side for port 443 are forwarded to the same port on the LAN-side address of the Jenkins machine.  If the WAN-side of your router is behind a firewall, see #tunnelling.
-
 - Obtain a private key for the Jenkins machine and get it signed by a CA by running Certbot in a Docker container as follows:
 
 ```
@@ -111,10 +109,10 @@ openssl ca -gencrl -keyfile /etc/ssl/private/ubxlib_test_system.key -cert /etc/s
 ```
 
 ### Install NGINX Inside Docker
-- Install an NGINX Docker container with:
+- Install an NGINX Docker container with the following command-line, where `xxxx` is the port number NGINX should listen on (if you will be #tunnelling this must be 1024 or greater, e.g. 8888):
 
 ```
-docker run --name nginx  --restart=always --detach --mount type=bind,source=/etc/ssl,target=/etc/ssl,readonly --mount type=bind,source=/etc/pki,target=/etc/pki,readonly --mount type=bind,source=/etc/letsencrypt,target=/etc/letsencrypt,readonly -p 443:443 -d nginx
+docker run --name nginx  --restart=always --detach --mount type=bind,source=/etc/ssl,target=/etc/ssl,readonly --mount type=bind,source=/etc/pki,target=/etc/pki,readonly --mount type=bind,source=/etc/letsencrypt,target=/etc/letsencrypt,readonly -p xxxx:xxxx -d nginx
 ```
 
 - Install `nano` in the container with :
@@ -132,11 +130,11 @@ exit
 docker exec -u root -t -i nginx nano /etc/nginx/conf.d/default.conf
 ```
 
-  ...and, in the existing entry, replace the `listen 80` and `server_name` lines with:
+  ...and, in the existing entry, replace the `listen 80` and `server_name` lines as below, where again `xxxx` is replaced with the port number NGINX should listen on:
 
 ```
-    listen       443 ssl;
-    listen  [::]:443 ssl;
+    listen       xxxx ssl;
+    listen  [::]:xxxx ssl;
     server_name  ubxlib-test-system.redirectme.net;
 ```
 
@@ -161,11 +159,13 @@ docker exec -u root -t -i nginx nano /etc/nginx/conf.d/default.conf
 
   ...(`172.17.0.1` being the IP address of the `jenkins-custom` docker container on the Docker network), save the file and `exit` the Docker container.
 
-- Run `docker restart nginx` and open a browser window to `https://ubxlib-test-system.redirectme.net`: you should see a message something like `400 Bad Request: No required SSL certificate was sent`; this is because we've not yet set up your client device as one that is permitted to log in (if you comment out the line `ssl_verify_client on` above and restart NGINX you will get to the Jenkins log-in prompt, but don't do that 'cos were open to the internet now).
+- On the router, set up port forwarding so that requests arriving on the WAN side for port `xxxx` are forwarded to the same port on the LAN-side address of the Jenkins machine.  If the WAN-side of your router is behind a firewall, see #tunnelling.
+
+- Run `docker restart nginx` and open a browser window to `https://ubxlib-test-system.redirectme.net:xxxx`: you should see a message something like `400 Bad Request: No required SSL certificate was sent`; this is because we've not yet set up your client device as one that is permitted to log in (if you comment out the line `ssl_verify_client on` above and restart NGINX you will get to the Jenkins log-in prompt, but don't do that 'cos were open to the internet now).
 
 - Note: if you are unable to get to the warning stage, logs of NGINX's behaviour can be viewed with `docker logs nginx`.  If you are not able to even get that far, temporarily switch logging to "everything" on the router and see if you can see an incoming connection being dropped or accepted from the IP address of the machine you are browsing from (browse to https://whatsmyip.com/ on that machine to determine its external IP address if you don't know it).  If the connection _is_ being accepted at the router, try taking a [Wireshark](https://www.wireshark.org/) log on the Jenkins machine with `sudo yum install wireshark` followed by something like `sudo tshark -i eno1`, assuming `eno1` is the Ethernet port that is the LAN address of the Jenkins machine, to see if the connection attempt is getting from the router to the machine.
 
-- With all of this done, in order to get Jenkins to refer to itself as being at the new external URL, in Jenkins go to `Manage Jenkins` -> `Configure System` find `Jenkins Location` and set `Jenkins URL` to be `https://ubxlib-test-system.redirectme.net`.  The Jenkins configuration page will then pop-up a warning along the lines of `It appears that your reverse proxy set up is broken`, since Jenkins itself cannot get to that URL; this warning can be dismissed.
+- With all of this done, in order to get Jenkins to refer to itself as being at the new external URL, in Jenkins go to `Manage Jenkins` -> `Configure System` find `Jenkins Location` and set `Jenkins URL` to be `https://ubxlib-test-system.redirectme.net:xxxx`.  The Jenkins configuration page will then pop-up a warning along the lines of `It appears that your reverse proxy set up is broken`, since Jenkins itself cannot get to that URL; this warning can be dismissed.
 
 ## Clients
 The steps required for initial setup of each client that wishes to access the system are set out below.  Generation of the key/Certificate Signing Request may be done either by the user (typically a Linux user will know how to do this) or by the `ubxlib` test system admin (which might be an easier option for Windows users since then there is no need to install OpenSSL on their machine).  Getting the user to do it is preferred as that way their private key never leaves their device.
@@ -336,21 +336,23 @@ cat ~/ubxlib_test_system_client_key.pub >> /home/ubxlib/.ssh/authorized_keys
 # Tunnelling
 If the WAN-side of your router is not on the public internet and you don't have access to the router(s) that are between you and the public internet to forward ports, you may use an SSH reverse tunnel to achieve the same effect.  For this you will need a machine on the public internet to which you already have SSH access.  Effectively you SSH into that remote machine from the local machine with a command-line which, rather than opening an interactive SSH session, tells the SSH server on the remote machine to forward any packets sent to a given port number on that machine down the SSH tunnel to the local machine.
 
-Let's say you want port 443 on your local machine to be available to someone who accesses `<remote_machine>:8888`, where `<remote_machine>` is the machine you are able to SSH into.  To do this, on your local machine execute the following command-line:
+Linux does not permit a remote machine to forward ports lower in number than 1024, that's just the way it is; there are ways around this (using `socat`) but it is probably better just to use a non-standard port.  Also, for the links in the Jenkins web pages to operate correctly, the local port number that NGINX is listening on (`xxxx` above) and the remote port number that the user will put on the end of their URL must be the same.
+
+Let's say we pick port 8888, for the sake of argument.
+
+You want port 8888 on your local machine to be available to someone who accesses `<remote_machine>:8888`, where `<remote_machine>` is the machine you are able to SSH into.  To do this, on your local machine, you would execute the following command-line:
 
 ```
-ssh -N -f -R 8888:localhost:443 user@<remote_machine>
+ssh -N -R 8888:localhost:8888 user@<remote_machine>
 ```
 
-This tells the SSH server on `<remote_machine>` to send any packets headed for port 8888 on that machine to the machine where you ran the above command, port 443. `-N` means don't do an interactive login and `-f` tells it to run in the background.  Note that, on Linux, you will not be able to tell the remote machine to forward ports lower in number than 1024, that's the way it is, so with this mechanism you would, for instance, no longer be able to have the browser connect to the usual default HTTPS port of 443.  There are ways around this (using `socat`) but probably better to just use a non-standard port.
+This tells the SSH server on `<remote_machine>` to send any packets headed for port 8888 on that machine (the first 8888) to the machine where you ran the above command, port 8888 (the second 8888). `-N` means don't do an interactive login.
 
-Obviously it is important to make sure that you only SSH-forward to ports where you know you have, for instance, NGINX or an SSH-key-protected SSH server listening on the local machine.  You may also need to make sure that, on the remote machine, `/etc/ssh/sshd_config` has `GatewayPorts` set to `yes`.  And obvously the port (8888 in this case) would need to be open to the public internet for incoming TCP connections both on the remote machine and on its own network firewall.  Then, if you do the above command from the Jenkins machine, users will be able to access the Jenkins web pages, secured through NGINX, at the URL of the remote machine.  Obviously you will need to do the same for SSH/SFTP access.
-
-IMPORTANT: don't forget to update the Jenkins configuration to refer to itself as being at this new port number: in Jenkins go to `Manage Jenkins` -> `Configure System` find `Jenkins Location` and set `Jenkins URL` to have the port number, for instance, 8888 on the end; you may need to restart the Jenkins container with `docker restart jenkins-custom` for this change to take effect.
+Obviously it is important to make sure that you only SSH-forward to ports where you know you have, for instance, NGINX or an SSH-key-protected SSH server listening on the local machine.  You may also need to make sure that, on the remote machine, `/etc/ssh/sshd_config` has `GatewayPorts` set to `yes`.  And obvously the port (8888 in this case) would need to be open to the public internet for incoming TCP connections both on the remote machine and on that machine's network firewall.  Then, if you do the above command on the Jenkins machine, users will be able to access the Jenkins web pages, secured through NGINX, at the URL of the remote machine.  Obviously you will need to do the same for SSH/SFTP access.
 
 Note: with this approach you don't actually need any port-forwarding on your router at all, since all TCP connections (i.e. the SSH tunnel) are outward.
 
-To set this up to run at boot on the Jenkins machine, make sure that you authenticate with the SSH server machine using a key pair so that you don't need to type in a password (then you can give you key to the `ssh` command line with the `-i` option).  Rather than just running `ssh` as a service directly, the favoured approach seems to be to install [autossh](https://www.harding.motd.ca/autossh/) with:
+To set this up to run at boot on the Jenkins machine, make sure that you authenticate with the SSH server machine using a key pair so that you don't need to type in a password (you can give you key to the `ssh` command line with the `-i` option).  Rather than just running `ssh` as a command-line, or even as `systemd` service, the favoured approach seems to be to install [autossh](https://www.harding.motd.ca/autossh/) with:
 
 ```
 wget -c https://www.harding.motd.ca/autossh/autossh-1.4g.tgz
@@ -362,10 +364,10 @@ make
 sudo make install
 ```
 
-...run `autossh` once as `sudo` in order to accept the signature of the remote server with something like:
+...run `autossh` once, manually, as `sudo` in order to accept the signature of the remote server with something like:
 
 ```
-sudo /usr/local/bin/autossh -M 2000 -N -R 8888:localhost:443 user@<remote_machine> -i path/to/ssh_key
+sudo /usr/local/bin/autossh -M 2000 -N -R 8888:localhost:8888 user@<remote_machine> -i path/to/ssh_key
 ```
 
 ...and start `autossh` with a `systemd` file named something like `/etc/systemd/system/tunnel-https.service` containing something like the following:
@@ -379,7 +381,7 @@ After=network.target
 Restart=on-failure
 RestartSec=5
 Environment=AUTOSSH_GATETIME=0
-ExecStart=/usr/local/bin/autossh -M 2000 -N -R 8888:localhost:443 user@<remote_machine> -i path/to/ssh_key
+ExecStart=/usr/local/bin/autossh -M 2000 -N -R 8888:localhost:8888 user@<remote_machine> -i path/to/ssh_key
 ExecStop= /usr/bin/killall autossh
 
 [Install]
