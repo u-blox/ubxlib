@@ -252,10 +252,12 @@ int32_t uNetworkInterfaceUp(uDeviceHandle_t devHandle, uNetworkType_t netType,
 int32_t uNetworkInterfaceDown(uDeviceHandle_t devHandle, uNetworkType_t netType);
 
 /** Enable or disable a callback which will be called when
- * the network status changes.  IMPORTANT: the actions that
- * might be taken by the application when a network has
- * gone down unexpectedly are different depending on the
- * underlying network type:
+ * the network status changes; cannot be called until
+ * uNetworkInterfaceUp() has returned succesfully, calling
+ * uNetworkInterfaceDown() will cancel the callback.
+ * IMPORTANT: the actions that might be taken by the application
+ * when a network has gone down unexpectedly are different
+ * depending on the underlying network type:
  *
  * BLE and Wi-Fi: if the isUp parameter passed to the callback
  *                is false, the network has dropped, it
