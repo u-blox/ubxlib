@@ -27,12 +27,15 @@ If your platform is not currently supported you may be able to port it yourself,
 - add [Unity](https://github.com/ThrowTheSwitch/Unity) to your build and then compile and run the tests in [u_port_test.c](test/u_port_test.c): if these pass then you have likely completed the necessary porting.
 
 # Shared CMake file
-For ports that use CMake [ubxlib.cmake](ubxlib.cmake) can be used to collect the `ubxlib` source code files, include directories etc.
+For ports that use CMake [ubxlib.cmake](ubxlib.cmake) can be used to collect the `ubxlib` non-platform-specific source code files, include directories etc.
+
 `ubxlib.cmake` is typically included in a port specific CMake file and will then define a couple of variables that the calling CMake file can make use of (see the [esp32 component CMakeLists.txt](platform/esp-idf/mcu/esp32/components/ubxlib/CMakeLists.txt) as example).
 
 Before including `ubxlib.cmake` you must set the variable `UBXLIB_BASE` to root directory of `ubxlib`.
 
 You must also specify what `ubxlib` features to enable using the `UBXLIB_FEATURES` variable described below.
+
+To bring the platform-specific files into your CMake file, take a look at, for instance, the Windows-platform (CMakeLists.txt)[platform/windows/mcu/win32/runner/CMakeLists.txt] file.
 
 ## UBXLIB_FEATURES
 Available features currently are:
@@ -60,16 +63,18 @@ include(${UBXLIB_BASE}/port/ubxlib.cmake)
 
 ## Output Variables
 After `ubxlib.cmake` has been included the following variables will be available:
-* `UBXLIB_SRC`: A list of all the .c files
+* `UBXLIB_SRC`: A list of all the  non-platform-specific .c files
 * `UBXLIB_INC`: A list of the public include directories
 * `UBXLIB_PRIVATE_INC`: A list of the private include directories required to build ubxlib
 * `UBXLIB_TEST_SRC`: A list of all the test .c files
 * `UBXLIB_TEST_INC`: A list of test include directories
 
 # Shared Makefile
-For ports that use `make` [ubxlib.mk](ubxlib.mk) can be used to collect the `ubxlib` source code files, include directories etc in the same way as for CMake above.
+For ports that use `make` [ubxlib.mk](ubxlib.mk) can be used to collect the non-platform-specific `ubxlib` source code files, include directories etc. in the same way as for CMake above.
 
 Just like the shared CMake file you must first set the variable `UBXLIB_BASE` to root directory of `ubxlib` and configure the `ubxlib` features using the `UBXLIB_FEATURES` (please see [UBXLIB_FEATURES](#UBXLIB_FEATURES) above). `ubxlib.mk` will then define the same output variables as the shared CMake above (see [Output Variables](#Output-Variables))
+
+To bring the platform-specific files into your `Makefile`, take a look at, for instance, the STM32F4 (Makefile)[platform/stm32cube/mcu/stm32f4/runner/Makefile].
 
 ## Example
 ```makefile
