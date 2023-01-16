@@ -354,7 +354,9 @@ int32_t uMqttClientGetTotalMessagesSent(const uMqttClientContext_t *pContext);
 int32_t uMqttClientGetTotalMessagesReceived(const uMqttClientContext_t *pContext);
 
 /** Set a callback to be called if the broker drops the MQTT
- * connection.
+ * connection.  You must have made an MQTT connection using
+ * uMqttClientConnect() first.  There is a single, static, callback,
+ * hence a second call will simple replace the previous callback.
  *
  * @param[in] pContext       a pointer to the internal MQTT context
  *                           structure that was originally returned
