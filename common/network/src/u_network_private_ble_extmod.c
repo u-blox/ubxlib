@@ -124,6 +124,15 @@ static void statusCallback(int32_t connHandle, char *pAddress,
 }
 
 /* ----------------------------------------------------------------
+ * PUBLIC FUNCTIONS: WORKAROUND FOR LINKER ISSUE
+ * -------------------------------------------------------------- */
+
+void uNetworkPrivateBleLink()
+{
+    //dummy
+}
+
+/* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 

@@ -827,6 +827,19 @@ static int32_t configureMqttSessionConnection(uWifiMqttSession_t *pMqttSession,
     return err;
 }
 
+/* ----------------------------------------------------------------
+ * PUBLIC FUNCTIONS: WORKAROUND FOR LINKER ISSUE
+ * -------------------------------------------------------------- */
+
+void uWifiMqttPrivateLink()
+{
+    //dummy
+}
+
+/* ----------------------------------------------------------------
+ * PUBLIC FUNCTIONS
+ * -------------------------------------------------------------- */
+
 int32_t uWifiMqttInit(uDeviceHandle_t devHandle, void **ppMqttSession)
 {
     uShortRangePrivateInstance_t *pInstance;

@@ -453,6 +453,7 @@ static int32_t init()
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
     int32_t errnoLocal = U_SOCK_ENOMEM;
+    int32_t errnoLocalCell;
     uSockContainer_t **ppContainer = &gpContainerListHead;
     uSockContainer_t *pTmp = NULL;
     uSockContainer_t **ppPreviousNext = NULL;
@@ -469,10 +470,17 @@ static int32_t init()
         errnoLocal = U_SOCK_ENONE;
         if (!gInitialised) {
             // uXxxSockInit returns a negated value of errno
-            // from the U_SOCK_Exxx list
-            errnoLocal = uCellSockInit();
-            if (errnoLocal == U_SOCK_ENONE) {
+            // from the U_SOCK_Exxx list; one of cellular or
+            // wifi may return -U_SOCK_ENOSYS and that's OK,
+            // just means they've been compiled out
+            errnoLocalCell = uCellSockInit();
+            if ((errnoLocalCell == U_SOCK_ENONE) || (errnoLocalCell == -U_SOCK_ENOSYS)) {
                 errnoLocal = uWifiSockInit();
+                if (errnoLocal == -U_SOCK_ENOSYS) {
+                    errnoLocal = errnoLocalCell;
+                }
+            } else {
+                errnoLocal = errnoLocalCell;
             }
 
             if (errnoLocal == U_SOCK_ENONE) {
@@ -493,6 +501,10 @@ static int32_t init()
                 }
 
                 gInitialised = true;
+            } else {
+                // Clean up on error
+                uCellSockDeinit();
+                uWifiSockDeinit();
             }
         }
     }

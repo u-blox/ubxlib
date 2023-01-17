@@ -628,6 +628,15 @@ static int32_t beginLocationFix(const uCellPrivateInstance_t *pInstance)
 }
 
 /* ----------------------------------------------------------------
+ * PUBLIC FUNCTIONS: WORKAROUND FOR LINKER ISSUE
+ * -------------------------------------------------------------- */
+
+void uCellLocPrivateLink()
+{
+    //dummy
+}
+
+/* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS: MISC
  * -------------------------------------------------------------- */
 

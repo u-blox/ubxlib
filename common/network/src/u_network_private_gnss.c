@@ -94,6 +94,15 @@ static void setGnssDeviceHandle(uDeviceHandle_t devHandle,
 }
 
 /* ----------------------------------------------------------------
+ * PUBLIC FUNCTIONS: WORKAROUND FOR LINKER ISSUE
+ * -------------------------------------------------------------- */
+
+void uNetworkPrivateGnssLink()
+{
+    //dummy
+}
+
+/* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 

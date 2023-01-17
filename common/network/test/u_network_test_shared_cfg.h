@@ -187,6 +187,17 @@ bool uNetworkTestHasMqttSn(uDeviceType_t deviceType,
                            uNetworkType_t networkType,
                            int32_t moduleType);
 
+/** Return true if the combination supports HTTP.
+ *
+ * @param deviceType  the device type.
+ * @param networkType the network type.
+ * @param moduleType  the module type.
+ * @return            true if HTTP is supported, else false.
+ */
+bool uNetworkTestHasHttp(uDeviceType_t deviceType,
+                         uNetworkType_t networkType,
+                         int32_t moduleType);
+
 /** Return true if the combination supports credential storage.
  *
  * @param deviceType  the device type.

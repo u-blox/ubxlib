@@ -22,6 +22,10 @@
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
 
+#include "u_device.h"
+#include "u_at_client.h"
+#include "u_short_range_module_type.h"
+
 /** @file
  * @brief This header file defines types, functions and inclusions that
  * are common and private to the SHORT_RANGE API.
@@ -38,6 +42,20 @@ extern "C" {
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
+
+/* FUNCTIONS
+ * -------------------------------------------------------------- */
+
+/** Return the shortrange module's file system and or non-volatile
+ * storage to factory defaults. The module will re-booted afterwards
+ * for it to take effect.
+ *
+ * @param devHandle      the handle of the shortrange instance.
+ * @return               zero on success or negative error code on
+ *                       failure.
+ */
+
+int32_t uShortRangeCfgFactoryReset(uDeviceHandle_t devHandle);
 
 #ifdef __cplusplus
 }

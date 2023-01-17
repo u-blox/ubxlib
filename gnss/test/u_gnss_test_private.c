@@ -58,8 +58,8 @@
 #ifdef U_CFG_TEST_CELL_MODULE_TYPE
 #include "u_cell.h"
 #include "u_cell_pwr.h"
-#endif
 #include "u_cell_loc.h"  // For uCellLocGnssInsideCell()
+#endif
 
 #include "u_gnss_module_type.h"
 #include "u_gnss_type.h"
@@ -374,6 +374,10 @@ int32_t uGnssTestPrivatePreamble(uGnssModuleType_t moduleType,
                     if (errorCode >= 0) {
                         pParameters->streamHandle = errorCode;
                         transportHandle.i2c = pParameters->streamHandle;
+                        // Since STM32F4 I2C has problems running at 100 kHz
+                        // (see https://www.st.com/resource/en/errata_sheet/es0206-stm32f427437-and-stm32f429439-line-limitations-stmicroelectronics.pdf),
+                        // switch to 400 kHz for our testing
+                        uPortI2cSetClock(pParameters->streamHandle, 400000);
                     }
                 }
                 break;
@@ -428,8 +432,11 @@ int32_t uGnssTestPrivatePreamble(uGnssModuleType_t moduleType,
                                      U_CFG_APP_PIN_GNSS_ENABLE_POWER, false,
                                      &pParameters->gnssHandle);
                 if (errorCode >= 0) {
-                    if ((pParameters->cellHandle != NULL) &&
-                        !uCellLocGnssInsideCell(pParameters->cellHandle)) {
+                    if ((pParameters->cellHandle != NULL)
+#ifdef U_CFG_TEST_CELL_MODULE_TYPE
+                        && !uCellLocGnssInsideCell(pParameters->cellHandle)
+#endif
+                       ) {
                         // If we're talking via cellular and the GNSS chip
                         // isn't inside the cellular module, need to configure the
                         // module pins that control the GNSS chip
@@ -467,6 +474,7 @@ void uGnssTestPrivatePostamble(uGnssTestPrivate_t *pParameters,
     pParameters->gnssHandle = NULL;
 
     if (pParameters->cellHandle != NULL) {
+#ifdef U_CFG_TEST_CELL_MODULE_TYPE
         // Cellular was in use, call the cellular test postamble
         uCellTestPrivate_t parameters = U_CELL_TEST_PRIVATE_DEFAULTS;
         parameters.uartHandle = pParameters->streamHandle;
@@ -474,6 +482,7 @@ void uGnssTestPrivatePostamble(uGnssTestPrivate_t *pParameters,
         parameters.cellHandle = pParameters->cellHandle;
         uCellTestPrivatePostamble(&parameters, powerOff);
         pParameters->cellHandle = NULL;
+#endif
     } else {
         if (pParameters->streamHandle >= 0) {
             switch (pParameters->transportType) {
@@ -509,6 +518,7 @@ void uGnssTestPrivateCleanup(uGnssTestPrivate_t *pParameters)
     pParameters->gnssHandle = NULL;
 
     if (pParameters->cellHandle != NULL) {
+#ifdef U_CFG_TEST_CELL_MODULE_TYPE
         // Cellular was in use, call the cellular test clean-up
         uCellTestPrivate_t parameters = U_CELL_TEST_PRIVATE_DEFAULTS;
         parameters.uartHandle = pParameters->streamHandle;
@@ -516,6 +526,7 @@ void uGnssTestPrivateCleanup(uGnssTestPrivate_t *pParameters)
         parameters.cellHandle = pParameters->cellHandle;
         uCellTestPrivateCleanup(&parameters);
         pParameters->cellHandle = NULL;
+#endif
     } else {
         if (pParameters->streamHandle >= 0) {
             switch (pParameters->transportType) {

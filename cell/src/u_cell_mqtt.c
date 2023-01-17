@@ -2058,6 +2058,15 @@ static int32_t readMessage(const uCellPrivateInstance_t *pInstance,
 }
 
 /* ----------------------------------------------------------------
+ * PUBLIC FUNCTIONS: WORKAROUND FOR LINKER ISSUE
+ * -------------------------------------------------------------- */
+
+void uCellMqttPrivateLink()
+{
+    //dummy
+}
+
+/* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS: MQTT AND MQTT-SN
  * -------------------------------------------------------------- */
 
@@ -2196,9 +2205,9 @@ int32_t uCellMqttInit(uDeviceHandle_t cellHandle, const char *pBrokerNameStr,
 
                             // Finally deal with the client ID
                             if (keepGoing) {
-                                if ((pClientIdStr == NULL) &&
-                                    U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType)) {
-                                    // If there is no client ID, SARA-R4 doesn't generate
+                                if (pClientIdStr == NULL) {
+                                    // If there is no client ID, some modules (e.g.
+                                    // SARA-R4 and SARA-R5xxx-00B) don't generate
                                     // one automagically, so use the IMEI
                                     if (uCellPrivateGetImei(pInstance, imei) == 0) {
                                         // Add a null terminator to make it a string

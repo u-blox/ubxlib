@@ -89,6 +89,15 @@ static uErrorCode_t storeString(const char *pSrc, char **ppDest)
 }
 
 /* ----------------------------------------------------------------
+ * PUBLIC FUNCTIONS: WORKAROUND FOR LINKER ISSUE
+ * -------------------------------------------------------------- */
+
+void uShortRangeSecTlsPrivateLink()
+{
+    //dummy
+}
+
+/* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 

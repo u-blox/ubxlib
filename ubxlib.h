@@ -49,6 +49,7 @@
 #include <u_error_common.h>
 #include <u_assert.h>
 #include <u_common_spi.h>
+#include <u_interface.h>
 
 // Porting APIs
 #include <u_port.h>
@@ -71,6 +72,7 @@
 
 // Other common APIs
 #include <u_device.h>
+#include <u_device_serial.h>
 #include <u_network.h>
 #include <u_network_config_ble.h>
 #include <u_network_config_cell.h>
@@ -91,6 +93,7 @@
 #include <u_sock_security.h>
 #include <u_mqtt_common.h>
 #include <u_mqtt_client.h>
+#include <u_http_client.h>
 #include <u_location.h>
 #include <u_ubx_protocol.h>
 #include <u_spartn.h>
@@ -113,6 +116,7 @@
 #include <u_cell_info.h>
 #include <u_cell_loc.h>
 #include <u_cell_mqtt.h>
+#include <u_cell_http.h>
 #include <u_cell_pwr.h>
 #include <u_cell_sec.h>
 #include <u_cell_sec_tls.h>

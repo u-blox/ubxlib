@@ -21,34 +21,61 @@
  */
 
 /** @file
- * @brief Stub of the cellular portion of the network API.
- * Include this if the cellular network is not used in the application.
+ * @brief Stubs to allow the network API to be compiled without cellular;
+ * if you call a cellular API function from the source code here you must
+ * also include a weak stub for it which will return
+ * #U_ERROR_COMMON_NOT_SUPPORTED when cellular is not included in the
+ * build.
  */
 
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 
+#include "u_compiler.h" // U_WEAK
 #include "u_error_common.h"
-
 #include "u_network.h"
 #include "u_network_config_cell.h"
 #include "u_network_private_cell.h"
 
-int32_t uNetworkPrivateChangeStateCell(uDeviceHandle_t devHandle,
-                                       const uNetworkCfgCell_t *pCfg,
-                                       bool upNotDown)
+/* ----------------------------------------------------------------
+ * PUBLIC FUNCTIONS
+ * -------------------------------------------------------------- */
+
+U_WEAK int32_t uNetworkPrivateChangeStateCell(uDeviceHandle_t devHandle,
+                                              const uNetworkCfgCell_t *pCfg,
+                                              bool upNotDown)
 {
     (void) devHandle;
     (void) pCfg;
     (void) upNotDown;
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
+    return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
 }
 
-int32_t uNetworkSetStatusCallbackCell(uDeviceHandle_t devHandle)
+U_WEAK int32_t uNetworkSetStatusCallbackCell(uDeviceHandle_t devHandle)
 {
     (void) devHandle;
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
+    return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+}
+
+U_WEAK int32_t uCellLocSetPinGnssPwr(uDeviceHandle_t cellHandle, int32_t pin)
+{
+    (void) cellHandle;
+    (void) pin;
+    return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+}
+
+U_WEAK int32_t uCellLocSetPinGnssDataReady(uDeviceHandle_t cellHandle, int32_t pin)
+{
+    (void) cellHandle;
+    (void) pin;
+    return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+}
+
+U_WEAK bool uCellLocGnssInsideCell(uDeviceHandle_t cellHandle)
+{
+    (void) cellHandle;
+    return false;
 }
 
 // End of file

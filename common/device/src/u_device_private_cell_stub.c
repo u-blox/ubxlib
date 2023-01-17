@@ -15,9 +15,11 @@
  */
 
 /** @file
- * @brief Stub of the cellular portion of the device API.
- * Build this instead of u_device_private_cell.c if you want to
- * avoid linking cellular features into your application.
+ * @brief Stubs to allow the device API to be compiled without cellular;
+ * if you call a cellular API function from the source code here you must
+ * also include a weak stub for it which will return
+ * #U_ERROR_COMMON_NOT_SUPPORTED when cellular is not included in the
+ * build.
  */
 
 #ifdef U_CFG_OVERRIDE
@@ -28,53 +30,38 @@
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 
+#include "u_compiler.h" // U_WEAK
 #include "u_error_common.h"
 #include "u_device.h"
 #include "u_device_shared.h"
 
 /* ----------------------------------------------------------------
- * COMPILE-TIME MACROS
- * -------------------------------------------------------------- */
-
-/* ----------------------------------------------------------------
- * TYPES
- * -------------------------------------------------------------- */
-
-/* ----------------------------------------------------------------
- * STATIC VARIABLES
- * -------------------------------------------------------------- */
-
-/* ----------------------------------------------------------------
- * STATIC FUNCTIONS
- * -------------------------------------------------------------- */
-
-/* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-int32_t uDevicePrivateCellInit()
+U_WEAK int32_t uDevicePrivateCellInit()
 {
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
+    return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
 }
 
-void uDevicePrivateCellDeinit()
+U_WEAK void uDevicePrivateCellDeinit()
 {
 }
 
-int32_t uDevicePrivateCellAdd(const uDeviceCfg_t *pDevCfg,
-                              uDeviceHandle_t *pDeviceHandle)
+U_WEAK int32_t uDevicePrivateCellAdd(const uDeviceCfg_t *pDevCfg,
+                                     uDeviceHandle_t *pDeviceHandle)
 {
     (void) pDevCfg;
     (void) pDeviceHandle;
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;;
+    return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
 }
 
-int32_t uDevicePrivateCellRemove(uDeviceHandle_t devHandle,
-                                 bool powerOff)
+U_WEAK int32_t uDevicePrivateCellRemove(uDeviceHandle_t devHandle,
+                                        bool powerOff)
 {
     (void) devHandle;
     (void) powerOff;
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;;
+    return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
 }
 
 // End of file

@@ -163,6 +163,11 @@ int32_t uPortI2cCloseRecoverBus(int32_t handle);
  * that all is good.
  * Note that if the I2C interface was adopted rather than
  * opened this will return #U_ERROR_COMMON_NOT_SUPPORTED.
+ * Note for STM32F4 platform: there is an erratta:
+ * https://www.st.com/resource/en/errata_sheet/es0206-stm32f427437-and-stm32f429439-line-limitations-stmicroelectronics.pdf
+ * ...which suggests that using a 100 kHz clock might not
+ * work in some circumstances, hence you may wish to switch
+ * to 400 kHz.
  *
  * @param handle      the handle of the I2C instance.
  * @param clockHertz  the clock frequency in Hertz.

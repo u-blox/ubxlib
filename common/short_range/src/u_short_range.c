@@ -55,6 +55,12 @@
 #include "u_short_range_private.h"
 #include "u_short_range_edm_stream.h"
 
+// The headers below necessary to work around an Espressif linker problem, see uShortRangeInit()
+#include "u_device_private_short_range.h"
+#include "u_security_tls.h"
+#include "u_security_credential.h"
+#include "u_short_range_sec_tls.h"     // For uShortRangeSecTlsPrivateLink()
+
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
@@ -682,6 +688,17 @@ static void configureConnectionUrcHandlers(uShortRangePrivateInstance_t *pInstan
 int32_t uShortRangeInit()
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+
+    // Workaround for Espressif linker missing out files that
+    // only contain functions which also have weak alternatives
+    // (see https://www.esp32.com/viewtopic.php?f=13&t=8418&p=35899)
+    // Basically any file that might end up containing only functions
+    // that also have WEAK linked counterparts will be lost, so we need
+    // to add a dummy function in those files and call it from somewhere
+    // that will always be present in the build, which for Short Range is
+    // here
+    uDevicePrivateShortRangeLink();
+    uShortRangeSecTlsPrivateLink();
 
     if (gUShortRangePrivateMutex == NULL) {
         // Create the mutex that protects the linked list

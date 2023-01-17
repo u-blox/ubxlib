@@ -22,17 +22,19 @@
  * instructions.
  */
 
+#ifdef U_CFG_TEST_CELL_MODULE_TYPE
+
 // Bring in all of the ubxlib public header files
-#include "ubxlib.h"
+# include "ubxlib.h"
 
 // Bring in the application settings
-#include "u_cfg_app_platform_specific.h"
+# include "u_cfg_app_platform_specific.h"
 
-#ifndef U_CFG_DISABLE_TEST_AUTOMATION
+# ifndef U_CFG_DISABLE_TEST_AUTOMATION
 // This purely for internal u-blox testing
-# include "u_cell_test_cfg.h"
-# include "u_cfg_test_platform_specific.h"
-#endif
+#  include "u_cell_test_cfg.h"
+#  include "u_cfg_test_platform_specific.h"
+# endif
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -40,18 +42,18 @@
 
 // The requested "active time" for 3GPP power saving.  This is the
 // period of inactivity after which the module may enter deep sleep.
-#ifndef ACTIVE_TIME_SECONDS
-# define ACTIVE_TIME_SECONDS 60
-#endif
+# ifndef ACTIVE_TIME_SECONDS
+#  define ACTIVE_TIME_SECONDS 60
+# endif
 
 // The requested period at which the module will wake up to inform
 // the cellular network that it is still connected; this should
 // be set to around 1.5 times your application's natural periodicity,
 // as a safety-net; the wake-up only occurs if the module has not already
 // woken up for other reasons in time.
-#ifndef PERIODIC_WAKEUP_SECONDS
-# define PERIODIC_WAKEUP_SECONDS (3600 * 4)
-#endif
+# ifndef PERIODIC_WAKEUP_SECONDS
+#  define PERIODIC_WAKEUP_SECONDS (3600 * 4)
+# endif
 
 // The RAT the module will use.  While it is not a requirement
 // to set this explicitly (you could, for instance just register
@@ -61,20 +63,20 @@
 // require a re-boot to apply new 3GPP power saving settings, so
 // rather than messing about registering and then rebooting if
 // required, for this example code we set the RAT explicitly.
-#ifndef MY_RAT
-# define MY_RAT U_CELL_NET_RAT_CATM1
-#endif
+# ifndef MY_RAT
+#  define MY_RAT U_CELL_NET_RAT_CATM1
+# endif
 
 // For u-blox internal testing only
-#ifdef U_PORT_TEST_ASSERT
-# define EXAMPLE_FINAL_STATE(x) U_PORT_TEST_ASSERT(x);
-#else
-# define EXAMPLE_FINAL_STATE(x)
-#endif
+# ifdef U_PORT_TEST_ASSERT
+#  define EXAMPLE_FINAL_STATE(x) U_PORT_TEST_ASSERT(x);
+# else
+#  define EXAMPLE_FINAL_STATE(x)
+# endif
 
-#ifndef U_PORT_TEST_FUNCTION
-# error if you are not using the unit test framework to run this code you must ensure that the platform clocks/RTOS are set up and either define U_PORT_TEST_FUNCTION yourself or replace it as necessary.
-#endif
+# ifndef U_PORT_TEST_FUNCTION
+#  error if you are not using the unit test framework to run this code you must ensure that the platform clocks/RTOS are set up and either define U_PORT_TEST_FUNCTION yourself or replace it as necessary.
+# endif
 
 /* ----------------------------------------------------------------
  * TYPES
@@ -93,7 +95,6 @@
 // for the module is likely different that from the MCU: check
 // the data sheet for the module to determine the mapping.
 
-#ifdef U_CFG_TEST_CELL_MODULE_TYPE
 // DEVICE i.e. module/chip configuration: in this case a cellular
 // module connected via UART
 static const uDeviceCfg_t gDeviceCfg = {
@@ -137,10 +138,6 @@ static const uNetworkCfgCell_t gNetworkCfg = {
     // will be aborted, allowing you immediate control.  If this
     // field is set, timeoutSeconds will be ignored.
 };
-#else
-static const uDeviceCfg_t gDeviceCfg = {.deviceType = U_DEVICE_TYPE_NONE};
-static const uNetworkCfgCell_t gNetworkCfg = {.type = U_NETWORK_TYPE_NONE};
-#endif
 
 // Flag that allows us to check if power saving has been set.
 static volatile bool g3gppPowerSavingSet = false;
@@ -263,10 +260,10 @@ U_PORT_TEST_FUNCTION("[example]", "exampleCellPowerSaving3gpp")
 
     uPortLog("### Done.\n");
 
-#if defined(U_CFG_TEST_CELL_MODULE_TYPE) && !defined(U_CFG_CELL_DISABLE_UART_POWER_SAVING)
+# ifndef U_CFG_CELL_DISABLE_UART_POWER_SAVING
     // For u-blox internal testing only
     EXAMPLE_FINAL_STATE((x < 0) || g3gppPowerSavingSet);
-# ifdef U_PORT_TEST_ASSERT
+#  ifdef U_PORT_TEST_ASSERT
     // We don't want 3GPP power saving left on for our internal testing,
     // we need the module to stay awake, so switch it off again here
     if (g3gppPowerSavingSet) {
@@ -281,14 +278,15 @@ U_PORT_TEST_FUNCTION("[example]", "exampleCellPowerSaving3gpp")
         }
         // Close the device
         // Note: we don't power the device down here in order
-        // to speed up testing; you may prefer to power it off
-        // by setting the second parameter to true.
+        // to speed up testing.
         uDeviceClose(devHandle, false);
         uDeviceDeinit();
         uPortDeinit();
     }
+#  endif
 # endif
-#endif
 }
+
+#endif // #ifdef U_CFG_TEST_CELL_MODULE_TYPE
 
 // End of file

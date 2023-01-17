@@ -429,6 +429,7 @@ typedef struct uCellPrivateInstance_t {
     uCellPrivateProfileState_t profileState; /**< To track whether a profile is meant to be active. */
     void *pFotaContext; /**< FOTA context, lodged here as a void * to
                              avoid spreading its types all over. */
+    void *pHttpContext;  /**< Hook for a HTTP context. */
     struct uCellPrivateInstance_t *pNext;
 } uCellPrivateInstance_t;
 
@@ -468,6 +469,7 @@ extern uPortMutexHandle_t gUCellPrivateMutex;
 bool uCellPrivateIsNumeric(const char *pBuffer, size_t bufferSize);
 
 /** Find a cellular instance in the list by instance handle.
+ *
  * Note: gUCellPrivateMutex should be locked before this is called.
  *
  * @param cellHandle  the instance handle.
@@ -515,6 +517,7 @@ void uCellPrivateCFunMode(uCellPrivateInstance_t *pInstance,
                           int32_t mode);
 
 /** Get the IMSI of the SIM.
+ *
  * Note: gUCellPrivateMutex should be locked before this is called.
  *
  * @param pInstance  a pointer to the cellular instance.
@@ -526,6 +529,7 @@ int32_t uCellPrivateGetImsi(const uCellPrivateInstance_t *pInstance,
                             char *pImsi);
 
 /** Get the IMEI of the module.
+ *
  * Note: gUCellPrivateMutex should be locked before this is called.
  *
  * @param pInstance  a pointer to the cellular instance.
@@ -537,6 +541,7 @@ int32_t uCellPrivateGetImei(const uCellPrivateInstance_t *pInstance,
                             char *pImei);
 
 /** Get whether the given instance is registered with the network.
+ *
  * Note: gUCellPrivateMutex should be locked before this is called.
  *
  * @param pInstance  a pointer to the cellular instance.
@@ -555,6 +560,7 @@ uCellNetRat_t uCellPrivateModuleRatToCellRat(uCellModuleType_t moduleType,
                                              int32_t moduleRat);
 
 /** Get the active RAT.
+ *
  * Note: gUCellPrivateMutex should be locked before this is called.
  *
  * @param pInstance  a pointer to the cellular instance.
@@ -598,6 +604,7 @@ void uCellPrivateScanFree(uCellPrivateNet_t **ppScanResults);
 const uCellPrivateModule_t *pUCellPrivateGetModule(uDeviceHandle_t cellHandle);
 
 /** Remove the chip to chip security context for the given instance.
+ *
  * Note: gUCellPrivateMutex should be locked before this is called.
  *
  * @param pInstance   a pointer to the cellular instance.
@@ -605,6 +612,7 @@ const uCellPrivateModule_t *pUCellPrivateGetModule(uDeviceHandle_t cellHandle);
 void uCellPrivateC2cRemoveContext(uCellPrivateInstance_t *pInstance);
 
 /** Remove the location context for the given instance.
+ *
  * Note: gUCellPrivateMutex should be locked before this is called.
  *
  * @param pInstance   a pointer to the cellular instance.
@@ -612,6 +620,7 @@ void uCellPrivateC2cRemoveContext(uCellPrivateInstance_t *pInstance);
 void uCellPrivateLocRemoveContext(uCellPrivateInstance_t *pInstance);
 
 /** Remove the sleep context for the given instance.
+ *
  * Note: gUCellPrivateMutex should be locked before this is called.
  *
  * @param pInstance   a pointer to the cellular instance.
@@ -688,6 +697,7 @@ int32_t uCellPrivateWakeUpCallback(uAtClientHandle_t atHandle,
  * RATs.  Something like that anyway.  This should be called after
  * power-on and after a RAT change; it doesn't talk to the module,
  * simply works on the current state of the module as known to this code.
+ *
  * Note: gUCellPrivateMutex should be locked before this is called.
  *
  * @param pInstance a pointer to the cellular instance.
@@ -793,6 +803,15 @@ int32_t uCellPrivateFileListNext(uCellPrivateFileListContainer_t **ppFileListCon
  *                            a call to uCellPrivateFileListFirst().
  */
 void uCellPrivateFileListLast(uCellPrivateFileListContainer_t **ppFileListContainer);
+
+/** Remove the HTTP context for the given instance.
+ *
+ * Note:  gUCellPrivateMutex and the linked list mutex of the HTTP
+ * context should be locked before this is called.
+ *
+ * @param pInstance   a pointer to the cellular instance.
+ */
+void uCellPrivateHttpRemoveContext(uCellPrivateInstance_t *pInstance);
 
 #ifdef __cplusplus
 }

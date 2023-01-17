@@ -15,9 +15,11 @@
  */
 
 /** @file
- * @brief Stub of the short-range portion of the device API.
- * Build this instead of u_device_private_short_range.c if you want to
- * avoid linking short-range features into your application.
+ * @brief Stubs to allow the device API to be compiled without short range;
+ * if you call a short range API function from the source code here you must
+ * also include a weak stub for it which will return
+ * #U_ERROR_COMMON_NOT_SUPPORTED when short range is not included in the
+ * build.
  */
 
 #ifdef U_CFG_OVERRIDE
@@ -28,65 +30,50 @@
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 
+#include "u_compiler.h" // U_WEAK
 #include "u_error_common.h"
 #include "u_device.h"
 #include "u_device_shared.h"
 
 /* ----------------------------------------------------------------
- * COMPILE-TIME MACROS
- * -------------------------------------------------------------- */
-
-/* ----------------------------------------------------------------
- * TYPES
- * -------------------------------------------------------------- */
-
-/* ----------------------------------------------------------------
- * STATIC VARIABLES
- * -------------------------------------------------------------- */
-
-/* ----------------------------------------------------------------
- * STATIC FUNCTIONS
- * -------------------------------------------------------------- */
-
-/* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-int32_t uDevicePrivateShortRangeInit()
+U_WEAK int32_t uDevicePrivateShortRangeInit()
 {
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
+    return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
 }
 
-void uDevicePrivateShortRangeDeinit()
+U_WEAK void uDevicePrivateShortRangeDeinit()
 {
 }
 
-int32_t uDevicePrivateShortRangeAdd(const uDeviceCfg_t *pDevCfg,
-                                    uDeviceHandle_t *pDeviceHandle)
-{
-    (void) pDevCfg;
-    (void) pDeviceHandle;
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;;
-}
-
-int32_t uDevicePrivateShortRangeOpenCpuAdd(const uDeviceCfg_t *pDevCfg,
+U_WEAK int32_t uDevicePrivateShortRangeAdd(const uDeviceCfg_t *pDevCfg,
                                            uDeviceHandle_t *pDeviceHandle)
 {
     (void) pDevCfg;
     (void) pDeviceHandle;
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;;
+    return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
 }
 
-int32_t uDevicePrivateShortRangeRemove(uDeviceHandle_t devHandle)
+U_WEAK int32_t uDevicePrivateShortRangeOpenCpuAdd(const uDeviceCfg_t *pDevCfg,
+                                                  uDeviceHandle_t *pDeviceHandle)
 {
-    (void) devHandle;
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;;
+    (void) pDevCfg;
+    (void) pDeviceHandle;
+    return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
 }
 
-int32_t uDevicePrivateShortRangeOpenCpuRemove(uDeviceHandle_t devHandle)
+U_WEAK int32_t uDevicePrivateShortRangeRemove(uDeviceHandle_t devHandle)
 {
     (void) devHandle;
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;;
+    return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+}
+
+U_WEAK int32_t uDevicePrivateShortRangeOpenCpuRemove(uDeviceHandle_t devHandle)
+{
+    (void) devHandle;
+    return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
 }
 
 // End of file

@@ -57,6 +57,9 @@
 #include "u_short_range_private.h"
 #endif
 #include "u_short_range_test_private.h"
+#include "u_short_range_pbuf.h"
+#include "u_short_range_edm.h"
+#include "u_port_heap.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -245,6 +248,63 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeUartSetBaudrate")
     }
     uShortRangeTestPrivateCleanup(&gHandles);
     U_TEST_PRINT_LINE("shortRangeUartSetBaudrate succeded.");
+}
+
+U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeMemFullRecovery")
+{
+    uShortRangeUartConfig_t uart = { .uartPort = U_CFG_APP_SHORT_RANGE_UART,
+                                     .baudRate = U_SHORT_RANGE_UART_BAUD_RATE,
+                                     .pinTx = U_CFG_APP_PIN_SHORT_RANGE_TXD,
+                                     .pinRx = U_CFG_APP_PIN_SHORT_RANGE_RXD,
+                                     .pinCts = U_CFG_APP_PIN_SHORT_RANGE_CTS,
+                                     .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS
+                                   };
+    int32_t errCode;
+    uShortRangePbufList_t *pPbufList;
+    uShortRangePbuf_t *pBuf;
+    char *pBuffer3;
+    int32_t i, nrOfPbufs;
+    int32_t sizeOfBlk = U_SHORT_RANGE_EDM_BLK_SIZE;
+
+    uPortDeinit();
+    errCode = uShortRangeMemPoolInit();
+    U_PORT_TEST_ASSERT(errCode == (int32_t)U_ERROR_COMMON_SUCCESS);
+    pPbufList = pUShortRangePbufListAlloc();
+    U_PORT_TEST_ASSERT(pPbufList != NULL);
+    pBuffer3 = (char *)pUPortMalloc(U_SHORT_RANGE_EDM_BLK_SIZE);
+
+    U_PORT_TEST_ASSERT(pBuffer3 != NULL);
+    U_PORT_TEST_ASSERT(uPortInit() == 0);
+    U_PORT_TEST_ASSERT(uAtClientInit() == 0);
+    U_PORT_TEST_ASSERT(uShortRangeInit() == 0);
+    U_PORT_TEST_ASSERT(uShortRangeTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
+                                                      &uart,
+                                                      &gHandles) == 0);
+    U_PORT_TEST_ASSERT(uShortRangeGetUartHandle(gHandles.devHandle) == gHandles.uartHandle);
+
+    // run into the wall
+    for (nrOfPbufs = 0; sizeOfBlk == U_SHORT_RANGE_EDM_BLK_SIZE; nrOfPbufs++) {
+        sizeOfBlk = uShortRangePbufAlloc(&pBuf);
+        if (sizeOfBlk == U_SHORT_RANGE_EDM_BLK_SIZE) {
+            uShortRangePbufListAppend(pPbufList, pBuf);
+        }
+    }
+    U_TEST_PRINT_LINE("Allocated %d pbufs.", nrOfPbufs);
+    // This should not receive a valid response on UART since no pbuf available
+    U_PORT_TEST_ASSERT(uShortRangeAttention(gHandles.devHandle) != 0);
+    // Free up some pbufs
+    for (i = 0; i < (int32_t)4; i++) {
+        uShortRangePbufListConsumeData(pPbufList, pBuffer3, 1);
+    }
+    // This should receive a valid response on UART since we freed up some pbufs
+    U_PORT_TEST_ASSERT(uShortRangeAttention(gHandles.devHandle) == 0);
+    for (i = (int32_t)4; i < nrOfPbufs; i++) {
+        uShortRangePbufListConsumeData(pPbufList, pBuffer3, 1);
+    }
+    uShortRangeMemPoolDeInit();
+    uPortFree(pBuffer3);
+    uShortRangeTestPrivateCleanup(&gHandles);
+    U_TEST_PRINT_LINE("shortRangeMemFullRecovery() succeded.");
 }
 
 #if defined(U_CFG_APP_PIN_SHORT_RANGE_RESET_TO_DEFAULTS) && (U_CFG_APP_PIN_SHORT_RANGE_RESET_TO_DEFAULTS >= 0)

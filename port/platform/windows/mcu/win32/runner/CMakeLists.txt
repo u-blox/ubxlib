@@ -8,6 +8,8 @@ if (MSVC)
     set(CMAKE_CXX_STANDARD 20)
     # Warnings as errors and ignore a few warnings
     add_compile_options(/J /WX /wd4068 /wd4090 /wd4838 /wd4996 /wd4061 /wd4309 /wd5045)
+    # Switch off warning about duplicate functions since we use WEAK which MSVC doesn't _need_ but then complains about there being two objects...
+    set(CMAKE_STATIC_LINKER_FLAGS "${CMAKE_STATIC_LINKER_FLAGS} /IGNORE:4006" CACHE STRING "Linker flag" FORCE)
 else()
     # GCC-compatible options
     add_compile_options(-Wall -Wextra -Werror)

@@ -12,6 +12,7 @@ UBXLIB_MODULE_DIRS = \
 	${UBXLIB_BASE}/common/assert \
 	${UBXLIB_BASE}/common/location \
 	${UBXLIB_BASE}/common/mqtt_client \
+	${UBXLIB_BASE}/common/http_client \
 	${UBXLIB_BASE}/common/security \
 	${UBXLIB_BASE}/common/sock \
 	${UBXLIB_BASE}/common/ubx_protocol \
@@ -42,11 +43,19 @@ UBXLIB_PRIVATE_INC += \
 # Device and network require special care since they contain stub & optional files
 UBXLIB_SRC += ${UBXLIB_BASE}/common/network/src/u_network.c
 UBXLIB_SRC += ${UBXLIB_BASE}/common/network/src/u_network_shared.c
+UBXLIB_SRC += ${UBXLIB_BASE}/common/network/src/u_network_private_ble_extmod_stub.c
+UBXLIB_SRC += ${UBXLIB_BASE}/common/network/src/u_network_private_cell_stub.c
+UBXLIB_SRC += ${UBXLIB_BASE}/common/network/src/u_network_private_gnss_stub.c
+UBXLIB_SRC += ${UBXLIB_BASE}/common/network/src/u_network_private_wifi_stub.c
 UBXLIB_INC += ${UBXLIB_BASE}/common/network/api
 UBXLIB_PRIVATE_INC += ${UBXLIB_BASE}/common/network/src
 UBXLIB_SRC += ${UBXLIB_BASE}/common/device/src/u_device.c
+UBXLIB_SRC += ${UBXLIB_BASE}/common/device/src/u_device_serial.c
 UBXLIB_SRC += ${UBXLIB_BASE}/common/device/src/u_device_shared.c
 UBXLIB_SRC += ${UBXLIB_BASE}/common/device/src/u_device_private.c
+UBXLIB_SRC += ${UBXLIB_BASE}/common/device/src/u_device_private_cell_stub.c
+UBXLIB_SRC += ${UBXLIB_BASE}/common/device/src/u_device_private_gnss_stub.c
+UBXLIB_SRC += ${UBXLIB_BASE}/common/device/src/u_device_private_short_range_stub.c
 UBXLIB_INC += ${UBXLIB_BASE}/common/device/api
 UBXLIB_PRIVATE_INC += ${UBXLIB_BASE}/common/device/src
 
@@ -65,6 +74,16 @@ UBXLIB_SRC += \
 	${UBXLIB_BASE}/common/network/src/u_network_private_ble_intmod.c \
 	${UBXLIB_BASE}/common/network/src/u_network_private_wifi.c \
 	${UBXLIB_BASE}/common/device/src/u_device_private_short_range.c
+else
+# Always add all of the includes
+UBXLIB_INC += \
+	${UBXLIB_BASE}/common/short_range/api \
+	${UBXLIB_BASE}/ble/api \
+	${UBXLIB_BASE}/wifi/api
+UBXLIB_PRIVATE_INC += \
+	${UBXLIB_BASE}/common/short_range/src \
+	${UBXLIB_BASE}/ble/src \
+	${UBXLIB_BASE}/wifi/src
 endif
 
 # Optional cell related files and directories
@@ -73,6 +92,12 @@ UBXLIB_MODULE_DIRS += ${UBXLIB_BASE}/cell
 UBXLIB_SRC += \
 	${UBXLIB_BASE}/common/network/src/u_network_private_cell.c \
 	${UBXLIB_BASE}/common/device/src/u_device_private_cell.c
+else
+# Always add all of the includes
+UBXLIB_INC += \
+	${UBXLIB_BASE}/cell/api
+UBXLIB_PRIVATE_INC += \
+	${UBXLIB_BASE}/cell/src
 endif
 
 # Optional GNSS related files and directories
@@ -81,6 +106,12 @@ UBXLIB_MODULE_DIRS += ${UBXLIB_BASE}/gnss
 UBXLIB_SRC += \
 	${UBXLIB_BASE}/common/network/src/u_network_private_gnss.c \
 	${UBXLIB_BASE}/common/device/src/u_device_private_gnss.c
+else
+# Always add all of the includes
+UBXLIB_INC += \
+	${UBXLIB_BASE}/gnss/api
+UBXLIB_PRIVATE_INC += \
+	${UBXLIB_BASE}/gnss/src
 endif
 
 # lib_common
@@ -95,6 +126,7 @@ UBXLIB_TEST_DIRS += \
 	${UBXLIB_BASE}/port/platform/common/runner \
 	${UBXLIB_BASE}/port/platform/common/test \
 	${UBXLIB_BASE}/port/test \
+	${UBXLIB_BASE}/common/device/test \
 	${UBXLIB_BASE}/common/network/test
 # Examples are compiled as tests
 UBXLIB_TEST_DIRS += \
@@ -103,6 +135,7 @@ UBXLIB_TEST_DIRS += \
 	${UBXLIB_BASE}/example/security/psk \
 	${UBXLIB_BASE}/example/security/c2c \
 	${UBXLIB_BASE}/example/mqtt_client \
+	${UBXLIB_BASE}/example/http_client \
 	${UBXLIB_BASE}/example/location \
 	${UBXLIB_BASE}/example/cell/lte_cfg \
 	${UBXLIB_BASE}/example/cell/power_saving \

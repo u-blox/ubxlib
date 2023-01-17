@@ -22,29 +22,31 @@
  * instructions.
  */
 
+#ifdef U_CFG_TEST_CELL_MODULE_TYPE
+
 // Bring in all of the ubxlib public header files
-#include "ubxlib.h"
+# include "ubxlib.h"
 
 // Bring in the application settings
-#include "u_cfg_app_platform_specific.h"
+# include "u_cfg_app_platform_specific.h"
 
-#ifndef U_CFG_DISABLE_TEST_AUTOMATION
+# ifndef U_CFG_DISABLE_TEST_AUTOMATION
 // This purely for internal u-blox testing
-# include "u_cell_test_cfg.h"
-# include "u_cfg_test_platform_specific.h"
-#endif
+#  include "u_cell_test_cfg.h"
+#  include "u_cfg_test_platform_specific.h"
+# endif
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
-#ifndef MY_MNO_PROFILE
+# ifndef MY_MNO_PROFILE
 // Replace U_CELL_TEST_CFG_MNO_PROFILE with the MNO profile number
 // you require: consult the u-blox AT command manual for your module
 // to find out the possible values; 100, for example, is "Europe",
 // 90 is "global".
-# define MY_MNO_PROFILE U_CELL_TEST_CFG_MNO_PROFILE
-#endif
+#  define MY_MNO_PROFILE U_CELL_TEST_CFG_MNO_PROFILE
+# endif
 
 // The RATs you want the module to use, in priority order.
 // Set the value of MY_RAT0 to the RAT you want to use
@@ -60,15 +62,15 @@
 // it supports at the same time), add secondary and tertiary
 // RATs by setting the values for MY_RAT1 and MY_RAT2 as
 // required.
-#ifndef MY_RAT0
-# define MY_RAT0 U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED
-#endif
-#ifndef MY_RAT1
-# define MY_RAT1 U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED
-#endif
-#ifndef MY_RAT2
-# define MY_RAT2 U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED
-#endif
+# ifndef MY_RAT0
+#  define MY_RAT0 U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED
+# endif
+# ifndef MY_RAT1
+#  define MY_RAT1 U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED
+# endif
+# ifndef MY_RAT2
+#  define MY_RAT2 U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED
+# endif
 
 // Set the values of MY_xxx_BANDMASKx to your chosen band masks
 // for the Cat M1 and NB1 RATs; see cell/api/u_cell_cfg.h for some
@@ -80,29 +82,29 @@
 // so take care.
 // When in doubt, set an MNO profile and rely on that to configure
 // the bands that your modules _does_ support.
-#ifndef MY_CATM1_BANDMASK1
-# define MY_CATM1_BANDMASK1 U_CELL_CFG_BAND_MASK_1_NORTH_AMERICA_CATM1_DEFAULT
-#endif
-#ifndef MY_CATM1_BANDMASK2
-# define MY_CATM1_BANDMASK2 U_CELL_CFG_BAND_MASK_2_NORTH_AMERICA_CATM1_DEFAULT
-#endif
-#ifndef MY_NB1_BANDMASK1
-# define MY_NB1_BANDMASK1   U_CELL_CFG_BAND_MASK_1_EUROPE_NB1_DEFAULT
-#endif
-#ifndef MY_NB1_BANDMASK2
-# define MY_NB1_BANDMASK2   U_CELL_CFG_BAND_MASK_2_EUROPE_NB1_DEFAULT
-#endif
+# ifndef MY_CATM1_BANDMASK1
+#  define MY_CATM1_BANDMASK1 U_CELL_CFG_BAND_MASK_1_NORTH_AMERICA_CATM1_DEFAULT
+# endif
+# ifndef MY_CATM1_BANDMASK2
+#  define MY_CATM1_BANDMASK2 U_CELL_CFG_BAND_MASK_2_NORTH_AMERICA_CATM1_DEFAULT
+# endif
+# ifndef MY_NB1_BANDMASK1
+#  define MY_NB1_BANDMASK1   U_CELL_CFG_BAND_MASK_1_EUROPE_NB1_DEFAULT
+# endif
+# ifndef MY_NB1_BANDMASK2
+#  define MY_NB1_BANDMASK2   U_CELL_CFG_BAND_MASK_2_EUROPE_NB1_DEFAULT
+# endif
 
 // For u-blox internal testing only
-#ifdef U_PORT_TEST_ASSERT
-# define EXAMPLE_FINAL_STATE(x) U_PORT_TEST_ASSERT(x);
-#else
-# define EXAMPLE_FINAL_STATE(x)
-#endif
+# ifdef U_PORT_TEST_ASSERT
+#  define EXAMPLE_FINAL_STATE(x) U_PORT_TEST_ASSERT(x);
+# else
+#  define EXAMPLE_FINAL_STATE(x)
+# endif
 
-#ifndef U_PORT_TEST_FUNCTION
-# error if you are not using the unit test framework to run this code you must ensure that the platform clocks/RTOS are set up and either define U_PORT_TEST_FUNCTION yourself or replace it as necessary.
-#endif
+# ifndef U_PORT_TEST_FUNCTION
+#  error if you are not using the unit test framework to run this code you must ensure that the platform clocks/RTOS are set up and either define U_PORT_TEST_FUNCTION yourself or replace it as necessary.
+# endif
 
 /* ----------------------------------------------------------------
  * TYPES
@@ -124,7 +126,6 @@ uCellNetRat_t gMyRatList[] = {MY_RAT0, MY_RAT1, MY_RAT2};
 // for the module is likely different that from the MCU: check
 // the data sheet for the module to determine the mapping.
 
-#ifdef U_CFG_TEST_CELL_MODULE_TYPE
 // DEVICE i.e. module/chip configuration: in this case a cellular
 // module connected via UART
 static const uDeviceCfg_t gDeviceCfg = {
@@ -168,10 +169,6 @@ static const uNetworkCfgCell_t gNetworkCfg = {
     // will be aborted, allowing you immediate control.  If this
     // field is set, timeoutSeconds will be ignored.
 };
-#else
-static const uDeviceCfg_t gDeviceCfg = {.deviceType = U_DEVICE_TYPE_NONE};
-static const uNetworkCfgCell_t gNetworkCfg = {.type = U_NETWORK_TYPE_NONE};
-#endif
 
 // The names for each RAT, for debug purposes
 static const char *const gpRatStr[] = {"unknown or not used",
@@ -440,11 +437,11 @@ U_PORT_TEST_FUNCTION("[example]", "exampleCellLteCfg")
 
     uPortLog("### Done.\n");
 
-#ifdef U_CFG_TEST_CELL_MODULE_TYPE
     // For u-blox internal testing only
     EXAMPLE_FINAL_STATE((address.ipAddress.type == U_SOCK_ADDRESS_TYPE_V4) ||
                         (address.ipAddress.type == U_SOCK_ADDRESS_TYPE_V6));
-#endif
 }
+
+#endif // #ifdef U_CFG_TEST_CELL_MODULE_TYPE
 
 // End of file

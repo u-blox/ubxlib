@@ -91,6 +91,18 @@ typedef struct {
 } uCellSecTlsContext_t;
 
 /* ----------------------------------------------------------------
+ * FUNCTIONS:  WORKAROUND FOR LINKER ISSUE
+ * -------------------------------------------------------------- */
+
+/** Workaround for Espressif linker missing out files that
+ * only contain functions which also have weak alternatives
+ * (see https://www.esp32.com/viewtopic.php?f=13&t=8418&p=35899).
+ *
+ * You can ignore this function.
+ */
+void uCellSecTlsPrivateLink(void);
+
+/* ----------------------------------------------------------------
  * FUNCTIONS: ADD/REMOVE A TLS SECURITY CONTEXT
  * -------------------------------------------------------------- */
 

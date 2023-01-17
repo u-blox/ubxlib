@@ -51,6 +51,13 @@
 #include "u_gnss_msg.h"
 #include "u_gnss_private.h"
 
+// The headers below are necessary to work around an Espressif linker problem, see uGnssInit()
+#include "u_device_private_gnss.h"
+#include "u_network.h"
+#include "u_network_config_gnss.h"
+#include "u_network_private_gnss.h"
+#include "u_gnss_pos.h" // For uGnssPosPrivateLink()
+
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
@@ -63,6 +70,7 @@
  * STATIC VARIABLES
  * -------------------------------------------------------------- */
 
+#if U_CFG_ENABLE_LOGGING
 /** To display some nice text.
  */
 //lint -esym(752, gpTransportTypeText) Suppress not referenced, which
@@ -75,6 +83,7 @@ static const char *const gpTransportTypeText[] = {"None",       // U_GNSS_TRANSP
                                                   "UBX UART",   // U_GNSS_TRANSPORT_UBX_UART
                                                   "UBX I2C"     // U_GNSS_TRANSPORT_UBX_I2C
                                                  };
+#endif
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -185,6 +194,18 @@ static void deleteGnssInstance(uGnssPrivateInstance_t *pInstance)
 int32_t uGnssInit()
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+
+    // Workaround for Espressif linker missing out files that
+    // only contain functions which also have weak alternatives
+    // (see https://www.esp32.com/viewtopic.php?f=13&t=8418&p=35899)
+    // Basically any file that might end up containing only functions
+    // that also have WEAK linked counterparts will be lost, so we need
+    // to add a dummy function in those files and call it from somewhere
+    // that will always be present in the build, which for GNSS we
+    // choose to be here
+    uDevicePrivateGnssLink();
+    uNetworkPrivateGnssLink();
+    uGnssPosPrivateLink();
 
     if (gUGnssPrivateMutex == NULL) {
         // Create the mutex that protects the linked list
