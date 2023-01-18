@@ -218,7 +218,7 @@ size_t uRingBufferDataSize(const uRingBuffer_t *pRingBuffer);
 
 /** Get the free space available in a ring buffer, that is what uRingBufferAdd()
  * would be able to store; see also uRingBufferAvailableSizeMax() for
- * what uRingBufferForcedAdd() would be able to store.
+ * what uRingBufferForceAdd() would be able to store.
  *
  * @param[in] pRingBuffer a pointer to the ring buffer, cannot be NULL.
  * @return                the number of bytes available for storing.
@@ -254,7 +254,7 @@ void uRingBufferFlushValue(uRingBuffer_t *pRingBuffer, char value,
  */
 void uRingBufferReset(uRingBuffer_t *pRingBuffer);
 
-/** Get the number of bytes lost due to uRingBufferForcedAdd() pushing
+/** Get the number of bytes lost due to uRingBufferForceAdd() pushing
  * data out from under uRingBufferRead().
  *
  * @param[in] pRingBuffer a pointer to the ring buffer, cannot be NULL.
@@ -263,7 +263,7 @@ void uRingBufferReset(uRingBuffer_t *pRingBuffer);
 size_t uRingBufferStatReadLoss(uRingBuffer_t *pRingBuffer);
 
 /** Get the number of bytes lost due to uRingBufferAdd() or
- * uRingBufferForcedAdd() being unable to write data into the
+ * uRingBufferForceAdd() being unable to write data into the
  * ring buffer.
  *
  * @param[in] pRingBuffer a pointer to the ring buffer, cannot be NULL.
@@ -276,7 +276,7 @@ size_t uRingBufferStatAddLoss(uRingBuffer_t *pRingBuffer);
  * -------------------------------------------------------------- */
 
 /** Create a new ring buffer from a linear buffer that allows
- * multiple read handles. allowing the "handle" API functions
+ * multiple read handles, allowing the "handle" API functions
  * here to be used.  If you don't need/want this overhead, i.e. you
  * only have one consumer of data from the buffer that will call
  * uRingBufferRead(), then you should create your ring buffer using
@@ -296,8 +296,8 @@ int32_t uRingBufferCreateWithReadHandle(uRingBuffer_t *pRingBuffer,
                                         char *pLinearBuffer, size_t size,
                                         size_t maxNumReadHandles);
 
-/** Set whether a ring buffer accepts uRingBufferRead()/uRingBufferPeek()
- * or requires the "handle" form, uRingBufferReadHandle()/
+/** Set whether a ring buffer accepts uRingBufferRead() / uRingBufferPeek()
+ * or requires the "handle" form, uRingBufferReadHandle() /
  * uRingBufferPeekHandle(), to be used.  Only useful if the ring buffer
  * was created by calling uRingBufferCreateWithReadHandle() rather than
  * uRingBufferCreate().
@@ -316,16 +316,16 @@ void uRingBufferSetReadRequiresHandle(uRingBuffer_t *pRingBuffer,
  * uRingBufferPeekHandle(), to be used.
  *
  * @param[in] pRingBuffer a pointer to the ring buffer, cannot be NULL.
- * @return    true if use of uRingBufferReadHandle()/uRingBufferPeekHandle()
+ * @return    true if use of uRingBufferReadHandle() / uRingBufferPeekHandle()
  *            is required, else false (so either uRingBufferReadHandle()/
- *            uRingBufferPeekHandle() or uRingBufferRead()/uRingBufferPeek()
+ *            uRingBufferPeekHandle() or uRingBufferRead() / uRingBufferPeek()
  *            can be used).
  */
 bool uRingBufferGetReadRequiresHandle(uRingBuffer_t *pRingBuffer);
 
 /** Register with the ring buffer as a reader.  Use this in conjunction
- * with uRingBufferReadHandle()/uRingBufferPeekHandle() (instead of
- * uRingBufferRead()/uRingBufferPeek()) if there is going to be more than
+ * with uRingBufferReadHandle() / uRingBufferPeekHandle() (instead of
+ * uRingBufferRead() / uRingBufferPeek()) if there is going to be more than
  * one consumer of the data in the ring buffer. It allows the ring buffer
  * code to remember whose read pointer to move on.  To use this function
  * the ring buffer must have been created by calling
@@ -443,7 +443,7 @@ size_t uRingBufferAvailableSizeMax(const uRingBuffer_t *pRingBuffer);
  */
 void uRingBufferFlushHandle(uRingBuffer_t *pRingBuffer, int32_t handle);
 
-/** Get the number of bytes lost due to uRingBufferForcedAdd()() pushing
+/** Get the number of bytes lost due to uRingBufferForceAdd() pushing
  * data out from under the given uRingBufferReadHandle().
  *
  * @param[in] pRingBuffer a pointer to the ring buffer, cannot be NULL.
