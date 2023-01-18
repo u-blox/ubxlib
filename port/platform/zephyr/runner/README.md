@@ -18,9 +18,11 @@ While in the `port/platform/zephyr/runner` directory:
   ```
 
   ```
-  west build -p auto -b ubx_evkninab3_nrf52840 . -DBOARD_ROOT=../boards/short_range/zephyr --build-dir build_ubx_evkninab3_nrf52840
-  west flash --build-dir build_ubx_evkninab3_nrf52840
+  west build -p auto -b nrf52840dk_nrf52840 . -DBOARD_ROOT=../boards/short_range/zephyr --build-dir build_nrf52840dk_nrf52840
+  west flash --build-dir build_nrf52840dk_nrf52840
   ```
+
+Note that the `nrf5340dk_nrf5340` overlay file should be used with a u-blox NORA-B1 board and the `nrf52850dk_nrf52840` overlay file should be used with a u-blox NINA-B3 board.
 
 # Usage
 Make sure you have followed the instructions in the [zephyr port README.md](../README.md) to install nRFConnectSDK and toolchain.
