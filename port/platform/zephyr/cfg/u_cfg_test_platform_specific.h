@@ -106,7 +106,8 @@
  * -------------------------------------------------------------- */
 
 #ifdef CONFIG_BOARD_UBX_EVKNINAB3_NRF52840
-#include "u_cfg_test_platform_specific_ubx_evkninab3_nrf52840.h"
+// The standard NRF52840 settings can be employed in this case
+#include "u_cfg_test_platform_specific_nrf52840dk_nrf52840.h"
 #endif
 
 #ifdef CONFIG_BOARD_UBX_EVKNINAB4_NRF52833
