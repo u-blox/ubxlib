@@ -106,8 +106,11 @@
 
 // BLE/cellular/GNSS/Wi-Fi APIs
 #include <u_ble.h>
+#include <u_ble_gap.h>
+#include <u_ble_gatt.h>
 #include <u_ble_cfg.h>
 #include <u_ble_sps.h>
+#include <u_ble_nus.h>
 #include <u_cell_net.h>
 #include <u_cell.h>
 #include <u_cell_cfg.h>

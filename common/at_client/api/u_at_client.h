@@ -816,6 +816,18 @@ void uAtClientWritePartialString(uAtClientHandle_t atHandle,
                                  bool isFirst,
                                  const char *pParam);
 
+/** Write binary data as a hex string AT command
+ * parameter to the AT command sequence
+ *
+ * @param atHandle     the handle of the AT client.
+ * @param[in] pData    the bytes to be written as the
+ *                     AT command parameter.
+ * @param lengthBytes  the number of bytes in pData.
+ */
+void uAtClientWriteHexData(uAtClientHandle_t atHandle,
+                           const uint8_t *pData,
+                           uint8_t lengthBytes);
+
 /** Stop the outgoing AT command by writing the
  * command terminator.  Should be called after
  * uAtClientCommandStart() and any uAtClientWritexxx()
@@ -973,6 +985,24 @@ int32_t uAtClientReadString(uAtClientHandle_t atHandle,
 int32_t uAtClientReadBytes(uAtClientHandle_t atHandle,
                            char *pBuffer, size_t lengthBytes,
                            bool standalone);
+
+/** Read binary data received as a hex string from from the
+ *  AT response
+ *
+ * @param [in] atHandle    the handle of the AT client.
+ * @param[out] pData       a buffer in which to place the
+ *                         bytes read.  May be set to NULL
+ *                         in which case the received bytes
+ *                         are thrown away.
+ * @param[in] lengthBytes  the maximum number of bytes to read.
+ * @return                 the number of bytes read or negative
+ *                         error code.  If pBuffer is NULL the
+ *                         number of bytes that would have been
+ *                         written to pBuffer is returned.
+ */
+int32_t uAtClientReadHexData(uAtClientHandle_t atHandle,
+                             uint8_t *pData,
+                             uint8_t lengthBytes);
 
 /** Marks the end of an AT response, should be called
  * after uAtClientResponseStart() when all of the

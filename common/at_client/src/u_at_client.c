@@ -64,6 +64,9 @@
 #include "u_short_range.h"
 #include "u_short_range_edm_stream.h"
 
+#include "u_hex_bin_convert.h"
+
+
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
@@ -3235,6 +3238,19 @@ void uAtClientWritePartialString(uAtClientHandle_t atHandle,
     U_AT_CLIENT_UNLOCK_CLIENT_MUTEX(pClient);
 }
 
+void uAtClientWriteHexData(uAtClientHandle_t atHandle,
+                           const uint8_t *pData,
+                           uint8_t lengthBytes)
+{
+    char *pHexStr = (char *)pUPortMalloc(lengthBytes * 2 + 1);
+    if (pHexStr) {
+        uBinToHex((char *)pData, lengthBytes, pHexStr);
+        pHexStr[lengthBytes * 2] = 0;
+        uAtClientWriteString(atHandle, pHexStr, false);
+        uPortFree(pHexStr);
+    }
+}
+
 // Stop the outgoing part of an AT command sequence.
 void uAtClientCommandStop(uAtClientHandle_t atHandle)
 {
@@ -3454,6 +3470,28 @@ int32_t uAtClientReadBytes(uAtClientHandle_t atHandle,
     U_AT_CLIENT_UNLOCK_CLIENT_MUTEX(pClient);
 
     return lengthRead;
+}
+
+int32_t uAtClientReadHexData(uAtClientHandle_t atHandle,
+                             uint8_t *pData,
+                             uint8_t lengthBytes)
+{
+    int32_t errorOrLength;
+    size_t strSize = lengthBytes * 2 + 1;
+    char *pHexStr = (char *)pUPortMalloc(strSize);
+    if (pHexStr) {
+        errorOrLength = uAtClientReadString(atHandle,
+                                            pHexStr,
+                                            strSize,
+                                            false);
+        if (errorOrLength > 0) {
+            errorOrLength = uHexToBin(pHexStr, strlen(pHexStr), (char *)pData);
+        }
+        uPortFree(pHexStr);
+    } else {
+        errorOrLength = U_ERROR_COMMON_NO_MEMORY;
+    }
+    return errorOrLength;
 }
 
 // Stop the response part of an AT sequence.

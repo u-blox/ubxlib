@@ -223,6 +223,7 @@ static int32_t uShortRangeAdd(uShortRangeModuleType_t moduleType,
                 pInstance->connections[i].type = U_SHORT_RANGE_CONNECTION_TYPE_INVALID;
             }
 
+            pInstance->devHandle = pDevInstance;
             pInstance->atHandle = atHandle;
             pInstance->mode = U_SHORT_RANGE_MODE_EDM;
             pInstance->startTimeMs = 500;
