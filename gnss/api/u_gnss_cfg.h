@@ -262,6 +262,23 @@ int32_t uGnssCfgSetProtocolOut(uDeviceHandle_t gnssHandle,
                                uGnssProtocol_t protocol,
                                bool onNotOff);
 
+/** Get whether the antenna has active power or not.
+ *
+ * @param gnssHandle  the handle of the GNSS instance.
+ * @return            1 if the antenna has active power, 0 if it
+ *                    does not, else negative error code.
+ */
+int32_t uGnssCfgGetAntennaActive(uDeviceHandle_t gnssHandle);
+
+/** Set whether the antenna has active power or not.
+ *
+ * @param gnssHandle  the handle of the GNSS instance.
+ * @param active      true if the antenna is to be actively
+ *                    powered, else false.
+ * @return            zero on succes or negative error code.
+ */
+int32_t uGnssCfgSetAntennaActive(uDeviceHandle_t gnssHandle, bool active);
+
 /* ----------------------------------------------------------------
  * FUNCTIONS: GENERIC CONFIGURATION USING VALGET/VALSET/VALDEL, FROM M9
  * -------------------------------------------------------------- */

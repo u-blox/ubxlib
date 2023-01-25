@@ -105,6 +105,10 @@ static int32_t gFixMode = -1;
 */
 static int32_t gUtcStandard = -1;
 
+/** The initial active antenna mode.
+*/
+static int32_t gAntennaActive = -1;
+
 /** Array of UTC standard values to check (ones that are supported by
  * all module types).
  */
@@ -371,6 +375,18 @@ U_PORT_TEST_FUNCTION("[gnssCfg]", "gnssCfgBasic")
         }
         // Put the initial UTC standard back
         U_PORT_TEST_ASSERT(uGnssCfgSetUtcStandard(gnssHandle, (uGnssUtcStandard_t) gUtcStandard) == 0);
+
+        // Get the initial active antenna mode
+        gAntennaActive = uGnssCfgGetAntennaActive(gnssHandle);
+        U_PORT_TEST_ASSERT(gAntennaActive >= 0);
+        U_TEST_PRINT_LINE("active antenna mode is 0x%02x.", gAntennaActive);
+        // Set the opposite mode, then read it back and check it is as expected
+        U_PORT_TEST_ASSERT(uGnssCfgSetAntennaActive(gnssHandle, !((bool) gAntennaActive)) == 0);
+        U_PORT_TEST_ASSERT(uGnssCfgGetAntennaActive(gnssHandle) == !(bool) gAntennaActive);
+        U_TEST_PRINT_LINE("active antenna mode is now 0x%02x.", !(bool) gAntennaActive);
+        // Put the initial active antenna mode back
+        U_PORT_TEST_ASSERT(uGnssCfgSetAntennaActive(gnssHandle, (bool) gAntennaActive) == 0);
+        U_TEST_PRINT_LINE("active antenna mode is 0x%02x again.", gAntennaActive);
 
         U_TEST_PRINT_LINE("getting/setting output protocols.");
         if (transportTypes[x] == U_GNSS_TRANSPORT_AT) {
@@ -723,6 +739,11 @@ U_PORT_TEST_FUNCTION("[gnssCfg]", "gnssCfgCleanUp")
     if ((gFixMode >= 0) && (gHandles.gnssHandle != NULL)) {
         // Put the initial fix mode back
         uGnssCfgSetFixMode(gHandles.gnssHandle, (uGnssFixMode_t) gFixMode);
+    }
+
+    if ((gAntennaActive >= 0) && (gHandles.gnssHandle != NULL)) {
+        // Put the initial active antenna mode back
+        uGnssCfgSetAntennaActive(gHandles.gnssHandle, (bool) gAntennaActive);
     }
 
     uGnssTestPrivateCleanup(&gHandles);

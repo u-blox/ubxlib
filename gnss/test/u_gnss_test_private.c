@@ -66,6 +66,9 @@
 #include "u_gnss_private.h"
 #include "u_gnss.h"
 #include "u_gnss_pwr.h"
+#ifndef U_GNSS_TEST_DISABLE_ACTIVE_ANTENNA_DISABLE
+# include "u_gnss_cfg.h"
+#endif
 #include "u_gnss_util.h"
 
 #include "u_gnss_test_private.h"
@@ -449,6 +452,18 @@ int32_t uGnssTestPrivatePreamble(uGnssModuleType_t moduleType,
                     }
                     if (powerOn) {
                         errorCode = uGnssPwrOn(pParameters->gnssHandle);
+#ifndef U_GNSS_TEST_DISABLE_ACTIVE_ANTENNA_DISABLE
+                        if (errorCode == 0) {
+                            // On a best-effort basis, swich off the active antenna
+                            // to stop boards powering each other; doesn't really matter
+                            // if this fails, just good practice.
+                            // Note: did try putting this in the preamble which is run
+                            // at the start of all testing but the flag it sets inside
+                            // the GNSS chip seems to get reset at power on, hence the
+                            // need to do it each time
+                            uGnssCfgSetAntennaActive(pParameters->gnssHandle, false);
+                        }
+#endif
                     } else {
                         errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
                     }
