@@ -21,19 +21,19 @@ config UBXLIB_CELL
         bool "Cellular support"
         default y
         help
-          This will enable cell API (must be selected at the moment)
+          This will enable cell API
 
 config UBXLIB_GNSS
         bool "GNSS support"
         default y
         help
-          This will enable GNSS API (must be selected at the moment)
+          This will enable GNSS API
 
 menuconfig UBXLIB_SHORTRANGE
         bool "Short range support"
         default y
         help
-          This will enable BLE and Wifi API (must be selected at the moment)
+          This will enable BLE and Wifi API
 
 if UBXLIB_SHORTRANGE
 config UBXLIB_OPEN_CPU_BLE

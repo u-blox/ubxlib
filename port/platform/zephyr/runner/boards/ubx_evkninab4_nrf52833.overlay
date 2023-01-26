@@ -1,14 +1,29 @@
+/* This configuration is specifically modified for the tests as run on a NRF52833 board wired in the u-blox test system. */
+/* For default settings, refer to the file of the same name in the boards/arm directory of Zephyr. */
+&uart0 {
+    status = "okay";
+    current-speed = <115200>;
+    tx-pin = <5>;
+    rx-pin = <4>;
+/* For flow control specify the rts/cts pins the same way as tx/rx. Uncomment "hw-flow-control" line. */
+    /delete-property/ rts-pin; 
+    /delete-property/ cts-pin; 
+/*    hw-flow-control; */
+};
 &uart1 {
     status = "okay";
     current-speed = <115200>;
-    tx-pin = <32>;
-    rx-pin = <7>;
-/* For no flow control set "/delete-property/ rts-pin;" and corresponding for cts. Remove "hw-flow-control" line. */
-    rts-pin = <4>;
-    cts-pin = <30>;
-    hw-flow-control;
+    tx-pin = <41>;
+    rx-pin = <11>;
+/* For flow control specify the rts/cts pins the same way as tx/rx. Uncomment "hw-flow-control" line. */
+    /delete-property/ rts-pin; 
+    /delete-property/ cts-pin; 
+/*    hw-flow-control; */
 };
-&i2c1 {
-    status = "okay";
-    /* Otherwise board default settings are good. */
+&spi3 {
+	compatible = "nordic,nrf-spim";
+	status = "okay";
+	sck-pin = <28>;
+	miso-pin = <27>;
+	mosi-pin = <26>;
 };
