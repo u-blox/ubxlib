@@ -812,7 +812,7 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssPrivateUbx")
 
     // Do this multiple times for good randomness
     for (size_t x = 0; x < U_GNSS_PRIVATE_TEST_NUM_LOOPS; x++) {
-        // Create a UBX message with random class, ID and length
+        // Create a UBX message with random class, ID and body length (which may be zero)
         bodySize = rand() % (uRingBufferAvailableSize(&gRingBuffer) - (U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES
                                                                        +
                                                                        U_GNSS_PRIVATE_TEST_RUBBISH_ROOM_BYTES));
@@ -825,9 +825,12 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssPrivateUbx")
             messageId++;
         }
         // Create a message body, filled with safe randomness
-        gpBody = (char *) pUPortMalloc(bodySize);
-        U_PORT_TEST_ASSERT(gpBody != NULL);
-        fillBufferRand(gpBody, bodySize);
+        gpBody = NULL;
+        if (bodySize > 0) {
+            gpBody = (char *) pUPortMalloc(bodySize);
+            U_PORT_TEST_ASSERT(gpBody != NULL);
+            fillBufferRand(gpBody, bodySize);
+        }
 
         // Create a buffer filled with safe randomness
         bufferSize = bodySize + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES +
