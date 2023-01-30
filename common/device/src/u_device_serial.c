@@ -114,8 +114,8 @@ static int32_t serialDefaultEventTrySend(struct uDeviceSerial_t *pDeviceSerial,
     return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 }
 
-static int32_t serialDefaultDiscardOnFlowControl(struct uDeviceSerial_t *pDeviceSerial,
-                                                 bool onNotOff)
+static int32_t serialDefaultDiscardOnOverflow(struct uDeviceSerial_t *pDeviceSerial,
+                                              bool onNotOff)
 {
     (void) pDeviceSerial;
     (void) onNotOff;
@@ -174,8 +174,8 @@ static void init(uInterfaceTable_t pInterfaceTable, void *pInitParam)
     pDeviceSerial->isCtsFlowControlEnabled = serialDefaultBool;
     pDeviceSerial->ctsSuspend = serialDefaultInt32;
     pDeviceSerial->ctsResume = serialDefaultVoid;
-    pDeviceSerial->discardOnFlowControl = serialDefaultDiscardOnFlowControl;
-    pDeviceSerial->isDiscardOnFlowControlEnabled = serialDefaultBool;
+    pDeviceSerial->discardOnOverflow = serialDefaultDiscardOnOverflow;
+    pDeviceSerial->isDiscardOnOverflowEnabled = serialDefaultBool;
 
     if (pInit != NULL) {
         pInit(pInterfaceTable);

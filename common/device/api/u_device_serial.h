@@ -71,7 +71,7 @@ extern "C" {
 
 /** The version of this API.
  */
-#define U_DEVICE_SERIAL_VERSION 1
+#define U_DEVICE_SERIAL_VERSION 2
 
 /** The event which means that received data is available; this
  * will be sent if the receive buffer goes from empty to containing
@@ -416,8 +416,8 @@ typedef struct uDeviceSerial_t {
     uDeviceSerialIsCtsFlowControlEnabled_t isCtsFlowControlEnabled;
     uDeviceSerialCtsSuspend_t ctsSuspend;
     uDeviceSerialCtsResume_t ctsResume;
-    uDeviceSerialDiscardOnOverflow_t discardOnFlowControl;
-    uDeviceSerialIsDiscardOnOverflowEnabled_t isDiscardOnFlowControlEnabled;
+    uDeviceSerialDiscardOnOverflow_t discardOnOverflow;
+    uDeviceSerialIsDiscardOnOverflowEnabled_t isDiscardOnOverflowEnabled;
 } uDeviceSerial_t;
 
 /** The initialisation callback; this should populate the table
