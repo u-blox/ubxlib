@@ -347,7 +347,7 @@ size_t uGnssTestPrivateTransportTypesSet(uGnssTransportType_t *pTransportTypes,
         if (numEntries == 0) {
             *pTransportTypes = U_GNSS_TRANSPORT_AT;
             pTransportTypes++;
-            numEntries ++;
+            numEntries++;
 #if U_CFG_APP_PIN_CELL_PWR_ON >= 0
             // TODO: temporarily omit testing of GNSS on virtual
             // serial if there is no way to power-cycle the
@@ -357,7 +357,7 @@ size_t uGnssTestPrivateTransportTypesSet(uGnssTransportType_t *pTransportTypes,
             // (where powering the cellular module on and off
             // between tests resolves the problem).
             *pTransportTypes = U_GNSS_TRANSPORT_VIRTUAL_SERIAL;
-            numEntries ++;
+            numEntries++;
 #endif
         }
     }

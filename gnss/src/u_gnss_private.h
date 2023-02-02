@@ -90,9 +90,15 @@ extern "C" {
  */
 #define U_GNSS_POS_TASK_FLAG_HAS_RUN    0x01
 
-/** Flag to indicate that the posttask should continue running.
+/** Flag to indicate that the pos task should keep waiting
+ * for a single position fix.
  */
 #define U_GNSS_POS_TASK_FLAG_KEEP_GOING 0x02
+
+/** Flag to indicate that the pos task should call the callback
+ * for each position fix in continuous mode.
+ */
+#define U_GNSS_POS_TASK_FLAG_CONTINUOUS 0x04
 
 /** The value that constitues "no data" on SPI.
  */
@@ -186,6 +192,24 @@ typedef struct {
     uGnssPrivateMsgReader_t *pReaderList;
 } uGnssPrivateMsgReceive_t;
 
+/** Parameters to pass to the streamed position callback.
+ */
+typedef struct {
+    int32_t asyncHandle;
+    void (*pCallback) (uDeviceHandle_t gnssHandle,
+                       int32_t errorCode,
+                       int32_t latitudeX1e7,
+                       int32_t longitudeX1e7,
+                       int32_t altitudeMillimetres,
+                       int32_t radiusMillimetres,
+                       int32_t speedMillimetresPerSecond,
+                       int32_t svs,
+                       int64_t timeUtc);
+    int32_t measurementPeriodMs; /**< set to -1 of nothing to restore. */
+    int32_t navigationCount;     /**< set to -1 of nothing to restore. */
+    int32_t messageRate;         /**< set to -1 of nothing to restore. */
+} uGnssPrivateStreamedPosition_t;
+
 /** Definition of a GNSS instance.
  * Note: a pointer to this structure is passed to the asynchronous
  * "get position" function (posGetTask()) which does NOT lock the
@@ -226,6 +250,8 @@ typedef struct uGnssPrivateInstance_t {
     volatile uint8_t posTaskFlags; /**< flags to synchronisation the pos task. */
     uGnssPrivateMsgReceive_t *pMsgReceive; /**< stuff associated with the asychronous
                                                 message receive utility functions. */
+    uGnssPrivateStreamedPosition_t *pStreamedPosition; /**< context data for streamed position, hooked
+                                                            here so that we can free it */
     struct uGnssPrivateInstance_t *pNext;
 } uGnssPrivateInstance_t;
 // *INDENT-ON*
@@ -385,7 +411,7 @@ int32_t uGnssPrivateGetMsgRate(uGnssPrivateInstance_t *pInstance,
  * and set the value of that item, e.g.:
  *
  * ```
- * uGnssCfgVal_t cfgVal[] = {{U_GNSS_CFG_VAL_KEY_ITEM_MSGOUT_UBX_NAV_PVT_I2C_U1, 1}};
+ * uGnssCfgVal_t cfgVal = {U_GNSS_CFG_VAL_KEY_ITEM_MSGOUT_UBX_NAV_PVT_I2C_U1, 1};
  * uGnssCfgPrivateValSetList(pInstance, &cfgVal, 1,
  *                           U_GNSS_CFG_VAL_TRANSACTION_NONE,
  *                           U_GNSS_CFG_VAL_LAYER_RAM);
@@ -444,6 +470,15 @@ int32_t uGnssPrivateSetProtocolOut(uGnssPrivateInstance_t *pInstance,
  * @param[in] pInstance  a pointer to the GNSS instance, cannot  be NULL.
  */
 void uGnssPrivateCleanUpPosTask(uGnssPrivateInstance_t *pInstance);
+
+/** Shut down and free memory from streamd position; should be called
+ * before uGnssPrivateStopMsgReceive().
+ *
+ * Note: gUGnssPrivateMutex should be locked before this is called.
+ *
+ * @param[in] pInstance  a pointer to the GNSS instance, cannot  be NULL.
+ */
+void uGnssPrivateCleanUpStreamedPos(uGnssPrivateInstance_t *pInstance);
 
 /** Check whether a GNSS chip that we are using via a cellular module
  * is on-board the cellular module, in which case the AT+GPIOC

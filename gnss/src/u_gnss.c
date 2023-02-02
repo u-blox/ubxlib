@@ -157,6 +157,8 @@ static void deleteGnssInstance(uGnssPrivateInstance_t *pInstance)
         if (pInstance == pCurrent) {
             // Stop any asynchronous position establishment task
             uGnssPrivateCleanUpPosTask(pInstance);
+            // Stop and clean up streamed position
+            uGnssPrivateCleanUpStreamedPos(pInstance);
             // Stop asynchronus message receive from happening
             uGnssPrivateStopMsgReceive(pInstance);
             // Free the SPI buffer, if there is one

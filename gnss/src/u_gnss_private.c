@@ -70,10 +70,11 @@
 #include "u_gnss_module_type.h"
 #include "u_gnss_type.h"
 #include "u_gnss.h"
+#include "u_gnss_private.h"
 #include "u_gnss_msg.h"
+#include "u_gnss_msg_private.h"
 #include "u_gnss_cfg.h"
 #include "u_gnss_cfg_val_key.h"
-#include "u_gnss_private.h"
 #include "u_gnss_cfg_private.h"
 
 /* ----------------------------------------------------------------
@@ -1638,6 +1639,48 @@ void uGnssPrivateCleanUpPosTask(uGnssPrivateInstance_t *pInstance)
         // Only now clear all of the flags so that it is safe
         // to start again
         pInstance->posTaskFlags = 0;
+    }
+}
+
+// Shut down and free memory from a running streamed position.
+void uGnssPrivateCleanUpStreamedPos(uGnssPrivateInstance_t *pInstance)
+{
+    uGnssPrivateStreamedPosition_t *pStreamedPosition;
+    uGnssPrivateMessageId_t privateMessageId =  {.type = U_GNSS_PROTOCOL_UBX,
+                                                 .id.ubx = 0x0107
+                                                };
+    uGnssCfgVal_t cfgVal = {.keyId = U_GNSS_CFG_VAL_KEY_ID_MSGOUT_UBX_NAV_PVT_I2C_U1};
+
+    if ((pInstance != NULL) && (pInstance->pStreamedPosition != NULL)) {
+        pStreamedPosition = pInstance->pStreamedPosition;
+        if (pStreamedPosition->asyncHandle >= 0) {
+            uGnssMsgPrivateReceiveStop(pInstance,
+                                       pStreamedPosition->asyncHandle);
+        }
+        // Put any saved settings back
+        if ((pStreamedPosition->measurementPeriodMs >= 0) ||
+            (pStreamedPosition->navigationCount >= 0)) {
+            uGnssPrivateSetRate(pInstance,
+                                pStreamedPosition->measurementPeriodMs,
+                                pStreamedPosition->navigationCount,
+                                U_GNSS_TIME_SYSTEM_NONE);
+        }
+        if (pStreamedPosition->messageRate >= 0) {
+            if (U_GNSS_PRIVATE_HAS(pInstance->pModule,
+                                   U_GNSS_PRIVATE_FEATURE_OLD_CFG_API)) {
+                uGnssPrivateSetMsgRate(pInstance,
+                                       &privateMessageId,
+                                       pStreamedPosition->messageRate);
+            } else {
+                cfgVal.value = pStreamedPosition->messageRate;
+                uGnssCfgPrivateValSetList(pInstance, &cfgVal, 1,
+                                          U_GNSS_CFG_VAL_TRANSACTION_NONE,
+                                          U_GNSS_CFG_VAL_LAYER_RAM);
+            }
+        }
+        // Now we can free the storage
+        uPortFree(pStreamedPosition);
+        pInstance->pStreamedPosition = NULL;
     }
 }
 

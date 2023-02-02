@@ -235,16 +235,20 @@ int32_t uGnssCfgSetRate(uDeviceHandle_t gnssHandle,
 /** Get the rate at which a given UBX message ID is emitted on the
  * current transport; this ONLY WORKS FOR M8 AND M9 modules: for
  * M10 modules and later you must find the relevant member from
- * U_GNSS_CFG_VAL_KEY_ITEM_MSGOUT_* in u_gnss_cfg_val_key.h
+ * U_GNSS_CFG_VAL_KEY_ID_MSGOUT_* in u_gnss_cfg_val_key.h
  * and get the value of that item, e.g.:
  *
  * ```
  * uint8_t value;
  * uGnssCfgValGet(devHandle,
- *                U_GNSS_CFG_VAL_KEY_ITEM_MSGOUT_UBX_NAV_PVT_I2C_U1,
+ *                U_GNSS_CFG_VAL_KEY_ID_MSGOUT_UBX_NAV_PVT_I2C_U1,
  *                (void *) &value, sizeof(value),
  *                U_GNSS_CFG_VAL_LAYER_RAM);
  * ```
+ *
+ * The naming here can be confusing: make sure you have the _KEY_ID_,
+ * i.e. representing something like 0x20910006 and *NOT* the ITEM_ID
+ * (which is just the last four digits).
  *
  * @param gnssHandle      the handle of the GNSS instance.
  * @param[in] pMessageId  a pointer to the message ID; cannot
@@ -262,7 +266,7 @@ int32_t uGnssCfgGetMsgRate(uDeviceHandle_t gnssHandle,
 /** Set the rate at which a given UBX message ID is emitted on the
  * current transport.; this ONLY WORKS FOR M8 AND M9  modules:
  * for M10 modules and later you must find the relevant member
- * from U_GNSS_CFG_VAL_KEY_ITEM_MSGOUT_* in u_gnss_cfg_val_key.h
+ * from U_GNSS_CFG_VAL_KEY_ID_MSGOUT_* in u_gnss_cfg_val_key.h
  * and set the value of that item, e.g.:
  *
  * U_GNSS_CFG_SET_VAL_RAM(devHandle, MSGOUT_UBX_NAV_PVT_I2C_U1, 1);
