@@ -137,8 +137,8 @@ There is a [known issue](https://github.com/probot/smee-client/issues/179) that 
 As a workaround, it is advisable to restart the SMEE client at least once a day, more frequently if you have a rather flaky network connection.  To do this, copy the file [jenkins/docker_restart_container.sh](jenkins/docker_restart_container.sh) to the `/usr/bin` directory on the Jenkins server machine (then `chmod +x /usr/bin/docker_restart_container.sh`), and copy the files `jenkins/smee-client-restart.*` to the `/etc/systemd/system` on the Jenkins server machine.  Then:
 
 ```
-systemctl start smee-client-restart.service
-systemctl enable smee-client-restart.service
+systemctl start smee-client-restart.timer
+systemctl enable smee-client-restart.timer
 ```
 
 Note: it would be nice to have this run from within Jenkins so that it is visible and could be triggered manually, however it requires administrator privileges and persuading Jenkins to obtain those selectively when connecting over non-interactive SSH is just too darned difficult.
