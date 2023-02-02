@@ -134,7 +134,7 @@ docker run --name smee-client --restart=always --detach --network jenkins --netw
 ### Workaround For SMEE Client Silent Failure
 There is a [known issue](https://github.com/probot/smee-client/issues/179) that the SMEE client will fail silently, and stay failed, if the SMEE server changes IP address, which does happen periodically.
 
-As a workaround, it is advisable to restart the SMEE client once a day.  To do this, copy the file [jenkins/docker_restart_container.sh](jenkins/docker_restart_container.sh) to the `/usr/bin` directory on the Jenkins server machine (then `chmod +x /usr/bin/docker_restart_container.sh`), and copy the files `jenkins/smee-client-restart.*` to the `/etc/systemd/system` on the Jenkins server machine.  Then:
+As a workaround, it is advisable to restart the SMEE client at least once a day, more frequently if you have a rather flaky network connection.  To do this, copy the file [jenkins/docker_restart_container.sh](jenkins/docker_restart_container.sh) to the `/usr/bin` directory on the Jenkins server machine (then `chmod +x /usr/bin/docker_restart_container.sh`), and copy the files `jenkins/smee-client-restart.*` to the `/etc/systemd/system` on the Jenkins server machine.  Then:
 
 ```
 systemctl start smee-client-restart.service

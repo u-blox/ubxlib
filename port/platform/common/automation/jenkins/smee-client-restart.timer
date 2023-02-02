@@ -8,9 +8,11 @@ Description=Restart the smee-client Docker container periodically
 Requires=smee-client-restart.service
 
 [Timer]
-# Restart at 3 a.m. daily
 Unit=smee-client-restart.service
-OnCalendar=*-*-* 03:00:00
+# Normal: restart at 3 a.m. daily
+#OnCalendar=*-*-* 03:00:00
+# Flaky network: restart every 2 hours
+OnCalendar=*-*-* */2:00:00
 
 [Install]
 WantedBy=timers.target
