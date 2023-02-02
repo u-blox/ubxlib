@@ -590,6 +590,58 @@ int32_t uGnssCfgPrivateValDelList(uGnssPrivateInstance_t *pInstance,
  * PUBLIC FUNCTIONS: SPECIFIC CONFIGURATION FUNCTIONS
  * -------------------------------------------------------------- */
 
+// Get the rate at which position is obtained.
+int32_t uGnssCfgGetRate(uDeviceHandle_t gnssHandle,
+                        int32_t *pMeasurementPeriodMs,
+                        int32_t *pNavigationCount,
+                        uGnssTimeSystem_t *pTimeSystem)
+{
+    int32_t errorCodeOrRate = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uGnssPrivateInstance_t *pInstance;
+
+    if (gUGnssPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
+
+        pInstance = pUGnssPrivateGetInstance(gnssHandle);
+        if (pInstance != NULL) {
+            errorCodeOrRate = uGnssPrivateGetRate(pInstance,
+                                                  pMeasurementPeriodMs,
+                                                  pNavigationCount,
+                                                  pTimeSystem);
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
+    }
+
+    return errorCodeOrRate;
+}
+
+// Set the rate at which position is obtained.
+int32_t uGnssCfgSetRate(uDeviceHandle_t gnssHandle,
+                        int32_t measurementPeriodMs,
+                        int32_t navigationCount,
+                        uGnssTimeSystem_t timeSystem)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uGnssPrivateInstance_t *pInstance;
+
+    if (gUGnssPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
+
+        pInstance = pUGnssPrivateGetInstance(gnssHandle);
+        if (pInstance != NULL) {
+            errorCode = uGnssPrivateSetRate(pInstance, measurementPeriodMs,
+                                            navigationCount, timeSystem);
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
+    }
+
+    return errorCode;
+}
+
 // Get the dynamic platform model from the GNSS chip.
 int32_t uGnssCfgGetDynamic(uDeviceHandle_t gnssHandle)
 {

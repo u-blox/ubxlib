@@ -296,6 +296,57 @@ uAtClientHandle_t uGnssPrivateGetIntermediateAtHandle(uGnssPrivateInstance_t *pI
  */
 void uGnssPrivatePrintBuffer(const char *pBuffer, size_t bufferLengthBytes);
 
+/** Get the rate at which position is obtained.
+ *
+ * @param[in] pInstance            a pointer to the GNSS instance, cannot
+ *                                 be NULL.
+ * @param[in] pMeasurementPeriodMs a place to put the period between
+ *                                 measurements in milliseconds; may
+ *                                 be NULL.
+ * @param[in] pNavigationCount     a place to put the number of measurements
+ *                                 that should result in a navigation
+ *                                 solution; may be NULL.
+ * @param[in] pTimeSystem          a place to put the time system to
+ *                                 which measurements are aligned; may
+ *                                 be NULL.
+ * @return                         the navigation rate in milliseconds; for
+ *                                 instance, if the measurement period
+ *                                 is one second and the navigation count
+ *                                 five then the return value will be 5000,
+ *                                 meaning a navigation solution will be
+ *                                 made every five seconds.
+ */
+int32_t uGnssPrivateGetRate(uGnssPrivateInstance_t *pInstance,
+                            int32_t *pMeasurementPeriodMs,
+                            int32_t *pNavigationCount,
+                            uGnssTimeSystem_t *pTimeSystem);
+
+/** Set the rate at which position is obtained.
+ *
+ * @param[in] pInstance        a pointer to the GNSS instance, cannot
+ *                             be NULL.
+ * @param measurementPeriodMs  the period between measurements in
+ *                             milliseconds; specify -1 to leave this
+ *                             unchanged.
+ * @param navigationCount      the number of measurements that should
+ *                             result in a navigation solution; for
+ *                             instance, if measurementPeriodMs is 500
+ *                             and navigationCount four then a navigation
+ *                             solution will result ever 2 seconds.
+ *                             Specify -1 to leave this unchanged.
+ * @param timeSystem           the time system to which measurements
+ *                             are aligned; the value passed in is
+ *                             deliberately not range checked so that
+ *                             future types unknown to this code
+ *                             may be used. Specify -1 to leave this
+ *                             unchanged.
+ * @return                     zero on success or negative error code.
+ */
+int32_t uGnssPrivateSetRate(uGnssPrivateInstance_t *pInstance,
+                            int32_t measurementPeriodMs,
+                            int32_t navigationCount,
+                            uGnssTimeSystem_t timeSystem);
+
 /** Get the protocol types output by the GNSS chip; not relevant
  * where an AT transports is in use since only the UBX protocol is
  * currently supported through that transport.
@@ -322,7 +373,7 @@ int32_t uGnssPrivateGetProtocolOut(uGnssPrivateInstance_t *pInstance);
  *                       UBX protocol output cannot be switched off
  *                       since it is used by this code.
  * @param onNotOff       whether the given protocol should be on or off.
- * @return               zero on succes or negative error code.
+ * @return               zero on success or negative error code.
  */
 int32_t uGnssPrivateSetProtocolOut(uGnssPrivateInstance_t *pInstance,
                                    uGnssProtocol_t protocol,
@@ -343,8 +394,8 @@ void uGnssPrivateCleanUpPosTask(uGnssPrivateInstance_t *pInstance);
  * Note: gUGnssPrivateMutex should be locked before this is called.
  *
  * @param[in] pInstance  a pointer to the GNSS instance, cannot  be NULL.
- * @return              true if there is a GNSS chip inside the cellular
- *                      module, else false.
+ * @return               true if there is a GNSS chip inside the cellular
+ *                       module, else false.
 */
 bool uGnssPrivateIsInsideCell(const uGnssPrivateInstance_t *pInstance);
 

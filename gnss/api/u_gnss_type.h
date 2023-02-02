@@ -313,6 +313,18 @@ typedef enum {
                                       derived from QZSS time. */
 } uGnssUtcStandard_t;
 
+/** The possible time systems; not all time systems are supported by all modules.
+ */
+typedef enum {
+    U_GNSS_TIME_SYSTEM_NONE = -1,
+    U_GNSS_TIME_SYSTEM_UTC = 0,
+    U_GNSS_TIME_SYSTEM_GPS = 1,
+    U_GNSS_TIME_SYSTEM_GLONASS = 2,
+    U_GNSS_TIME_SYSTEM_BEIDOU = 3,
+    U_GNSS_TIME_SYSTEM_GALILEO = 4,
+    U_GNSS_TIME_SYSTEM_NAVIC = 5
+} uGnssTimeSystem_t;
+
 /** @}*/
 
 #endif // _U_GNSS_TYPE_H_

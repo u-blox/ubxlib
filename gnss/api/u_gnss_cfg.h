@@ -176,6 +176,55 @@ typedef enum {
  * FUNCTIONS: SPECIFIC CONFIGURATION FUNCTIONS
  * -------------------------------------------------------------- */
 
+/** Get the rate at which position is obtained.
+ *
+ * @param gnssHandle               the handle of the GNSS instance.
+ * @param[in] pMeasurementPeriodMs a place to put the period between
+ *                                 measurements in milliseconds; may
+ *                                 be NULL.
+ * @param[in] pNavigationCount     a place to put the number of
+ *                                 measurements that should result in
+ *                                 a navigation solution; may be NULL.
+ * @param[in] pTimeSystem          a place to put the time system to
+ *                                 which measurements are aligned; may
+ *                                 be NULL.
+ * @return                         the navigation rate in milliseconds;
+ *                                 for instance, if the measurement period
+ *                                 is one second and the navigation count
+ *                                 five then the return value will be 5000,
+ *                                 meaning a navigation solution will be
+ *                                 made every five seconds.
+ */
+int32_t uGnssCfgGetRate(uDeviceHandle_t gnssHandle,
+                        int32_t *pMeasurementPeriodMs,
+                        int32_t *pNavigationCount,
+                        uGnssTimeSystem_t *pTimeSystem);
+
+/** Set the rate at which position is obtained.
+ *
+ * @param gnssHandle           the handle of the GNSS instance.
+ * @param measurementPeriodMs  the period between measurements in
+ *                             milliseconds; specify -1 to leave this
+ *                             unchanged.
+ * @param navigationCount      the number of measurements that should
+ *                             result in a navigation solution; for
+ *                             instance, if measurementPeriodMs is 500
+ *                             and navigationCount four then a navigation
+ *                             solution will result ever 2 seconds.
+ *                             Specify -1 to leave this unchanged.
+ * @param timeSystem           the time system to which measurements
+ *                             are aligned; the value passed in is
+ *                             deliberately not range checked so that
+ *                             future types unknown to this code
+ *                             may be used. Specify -1 to leave this
+ *                             unchanged.
+ * @return                     zero on success or negative error code.
+ */
+int32_t uGnssCfgSetRate(uDeviceHandle_t gnssHandle,
+                        int32_t measurementPeriodMs,
+                        int32_t navigationCount,
+                        uGnssTimeSystem_t timeSystem);
+
 /** Get the dynamic platform model from the GNSS chip.
  *
  * @param gnssHandle  the handle of the GNSS instance.
@@ -191,7 +240,7 @@ int32_t uGnssCfgGetDynamic(uDeviceHandle_t gnssHandle);
  *                    value is deliberately not range-checked to allow
  *                    future dynamic platform models to be passed
  *                    in without the requirement to modify this code.
- * @return            zero on succes or negative error code.
+ * @return            zero on success or negative error code.
  */
 int32_t uGnssCfgSetDynamic(uDeviceHandle_t gnssHandle, uGnssDynamic_t dynamic);
 
@@ -209,7 +258,7 @@ int32_t uGnssCfgGetFixMode(uDeviceHandle_t gnssHandle);
  *                    range-checked to allow future fix modes to be
  *                    passed in without the requirement to modify
  *                    this code.
- * @return            zero on succes or negative error code.
+ * @return            zero on success or negative error code.
  */
 int32_t uGnssCfgSetFixMode(uDeviceHandle_t gnssHandle, uGnssFixMode_t fixMode);
 
@@ -229,7 +278,7 @@ int32_t uGnssCfgGetUtcStandard(uDeviceHandle_t gnssHandle);
  *                    this code.  Use #U_GNSS_UTC_STANDARD_AUTOMATIC
  *                    it you don't really care, you'd just like UTC
  *                    time please (which is the default).
- * @return            zero on succes or negative error code.
+ * @return            zero on success or negative error code.
  */
 int32_t uGnssCfgSetUtcStandard(uDeviceHandle_t gnssHandle,
                                uGnssUtcStandard_t utcStandard);
@@ -256,7 +305,7 @@ int32_t uGnssCfgGetProtocolOut(uDeviceHandle_t gnssHandle);
  *                   UBX protocol output cannot be switched off
  *                   since it is used by this code.
  * @param onNotOff   whether the given protocol should be on or off.
- * @return           zero on succes or negative error code.
+ * @return           zero on success or negative error code.
  */
 int32_t uGnssCfgSetProtocolOut(uDeviceHandle_t gnssHandle,
                                uGnssProtocol_t protocol,
@@ -275,7 +324,7 @@ int32_t uGnssCfgGetAntennaActive(uDeviceHandle_t gnssHandle);
  * @param gnssHandle  the handle of the GNSS instance.
  * @param active      true if the antenna is to be actively
  *                    powered, else false.
- * @return            zero on succes or negative error code.
+ * @return            zero on success or negative error code.
  */
 int32_t uGnssCfgSetAntennaActive(uDeviceHandle_t gnssHandle, bool active);
 

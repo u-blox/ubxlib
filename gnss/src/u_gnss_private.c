@@ -208,6 +208,14 @@ static const uint8_t gProtocolTypeToCfgValItemIdOutProt[] = {
     4  // 2: U_GNSS_PROTOCOL_RTCM
 };
 
+/** Table of the key IDs of the UBX-CFG-VAL group CFG-RATE.
+ */
+static const uint32_t gCfgValKeyIdCfgRate[] = {
+    U_GNSS_CFG_VAL_KEY_ID_RATE_MEAS_U2,    // Measurement rate in ms
+    U_GNSS_CFG_VAL_KEY_ID_RATE_NAV_U2,     // Navigation count
+    U_GNSS_CFG_VAL_KEY_ID_RATE_TIMEREF_E1  // Time system
+};
+
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS: MESSAGE RELATED
  * -------------------------------------------------------------- */
@@ -952,6 +960,190 @@ static int32_t parseRtcm(uParseHandle_t parseHandle, void *pUserParam)
 }
 
 /* ----------------------------------------------------------------
+ * STATIC FUNCTIONS: RATE CONFIGURATION
+ * -------------------------------------------------------------- */
+
+// Get the navigation rate old-style, with UBX-CFG-RATE.
+int32_t getRateUbxCfgRate(uGnssPrivateInstance_t *pInstance,
+                          int32_t *pMeasurementPeriodMs,
+                          int32_t *pNavigationCount,
+                          uGnssTimeSystem_t *pTimeSystem)
+{
+    int32_t errorCodeOrRate = (int32_t) U_ERROR_COMMON_PLATFORM;
+    int32_t navigationCount;
+    // Message buffer for the 6-byte UBX-CFG-RATE message
+    char message[6] = {0};
+
+    // Poll for UBX-CFG-RATE
+    if (uGnssPrivateSendReceiveUbxMessage(pInstance,
+                                          0x06, 0x08,
+                                          NULL, 0,
+                                          message,
+                                          sizeof(message)) == sizeof(message)) {
+        // First two bytes are the measurement rate in milliseconds
+        errorCodeOrRate = uUbxProtocolUint16Decode((const char *) &(message[0])); // *NOPAD*;
+        if (pMeasurementPeriodMs != NULL) {
+            *pMeasurementPeriodMs = errorCodeOrRate;
+        }
+        // Next two bytes are the navigation count
+        navigationCount = uUbxProtocolUint16Decode((const char *) &(message[2])); // *NOPAD*;
+        errorCodeOrRate *= navigationCount;
+        if (pNavigationCount != NULL) {
+            *pNavigationCount = navigationCount;
+        }
+        if (pTimeSystem != NULL) {
+            // Last two bytes are the time system
+            *pTimeSystem = (uGnssTimeSystem_t) uUbxProtocolUint16Decode((const char *) &
+                                                                        (message[4])); // *NOPAD*;
+        }
+    }
+
+    return errorCodeOrRate;
+}
+
+// Set the navigation rate old-style, with UBX-CFG-RATE.
+int32_t setRateUbxCfgRate(uGnssPrivateInstance_t *pInstance,
+                          int32_t measurementPeriodMs,
+                          int32_t navigationCount,
+                          uGnssTimeSystem_t timeSystem)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+    int32_t currentMeasurementPeriodMs;
+    int32_t currentNavigationCount;
+    uGnssTimeSystem_t currentTimeSystem;
+    // Message buffer for the 6-byte UBX-CFG-RATE message
+    char message[6] = {0};
+
+    if ((measurementPeriodMs < 0) || (navigationCount < 0) ||
+        (timeSystem < 0)) {
+        // Need to read the settings first as it is not possible
+        // to leave any settings out in the UBX-CFG-RATE message
+        errorCode = getRateUbxCfgRate(pInstance,
+                                      &currentMeasurementPeriodMs,
+                                      &currentNavigationCount,
+                                      &currentTimeSystem);
+    }
+
+    if (errorCode >= 0) {
+        if (measurementPeriodMs < 0) {
+            measurementPeriodMs = currentMeasurementPeriodMs;
+        }
+        if (navigationCount < 0) {
+            navigationCount = currentNavigationCount;
+        }
+        if (timeSystem < 0) {
+            timeSystem = currentTimeSystem;
+        }
+
+        // First two bytes are the measurement rate in milliseconds
+        *((uint16_t *) & (message[0])) = uUbxProtocolUint16Encode((uint16_t)
+                                                                  measurementPeriodMs); // *NOPAD*;
+        // Next two bytes are the navigation count
+        *((uint16_t *) &(message[2])) = uUbxProtocolUint16Encode((uint16_t) navigationCount); // *NOPAD*;
+        // Last two bytes are the time system
+        *((uint16_t *) &(message[4])) = uUbxProtocolUint16Encode((uint16_t) timeSystem); // *NOPAD*;
+        // Send UBX-CFG-RATE
+        errorCode = uGnssPrivateSendUbxMessage(pInstance, 0x06, 0x08,
+                                               message, sizeof(message));
+    }
+
+    return errorCode;
+}
+
+// Get the navigation rate with UBX-CFG-VALGET.
+int32_t getRateUbxCfgVal(uGnssPrivateInstance_t *pInstance,
+                         int32_t *pMeasurementPeriodMs,
+                         int32_t *pNavigationCount,
+                         uGnssTimeSystem_t *pTimeSystem)
+{
+    int32_t errorCode;
+    uGnssCfgVal_t *pCfgValList = NULL;
+    uGnssCfgVal_t *pTmp;
+    uint32_t keyId = U_GNSS_CFG_VAL_KEY(U_GNSS_CFG_VAL_KEY_GROUP_ID_RATE,
+                                        U_GNSS_CFG_VAL_KEY_ITEM_ID_ALL, 0);
+    uint16_t items[sizeof(gCfgValKeyIdCfgRate) /
+                                               sizeof(gCfgValKeyIdCfgRate[0])] = {0};
+    size_t itemsFound = 0;
+
+    // Request all the rate items
+    errorCode = uGnssCfgPrivateValGetListAlloc(pInstance, &keyId, 1,
+                                               &pCfgValList,
+                                               U_GNSS_CFG_VAL_LAYER_RAM);
+    if ((errorCode > 0) && (pCfgValList != NULL)) {
+        // pCfgValList should now contain keys that are from the
+        // set gCfgValKeyIdCfgRate
+        pTmp = pCfgValList;
+        for (int32_t x = 0; x < errorCode; x++) {
+            // Go through the list looking for our key IDs
+            for (size_t y = 0; y < sizeof(gCfgValKeyIdCfgRate) /
+                 sizeof(gCfgValKeyIdCfgRate[0]); y++) {
+                if (pTmp->keyId == gCfgValKeyIdCfgRate[y]) {
+                    // Found a wanted item, write it to the array
+                    items[y] = (uint16_t) pTmp->value;
+                    itemsFound++;
+                    break;
+                }
+            }
+            pTmp++;
+        }
+        if (itemsFound == sizeof(items) / sizeof(items[0])) {
+            if (pMeasurementPeriodMs != NULL) {
+                *pMeasurementPeriodMs = items[0];
+            }
+            if (pNavigationCount != NULL) {
+                *pNavigationCount = items[1];
+            }
+            if (pTimeSystem != NULL) {
+                *pTimeSystem = (uGnssTimeSystem_t) items[2];
+            }
+            errorCode = items[0] * items[1];
+        }
+        // Free memory
+        uPortFree(pCfgValList);
+    }
+
+    return errorCode;
+}
+
+// Set the navigation rate with UBX-CFG-VALSET.
+int32_t setRateUbxCfgVal(uGnssPrivateInstance_t *pInstance,
+                         int32_t measurementPeriodMs,
+                         int32_t navigationCount,
+                         uGnssTimeSystem_t timeSystem)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+    uGnssCfgVal_t val[sizeof(gCfgValKeyIdCfgRate) / sizeof(gCfgValKeyIdCfgRate[0])];
+    size_t numEntries = 0;
+
+    // Add the key/value pairs
+    if (measurementPeriodMs >= 0) {
+        val[numEntries].keyId = U_GNSS_CFG_VAL_KEY_ID_RATE_MEAS_U2;
+        val[numEntries].value = measurementPeriodMs;
+        numEntries++;
+    }
+    if (navigationCount >= 0) {
+        val[numEntries].keyId = U_GNSS_CFG_VAL_KEY_ID_RATE_NAV_U2;
+        val[numEntries].value = navigationCount;
+        numEntries++;
+    }
+    if (timeSystem >= 0) {
+        val[numEntries].keyId = U_GNSS_CFG_VAL_KEY_ID_RATE_TIMEREF_E1;
+        val[numEntries].value = timeSystem;
+        numEntries++;
+    }
+
+    if (numEntries > 0) {
+        // Have something worth sending, do UBX-CFG-VALSET
+        errorCode = uGnssCfgPrivateValSetList(pInstance,
+                                              val, numEntries,
+                                              U_GNSS_CFG_VAL_TRANSACTION_NONE,
+                                              U_GNSS_CFG_VAL_LAYER_RAM);
+    }
+
+    return errorCode;
+}
+
+/* ----------------------------------------------------------------
  * STATIC FUNCTIONS: PROTOCOL OUTPUT CONFIGURATION
  * -------------------------------------------------------------- */
 
@@ -1105,8 +1297,8 @@ static int32_t setProtocolOutUbxCfgVal(uGnssPrivateInstance_t *pInstance,
                                                                  sizeof(gProtocolTypeToCfgValItemIdOutProt[0])];
     size_t numEntries = 0;
 
-    if (pInstance->portNumber < sizeof(gPortToCfgValGroupIdOutProt) / sizeof(
-            gPortToCfgValGroupIdOutProt[0])) {
+    if (pInstance->portNumber < sizeof(gPortToCfgValGroupIdOutProt) /
+        sizeof(gPortToCfgValGroupIdOutProt[0])) {
         // Add the key/value pairs
         if (protocol == U_GNSS_PROTOCOL_ALL) {
             for (size_t x = 0; (x < sizeof(val) / sizeof(val[0])); x++) {
@@ -1175,7 +1367,6 @@ static int32_t getProtocolOutUbxCfgVal(uGnssPrivateInstance_t *pInstance)
                         if (pTmp->value) {
                             errorCodeOrBitMap |= 1 << y;
                         }
-                        break;
                     }
                 }
                 pTmp++;
@@ -1264,6 +1455,48 @@ void uGnssPrivatePrintBuffer(const char *pBuffer,
     (void) pBuffer;
     (void) bufferLengthBytes;
 #endif
+}
+
+// Get the rate at which position is obtained.
+int32_t uGnssPrivateGetRate(uGnssPrivateInstance_t *pInstance,
+                            int32_t *pMeasurementPeriodMs,
+                            int32_t *pNavigationCount,
+                            uGnssTimeSystem_t *pTimeSystem)
+{
+    int32_t errorCodeOrRate = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+
+    if (pInstance != NULL) {
+        if (U_GNSS_PRIVATE_HAS(pInstance->pModule, U_GNSS_PRIVATE_FEATURE_CFGVALXXX)) {
+            errorCodeOrRate = getRateUbxCfgVal(pInstance, pMeasurementPeriodMs,
+                                               pNavigationCount, pTimeSystem);
+        } else {
+            errorCodeOrRate = getRateUbxCfgRate(pInstance, pMeasurementPeriodMs,
+                                                pNavigationCount, pTimeSystem);
+        }
+    }
+
+    return errorCodeOrRate;
+}
+
+// Set the rate at which position is obtained.
+int32_t uGnssPrivateSetRate(uGnssPrivateInstance_t *pInstance,
+                            int32_t measurementPeriodMs,
+                            int32_t navigationCount,
+                            uGnssTimeSystem_t timeSystem)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+
+    if (pInstance != NULL) {
+        if (U_GNSS_PRIVATE_HAS(pInstance->pModule, U_GNSS_PRIVATE_FEATURE_CFGVALXXX)) {
+            errorCode = setRateUbxCfgVal(pInstance, measurementPeriodMs,
+                                         navigationCount, timeSystem);
+        } else {
+            errorCode = setRateUbxCfgRate(pInstance, measurementPeriodMs,
+                                          navigationCount, timeSystem);
+        }
+    }
+
+    return errorCode;
 }
 
 // Set the protocol type output by the GNSS chip.
