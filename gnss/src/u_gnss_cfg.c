@@ -52,6 +52,7 @@
 #include "u_gnss_private.h"
 #include "u_gnss_cfg_val_key.h"
 #include "u_gnss_cfg.h"
+#include "u_gnss_cfg_private.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -338,198 +339,6 @@ static int32_t unpackMessageAlloc(uGnssCfgValGetMessageBody_t *pMessageList,
     return errorCodeOrCount;
 }
 
-// Get a list of configuration items using VALGET.
-static int32_t valGetListAlloc(uDeviceHandle_t gnssHandle,
-                               const uint32_t *pKeyIdList, size_t numKeyIds,
-                               uGnssCfgVal_t **pList,
-                               uGnssCfgValLayer_t layer)
-{
-    int32_t errorCodeOrCount = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
-    uGnssPrivateInstance_t *pInstance;
-    int32_t encodedLayer = encodeLayerForGet(layer);
-    char *pMessageOut = NULL;
-    size_t messageOutSize = 4 + (4 * numKeyIds);
-    uGnssCfgValGetMessageBody_t messageIn[U_GNSS_CFG_MAX_NUM_VAL_GET_SEGMENTS] = {0};
-    size_t messageInCount = 0;
-
-    if (gUGnssPrivateMutex != NULL) {
-
-        U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
-
-        errorCodeOrCount = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-        pInstance = pUGnssPrivateGetInstance(gnssHandle);
-        if ((pInstance != NULL) && (pKeyIdList != NULL) && (numKeyIds > 0) &&
-            (pList != NULL) && (encodedLayer >= 0)) {
-            errorCodeOrCount = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
-            if (U_GNSS_PRIVATE_HAS(pInstance->pModule, U_GNSS_PRIVATE_FEATURE_CFGVALXXX)) {
-                errorCodeOrCount = (int32_t) U_ERROR_COMMON_NO_MEMORY;
-                // Get memory for the body of the UBX-CFG-VALGET message
-                pMessageOut = (char *) pUPortMalloc(messageOutSize);
-                if (pMessageOut != NULL) {
-                    // Assemble the message
-                    *pMessageOut       = 0; // Version
-                    *(pMessageOut + 1) = (char) encodedLayer;
-                    // Position is added in the loop below
-                    for (size_t x = 0; x < numKeyIds; x++) {
-                        *((uint32_t *) (pMessageOut + 4 + (x << 2))) = uUbxProtocolUint32Encode(*pKeyIdList);
-                        pKeyIdList++;
-                    }
-                    do {
-                        // Slip in the current position
-                        *((uint16_t *) (pMessageOut + 2)) = uUbxProtocolUint16Encode((uint16_t) (messageInCount *
-                                                                                                 U_GNSS_CFG_VAL_MSG_MAX_NUM_VALUES));
-                        // Send it off and wait for the response
-                        errorCodeOrCount = uGnssPrivateSendReceiveUbxMessageAlloc(pInstance,
-                                                                                  0x06, 0x8b,
-                                                                                  pMessageOut,
-                                                                                  messageOutSize,
-                                                                                  &(messageIn[messageInCount].pBody));
-                        if (errorCodeOrCount >= 0) {
-                            messageIn[messageInCount].size = errorCodeOrCount;
-                            messageInCount++;
-                        }
-                        // Repeat until less than 64 responses are returned or we
-                        // run out of message buffers
-                    } while ((messageInCount < sizeof(messageIn) / sizeof (messageIn[0])) &&
-                             (errorCodeOrCount >= U_GNSS_CFG_VAL_MSG_MAX_NUM_VALUES));
-
-                    // Now process all of the messages into an array; note that even if
-                    // we got an error part way through we still return what we received
-                    // because we get a NACK to indicate "done", which would appear as
-                    // an error code
-                    if (messageInCount > 0) {
-                        errorCodeOrCount = unpackMessageAlloc(messageIn, messageInCount, pList);
-                        // Free the memory that was allocated by the send/receive calls
-                        for (size_t x = 0; x < messageInCount; x++) {
-                            uPortFree(messageIn[x].pBody);
-                        }
-                    }
-
-                    // Free the memory that was used for the outgoing message
-                    uPortFree(pMessageOut);
-                }
-            }
-        }
-
-        U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
-    }
-
-    return errorCodeOrCount;
-}
-
-// Set a list of configuration items using VALSET.
-static int32_t valSetList(uDeviceHandle_t gnssHandle,
-                          const uGnssCfgVal_t *pList, size_t numValues,
-                          uGnssCfgValTransaction_t transaction,
-                          int32_t layers)
-{
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
-    uGnssPrivateInstance_t *pInstance;
-    char *pMessage = NULL;
-    size_t messageSize = 4 + (4 * numValues);
-
-    if (gUGnssPrivateMutex != NULL) {
-
-        U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
-
-        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-        pInstance = pUGnssPrivateGetInstance(gnssHandle);
-        if ((pInstance != NULL) &&
-            ((pList != NULL) || (numValues == 0)) &&
-            (numValues <= U_GNSS_CFG_VAL_MSG_MAX_NUM_VALUES) &&
-            ((numValues == 0) ||
-             ((layers > 0) && ((layers & ~U_GNSS_CFG_VAL_LAYER_DEFAULT) == 0)))) {
-            errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
-            if (U_GNSS_PRIVATE_HAS(pInstance->pModule, U_GNSS_PRIVATE_FEATURE_CFGVALXXX)) {
-                errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
-                // Work out how much memory we need for the message;
-                // we already have the overhead and the amount per key ID,
-                // need to add the amount per value
-                for (size_t x = 0; x < numValues; x++) {
-                    messageSize += getStorageSizeBytes(U_GNSS_CFG_VAL_KEY_GET_SIZE((pList + x)->keyId));
-                }
-                // Get memory for the body of the UBX-CFG-VALSET message
-                pMessage = (char *) pUPortMalloc(messageSize);
-                if (pMessage != NULL) {
-                    // Assemble the message
-                    *pMessage       = 0x01; // Version
-                    *(pMessage + 1) = layers;
-                    *(pMessage + 2) = transaction;
-                    *(pMessage + 3) = 0; // Reserved
-                    // Add the values
-                    packMessage(pList, numValues, pMessage + 4, messageSize - 4);
-                    // Send them all off
-                    errorCode = uGnssPrivateSendUbxMessage(pInstance, 0x06, 0x8a,
-                                                           pMessage, messageSize);
-                    // Free memory
-                    uPortFree(pMessage);
-                }
-            }
-        }
-
-        U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
-    }
-
-    return errorCode;
-}
-
-// Delete a list of configuration items using VALDEL.
-static int32_t valDelList(uDeviceHandle_t gnssHandle,
-                          const uint32_t *pKeyIdList, size_t numKeyIds,
-                          uGnssCfgValTransaction_t transaction,
-                          uint32_t layers)
-{
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
-    uGnssPrivateInstance_t *pInstance;
-    char *pMessage = NULL;
-    int32_t messageSize = 4 + (4 * numKeyIds);
-    uint32_t *pUintBuffer;
-
-    if (gUGnssPrivateMutex != NULL) {
-
-        U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
-
-        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-        pInstance = pUGnssPrivateGetInstance(gnssHandle);
-        if ((pInstance != NULL) &&
-            ((pKeyIdList != NULL) || (numKeyIds == 0)) &&
-            (numKeyIds <= U_GNSS_CFG_VAL_MSG_MAX_NUM_VALUES) &&
-            ((numKeyIds == 0) ||
-             ((layers > 0) &&
-              ((layers & ~(U_GNSS_CFG_VAL_LAYER_BBRAM | U_GNSS_CFG_VAL_LAYER_FLASH)) == 0)))) {
-            errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
-            if (U_GNSS_PRIVATE_HAS(pInstance->pModule, U_GNSS_PRIVATE_FEATURE_CFGVALXXX)) {
-                errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
-                // Get memory for the body of the UBX-CFG-VALDEL message
-                pMessage = pUPortMalloc(messageSize);
-                if (pMessage != NULL) {
-                    // Assemble the message
-                    *pMessage       = 0x01; // Version
-                    *(pMessage + 1) = layers;
-                    *(pMessage + 2) = transaction;
-                    *(pMessage + 3) = 0; // Reserved
-                    // Add the key IDs
-                    pUintBuffer = (uint32_t *) (pMessage + 4);
-                    for (size_t x = 0; x < numKeyIds; x++) {
-                        *pUintBuffer = uUbxProtocolUint32Encode(*pKeyIdList);
-                        pKeyIdList++;
-                        pUintBuffer++;
-                    }
-                    // Send them all off
-                    errorCode = uGnssPrivateSendUbxMessage(pInstance, 0x06, 0x8c,
-                                                           pMessage, messageSize);
-                    // Free memory
-                    uPortFree(pMessage);
-                }
-            }
-        }
-
-        U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
-    }
-
-    return errorCode;
-}
-
 // Get the current value of a single E1-type or L-type
 // configuration item using UBX-CFG-VALGET, used by the likes
 // of uGnssCfgGetDynamic(), uGnssCfgGetFixMode(), uGnssCfgGetUtcStandard()
@@ -606,6 +415,175 @@ static int32_t valSetByte(uGnssPrivateInstance_t *pInstance,
     // Send the message off
     return uGnssPrivateSendUbxMessage(pInstance, 0x06, 0x8a,
                                       message, sizeof(message));
+}
+
+/* ----------------------------------------------------------------
+ * PUBLIC FUNCTIONS THAT ARE PRIVATE TO GNSS
+ * -------------------------------------------------------------- */
+
+// Get a list of configuration items using VALGET.
+int32_t uGnssCfgPrivateValGetListAlloc(uGnssPrivateInstance_t *pInstance,
+                                       const uint32_t *pKeyIdList,
+                                       size_t numKeyIds,
+                                       uGnssCfgVal_t **pList,
+                                       uGnssCfgValLayer_t layer)
+{
+    int32_t errorCodeOrCount = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    int32_t encodedLayer = encodeLayerForGet(layer);
+    char *pMessageOut = NULL;
+    size_t messageOutSize = 4 + (4 * numKeyIds);
+    uGnssCfgValGetMessageBody_t messageIn[U_GNSS_CFG_MAX_NUM_VAL_GET_SEGMENTS] = {0};
+    size_t messageInCount = 0;
+
+    if ((pInstance != NULL) && (pKeyIdList != NULL) && (numKeyIds > 0) &&
+        (pList != NULL) && (encodedLayer >= 0)) {
+        errorCodeOrCount = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+        if (U_GNSS_PRIVATE_HAS(pInstance->pModule, U_GNSS_PRIVATE_FEATURE_CFGVALXXX)) {
+            errorCodeOrCount = (int32_t) U_ERROR_COMMON_NO_MEMORY;
+            // Get memory for the body of the UBX-CFG-VALGET message
+            pMessageOut = (char *) pUPortMalloc(messageOutSize);
+            if (pMessageOut != NULL) {
+                // Assemble the message
+                *pMessageOut       = 0; // Version
+                *(pMessageOut + 1) = (char) encodedLayer;
+                // Position is added in the loop below
+                for (size_t x = 0; x < numKeyIds; x++) {
+                    *((uint32_t *) (pMessageOut + 4 + (x << 2))) = uUbxProtocolUint32Encode(*pKeyIdList);
+                    pKeyIdList++;
+                }
+                do {
+                    // Slip in the current position
+                    *((uint16_t *) (pMessageOut + 2)) = uUbxProtocolUint16Encode((uint16_t) (messageInCount *
+                                                                                             U_GNSS_CFG_VAL_MSG_MAX_NUM_VALUES));
+                    // Send it off and wait for the response
+                    errorCodeOrCount = uGnssPrivateSendReceiveUbxMessageAlloc(pInstance,
+                                                                              0x06, 0x8b,
+                                                                              pMessageOut,
+                                                                              messageOutSize,
+                                                                              &(messageIn[messageInCount].pBody));
+                    if (errorCodeOrCount >= 0) {
+                        messageIn[messageInCount].size = errorCodeOrCount;
+                        messageInCount++;
+                    }
+                    // Repeat until less than 64 responses are returned or we
+                    // run out of message buffers
+                } while ((messageInCount < sizeof(messageIn) / sizeof (messageIn[0])) &&
+                         (errorCodeOrCount >= U_GNSS_CFG_VAL_MSG_MAX_NUM_VALUES));
+
+                // Now process all of the messages into an array; note that even if
+                // we got an error part way through we still return what we received
+                // because we get a NACK to indicate "done", which would appear as
+                // an error code
+                if (messageInCount > 0) {
+                    errorCodeOrCount = unpackMessageAlloc(messageIn, messageInCount, pList);
+                    // Free the memory that was allocated by the send/receive calls
+                    for (size_t x = 0; x < messageInCount; x++) {
+                        uPortFree(messageIn[x].pBody);
+                    }
+                }
+
+                // Free the memory that was used for the outgoing message
+                uPortFree(pMessageOut);
+            }
+        }
+    }
+
+    return errorCodeOrCount;
+}
+
+// Set a list of configuration items using VALSET.
+int32_t uGnssCfgPrivateValSetList(uGnssPrivateInstance_t *pInstance,
+                                  const uGnssCfgVal_t *pList,
+                                  size_t numValues,
+                                  uGnssCfgValTransaction_t transaction,
+                                  int32_t layers)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    char *pMessage = NULL;
+    size_t messageSize = 4 + (4 * numValues);
+
+    if ((pInstance != NULL) &&
+        ((pList != NULL) || (numValues == 0)) &&
+        (numValues <= U_GNSS_CFG_VAL_MSG_MAX_NUM_VALUES) &&
+        ((numValues == 0) ||
+         ((layers > 0) && ((layers & ~U_GNSS_CFG_VAL_LAYER_DEFAULT) == 0)))) {
+        errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+        if (U_GNSS_PRIVATE_HAS(pInstance->pModule, U_GNSS_PRIVATE_FEATURE_CFGVALXXX)) {
+            errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
+            // Work out how much memory we need for the message;
+            // we already have the overhead and the amount per key ID,
+            // need to add the amount per value
+            for (size_t x = 0; x < numValues; x++) {
+                messageSize += getStorageSizeBytes(U_GNSS_CFG_VAL_KEY_GET_SIZE((pList + x)->keyId));
+            }
+            // Get memory for the body of the UBX-CFG-VALSET message
+            pMessage = (char *) pUPortMalloc(messageSize);
+            if (pMessage != NULL) {
+                // Assemble the message
+                *pMessage       = 0x01; // Version
+                *(pMessage + 1) = layers;
+                *(pMessage + 2) = transaction;
+                *(pMessage + 3) = 0; // Reserved
+                // Add the values
+                packMessage(pList, numValues, pMessage + 4, messageSize - 4);
+                // Send them all off
+                errorCode = uGnssPrivateSendUbxMessage(pInstance, 0x06, 0x8a,
+                                                       pMessage, messageSize);
+                // Free memory
+                uPortFree(pMessage);
+            }
+        }
+    }
+
+    return errorCode;
+}
+
+// Delete a list of configuration items using VALDEL.
+int32_t uGnssCfgPrivateValDelList(uGnssPrivateInstance_t *pInstance,
+                                  const uint32_t *pKeyIdList,
+                                  size_t numKeyIds,
+                                  uGnssCfgValTransaction_t transaction,
+                                  uint32_t layers)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    char *pMessage = NULL;
+    int32_t messageSize = 4 + (4 * numKeyIds);
+    uint32_t *pUintBuffer;
+
+    if ((pInstance != NULL) &&
+        ((pKeyIdList != NULL) || (numKeyIds == 0)) &&
+        (numKeyIds <= U_GNSS_CFG_VAL_MSG_MAX_NUM_VALUES) &&
+        ((numKeyIds == 0) ||
+         ((layers > 0) &&
+          ((layers & ~(U_GNSS_CFG_VAL_LAYER_BBRAM | U_GNSS_CFG_VAL_LAYER_FLASH)) == 0)))) {
+        errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+        if (U_GNSS_PRIVATE_HAS(pInstance->pModule, U_GNSS_PRIVATE_FEATURE_CFGVALXXX)) {
+            errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
+            // Get memory for the body of the UBX-CFG-VALDEL message
+            pMessage = pUPortMalloc(messageSize);
+            if (pMessage != NULL) {
+                // Assemble the message
+                *pMessage       = 0x01; // Version
+                *(pMessage + 1) = layers;
+                *(pMessage + 2) = transaction;
+                *(pMessage + 3) = 0; // Reserved
+                // Add the key IDs
+                pUintBuffer = (uint32_t *) (pMessage + 4);
+                for (size_t x = 0; x < numKeyIds; x++) {
+                    *pUintBuffer = uUbxProtocolUint32Encode(*pKeyIdList);
+                    pKeyIdList++;
+                    pUintBuffer++;
+                }
+                // Send them all off
+                errorCode = uGnssPrivateSendUbxMessage(pInstance, 0x06, 0x8c,
+                                                       pMessage, messageSize);
+                // Free memory
+                uPortFree(pMessage);
+            }
+        }
+    }
+
+    return errorCode;
 }
 
 /* ----------------------------------------------------------------
@@ -918,29 +896,43 @@ int32_t uGnssCfgValGet(uDeviceHandle_t gnssHandle, uint32_t keyId,
                        void *pValue, size_t size,
                        uGnssCfgValLayer_t layer)
 {
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    int32_t errorCodeOrCount = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uGnssPrivateInstance_t *pInstance;
     uGnssCfgVal_t *pList = NULL;
     size_t storageSizeBytes;
 
-    if ((U_GNSS_CFG_VAL_KEY_GET_GROUP_ID(keyId) != U_GNSS_CFG_VAL_KEY_GROUP_ID_ALL) &&
-        (U_GNSS_CFG_VAL_KEY_GET_ITEM_ID(keyId) != U_GNSS_CFG_VAL_KEY_ITEM_ID_ALL) &&
-        ((pValue != NULL) || (size == 0))) {
-        errorCode = valGetListAlloc(gnssHandle, &keyId, 1, &pList, layer);
-        if (errorCode > 0) {
-            errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
-            storageSizeBytes = getStorageSizeBytes(U_GNSS_CFG_VAL_KEY_GET_SIZE(keyId));
-            if ((pValue == NULL) || (size >= storageSizeBytes)) {
-                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-                if (pValue != NULL) {
-                    memcpy(pValue, &(pList->value), storageSizeBytes);
+    if (gUGnssPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
+
+        errorCodeOrCount = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        pInstance = pUGnssPrivateGetInstance(gnssHandle);
+        if ((pInstance != NULL) &&
+            (U_GNSS_CFG_VAL_KEY_GET_GROUP_ID(keyId) != U_GNSS_CFG_VAL_KEY_GROUP_ID_ALL) &&
+            (U_GNSS_CFG_VAL_KEY_GET_ITEM_ID(keyId) != U_GNSS_CFG_VAL_KEY_ITEM_ID_ALL) &&
+            ((pValue != NULL) || (size == 0))) {
+            errorCodeOrCount = uGnssCfgPrivateValGetListAlloc(pInstance,
+                                                              &keyId, 1,
+                                                              &pList,
+                                                              layer);
+            if (errorCodeOrCount > 0) {
+                errorCodeOrCount = (int32_t) U_ERROR_COMMON_NO_MEMORY;
+                storageSizeBytes = getStorageSizeBytes(U_GNSS_CFG_VAL_KEY_GET_SIZE(keyId));
+                if ((pValue == NULL) || (size >= storageSizeBytes)) {
+                    errorCodeOrCount = (int32_t) U_ERROR_COMMON_SUCCESS;
+                    if (pValue != NULL) {
+                        memcpy(pValue, &(pList->value), storageSizeBytes);
+                    }
                 }
             }
+            // Free memory
+            uPortFree(pList);
         }
-        // Free memory
-        uPortFree(pList);
+
+        U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
     }
 
-    return errorCode;
+    return errorCodeOrCount;
 }
 
 // Get the value of a configuration item.
@@ -948,7 +940,26 @@ int32_t uGnssCfgValGetAlloc(uDeviceHandle_t gnssHandle, uint32_t keyId,
                             uGnssCfgVal_t **pList,
                             uGnssCfgValLayer_t layer)
 {
-    return valGetListAlloc(gnssHandle, &keyId, 1, pList, layer);
+    int32_t errorCodeOrCount = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uGnssPrivateInstance_t *pInstance;
+
+    if (gUGnssPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
+
+        errorCodeOrCount = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        pInstance = pUGnssPrivateGetInstance(gnssHandle);
+        if (pInstance != NULL) {
+            errorCodeOrCount = uGnssCfgPrivateValGetListAlloc(pInstance,
+                                                              &keyId, 1,
+                                                              pList,
+                                                              layer);
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
+    }
+
+    return errorCodeOrCount;
 }
 
 // Get the value of a list of configuration items.
@@ -957,7 +968,27 @@ int32_t uGnssCfgValGetListAlloc(uDeviceHandle_t gnssHandle,
                                 uGnssCfgVal_t **pList,
                                 uGnssCfgValLayer_t layer)
 {
-    return valGetListAlloc(gnssHandle, pKeyIdList, numKeyIds, pList, layer);
+    int32_t errorCodeOrCount = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uGnssPrivateInstance_t *pInstance;
+
+    if (gUGnssPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
+
+        errorCodeOrCount = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        pInstance = pUGnssPrivateGetInstance(gnssHandle);
+        if (pInstance != NULL) {
+            errorCodeOrCount = uGnssCfgPrivateValGetListAlloc(pInstance,
+                                                              pKeyIdList,
+                                                              numKeyIds,
+                                                              pList,
+                                                              layer);
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
+    }
+
+    return errorCodeOrCount;
 }
 
 // Set the value of a configuration item.
@@ -966,12 +997,29 @@ int32_t uGnssCfgValSet(uDeviceHandle_t gnssHandle,
                        uGnssCfgValTransaction_t transaction,
                        uint32_t layers)
 {
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uGnssPrivateInstance_t *pInstance;
     uGnssCfgVal_t val;
 
-    val.keyId = keyId;
-    val.value = value;
+    if (gUGnssPrivateMutex != NULL) {
 
-    return valSetList(gnssHandle, &val, 1, transaction, layers);
+        U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
+
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        pInstance = pUGnssPrivateGetInstance(gnssHandle);
+        if (pInstance != NULL) {
+            val.keyId = keyId;
+            val.value = value;
+            errorCode = uGnssCfgPrivateValSetList(pInstance,
+                                                  &val, 1,
+                                                  transaction,
+                                                  layers);
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
+    }
+
+    return errorCode;
 }
 
 // Set the value of several configuration items at once.
@@ -980,7 +1028,27 @@ int32_t uGnssCfgValSetList(uDeviceHandle_t gnssHandle,
                            uGnssCfgValTransaction_t transaction,
                            uint32_t layers)
 {
-    return valSetList(gnssHandle, pList, numValues, transaction, layers);
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uGnssPrivateInstance_t *pInstance;
+
+    if (gUGnssPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
+
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        pInstance = pUGnssPrivateGetInstance(gnssHandle);
+        if (pInstance != NULL) {
+            errorCode = uGnssCfgPrivateValSetList(pInstance,
+                                                  pList,
+                                                  numValues,
+                                                  transaction,
+                                                  layers);
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
+    }
+
+    return errorCode;
 }
 
 // Delete a configuration item.
@@ -988,7 +1056,26 @@ int32_t uGnssCfgValDel(uDeviceHandle_t gnssHandle, uint32_t keyId,
                        uGnssCfgValTransaction_t transaction,
                        uint32_t layers)
 {
-    return valDelList(gnssHandle, &keyId, 1, transaction, layers);
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uGnssPrivateInstance_t *pInstance;
+
+    if (gUGnssPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
+
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        pInstance = pUGnssPrivateGetInstance(gnssHandle);
+        if (pInstance != NULL) {
+            errorCode = uGnssCfgPrivateValDelList(pInstance,
+                                                  &keyId, 1,
+                                                  transaction,
+                                                  layers);
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
+    }
+
+    return errorCode;
 }
 
 // Delete several configuration items at once.
@@ -997,8 +1084,27 @@ int32_t uGnssCfgValDelList(uDeviceHandle_t gnssHandle,
                            uGnssCfgValTransaction_t transaction,
                            uint32_t layers)
 {
-    return valDelList(gnssHandle, pKeyIdList, numKeyIds, transaction,
-                      layers);
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uGnssPrivateInstance_t *pInstance;
+
+    if (gUGnssPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
+
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        pInstance = pUGnssPrivateGetInstance(gnssHandle);
+        if (pInstance != NULL) {
+            errorCode = uGnssCfgPrivateValDelList(pInstance,
+                                                  pKeyIdList,
+                                                  numKeyIds,
+                                                  transaction,
+                                                  layers);
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
+    }
+
+    return errorCode;
 }
 
 // As uGnssCfgValDelList() but takes an array of type uGnssCfgVal_t.
@@ -1007,26 +1113,41 @@ int32_t uGnssCfgValDelListX(uDeviceHandle_t gnssHandle,
                             uGnssCfgValTransaction_t transaction,
                             uint32_t layers)
 {
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uGnssPrivateInstance_t *pInstance;
     uint32_t *pKeyIdList = NULL;
 
-    if ((numValues > 0) && (pList != NULL)) {
-        errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
-        pKeyIdList = pUPortMalloc(sizeof(uint32_t) * numValues);
-        if (pKeyIdList != NULL) {
-            for (size_t x = 0; x < numValues; x++) {
-                *(pKeyIdList + x) = pList->keyId;
-                pList++;
-            }
-            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-        }
-    }
+    if (gUGnssPrivateMutex != NULL) {
 
-    if (errorCode == 0) {
-        errorCode = valDelList(gnssHandle, pKeyIdList, numValues,
-                               transaction, layers);
-        // It is valid C to free a NULL pointer
-        uPortFree(pKeyIdList);
+        U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
+
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        pInstance = pUGnssPrivateGetInstance(gnssHandle);
+        if (pInstance != NULL) {
+            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+            if ((numValues > 0) && (pList != NULL)) {
+                errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
+                pKeyIdList = pUPortMalloc(sizeof(uint32_t) * numValues);
+                if (pKeyIdList != NULL) {
+                    for (size_t x = 0; x < numValues; x++) {
+                        *(pKeyIdList + x) = pList->keyId;
+                        pList++;
+                    }
+                    errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                }
+            }
+
+            if (errorCode == 0) {
+                errorCode = uGnssCfgPrivateValDelList(pInstance,
+                                                      pKeyIdList,
+                                                      numValues,
+                                                      transaction,
+                                                      layers);
+                uPortFree(pKeyIdList);
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
     }
 
     return errorCode;
