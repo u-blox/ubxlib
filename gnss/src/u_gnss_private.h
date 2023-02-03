@@ -109,7 +109,8 @@ extern "C" {
 // Lint can't seem to find it inside macros.
 typedef enum {
     U_GNSS_PRIVATE_FEATURE_CFGVALXXX,
-    U_GNSS_PRIVATE_FEATURE_GEOFENCE
+    U_GNSS_PRIVATE_FEATURE_GEOFENCE,
+    U_GNSS_PRIVATE_FEATURE_OLD_CFG_API
 } uGnssPrivateFeature_t;
 
 /** The characteristics that may differ between GNSS modules.
@@ -346,6 +347,63 @@ int32_t uGnssPrivateSetRate(uGnssPrivateInstance_t *pInstance,
                             int32_t measurementPeriodMs,
                             int32_t navigationCount,
                             uGnssTimeSystem_t timeSystem);
+
+/** Get the rate at which a given UBX message ID is emitted on the
+ * current transport; this ONLY WORKS FOR M8 AND M9 modules: for
+ * M10 modules and later you must find the relevant member from
+ * U_GNSS_CFG_VAL_KEY_ITEM_MSGOUT_* in u_gnss_cfg_val_key.h
+ * and get the value of that item, e.g.:
+ *
+ * ```
+ * uint32_t keyId = U_GNSS_CFG_VAL_KEY_ITEM_MSGOUT_UBX_NAV_PVT_I2C_U1;
+ * uGnssCfgVal_t *pCfgVal = NULL;
+ * if (uGnssCfgPrivateValGetListAlloc(pInstance, &keyId, 1,
+ *                                    &pCfgVal, U_GNSS_CFG_VAL_LAYER_RAM) == 0);
+ *     // The rate is in pCfgVal->value
+ *     // Don't forget to free pCfgVal afterwards
+ *     uPortFree(pCfgVal);
+ * }
+ * ```
+ *
+ * @param[in] pInstance          a pointer to the GNSS instance, cannot
+ *                               be NULL.
+ * @param[in] pPrivateMessageId  a pointer to the private message ID; cannot
+ *                               be NULL and only UBX protocol message
+ *                               rates can currently be retrieved this way.
+ * @return                       on success the rate (0 for never, 1 for
+ *                               once every message, 2 for "emit every
+ *                               other message", etc.) else negative
+ *                               error code.
+ */
+int32_t uGnssPrivateGetMsgRate(uGnssPrivateInstance_t *pInstance,
+                               uGnssPrivateMessageId_t *pPrivateMessageId);
+
+/** Set the rate at which a given UBX message ID is emitted on the
+ * current transport; this ONLY WORKS FOR M8 AND M9 modules: for
+ * M10 modules and later you must find the relevant member from
+ * U_GNSS_CFG_VAL_KEY_ITEM_MSGOUT_* in u_gnss_cfg_val_key.h
+ * and set the value of that item, e.g.:
+ *
+ * ```
+ * uGnssCfgVal_t cfgVal[] = {{U_GNSS_CFG_VAL_KEY_ITEM_MSGOUT_UBX_NAV_PVT_I2C_U1, 1}};
+ * uGnssCfgPrivateValSetList(pInstance, &cfgVal, 1,
+ *                           U_GNSS_CFG_VAL_TRANSACTION_NONE,
+ *                           U_GNSS_CFG_VAL_LAYER_RAM);
+ * ```
+ *
+ * @param[in] pInstance          a pointer to the GNSS instance, cannot
+ *                               be NULL.
+ * @param[in] pPrivateMessageId  a pointer to the private message ID; cannot
+ *                               be NULL and only UBX protocol message
+ *                               rates can currently be configured this way.
+ * @param rate                   the rate: 0 for never, 1 for once every
+ *                               message, 2 for "emit every other message",
+ *                               etc.
+ * @return                       zero on success or negative error code.
+ */
+int32_t uGnssPrivateSetMsgRate(uGnssPrivateInstance_t *pInstance,
+                               uGnssPrivateMessageId_t *pPrivateMessageId,
+                               int32_t rate);
 
 /** Get the protocol types output by the GNSS chip; not relevant
  * where an AT transports is in use since only the UBX protocol is

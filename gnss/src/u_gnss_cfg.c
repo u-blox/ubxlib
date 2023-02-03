@@ -603,6 +603,7 @@ int32_t uGnssCfgGetRate(uDeviceHandle_t gnssHandle,
 
         U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
 
+        errorCodeOrRate = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         pInstance = pUGnssPrivateGetInstance(gnssHandle);
         if (pInstance != NULL) {
             errorCodeOrRate = uGnssPrivateGetRate(pInstance,
@@ -630,10 +631,62 @@ int32_t uGnssCfgSetRate(uDeviceHandle_t gnssHandle,
 
         U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
 
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         pInstance = pUGnssPrivateGetInstance(gnssHandle);
         if (pInstance != NULL) {
             errorCode = uGnssPrivateSetRate(pInstance, measurementPeriodMs,
                                             navigationCount, timeSystem);
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
+    }
+
+    return errorCode;
+}
+
+// Get the rate at which a message ID is emitted.
+int32_t uGnssCfgGetMsgRate(uDeviceHandle_t gnssHandle,
+                           uGnssMessageId_t *pMessageId)
+{
+    int32_t errorCodeOrMsgRate = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uGnssPrivateInstance_t *pInstance;
+    uGnssPrivateMessageId_t privateMessageId;
+
+    if (gUGnssPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
+
+        errorCodeOrMsgRate = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        pInstance = pUGnssPrivateGetInstance(gnssHandle);
+        if ((pInstance != NULL) && (pMessageId != NULL) &&
+            (uGnssPrivateMessageIdToPrivate(pMessageId, &privateMessageId) == 0)) {
+            errorCodeOrMsgRate = uGnssPrivateGetMsgRate(pInstance, &privateMessageId);
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
+    }
+
+    return errorCodeOrMsgRate;
+}
+
+// Set the rate at which a given message ID is emitted.
+int32_t uGnssCfgSetMsgRate(uDeviceHandle_t gnssHandle,
+                           uGnssMessageId_t *pMessageId,
+                           int32_t rate)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uGnssPrivateInstance_t *pInstance;
+    uGnssPrivateMessageId_t privateMessageId;
+
+    if (gUGnssPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
+
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        pInstance = pUGnssPrivateGetInstance(gnssHandle);
+        if ((pInstance != NULL) && (pMessageId != NULL) &&
+            (uGnssPrivateMessageIdToPrivate(pMessageId, &privateMessageId) == 0)) {
+            errorCode = uGnssPrivateSetMsgRate(pInstance, &privateMessageId, rate);
         }
 
         U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);

@@ -200,7 +200,14 @@ int32_t uGnssCfgGetRate(uDeviceHandle_t gnssHandle,
                         int32_t *pNavigationCount,
                         uGnssTimeSystem_t *pTimeSystem);
 
-/** Set the rate at which position is obtained.
+/** Set the rate at which position is obtained.  Note that, if you intend
+ * to obtain position at this rate using a particular protocol, you need to
+ * set the message rate for the navigation messsage ID on that protocol
+ * to a non-zero value by calling uGnssCfgSetMsgRate() with that message ID;
+ * by default NMEA navigation solutions (GGA etc.) are enabled at a rate of
+ * once for every message (so likely once a second), while the UBX-NAV
+ * messsages of the UBX protocol are by default set to a rate of 0
+ * (i.e. disabled).
  *
  * @param gnssHandle           the handle of the GNSS instance.
  * @param measurementPeriodMs  the period between measurements in
@@ -224,6 +231,54 @@ int32_t uGnssCfgSetRate(uDeviceHandle_t gnssHandle,
                         int32_t measurementPeriodMs,
                         int32_t navigationCount,
                         uGnssTimeSystem_t timeSystem);
+
+/** Get the rate at which a given UBX message ID is emitted on the
+ * current transport; this ONLY WORKS FOR M8 AND M9 modules: for
+ * M10 modules and later you must find the relevant member from
+ * U_GNSS_CFG_VAL_KEY_ITEM_MSGOUT_* in u_gnss_cfg_val_key.h
+ * and get the value of that item, e.g.:
+ *
+ * ```
+ * uint8_t value;
+ * uGnssCfgValGet(devHandle,
+ *                U_GNSS_CFG_VAL_KEY_ITEM_MSGOUT_UBX_NAV_PVT_I2C_U1,
+ *                (void *) &value, sizeof(value),
+ *                U_GNSS_CFG_VAL_LAYER_RAM);
+ * ```
+ *
+ * @param gnssHandle      the handle of the GNSS instance.
+ * @param[in] pMessageId  a pointer to the message ID; cannot
+ *                        be NULL and, for M8 modules, only UBX
+ *                        protocol message rates can currently be
+ *                        retrieved this way.
+ * @return                on success the rate (0 for never, 1 for
+ *                        once every message, 2 for "emit every
+ *                        other message", etc.) else negative
+ *                        error code.
+ */
+int32_t uGnssCfgGetMsgRate(uDeviceHandle_t gnssHandle,
+                           uGnssMessageId_t *pMessageId);
+
+/** Set the rate at which a given UBX message ID is emitted on the
+ * current transport.; this ONLY WORKS FOR M8 AND M9  modules:
+ * for M10 modules and later you must find the relevant member
+ * from U_GNSS_CFG_VAL_KEY_ITEM_MSGOUT_* in u_gnss_cfg_val_key.h
+ * and set the value of that item, e.g.:
+ *
+ * U_GNSS_CFG_SET_VAL_RAM(devHandle, MSGOUT_UBX_NAV_PVT_I2C_U1, 1);
+ *
+ * @param gnssHandle      the handle of the GNSS instance.
+ * @param[in] pMessageId  a pointer to the message ID; cannot
+ *                        be NULL and only UBX protocol message
+ *                        rates can currently be configured this way.
+ * @param rate            the rate: 0 for never, 1 for once every
+ *                        message, 2 for "emit every other message",
+ *                        etc.
+ * @return                zero on success or negative error code.
+ */
+int32_t uGnssCfgSetMsgRate(uDeviceHandle_t gnssHandle,
+                           uGnssMessageId_t *pMessageId,
+                           int32_t rate);
 
 /** Get the dynamic platform model from the GNSS chip.
  *

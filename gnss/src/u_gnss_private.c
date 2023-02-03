@@ -151,11 +151,13 @@ uPortMutexHandle_t gUGnssPrivateMutex = NULL;
  */
 const uGnssPrivateModule_t gUGnssPrivateModuleList[] = {
     {
-        U_GNSS_MODULE_TYPE_M8, 0 /* features */
+        U_GNSS_MODULE_TYPE_M8,
+        (1UL << (int32_t) U_GNSS_PRIVATE_FEATURE_OLD_CFG_API) /* features */
     },
     {
         U_GNSS_MODULE_TYPE_M9,
         ((1UL << (int32_t) U_GNSS_PRIVATE_FEATURE_CFGVALXXX) |
+         (1UL << (int32_t) U_GNSS_PRIVATE_FEATURE_OLD_CFG_API) |
          (1UL << (int32_t) U_GNSS_PRIVATE_FEATURE_GEOFENCE)  /* features */
         )
     },
@@ -1463,7 +1465,7 @@ int32_t uGnssPrivateGetRate(uGnssPrivateInstance_t *pInstance,
                             int32_t *pNavigationCount,
                             uGnssTimeSystem_t *pTimeSystem)
 {
-    int32_t errorCodeOrRate = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    int32_t errorCodeOrRate = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
 
     if (pInstance != NULL) {
         if (U_GNSS_PRIVATE_HAS(pInstance->pModule, U_GNSS_PRIVATE_FEATURE_CFGVALXXX)) {
@@ -1493,6 +1495,88 @@ int32_t uGnssPrivateSetRate(uGnssPrivateInstance_t *pInstance,
         } else {
             errorCode = setRateUbxCfgRate(pInstance, measurementPeriodMs,
                                           navigationCount, timeSystem);
+        }
+    }
+
+    return errorCode;
+}
+
+// Get the rate at which a given message ID is emitted.
+int32_t uGnssPrivateGetMsgRate(uGnssPrivateInstance_t *pInstance,
+                               uGnssPrivateMessageId_t *pPrivateMessageId)
+{
+    int32_t errorCodeOrRate = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    // Message buffer for the 8-byte UBX-CFG-MSG that holds the rate for
+    // the given message ID on all transports
+    char message[8] = {0};
+    char messageClass;
+    char messageId;
+
+    if ((pInstance != NULL) && (pPrivateMessageId != NULL)) {
+        errorCodeOrRate = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+        if ((pPrivateMessageId->type == U_GNSS_PROTOCOL_UBX) &&
+            U_GNSS_PRIVATE_HAS(pInstance->pModule,
+                               U_GNSS_PRIVATE_FEATURE_OLD_CFG_API)) {
+            errorCodeOrRate = (int32_t) U_ERROR_COMMON_PLATFORM;
+            messageClass = pPrivateMessageId->id.ubx >> 8;
+            messageId = pPrivateMessageId->id.ubx & 0xFF;
+            // The response is two bytes of header and then one byte for each
+            // port number; make sure we have room
+            if (pInstance->portNumber < sizeof(message) - 2) {
+                // Populate the message buffer with the UBX message class and ID
+                message[0] = messageClass;
+                message[1] = messageId;
+                // Poll for UBX-CFG-MSG
+                if (uGnssPrivateSendReceiveUbxMessage(pInstance,
+                                                      0x06, 0x01,
+                                                      message, 2,
+                                                      message,
+                                                      sizeof(message)) == sizeof(message)) {
+                    // If the message class and ID are correct in the response,
+                    // the rate at the offset that is the port number
+                    if ((message[0] == messageClass) &&
+                        (message[1] == messageId)) {
+                        errorCodeOrRate = message[2 + pInstance->portNumber];
+                    }
+                }
+            }
+        }
+    }
+
+    return errorCodeOrRate;
+}
+
+// Set the rate at which a given message ID is emitted.
+int32_t uGnssPrivateSetMsgRate(uGnssPrivateInstance_t *pInstance,
+                               uGnssPrivateMessageId_t *pPrivateMessageId,
+                               int32_t rate)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    // Message buffer for the 8-byte UBX-CFG-RATE message that sets the rate
+    // Note: we use this rather than the 3-byte version that just sets the
+    // rate on the current port since, in some cases we are using a UART
+    // to USB converter and so we will have fiddled with the port number;
+    // basically, gotta be symmetrical with uGnssPrivateGetMsgRate()
+    char message[8] = {0};
+
+    if ((pInstance != NULL) && (pPrivateMessageId != NULL)) {
+        errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+        if ((pPrivateMessageId->type == U_GNSS_PROTOCOL_UBX) &&
+            U_GNSS_PRIVATE_HAS(pInstance->pModule,
+                               U_GNSS_PRIVATE_FEATURE_OLD_CFG_API)) {
+            errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
+            // The response is two bytes of header and then one byte for each
+            // port number; make sure we have room
+            if (pInstance->portNumber < sizeof(message) - 2) {
+                // Populate the message buffer with the UBX message class and ID
+                // and the rate in the right slot
+                message[0] = pPrivateMessageId->id.ubx >> 8;
+                message[1] = pPrivateMessageId->id.ubx & 0xFF;
+                message[2 + pInstance->portNumber] = rate;
+                // Send UBX-CFG-MSG
+                errorCode = uGnssPrivateSendUbxMessage(pInstance, 0x06, 0x01,
+                                                       message, sizeof(message));
+            }
         }
     }
 
