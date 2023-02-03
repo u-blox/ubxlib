@@ -74,6 +74,7 @@
 #include "u_gnss_cfg.h"
 #include "u_gnss_cfg_val_key.h"
 #include "u_gnss_private.h"
+#include "u_gnss_cfg_private.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -206,16 +207,6 @@ static const uint8_t gProtocolTypeToCfgValItemIdOutProt[] = {
     2, // 1: U_GNSS_PROTOCOL_NMEA
     4  // 2: U_GNSS_PROTOCOL_RTCM
 };
-
-/** Table to convert a UBX-CFG-VAL item ID for a protocol type into
- * one of our protocol types. */
-static const int8_t gCfgValItemIdOutProtToProtocolType[] = {
-    -1,
-        U_GNSS_PROTOCOL_UBX,    // 1: UBX
-        U_GNSS_PROTOCOL_NMEA,   // 2: NMEA
-        -1,
-        U_GNSS_PROTOCOL_RTCM    // 4: RTCM
-    };
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS: MESSAGE RELATED
@@ -1104,70 +1095,47 @@ static int32_t getProtocolOutUbxCfgPrt(uGnssPrivateInstance_t *pInstance)
     return errorCodeOrBitMap;
 }
 
-// Pack a logical on/off value into five bytes of UBX-CFG-VALSET entry,
-// used by setProtocolOutUbxCfgVal(). pMessage must point to at least
-// five bytes of buffer.
-static size_t packUbxCfgValLogicalEntry(char *pMessage,
-                                        uGnssCfgValKeyGroupId_t groupId,
-                                        uint16_t itemId, bool onNotOff)
-{
-    char *pTmp = pMessage;
-    uint32_t keyId;
-
-    keyId = (0x10UL << 24) | ((groupId & 0xFF) << 16) | itemId;
-    *((uint32_t *) pTmp) = uUbxProtocolUint32Encode(keyId);
-    pTmp += 4;
-    *pTmp++ = onNotOff;
-
-    return pTmp - pMessage;
-}
-
 // Set protocol out with UBX-CFG-VALSET.
 static int32_t setProtocolOutUbxCfgVal(uGnssPrivateInstance_t *pInstance,
                                        uGnssProtocol_t protocol,
                                        bool onNotOff)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
-    // Message buffer for the UBX-CFG-VALSET message body, four bytes
-    // of header and then, for each protocol type, four bytes of key
-    // ID and one byte of Boolean value
-    char message[4 + ((4 + 1) * U_GNSS_PROTOCOL_UNKNOWN)];
-    char *pMessage = message;;
-    size_t messageSizeBytes;
+    uGnssCfgVal_t val[sizeof(gProtocolTypeToCfgValItemIdOutProt) /
+                                                                 sizeof(gProtocolTypeToCfgValItemIdOutProt[0])];
+    size_t numEntries = 0;
 
-    if (pInstance->portNumber < sizeof(gPortToCfgValGroupIdOutProt) /
-        sizeof(gPortToCfgValGroupIdOutProt[0])) {
-        // Assemble the 4-byte UBX-CFG-VALSET message header
-        *pMessage++ = 0; // version
-        *pMessage++ = U_GNSS_CFG_VAL_LAYER_RAM;
-        *pMessage++ = 0; // reserved
-        *pMessage++ = 0;
+    if (pInstance->portNumber < sizeof(gPortToCfgValGroupIdOutProt) / sizeof(
+            gPortToCfgValGroupIdOutProt[0])) {
         // Add the key/value pairs
         if (protocol == U_GNSS_PROTOCOL_ALL) {
-            for (size_t x = 0; x < sizeof(gProtocolTypeToCfgValItemIdOutProt) /
-                 sizeof(gProtocolTypeToCfgValItemIdOutProt[0]); x++) {
-                pMessage += packUbxCfgValLogicalEntry(pMessage,
-                                                      gPortToCfgValGroupIdOutProt[pInstance->portNumber],
-                                                      gProtocolTypeToCfgValItemIdOutProt[x],
-                                                      onNotOff);
+            for (size_t x = 0; (x < sizeof(val) / sizeof(val[0])); x++) {
+                // Create the key ID from the group ID of "out protocol" and the
+                // item ID of each "out protocol"
+                val[x].keyId = U_GNSS_CFG_VAL_KEY(gPortToCfgValGroupIdOutProt[pInstance->portNumber],
+                                                  gProtocolTypeToCfgValItemIdOutProt[x],
+                                                  U_GNSS_CFG_VAL_KEY_SIZE_ONE_BIT);
+                val[x].value = onNotOff;
+                numEntries++;
             }
         } else {
             errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-            if (protocol < sizeof(gProtocolTypeToCfgValItemIdOutProt) /
-                sizeof(gProtocolTypeToCfgValItemIdOutProt[0])) {
-                pMessage += packUbxCfgValLogicalEntry(pMessage,
-                                                      gPortToCfgValGroupIdOutProt[pInstance->portNumber],
-                                                      gProtocolTypeToCfgValItemIdOutProt[protocol],
-                                                      onNotOff);
+            if (protocol < (sizeof(gProtocolTypeToCfgValItemIdOutProt) /
+                            sizeof(gProtocolTypeToCfgValItemIdOutProt[0]))) {
+                val[0].keyId = U_GNSS_CFG_VAL_KEY(gPortToCfgValGroupIdOutProt[pInstance->portNumber],
+                                                  gProtocolTypeToCfgValItemIdOutProt[protocol],
+                                                  U_GNSS_CFG_VAL_KEY_SIZE_ONE_BIT);
+                val[0].value = onNotOff;
+                numEntries++;
             }
         }
 
-        messageSizeBytes = pMessage - message;
-        if (messageSizeBytes > 4) {
-            // Have something worth sending, send UBX-CFG-VALSET
-            errorCode = uGnssPrivateSendUbxMessage(pInstance,
-                                                   0x06, 0x8a,
-                                                   message, messageSizeBytes);
+        if (numEntries > 0) {
+            // Have something worth sending, do UBX-CFG-VALSET
+            errorCode = uGnssCfgPrivateValSetList(pInstance,
+                                                  val, numEntries,
+                                                  U_GNSS_CFG_VAL_TRANSACTION_NONE,
+                                                  U_GNSS_CFG_VAL_LAYER_RAM);
         }
     }
 
@@ -1178,86 +1146,45 @@ static int32_t setProtocolOutUbxCfgVal(uGnssPrivateInstance_t *pInstance,
 static int32_t getProtocolOutUbxCfgVal(uGnssPrivateInstance_t *pInstance)
 {
     int32_t errorCodeOrBitMap = (int32_t) U_ERROR_COMMON_PLATFORM;
-    // Message buffer for the UBX-CFG-VALGET message body:
-    // four bytes of header and four bytes for the key ID of
-    // our port number (with a wildcard item Id)
-    char messageOut[4 + 4] = {0};
-    char *pMessage = messageOut;
-    size_t messageSizeBytes;
-    char *pMessageIn = NULL;
-    uint32_t keyId = 0;
-    uint32_t y;
+    uint32_t keyId;
+    uGnssCfgVal_t *pCfgValList = NULL;
+    uGnssCfgVal_t *pTmp;
+    int32_t numValues;
 
-    // The 4-byte message header is all zeroes: version 0,
-    // 0 for the RAM layer, position 0
-    pMessage += 4;
-    // Add the key for the current protocol type with a wild-card item ID
     if (pInstance->portNumber < sizeof(gPortToCfgValGroupIdOutProt) /
         sizeof(gPortToCfgValGroupIdOutProt[0])) {
-        keyId = (0x10UL << 24) |
-                ((gPortToCfgValGroupIdOutProt[pInstance->portNumber] & 0xFF) << 16) |
-                U_GNSS_CFG_VAL_KEY_ITEM_ID_ALL;
-        *((uint32_t *) pMessage) = uUbxProtocolUint32Encode(keyId);
-        pMessage += sizeof(uint32_t);
-    }
-
-    messageSizeBytes = pMessage - messageOut;
-    if (messageSizeBytes > 4) {
-        // Send it off and wait for the response
-        errorCodeOrBitMap = uGnssPrivateSendReceiveUbxMessageAlloc(pInstance,
-                                                                   0x06, 0x8b,
-                                                                   messageOut,
-                                                                   messageSizeBytes,
-                                                                   &pMessageIn);
-        // 4 below since there must be at least four bytes of header
-        if ((errorCodeOrBitMap > 4) && (pMessageIn != NULL)) {
-            messageSizeBytes = (size_t) errorCodeOrBitMap;
-            pMessage = pMessageIn + 4;
+        // Set the key ID for the current protocol type with a wild-card item ID
+        keyId = U_GNSS_CFG_VAL_KEY(gPortToCfgValGroupIdOutProt[pInstance->portNumber],
+                                   U_GNSS_CFG_VAL_KEY_ITEM_ID_ALL, 0);
+        errorCodeOrBitMap = uGnssCfgPrivateValGetListAlloc(pInstance, &keyId, 1,
+                                                           &pCfgValList,
+                                                           U_GNSS_CFG_VAL_LAYER_RAM);
+        if ((errorCodeOrBitMap > 0) && (pCfgValList != NULL)) {
+            // pCfgValList should now have all the "out protocol" keys we need
+            numValues = errorCodeOrBitMap;
             errorCodeOrBitMap = 0;
-            // After a four byte header, which we can ignore, the
-            // received message should contain keys that begin
-            // with the group part of our key ID, followed by the item ID
-            // for each output protocol type, followed by a single
-            // byte giving the logical value for that protocol type
-            while (messageSizeBytes - (pMessage - pMessageIn) >= 4 + 1) {
-                y = uUbxProtocolUint32Decode(pMessage);
-                pMessage += 4;
-                if (((y & 0xFFFF0000) == (keyId & 0xFFFF0000)) &&
-                    ((y & 0xFF) < sizeof(gCfgValItemIdOutProtToProtocolType) /
-                     sizeof(gCfgValItemIdOutProtToProtocolType[0])) &&
-                    (gCfgValItemIdOutProtToProtocolType[y & 0xFF] >= 0)) {
-                    if (*pMessage) {
-                        errorCodeOrBitMap |= 1 << gCfgValItemIdOutProtToProtocolType[y & 0xFF];
+            pTmp = pCfgValList;
+            for (int32_t x = 0; x < numValues; x++) {
+                // Go through the list looking for our key IDs
+                for (size_t y = 0; y < sizeof(gProtocolTypeToCfgValItemIdOutProt) /
+                     sizeof(gProtocolTypeToCfgValItemIdOutProt[0]); y++) {
+                    if (pTmp->keyId == U_GNSS_CFG_VAL_KEY(gPortToCfgValGroupIdOutProt[pInstance->portNumber],
+                                                          gProtocolTypeToCfgValItemIdOutProt[y],
+                                                          U_GNSS_CFG_VAL_KEY_SIZE_ONE_BIT)) {
+                        // Found one: set the value in the bit-map
+                        if (pTmp->value) {
+                            errorCodeOrBitMap |= 1 << y;
+                        }
+                        break;
                     }
                 }
-                // Do a proper increment of the pointer, based on the key ID
-                // in the message, just in case it contains things we didn't
-                // expect
-                switch (y >> 28) {
-                    case U_GNSS_CFG_VAL_KEY_SIZE_ONE_BIT:
-                    //lint -fallthrough
-                    case U_GNSS_CFG_VAL_KEY_SIZE_ONE_BYTE:
-                        pMessage += 1;
-                        break;
-                    case U_GNSS_CFG_VAL_KEY_SIZE_TWO_BYTES:
-                        pMessage += 2;
-                        break;
-                    case U_GNSS_CFG_VAL_KEY_SIZE_FOUR_BYTES:
-                        pMessage += 4;
-                        break;
-                    case U_GNSS_CFG_VAL_KEY_SIZE_EIGHT_BYTES:
-                        pMessage += 8;
-                        break;
-                    default:
-                        break;
-                }
+                pTmp++;
             }
+            // Free memory
+            uPortFree(pCfgValList);
         } else {
             errorCodeOrBitMap = (int32_t) U_ERROR_COMMON_PLATFORM;
         }
-
-        // Free memory from uGnssPrivateSendReceiveUbxMessageAlloc()
-        uPortFree(pMessageIn);
     }
 
     return errorCodeOrBitMap;
