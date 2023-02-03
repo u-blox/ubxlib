@@ -2166,61 +2166,58 @@ int32_t uSockWrite(uSockDescriptor_t descriptor,
         errnoLocal = U_SOCK_EBADF;
         pContainer = pContainerFindByDescriptor(descriptor);
         if (pContainer != NULL) {
-            errnoLocal = U_SOCK_EPROTOTYPE;
-            if (pContainer->socket.protocol == U_SOCK_PROTOCOL_TCP) {
-                if (pContainer->socket.state == U_SOCK_STATE_CONNECTED) {
-                    errnoLocal = U_SOCK_EINVAL;
-                    if (((pData == NULL) && (dataSizeBytes > 0)) ||
-                        (dataSizeBytes > INT_MAX)) {
-                        // Invalid argument
-                    } else {
-                        errnoLocal = U_SOCK_ENONE;
-                        if ((pData != NULL) && (dataSizeBytes != 0)) {
-                            // Talk to the underlying cell/wifi
-                            // socket layer to send the datagram.
-                            // uXxxSockWrite() returns the number
-                            // of bytes sent or a negated value of
-                            // errno from the U_SOCK_Exxx list.
-                            devHandle = pContainer->socket.devHandle;
-                            sockHandle = pContainer->socket.sockHandle;
-                            errorCodeOrSize = -U_SOCK_ENOSYS;
-                            int32_t devType = uDeviceGetDeviceType(devHandle);
-                            if (devType == (int32_t) U_DEVICE_TYPE_CELL) {
-                                errorCodeOrSize = uCellSockWrite(devHandle,
-                                                                 sockHandle,
-                                                                 pData,
-                                                                 dataSizeBytes);
-                                if (errorCodeOrSize > 0) {
-                                    pContainer->socket.bytesSent += errorCodeOrSize;
-                                }
-                            } else if (devType == (int32_t) U_DEVICE_TYPE_SHORT_RANGE) {
-                                errorCodeOrSize = uWifiSockWrite(devHandle,
-                                                                 sockHandle,
-                                                                 pData,
-                                                                 dataSizeBytes);
-                                if (errorCodeOrSize > 0) {
-                                    pContainer->socket.bytesSent += errorCodeOrSize;
-                                }
+            if (pContainer->socket.state == U_SOCK_STATE_CONNECTED) {
+                errnoLocal = U_SOCK_EINVAL;
+                if (((pData == NULL) && (dataSizeBytes > 0)) ||
+                    (dataSizeBytes > INT_MAX)) {
+                    // Invalid argument
+                } else {
+                    errnoLocal = U_SOCK_ENONE;
+                    if ((pData != NULL) && (dataSizeBytes != 0)) {
+                        // Talk to the underlying cell/wifi
+                        // socket layer to send the datagram.
+                        // uXxxSockWrite() returns the number
+                        // of bytes sent or a negated value of
+                        // errno from the U_SOCK_Exxx list.
+                        devHandle = pContainer->socket.devHandle;
+                        sockHandle = pContainer->socket.sockHandle;
+                        errorCodeOrSize = -U_SOCK_ENOSYS;
+                        int32_t devType = uDeviceGetDeviceType(devHandle);
+                        if (devType == (int32_t) U_DEVICE_TYPE_CELL) {
+                            errorCodeOrSize = uCellSockWrite(devHandle,
+                                                             sockHandle,
+                                                             pData,
+                                                             dataSizeBytes);
+                            if (errorCodeOrSize > 0) {
+                                pContainer->socket.bytesSent += errorCodeOrSize;
                             }
-
-                            if (errorCodeOrSize < 0) {
-                                // Set errno
-                                errnoLocal = -errorCodeOrSize;
+                        } else if (devType == (int32_t) U_DEVICE_TYPE_SHORT_RANGE) {
+                            errorCodeOrSize = uWifiSockWrite(devHandle,
+                                                             sockHandle,
+                                                             pData,
+                                                             dataSizeBytes);
+                            if (errorCodeOrSize > 0) {
+                                pContainer->socket.bytesSent += errorCodeOrSize;
                             }
                         }
+
+                        if (errorCodeOrSize < 0) {
+                            // Set errno
+                            errnoLocal = -errorCodeOrSize;
+                        }
                     }
+                }
+            } else {
+                if ((pContainer->socket.state == U_SOCK_STATE_SHUTDOWN_FOR_READ) ||
+                    (pContainer->socket.state == U_SOCK_STATE_SHUTDOWN_FOR_READ_WRITE)) {
+                    // Socket is shut down
+                    errnoLocal = U_SOCK_ESHUTDOWN;
+                } else if (pContainer->socket.state == U_SOCK_STATE_CLOSING) {
+                    // Not connected mate
+                    errnoLocal = U_SOCK_ENOTCONN;
                 } else {
-                    if ((pContainer->socket.state == U_SOCK_STATE_SHUTDOWN_FOR_READ) ||
-                        (pContainer->socket.state == U_SOCK_STATE_SHUTDOWN_FOR_READ_WRITE)) {
-                        // Socket is shut down
-                        errnoLocal = U_SOCK_ESHUTDOWN;
-                    } else if (pContainer->socket.state == U_SOCK_STATE_CLOSING) {
-                        // Not connected mate
-                        errnoLocal = U_SOCK_ENOTCONN;
-                    } else {
-                        // No route to host?
-                        errnoLocal = U_SOCK_EHOSTUNREACH;
-                    }
+                    // No route to host?
+                    errnoLocal = U_SOCK_EHOSTUNREACH;
                 }
             }
         }
@@ -2254,38 +2251,35 @@ int32_t uSockRead(uSockDescriptor_t descriptor,
         errnoLocal = U_SOCK_EBADF;
         pContainer = pContainerFindByDescriptor(descriptor);
         if (pContainer != NULL) {
-            errnoLocal = U_SOCK_EPROTOTYPE;
-            if (pContainer->socket.protocol == U_SOCK_PROTOCOL_TCP) {
-                if (pContainer->socket.state == U_SOCK_STATE_CONNECTED) {
-                    errnoLocal = U_SOCK_EINVAL;
-                    if (((pData == NULL) && (dataSizeBytes > 0)) ||
-                        (dataSizeBytes > INT_MAX)) {
-                        // Invalid argument
-                    } else {
-                        errnoLocal = U_SOCK_ENONE;
-                        if ((pData != NULL) && (dataSizeBytes != 0)) {
-                            // Receive the datagram
-                            errorCodeOrSize = receive(pContainer,
-                                                      NULL, pData,
-                                                      dataSizeBytes);
-                            if (errorCodeOrSize < 0) {
-                                // Set errno
-                                errnoLocal = -errorCodeOrSize;
-                            }
+            if (pContainer->socket.state == U_SOCK_STATE_CONNECTED) {
+                errnoLocal = U_SOCK_EINVAL;
+                if (((pData == NULL) && (dataSizeBytes > 0)) ||
+                    (dataSizeBytes > INT_MAX)) {
+                    // Invalid argument
+                } else {
+                    errnoLocal = U_SOCK_ENONE;
+                    if ((pData != NULL) && (dataSizeBytes != 0)) {
+                        // Receive the datagram
+                        errorCodeOrSize = receive(pContainer,
+                                                  NULL, pData,
+                                                  dataSizeBytes);
+                        if (errorCodeOrSize < 0) {
+                            // Set errno
+                            errnoLocal = -errorCodeOrSize;
                         }
                     }
+                }
+            } else {
+                if ((pContainer->socket.state == U_SOCK_STATE_SHUTDOWN_FOR_READ) ||
+                    (pContainer->socket.state == U_SOCK_STATE_SHUTDOWN_FOR_READ_WRITE)) {
+                    // Socket is shut down
+                    errnoLocal = U_SOCK_ESHUTDOWN;
+                } else if (pContainer->socket.state == U_SOCK_STATE_CLOSING) {
+                    // Not connected mate
+                    errnoLocal = U_SOCK_ENOTCONN;
                 } else {
-                    if ((pContainer->socket.state == U_SOCK_STATE_SHUTDOWN_FOR_READ) ||
-                        (pContainer->socket.state == U_SOCK_STATE_SHUTDOWN_FOR_READ_WRITE)) {
-                        // Socket is shut down
-                        errnoLocal = U_SOCK_ESHUTDOWN;
-                    } else if (pContainer->socket.state == U_SOCK_STATE_CLOSING) {
-                        // Not connected mate
-                        errnoLocal = U_SOCK_ENOTCONN;
-                    } else {
-                        // No route to host?
-                        errnoLocal = U_SOCK_EHOSTUNREACH;
-                    }
+                    // No route to host?
+                    errnoLocal = U_SOCK_EHOSTUNREACH;
                 }
             }
         }
