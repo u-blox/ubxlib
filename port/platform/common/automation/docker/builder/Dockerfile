@@ -89,8 +89,19 @@ RUN apt-get update && apt-get install -y wget unzip tar &&                      
 # Cleanup
     apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-WORKDIR /workdir
+# Install a later version of CMake (required by Zephyr 3)
+RUN                                                                                          \
+    if [ "$(arch)" != "aarch64" ]; then                                                      \
+        wget -q -P /tmp https://cmake.org/files/v3.24/cmake-3.24.1-linux-x86_64.tar.gz &&    \
+        tar --strip-components=1 -xf /tmp/cmake-3.24.1-linux-x86_64.tar.gz -C /usr/local &&  \
+        rm -rf /tmp/*;                                                                       \
+    else                                                                                     \
+        wget -q -P /tmp https://cmake.org/files/v3.24/cmake-3.24.1-linux-aarch64.tar.gz &&   \
+        tar --strip-components=1 -xf /tmp/cmake-3.24.1-linux-aarch64.tar.gz -C /usr/local && \
+        rm -rf /tmp/*;                                                                       \
+    fi
 
+WORKDIR /workdir
 
 #***************************************************
 # Add missing Python modules and apk packages here
