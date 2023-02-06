@@ -1,3 +1,7 @@
+#!/usr/bin/env python
+
+"""A static class for initializing Python logging module the way we like"""
+
 import os
 import sys
 import logging
@@ -96,10 +100,10 @@ class ULog():
 
         # Setup colored logs
         styles = coloredlogs.DEFAULT_LEVEL_STYLES
-        styles["notice"] = dict(background='blue', color='white')
-        styles["success"] = dict(background='green', color='white')
-        styles["warning"] = dict(background='yellow', color='white')
-        styles["error"] = dict(background='red', color='white')
+        styles["notice"] = {"background": 'blue', "color": 'white'}
+        styles["success"] = {"background": 'green', "color": 'white'}
+        styles["warning"] = {"background": 'yellow', "color": 'white'}
+        styles["error"] = {"background": 'red', "color": 'white'}
         coloredlogs.install()
 
         # Setup the console handler
