@@ -28,6 +28,8 @@
  * macro.
  */
 
+#ifndef U_LOCATION_TEST_DISABLE
+
 #ifdef U_CFG_OVERRIDE
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
@@ -99,6 +101,11 @@ static uLocation_t gLocation;
  * asynchronous case.
  */
 static int32_t gErrorCode;
+
+/** Keep track of the number of times the callback is called
+ * for the continuous case.
+ */
+static int32_t gCount;
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -226,7 +233,7 @@ static void testBlocking(uDeviceHandle_t devHandle,
     }
 }
 
-// Callback function for the non-blocking API.
+// Callback function for the non-blocking APIs.
 static void locationCallback(uDeviceHandle_t devHandle,
                              int32_t errorCode,
                              const uLocation_t *pLocation)
@@ -242,13 +249,16 @@ static void locationCallback(uDeviceHandle_t devHandle,
         gLocation.svs = pLocation->svs;
         gLocation.timeUtc = pLocation->timeUtc;
     }
+    if (errorCode == 0) {
+        gCount++;
+    }
 }
 
-// Test the non-blocking location API.
-static void testNonBlocking(uDeviceHandle_t devHandle,
-                            uNetworkType_t networkType,
-                            uLocationType_t locationType,
-                            const uLocationTestCfg_t *pLocationCfg)
+// Test the one-shot location API.
+static void testOneShot(uDeviceHandle_t devHandle,
+                        uNetworkType_t networkType,
+                        uLocationType_t locationType,
+                        const uLocationTestCfg_t *pLocationCfg)
 {
     int64_t startTime;
     int32_t y;
@@ -264,22 +274,130 @@ static void testNonBlocking(uDeviceHandle_t devHandle,
 
     uLocationTestResetLocation(&gLocation);
     if (pLocationCfg != NULL) {
+        gDevHandle = NULL;
+        gErrorCode = INT_MIN;
         // Try this a few times as the Cell Locate AT command can sometimes
         // (e.g. on SARA-R412M-02B) return "generic error" if asked to establish
         // location again quickly after returning an answer
+        U_TEST_PRINT_LINE("one-shot API.");
         for (int32_t x = 3; (x > 0) && (gErrorCode != 0); x--) {
-            U_TEST_PRINT_LINE("non-blocking API.");
+            uLocationTestResetLocation(&gLocation);
+            y = uLocationGetStart(devHandle, locationType,
+                                  pLocationAssist,
+                                  pAuthenticationTokenStr,
+                                  locationCallback);
+            if (y == 0) {
+                U_TEST_PRINT_LINE("waiting up to %d second(s) for results from"
+                                  " one-shot API...",
+                                  U_LOCATION_TEST_CFG_TIMEOUT_SECONDS);
+                while ((gErrorCode == INT_MIN) && (uPortGetTickTimeMs() < gStopTimeMs)) {
+                    // Location establishment status is only supported for cell locate
+                    y = uLocationGetStatus(devHandle);
+                    if (locationType == U_LOCATION_TYPE_CLOUD_CELL_LOCATE) {
+                        U_PORT_TEST_ASSERT(y >= 0);
+                    } else {
+                        U_PORT_TEST_ASSERT(y <= (int32_t) U_LOCATION_STATUS_UNKNOWN);
+                    }
+                    uPortTaskBlock(1000);
+                }
+
+                if (gErrorCode == 0) {
+                    U_TEST_PRINT_LINE("location establishment took %d second(s).",
+                                      (int32_t) (uPortGetTickTimeMs() - startTime) / 1000);
+                    // If we are running on a cellular test network we might not
+                    // get position but we should always get time
+                    U_PORT_TEST_ASSERT(gDevHandle == devHandle);
+                    if ((gLocation.radiusMillimetres > 0) &&
+                        (gLocation.radiusMillimetres <= U_LOCATION_TEST_MAX_RADIUS_MILLIMETRES)) {
+                        uLocationTestPrintLocation(&gLocation);
+                        U_PORT_TEST_ASSERT(gLocation.latitudeX1e7 > INT_MIN);
+                        U_PORT_TEST_ASSERT(gLocation.longitudeX1e7 > INT_MIN);
+                        U_PORT_TEST_ASSERT(gLocation.altitudeMillimetres > INT_MIN);
+                        U_PORT_TEST_ASSERT(gLocation.radiusMillimetres > INT_MIN);
+                        U_PORT_TEST_ASSERT(gLocation.speedMillimetresPerSecond > INT_MIN);
+                        U_PORT_TEST_ASSERT(gLocation.svs > INT_MIN);
+                    } else {
+                        U_TEST_PRINT_LINE("only able to get time (%d).", (int32_t) gLocation.timeUtc);
+                    }
+                    U_PORT_TEST_ASSERT(gLocation.timeUtc > U_LOCATION_TEST_MIN_UTC_TIME);
+                }
+                if ((gErrorCode != 0) && (x >= 1)) {
+                    U_TEST_PRINT_LINE("failed to get an answer, will retry in 30 seconds...");
+                    uPortTaskBlock(30000);
+                }
+                uLocationGetStop(devHandle);
+            } else {
+                if (locationType == U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE) {
+                    // Cloud locate is not currently supported for async position
+                    U_PORT_TEST_ASSERT(y == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED);
+                    gErrorCode = 0;
+                } else {
+                    U_PORT_TEST_ASSERT(false);
+                }
+            }
+        }
+        U_PORT_TEST_ASSERT(gErrorCode == 0);
+    } else {
+        if (!U_NETWORK_TEST_TYPE_HAS_LOCATION(networkType)) {
             gDevHandle = NULL;
             gErrorCode = INT_MIN;
             uLocationTestResetLocation(&gLocation);
             U_PORT_TEST_ASSERT(uLocationGetStart(devHandle, locationType,
-                                                 pLocationAssist,
-                                                 pAuthenticationTokenStr,
-                                                 locationCallback) == 0);
-            U_TEST_PRINT_LINE("waiting up to %d second(s) for results from"
-                              " non-blocking API...",
-                              U_LOCATION_TEST_CFG_TIMEOUT_SECONDS);
-            while ((gErrorCode == INT_MIN) && (uPortGetTickTimeMs() < gStopTimeMs)) {
+                                                 pLocationAssist, pAuthenticationTokenStr,
+                                                 locationCallback) < 0);
+            U_PORT_TEST_ASSERT(gDevHandle == NULL);
+            U_PORT_TEST_ASSERT(gErrorCode == INT_MIN);
+            U_PORT_TEST_ASSERT(gLocation.latitudeX1e7 == INT_MIN);
+            U_PORT_TEST_ASSERT(gLocation.longitudeX1e7 == INT_MIN);
+            U_PORT_TEST_ASSERT(gLocation.altitudeMillimetres == INT_MIN);
+            U_PORT_TEST_ASSERT(gLocation.radiusMillimetres == INT_MIN);
+            U_PORT_TEST_ASSERT(gLocation.timeUtc == LONG_MIN);
+            U_PORT_TEST_ASSERT(gLocation.speedMillimetresPerSecond == INT_MIN);
+            U_PORT_TEST_ASSERT(gLocation.svs == INT_MIN);
+        }
+    }
+}
+
+// Test the continuous location API.
+static void testContinuous(uDeviceHandle_t devHandle,
+                           uNetworkType_t networkType,
+                           uLocationType_t locationType,
+                           const uLocationTestCfg_t *pLocationCfg)
+{
+    int64_t startTime;
+    int32_t y;
+    const uLocationAssist_t *pLocationAssist = NULL;
+    const char *pAuthenticationTokenStr = NULL;
+
+    if (pLocationCfg != NULL) {
+        pAuthenticationTokenStr = pLocationCfg->pAuthenticationTokenStr;
+        pLocationAssist = pLocationCfg->pLocationAssist;
+    }
+    startTime = uPortGetTickTimeMs();
+    gStopTimeMs = startTime + (U_LOCATION_TEST_CFG_TIMEOUT_SECONDS *
+                               U_LOCATION_TEST_CFG_CONTINUOUS_COUNT * 1000);
+
+    uLocationTestResetLocation(&gLocation);
+    if (pLocationCfg != NULL) {
+        U_TEST_PRINT_LINE("continuous API.");
+        gDevHandle = NULL;
+        gErrorCode = INT_MIN;
+        gCount = 0;
+        uLocationTestResetLocation(&gLocation);
+        y =  uLocationGetContinuousStart(devHandle,
+                                         U_LOCATION_TEST_CFG_CONTINUOUS_RATE_MS,
+                                         locationType,
+                                         pLocationAssist,
+                                         pAuthenticationTokenStr,
+                                         locationCallback);
+        if (y == 0) {
+            U_TEST_PRINT_LINE("waiting up to %d second(s) to get at least %d"
+                              " results from continuous API...",
+                              U_LOCATION_TEST_CFG_TIMEOUT_SECONDS *
+                              U_LOCATION_TEST_CFG_CONTINUOUS_COUNT,
+                              U_LOCATION_TEST_CFG_CONTINUOUS_COUNT);
+            while ((gCount < U_LOCATION_TEST_CFG_CONTINUOUS_COUNT) &&
+                   (uPortGetTickTimeMs() < gStopTimeMs)) {
                 // Location establishment status is only supported for cell locate
                 y = uLocationGetStatus(devHandle);
                 if (locationType == U_LOCATION_TYPE_CLOUD_CELL_LOCATE) {
@@ -290,9 +408,10 @@ static void testNonBlocking(uDeviceHandle_t devHandle,
                 uPortTaskBlock(1000);
             }
 
-            if (gErrorCode == 0) {
-                U_TEST_PRINT_LINE("location establishment took %d second(s).",
-                                  (int32_t) (uPortGetTickTimeMs() - startTime) / 1000);
+            if (gCount >= U_LOCATION_TEST_CFG_CONTINUOUS_COUNT) {
+                U_TEST_PRINT_LINE("took %d second(s) to get location %d time(s).",
+                                  (int32_t) (uPortGetTickTimeMs() - startTime) / 1000,
+                                  gCount);
                 // If we are running on a cellular test network we might not
                 // get position but we should always get time
                 U_PORT_TEST_ASSERT(gDevHandle == devHandle);
@@ -310,22 +429,37 @@ static void testNonBlocking(uDeviceHandle_t devHandle,
                 }
                 U_PORT_TEST_ASSERT(gLocation.timeUtc > U_LOCATION_TEST_MIN_UTC_TIME);
             }
-            if ((gErrorCode != 0) && (x >= 1)) {
-                U_TEST_PRINT_LINE("failed to get an answer, will retry in 30 seconds...");
-                uPortTaskBlock(30000);
+            uLocationGetStop(devHandle);
+        } else {
+            if (locationType == U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE) {
+                // Cloud locate is not currently supported for async position
+                U_PORT_TEST_ASSERT(y == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED);
+            } else {
+#ifdef U_NETWORK_GNSS_CFG_CELL_USE_AT_ONLY
+                // Continuous GNSS location is only supported were we have a streaming
+                // transport, so if U_NETWORK_GNSS_CFG_CELL_USE_AT_ONLY is defined then
+                // uLocationGetContinuousStart() is allowed to return "not supported"
+                U_PORT_TEST_ASSERT(y == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED);
+#else
+                U_TEST_PRINT_LINE("uLocationGetContinuousStart() returned %d, expecting 0.", y);
+                U_PORT_TEST_ASSERT(false);
+#endif
             }
         }
-        U_PORT_TEST_ASSERT(gErrorCode == 0);
     } else {
         if (!U_NETWORK_TEST_TYPE_HAS_LOCATION(networkType)) {
             gDevHandle = NULL;
             gErrorCode = INT_MIN;
+            gCount = 0;
             uLocationTestResetLocation(&gLocation);
-            U_PORT_TEST_ASSERT(uLocationGetStart(devHandle, locationType,
-                                                 pLocationAssist, pAuthenticationTokenStr,
-                                                 locationCallback) < 0);
+            U_PORT_TEST_ASSERT(uLocationGetContinuousStart(devHandle,
+                                                           U_LOCATION_TEST_CFG_CONTINUOUS_RATE_MS,
+                                                           locationType,
+                                                           pLocationAssist, pAuthenticationTokenStr,
+                                                           locationCallback) < 0);
             U_PORT_TEST_ASSERT(gDevHandle == NULL);
             U_PORT_TEST_ASSERT(gErrorCode == INT_MIN);
+            U_PORT_TEST_ASSERT(gCount == 0);
             U_PORT_TEST_ASSERT(gLocation.latitudeX1e7 == INT_MIN);
             U_PORT_TEST_ASSERT(gLocation.longitudeX1e7 == INT_MIN);
             U_PORT_TEST_ASSERT(gLocation.altitudeMillimetres == INT_MIN);
@@ -434,9 +568,13 @@ U_PORT_TEST_FUNCTION("[location]", "locationBasic")
             testBlocking(devHandle, pTmp->networkType,
                          (uLocationType_t) locationType, gpLocationCfg);
 
-            // Test the non-blocking location API (supported and non-supported cases)
-            testNonBlocking(devHandle, pTmp->networkType,
-                            (uLocationType_t) locationType, gpLocationCfg);
+            // Test the one-shot location API (supported and non-supported cases)
+            testOneShot(devHandle, pTmp->networkType,
+                        (uLocationType_t) locationType, gpLocationCfg);
+
+            // Test the continuous location API (supported and non-supported cases)
+            testContinuous(devHandle, pTmp->networkType,
+                           (uLocationType_t) locationType, gpLocationCfg);
 
             if (gpLocationCfg != NULL) {
                 if ((gpLocationCfg->pLocationAssist != NULL) &&
@@ -529,5 +667,7 @@ U_PORT_TEST_FUNCTION("[location]", "locationCleanUp")
         U_PORT_TEST_ASSERT(x >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
     }
 }
+
+#endif // #ifndef U_LOCATION_TEST_DISABLE
 
 // End of file

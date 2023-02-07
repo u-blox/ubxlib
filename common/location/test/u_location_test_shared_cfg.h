@@ -42,6 +42,22 @@ extern "C" {
 # define U_LOCATION_TEST_CFG_TIMEOUT_SECONDS 240
 #endif
 
+#ifndef U_LOCATION_TEST_CFG_CONTINUOUS_COUNT
+/** How many times to obtain results during testing of the
+ * continuous location API.
+ */
+# define U_LOCATION_TEST_CFG_CONTINUOUS_COUNT 2
+#endif
+
+#ifndef U_LOCATION_TEST_CFG_CONTINUOUS_RATE_MS
+/** The rate at which to ask for position fixes from the
+ * continuous location API; less than 1 seconds so as to
+ * work aggressively for a GNSS stream but will be ignored
+ * for all the other "more stately" location types.
+ */
+# define U_LOCATION_TEST_CFG_CONTINUOUS_RATE_MS 500
+#endif
+
 #ifndef U_LOCATION_TEST_MIN_UTC_TIME
 /** A minimum value for UTC time to test against (21 July 2021 13:40:36).
  */

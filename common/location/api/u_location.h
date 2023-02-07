@@ -133,11 +133,15 @@ typedef struct {
                                         that this is NOT a hard timeout,
                                         simply an indication to the underlying
                                         system as to how urgently location
-                                        establishment is required. */
+                                        establishment is required.  If you
+                                        are using this structure in a call to
+                                        uLocationGetContinuousStart() then
+                                        desired rate will be used instead if
+                                        it is smaller. */
     bool disableGnss;             /**< in some cases a GNSS chip may be available
-                                       via another network (for example attached to
+                                       on another device (for example attached to
                                        a cellular module) and it will normally be
-                                       used by that network in location establishment,
+                                       used by that device in location establishment,
                                        however that can prevent the GNSS chip
                                        being used directly by this code.  If
                                        you wish to use the GNSS chip directly
@@ -249,9 +253,10 @@ typedef enum {
  * -------------------------------------------------------------- */
 
 /** Get the current location, returning on success or when
- * pKeepGoingCallback returns false.  uNetworkInterfaceUp() (see the
- * network API) must have been called on the given networkHandle for
- * this function to work.
+ * pKeepGoingCallback returns false, whichever is earlier.
+ * uNetworkInterfaceUp() (see the network API) must have been called
+ * on the given networkHandle for this function to work.
+ *
  * Note that if you have a GNSS chip inside your cellular module
  * (e.g. you have a SARA-R510M8S or SARA-R422M8S) then making a
  * location call on the cell network will use that GNSS chip, there
@@ -349,7 +354,10 @@ int32_t uLocationGet(uDeviceHandle_t devHandle, uLocationType_t type,
  * (see the network API) must have been called on the given networkHandle
  * for this function to work.  This is a one-shot establishment:
  * once pCallback has been called it is over, you must call this
- * function again to start a new location establishment attempt.
+ * function again to start a new location establishment attempt.  If you
+ * want your callback to be called continuously until told to stop, see
+ * uLocationGetContinuousStart().
+ *
  * Note that if you have a GNSS chip inside your cellular module
  * (e.g. you have a SARA-R510M8S or SARA-R422M8S) then making a
  * location call on the cell network will use that GNSS chip, there is
@@ -362,6 +370,9 @@ int32_t uLocationGet(uDeviceHandle_t devHandle, uLocationType_t type,
  * disableGnss in the pLocationAssist structure when calling this API with the
  * cellular network handle (as once it is "claimed" by Cell Locate it
  * won't be available for GNSS calls until the module is power cycled).
+ *
+ * #U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE is not currently supported by
+ * this function.
  *
  * @param devHandle               the device handle to use.
  * @param type                    the type of location fix to perform; the
@@ -397,6 +408,73 @@ int32_t uLocationGetStart(uDeviceHandle_t devHandle, uLocationType_t type,
                                              int32_t errorCode,
                                              const uLocation_t *pLocation));
 
+/** Get the current location to a callback, continuously, until
+ * told to stop.  uNetworkInterfaceUp() (see the network API) must
+ * have been called on the given networkHandle for this function to
+ * work.
+ *
+ * Note that if you have a GNSS chip inside your cellular module
+ * (e.g. you have a SARA-R510M8S or SARA-R422M8S) then making a
+ * location call on the cell network will use that GNSS chip, there is
+ * no need to bring up a GNSS network.  If you have a GNSS chip attached
+ * to a cellular module externally the same is true but you may need to
+ * call uCellLocSetPinGnssPwr() and uCellLocSetPinGnssDataReady() in the
+ * cellular API to tell the cellular module which pins of the
+ * cellular module the GNSS chip is attached on.  If you prefer to
+ * use the GNSS chip directly rather than via Cell Locate you should set
+ * disableGnss in the pLocationAssist structure when calling this API with the
+ * cellular network handle (as once it is "claimed" by Cell Locate it
+ * won't be available for GNSS calls until the module is power cycled).
+ *
+ * If you are requesting #U_LOCATION_TYPE_GNSS at a high rate (e.g. faster than
+ * once per second) then, since this code only uses UBX messages, it will
+ * switch off NMEA output from the GNSS chip in order to ensure the desired
+ * location rate.  Should you wish to switch NMEA output back on again
+ * afterwards, see uGnssCfgSetProtocolOut().
+ *
+ * #U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE is not currently supported by
+ * this function.
+ *
+ * @param devHandle               the device handle to use.
+ * @param desiredRateMs           the desired position-establishment rate
+ *                                in milliseconds; realistically you can only
+ *                                set a value smaller than a few seconds
+ *                                if you are using a GNSS networkHandle.
+ * @param type                    the type of location fix to perform; the
+ *                                comments concerning which types can be
+ *                                used for the uLocationGet() API apply.
+ * @param pLocationAssist         additional information for the location
+ *                                establishment process, useful where several
+ *                                different location establishment strategies
+ *                                are possible; currently only used with Cell
+ *                                Locate and Cloud Locate.  If this is NULL,
+ *                                the values of #U_LOCATION_ASSIST_DEFAULTS will
+ *                                be assumed (and Cloud Locate will not work).
+ * @param pAuthenticationTokenStr the null-terminated authentication token,
+ *                                required by some cloud services (for example
+ *                                Cell Locate).
+ * @param pCallback               a callback that will be called when
+ *                                location has been determined.  The
+ *                                first parameter to the callback is the
+ *                                network handle, the second parameter is the
+ *                                error code from the location establishment
+ *                                process and the third parameter is a pointer
+ *                                to a #uLocation_t structure (which may be NULL
+ *                                if the error code is non-zero), the contents
+ *                                of which must be COPIED as it will be destroyed
+ *                                once the callback returns.
+ * @return                        zero on success or negative error code on
+ *                                failure.
+ */
+int32_t uLocationGetContinuousStart(uDeviceHandle_t devHandle,
+                                    int32_t desiredRateMs,
+                                    uLocationType_t type,
+                                    const uLocationAssist_t *pLocationAssist,
+                                    const char *pAuthenticationTokenStr,
+                                    void (*pCallback) (uDeviceHandle_t devHandle,
+                                                       int32_t errorCode,
+                                                       const uLocation_t *pLocation));
+
 /** Get the current status of a location establishment attempt.
  *
  * @param devHandle      the device handle to use.
@@ -404,9 +482,9 @@ int32_t uLocationGetStart(uDeviceHandle_t devHandle, uLocationType_t type,
  */
 int32_t uLocationGetStatus(uDeviceHandle_t devHandle);
 
-/** Cancel a uLocationGetStart(); after calling this function the
- * callback passed to uLocationGetStart() will not be called until
- * another uLocationGetStart() is begun.
+/** Cancel a uLocationGetStart() / uLocationGetContinuousStart(); after calling
+ * this function the callback passed to those functions will not be called until
+ * another uLocationGetStart() / uLocationGetContinuousStart() is begun.
  *
  * @param devHandle  the device handle to use.
  */

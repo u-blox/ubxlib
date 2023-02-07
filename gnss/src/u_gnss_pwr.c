@@ -179,15 +179,31 @@ static int32_t atPowerOn(uGnssPrivateInstance_t *pInstance,
 // Do AT command stuff necessary to power off via an intermediate module.
 static int32_t atPowerOff(uAtClientHandle_t atHandle)
 {
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
+
     uPortTaskBlock(U_GNSS_AT_POWER_CHANGE_WAIT_MILLISECONDS);
-    uAtClientLock(atHandle);
-    // Can take a little while if the cellular module is
-    // busy talking to the GNSS module at the time
-    uAtClientTimeoutSet(atHandle, U_GNSS_AT_POWER_DOWN_TIME_SECONDS * 1000);
-    uAtClientCommandStart(atHandle, "AT+UGPS=");
-    uAtClientWriteInt(atHandle, 0);
-    uAtClientCommandStopReadResponse(atHandle);
-    return uAtClientUnlock(atHandle);
+    // Give this two tries as sometimes, if the GNSS chip is
+    // busy, the command can receive no reponse
+    for (size_t x = 0; (x < 2) && (errorCode < 0); x++) {
+        uAtClientLock(atHandle);
+        // Can take a little while if the cellular module is
+        // busy talking to the GNSS module at the time
+        uAtClientTimeoutSet(atHandle, U_GNSS_AT_POWER_DOWN_TIME_SECONDS * 1000);
+        uAtClientCommandStart(atHandle, "AT+UGPS=");
+        uAtClientWriteInt(atHandle, 0);
+        uAtClientCommandStopReadResponse(atHandle);
+        errorCode = uAtClientUnlock(atHandle);
+        if (errorCode < 0) {
+            // If we got no response, abort the command
+            // before trying again
+            uAtClientLock(atHandle);
+            uAtClientCommandStart(atHandle, " ");
+            uAtClientCommandStopReadResponse(atHandle);
+            uAtClientUnlock(atHandle);
+        }
+    }
+
+    return errorCode;
 }
 
 /* ----------------------------------------------------------------

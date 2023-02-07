@@ -113,6 +113,7 @@ void uLocationSharedDeinit()
 
 // Add a new location request to the FIFO.
 int32_t uLocationSharedRequestPush(uDeviceHandle_t devHandle,
+                                   int32_t desiredRateMs,
                                    uLocationType_t type,
                                    void (*pCallback) (uDeviceHandle_t devHandle,
                                                       int32_t errorCode,
@@ -149,6 +150,7 @@ int32_t uLocationSharedRequestPush(uDeviceHandle_t devHandle,
         *ppThis = (uLocationSharedFifoEntry_t *) pUPortMalloc(sizeof(**ppThis));
         if (*ppThis != NULL) {
             (*ppThis)->devHandle = devHandle;
+            (*ppThis)->desiredRateMs = desiredRateMs;
             (*ppThis)->pCallback = pCallback;
             (*ppThis)->pNext = pSaved;
             errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;

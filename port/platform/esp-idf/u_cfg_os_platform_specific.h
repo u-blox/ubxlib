@@ -97,7 +97,7 @@
  * task stack size explicitly here and end the main task after
  * kicking the new one off.
  */
-# define U_CFG_OS_APP_TASK_STACK_SIZE_BYTES 8192
+# define U_CFG_OS_APP_TASK_STACK_SIZE_BYTES 9216
 #endif
 
 /** The priority of the task running the examples and tests: should

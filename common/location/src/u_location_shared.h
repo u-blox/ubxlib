@@ -45,6 +45,8 @@ extern "C" {
  */
 typedef struct uLocationSharedFifoEntry_t {
     uDeviceHandle_t devHandle;
+    int32_t desiredRateMs;
+    uLocationType_t type;
     void (*pCallback) (uDeviceHandle_t devHandle,
                        int32_t errorCode,
                        const uLocation_t *pLocation);
@@ -64,7 +66,7 @@ extern uPortMutexHandle_t gULocationMutex;
  * -------------------------------------------------------------- */
 
 /** Initialise the internally shared location API: should
- * be called by the network API when the it initialises itself.
+ * be called by the network API when it initialises itself.
  * gULocationMutex should NOT be locked before this
  * is called (since this creates the mutex).
  *
@@ -73,7 +75,7 @@ extern uPortMutexHandle_t gULocationMutex;
 int32_t uLocationSharedInit();
 
 /** De-initialise the internally shared location API: should
- * be called by the network API when the it de-initialises itself.
+ * be called by the network API when it de-initialises itself.
  * gULocationMutex should NOT be locked before this
  * is called (since this deletes the mutex).
  */
@@ -84,11 +86,15 @@ void uLocationSharedDeinit();
  * is called.
  *
  * @param devHandle     the handle of the device making the request.
+ * @param desiredRateMs the desired location rate, for continuous
+ *                      measurements only; use 0 for one-shot.
+ *                      pushed when the current one has been called.
  * @param type          the request type.
  * @param pCallback     the callback associated with the request.
  * @return              zero on success or negative error code.
  */
 int32_t uLocationSharedRequestPush(uDeviceHandle_t devHandle,
+                                   int32_t desiredRateMs,
                                    uLocationType_t type,
                                    void (*pCallback) (uDeviceHandle_t devHandle,
                                                       int32_t errorCode,

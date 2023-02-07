@@ -195,6 +195,7 @@ typedef struct {
 /** Parameters to pass to the streamed position callback.
  */
 typedef struct {
+    uDeviceHandle_t gnssHandle;
     int32_t asyncHandle;
     void (*pCallback) (uDeviceHandle_t gnssHandle,
                        int32_t errorCode,

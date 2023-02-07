@@ -167,7 +167,7 @@ static int32_t posDecode(char *pMessage,
     // to suppress those warnings with -esym(690, message)
     // or even -e(690), hence do it the blunt way
     //lint -save -e690
-    if (*(pMessage + 21) & 0x01) {
+    if ((t >= 0) && (*(pMessage + 21) & 0x01)) {
         if (printIt) {
             uPortLog("U_GNSS_POS: %dD fix achieved.\n", *(pMessage + 20));
         }
@@ -344,7 +344,10 @@ static void messageCallback(uDeviceHandle_t gnssHandle,
                                       &svs, &timeUtc, false);
         if (errorCodeOrLength == 0) {
             // Call the callback
-            pInstance->pStreamedPosition->pCallback(gnssHandle,
+            // Note: thee can be two handles involved here, e.g. if
+            // GNSS is inside a cellular device, hence we make sure
+            // we pass back the one that came in
+            pInstance->pStreamedPosition->pCallback(pInstance->pStreamedPosition->gnssHandle,
                                                     errorCodeOrLength,
                                                     latitudeX1e7,
                                                     longitudeX1e7,
@@ -687,6 +690,7 @@ int32_t uGnssPosGetStreamedStart(uDeviceHandle_t gnssHandle,
                                                                     pInstance);
                             if (errorCode >= 0) {
                                 // And we're off
+                                pStreamedPosition->gnssHandle = gnssHandle;
                                 pStreamedPosition->asyncHandle = errorCode;
                             } else {
                                 // If we couldn't create the asynchronous

@@ -38,11 +38,25 @@
 
 #include "u_compiler.h" // U_WEAK
 #include "u_error_common.h"
+#include "u_gnss_module_type.h"
+#include "u_gnss_type.h"
+#include "u_gnss.h"
+#include "u_gnss_cfg.h"
 #include "u_gnss_pos.h"
 
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
+
+U_WEAK int32_t uGnssGetTransportHandle(uDeviceHandle_t gnssHandle,
+                                       uGnssTransportType_t *pTransportType,
+                                       uGnssTransportHandle_t *pTransportHandle)
+{
+    (void) gnssHandle;
+    (void) pTransportType;
+    (void) pTransportHandle;
+    return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+}
 
 U_WEAK int32_t uGnssPosGet(uDeviceHandle_t gnssHandle,
                            int32_t *pLatitudeX1e7, int32_t *pLongitudeX1e7,
@@ -81,6 +95,39 @@ U_WEAK int32_t uGnssPosGetStart(uDeviceHandle_t gnssHandle,
 }
 
 U_WEAK void uGnssPosGetStop(uDeviceHandle_t gnssHandle)
+{
+    (void) gnssHandle;
+}
+
+U_WEAK int32_t uGnssCfgSetProtocolOut(uDeviceHandle_t gnssHandle,
+                                      uGnssProtocol_t protocol,
+                                      bool onNotOff)
+{
+    (void) gnssHandle;
+    (void) protocol;
+    (void) onNotOff;
+    return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+}
+
+U_WEAK int32_t uGnssPosGetStreamedStart(uDeviceHandle_t gnssHandle,
+                                        int32_t rateMs,
+                                        void (*pCallback) (uDeviceHandle_t gnssHandle,
+                                                           int32_t errorCode,
+                                                           int32_t latitudeX1e7,
+                                                           int32_t longitudeX1e7,
+                                                           int32_t altitudeMillimetres,
+                                                           int32_t radiusMillimetres,
+                                                           int32_t speedMillimetresPerSecond,
+                                                           int32_t svs,
+                                                           int64_t timeUtc))
+{
+    (void) gnssHandle;
+    (void) rateMs;
+    (void) pCallback;
+    return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+}
+
+U_WEAK void uGnssPosGetStreamedStop(uDeviceHandle_t gnssHandle)
 {
     (void) gnssHandle;
 }

@@ -1595,10 +1595,10 @@ int32_t uGnssPrivateSetProtocolOut(uGnssPrivateInstance_t *pInstance,
         (pInstance->transportType != U_GNSS_TRANSPORT_AT) &&
         (onNotOff || ((protocol != U_GNSS_PROTOCOL_ALL) &&
                       (protocol != U_GNSS_PROTOCOL_UBX)))) {
-        if (U_GNSS_PRIVATE_HAS(pInstance->pModule, U_GNSS_PRIVATE_FEATURE_CFGVALXXX)) {
-            errorCode = setProtocolOutUbxCfgVal(pInstance, protocol, onNotOff);
-        } else {
+        if (U_GNSS_PRIVATE_HAS(pInstance->pModule, U_GNSS_PRIVATE_FEATURE_OLD_CFG_API)) {
             errorCode = setProtocolOutUbxCfgPrt(pInstance, protocol, onNotOff);
+        } else {
+            errorCode = setProtocolOutUbxCfgVal(pInstance, protocol, onNotOff);
         }
     }
 
@@ -1613,10 +1613,10 @@ int32_t uGnssPrivateGetProtocolOut(uGnssPrivateInstance_t *pInstance)
     if (pInstance != NULL) {
         errorCodeOrBitMap = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
         if (pInstance->transportType != U_GNSS_TRANSPORT_AT) {
-            if (U_GNSS_PRIVATE_HAS(pInstance->pModule, U_GNSS_PRIVATE_FEATURE_CFGVALXXX)) {
-                errorCodeOrBitMap = getProtocolOutUbxCfgVal(pInstance);
-            } else {
+            if (U_GNSS_PRIVATE_HAS(pInstance->pModule, U_GNSS_PRIVATE_FEATURE_OLD_CFG_API)) {
                 errorCodeOrBitMap = getProtocolOutUbxCfgPrt(pInstance);
+            } else {
+                errorCodeOrBitMap = getProtocolOutUbxCfgVal(pInstance);
             }
         }
     }

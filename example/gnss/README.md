@@ -4,6 +4,7 @@ These directories provide examples that are specific to u-blox GNSS chips, e.g. 
 # Example
 - [cfg_val_main.c](cfg_val_main.c) contains an example of how to configure a GNSS chip using the `uGnssCfgValXxx()` API which can be found in [u_gnss_cfg.h](/gnss/api/u_gnss_cfg.h); note that this API is supported ONLY on M9 modules and later, not on M8 modules; for M8 modules there are simple configuration/information APIs in [u_gnss_cfg.h](/gnss/api/u_gnss_cfg.h)/[u_gnss_info.h](/gnss/api/u_gnss_info.h) that need no examples.
 - [msg_main.c](msg_main.c) contains an example of how to exchange messages of your choice with a GNSS chip that is connected directly to this MCU, i.e. not via an intermediate [cellular] module.  It uses the `uGnssMsg` API which can be found in [u_gnss_msg.h](/gnss/api/u_gnss_msg.h).
+- [pos_main.c](pos_main.c) contains an example of how to obtain streamed position fixes from a GNSS chip.  It uses the `uGnssPos` API which can be found in [u_gnss_pos.h](/gnss/api/u_gnss_pos.h).
 
 # Usage
 To build and run these examples on a supported platform you need to travel down into the `port/platform/<platform>/mcu/<mcu>` directory of your choice and find the `runner` build.  The instructions there will tell you how to set/override defines.  The following \#defines are relevant:

@@ -80,7 +80,7 @@
 /** How much stack the task running all the examples and tests needs
  * in bytes, plus slack for the users own code.
  */
-#define U_CFG_OS_APP_TASK_STACK_SIZE_BYTES (1024 * 8)
+#define U_CFG_OS_APP_TASK_STACK_SIZE_BYTES (1024 * 9)
 
 /** The priority of the task running the examples and tests: should
  * be low but must be higher than the minimum.

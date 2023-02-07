@@ -139,7 +139,7 @@
  * get within this percentage amount of that rate (e.g. every 110
  * ms versus every 100 ms would be within 90 percent).
  */
-# define U_GNSS_POS_TEST_STREAMED_RATE_MARGIN_PERCENT 80
+# define U_GNSS_POS_TEST_STREAMED_RATE_MARGIN_PERCENT 90
 #endif
 
 #ifndef U_GNSS_POS_TEST_STREAMED_WAIT_SECONDS
@@ -661,11 +661,6 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosStreamed")
             // See what we're doing again now
             uGnssSetUbxMessagePrint(gnssHandle, true);
 
-            // Put NMEA protocol output back if we switched it off
-            if ((gProtocolBitMap >= 0) && (gProtocolBitMap & (1 << U_GNSS_PROTOCOL_NMEA))) {
-                uGnssCfgSetProtocolOut(gnssHandle, U_GNSS_PROTOCOL_NMEA, true);
-            }
-
             U_PORT_TEST_ASSERT(gGnssHandle == gnssHandle);
             U_TEST_PRINT_LINE("streamed position callback received error code %d.", gErrorCode);
             U_PORT_TEST_ASSERT(gErrorCode == 0);
@@ -702,6 +697,7 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosStreamed")
 
             U_TEST_PRINT_LINE("waiting %d second(s) for things to calm down and then flushing...",
                               U_GNSS_POS_TEST_STREAMED_WAIT_SECONDS);
+            uPortTaskBlock(1000 * U_GNSS_POS_TEST_STREAMED_WAIT_SECONDS);
             // Flush any remaining messages out of the system before
             // we continue, or the replies to the messages below
             // can get stuck behind them
@@ -732,6 +728,11 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosStreamed")
             U_TEST_PRINT_LINE("final message rate for UBX-NAV-PVT is %d.", y);
             U_PORT_TEST_ASSERT(y == gMsgRate);
             gMsgRate = -1;
+
+            // Put NMEA protocol output back if we switched it off
+            if ((gProtocolBitMap >= 0) && (gProtocolBitMap & (1 << U_GNSS_PROTOCOL_NMEA))) {
+                uGnssCfgSetProtocolOut(gnssHandle, U_GNSS_PROTOCOL_NMEA, true);
+            }
 
             // Check that we haven't dropped any incoming data
             y = uGnssMsgReceiveStatStreamLoss(gnssHandle);

@@ -2,7 +2,9 @@
 These examples demonstrate how to establish location in three different configurations:
 
 - locally using a GNSS chip that is attached directly to this MCU ([main_loc_gnss.c](main_loc_gnss.c)),
+- as above but continuously to a callback ([main_loc_gnss_continuous.c](main_loc_gnss_continuous.c)),
 - locally using a GNSS chip that is attached via a cellular module ([main_loc_gnss_cell.c](main_loc_gnss_cell.c)),
+- as above but continuously to a callback ([main_loc_gnss_cell_continuous.c](main_loc_gnss_cell_continuous.c)),
 - using cloud services such as Cell Locate via a cellular \[and in future Wi-Fi\] module ([main_loc_cell_locate.c](main_loc_cell_locate.c) and [main_loc_gnss_cloud_locate.c](main_loc_gnss_cloud_locate.c)); the latter Cloud Locate service is focussed on applications where the cloud needs to know the position of the device but the device itself does not.
 
 IMPORTANT: there will likely be modifications to this API as we introduce more location-type services, beware!
@@ -14,8 +16,8 @@ To build and run these examples on a supported platform you need to travel down 
 
 For the remainder of the \#defines you may either override their values in the same way or, if you are only running these examples, you may edit the values directly in [main_loc_gnss.c](main_loc_gnss.c), [main_loc_gnss_cell.c](main_loc_gnss_cell.c) and [main_loc_cell_locate.c](main_loc_cell_locate.c) before compiling.
 
-## The GNSS Example `main_loc_gnss.c`
-If you have a GNSS chip attached directly to this MCU then you can run the [main_loc_gnss.c](main_loc_gnss.c) example and the following values should be set.
+## The GNSS Examples `main_loc_gnss.c` And `main_loc_gnss_continuous.c`
+If you have a GNSS chip attached directly to this MCU then you can run the [main_loc_gnss.c](main_loc_gnss.c)/[main_loc_gnss_continuous.c](main_loc_gnss_continuous.c) examples and the following values should be set.
 
 `U_CFG_TEST_GNSS_MODULE_TYPE`: consult [u_gnss_type.h](/gnss/api/u_gnss_type.h) to determine the type name for the GNSS module you intend to use.  For instance, to use an M8 module you would set `U_CFG_TEST_GNSS_MODULE_TYPE` to `U_GNSS_MODULE_TYPE_M8`.
 
@@ -25,8 +27,8 @@ If you have a GNSS chip attached directly to this MCU then you can run the [main
 
 You will also need an antenna connected to the GNSS chip.
 
-## The GNSS Cellular Example `main_loc_gnss_cell.c`
-If you have a GNSS chip attached via a cellular module then you can run the [main_loc_gnss_cell.c](main_loc_gnss_cell.c) example and the following values should be set.  Note, however, that Cell Locate will in fact make use of a GNSS chip attached via a cellular module as well and hence it is simpler to use the [main_loc_cell_locate.c](main_loc_cell_locate.c) example unless you want to take control of, for instance, the configuration of the GNSS chip, yourself.
+## The GNSS Cellular Examples `main_loc_gnss_cell.c` And `main_loc_gnss_cell_continuous.c`
+If you have a GNSS chip attached via a cellular module then you can run the [main_loc_gnss_cell.c](main_loc_gnss_cell_continuous.c)/[main_loc_gnss_cell_continuous.c](main_loc_gnss_cell.c)  examples and the following values should be set.  Note, however, that Cell Locate will in fact make use of a GNSS chip attached via a cellular module as well and hence it may be simpler to use the [main_loc_cell_locate.c](main_loc_cell_locate.c) example unless you want to take control of, for instance, the configuration of the GNSS chip, yourself or you need a relatively high (e.g. each second) location rate.
 
 `U_CFG_TEST_GNSS_MODULE_TYPE`: consult [u_gnss_type.h](/gnss/api/u_gnss_type.h) to determine the type name for the GNSS module you intend to use.  For instance, to use an M8 module you would set `U_CFG_TEST_GNSS_MODULE_TYPE` to `U_GNSS_MODULE_TYPE_M8`.
 

@@ -161,6 +161,7 @@ Configuration information for the examples and the tests can be found in the `cf
 | GNSS         | [location](/example/location "location example") example using a GNSS chip connected directly or via a cellular module.|
 | GNSS         | [cfg_val](/example/gnss "CFGVALXXX example") example configuring an M9 or later GNSS chip with CFGVALXXX messages.|
 | GNSS         | [message](/example/gnss "message example") example communicating directly with a GNSS chip, messages of your choice.|
+| GNSS         | [position](/example/gnss "position example") example obtaining streamed position directly from a GNSS chip.|
 
 # Quick Start Guide
 It is easy to get started with `ubxlib` using the [examples](/example) listed above and the build files in this repository as a basis.  A step-by-step description of how to get started with an application based on `ubxlib` is given below.

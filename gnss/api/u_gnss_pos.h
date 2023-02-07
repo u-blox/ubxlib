@@ -219,8 +219,9 @@ void uGnssPosGetStop(uDeviceHandle_t gnssHandle);
  * Note: under the hood the UBX protocol is used to establish position.
  * By default, NMEA position is _also_ output from the GNSS chip: to
  * reduce the load on the system you may want to, at least temporarily,
- * disable NMEA output using uGnssCfgSetProtocolOut(); the uLocation
- * version of the streamed position API does this for you.
+ * disable NMEA output using uGnssCfgSetProtocolOut(); if you use
+ * uLocationGetContinuousStart() instead of uGnssPosGetStreamedStart()
+ * it will do this for you.
  *
  * Note: this uses one of the #U_GNSS_MSG_RECEIVER_MAX_NUM message
  * handles from the uGnssMsg API.
