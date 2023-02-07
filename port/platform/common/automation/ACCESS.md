@@ -367,7 +367,7 @@ sudo make install
 ...run `autossh` once, manually, as `sudo` in order to accept the signature of the remote server with something like:
 
 ```
-sudo /usr/local/bin/autossh -M 2000 -N -R 8888:localhost:8888 user@remote_machine -i path/to/ssh_key
+sudo /usr/local/bin/autossh -M 0 -o "ServerAliveInterval 30" -o "ServerAliveCountMax 3" -N -R 8888:localhost:8888 user@remote_machine -i path/to/ssh_key
 ```
 
 ...and start `autossh` with a `systemd` file named something like `/etc/systemd/system/tunnel-https.service` containing something like the following:
@@ -381,7 +381,7 @@ After=network.target
 Restart=on-failure
 RestartSec=5
 Environment=AUTOSSH_GATETIME=0
-ExecStart=/usr/local/bin/autossh -M 2000 -N -R 8888:localhost:8888 user@remote_machine -i path/to/ssh_key
+ExecStart=/usr/local/bin/autossh -M 0 -o "ServerAliveInterval 30" -o "ServerAliveCountMax 3" -N -R 8888:localhost:8888 user@remote_machine -i path/to/ssh_key
 ExecStop= /usr/bin/killall autossh
 
 [Install]
@@ -396,4 +396,4 @@ sudo systemctl enable tunnel-https.service
 sudo systemctl start tunnel-https.service
 ```
 
-...and the same with a `tunnel-ssh` `systemd` file for the SSH tunnel also (incrementing the monitoring port number used by `autossh` by 2, e.g. `-M 2002`).
+...and the same with a `tunnel-ssh` `systemd` file for the SSH tunnel also.  This will cause the server to send "alive" messages every 30 seconds and for the tunnel to be restarted after three such messages have gone missing.
