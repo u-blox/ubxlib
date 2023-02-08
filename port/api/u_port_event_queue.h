@@ -132,6 +132,16 @@ extern "C" {
 
 /** Open an event queue.
  *
+ * Note: in some operating systems (e.g. Zephyr) we use a
+ * conditional compilation flag, U_CFG_OS_MAX_THREADS, to
+ * limit the number of tasks that this code can create. Since an
+ * event queue requires both a queue and a task, should this
+ * function return #U_ERROR_COMMON_NO_MEMORY, you might need to
+ * set a bigger value for U_CFG_OS_MAX_THREADS in your build.
+ * If you cannot find U_CFG_OS_MAX_THREADS in the file
+ * u_cfg_os_platform_specific.h for your platform then this
+ * limitation is not relevant to you.
+ *
  * @param[in] pFunction        the function that will be called by
  *                             the queue, cannot be NULL.
  * @param[in] pName            a name to give the task that is

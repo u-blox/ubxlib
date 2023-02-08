@@ -111,6 +111,15 @@ typedef void (pTimerCallback_t) (const uPortTimerHandle_t, void *);
 
 /** Create, and start, a task.
  *
+ * Note: in some operating systems (e.g. Zephyr) we use a
+ * conditional compilation flag, U_CFG_OS_MAX_THREADS, to
+ * limit the maximum number of tasks that this code can create.
+ * If this function returns #U_ERROR_COMMON_NO_MEMORY you might
+ * need to set a bigger value for U_CFG_OS_MAX_THREADS in your
+ * build.  If you cannot find U_CFG_OS_MAX_THREADS in the file
+ * u_cfg_os_platform_specific.h for your platform then this
+ * limitation is not relevant to you.
+ *
  * @param[in] pFunction    the function that forms the task.
  * @param[in] pName        a null-terminated string naming the task,
  *                         may be NULL.
