@@ -2073,4 +2073,28 @@ int32_t uCellSockGetBytesReceived(uDeviceHandle_t cellHandle,
     return doUsoctl(cellHandle, sockHandle, 3);
 }
 
+// Return the number of bytes that are available on a socket.
+int32_t uCellSockGetBytesPending(uDeviceHandle_t cellHandle,
+                                 int32_t sockHandle)
+{
+    int32_t negErrnoLocalOrSize = -U_SOCK_EINVAL;
+    uCellPrivateInstance_t *pInstance;
+    uCellSockSocket_t *pSocket;
+
+    // Find the instance
+    pInstance = pUCellPrivateGetInstance(cellHandle);
+    if (pInstance != NULL) {
+        // Find the entry
+        if (sockHandle >= 0) {
+            pSocket = pFindBySockHandle(sockHandle);
+            if (pSocket != NULL) {
+                // Return the value we have stored based on URCs
+                negErrnoLocalOrSize = pSocket->pendingBytes;
+            }
+        }
+    }
+
+    return negErrnoLocalOrSize;
+}
+
 // End of file

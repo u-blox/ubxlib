@@ -600,6 +600,21 @@ int32_t uCellSockGetBytesSent(uDeviceHandle_t cellHandle,
 int32_t uCellSockGetBytesReceived(uDeviceHandle_t cellHandle,
                                   int32_t sockHandle);
 
+/** Return the number of bytes that are available on the given
+ * socket. This may be useful if you wish to extend the power
+ * saving period of the module as it returns what this code
+ * knows to be available, based on URCs emitted by the module,
+ * rather than by sending an AT command to the module (which
+ * would necessarily force it into full wakefulness).
+ *
+ * @param cellHandle  the handle of the cellular instance.
+ * @param sockHandle  the handle of the socket.
+ * @return            the number of bytes,  else negated
+ *                    value of U_SOCK_Exxx from u_sock_errno.h.
+ */
+int32_t uCellSockGetBytesPending(uDeviceHandle_t cellHandle,
+                                 int32_t sockHandle);
+
 #ifdef __cplusplus
 }
 #endif

@@ -833,6 +833,10 @@ U_PORT_TEST_FUNCTION("[cellSock]", "cellSockBasic")
     U_PORT_TEST_ASSERT(uCellSockGetBytesSent(cellHandle, gSockHandleTcp) > 0);
     U_PORT_TEST_ASSERT(uCellSockGetBytesReceived(cellHandle, gSockHandleTcp) > 0);
 
+    // Just check for non-negative in these cases
+    U_PORT_TEST_ASSERT(uCellSockGetBytesPending(cellHandle, gSockHandleTcp) >= 0);
+    U_PORT_TEST_ASSERT(uCellSockGetBytesPending(cellHandle, gSockHandleUdp) >= 0);
+
     // Close TCP socket with asynchronous callback
     U_TEST_PRINT_LINE("closing sockets...");
     U_PORT_TEST_ASSERT(uCellSockClose(cellHandle, gSockHandleTcp,
