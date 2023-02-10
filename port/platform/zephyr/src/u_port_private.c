@@ -275,20 +275,33 @@ void uPortPrivateDeinit()
 const struct device *pUPortPrivateGetGpioDevice(int32_t pin)
 {
     const struct device *pDev = NULL;
-    // common practice in device trees that one gpio port holds 32 pins
+    // Common practice in device trees that one gpio port holds 32 pins
+    int portNo = pin / GPIO_MAX_PINS_PER_PORT;
+    // The actual device tree name of the GPIO port may vary between
+    // different boards. Try the known variants.
 #if KERNEL_VERSION_MAJOR < 3
-    char dtDeviceNodeLabel[7];
-    strncpy(dtDeviceNodeLabel, "GPIO_x", sizeof(dtDeviceNodeLabel));
-    // replace x with corresponding port number
-    dtDeviceNodeLabel[5] = '0' + (pin / GPIO_MAX_PINS_PER_PORT);
-    dtDeviceNodeLabel[6] = 0;
-    pDev = device_get_binding(dtDeviceNodeLabel);
+    if (portNo == 0) {
+        pDev = device_get_binding("GPIO_0");
+        if (!pDev) {
+            pDev = device_get_binding("PORTA");
+        }
+    } else if (portNo == 1) {
+        pDev = device_get_binding("GPIO_1");
+        if (!pDev) {
+            pDev = device_get_binding("PORTB");
+        }
+    }
 #else
-    int32_t port = pin / GPIO_MAX_PINS_PER_PORT;
-    if (port == 0) {
+    if (portNo == 0) {
         pDev = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(gpio0));
-    } else if (port == 1) {
+        if (!pDev) {
+            pDev = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(porta));
+        }
+    } else if (portNo == 1) {
         pDev = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(gpio1));
+        if (!pDev) {
+            pDev = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(portb));
+        }
     }
 #endif
     return pDev;

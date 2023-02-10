@@ -1,0 +1,41 @@
+# This file should contain the paths to all header and source
+# files that are required for building ubxlib on PlatformIO.
+# Paths are relative to the ubxlib root directory, forward-slashes
+# must be used.
+# Framework specific directories will only be included for the
+# actual framework used and ignored otherwise.
+# For references to the current build framework the macro
+# $FRAMEWORK can be used.
+
+# This section contains regular expressions matching paths which
+# should be excluded in subsequent wild card searches
+[EXCLUDE]
+
+/port/platform/(?!common|$FRAMEWORK)
+/(example|test)/|u_port_gatt.c
+u_port_clib.c
+/common/lib_common
+
+# Include file directories
+[INCLUDE]
+
+**/cfg/
+**/api/
+**/src/
+
+port/platform/common/*/
+port/platform/common/debug_utils/src/freertos/additions/
+port/clib/
+port/platform/$FRAMEWORK/
+
+
+# Source files
+[SOURCE]
+
+**/src/*.c
+
+port/platform/common/event_queue/u_port_event_queue.c
+port/platform/common/mbedtls/u_port_crypto.c
+port/clib/u_port_clib_mktime64.c
+port/u_port_heap.c
+port/platform/common/mutex_debug/u_mutex_debug.c
