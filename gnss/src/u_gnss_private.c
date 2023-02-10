@@ -1372,7 +1372,7 @@ bool uGnssPrivateIsInsideCell(const uGnssPrivateInstance_t *pInstance)
 // Stop the asynchronous message receive task.
 void uGnssPrivateStopMsgReceive(uGnssPrivateInstance_t *pInstance)
 {
-    char queueItem[U_GNSS_MSG_RECEIVE_TASK_QUEUE_ITEM_SIZE_BYTES];
+    char queueItem[U_GNSS_MSG_RECEIVE_TASK_QUEUE_ITEM_SIZE_BYTES] = {0};
     uGnssPrivateMsgReceive_t *pMsgReceive;
     uGnssPrivateMsgReader_t *pNext;
 
