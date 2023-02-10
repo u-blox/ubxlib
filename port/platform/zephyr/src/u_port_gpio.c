@@ -31,9 +31,9 @@
 #include "u_port_os.h"      // Needed by u_port_private.h
 #include "u_port_gpio.h"
 
-#include "zephyr.h"
-#include "device.h"
-#include "drivers/gpio.h"
+#include <zephyr/zephyr.h>
+#include <zephyr/device.h>
+#include <zephyr/drivers/gpio.h>
 #include "version.h"
 
 #include "u_port_private.h"  // Down here because it needs to know about the Zephyr device tree

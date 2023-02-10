@@ -19,10 +19,11 @@
  */
 
 #include <zephyr/types.h>
-#include <zephyr.h>
-#include <drivers/i2c.h>
 
-#include <device.h>
+#include <zephyr/zephyr.h>
+#include <zephyr/drivers/i2c.h>
+#include <zephyr/device.h>
+
 #include <soc.h>
 
 #include "stddef.h"

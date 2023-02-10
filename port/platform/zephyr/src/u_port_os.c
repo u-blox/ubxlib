@@ -73,8 +73,8 @@
 #include "u_port.h"
 #include "u_port_os.h"
 
-#include <zephyr.h>
-#include "device.h"
+#include <zephyr/zephyr.h>
+#include <zephyr/device.h>
 
 #include "u_port_private.h"  // Down here because it needs to know about the Zephyr device tree
 

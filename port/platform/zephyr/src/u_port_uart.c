@@ -27,10 +27,11 @@
 #endif
 
 #include <zephyr/types.h>
-#include <zephyr.h>
-#include <drivers/uart.h>
 
-#include <device.h>
+#include <zephyr/kernel.h>
+#include <zephyr/drivers/uart.h>
+#include <zephyr/device.h>
+
 #include <soc.h>
 
 #include "stddef.h"    // NULL, size_t etc.

@@ -20,7 +20,7 @@
 /* This inclusion is required to get the UART CTS/RTS pin assignments
  * from the Zephyr device tree.
  */
-#include "devicetree.h"
+#include <zephyr/devicetree.h>
 
 /** @file
  * @brief This header file contains configuration information for

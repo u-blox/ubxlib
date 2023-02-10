@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+// Aha MINIMAL_LIBC and NEWLIB_LIBC issue. ubx lib expect MINIMAl_LIBC but we are using new lib
+#include <sys/_timeval.h>
+
 #ifndef _SYS__TIMEVAL_H_
 #define _SYS__TIMEVAL_H_
 

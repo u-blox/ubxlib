@@ -19,10 +19,12 @@
  */
 
 #include <zephyr/types.h>
-#include <zephyr.h>
-#include <drivers/spi.h>
 
-#include <device.h>
+
+#include <zephyr/zephyr.h>
+#include <zephyr/drivers/spi.h>
+#include <zephyr/device.h>
+
 #include <soc.h>
 
 #include "stddef.h"

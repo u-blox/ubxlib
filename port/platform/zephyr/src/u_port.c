@@ -39,8 +39,8 @@
 #include "u_port_event_queue_private.h"
 #include "u_port_private.h"
 
-#include "zephyr.h"
-#include <device.h>
+#include <zephyr/zephyr.h>
+#include <zephyr/device.h>
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
