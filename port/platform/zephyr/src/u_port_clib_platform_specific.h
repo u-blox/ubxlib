@@ -22,23 +22,6 @@
  * platform.
  */
 
-#ifdef U_CFG_ZEPHYR_USE_NEWLIB
-/** Floating point is not required by ubxlib so switch to
- * the integer versions of the stdio library functions.
- * Note: ubxlib code will not log floating point values
- * (i.e. %f or %d types) and will not use maths functions
- * (e.g. pow(), log10()) or, of course, double or float types.
- * If we're not using newlib there's no need to worry as the
- * built-in Zephyr C library doesn't support floating point
- * in any case.
- */
-#define snprintf sniprintf
-#define printf iprintf
-#define vprintf viprintf
-#define sscanf siscanf
-#else
-#endif
-
 #include "time.h"           // For struct tm
 
 #ifdef __cplusplus

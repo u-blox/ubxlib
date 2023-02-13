@@ -24,7 +24,6 @@
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
-#include "malloc.h"    // For mallinfo
 
 #include "u_cfg_sw.h"
 #include "u_compiler.h" // For U_INLINE
@@ -128,23 +127,14 @@ int32_t uPortGetHeapMinFree()
 // Get the current free heap.
 int32_t uPortGetHeapFree()
 {
-    int32_t heapFreeOrError = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
-#ifdef U_CFG_ZEPHYR_USE_NEWLIB
-    // IMPORTANT: this ISN'T actually the free heap, it is
-    // simply the heap which newlib has asked for from
-    // which is the real source of heap sbrk(). However,
-    // on Zephyr there is no access to the status of sbrk()
-    // so this will have to do, just note that as heap
-    // reduces it may suddenly jump up again when newlib asks
-    // for more room
     // Note: there's currently no way to do this
-    // with the built-in Zephyr malloc()ator
-    struct mallinfo mallInfo = mallinfo();
-
-    heapFreeOrError = (int32_t) mallInfo.fordblks;
-#endif
-
-    return heapFreeOrError;
+    // with the built-in Zephyr minimal libc
+    // malloc()ator.  It _should_ be possible to
+    // use mallinfo() if you are using newlib
+    // instead of the Zephyr minimal libc, however
+    // we couldn't make the Zephyr build system
+    // locate the correct malloc.h
+    return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
 }
 
 // Enter a critical section.

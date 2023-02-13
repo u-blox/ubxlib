@@ -88,7 +88,6 @@ If you want to find out more about device tree please see Zephyr [Introduction t
 Since pin assignment for UARTs are made in the device tree, functions such as `uPortUartOpen()` which take pin assignments as parameters, should have all the pins set to -1.  You can look through the resulting `zephyr/zephyr.dts` located in your build directory to find the UART you want to use.  The UARTs will be named `uart0`, `uart1`, ... in the device tree - the ending number is the value you should use to tell `ubxlib` what UART to open.
 
 ## Additional Notes
-- Unless compiled for use on Linux/Posix, Zephyr uses its own internal minimal C library, not [newlib](https://sourceware.org/newlib/libc.html); if you wish to use [newlib](https://sourceware.org/newlib/libc.html) then you should add `U_CFG_ZEPHYR_USE_NEWLIB` to the conditional compilation flags passed into the build (see below for how to do this without modifying `CMakeLists.txt`).
 - Always clean the build directory when upgrading to a new `ubxlib` version.
 - You may override or provide conditional compilation flags to CMake without modifying `CMakeLists.txt`.  Do this by setting an environment variable `U_FLAGS`, e.g.:
 

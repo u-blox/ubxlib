@@ -36,9 +36,16 @@
 typedef _TIME_T_ time_t;
 #endif
 
-#if !defined(__suseconds_t_defined)
-#define __suseconds_t_defined
+#ifdef CONFIG_MINIMAL_LIBC
+# if !defined(__suseconds_t_defined)
+#  define __suseconds_t_defined
 typedef _SUSECONDS_T_ suseconds_t;
+# endif
+#else
+# ifndef _SUSECONDS_T_DECLARED
+typedef __suseconds_t suseconds_t;
+#  define _SUSECONDS_T_DECLARED
+# endif
 #endif
 
 /*
