@@ -99,7 +99,7 @@
 /** A sensible default buffer size for the message receive non-blocking
  * test.
  */
-# define U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_BUFFER_SIZE_BYTES 1024
+# define U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_BUFFER_SIZE_BYTES 1280
 #endif
 
 #ifndef U_GNSS_MSG_TEST_MESSAGE_RECEIVE_TASK_THRESHOLD_BYTES
