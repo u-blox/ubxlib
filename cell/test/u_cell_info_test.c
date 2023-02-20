@@ -133,7 +133,9 @@ U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoImeiEtc")
     char buffer[64];
     int32_t bytesRead;
     int32_t heapUsed;
+#if defined(U_CFG_APP_PIN_CELL_RTS_GET) || defined(U_CFG_APP_PIN_CELL_CTS_GET)
     bool isEnabled;
+#endif
 
     // In case a previous test failed
     uCellTestPrivateCleanup(&gHandles);
@@ -224,18 +226,24 @@ U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoImeiEtc")
                                             sizeof(buffer)) >= 0);
     U_PORT_TEST_ASSERT(strlen(buffer) <= U_CELL_INFO_ICCID_BUFFER_SIZE);
 
-    U_TEST_PRINT_LINE("checking flow control lines...");
+#ifdef U_CFG_APP_PIN_CELL_RTS_GET
+    U_TEST_PRINT_LINE("checking RTS...");
     isEnabled = uCellInfoIsRtsFlowControlEnabled(cellHandle);
-#if U_CFG_APP_PIN_CELL_RTS_GET >= 0
+# if U_CFG_APP_PIN_CELL_RTS_GET >= 0
     U_PORT_TEST_ASSERT(isEnabled);
-#else
+# else
     U_PORT_TEST_ASSERT(!isEnabled);
+# endif
 #endif
+
+#ifdef U_CFG_APP_PIN_CELL_CTS_GET
+    U_TEST_PRINT_LINE("checking CTS...");
     isEnabled = uCellInfoIsCtsFlowControlEnabled(cellHandle);
-#if U_CFG_APP_PIN_CELL_CTS_GET >= 0
+# if U_CFG_APP_PIN_CELL_CTS_GET >= 0
     U_PORT_TEST_ASSERT(isEnabled);
-#else
+# else
     U_PORT_TEST_ASSERT(!isEnabled);
+# endif
 #endif
 
     // Do the standard postamble, leaving the module on for the next

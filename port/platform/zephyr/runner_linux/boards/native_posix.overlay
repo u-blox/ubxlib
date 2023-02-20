@@ -10,3 +10,15 @@
     label = "UART_1";
     current-speed = <115200>;
 };
+
+&i2c0 {
+    status = "disabled";
+};
+
+&spi0 {
+    status = "disabled";
+};
+
+&gpio0 {
+    status = "disabled";
+};

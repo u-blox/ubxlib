@@ -264,6 +264,14 @@ typedef struct {
     int32_t errorCode;
 } uartEventCallbackData_t;
 
+/** What the UART test should do about flow control.
+*/
+typedef enum {
+    U_PORT_TEST_UART_FLOW_CONTROL_IS_USED,
+    U_PORT_TEST_UART_FLOW_CONTROL_IS_NOT_USED,
+    U_PORT_TEST_UART_FLOW_CONTROL_UNKNOWN_AT_COMPILE_TIME
+} uPortTestUartFlowControl_t;
+
 #endif
 
 /** Struct for mktime64() testing.
@@ -949,7 +957,8 @@ static void uartReceivedDataCallback(int32_t uartHandle,
 }
 
 // Run a UART test at the given baud rate and with/without flow control.
-static void runUartTest(int32_t size, int32_t speed, bool flowControlOn)
+static void runUartTest(int32_t size, int32_t speed,
+                        uPortTestUartFlowControl_t flowControl)
 {
     int32_t uartHandle;
     uartEventCallbackData_t eventCallbackData = {0};
@@ -960,6 +969,7 @@ static void runUartTest(int32_t size, int32_t speed, bool flowControlOn)
     uPortGpioConfig_t gpioConfig = U_PORT_GPIO_CONFIG_DEFAULT;
     int32_t stackMinFreeBytes;
     int32_t x;
+    const char *pFlowControl = "?";
 
     eventCallbackData.callCount = 0;
     eventCallbackData.pReceive = gUartBuffer;
@@ -971,6 +981,7 @@ static void runUartTest(int32_t size, int32_t speed, bool flowControlOn)
     pinCts = U_CFG_TEST_PIN_UART_A_CTS;
     pinRts = U_CFG_TEST_PIN_UART_A_RTS;
 
+#if defined(U_CFG_TEST_PIN_UART_A_CTS_GET) && defined (U_CFG_TEST_PIN_UART_A_RTS_GET)
     // Print where the pins are actually connected, that's what
     // the user needs to know.  On a platform which can set
     // the pins at run-time the values will be the same
@@ -978,9 +989,18 @@ static void runUartTest(int32_t size, int32_t speed, bool flowControlOn)
     uPortLog(U_TEST_PREFIX "UART CTS is on pin %d and RTS on"
              " pin %d", U_CFG_TEST_PIN_UART_A_CTS_GET,
              U_CFG_TEST_PIN_UART_A_RTS_GET);
-    if (!flowControlOn) {
-        uPortLog(" but we're going to ignore them for this"
-                 " test.\n");
+#else
+    uPortLog(U_TEST_PREFIX "UART CTS is on pin %d and RTS on"
+             " pin %d", pinCts, pinRts);
+#endif
+
+    if (flowControl != U_PORT_TEST_UART_FLOW_CONTROL_UNKNOWN_AT_COMPILE_TIME) {
+        uPortLog(" but we're going to ignore them for this test.\n");
+        if (flowControl == U_PORT_TEST_UART_FLOW_CONTROL_IS_USED) {
+            pFlowControl = "on";
+        } else {
+            pFlowControl = "off";
+        }
         // If we want to test with flow control off
         // but the flow control pins are actually
         // connected then they need to be set
@@ -1023,7 +1043,7 @@ static void runUartTest(int32_t size, int32_t speed, bool flowControlOn)
 
     U_TEST_PRINT_LINE("testing UART loop-back, %d byte(s) at %d"
                       " bits/s with flow control %s.", size, speed,
-                      flowControlOn ? "on" : "off");
+                      pFlowControl);
 
     U_TEST_PRINT_LINE("add a UART instance...");
     uartHandle = uPortUartOpen(U_CFG_TEST_UART_A,
@@ -2048,6 +2068,10 @@ U_PORT_TEST_FUNCTION("[port]", "portEventQueue")
             }
             U_PORT_TEST_ASSERT(y == 0);
         }
+#ifdef CONFIG_ARCH_POSIX
+        // Delay needed here since Zephyr 3. Reason unknown.
+        uPortTaskBlock(1);
+#endif
     }
 
     // Bonus iteration with NULL parameter
@@ -2055,6 +2079,10 @@ U_PORT_TEST_FUNCTION("[port]", "portEventQueue")
                                            NULL, 0) == 0);
     U_PORT_TEST_ASSERT(uPortEventQueueSend(gEventQueueMinHandle,
                                            NULL, 0) == 0);
+#ifdef CONFIG_ARCH_POSIX
+    // Delay needed here since Zephyr 3. Reason unknown.
+    uPortTaskBlock(1);
+#endif
 
 #ifndef U_PORT_TEST_CHECK_TIME_TAKEN
     // Let everything get to its destination; can be a problem when
@@ -2380,26 +2408,35 @@ U_PORT_TEST_FUNCTION("[port]", "portUartRequiresSpecificWiring")
     heapUsed = uPortGetHeapFree();
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
-#if ((U_CFG_TEST_PIN_UART_A_CTS < 0) && (U_CFG_TEST_PIN_UART_A_CTS_GET >=0)) || \
-    ((U_CFG_TEST_PIN_UART_A_RTS < 0) && (U_CFG_TEST_PIN_UART_A_RTS_GET >=0))
+#if defined(U_CFG_TEST_PIN_UART_A_CTS_GET) && defined (U_CFG_TEST_PIN_UART_A_RTS_GET)
+# if ((U_CFG_TEST_PIN_UART_A_CTS < 0) && (U_CFG_TEST_PIN_UART_A_CTS_GET >=0)) || \
+     ((U_CFG_TEST_PIN_UART_A_RTS < 0) && (U_CFG_TEST_PIN_UART_A_RTS_GET >=0))
     // If no CTS/RTS pin is set but the _GET macro returns an actual
     // pin then that means that the platform we're running on cannot
     // set the pins at run-time, only at compile-time; here we can only do
     // whatever those pins have been fixed to do, so run the test with
     // flow control only.
-    runUartTest(50000, 115200, true);
-#else
+    runUartTest(50000, 115200, U_PORT_TEST_UART_FLOW_CONTROL_IS_USED);
+# else
     // Either the platform can set pins at run-time or it can't and the
     // flow control pins are not connected so run UART test at 115,200
     // without flow control
-    runUartTest(50000, 115200, false);
+    runUartTest(50000, 115200, U_PORT_TEST_UART_FLOW_CONTROL_IS_NOT_USED);
+    // NOLINTNEXTLINE(misc-redundant-expression)
     if ((U_CFG_TEST_PIN_UART_A_CTS_GET >= 0) &&
         (U_CFG_TEST_PIN_UART_A_RTS_GET >= 0)) {
         // Must be on a platform where the pins can be set at run-time
         // and the flow control pins are connected so test with flow control
-        runUartTest(50000, 115200, true);
-        runUartTest(50000, 1000000, true);
+        runUartTest(50000, 115200, U_PORT_TEST_UART_FLOW_CONTROL_IS_USED);
+        runUartTest(50000, 1000000, U_PORT_TEST_UART_FLOW_CONTROL_IS_USED);
     }
+# endif
+#else
+    // If we cannot determine at compile time whether a CTS or RTS pin
+    // is set then we can only do whatever the HW does and shouldn't
+    // try the high data rate test
+    runUartTest(50000, 115200,
+                U_PORT_TEST_UART_FLOW_CONTROL_UNKNOWN_AT_COMPILE_TIME);
 #endif
 
     uPortDeinit();

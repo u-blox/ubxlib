@@ -62,6 +62,7 @@ zephyr_include_directories(
     cfg
     src
     ${UBXLIB_BASE}/port/clib
+    ${ZEPHYR_BASE}/include/zephyr
 )
 
 # Add test source & include dirs if selected

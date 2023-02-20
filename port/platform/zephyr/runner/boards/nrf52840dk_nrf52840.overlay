@@ -1,37 +1,72 @@
 /* This configuration is specifically modified for the tests as run on a NRF52840 board wired in the u-blox test system. */
 /* For default settings, refer to the file of the same name in the boards/arm directory of Zephyr. */
+
+&pinctrl {
+	uart0_ubx: uart0_ubx {
+		group1 {
+			psels = <NRF_PSEL(UART_TX, 1, 12)>,
+			        <NRF_PSEL(UART_RX, 1, 11)>;
+		};
+	};
+
+	uart1_ubx: uart1_ubx {
+		group1 {
+			psels = <NRF_PSEL(UART_TX, 1, 10)>,
+			    <NRF_PSEL(UART_RX, 1, 13)>;
+		};
+	};
+
+	spi3_default: spi3_default {
+		group1 {
+			psels = <NRF_PSEL(SPIM_SCK, 0, 28)>,
+				<NRF_PSEL(SPIM_MISO, 0, 27)>,
+				<NRF_PSEL(SPIM_MOSI, 0, 26)>;
+		};
+	};
+
+	spi3_sleep: spi3_sleep {
+		group1 {
+			psels = <NRF_PSEL(SPIM_SCK, 0, 28)>,
+				<NRF_PSEL(SPIM_MISO, 0, 27)>,
+				<NRF_PSEL(SPIM_MOSI, 0, 26)>;
+			low-power-enable;
+		};
+	};
+
+};
+
 &uart0 {
-    status = "okay";
-    current-speed = <115200>;
-    tx-pin = <44>;
-    rx-pin = <43>;
-/* For flow control specify the rts/cts pins the same way as tx/rx. Uncomment "hw-flow-control" line. */
-    /delete-property/ rts-pin; 
-    /delete-property/ cts-pin; 
-/*    hw-flow-control; */
+	compatible = "nordic,nrf-uarte";
+	status = "okay";
+	current-speed = <115200>;
+	pinctrl-0 = <&uart0_ubx>;
+	pinctrl-1 = <&uart0_sleep>;
+	pinctrl-names = "default", "sleep";
 };
+
 &uart1 {
-    status = "okay";
-    current-speed = <115200>;
-    tx-pin = <42>;
-    rx-pin = <45>;
-/* For flow control specify the rts/cts pins the same way as tx/rx. Uncomment "hw-flow-control" line. */
-    /delete-property/ rts-pin; 
-    /delete-property/ cts-pin; 
-/*    hw-flow-control; */
+	compatible = "nordic,nrf-uarte";
+	status = "okay";
+	current-speed = <115200>;
+	pinctrl-0 = <&uart1_ubx>;
+	pinctrl-1 = <&uart1_sleep>;
+	pinctrl-names = "default", "sleep";
 };
+
 &i2c1 {
-    status = "okay";
-    /* Otherwise board default settings are good. */
+	status = "okay";
+	/* Otherwise board default settings are good. */
 };
+
 /* When SPI is enabled we need to remove SPI1 to continue to have I2C1, otherwise the main .dts file brings it in. */
 &spi1 {
 	status = "disabled";
 };
+
 &spi3 {
-	compatible = "nordic,nrf-spim";
 	status = "okay";
-	sck-pin = <28>;
-	miso-pin = <27>;
-	mosi-pin = <26>;
+	cs-gpios = <&gpio0 29 GPIO_ACTIVE_LOW>;
+	pinctrl-0 = <&spi3_default>;
+	pinctrl-1 = <&spi3_sleep>;
+	pinctrl-names = "default", "sleep";
 };

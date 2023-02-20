@@ -25,11 +25,11 @@
  */
 
 #ifndef CODE_START
-# define CODE_START ((uint32_t)_image_text_start)
+#define CODE_START ((uint32_t)__text_region_start)
 #endif
 
 #ifndef CODE_END
-# define CODE_END ((uint32_t)_image_text_end)
+#define CODE_END ((uint32_t)__text_region_end)
 #endif
 
 #endif // _U_SECTIONS_ZEPHYR_H_

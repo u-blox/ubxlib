@@ -1,3 +1,0 @@
-[submodule "port/platform/zephyr/boards/short_range"]
-	path = port/platform/zephyr/boards/short_range
-	url = https://github.com/u-blox/u-blox-sho-OpenCPU

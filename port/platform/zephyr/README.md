@@ -14,9 +14,9 @@ Note: the directory structure here differs from that in the other platform direc
 - [boards](boards): contains custom u-blox boards that are not \[yet\] in the Zephyr repo.
 
 # SDK Installation
-`ubxlib` is tested with the version of Zephyr that comes with `nRFConnect SDK version 1.6.1` which is the recommended version.
+`ubxlib` is tested with the version of Zephyr that comes with `nRFConnect SDK version 2.2.0` which is the recommended version.
 
-`ubxlib` has been tested to build with all newer versions nRFConnect SDK, up til 2.1.0. The test suite for `ubxlib` is however still only using 1.6.1. This is due to the fact that an update to 2.x requires modification of the board overlay files, which would imply a breaking change. In coming versions of `ubxlib`, newer version of nRFConnect will be used.
+`ubxlib` has been tested to build with all versions nRFConnect SDK from 1.6.1 up til 2.2.0. The test suite for `ubxlib` is however only using 2.2.0.
 
 Follow the instructions to install the development tools:
 
