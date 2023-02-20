@@ -2,6 +2,9 @@
 # files that are required for building ubxlib on PlatformIO.
 # Paths are relative to the ubxlib root directory, forward-slashes
 # must be used.
+# Note that test/automation and the examples from the ubxlib root
+# directory are NOT brought in here since they are not required for
+# normal use: for those see inc_src_test.txt.
 # Framework specific directories will only be included for the
 # actual framework used and ignored otherwise.
 # For references to the current build framework the macro
@@ -12,7 +15,7 @@
 [EXCLUDE]
 
 /port/platform/(?!common|$FRAMEWORK)
-/(example|test)/|u_port_gatt.c
+/(example|test)/
 u_port_clib.c
 /common/lib_common
 

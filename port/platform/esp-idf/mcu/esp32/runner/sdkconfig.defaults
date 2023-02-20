@@ -407,7 +407,10 @@ CONFIG_MBEDTLS_SSL_OUT_CONTENT_LEN=4096
 # CONFIG_MBEDTLS_DEBUG is not set
 # CONFIG_MBEDTLS_ECP_RESTARTABLE is not set
 # CONFIG_MBEDTLS_CMAC_C is not set
-CONFIG_MBEDTLS_HARDWARE_AES=y
+# We set this to "n" as otherwise the PlatformIO builds
+# fail because some AES functions are not brought it;
+# normally it would be set to "y"
+CONFIG_MBEDTLS_HARDWARE_AES=n
 CONFIG_MBEDTLS_HARDWARE_MPI=y
 # CONFIG_MBEDTLS_MPI_USE_INTERRUPT is not set
 CONFIG_MBEDTLS_HARDWARE_SHA=y

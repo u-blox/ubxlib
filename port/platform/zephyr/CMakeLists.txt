@@ -71,14 +71,27 @@ if (CONFIG_UBXLIB_TEST)
 
     target_sources(app PRIVATE
         ${UBXLIB_TEST_SRC}
-        ${ZEPHYR_BASE}/../test/cmock/vendor/unity/src/unity.c
     )
 
     zephyr_include_directories(
         ${UBXLIB_PRIVATE_INC}
         ${UBXLIB_TEST_INC}
+    )
+
+# If we are building outside of Platform IO then we
+# bring in unity from the NRF Connect SDK in which
+# Zephyr is contained.  However, under Platform IO that
+# doesn't exist, you get it from Platform IO
+# instead, hence make this a "weak" inclusion
+if (EXISTS "${ZEPHYR_BASE}/../test/cmock/vendor/unity/src/unity.c")
+    target_sources(app PRIVATE
+        ${ZEPHYR_BASE}/../test/cmock/vendor/unity/src/unity.c
+    )
+    zephyr_include_directories(
         ${ZEPHYR_BASE}/../test/cmock/vendor/unity/src
     )
+endif()
+
 endif()
 
 if (CONFIG_MINIMAL_LIBC)

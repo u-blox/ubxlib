@@ -1,6 +1,6 @@
 {
     "name": "ubxlib",
-    "description": " Portable C libraries which provide APIs to build applications with u-blox products and services. Delivered as add-on to existing microcontroller and RTOS SDKs.",
+    "description": "Portable C libraries which provide APIs to build applications with u-blox products and services. Delivered as add-on to existing microcontroller and RTOS SDKs.",
     "keywords": "u-blox, ubxlib",
     "repository": {
         "type": "git",
@@ -25,11 +25,14 @@
         "libLDFMode": "deep+"
     },
     "scripts": {
-        "postinstall": "port/platform/platformio/pio_post_install.py"
+        "postinstall": ["port/platform/platformio/pio_post_install.py"]
+    },
+    "export": {
+        "exclude": [".git"]
     },
     "examples": [
         {
-            "name": "Ubxlib examples",
+            "name": "ubxlib examples",
             "base": "port/platform/platformio/example",
             "files": [
                 "mqtt.c",

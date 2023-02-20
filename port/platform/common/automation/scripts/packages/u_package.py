@@ -78,6 +78,8 @@ def load(ctx: Context, packages: List[str]) -> Dict[str,UBasePackage]:
                     pkg = UAptPackage()
                 elif type == "git":
                     pkg = UGitPackage()
+                elif type == "httpget":
+                    pkg = UHttpGetPackage()
                 elif type == "executable":
                     pkg = UExecutablePackage()
                 elif type == "esp_idf":

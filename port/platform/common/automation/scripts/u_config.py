@@ -40,7 +40,10 @@ def load_config_yaml(file_path, is_linux, is_arm):
     * The yaml file can also contain platform specific config.
       Please see parse_platform_specific() how these are handled."""
     with open(file_path, 'r', encoding='utf8') as file:
-        cfg = yaml.safe_load(os.path.expandvars(file.read()))
+        # For some reason os.path.expanduser() doesn't pick up all the ~
+        # in the file contents, hence do a long-hand replace
+        contents = os.path.expandvars(file.read()).replace("~", os.path.expanduser("~"))
+        cfg = yaml.safe_load(contents)
     wanted_platform = "windows"
     if is_linux:
         wanted_platform = "linux"

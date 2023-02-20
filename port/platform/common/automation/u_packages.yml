@@ -114,3 +114,14 @@ arduino-cli:
         type: archive
         version: 0.20.2
         url: https://github.com/arduino/arduino-cli/releases/download/0.20.2/arduino-cli_0.20.2_Windows_64bit.zip
+
+platformio:
+    type: httpget
+    url: https://raw.githubusercontent.com/platformio/platformio-core-installer/master/get-platformio.py
+    post_install_command: python get-platformio.py
+    linux:
+        check_command: ~/.platformio/penv/bin/pio system info
+    linux_arm:
+        check_command: ~/.platformio/penv/bin/pio system info
+    windows:
+        check_command: ~/.platformio/penv/Scripts/pio system info

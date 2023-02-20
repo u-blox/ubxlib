@@ -22,6 +22,8 @@
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
 
+#ifdef CONFIG_BT
+
 #include <zephyr/types.h>
 #include <zephyr.h>
 
@@ -1066,5 +1068,7 @@ int32_t uPortGattStartDescriptorDiscovery(int32_t connHandle, uPortGattCharDescr
     return startDiscovery(connHandle, (uPortGattUuid_t *)&charDescriptorsUuid[type], startHandle,
                           0xffff, callback, BT_GATT_DISCOVER_DESCRIPTOR);
 }
+
+#endif // #ifdef CONFIG_BT
 
 // End of file
