@@ -17,7 +17,7 @@
 /** @file
  * @brief Thread dumper for Zephyr.
  */
-#include "zephyr.h"
+#include "kernel.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS

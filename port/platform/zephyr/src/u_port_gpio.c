@@ -31,7 +31,7 @@
 #include "u_port_os.h"      // Needed by u_port_private.h
 #include "u_port_gpio.h"
 
-#include "zephyr.h"
+#include "kernel.h"
 #include "device.h"
 #include "drivers/gpio.h"
 #include "version.h"

@@ -38,7 +38,7 @@
 
 #include "string.h"
 
-#include "zephyr.h"
+#include "kernel.h"
 #include "u_lib.h"
 #include "lib_fibonacci.h"
 

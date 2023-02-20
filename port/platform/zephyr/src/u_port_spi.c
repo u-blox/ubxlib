@@ -19,7 +19,7 @@
  */
 
 #include <zephyr/types.h>
-#include <zephyr.h>
+#include <kernel.h>
 #include <drivers/spi.h>
 
 #include <device.h>

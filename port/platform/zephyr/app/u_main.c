@@ -42,7 +42,7 @@
 #include "u_port_debug.h"
 #include "u_port_os.h"
 
-#include "zephyr.h"
+#include "kernel.h"
 
 #ifdef CONFIG_ARCH_POSIX
 #include "posix_board_if.h"

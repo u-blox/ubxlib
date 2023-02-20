@@ -25,7 +25,7 @@
 #ifdef CONFIG_BT
 
 #include <zephyr/types.h>
-#include <zephyr.h>
+#include <kernel.h>
 
 #include <device.h>
 #include <soc.h>

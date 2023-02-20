@@ -27,7 +27,7 @@
 #endif
 
 #include <zephyr/types.h>
-#include <zephyr.h>
+#include <kernel.h>
 #include <drivers/uart.h>
 
 #include <device.h>
