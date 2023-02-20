@@ -271,6 +271,14 @@ typedef enum {
  * cellular network handle (as once it is "claimed" by Cell Locate it
  * won't be available for GNSS calls until the module is power cycled).
  *
+ * Note: where the GNSS chip is inside or connected via a SARA-R5 module,
+ * there is a known issue where, if a GNSS multiplexer channel (used by default
+ * to obtain position) is opened, closed, and then re-opened the GNSS chip will
+ * be unresponsive.  For that case, if you intend to call this function several
+ * times, you may wish to define U_NETWORK_GNSS_CFG_CELL_USE_AT_ONLY, which will
+ * force use of AT commands, rather than the GNSS multiplexer channel, to
+ * obtain position.
+ *
  * @param devHandle               the device handle to use.
  * @param type                    the type of location fix to perform;
  *                                how this can be used depends upon the
@@ -371,6 +379,14 @@ int32_t uLocationGet(uDeviceHandle_t devHandle, uLocationType_t type,
  * cellular network handle (as once it is "claimed" by Cell Locate it
  * won't be available for GNSS calls until the module is power cycled).
  *
+ * Note: where the GNSS chip is inside or connected via a SARA-R5 module,
+ * there is a known issue where, if a GNSS multiplexer channel (used by default
+ * to obtain position) is opened, closed, and then re-opened the GNSS chip will
+ * be unresponsive.  For that case, if you intend to call this function several
+ * times, you may wish to define U_NETWORK_GNSS_CFG_CELL_USE_AT_ONLY, which will
+ * force use of AT commands, rather than the GNSS multiplexer channel, to
+ * obtain position.
+ *
  * #U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE is not currently supported by
  * this function.
  *
@@ -425,6 +441,12 @@ int32_t uLocationGetStart(uDeviceHandle_t devHandle, uLocationType_t type,
  * disableGnss in the pLocationAssist structure when calling this API with the
  * cellular network handle (as once it is "claimed" by Cell Locate it
  * won't be available for GNSS calls until the module is power cycled).
+ *
+ * Note: where the GNSS chip is inside or connected via a SARA-R5 module,
+ * there is a known issue where, if a GNSS multiplexer channel (required for
+ * streamed position) is opened, closed, and then re-opened the GNSS chip will
+ * be unresponsive.  For that case, please call this function once at
+ * start of day.
  *
  * If you are requesting #U_LOCATION_TYPE_GNSS at a high rate (e.g. faster than
  * once per second) then, since this code only uses UBX messages, it will

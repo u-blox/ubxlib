@@ -139,6 +139,11 @@ bool uCellMuxIsEnabled(uDeviceHandle_t cellHandle);
  * without doing anything.  An error is returned if uCellMuxEnable()
  * has not been called.
  *
+ * Note: there is a known issue with SARA-R5 modules where, if a GNSS
+ * multiplexer channel is opened, closed, and then re-opened the GNSS
+ * chip will be unresponsive.  For that case, please open the GNSS
+ * multiplexer channel once at start of day.
+ *
  * UART POWER SAVING: when UART power saving is enabled in the module
  * any constraints arising will also apply to a multiplexer channel;
  * specifically, if a DTR pin is not used to wake-up the module, i.e.
