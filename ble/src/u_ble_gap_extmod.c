@@ -240,8 +240,12 @@ int32_t uBleGapScan(uDeviceHandle_t devHandle,
                 result.dataType = uAtClientReadInt(atHandle);
                 ok = ok && (result.dataType == 1 || result.dataType == 2);
                 if (ok) {
-                    result.dataLength = uAtClientReadHexData(atHandle, result.data, sizeof(result.data));
-                    ok = result.dataLength >= 0;
+                    ok = false;
+                    int32_t dataLength = uAtClientReadHexData(atHandle, result.data, sizeof(result.data));
+                    if (dataLength >= 0) {
+                        result.dataLength = dataLength;
+                        ok = true;
+                    }
                 }
                 if (ok) {
                     ok = cb(&result);

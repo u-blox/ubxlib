@@ -244,7 +244,7 @@ int32_t uBleGattSetNotificationCallback(uDeviceHandle_t devHandle,
         pInstance = pUShortRangePrivateGetInstance(devHandle);
         uAtClientHandle_t atHandle = pInstance->atHandle;
         uAtClientLock(atHandle);
-        char *pMatch = "+UUBTGN:";
+        const char *pMatch = "+UUBTGN:";
         // Remove possible existing callback
         uAtClientRemoveUrcHandler(atHandle, pMatch);
         if (cb) {
@@ -266,7 +266,7 @@ int32_t uBleGattSetWriteCallback(uDeviceHandle_t devHandle,
         pInstance = pUShortRangePrivateGetInstance(devHandle);
         uAtClientHandle_t atHandle = pInstance->atHandle;
         uAtClientLock(atHandle);
-        char *pMatch = "+UUBTGRW:";
+        const char *pMatch = "+UUBTGRW:";
         // Remove possible existing callback
         uAtClientRemoveUrcHandler(atHandle, pMatch);
         if (cb) {
