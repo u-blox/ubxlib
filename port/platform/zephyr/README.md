@@ -53,7 +53,6 @@ You can either start SES from the nRF Toolchain Manager by clicking "Open Segger
 - Always load project from SES using file->Open nRF connect SDK project
 - Select the project folder containing the `CMakeLists.txt` of the application you want to build.
 - Board file should be `{your_sdk_path}/zephyr/boards/arm/nrf5340dk_nrf5340` for EVK-NORA-B1.
-  For a custom board e.g. `port/platform/zephyr/boards/short_range/zephyr/boards/arm/ubx_evkninab4_nrf52833`
 - Board name should be `nrf5340dk_nrf5340_cpuapp` for EVK-NORA-B1.  For a custom board e.g. `ubx_evkninab4_nrf52833`.
 - Where a board-specific configuration file is available (e.g. `ubx_evkninab4_nrf52833.conf`) this will be picked up automatically.
 

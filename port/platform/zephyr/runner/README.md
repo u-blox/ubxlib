@@ -5,21 +5,11 @@ This directory contains build configurations for the test runner application bas
 Please see the [Segger Embedded Studio section in zephyr port README.md](../README.md#Segger_Embedded_Studio).
 
 # Build And Flash With `west`
-While in the `port/platform/zephyr/runner` directory:
+While in the `port/platform/zephyr/runner` directory, for example:
 
   ```
   west build -p auto -b nrf5340dk_nrf5340_cpuapp . --build-dir build_nrf5340dk_nrf5340_cpuapp
   west flash --build-dir build_nrf5340dk_nrf5340_cpuapp
-  ```
-  
-  ```
-  west build -p auto -b ubx_evkninab4_nrf52833 . -DBOARD_ROOT=../boards/short_range/zephyr --build-dir build_ubx_evkninab4_nrf52833
-  west flash --build-dir build_ubx_evkninab4_nrf52833
-  ```
-
-  ```
-  west build -p auto -b nrf52840dk_nrf52840 . -DBOARD_ROOT=../boards/short_range/zephyr --build-dir build_nrf52840dk_nrf52840
-  west flash --build-dir build_nrf52840dk_nrf52840
   ```
 
 Note that the `nrf5340dk_nrf5340` overlay file should be used with a u-blox NORA-B1 board and the `nrf52850dk_nrf52840` overlay file should be used with a u-blox NINA-B3 board.
