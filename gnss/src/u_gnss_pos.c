@@ -46,6 +46,8 @@
 
 #include "u_time.h"
 
+#include "u_at_client.h"
+
 #include "u_ubx_protocol.h"
 
 #include "u_gnss_module_type.h"
@@ -315,7 +317,8 @@ int32_t uGnssPosGet(uDeviceHandle_t gnssHandle,
         pInstance = pUGnssPrivateGetInstance(gnssHandle);
         if (pInstance != NULL) {
 #ifdef U_CFG_SARA_R5_M8_WORKAROUND
-            if (pInstance->transportType == U_GNSS_TRANSPORT_AT) {
+            if ((pInstance->transportType == U_GNSS_TRANSPORT_AT) ||
+                (uGnssPrivateGetIntermediateAtHandle(pInstance) != NULL)) {
                 // Temporary change: on prototype versions of the
                 // SARA-R510M8S module (production week (printed on the
                 // module label, upper right) earlier than 20/27)
@@ -396,7 +399,8 @@ int32_t uGnssPosGetStart(uDeviceHandle_t gnssHandle,
                     pParameters = (uGnssPosGetTaskParameters_t *) pUPortMalloc(sizeof(*pParameters));
                     if (pParameters != NULL) {
 #ifdef U_CFG_SARA_R5_M8_WORKAROUND
-                        if (pInstance->transportType == U_GNSS_TRANSPORT_AT) {
+                        if ((pInstance->transportType == U_GNSS_TRANSPORT_AT) ||
+                            (uGnssPrivateGetIntermediateAtHandle(pInstance) != NULL)) {
                             // Temporary change: on prototype versions of the
                             // SARA-R510M8S module (production week (printed on the
                             // module label, upper right) earlier than 20/27)
@@ -507,9 +511,9 @@ int32_t uGnssPosGetRrlp(uDeviceHandle_t gnssHandle, char *pBuffer,
         pInstance = pUGnssPrivateGetInstance(gnssHandle);
         if ((pInstance != NULL) && (pBufferUint8 != NULL) &&
             (sizeBytes >= U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES)) {
-
 #ifdef U_CFG_SARA_R5_M8_WORKAROUND
-            if (pInstance->transportType == U_GNSS_TRANSPORT_AT) {
+            if ((pInstance->transportType == U_GNSS_TRANSPORT_AT) ||
+                (uGnssPrivateGetIntermediateAtHandle(pInstance) != NULL)) {
                 // Temporary change: on prototype versions of the
                 // SARA-R510M8S module (production week (printed on the
                 // module label, upper right) earlier than 20/27)

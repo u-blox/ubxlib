@@ -31,7 +31,9 @@
  * whatever can be set must be readable; this is because there are
  * situations where the current AT client needs to be "copied" to a
  * new AT client sitting on top of a different interface (this is
- * the 3GPP 27.010 CMUX scenario encountered in cellular).
+ * the 3GPP 27.010 CMUX scenario encountered in cellular).  If you
+ * add a new setting/getting then please add it to
+ * uCellMuxPrivateCopyAtClient() over in the cellular API.
  *
  * This does not apply to the intercept/hijack functions, just the
  * "settings" (including URC handlers).

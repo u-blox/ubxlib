@@ -391,8 +391,9 @@ U_PORT_TEST_FUNCTION("[location]", "locationBasic")
              locationType++) {
 
             // Check the location types supported by this network type
-            U_TEST_PRINT_LINE("testing location type %s.",
-                              gpULocationTestTypeStr[locationType]);
+            U_TEST_PRINT_LINE("testing location type %s on %s.",
+                              gpULocationTestTypeStr[locationType],
+                              gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType]);
             pLocationCfgList = gpULocationTestCfg[pTmp->networkType];
             for (size_t y = 0;
                  (y < pLocationCfgList->numEntries) && (gpLocationCfg == NULL);

@@ -37,8 +37,10 @@ cell/test/u_cell_file_test.c
 cell/test/u_cell_loc_test.c
 cell/test/u_cell_gpio_test.c
 cell/test/u_cell_fota_test.c
+cell/test/u_cell_mux_test.c
 cell/test/u_cell_test_preamble.c
 cell/test/u_cell_test_private.c
+cell/test/u_cell_mux_private_test.c
 gnss/test/u_gnss_test.c
 gnss/test/u_gnss_pwr_test.c
 gnss/test/u_gnss_cfg_test.c

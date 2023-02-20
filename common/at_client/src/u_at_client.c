@@ -1214,7 +1214,7 @@ static int32_t serialReadNoStutter(uAtClientInstance_t *pClient,
 {
     int32_t readLength = 0;
     int32_t thisReadLength;
-    uDeviceSerial_t *pDeviceSerial;
+    uDeviceSerial_t *pDeviceSerial = (uDeviceSerial_t *) pClient->streamHandle;
     uAtClientReceiveBuffer_t *pReceiveBuffer = pClient->pReceiveBuffer;
     char *pBuffer = U_AT_CLIENT_DATA_BUFFER_PTR(pReceiveBuffer) +
                     pReceiveBuffer->lengthBuffered;
@@ -1230,7 +1230,6 @@ static int32_t serialReadNoStutter(uAtClientInstance_t *pClient,
                                                pBuffer, bufferSize);
                 break;
             case U_AT_CLIENT_STREAM_TYPE_VIRTUAL_SERIAL:
-                pDeviceSerial = (uDeviceSerial_t *) pClient->streamHandle;
                 thisReadLength = pDeviceSerial->read(pDeviceSerial, pBuffer, bufferSize);
                 break;
             default:
@@ -2910,7 +2909,6 @@ void uAtClientTimeoutCallbackSet(uAtClientHandle_t atHandle,
     }
 }
 
-
 // Get the current AT command timeout callback.
 void uAtClientTimeoutCallbackGet(uAtClientHandle_t atHandle,
                                  void (**ppCallback) (uAtClientHandle_t,
@@ -3060,15 +3058,8 @@ int32_t uAtClientUnlock(uAtClientHandle_t atHandle)
                 sizeBytes = pDeviceSerial->getReceiveSize(pDeviceSerial);
                 if ((sizeBytes > 0) ||
                     (pClient->pReceiveBuffer->readIndex < pClient->pReceiveBuffer->length)) {
-                    // Note: we use the "try" version of the UART event
-                    // send function here, otherwise if the UART event queue
-                    // is full we may get stuck since (a) this function has
-                    // the AT client API locked and (b) the URC callback may
-                    // be running a URC handler which could also be calling
-                    // into the AT client API to read the elements of the URC;
-                    // there is no danger here since, if there are already
-                    // events in the UART queue, the URC callback will certainly
-                    // be run anyway.
+                    // Note: we use the "try" version of the event
+                    // send function here for the same reasons as above
                     sendErrorCode = pDeviceSerial->eventTrySend(pDeviceSerial,
                                                                 U_DEVICE_SERIAL_EVENT_BITMASK_DATA_RECEIVED,
                                                                 0);

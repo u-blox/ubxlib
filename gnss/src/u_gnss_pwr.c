@@ -45,6 +45,9 @@
 
 #include "u_ubx_protocol.h"
 
+#include "u_cell_module_type.h"
+#include "u_cell.h"              // For uCellAtClientHandleGet()
+
 #include "u_gnss_module_type.h"
 #include "u_gnss_type.h"
 #include "u_gnss_private.h"
@@ -64,14 +67,14 @@
 /** The aiding types to request when switching-on a GNSS
  * chip (all of them).
  */
-#define U_GNSS_PWR_AIDING_TYPES 15
+# define U_GNSS_PWR_AIDING_TYPES 15
 #endif
 
 #ifndef U_GNSS_PWR_SYSTEM_TYPES
 /** The system types to request when switching-on a GNSS
  * chip (all of them).
  */
-#define U_GNSS_PWR_SYSTEM_TYPES 0x7f
+# define U_GNSS_PWR_SYSTEM_TYPES 0x7f
 #endif
 
 /* ----------------------------------------------------------------
@@ -86,6 +89,107 @@
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
+// Do AT command stuff necessary to power on via an intermediate module.
+static int32_t atPowerOn(uGnssPrivateInstance_t *pInstance,
+                         uAtClientHandle_t atHandle,
+                         bool ugindOnNotOff)
+{
+    int32_t errorCode;
+    uint64_t y;
+
+    // On a best effort basis, switch on or off an indication
+    // which is useful when debugging aiding modes, but gets
+    // in the way when we're talking to the GNSS chip directly
+    uAtClientLock(atHandle);
+    uAtClientCommandStart(atHandle, "AT+UGIND=");
+    uAtClientWriteInt(atHandle, ugindOnNotOff);
+    uAtClientCommandStopReadResponse(atHandle);
+    uAtClientUnlock(atHandle);
+    // Then do the real powering-oning stuff for AT.
+    // On some modules, e.g. SARA-R5, an attempt to change
+    // the pin that controls the GNSS chip power will return
+    // an error if the GNSS chip is already powered and also
+    // an attempt to _turn_ the GNSS chip on will return an
+    // error if the cellular module is currently talking to the
+    // GNSS chip.  Hence we check if the GNSS chip is already
+    // on here.
+    uAtClientLock(atHandle);
+    uAtClientCommandStart(atHandle, "AT+UGPS?");
+    // Response is +UGPS: <mode>[,<aid_mode>[,<GNSS_systems>]]
+    uAtClientCommandStop(atHandle);
+    uAtClientResponseStart(atHandle, "+UGPS:");
+    y = uAtClientReadInt(atHandle);
+    uAtClientResponseStop(atHandle);
+    errorCode = uAtClientUnlock(atHandle);
+    if (y != 1) {
+        // If the first parameter is not 1, try to
+        // configure the cellular module's GPIO pins and
+        // switch GNSS on
+        if (!uGnssPrivateIsInsideCell(pInstance)) {
+            // First, if the GNSS module is not inside
+            // the cellular module, configure the GPIOs
+            if (pInstance->atModulePinPwr >= 0) {
+                uAtClientLock(atHandle);
+                uAtClientCommandStart(atHandle, "AT+UGPIOC=");
+                uAtClientWriteInt(atHandle, pInstance->atModulePinPwr);
+                // 3 is external GNSS supply enable mode
+                uAtClientWriteInt(atHandle, 3);
+                uAtClientCommandStopReadResponse(atHandle);
+                errorCode = uAtClientUnlock(atHandle);
+            }
+            if ((errorCode == 0) && (pInstance->atModulePinDataReady >= 0)) {
+                uAtClientLock(atHandle);
+                uAtClientCommandStart(atHandle, "AT+UGPIOC=");
+                uAtClientWriteInt(atHandle, pInstance->atModulePinDataReady);
+                // 4 is external GNSS data ready mode
+                uAtClientWriteInt(atHandle, 4);
+                uAtClientCommandStopReadResponse(atHandle);
+                errorCode = uAtClientUnlock(atHandle);
+            }
+        }
+        if (errorCode == 0) {
+            errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
+            for (size_t x = 0; (errorCode < 0) &&
+                 (x < U_GNSS_AT_POWER_ON_RETRIES + 1); x++) {
+                // Now ask the cellular module to switch GNSS on
+                uPortTaskBlock(U_GNSS_AT_POWER_CHANGE_WAIT_MILLISECONDS);
+                uAtClientLock(atHandle);
+                uAtClientTimeoutSet(atHandle, U_GNSS_AT_POWER_UP_TIME_SECONDS * 1000);
+                uAtClientCommandStart(atHandle, "AT+UGPS=");
+                uAtClientWriteInt(atHandle, 1);
+                // If you change the aiding types and
+                // GNSS system types below you may wish
+                // to change them in u_cell_loc.c also.
+                // All aiding types allowed
+                uAtClientWriteInt(atHandle, U_GNSS_PWR_AIDING_TYPES);
+                // All GNSS system types enabled
+                uAtClientWriteInt(atHandle, U_GNSS_PWR_SYSTEM_TYPES);
+                uAtClientCommandStopReadResponse(atHandle);
+                errorCode = uAtClientUnlock(atHandle);
+                if (errorCode < 0) {
+                    uPortTaskBlock(U_GNSS_AT_POWER_ON_RETRY_INTERVAL_SECONDS * 1000);
+                }
+            }
+        }
+    }
+
+    return errorCode;
+}
+
+// Do AT command stuff necessary to power off via an intermediate module.
+static int32_t atPowerOff(uAtClientHandle_t atHandle)
+{
+    uPortTaskBlock(U_GNSS_AT_POWER_CHANGE_WAIT_MILLISECONDS);
+    uAtClientLock(atHandle);
+    // Can take a little while if the cellular module is
+    // busy talking to the GNSS module at the time
+    uAtClientTimeoutSet(atHandle, U_GNSS_AT_POWER_DOWN_TIME_SECONDS * 1000);
+    uAtClientCommandStart(atHandle, "AT+UGPS=");
+    uAtClientWriteInt(atHandle, 0);
+    uAtClientCommandStopReadResponse(atHandle);
+    return uAtClientUnlock(atHandle);
+}
+
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -98,7 +202,6 @@ int32_t uGnssPwrOn(uDeviceHandle_t gnssHandle)
     uAtClientHandle_t atHandle;
     // Message buffer for the 120-byte UBX-MON-MSGPP message
     char message[120] = {0};
-    uint64_t y;
 
     if (gUGnssPrivateMutex != NULL) {
 
@@ -121,112 +224,51 @@ int32_t uGnssPwrOn(uDeviceHandle_t gnssHandle)
             if (errorCode == 0) {
                 if (pInstance->transportType == U_GNSS_TRANSPORT_AT) {
                     atHandle = (uAtClientHandle_t) pInstance->transportHandle.pAt;
-                    // Switch on an indication which is useful when debugging
-                    // aiding modes
-                    uAtClientLock(atHandle);
-                    uAtClientCommandStart(atHandle, "AT+UGIND=");
-                    uAtClientWriteInt(atHandle, 1);
-                    uAtClientCommandStopReadResponse(atHandle);
-                    uAtClientUnlock(atHandle);
-                    // On some modules, e.g. SARA-R5, an attempt to change
-                    // the pin that controls the GNSS chip power will return
-                    // an error if the GNSS chip is already powered and also
-                    // an attempt to _turn_ the GNSS chip on will return an
-                    // error if the cellular module is currently talking to the
-                    // GNSS chip.  Hence we check if the GNSS chip is already
-                    // on here.
-                    uAtClientLock(atHandle);
-                    uAtClientCommandStart(atHandle, "AT+UGPS?");
-                    // Response is +UGPS: <mode>[,<aid_mode>[,<GNSS_systems>]]
-                    uAtClientCommandStop(atHandle);
-                    uAtClientResponseStart(atHandle, "+UGPS:");
-                    y = uAtClientReadInt(atHandle);
-                    uAtClientResponseStop(atHandle);
-                    uAtClientUnlock(atHandle);
-                    if (y != 1) {
-                        // If the first parameter is not 1, try to
-                        // configure the cellular module's GPIO pins and
-                        // switch GNSS on
-                        if (!uGnssPrivateIsInsideCell(pInstance)) {
-                            // First, if the GNSS module is not inside
-                            // the cellular module, configure the GPIOs
-                            if (pInstance->atModulePinPwr >= 0) {
-                                uAtClientLock(atHandle);
-                                uAtClientCommandStart(atHandle, "AT+UGPIOC=");
-                                uAtClientWriteInt(atHandle, pInstance->atModulePinPwr);
-                                // 3 is external GNSS supply enable mode
-                                uAtClientWriteInt(atHandle, 3);
-                                uAtClientCommandStopReadResponse(atHandle);
-                                errorCode = uAtClientUnlock(atHandle);
-                            }
-                            if ((errorCode == 0) && (pInstance->atModulePinDataReady >= 0)) {
-                                uAtClientLock(atHandle);
-                                uAtClientCommandStart(atHandle, "AT+UGPIOC=");
-                                uAtClientWriteInt(atHandle, pInstance->atModulePinDataReady);
-                                // 4 is external GNSS data ready mode
-                                uAtClientWriteInt(atHandle, 4);
-                                uAtClientCommandStopReadResponse(atHandle);
-                                errorCode = uAtClientUnlock(atHandle);
-                            }
-                        }
-                        if (errorCode == 0) {
-                            errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
-                            for (size_t x = 0; (errorCode < 0) &&
-                                 (x < U_GNSS_AT_POWER_ON_RETRIES + 1); x++) {
-                                // Now ask the cellular module to switch GNSS on
-                                uPortTaskBlock(U_GNSS_AT_POWER_CHANGE_WAIT_MILLISECONDS);
-                                uAtClientLock(atHandle);
-                                uAtClientTimeoutSet(atHandle, U_GNSS_AT_POWER_UP_TIME_SECONDS * 1000);
-                                uAtClientCommandStart(atHandle, "AT+UGPS=");
-                                uAtClientWriteInt(atHandle, 1);
-                                // If you change the aiding types and
-                                // GNSS system types below you may wish
-                                // to change them in u_cell_loc.c also.
-                                // All aiding types allowed
-                                uAtClientWriteInt(atHandle, U_GNSS_PWR_AIDING_TYPES);
-                                // All GNSS system types enabled
-                                uAtClientWriteInt(atHandle, U_GNSS_PWR_SYSTEM_TYPES);
-                                uAtClientCommandStopReadResponse(atHandle);
-                                errorCode = uAtClientUnlock(atHandle);
-                                if (errorCode < 0) {
-                                    uPortTaskBlock(U_GNSS_AT_POWER_ON_RETRY_INTERVAL_SECONDS * 1000);
-                                }
-                            }
-                        }
-                    }
+                    errorCode = atPowerOn(pInstance, atHandle, true);
                 } else {
-                    errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
-                    // Make sure GNSS is on with UBX-CFG-RST
-                    // The message is not acknowledged, so must use
-                    // uGnssPrivateSendOnlyCheckStreamUbxMessage()
-                    message[2] = 0x09; // Controlled GNSS hot start
-                    if (uGnssPrivateSendOnlyCheckStreamUbxMessage(pInstance,
-                                                                  0x06, 0x04,
-                                                                  message, 4) > 0) {
-                        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-                        if (pInstance->pModule->moduleType == U_GNSS_MODULE_TYPE_M8) {
-                            errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
-                            // From the M8 receiver description, a HW reset is also
-                            // required at this point if Galileo is enabled,
-                            // so find out if it is by polling UBX-MON-GNSS
-                            if (uGnssPrivateSendReceiveUbxMessage(pInstance,
-                                                                  0x0a, 0x28,
-                                                                  NULL, 0,
-                                                                  message, 8) == 8) {
-                                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-                                // Byte 3 is the enabled flags and bit 3 of that is Galileo
-                                if (message[3] & 0x08) {
-                                    // Setting the message to all zeroes effects a HW reset
-                                    memset(message, 0, sizeof(message));
-                                    // Nothing we can do here to check that the message
-                                    // has been accepted as the reset removes all evidence
-                                    errorCode = uGnssPrivateSendReceiveUbxMessage(pInstance,
-                                                                                  0x06, 0x04,
-                                                                                  message, 4,
-                                                                                  NULL, 0);
-                                    if (errorCode == 0) {
-                                        // Wait for the reset to complete
-                                        uPortTaskBlock(U_GNSS_RESET_TIME_SECONDS * 1000);
+                    atHandle = uGnssPrivateGetIntermediateAtHandle(pInstance);
+                    if (atHandle != NULL) {
+                        // If there is an intermediate module (to which
+                        // we are connected by a virtual serial port) then
+                        // we need to power the GNSS device on by AT commands
+                        // and not do the other stuff, which is already being
+                        // done by a software entity on that intermediate
+                        // module.
+                        errorCode = atPowerOn(pInstance, atHandle, false);
+                    } else {
+                        errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
+                        // Make sure GNSS is on with UBX-CFG-RST
+                        // The message is not acknowledged, so must use
+                        // uGnssPrivateSendOnlyCheckStreamUbxMessage()
+                        message[2] = 0x09; // Controlled GNSS hot start
+                        if (uGnssPrivateSendOnlyCheckStreamUbxMessage(pInstance,
+                                                                      0x06, 0x04,
+                                                                      message, 4) > 0) {
+                            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                            if (pInstance->pModule->moduleType == U_GNSS_MODULE_TYPE_M8) {
+                                errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
+                                // From the M8 receiver description, a HW reset is also
+                                // required at this point if Galileo is enabled,
+                                // so find out if it is by polling UBX-MON-GNSS
+                                if (uGnssPrivateSendReceiveUbxMessage(pInstance,
+                                                                      0x0a, 0x28,
+                                                                      NULL, 0,
+                                                                      message, 8) == 8) {
+                                    errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                                    // Byte 3 is the enabled flags and bit 3 of that is Galileo
+                                    if (message[3] & 0x08) {
+                                        // Setting the message to all zeroes effects a HW reset
+                                        memset(message, 0, sizeof(message));
+                                        // Nothing we can do here to check that the message
+                                        // has been accepted as the reset removes all evidence
+                                        errorCode = uGnssPrivateSendReceiveUbxMessage(pInstance,
+                                                                                      0x06, 0x04,
+                                                                                      message, 4,
+                                                                                      NULL, 0);
+                                        if (errorCode == 0) {
+                                            // Wait for the reset to complete
+                                            uPortTaskBlock(U_GNSS_RESET_TIME_SECONDS * 1000);
+                                        }
                                     }
                                 }
                             }
@@ -312,25 +354,26 @@ int32_t uGnssPwrOff(uDeviceHandle_t gnssHandle)
                 // For the AT interface, need to ask the cellular module
                 // to power the GNSS module down
                 atHandle = (uAtClientHandle_t) pInstance->transportHandle.pAt;
-                uPortTaskBlock(U_GNSS_AT_POWER_CHANGE_WAIT_MILLISECONDS);
-                uAtClientLock(atHandle);
-                // Can take a little while if the cellular module is
-                // busy talking to the GNSS module at the time
-                uAtClientTimeoutSet(atHandle, U_GNSS_AT_POWER_DOWN_TIME_SECONDS * 1000);
-                uAtClientCommandStart(atHandle, "AT+UGPS=");
-                uAtClientWriteInt(atHandle, 0);
-                uAtClientCommandStopReadResponse(atHandle);
-                errorCode = uAtClientUnlock(atHandle);
+                errorCode = atPowerOff(atHandle);
             } else {
-                errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
-                // Make sure GNSS is off with UBX-CFG-RST
-                // This message is not acknowledged, so we use
-                // uGnssPrivateSendOnlyCheckStreamUbxMessage()
-                message[2] = 0x08; // Controlled GNSS stop
-                if (uGnssPrivateSendOnlyCheckStreamUbxMessage(pInstance,
-                                                              0x06, 0x04,
-                                                              message, 4) > 0) {
-                    errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                atHandle = uGnssPrivateGetIntermediateAtHandle(pInstance);
+                if (atHandle != NULL) {
+                    // If there is an intermediate module (to which
+                    // we are connected by a virtual serial port) then
+                    // we need to power off using AT commands
+                    errorCode = atPowerOff(atHandle);
+                } else {
+                    errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
+                    // Make sure GNSS is off with UBX-CFG-RST
+                    // This message is not acknowledged, so we use
+                    // uGnssPrivateSendOnlyCheckStreamUbxMessage()
+                    message[2] = 0x08; // Controlled GNSS stop
+                    if (uGnssPrivateSendOnlyCheckStreamUbxMessage(pInstance,
+                                                                  0x06, 0x04,
+                                                                  message,
+                                                                  sizeof(message)) > 0) {
+                        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                    }
                 }
             }
 

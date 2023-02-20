@@ -45,6 +45,13 @@
 /** The recommended UART buffer length for the GNSS driver;
  * 256 bytes is OK for a 9600 baud UART but on Windows/Linux
  * with a USB interface it needs to be more like 1024.
+ * Note also that, if you are going to access a GNSS module
+ * that is inside or connected-via a cellular module using
+ * the CMUX multiplexing protocol rather than the AT interface,
+ * then this number should be twice or more the frame size on
+ * that protocol #U_CELL_MUX_PRIVATE_INFORMATION_LENGTH_MAX_BYTES,
+ * to avoid the multiplexer stalling; it likely will be since
+ * the frame size is generally small.
  */
 # define U_GNSS_UART_BUFFER_LENGTH_BYTES 1024
 #endif
@@ -154,9 +161,19 @@ typedef enum {
     U_GNSS_TRANSPORT_UART,      /**< the transport handle should be a UART handle. */
     U_GNSS_TRANSPORT_AT,        /**< the transport handle should be an AT client
                                      handle; currently only UBX-format messages may
-                                     be received when this transport type is in use. */
+                                     be received when this transport type is in use.
+                                     It is better to enable CMUX on the cellular
+                                     module with uCellMuxEnable() and then open
+                                     a virtual serial port to the GNSS device with
+                                     uCellMuxAddChannel(), then any GNSS message
+                                     format may be used and position will be streamed. */
     U_GNSS_TRANSPORT_I2C,       /**< the transport handle should be an I2C handle. */
     U_GNSS_TRANSPORT_SPI,       /**< the transport handle should be an SPI handle. */
+    U_GNSS_TRANSPORT_VIRTUAL_SERIAL, /**< the transport handle should be a virtual serial,
+                                          port handle, e.g. as returned by
+                                          uCellMuxAddChannel() if you are talking to
+                                          a GNSS device either inside or connected
+                                          via a cellular module. */
     U_GNSS_TRANSPORT_UBX_UART,  /**< \deprecated the transport handle should be a UART handle
                                      over which UBX commands will be transferred;
                                      NMEA will be switched off; THIS IS DEPRECATED,
@@ -195,6 +212,7 @@ typedef union {
     int32_t uart;   /**< for transport type #U_GNSS_TRANSPORT_UART. */
     int32_t i2c;    /**< for transport type #U_GNSS_TRANSPORT_I2C. */
     int32_t spi;    /**< for transport type #U_GNSS_TRANSPORT_SPI. */
+    void *pDeviceSerial; /**< for transport type #U_GNSS_TRANSPORT_VIRTUAL_SERIAL. */
 } uGnssTransportHandle_t;
 
 /** The port type on the GNSS chip itself; this is different

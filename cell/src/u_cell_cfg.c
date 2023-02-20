@@ -1323,8 +1323,6 @@ int32_t uCellCfgGetActiveSerialInterface(uDeviceHandle_t cellHandle)
 {
     int32_t errorCodeOrActiveVariant = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
-    uAtClientHandle_t atHandle;
-    int32_t activeVariant;
 
     if (gUCellPrivateMutex != NULL) {
 
@@ -1333,23 +1331,7 @@ int32_t uCellCfgGetActiveSerialInterface(uDeviceHandle_t cellHandle)
         pInstance = pUCellPrivateGetInstance(cellHandle);
         errorCodeOrActiveVariant = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if (pInstance != NULL) {
-            atHandle = pInstance->atHandle;
-            uAtClientLock(atHandle);
-            uAtClientCommandStart(atHandle, "AT+USIO?");
-            uAtClientCommandStop(atHandle);
-            uAtClientResponseStart(atHandle, "+USIO:");
-            uAtClientSkipParameters(atHandle, 1);
-            // Skip one byte of '*' coming in the second param. e.g +USIO: 5,*5
-            uAtClientSkipBytes(atHandle, 1);
-            activeVariant = uAtClientReadInt(atHandle);
-            uAtClientResponseStop(atHandle);
-            errorCodeOrActiveVariant = uAtClientUnlock(atHandle);
-            if ((errorCodeOrActiveVariant == 0) && (activeVariant >= 0)) {
-                errorCodeOrActiveVariant = activeVariant;
-            } else {
-                uPortLog("U_CELL_CFG: unable to read serial interface profile, error %d.\n",
-                         errorCodeOrActiveVariant);
-            }
+            errorCodeOrActiveVariant = uCellPrivateGetActiveSerialInterface(pInstance);
         }
 
         U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
@@ -1687,6 +1669,52 @@ bool uCellCfgAutoBaudIsOn(uDeviceHandle_t cellHandle)
     }
 
     return autoBaudOn;
+}
+
+// Set "AT+UGPRF".
+int32_t uCellCfgSetGnssProfile(uDeviceHandle_t cellHandle, int32_t profileBitMap,
+                               const char *pServerName)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance;
+
+    if (gUCellPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        pInstance = pUCellPrivateGetInstance(cellHandle);
+        if (pInstance != NULL) {
+            errorCode = uCellPrivateSetGnssProfile(pInstance, profileBitMap, pServerName);
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return errorCode;
+}
+
+// Get "AT+UGPRF".
+int32_t uCellCfgGetGnssProfile(uDeviceHandle_t cellHandle, char *pServerName,
+                               size_t sizeBytes)
+{
+    int32_t errorCodeOrBitMap = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance;
+
+    if (gUCellPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        errorCodeOrBitMap = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        pInstance = pUCellPrivateGetInstance(cellHandle);
+        if (pInstance != NULL) {
+            errorCodeOrBitMap = uCellPrivateGetGnssProfile(pInstance, pServerName, sizeBytes);
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return errorCodeOrBitMap;
 }
 
 // End of file

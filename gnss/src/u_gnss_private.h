@@ -132,6 +132,7 @@ typedef enum {
     U_GNSS_PRIVATE_STREAM_TYPE_UART,
     U_GNSS_PRIVATE_STREAM_TYPE_I2C,
     U_GNSS_PRIVATE_STREAM_TYPE_SPI,
+    U_GNSS_PRIVATE_STREAM_TYPE_VIRTUAL_SERIAL,
     U_GNSS_PRIVATE_STREAM_TYPE_MAX_NUM
 } uGnssPrivateStreamType_t;
 
@@ -195,6 +196,7 @@ typedef struct {
 // *INDENT-OFF* (otherwise AStyle makes a mess of this)
 typedef struct uGnssPrivateInstance_t {
     uDeviceHandle_t gnssHandle; /**< the handle for this instance. */
+    uDeviceHandle_t intermediateHandle; /**< the handle of the device that the GNSS chip is connected via. */
     const uGnssPrivateModule_t *pModule; /**< pointer to the module type. */
     uGnssTransportType_t transportType; /**< the type of transport to use. */
     uGnssTransportHandle_t transportHandle; /**< the handle of the transport to use. */
@@ -276,13 +278,23 @@ uGnssPrivateInstance_t *pUGnssPrivateGetInstance(uDeviceHandle_t handle);
 //lint -esym(765, pUGnssPrivateGetModule) may be compiled-out in various ways
 const uGnssPrivateModule_t *pUGnssPrivateGetModule(uDeviceHandle_t gnssHandle);
 
+/** Get the AT handle of the intermediate device.
+ *
+ * Note: gUGnssPrivateMutex should be locked before this is called.
+ *
+ * @param[in] pInstance  a pointer to the GNSS instance, cannot be NULL.
+ * @return               the AT handle of the intermediate device or NULL
+ *                       if there is no such device or the handle could not
+ *                       be obtained.
+ */
+uAtClientHandle_t uGnssPrivateGetIntermediateAtHandle(uGnssPrivateInstance_t *pInstance);
+
 /** Send a buffer as hex.
  *
  * @param[in] pBuffer       the buffer to print; cannot be NULL.
  * @param bufferLengthBytes the number of bytes to print.
  */
-void uGnssPrivatePrintBuffer(const char *pBuffer,
-                             size_t bufferLengthBytes);
+void uGnssPrivatePrintBuffer(const char *pBuffer, size_t bufferLengthBytes);
 
 /** Get the protocol types output by the GNSS chip; not relevant
  * where an AT transports is in use since only the UBX protocol is
@@ -392,7 +404,7 @@ bool uGnssPrivateMessageIdIsWanted(uGnssPrivateMessageId_t *pMessageId,
                                    uGnssPrivateMessageId_t *pMessageIdWanted);
 
 /* ----------------------------------------------------------------
- * FUNCTIONS: STREAMING TRANSPORT ONLY
+ * FUNCTIONS: STREAMING TRANSPORT (UART/I2C/VIRTUAL SERIAL) ONLY
  * -------------------------------------------------------------- */
 
 /** Get the private stream type from a given GNSS transport type.
@@ -404,31 +416,23 @@ bool uGnssPrivateMessageIdIsWanted(uGnssPrivateMessageId_t *pMessageId,
  */
 int32_t uGnssPrivateGetStreamType(uGnssTransportType_t transportType);
 
-/** Get the stream handle from the GNSS transport handle.
- *
- * @param privateStreamType  the private stream type.
- * @param transportHandle    the transport handle union.
- * @return                   the stream handle else negative error.
- */
-int32_t uGnssPrivateGetStreamHandle(uGnssPrivateStreamType_t privateStreamType,
-                                    uGnssTransportHandle_t transportHandle);
-
 /** Get the number of bytes waiting for us from the GNSS chip when using
- * a streaming transport (e.g. UART or I2C or SPI).
+ * a streaming transport (e.g. UART or I2C or SPI or virtual serial).
  *
  * Note: in the case of SPI it is not possible to determine whether
  * there is any data to be received without actually reading it, hence
- * this function does that and stores the data the internal pSpiRingBuffer
+ * this function does that and stores the data in the internal pSpiRingBuffer
  * from which the caller can extract it.
  *
  * @param[in] pInstance  a pointer to the GNSS instance, cannot be NULL.
- * @return               the number of bytes available to be received,
- *                       else negative error code.
+ * @return              the number of bytes available to be received,
+ *                      else negative error code.
  */
 int32_t uGnssPrivateStreamGetReceiveSize(uGnssPrivateInstance_t *pInstance);
 
 /** Fill the internal ring buffer with as much data as possible from
- * the GNSS chip when using a streaming transport (e.g. UART or I2C or SPI).
+ * the GNSS chip when using a streaming transport (e.g. UART or I2C or SPI or
+ * virtual serial).
  *
  * Note that the total maximum time that this function might take is
  * timeoutMs + maxTimeMs.  For a "quick check", to just read in a
@@ -474,6 +478,7 @@ int32_t uGnssPrivateStreamFillRingBuffer(uGnssPrivateInstance_t *pInstance,
  * Note: it is important that pDiscard (see below) is obeyed, i.e.
  * always discard that many bytes of data from the ring-buffer at the
  * given read handle before this function is called again.
+ *
  * Note: gUGnssPrivateMutex should be locked before this is called, but
  * it is also safe to call this from the task that is checking for
  * asynchronous messages, even though that doesn't lock gUGnssPrivateMutex,
@@ -551,8 +556,8 @@ int32_t uGnssPrivateStreamPeekRingBuffer(uGnssPrivateInstance_t *pInstance,
                                          size_t offset,
                                          int32_t maxTimeMs);
 
-/** Send a UBX format message over UART or I2C or SPI (do not wait for the
- * response).
+/** Send a UBX format message over UART or I2C or virtual serial (do not
+ * wait for the response).
  *
  * Note: gUGnssPrivateMutex should be locked before this is called.
  *
@@ -576,7 +581,12 @@ int32_t uGnssPrivateSendOnlyStreamUbxMessage(uGnssPrivateInstance_t *pInstance,
 
 /** Send a UBX format message that does not have an acknowledgement
  * over a stream and check that it was accepted by the GNSS chip
- * by querying the GNSS chip's message count.
+ * by querying the GNSS chip's message count.  Note that in the case
+ * where the GNSS chip is inside or connected via an intermediate
+ * (e.g. cellular) module, that module may also be talking to the GNSS
+ * chip over the same interface and so, for that case, no additional
+ * checking by this "counting" mechanism is done; we have to rely on
+ * the transport being good.
  *
  * Note: gUGnssPrivateMutex should be locked before this is called.
  *

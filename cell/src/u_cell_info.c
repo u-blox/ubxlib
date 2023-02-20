@@ -49,6 +49,8 @@
 
 #include "u_at_client.h"
 
+#include "u_device_shared.h"
+
 #include "u_cell_module_type.h"
 #include "u_cell_file.h"
 #include "u_cell.h"         // Order is
@@ -1061,7 +1063,8 @@ bool uCellInfoIsRtsFlowControlEnabled(uDeviceHandle_t cellHandle)
     bool isEnabled = false;
     uCellPrivateInstance_t *pInstance;
     int32_t atStreamHandle;
-    uAtClientStream_t atStreamType;
+    uAtClientStream_t atStreamType = U_AT_CLIENT_STREAM_TYPE_MAX;
+    uDeviceSerial_t *pDeviceSerial;
 
     if (gUCellPrivateMutex != NULL) {
 
@@ -1070,8 +1073,16 @@ bool uCellInfoIsRtsFlowControlEnabled(uDeviceHandle_t cellHandle)
         pInstance = pUCellPrivateGetInstance(cellHandle);
         if (pInstance != NULL) {
             atStreamHandle = uAtClientStreamGet(pInstance->atHandle, &atStreamType);
-            if (atStreamType == U_AT_CLIENT_STREAM_TYPE_UART) {
-                isEnabled = uPortUartIsRtsFlowControlEnabled(atStreamHandle);
+            switch (atStreamType) {
+                case U_AT_CLIENT_STREAM_TYPE_UART:
+                    isEnabled = uPortUartIsRtsFlowControlEnabled(atStreamHandle);
+                    break;
+                case U_AT_CLIENT_STREAM_TYPE_VIRTUAL_SERIAL:
+                    pDeviceSerial = (uDeviceSerial_t *) atStreamHandle;
+                    isEnabled = pDeviceSerial->isRtsFlowControlEnabled(pDeviceSerial);
+                    break;
+                default:
+                    break;
             }
         }
 
@@ -1087,7 +1098,8 @@ bool uCellInfoIsCtsFlowControlEnabled(uDeviceHandle_t cellHandle)
     bool isEnabled = false;
     uCellPrivateInstance_t *pInstance;
     int32_t atStreamHandle;
-    uAtClientStream_t atStreamType;
+    uAtClientStream_t atStreamType = U_AT_CLIENT_STREAM_TYPE_MAX;
+    uDeviceSerial_t *pDeviceSerial;
 
     if (gUCellPrivateMutex != NULL) {
 
@@ -1096,8 +1108,16 @@ bool uCellInfoIsCtsFlowControlEnabled(uDeviceHandle_t cellHandle)
         pInstance = pUCellPrivateGetInstance(cellHandle);
         if (pInstance != NULL) {
             atStreamHandle = uAtClientStreamGet(pInstance->atHandle, &atStreamType);
-            if (atStreamType == U_AT_CLIENT_STREAM_TYPE_UART) {
-                isEnabled = uPortUartIsCtsFlowControlEnabled(atStreamHandle);
+            switch (atStreamType) {
+                case U_AT_CLIENT_STREAM_TYPE_UART:
+                    isEnabled = uPortUartIsCtsFlowControlEnabled(atStreamHandle);
+                    break;
+                case U_AT_CLIENT_STREAM_TYPE_VIRTUAL_SERIAL:
+                    pDeviceSerial = (uDeviceSerial_t *) atStreamHandle;
+                    isEnabled = pDeviceSerial->isCtsFlowControlEnabled(pDeviceSerial);
+                    break;
+                default:
+                    break;
             }
         }
 

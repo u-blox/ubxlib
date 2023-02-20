@@ -48,6 +48,8 @@
 
 #include "u_error_common.h"
 
+#include "u_at_client.h" // Required by u_gnss_private.h
+
 #include "u_port_clib_platform_specific.h" /* Integer stdio, must be included
                                               before the other port files if
                                               any print or scan function is used. */

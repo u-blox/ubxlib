@@ -48,7 +48,7 @@
 #include "u_port_i2c.h"
 #include "u_port_spi.h"
 
-#include "u_at_client.h"
+#include "u_at_client.h" // Required by u_gnss_private.h
 
 #include "u_cell_module_type.h"
 #include "u_cell_file.h"    // Required by u_cell_private.h
@@ -59,6 +59,8 @@
 #include "u_cell.h"
 #include "u_cell_pwr.h"
 #include "u_cell_loc.h"  // For uCellLocGnssInsideCell()
+#include "u_cell_cfg.h"
+#include "u_cell_mux.h"
 #endif
 
 #include "u_gnss_module_type.h"
@@ -66,9 +68,7 @@
 #include "u_gnss_private.h"
 #include "u_gnss.h"
 #include "u_gnss_pwr.h"
-#ifndef U_GNSS_TEST_DISABLE_ACTIVE_ANTENNA_DISABLE
-# include "u_gnss_cfg.h"
-#endif
+#include "u_gnss_cfg.h"
 #include "u_gnss_util.h"
 
 #include "u_gnss_test_private.h"
@@ -119,6 +119,7 @@ typedef struct {
  */
 static const char *const gpTransportTypeString[] = {"none", "UART",
                                                     "AT", "I2C", "SPI",
+                                                    "Virtual Serial",
                                                     "UBX UART", "UBX I2C"
                                                    };
 
@@ -176,6 +177,53 @@ static char getGxgsv(const char *pBuffer, size_t size,
 
     return x;
 }
+
+// Set the power state of the GNSS device.
+static int32_t setPowerState(uDeviceHandle_t gnssHandle, uDeviceHandle_t cellHandle,
+                             int32_t atModulePinPwr, int32_t atModulePinDataReady,
+                             bool powerOn, bool powerOff)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+
+    if ((cellHandle != NULL)
+#ifdef U_CFG_TEST_CELL_MODULE_TYPE
+        && !uCellLocGnssInsideCell(cellHandle)
+#endif
+       ) {
+        // If we're talking via cellular and the GNSS chip
+        // isn't inside the cellular module, need to configure the
+        // module pins that control the GNSS chip
+        if (atModulePinPwr >= 0) {
+            uGnssSetAtPinPwr(gnssHandle, atModulePinPwr);
+        }
+        if (atModulePinDataReady >= 0) {
+            uGnssSetAtPinDataReady(gnssHandle, atModulePinDataReady);
+        }
+    }
+
+    if (errorCode == 0) {
+        if (powerOn) {
+            errorCode = uGnssPwrOn(gnssHandle);
+#ifndef U_GNSS_TEST_DISABLE_ACTIVE_ANTENNA_DISABLE
+            if (errorCode == 0) {
+                // On a best-effort basis, switch off the active antenna
+                // to stop boards powering each other; doesn't really matter
+                // if this fails, just good practice.
+                // Note: did try putting this in the preamble which is run
+                // at the start of all testing but the flag it sets inside
+                // the GNSS chip seems to get reset at power on, hence the
+                // need to do it each time
+                uGnssCfgSetAntennaActive(gnssHandle, false);
+            }
+#endif
+        } else if (powerOff) {
+            errorCode = uGnssPwrOff(gnssHandle);
+        }
+    }
+
+    return errorCode;
+}
+
 
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
@@ -298,7 +346,19 @@ size_t uGnssTestPrivateTransportTypesSet(uGnssTransportType_t *pTransportTypes,
         }
         if (numEntries == 0) {
             *pTransportTypes = U_GNSS_TRANSPORT_AT;
-            numEntries++;
+            pTransportTypes++;
+            numEntries ++;
+#if U_CFG_APP_PIN_CELL_PWR_ON >= 0
+            // TODO: temporarily omit testing of GNSS on virtual
+            // serial if there is no way to power-cycle the
+            // cellular module.  Allow this again once we've
+            // figured out why the GNSS chip becomes unresponsive
+            // over a mux channel on SARA-R5 on some occasions
+            // (where powering the cellular module on and off
+            // between tests resolves the problem).
+            *pTransportTypes = U_GNSS_TRANSPORT_VIRTUAL_SERIAL;
+            numEntries ++;
+#endif
         }
     }
 
@@ -410,13 +470,59 @@ int32_t uGnssTestPrivatePreamble(uGnssModuleType_t moduleType,
                 // the GNSS chip
                 errorCode = uCellTestPrivatePreamble(U_CFG_TEST_CELL_MODULE_TYPE,
                                                      &parameters, true);
-                pParameters->streamHandle = parameters.uartHandle;
-                pParameters->pAtClientHandle = (void *) parameters.atClientHandle;
-                pParameters->cellHandle = parameters.cellHandle;
-                transportHandle.pAt = pParameters->pAtClientHandle;
+                if (errorCode == 0) {
+                    pParameters->streamHandle = parameters.uartHandle;
+                    pParameters->pAtClientHandle = (void *) parameters.atClientHandle;
+                    pParameters->cellHandle = parameters.cellHandle;
+                    uCellAtClientHandleGet(parameters.cellHandle,
+                                           (uAtClientHandle_t *) &transportHandle.pAt);
+                }
             }
 #else
             U_TEST_PRINT_LINE("U_CFG_TEST_CELL_MODULE_TYPE is not defined, can't use AT.");
+#endif
+            break;
+            case U_GNSS_TRANSPORT_VIRTUAL_SERIAL:
+#ifdef U_CFG_TEST_CELL_MODULE_TYPE
+            {
+                uCellTestPrivate_t parameters = U_CELL_TEST_PRIVATE_DEFAULTS;
+                uDeviceSerial_t *pDeviceSerial;
+                // Re-use the cellular test preamble function for the AT transport,
+                // making sure to always power cellular on so that we can get at
+                // the GNSS chip
+                errorCode = uCellTestPrivatePreamble(U_CFG_TEST_CELL_MODULE_TYPE,
+                                                     &parameters, true);
+                if (errorCode == 0) {
+                    // Open a virtual serial port via CMUX
+                    errorCode = uCellMuxEnable(parameters.cellHandle);
+                    if (errorCode == 0) {
+                        errorCode = uCellMuxAddChannel(parameters.cellHandle,
+                                                       U_CELL_MUX_CHANNEL_ID_GNSS,
+                                                       &pDeviceSerial);
+                        if (errorCode == 0) {
+                            // Check if UART power saving is in a mode where it
+                            // wakes-up on data line activity (rather than the DTR
+                            // pin) and, if so, switch UART power saving off (since
+                            // GNSS has no concept of retrying for the data loss
+                            // that inevitably occurs while the module is waking up)
+                            if (uCellPwrUartSleepIsEnabled(parameters.cellHandle) &&
+                                (uCellPwrGetDtrPowerSavingPin(parameters.cellHandle) < 0)) {
+                                uCellPwrDisableUartSleep(parameters.cellHandle);
+                            }
+                            // Set discard on overflow so that we aren't
+                            // overwhelmed by position data
+                            pDeviceSerial->discardOnOverflow(pDeviceSerial, true);
+                            // Populate pParameters with stuff
+                            transportHandle.pDeviceSerial = pDeviceSerial;
+                            pParameters->streamHandle = (int32_t) pDeviceSerial;
+                            pParameters->pAtClientHandle = (void *) parameters.atClientHandle;
+                            pParameters->cellHandle = parameters.cellHandle;
+                        }
+                    }
+                }
+            }
+#else
+            U_TEST_PRINT_LINE("U_CFG_TEST_CELL_MODULE_TYPE is not defined, can't use virtual serial.");
 #endif
             break;
             default:
@@ -434,38 +540,16 @@ int32_t uGnssTestPrivatePreamble(uGnssModuleType_t moduleType,
                                      transportHandle,
                                      U_CFG_APP_PIN_GNSS_ENABLE_POWER, false,
                                      &pParameters->gnssHandle);
-                if (errorCode >= 0) {
-                    if ((pParameters->cellHandle != NULL)
-#ifdef U_CFG_TEST_CELL_MODULE_TYPE
-                        && !uCellLocGnssInsideCell(pParameters->cellHandle)
-#endif
-                       ) {
-                        // If we're talking via cellular and the GNSS chip
-                        // isn't inside the cellular module, need to configure the
-                        // module pins that control the GNSS chip
-                        if (atModulePinPwr >= 0) {
-                            uGnssSetAtPinPwr(pParameters->gnssHandle, atModulePinPwr);
-                        }
-                        if (atModulePinDataReady >= 0) {
-                            uGnssSetAtPinDataReady(pParameters->gnssHandle, atModulePinDataReady);
-                        }
+                if (errorCode == 0) {
+                    if ((pParameters->cellHandle != NULL) &&
+                        (transportType == U_GNSS_TRANSPORT_VIRTUAL_SERIAL)) {
+                        errorCode = uGnssSetIntermediate(pParameters->gnssHandle,
+                                                         pParameters->cellHandle);
                     }
-                    if (powerOn) {
-                        errorCode = uGnssPwrOn(pParameters->gnssHandle);
-#ifndef U_GNSS_TEST_DISABLE_ACTIVE_ANTENNA_DISABLE
-                        if (errorCode == 0) {
-                            // On a best-effort basis, swich off the active antenna
-                            // to stop boards powering each other; doesn't really matter
-                            // if this fails, just good practice.
-                            // Note: did try putting this in the preamble which is run
-                            // at the start of all testing but the flag it sets inside
-                            // the GNSS chip seems to get reset at power on, hence the
-                            // need to do it each time
-                            uGnssCfgSetAntennaActive(pParameters->gnssHandle, false);
-                        }
-#endif
-                    } else {
-                        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                    if (errorCode == 0) {
+                        errorCode = setPowerState(pParameters->gnssHandle, pParameters->cellHandle,
+                                                  atModulePinPwr, atModulePinDataReady,
+                                                  powerOn, false);
                     }
                 }
             }
@@ -495,6 +579,11 @@ void uGnssTestPrivatePostamble(uGnssTestPrivate_t *pParameters,
         parameters.uartHandle = pParameters->streamHandle;
         parameters.atClientHandle = (uAtClientHandle_t) pParameters->pAtClientHandle;
         parameters.cellHandle = pParameters->cellHandle;
+        // TODO: temporarily doing a power-off of the cellular
+        // module between GNSS tests until we find out why
+        // SARA-R5 sometimes fails to send GNSS responses unless
+        // you don't...
+        powerOff = true;
         uCellTestPrivatePostamble(&parameters, powerOff);
         pParameters->cellHandle = NULL;
 #endif
@@ -515,6 +604,10 @@ void uGnssTestPrivatePostamble(uGnssTestPrivate_t *pParameters,
                 case U_GNSS_TRANSPORT_SPI:
                     uPortSpiClose(pParameters->streamHandle);
                     uPortSpiDeinit();
+                    break;
+                case U_GNSS_TRANSPORT_VIRTUAL_SERIAL:
+                    // Don't need to do anything here as closing down
+                    // cellular sorts it out
                     break;
                 default:
                     break;

@@ -44,8 +44,11 @@ extern "C" {
 /** The things we need to remember per GNSS device.
  */
 typedef struct {
-    int32_t transportHandle;
-    uDeviceTransportType_t transportType;
+    union {
+        int32_t int32Handle;
+        uDeviceSerial_t *pDeviceSerial;
+    } transportHandle;
+    uDeviceTransportType_t deviceTransportType;
 } uDeviceGnssInstance_t;
 
 #ifdef __cplusplus

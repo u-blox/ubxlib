@@ -112,18 +112,21 @@ extern "C" {
  * -------------------------------------------------------------- */
 
 /** Power a GNSS chip on.  If the transport type for the given GNSS
- * instance is #U_GNSS_TRANSPORT_AT then you must have powered
- * the associated [cellular] module up (e.g. with a call to uDeviceOpen()
- * or uCellPwrOn()) before calling this function.  Also powering up
- * a GNSS module which is attached via a cellular module will "claim"
- * the GNSS module for this GNSS interface and so if you use the cellLoc
- * API at the same time you MUST either call uGnssPwrOff() first or
- * you must disable GNSS for Cell Locate (either by setting disableGnss
- * to true in the pLocationAssist structure when calling the location API
- * or by calling uCellLocSetGnssEnable() with false) otherwise cellLoc
- * location establishment will fail.
+ * instance is #U_GNSS_TRANSPORT_AT or #U_GNSS_TRANSPORT_VIRTUAL_SERIAL
+ * then you must have powered any associated [cellular] module up
+ * (e.g. with a call to uDeviceOpen() or uCellPwrOn()) before calling
+ * this function; for the #U_GNSS_TRANSPORT_VIRTUAL_SERIAL case you
+ * should likely call uGnssSetIntermediate() before calling this function.
+ * Also, powering up a GNSS module which is attached via a cellular
+ * module will "claim" the GNSS module for this GNSS interface and so,
+ * if you use the cellLoc API at the same time you MUST either call
+ * uGnssPwrOff() first or you must disable GNSS for Cell Locate (either
+ * by setting disableGnss to true in the pLocationAssist structure when
+ * calling the location API or by calling uCellLocSetGnssEnable() with
+ * false), otherwise cellLoc location establishment will fail.
  *
  * @param gnssHandle  the handle of the GNSS instance to power on.
+ * @return            zero on success else negative error code.
  */
 int32_t uGnssPwrOn(uDeviceHandle_t gnssHandle);
 
@@ -133,9 +136,10 @@ int32_t uGnssPwrOn(uDeviceHandle_t gnssHandle);
  */
 bool uGnssPwrIsAlive(uDeviceHandle_t gnssHandle);
 
-/** Power a GNSS chip off
+/** Power a GNSS chip off.
  *
  * @param gnssHandle  the handle of the GNSS instance to power off.
+ * @return            zero on success else negative error code.
  */
 int32_t uGnssPwrOff(uDeviceHandle_t gnssHandle);
 
@@ -153,6 +157,7 @@ int32_t uGnssPwrOff(uDeviceHandle_t gnssHandle);
  * because the module will be communicating with the GNSS chip over I2C.
  *
  * @param gnssHandle  the handle of the GNSS instance to power on.
+ * @return            zero on success else negative error code.
  */
 int32_t uGnssPwrOffBackup(uDeviceHandle_t gnssHandle);
 

@@ -59,9 +59,31 @@ extern "C" {
  */
 #define U_CELL_CFG_BAND_MASK_2_EUROPE_NB1_DEFAULT 0LL
 
+#ifndef U_CELL_CFG_GNSS_SERVER_NAME_MAX_LEN_BYTES
+/** The maximum length of the server name that GNSS messages should
+ * be forwarded to (see uCellCfgGetGnssProfile()), including room
+ * for a null terminator.
+ */
+# define U_CELL_CFG_GNSS_SERVER_NAME_MAX_LEN_BYTES 256
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
+
+/** The interfaces that a GNSS chip inside or connected-via a cellular
+ * may use, arranged as a bit-map and employed with uCellCfgSetGnssProfile()
+ * / uCellCfgGetGnssProfile().  Not all modules support all values.
+ */
+typedef enum {
+    U_CELL_CFG_GNSS_PROFILE_USB_AUX_UART = 0x01,
+    U_CELL_CFG_GNSS_PROFILE_MUX = 0x02,
+    U_CELL_CFG_GNSS_PROFILE_FILE = 0x04,
+    U_CELL_CFG_GNSS_PROFILE_IP = 0x08,
+    U_CELL_CFG_GNSS_PROFILE_DATA_READY = 0x10,
+    U_CELL_CFG_GNSS_PROFILE_RTC_SHARING = 0x20,
+    U_CELL_CFG_GNSS_PROFILE_RESET_AFTER_POWER_ON = 0x40
+} uCellCfgGnssProfile_t;
 
 /* ----------------------------------------------------------------
  * FUNCTIONS
@@ -380,6 +402,34 @@ int32_t uCellCfgSetAutoBaudOn(uDeviceHandle_t cellHandle);
  * @return             true if auto-bauding is on, else false.
  */
 bool uCellCfgAutoBaudIsOn(uDeviceHandle_t cellHandle);
+
+/** Set the GNSS profile (AT+UGPRF), essentially the interface(s) that a
+ * GNSS chip inside or connected via the cellular module will use.  Must
+ * be sent before the GNSS module is switched on.
+ *
+ * @param cellHandle        the handle of the cellular instance.
+ * @param profileBitMap     a bit-map of values chosen from #uCellCfgGnssProfile_t.
+ * @param pServerName       the null-terminated string that is the destination
+ *                          server, including port number; only used if
+ *                          profileBitMap includes #U_CELL_CFG_GNSS_PROFILE_IP.
+ * @return                  zero on success or negative error code on failure.
+ */
+int32_t uCellCfgSetGnssProfile(uDeviceHandle_t cellHandle, int32_t profileBitMap,
+                               const char *pServerName);
+
+/** Get the GNSS profile (AT+UGPRF) being used by the cellular module.
+ *
+ * @param cellHandle     the handle of the cellular instance.
+ * @param pServerName    a place to put the server name, will only be populated
+ *                       if the GNSS profile includes #U_CELL_CFG_GNSS_PROFILE_IP;
+ *                       may be NULL.
+ * @param sizeBytes      the amount of storage at pServerName; should be at least
+ *                       #U_CELL_CFG_GNSS_SERVER_NAME_MAX_LEN_BYTES.
+ * @return               a bit-map of the GNSS profiles employed, else negative
+ *                       error code.
+ */
+int32_t uCellCfgGetGnssProfile(uDeviceHandle_t cellHandle, char *pServerName,
+                               size_t sizeBytes);
 
 #ifdef __cplusplus
 }

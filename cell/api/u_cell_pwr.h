@@ -154,6 +154,7 @@ extern "C" {
  * compile-time mechanism is retained for backwards-compatibility.
  * DON'T USE BOTH MECHANISMS or the sense of the pin will
  * be inverted twice.
+  *
  * See uCellPwrSetDtrPowerSavingPin() for how the pin value is set.
  */
 #ifndef U_CELL_DTR_PIN_INVERTED
@@ -409,6 +410,10 @@ bool uCellPwrRebootIsRequired(uDeviceHandle_t cellHandle);
  * is required (since the SIM is not reset by a reboot).
  * TODO: is the bit about the SIM above true in all cases?
  *
+ * Note: if the module was in multiplexer mode (i.e. uCellMuxEnable()
+ * had been called) then this will clear all multiplexer channels
+ * as the module will no longer be in multiplexer mode after a reboot.
+ *
  * @param cellHandle             the handle of the cellular instance.
  * @param[in] pKeepGoingCallback rebooting usually takes between 5 and
  *                               15 seconds but it is possible for it
@@ -448,6 +453,10 @@ int32_t uCellPwrReboot(uDeviceHandle_t cellHandle,
  * some considerable time (e.g. the reset line has to be held for
  * 16 seconds to reset a SARA-R4 series module).
  *
+ * Note: if the module was in multiplexer mode (i.e. uCellMuxEnable()
+ * had been called) then this will clear all multiplexer channels
+ * as the module will no longer be in multiplexer mode after a reboot.
+ *
  * @param cellHandle the handle of the cellular instance.
  * @param pinReset   the pin of the MCU that is connected to the
  *                   reset pin of the cellular module; if there
@@ -464,6 +473,7 @@ int32_t uCellPwrResetHard(uDeviceHandle_t cellHandle, int32_t pinReset);
  * normally handled automatically, using activity on the UART transmit
  * data line to wake-up the module, however this is not supported on
  * LARA-R6.
+ *
  * There is also a specific case with the SARA-R5 module that needs
  * to be handled differently: when the UART flow control lines are
  * connected and UART power saving is entered the CTS line of the
@@ -474,6 +484,7 @@ int32_t uCellPwrResetHard(uDeviceHandle_t cellHandle, int32_t pinReset);
  * suspension of CTS.  For these cases, for SARA-R5 modules, the DTR pin
  * can be used to control UART power saving instead by calling this
  * function.
+ *
  * This must be called BEFORE the module is first powered-on, e.g.
  * just after uCellAdd() or, in the common network API, by defining
  * the structure member pinDtrPowerSaving to be the MCU pin that is
@@ -515,6 +526,7 @@ int32_t uCellPwrGetDtrPowerSavingPin(uDeviceHandle_t cellHandle);
 /** Set the parameters for 3GPP power saving, only valid when in
  * Cat-M1/NB1 mode and only effective when the module is connected
  * to the cellular network.
+ *
  * If the module is registered with the network and there is no
  * radio activity (i.e. transmission to or reception from the
  * cellular network) for the duration of the active time then the
@@ -527,10 +539,12 @@ int32_t uCellPwrGetDtrPowerSavingPin(uDeviceHandle_t cellHandle);
  * open sockets, MQTT connections, etc., are lost: if these are
  * important to you then consider using uCellPwrSetRequestedEDrx()
  * instead.
+ *
  * The values represent a request to the network; the network may
  * apply limits to the accepted values. The current 3GPP power
  * saving parameters as agreed with the network may be read with
  * a call to uCellPwrGet3gppPowerSaving().
+ *
  * Returning the module to normal operation requires a call to
  * uCellPwrWakeUpFromDeepSleep(), which is performed AUTOMATICALLY
  * by this code when any API is called.  Note that this means it
@@ -717,6 +731,7 @@ uCellPwr3gppPowerSavingState_t uCellPwrGet3gppPowerSavingState(uDeviceHandle_t c
  * changes with the E-DRX period; you should set eDrxSeconds to
  * less than any minimum downlink latency that your application
  * might require (if any).
+ *
  * The values represent a request to the network; the network
  * may apply limits to the accepted values.  The current E-DRX
  * parameters as agreed with the network may be read with a call to
@@ -733,6 +748,7 @@ uCellPwr3gppPowerSavingState_t uCellPwrGet3gppPowerSavingState(uDeviceHandle_t c
  * for the settings to be applied; please check if this is the
  * case with a call to uCellPwrRebootIsRequired() after calling
  * this function.
+ *
  * E-DRX is only supported by this code when UART power saving is
  * also allowed to operate, i.e. do not define
  * U_CFG_CELL_DISABLE_UART_POWER_SAVING if you want E-DRX to
@@ -847,6 +863,7 @@ int32_t uCellPwrGetEDrx(uDeviceHandle_t cellHandle,
  * requested values) may not be changed by the module immediately,
  * and they may be changed at any time by the network.  Use this
  * callback to find out when new values are assigned.
+ *
  * The callback is implemented using the uAtClientCallback() queue,
  * see the AT client API for details. The callback should not block;
  * use the callback to signal something else to do any heavy-lifting
@@ -965,9 +982,9 @@ int32_t uCellPwrGetDeepSleepActive(uDeviceHandle_t cellHandle,
 int32_t uCellPwrWakeUpFromDeepSleep(uDeviceHandle_t cellHandle,
                                     bool (*pKeepGoingCallback) (uDeviceHandle_t));
 
-/** Disable UART, AKA 32 kHz, sleep.
- * 32 kHz sleep is always enabled where supported by the module;
- * call this function to disable 32 kHz sleep.
+/** Disable UART, AKA 32 kHz, sleep. 32 kHz sleep is always
+ * enabled where supported by the module; call this function
+ * to disable 32 kHz sleep.
  *
  * @param cellHandle  the handle of the cellular instance.
  * @return            zero on success or negative error code on

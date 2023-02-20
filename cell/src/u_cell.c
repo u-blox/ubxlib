@@ -43,6 +43,9 @@
 #include "u_port_gpio.h"
 
 #include "u_at_client.h"
+
+#include "u_ringbuffer.h"
+
 #include "u_device_shared.h"
 
 #include "u_cell_module_type.h"
@@ -50,6 +53,8 @@
 #include "u_cell.h"         // Order is
 #include "u_cell_net.h"     // important here
 #include "u_cell_private.h" // don't change it
+#include "u_cell_mux.h"
+#include "u_cell_mux_private.h"
 
 // The headers below necessary to work around an Espressif linker problem, see uCellInit()
 #include "u_device_private_cell.h"
@@ -63,6 +68,7 @@
 #include "u_cell_mqtt.h"     // For uCellMqttPrivateLink()
 #include "u_cell_http.h"     // For uCellHttpPrivateLink()
 #include "u_cell_loc.h"      // For uCellLocPrivateLink()
+#include "u_cell_mux.h"      // For uCellMuxPrivateLink()
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -138,6 +144,8 @@ static void removeCellInstance(uCellPrivateInstance_t *pInstance)
             uPortFree(pInstance->pFotaContext);
             // Free any HTTP context
             uCellPrivateHttpRemoveContext(pInstance);
+            // Free any CMUX context
+            uCellMuxPrivateRemoveContext(pInstance);
             uDeviceDestroyInstance(U_DEVICE_INSTANCE(pInstance->cellHandle));
             uPortFree(pInstance);
             pCurrent = NULL;
@@ -174,7 +182,7 @@ int32_t uCellInit()
     uCellMqttPrivateLink();
     uCellHttpPrivateLink();
     uCellLocPrivateLink();
-
+    uCellMuxPrivateLink();
 
     if (gUCellPrivateMutex == NULL) {
         // Create the mutex that protects the linked list

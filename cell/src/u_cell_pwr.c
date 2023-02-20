@@ -46,6 +46,8 @@
 #include "u_port_gpio.h"
 #include "u_port_uart.h"
 
+#include "u_ringbuffer.h"
+
 #include "u_at_client.h"
 
 #include "u_cell_module_type.h"
@@ -53,6 +55,9 @@
 #include "u_cell.h"         // Order is
 #include "u_cell_net.h"     // important here
 #include "u_cell_private.h" // don't change it
+#include "u_cell_cfg.h"
+#include "u_cell_mux.h"
+#include "u_cell_mux_private.h"
 #include "u_cell_pwr.h"
 #include "u_cell_pwr_private.h"
 
@@ -924,6 +929,8 @@ static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance,
     uCellPwrPsvMode_t uartPowerSavingMode = U_CELL_PWR_PSV_MODE_DISABLED; // Assume no UART power saving
     uAtClientStream_t atStreamType;
     char buffer[20]; // Enough room for AT+UPSV=2,1300
+    char *pServerNameGnss;
+    int32_t y;
 
     // First send all the commands that everyone gets
     for (size_t x = 0;
@@ -1095,6 +1102,27 @@ static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance,
         pInstance->mnoProfile = uAtClientReadInt(atHandle);
         uAtClientResponseStop(atHandle);
         uAtClientUnlock(atHandle);
+        // The module may have a GNSS module inside it or
+        // connected via it, in which case, if we are to use
+        // that module via CMUX rather than via the clunky
+        // AT+UGUBX commands, we need to configure the module
+        // with the AT+UGPRF command to send GNSS output to
+        // the CMUX interface.  This HAS to be done while the
+        // GNSS chip is switched off, so it is best to do it
+        // now.  Don't fail on the outcome here in case this
+        // is not supported for some reason (in which case
+        // we won't be able to use GNSS via cellular)
+        pServerNameGnss = (char *) pUPortMalloc(U_CELL_CFG_GNSS_SERVER_NAME_MAX_LEN_BYTES);
+        if (pServerNameGnss != NULL) {
+            y = uCellPrivateGetGnssProfile(pInstance, pServerNameGnss,
+                                           U_CELL_CFG_GNSS_SERVER_NAME_MAX_LEN_BYTES);
+            if ((y >= 0) && ((y & U_CELL_CFG_GNSS_PROFILE_MUX) == 0)) {
+                y |= U_CELL_CFG_GNSS_PROFILE_MUX;
+                uCellPrivateSetGnssProfile(pInstance, y, pServerNameGnss);
+            }
+            // Free memory
+            uPortFree(pServerNameGnss);
+        }
         if (andRadioOff) {
             // Switch the radio off until commanded to connect
             // Wait for flip time to expire
@@ -1161,11 +1189,14 @@ static int32_t powerOff(uCellPrivateInstance_t *pInstance,
                         bool (*pKeepGoingCallback) (uDeviceHandle_t))
 {
     int32_t errorCode;
-    uAtClientHandle_t atHandle = pInstance->atHandle;
+    uAtClientHandle_t atHandle;
 
     uPortLog("U_CELL_PWR: powering off with AT command.\n");
     // Sleep is no longer available
     pInstance->deepSleepState = U_CELL_PRIVATE_DEEP_SLEEP_STATE_UNAVAILABLE;
+    // Need to disable mux mode
+    uCellMuxPrivateDisable(pInstance);
+    atHandle = pInstance->atHandle;
     if (uAtClientWakeUpHandlerIsSet(atHandle)) {
         // Switch off UART power saving first, as it seems to
         // affect the power off process.
@@ -1794,7 +1825,6 @@ int32_t uCellPwrOffHard(uDeviceHandle_t cellHandle, bool trulyHard,
         pInstance = pUCellPrivateGetInstance(cellHandle);
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if (pInstance != NULL) {
-            atHandle = pInstance->atHandle;
             errorCode = (int32_t) U_CELL_ERROR_NOT_CONFIGURED;
             // If we have control of power and the user
             // wants a truly hard power off then just do it.
@@ -1802,12 +1832,17 @@ int32_t uCellPwrOffHard(uDeviceHandle_t cellHandle, bool trulyHard,
                 uPortLog("U_CELL_PWR: powering off by pulling the power.\n");
                 uPortGpioSet(pInstance->pinEnablePower,
                              (int32_t) !U_CELL_PRIVATE_ENABLE_POWER_PIN_ON_STATE(pInstance->pinStates));
+                // Need to disable mux mode
+                uCellMuxPrivateDisable(pInstance);
                 // Remove any security context as these disappear
                 // at power off
                 uCellPrivateC2cRemoveContext(pInstance);
                 errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
             } else {
                 if (pInstance->pinPwrOn >= 0) {
+                    // Need to disable mux mode
+                    uCellMuxPrivateDisable(pInstance);
+                    atHandle = pInstance->atHandle;
                     if (uAtClientWakeUpHandlerIsSet(atHandle)) {
                         // Switch off UART power saving first, as it seems to
                         // affect the power off process, no error checking,
@@ -1888,7 +1923,6 @@ int32_t uCellPwrReboot(uDeviceHandle_t cellHandle,
         pInstance = pUCellPrivateGetInstance(cellHandle);
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if (pInstance != NULL) {
-            atHandle = pInstance->atHandle;
             uPortLog("U_CELL_PWR: rebooting.\n");
             // Wait for flip time to expire
             while (uPortGetTickTimeMs() - pInstance->lastCfunFlipTimeMs <
@@ -1897,6 +1931,9 @@ int32_t uCellPwrReboot(uDeviceHandle_t cellHandle,
             }
             // Sleep is no longer available
             pInstance->deepSleepState = U_CELL_PRIVATE_DEEP_SLEEP_STATE_UNAVAILABLE;
+            // Need to disable mux mode
+            uCellMuxPrivateDisable(pInstance);
+            atHandle = pInstance->atHandle;
             uAtClientLock(atHandle);
             uAtClientTimeoutSet(atHandle,
                                 U_CELL_PRIVATE_AT_CFUN_OFF_RESPONSE_TIME_SECONDS * 1000);
@@ -2040,6 +2077,8 @@ int32_t uCellPwrResetHard(uDeviceHandle_t cellHandle, int32_t pinReset)
                      (pInstance->pModule->rebootCommandWaitSeconds * 1000));
             // Sleep is no longer available
             pInstance->deepSleepState = U_CELL_PRIVATE_DEEP_SLEEP_STATE_UNAVAILABLE;
+            // Need to disable mux mode
+            uCellMuxPrivateDisable(pInstance);
             // Set the RESET pin to the "reset" state
             platformError = uPortGpioSet(pinReset, pinResetToggleToState);
             if (platformError == 0) {

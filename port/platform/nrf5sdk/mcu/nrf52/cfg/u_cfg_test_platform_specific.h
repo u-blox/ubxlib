@@ -74,7 +74,7 @@
  * -------------------------------------------------------------- */
 
 /** The minimum free heap space permitted, i.e. what's left for
- * user code.  This is assuming a heap size of 40 kbytes (set
+ * user code.  This is assuming a heap size of 51 kbytes (set
  * in the Makefile/FreeRTOSConfig.h file and the SES XML file).
  */
 #define U_CFG_TEST_HEAP_MIN_FREE_BYTES (1024 * 5)

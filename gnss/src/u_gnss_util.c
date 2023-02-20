@@ -95,7 +95,7 @@ int32_t uGnssUtilUbxTransparentSendReceive(uDeviceHandle_t gnssHandle,
     int32_t errorCodeOrResponseLength = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uGnssPrivateInstance_t *pInstance;
     int32_t privateStreamTypeOrError;
-    int32_t streamHandle;
+    uDeviceSerial_t *pDeviceSerial = NULL;
     int32_t startTimeMs;
     int32_t x = 0;
     int32_t bytesRead = 0;
@@ -118,21 +118,19 @@ int32_t uGnssUtilUbxTransparentSendReceive(uDeviceHandle_t gnssHandle,
 
             errorCodeOrResponseLength = (int32_t) U_GNSS_ERROR_TRANSPORT;
             privateStreamTypeOrError = uGnssPrivateGetStreamType(pInstance->transportType);
-            streamHandle = uGnssPrivateGetStreamHandle((uGnssPrivateStreamType_t) privateStreamTypeOrError,
-                                                       pInstance->transportHandle);
 
             U_PORT_MUTEX_LOCK(pInstance->transportMutex);
 
-            if (streamHandle >= 0) {
+            if (privateStreamTypeOrError >= 0) {
                 // Streaming transport
                 switch (privateStreamTypeOrError) {
                     case U_GNSS_PRIVATE_STREAM_TYPE_UART:
-                        errorCodeOrResponseLength = uPortUartWrite(streamHandle,
+                        errorCodeOrResponseLength = uPortUartWrite(pInstance->transportHandle.uart,
                                                                    pCommand,
                                                                    commandLengthBytes);
                         break;
                     case U_GNSS_PRIVATE_STREAM_TYPE_I2C:
-                        errorCodeOrResponseLength = uPortI2cControllerSend(streamHandle,
+                        errorCodeOrResponseLength = uPortI2cControllerSend(pInstance->transportHandle.i2c,
                                                                            pInstance->i2cAddress,
                                                                            pCommand,
                                                                            commandLengthBytes,
@@ -146,7 +144,7 @@ int32_t uGnssUtilUbxTransparentSendReceive(uDeviceHandle_t gnssHandle,
                         // time as we are sending in this case: in this function the
                         // user is interested in the response, so anything arriving before
                         // the command has been sent would confuse matters.
-                        errorCodeOrResponseLength = uPortSpiControllerSendReceiveBlock(streamHandle,
+                        errorCodeOrResponseLength = uPortSpiControllerSendReceiveBlock(pInstance->transportHandle.spi,
                                                                                        pCommand,
                                                                                        commandLengthBytes,
                                                                                        NULL, 0);
@@ -154,9 +152,18 @@ int32_t uGnssUtilUbxTransparentSendReceive(uDeviceHandle_t gnssHandle,
                             errorCodeOrResponseLength = commandLengthBytes;
                         }
                         break;
+                    case U_GNSS_PRIVATE_STREAM_TYPE_VIRTUAL_SERIAL:
+                        pDeviceSerial = (uDeviceSerial_t *) (pInstance->transportHandle.pDeviceSerial);
+                        if (pDeviceSerial != NULL) {
+                            errorCodeOrResponseLength = pDeviceSerial->write(pDeviceSerial,
+                                                                             pCommand,
+                                                                             commandLengthBytes);
+                        }
+                        break;
                     default:
                         break;
                 }
+
                 if (errorCodeOrResponseLength == commandLengthBytes) {
                     if (pInstance->printUbxMessages) {
                         uPortLog("U_GNSS: sent command");
@@ -186,10 +193,11 @@ int32_t uGnssUtilUbxTransparentSendReceive(uDeviceHandle_t gnssHandle,
                                     // Read the response into pResponse
                                     switch (privateStreamTypeOrError) {
                                         case U_GNSS_PRIVATE_STREAM_TYPE_UART:
-                                            x = uPortUartRead(streamHandle, pResponse + bytesRead, x);
+                                            x = uPortUartRead(pInstance->transportHandle.uart,
+                                                              pResponse + bytesRead, x);
                                             break;
                                         case U_GNSS_PRIVATE_STREAM_TYPE_I2C:
-                                            x = uPortI2cControllerSendReceive(streamHandle,
+                                            x = uPortI2cControllerSendReceive(pInstance->transportHandle.i2c,
                                                                               pInstance->i2cAddress,
                                                                               NULL, 0, pResponse + bytesRead, x);
                                             break;
@@ -199,6 +207,14 @@ int32_t uGnssUtilUbxTransparentSendReceive(uDeviceHandle_t gnssHandle,
                                             // out of the SPI ring buffer and into the user's buffer
                                             x = (int32_t) uRingBufferRead(pInstance->pSpiRingBuffer,
                                                                           pResponse + bytesRead, x);
+                                            break;
+                                        case U_GNSS_PRIVATE_STREAM_TYPE_VIRTUAL_SERIAL:
+                                            if (pDeviceSerial != NULL) {
+                                                x = pDeviceSerial->read(pDeviceSerial, pResponse + bytesRead, x);
+                                            } else {
+                                                x = 0;
+                                            }
+                                            break;
                                         default:
                                             break;
                                     }

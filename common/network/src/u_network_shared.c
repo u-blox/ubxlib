@@ -36,6 +36,9 @@
 #include "u_device_shared.h"
 #include "u_network_shared.h"
 
+#include "u_network_config_gnss.h"
+#include "u_network_private_gnss.h"
+
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
@@ -80,12 +83,15 @@ uDeviceHandle_t uNetworkGetDeviceHandle(uDeviceHandle_t devHandle,
                 } else if (netType == U_NETWORK_TYPE_GNSS) {
                     // For a GNSS network on a cellular device
                     // we go find the network data context pointer
-                    // and _that_ is the GNSS "device" handle
+                    // which is a struct that holds the GNSS
+                    // "device" handle
                     for (size_t x = 0; (returnedDevHandle == NULL) &&
                          (x < sizeof(pInstance->networkData) /
                           sizeof(pInstance->networkData[0])); x++) {
-                        if (pInstance->networkData[x].networkType == (int32_t) U_NETWORK_TYPE_GNSS) {
-                            returnedDevHandle = (uDeviceHandle_t) pInstance->networkData[x].pContext;
+                        if ((pInstance->networkData[x].networkType == (int32_t) U_NETWORK_TYPE_GNSS) &&
+                            (pInstance->networkData[x].pContext != NULL)) {
+                            returnedDevHandle = ((uNetworkPrivateGnssContext_t *)
+                                                 pInstance->networkData[x].pContext)->gnssDeviceHandle;
                         }
                     }
                 }

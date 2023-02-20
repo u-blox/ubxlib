@@ -47,6 +47,8 @@
 
 #include "u_error_common.h"
 
+#include "u_at_client.h" // Required by u_gnss_private.h
+
 #include "u_ubx_protocol.h"
 
 #include "u_port_clib_platform_specific.h" // in some cases rand()
@@ -825,7 +827,6 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssPrivateUbx")
             messageId++;
         }
         // Create a message body, filled with safe randomness
-        gpBody = NULL;
         if (bodySize > 0) {
             gpBody = (char *) pUPortMalloc(bodySize);
             U_PORT_TEST_ASSERT(gpBody != NULL);

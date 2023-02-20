@@ -78,4 +78,100 @@ U_WEAK bool uCellLocGnssInsideCell(uDeviceHandle_t cellHandle)
     return false;
 }
 
+U_WEAK int32_t uCellPwrGetDtrPowerSavingPin(uDeviceHandle_t cellHandle)
+{
+    (void) cellHandle;
+    return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+}
+
+U_WEAK int32_t uCellPwrDisableUartSleep(uDeviceHandle_t cellHandle)
+{
+    (void) cellHandle;
+    return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+}
+
+U_WEAK int32_t uCellPwrEnableUartSleep(uDeviceHandle_t cellHandle)
+{
+    (void) cellHandle;
+    return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+}
+
+U_WEAK bool uCellPwrUartSleepIsEnabled(uDeviceHandle_t cellHandle)
+{
+    (void) cellHandle;
+    return false;
+}
+
+U_WEAK int32_t uCellMuxEnable(uDeviceHandle_t cellHandle)
+{
+    (void) cellHandle;
+    return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+}
+
+U_WEAK bool uCellMuxIsEnabled(uDeviceHandle_t cellHandle)
+{
+    (void) cellHandle;
+    return false;
+}
+
+U_WEAK int32_t uCellMuxAddChannel(uDeviceHandle_t cellHandle,
+                                  int32_t channel,
+                                  uDeviceSerial_t **ppDeviceSerial)
+{
+    (void) cellHandle;
+    (void) channel;
+    (void) ppDeviceSerial;
+    return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+}
+
+U_WEAK uDeviceSerial_t *pUCellMuxChannelGetDeviceSerial(uDeviceHandle_t cellHandle,
+                                                        int32_t channel)
+{
+    (void) cellHandle;
+    (void) channel;
+    return NULL;
+}
+
+U_WEAK int32_t uCellMuxRemoveChannel(uDeviceHandle_t cellHandle,
+                                     uDeviceSerial_t *pDeviceSerial)
+{
+    (void) cellHandle;
+    (void) pDeviceSerial;
+    return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+}
+
+U_WEAK int32_t uCellMuxDisable(uDeviceHandle_t cellHandle)
+{
+    (void) cellHandle;
+    return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+}
+
+U_WEAK void uCellMuxFree(uDeviceHandle_t cellHandle)
+{
+    (void) cellHandle;
+}
+
+U_WEAK int32_t uCellCfgSetGnssProfile(uDeviceHandle_t cellHandle,
+                                      int32_t profileBitMap,
+                                      const char *pServerName)
+{
+    (void) cellHandle;
+    (void) profileBitMap;
+    (void) pServerName;
+    return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+}
+
+U_WEAK int32_t uCellCfgGetGnssProfile(uDeviceHandle_t cellHandle,
+                                      char *pServerName,
+                                      size_t sizeBytes)
+{
+    (void) cellHandle;
+    (void) pServerName;
+    (void) sizeBytes;
+    return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+}
+
+// End of file
+
+
 // End of file

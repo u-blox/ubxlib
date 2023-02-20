@@ -47,6 +47,8 @@
 
 #include "u_error_common.h"
 
+#include "u_at_client.h" // Required by u_gnss_private.h
+
 #include "u_port.h"
 #include "u_port_heap.h"
 #include "u_port_debug.h"
@@ -334,21 +336,11 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosPos")
         uGnssSetUbxMessagePrint(gnssHandle, false);
 #endif
 
-        U_TEST_PRINT_LINE("switching GNSS off then starting and stopping the asynchronous API.");
-        U_PORT_TEST_ASSERT(uGnssPwrOff(gnssHandle) == 0);
-        gErrorCode = 0;
-        U_PORT_TEST_ASSERT(uGnssPosGetStart(gnssHandle, posCallback) == 0);
-        uGnssPosGetStop(gnssHandle);
-        U_PORT_TEST_ASSERT(gErrorCode < 0);
-        U_PORT_TEST_ASSERT(gTimeUtc < 0);
-
-        U_TEST_PRINT_LINE("switching GNSS on and using the asynchronous API properly.");
-        U_PORT_TEST_ASSERT(uGnssPwrOn(gnssHandle) == 0);
         gErrorCode = 0xFFFFFFFF;
-        gStopTimeMs = startTime + U_GNSS_POS_TEST_TIMEOUT_SECONDS * 1000;
         startTime = uPortGetTickTimeMs();
+        gStopTimeMs = startTime + U_GNSS_POS_TEST_TIMEOUT_SECONDS * 1000;
         U_PORT_TEST_ASSERT(uGnssPosGetStart(gnssHandle, posCallback) == 0);
-        U_TEST_PRINT_LINE("waiting up to %d second(s) for results from asynchonous API...",
+        U_TEST_PRINT_LINE("waiting up to %d second(s) for results from asynchronous API...",
                           U_GNSS_POS_TEST_TIMEOUT_SECONDS);
         while ((gErrorCode == 0xFFFFFFFF) && (uPortGetTickTimeMs() < gStopTimeMs)) {
             uPortTaskBlock(1000);

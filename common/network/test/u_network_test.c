@@ -836,6 +836,7 @@ U_PORT_TEST_FUNCTION("[network]", "networkLoc")
     // correct initial heap size
     uPortDeinit();
     heapUsed = uPortGetHeapFree();
+    int32_t rob = heapUsed;
 
     U_PORT_TEST_ASSERT(uPortInit() == 0);
     // Don't check these for success as not all platforms support I2C or SPI
@@ -861,59 +862,62 @@ U_PORT_TEST_FUNCTION("[network]", "networkLoc")
         // Bring up each network type
         for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
             devHandle = *pTmp->pDevHandle;
-
-            U_TEST_PRINT_LINE("bringing up %s...",
-                              gpUNetworkTestTypeName[pTmp->networkType]);
-            U_PORT_TEST_ASSERT(uNetworkInterfaceUp(devHandle,
-                                                   pTmp->networkType,
-                                                   pTmp->pNetworkCfg) == 0);
-            if (gpULocationTestCfg[pTmp->networkType]->numEntries > 0) {
-                // Just take the first one, we don't care which as this
-                // is a network test not a location test
-                pLocationCfg = gpULocationTestCfg[pTmp->networkType]->pCfgData[0];
-                startTime = uPortGetTickTimeMs();
-                gStopTimeMs = startTime + U_LOCATION_TEST_CFG_TIMEOUT_SECONDS * 1000;
-                uLocationTestResetLocation(&location);
-                U_TEST_PRINT_LINE("getting location using %s.",
-                                  gpULocationTestTypeStr[pLocationCfg->locationType]);
-                gDevHandle = devHandle;
-                y = uLocationGet(devHandle, pLocationCfg->locationType,
-                                 pLocationCfg->pLocationAssist,
-                                 pLocationCfg->pAuthenticationTokenStr,
-                                 &location, keepGoingCallback);
-                if (y == 0) {
-                    U_TEST_PRINT_LINE("location establishment took %d second(s).",
-                                      (int32_t) (uPortGetTickTimeMs() - startTime) / 1000);
-                }
-                // If we are running on a local cellular network we won't get position but
-                // we should always get time
-                if ((location.radiusMillimetres > 0) &&
-                    (location.radiusMillimetres <= U_LOCATION_TEST_MAX_RADIUS_MILLIMETRES)) {
-                    uLocationTestPrintLocation(&location);
-                    U_PORT_TEST_ASSERT(location.latitudeX1e7 > INT_MIN);
-                    U_PORT_TEST_ASSERT(location.longitudeX1e7 > INT_MIN);
-                    // Don't check altitude as we might only have a 2D fix
-                    U_PORT_TEST_ASSERT(location.radiusMillimetres > INT_MIN);
-                    if (pLocationCfg->locationType == U_LOCATION_TYPE_GNSS) {
-                        // Only get these for GNSS
-                        U_PORT_TEST_ASSERT(location.speedMillimetresPerSecond > INT_MIN);
-                        U_PORT_TEST_ASSERT(location.svs > 0);
+            if (pTmp->pDeviceCfg->deviceType == U_DEVICE_TYPE_CELL) {
+                U_TEST_PRINT_LINE("bringing up %s on %s...",
+                                  gpUNetworkTestTypeName[pTmp->networkType],
+                                  gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType]);
+                U_PORT_TEST_ASSERT(uNetworkInterfaceUp(devHandle,
+                                                       pTmp->networkType,
+                                                       pTmp->pNetworkCfg) == 0);
+                if (gpULocationTestCfg[pTmp->networkType]->numEntries > 0) {
+                    // Just take the first one, we don't care which as this
+                    // is a network test not a location test
+                    pLocationCfg = gpULocationTestCfg[pTmp->networkType]->pCfgData[0];
+                    startTime = uPortGetTickTimeMs();
+                    gStopTimeMs = startTime + U_LOCATION_TEST_CFG_TIMEOUT_SECONDS * 1000;
+                    uLocationTestResetLocation(&location);
+                    U_TEST_PRINT_LINE("getting location using %s.",
+                                      gpULocationTestTypeStr[pLocationCfg->locationType]);
+                    gDevHandle = devHandle;
+                    y = uLocationGet(devHandle, pLocationCfg->locationType,
+                                     pLocationCfg->pLocationAssist,
+                                     pLocationCfg->pAuthenticationTokenStr,
+                                     &location, keepGoingCallback);
+                    if (y == 0) {
+                        U_TEST_PRINT_LINE("location establishment took %d second(s).",
+                                          (int32_t) (uPortGetTickTimeMs() - startTime) / 1000);
                     }
+                    // If we are running on a local cellular network we won't get position but
+                    // we should always get time
+                    if ((location.radiusMillimetres > 0) &&
+                        (location.radiusMillimetres <= U_LOCATION_TEST_MAX_RADIUS_MILLIMETRES)) {
+                        uLocationTestPrintLocation(&location);
+                        U_PORT_TEST_ASSERT(location.latitudeX1e7 > INT_MIN);
+                        U_PORT_TEST_ASSERT(location.longitudeX1e7 > INT_MIN);
+                        // Don't check altitude as we might only have a 2D fix
+                        U_PORT_TEST_ASSERT(location.radiusMillimetres > INT_MIN);
+                        if (pLocationCfg->locationType == U_LOCATION_TYPE_GNSS) {
+                            // Only get these for GNSS
+                            U_PORT_TEST_ASSERT(location.speedMillimetresPerSecond > INT_MIN);
+                            U_PORT_TEST_ASSERT(location.svs > 0);
+                        }
+                    } else {
+                        U_TEST_PRINT_LINE("only able to get time (%d).", (int32_t) location.timeUtc);
+                    }
+                    U_PORT_TEST_ASSERT(location.timeUtc > U_LOCATION_TEST_MIN_UTC_TIME);
                 } else {
-                    U_TEST_PRINT_LINE("only able to get time (%d).", (int32_t) location.timeUtc);
+                    U_TEST_PRINT_LINE("not testing %s for location as we have"
+                                      " no location configuration information for it.",
+                                      gpUNetworkTestTypeName[pTmp->networkType]);
                 }
-                U_PORT_TEST_ASSERT(location.timeUtc > U_LOCATION_TEST_MIN_UTC_TIME);
-            } else {
-                U_TEST_PRINT_LINE("not testing %s for location as we have"
-                                  " no location configuration information for it.",
-                                  gpUNetworkTestTypeName[pTmp->networkType]);
             }
         }
 
         // Remove each network type
         for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
-            U_TEST_PRINT_LINE("taking down %s...",
-                              gpUNetworkTestTypeName[pTmp->networkType]);
+            U_TEST_PRINT_LINE("taking down %s on %s...",
+                              gpUNetworkTestTypeName[pTmp->networkType],
+                              gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType]);
             U_PORT_TEST_ASSERT(uNetworkInterfaceDown(*pTmp->pDevHandle,
                                                      pTmp->networkType) == 0);
         }
@@ -933,6 +937,8 @@ U_PORT_TEST_FUNCTION("[network]", "networkLoc")
     uPortSpiDeinit();
     uPortI2cDeinit();
     uPortDeinit();
+
+    uPortLog("### heap free after deinit 9 %d (%d).\n", uPortGetHeapFree(), uPortGetHeapFree() - rob);
 
 #ifndef __XTENSA__
     // Check for memory leaks

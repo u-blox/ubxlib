@@ -51,6 +51,8 @@
 #include "u_port_os.h"   // Required by u_gnss_private.h
 #include "u_port_uart.h"
 
+#include "u_at_client.h" // Required by u_gnss_private.h
+
 #include "u_cell_module_type.h"
 
 #include "u_ubx_protocol.h"
@@ -152,6 +154,9 @@ U_PORT_TEST_FUNCTION("[gnssPwr]", "gnssPwrBasic")
             //lint -fallthrough
             case U_GNSS_TRANSPORT_UBX_I2C:
                 U_TEST_PRINT_LINE("not testing uGnssPwrOffBackup() 'cos we're on I2C...");
+                break;
+            case U_GNSS_TRANSPORT_VIRTUAL_SERIAL:
+                U_TEST_PRINT_LINE("not testing uGnssPwrOffBackup() 'cos we're on Virtual Serial...");
                 break;
             case U_GNSS_TRANSPORT_AT:
                 U_PORT_TEST_ASSERT(uGnssPwrOffBackup(gnssHandle) == U_ERROR_COMMON_NOT_SUPPORTED);

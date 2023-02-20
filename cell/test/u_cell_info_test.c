@@ -229,20 +229,30 @@ U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoImeiEtc")
 #ifdef U_CFG_APP_PIN_CELL_RTS_GET
     U_TEST_PRINT_LINE("checking RTS...");
     isEnabled = uCellInfoIsRtsFlowControlEnabled(cellHandle);
-# if U_CFG_APP_PIN_CELL_RTS_GET >= 0
+# ifdef U_CELL_TEST_MUX_ALWAYS
+    // Flow control is always enabled for CMUX
     U_PORT_TEST_ASSERT(isEnabled);
 # else
+#  if U_CFG_APP_PIN_CELL_RTS_GET >= 0
+    U_PORT_TEST_ASSERT(isEnabled);
+#  else
     U_PORT_TEST_ASSERT(!isEnabled);
+#  endif
 # endif
 #endif
 
 #ifdef U_CFG_APP_PIN_CELL_CTS_GET
     U_TEST_PRINT_LINE("checking CTS...");
     isEnabled = uCellInfoIsCtsFlowControlEnabled(cellHandle);
-# if U_CFG_APP_PIN_CELL_CTS_GET >= 0
+# ifdef U_CELL_TEST_MUX_ALWAYS
+    // Flow control is always enabled for CMUX
     U_PORT_TEST_ASSERT(isEnabled);
 # else
+#  if U_CFG_APP_PIN_CELL_CTS_GET >= 0
+    U_PORT_TEST_ASSERT(isEnabled);
+#  else
     U_PORT_TEST_ASSERT(!isEnabled);
+#  endif
 # endif
 #endif
 

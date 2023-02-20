@@ -28,6 +28,7 @@
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
 
+#include "stdio.h"     // snprintf()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
@@ -46,6 +47,8 @@
 
 #include "u_at_client.h"
 
+#include "u_sock.h"
+
 #include "u_security.h"
 
 #include "u_cell_module_type.h"
@@ -53,7 +56,9 @@
 #include "u_cell.h"         // Order is
 #include "u_cell_net.h"     // important here
 #include "u_cell_private.h" // don't change it
+#include "u_cell_pwr.h"
 #include "u_cell_sec_c2c.h"
+#include "u_cell_cfg.h"
 #include "u_cell_http.h"
 #include "u_cell_http_private.h"
 #include "u_cell_pwr_private.h"
@@ -61,6 +66,13 @@
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
+
+#ifndef U_CELL_PRIVATE_DTR_PIN_HYSTERESIS_INTERVAL_MS
+/** When performing hysteresis of the DTR pin, the interval to use for each
+ * wait step; value in milliseconds.
+ */
+# define U_CELL_PRIVATE_DTR_PIN_HYSTERESIS_INTERVAL_MS U_AT_CLIENT_ACTIVITY_PIN_HYSTERESIS_INTERVAL_MS
+#endif
 
 /* ----------------------------------------------------------------
  * TYPES
@@ -100,7 +112,9 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CTS_CONTROL)                 |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SOCK_SET_LOCAL_PORT)         |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UART_POWER_SAVING) /* features */
-        )
+         // CMUX is supported here but we do not test it hence it is not marked as supported
+        ),
+        6 /* Default CMUX channel for GNSS */
     },
     {
         U_CELL_MODULE_TYPE_SARA_R410M_02B, 300 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
@@ -122,8 +136,10 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING)       |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_EDRX)                    |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_FOTA)                    |
-         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UART_POWER_SAVING) /* features */
-        )
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UART_POWER_SAVING)       |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CMUX)  /* features */
+        ),
+        3 /* Default CMUX channel for GNSS */
     },
     {
         U_CELL_MODULE_TYPE_SARA_R412M_02B, 300 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
@@ -150,8 +166,10 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING)                   |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_EDRX)                                |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_FOTA)                                |
-         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UART_POWER_SAVING) /* features */
-        )
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UART_POWER_SAVING)                   |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CMUX)  /* features */
+        ),
+        3 /* Default CMUX channel for GNSS */
     },
     {
         U_CELL_MODULE_TYPE_SARA_R412M_03B, 300 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
@@ -169,8 +187,10 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_DEEP_SLEEP_URC)                      |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING)                   |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_EDRX)                                |
-         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UART_POWER_SAVING) /* features */
-        )
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UART_POWER_SAVING)                   |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CMUX) /* features */
+        ),
+        3 /* Default CMUX channel for GNSS */
     },
     {
         U_CELL_MODULE_TYPE_SARA_R5, 1500 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
@@ -210,8 +230,10 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CTS_CONTROL)                         |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SOCK_SET_LOCAL_PORT)                 |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_FOTA)                                |
-         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UART_POWER_SAVING) /* features */
-        )
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UART_POWER_SAVING)                   |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CMUX)  /* features */
+        ),
+        4 /* Default CMUX channel for GNSS */
     },
     {
         U_CELL_MODULE_TYPE_SARA_R410M_03B, 300 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
@@ -231,8 +253,10 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_DEEP_SLEEP_URC)                      |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING)                   |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_EDRX)                                |
-         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UART_POWER_SAVING) /* features */
-        )
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UART_POWER_SAVING)                   |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CMUX)   /* features */
+        ),
+        3 /* Default CMUX channel for GNSS */
     },
     {
         U_CELL_MODULE_TYPE_SARA_R422, 300 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
@@ -265,8 +289,10 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_EDRX)                                  |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTTSN)                                |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_FOTA)                                  |
-         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UART_POWER_SAVING) /* features */
-        )
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UART_POWER_SAVING)                     |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CMUX)  /* features */
+        ),
+        3 /* Default CMUX channel for GNSS */
     },
     {
         U_CELL_MODULE_TYPE_LARA_R6, 300 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
@@ -290,8 +316,10 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_DTR_POWER_SAVING)                    |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTTSN)                              |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SOCK_SET_LOCAL_PORT)                 |
-         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_FOTA) /* features */
-        )
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_FOTA)                                |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CMUX) /* features */
+        ),
+        3 /* Default CMUX channel for GNSS */
     }
 };
 
@@ -1257,6 +1285,139 @@ void uCellPrivateHttpRemoveContext(uCellPrivateInstance_t *pInstance)
         uPortFree(pHttpContext);
         pInstance->pHttpContext = NULL;
     }
+}
+
+// Set the DTR pin for power saving.
+void uCellPrivateSetPinDtr(uCellPrivateInstance_t *pInstance, bool doNotPowerSave)
+{
+    int32_t targetState = U_CELL_PRIVATE_DTR_POWER_SAVING_PIN_ON_STATE(pInstance->pinStates);
+
+    if (pInstance->pinDtrPowerSaving >= 0) {
+        if (!doNotPowerSave) {
+            targetState = !targetState;
+        }
+        while (uPortGetTickTimeMs() - pInstance->lastDtrPinToggleTimeMs <
+               U_CELL_PWR_UART_POWER_SAVING_DTR_HYSTERESIS_MS) {
+            uPortTaskBlock(U_CELL_PRIVATE_DTR_PIN_HYSTERESIS_INTERVAL_MS);
+        }
+        if (uPortGpioSet(pInstance->pinDtrPowerSaving, targetState) == 0) {
+            pInstance->lastDtrPinToggleTimeMs = uPortGetTickTimeMs();
+            uPortTaskBlock(U_CELL_PWR_UART_POWER_SAVING_DTR_READY_MS);
+        }
+    }
+}
+
+// Get the active serial interface configuration
+int32_t uCellPrivateGetActiveSerialInterface(const uCellPrivateInstance_t *pInstance)
+{
+    int32_t errorCodeOrActiveVariant = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    uAtClientHandle_t atHandle;
+    int32_t activeVariant;
+
+    if (pInstance != NULL) {
+        atHandle = pInstance->atHandle;
+        uAtClientLock(atHandle);
+        uAtClientCommandStart(atHandle, "AT+USIO?");
+        uAtClientCommandStop(atHandle);
+        uAtClientResponseStart(atHandle, "+USIO:");
+        uAtClientSkipParameters(atHandle, 1);
+        // Skip one byte of '*' coming in the second param. e.g +USIO: 5,*5
+        uAtClientSkipBytes(atHandle, 1);
+        activeVariant = uAtClientReadInt(atHandle);
+        uAtClientResponseStop(atHandle);
+        errorCodeOrActiveVariant = uAtClientUnlock(atHandle);
+        if ((errorCodeOrActiveVariant == 0) && (activeVariant >= 0)) {
+            errorCodeOrActiveVariant = activeVariant;
+        }
+    }
+
+    return errorCodeOrActiveVariant;
+}
+
+// Set "AT+UGPRF".
+int32_t uCellPrivateSetGnssProfile(const uCellPrivateInstance_t *pInstance,
+                                   int32_t profileBitMap,
+                                   const char *pServerName)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    uAtClientHandle_t atHandle;
+    char *pServerNameTmp = NULL;
+    char *pTmp = NULL;
+    int32_t port = 0;
+
+    if ((pInstance != NULL) &&
+        (((profileBitMap & U_CELL_CFG_GNSS_PROFILE_IP) == 0) || (pServerName != NULL))) {
+        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+        if (((profileBitMap & U_CELL_CFG_GNSS_PROFILE_IP) > 0) && (pServerName != NULL)) {
+            errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
+            // Grab some temporary memory to manipulate the server name
+            // +1 for terminator
+            pServerNameTmp = (char *) pUPortMalloc(U_CELL_CFG_GNSS_SERVER_NAME_MAX_LEN_BYTES);
+            if (pServerNameTmp != NULL) {
+                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                strncpy(pServerNameTmp, pServerName, U_CELL_CFG_GNSS_SERVER_NAME_MAX_LEN_BYTES);
+                // Ensure terminator
+                *(pServerNameTmp + U_CELL_CFG_GNSS_SERVER_NAME_MAX_LEN_BYTES - 1) = 0;
+                // Grab any port number off the end
+                // and then remove it from the string
+                port = uSockDomainGetPort(pServerNameTmp);
+                pTmp = pUSockDomainRemovePort(pServerNameTmp);
+            }
+        }
+        if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
+            atHandle = pInstance->atHandle;
+            uAtClientLock(atHandle);
+            uAtClientCommandStart(atHandle, "AT+UGPRF=");
+            uAtClientWriteInt(atHandle, profileBitMap);
+            if (pTmp != NULL) {
+                uAtClientWriteInt(atHandle, port);
+                uAtClientWriteString(atHandle, pTmp, true);
+            }
+            uAtClientCommandStopReadResponse(atHandle);
+            errorCode = uAtClientUnlock(atHandle);
+        }
+
+        // Free memory
+        uPortFree(pServerNameTmp);
+    }
+
+    return errorCode;
+}
+
+// Get "AT+UGPRF".
+int32_t uCellPrivateGetGnssProfile(const uCellPrivateInstance_t *pInstance,
+                                   char *pServerName, size_t sizeBytes)
+{
+    int32_t errorCodeOrBitMap = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    uAtClientHandle_t atHandle;
+    int32_t bitMap;
+    int32_t port = 0;
+    int32_t bytesRead = 0;
+    int32_t x;
+
+    if (pInstance != NULL) {
+        atHandle = pInstance->atHandle;
+        uAtClientLock(atHandle);
+        uAtClientCommandStart(atHandle, "AT+UGPRF?");
+        uAtClientCommandStop(atHandle);
+        uAtClientResponseStart(atHandle, "+UGPRF:");
+        bitMap = uAtClientReadInt(atHandle);
+        if ((bitMap >= 0) && ((bitMap & U_CELL_CFG_GNSS_PROFILE_IP) > 0)) {
+            port = uAtClientReadInt(atHandle);
+            bytesRead = uAtClientReadString(atHandle, pServerName, sizeBytes, false);
+        }
+        uAtClientResponseStop(atHandle);
+        errorCodeOrBitMap = uAtClientUnlock(atHandle);
+        if (errorCodeOrBitMap == 0) {
+            errorCodeOrBitMap = bitMap;
+            if ((bytesRead > 0) && (pServerName != NULL)) {
+                x = strlen(pServerName);
+                snprintf(pServerName + x, sizeBytes - x, ":%d", (int) port);
+            }
+        }
+    }
+
+    return errorCodeOrBitMap;
 }
 
 // End of file

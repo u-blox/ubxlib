@@ -221,7 +221,8 @@ typedef enum {
     U_CELL_PRIVATE_FEATURE_CTS_CONTROL,
     U_CELL_PRIVATE_FEATURE_SOCK_SET_LOCAL_PORT,
     U_CELL_PRIVATE_FEATURE_FOTA,
-    U_CELL_PRIVATE_FEATURE_UART_POWER_SAVING
+    U_CELL_PRIVATE_FEATURE_UART_POWER_SAVING,
+    U_CELL_PRIVATE_FEATURE_CMUX
 } uCellPrivateFeature_t;
 
 /** The characteristics that may differ between cellular modules.
@@ -275,6 +276,7 @@ typedef struct {
                                        module. */
     uint64_t featuresBitmap; /**< a bit-map of the uCellPrivateFeature_t
                                   characteristics of this module. */
+    int32_t defaultMuxChannelGnss; /**< the default mux channel to use for attached/embedded GNSS. */
 } uCellPrivateModule_t;
 
 /** The radio parameters.
@@ -396,6 +398,7 @@ typedef struct uCellPrivateInstance_t {
     int64_t lastCfunFlipTimeMs; /**< The last time a flip of state from
                                      "off" (AT+CFUN=0/4) to "on" (AT+CFUN=1)
                                      or back was performed. */
+    int32_t lastDtrPinToggleTimeMs; /**< The last time DTR was toggled for power-saving. */
     uCellNetStatus_t
     networkStatus[U_CELL_NET_REG_DOMAIN_MAX_NUM]; /**< Registation status in each domain. */
     uCellNetRat_t rat[U_CELL_NET_REG_DOMAIN_MAX_NUM];  /**< The active RAT for each domain. */
@@ -430,6 +433,8 @@ typedef struct uCellPrivateInstance_t {
     void *pFotaContext; /**< FOTA context, lodged here as a void * to
                              avoid spreading its types all over. */
     void *pHttpContext;  /**< Hook for a HTTP context. */
+    void *pMuxContext; /**< CMUX context, lodged here as a void * to
+                            avoid spreading its types all over. */
     struct uCellPrivateInstance_t *pNext;
 } uCellPrivateInstance_t;
 
@@ -812,6 +817,56 @@ void uCellPrivateFileListLast(uCellPrivateFileListContainer_t **ppFileListContai
  * @param pInstance   a pointer to the cellular instance.
  */
 void uCellPrivateHttpRemoveContext(uCellPrivateInstance_t *pInstance);
+
+/** Set the DTR pin in order to prevent power saving, or reset it to
+ * allow power saving.
+ *
+ * Note:  gUCellPrivateMutex should be locked before this is called.
+ *
+ * @param pInstance      a pointer to the cellular instance.
+ * @param doNotPowerSave true to set the DTR pin such as to prevent
+ *                       power saving, else false to permit power saving.
+ */
+void uCellPrivateSetPinDtr(uCellPrivateInstance_t *pInstance, bool doNotPowerSave);
+
+/** Get the cellular module's active serial interface configuration.
+ *
+ * Note:  gUCellPrivateMutex should be locked before this is called.
+ *
+ * @param pInstance   a pointer to the cellular instance.
+ * @return            active variant of serial interface or negative code
+ *                    on failure.
+ */
+int32_t uCellPrivateGetActiveSerialInterface(const uCellPrivateInstance_t *pInstance);
+
+/** Set the GNSS profile (AT+UGPRF), essentially the interface(s) that a
+ * GNSS chip inside or connected via the cellular module will use.  Must
+ * be sent before the GNSS module is switched on.
+ *
+ * @param pInstance      a pointer to the cellular instance.
+ * @param profileBitMap  a bit-map of values chosen from #uCellCfgGnssProfile_t.
+ * @param pServerName    the null-terminated string that is the destination
+ *                       server, including port number; only used if
+ *                       profileBitMap includes #U_CELL_CFG_GNSS_PROFILE_IP.
+ * @return               zero on success or negative error code on failure.
+ */
+int32_t uCellPrivateSetGnssProfile(const uCellPrivateInstance_t *pInstance,
+                                   int32_t profileBitMap,
+                                   const char *pServerName);
+
+/** Get the GNSS profile (AT+UGPRF) being used by the cellular module.
+ *
+ * @param pInstance      a pointer to the cellular instance.
+ * @param pServerName    a place to put the server name, will only be populated
+ *                       if the GNSS profile includes #U_CELL_CFG_GNSS_PROFILE_IP;
+ *                       may be NULL.
+ * @param sizeBytes      the amount of storage at pServerName; should be at least
+ *                       #U_CELL_CFG_GNSS_SERVER_NAME_MAX_LEN_BYTES.
+ * @return               a bit-map of the GNSS profiles employed, else negative
+ *                       error code.
+ */
+int32_t uCellPrivateGetGnssProfile(const uCellPrivateInstance_t *pInstance,
+                                   char *pServerName, size_t sizeBytes);
 
 #ifdef __cplusplus
 }

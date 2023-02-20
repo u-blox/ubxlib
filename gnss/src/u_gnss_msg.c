@@ -352,7 +352,6 @@ int32_t uGnssMsgSend(uDeviceHandle_t gnssHandle, const char *pBuffer, size_t siz
     int32_t errorCodeOrLength = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uGnssPrivateInstance_t *pInstance;
     int32_t privateStreamType;
-    int32_t streamHandle = -1;
 
     if (gUGnssPrivateMutex != NULL) {
 
@@ -364,21 +363,19 @@ int32_t uGnssMsgSend(uDeviceHandle_t gnssHandle, const char *pBuffer, size_t siz
 
             errorCodeOrLength = (int32_t) U_GNSS_ERROR_TRANSPORT;
             privateStreamType = uGnssPrivateGetStreamType(pInstance->transportType);
-            streamHandle = uGnssPrivateGetStreamHandle(privateStreamType,
-                                                       pInstance->transportHandle);
 
             U_PORT_MUTEX_LOCK(pInstance->transportMutex);
 
-            if (streamHandle >= 0) {
+            if (privateStreamType >= 0) {
                 // Streaming transport
                 switch (privateStreamType) {
                     case U_GNSS_PRIVATE_STREAM_TYPE_UART: {
-                        errorCodeOrLength = uPortUartWrite(streamHandle,
+                        errorCodeOrLength = uPortUartWrite(pInstance->transportHandle.uart,
                                                            pBuffer, size);
                     }
                     break;
                     case U_GNSS_PRIVATE_STREAM_TYPE_I2C: {
-                        errorCodeOrLength = uPortI2cControllerSend(streamHandle,
+                        errorCodeOrLength = uPortI2cControllerSend(pInstance->transportHandle.i2c,
                                                                    pInstance->i2cAddress,
                                                                    pBuffer, size, false);
                         if (errorCodeOrLength == 0) {
@@ -401,7 +398,7 @@ int32_t uGnssMsgSend(uDeviceHandle_t gnssHandle, const char *pBuffer, size_t siz
                             if (thisSize > U_GNSS_SPI_FILL_THRESHOLD_MAX) {
                                 thisSize = U_GNSS_SPI_FILL_THRESHOLD_MAX;
                             }
-                            errorCodeOrLength = uPortSpiControllerSendReceiveBlock(streamHandle,
+                            errorCodeOrLength = uPortSpiControllerSendReceiveBlock(pInstance->transportHandle.spi,
                                                                                    pBuffer + offset,
                                                                                    thisSize,
                                                                                    spiBuffer,
@@ -415,6 +412,13 @@ int32_t uGnssMsgSend(uDeviceHandle_t gnssHandle, const char *pBuffer, size_t siz
                         }
                         if (errorCodeOrLength >= 0) {
                             errorCodeOrLength = offset;
+                        }
+                    }
+                    break;
+                    case U_GNSS_PRIVATE_STREAM_TYPE_VIRTUAL_SERIAL: {
+                        uDeviceSerial_t *pDeviceSerial = pInstance->transportHandle.pDeviceSerial;
+                        if (pDeviceSerial != NULL) {
+                            errorCodeOrLength = pDeviceSerial->write(pDeviceSerial, pBuffer, size);
                         }
                     }
                     break;

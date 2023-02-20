@@ -60,7 +60,10 @@
 #include "u_cell_net.h"
 #include "u_cell_loc.h"
 #if U_CFG_APP_PIN_CELL_PWR_ON < 0
-#include "u_cell_pwr.h"
+# include "u_cell_pwr.h"
+#endif
+#ifdef U_CELL_TEST_MUX_ALWAYS
+# include "u_cell_mux.h"
 #endif
 
 #include "u_cell_test_cfg.h"
@@ -548,8 +551,11 @@ U_PORT_TEST_FUNCTION("[cellLoc]", "cellLocLoc")
 #if U_CFG_APP_PIN_CELL_PWR_ON < 0
     // The standard postamble would normally power the module off
     // but if there is no power-on pin it won't (for obvious reasons)
-    // so instead rebooot here to ensure a clean start
+    // so instead reboot here to ensure a clean start
     uCellPwrReboot(cellHandle, NULL);
+# ifdef U_CELL_TEST_MUX_ALWAYS
+    uCellMuxEnable(cellHandle);
+# endif
 #endif
 
     // Do the standard postamble

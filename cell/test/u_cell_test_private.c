@@ -53,6 +53,9 @@
 #include "u_cell_pwr.h"
 #include "u_cell_cfg.h"
 #include "u_cell_info.h"
+#ifdef U_CELL_TEST_MUX_ALWAYS
+# include "u_cell_mux.h"
+#endif
 
 #include "u_cell_test_cfg.h"
 #include "u_cell_test_private.h"
@@ -421,6 +424,10 @@ int32_t uCellTestPrivatePreamble(uCellModuleType_t moduleType,
                     }
 
                     if (errorCode == 0) {
+#ifdef U_CELL_TEST_MUX_ALWAYS
+                        U_TEST_PRINT_LINE("enabling CMUX for all tests.");
+                        errorCode = uCellMuxEnable(cellHandle);
+#endif
                         U_TEST_PRINT_LINE("test preamble end.");
                     }
                 }

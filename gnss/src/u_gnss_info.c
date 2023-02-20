@@ -45,6 +45,8 @@
 
 #include "u_time.h"
 
+#include "u_at_client.h"
+
 #include "u_ubx_protocol.h"
 
 #include "u_gnss_module_type.h"
