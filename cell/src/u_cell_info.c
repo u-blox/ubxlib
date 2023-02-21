@@ -256,41 +256,81 @@ static int32_t getRadioParamsUcged2SaraR422(uAtClientHandle_t atHandle,
     int32_t x;
     int32_t y;
 
-    // +UCGED: 2
-    // <rat>,<MCC>,<MNC>
-    // <EARFCN>,<Lband>,<ul_BW>,<dl_BW>,<TAC>,<P-CID>,<RSRP_value>,<RSRQ_value>,<NBMsinr>,<esm_cause>,<emm_state>,<tx_pwr>,<drx_cycle_len>,<tmsi>
-    // e.g.
-    // 6,310,410
-    // 5110,12,10,10,830e,162,-86,-14,131,-1,3,255,128,"FB306E02"
     uAtClientLock(atHandle);
     uAtClientCommandStart(atHandle, "AT+UCGED?");
     uAtClientCommandStop(atHandle);
     // The line with just "+UCGED: 2" on it
     uAtClientResponseStart(atHandle, "+UCGED:");
     uAtClientSkipParameters(atHandle, 1);
-    // Don't want anything from the next line
+
+    // UCGED has two flavours for SARA-R422, one for GSM and the other for Cat-M1/NB1
+    // Read the next line to get the RAT, which is always the first parameter
     uAtClientResponseStart(atHandle, NULL);
-    uAtClientSkipParameters(atHandle, 3);
-    // Now the line of interest
-    uAtClientResponseStart(atHandle, NULL);
-    // EARFCN is the first integer
-    pRadioParameters->earfcn = uAtClientReadInt(atHandle);
-    // Skip <Lband>, <ul_BW>, <dl_BW> and <TAC>
-    uAtClientSkipParameters(atHandle, 4);
-    // Read <P-CID>
-    pRadioParameters->cellId = uAtClientReadInt(atHandle);
-    // RSRP is element 7, as a plain-old dBm value
     x = uAtClientReadInt(atHandle);
-    // RSRQ is element 8, as a plain-old dB value.
-    y = uAtClientReadInt(atHandle);
-    if (uAtClientErrorGet(atHandle) == 0) {
-        // Note that these last two are usually negative
-        // integers, hence we check for errors here so as
-        // not to mix up what might be a negative error
-        // code with a negative return value.
-        pRadioParameters->rsrpDbm = x;
-        pRadioParameters->rsrqDb = y;
+    if (x == 2) {
+        // GSM:
+        // 2,<svc>,<MCC>,<MNC>
+        // <ARFCN>,<band1900>,<GcellId>,<BSIC>,<Glac>,<Grac>,<rxlev>,<grr>,<t_adv>,<Gspeech_mode>
+        // e.g.
+        // 2,4,001,01
+        // 810,1,0000,01,0000,80,63,255,255,255
+
+        // Don't want anything from the rest of the first line
+        uAtClientSkipParameters(atHandle, 3);
+        // Now the line of interest
+        uAtClientResponseStart(atHandle, NULL);
+        // ARFCN is the first integer
+        pRadioParameters->earfcn = uAtClientReadInt(atHandle);
+        // Skip <band1900>
+        uAtClientSkipParameters(atHandle, 1);
+        // Read <GcellId>
+        pRadioParameters->cellId = uAtClientReadInt(atHandle);
+        // RSSI is in the rxlev parameter element 7
+        // If we don't already have it (from doing AT+CSQ),
+        // get it from here
+        if (pRadioParameters->rssiDbm == 0) {
+            // Skip <BSIC>, <Glac>, <Grac>
+            uAtClientSkipParameters(atHandle, 3);
+            x = uAtClientReadInt(atHandle);
+            if ((x >= 0) && (x <= 63)) {
+                pRadioParameters->rssiDbm =  -(110 - x);
+            }
+            if (pRadioParameters->rssiDbm > -48) {
+                pRadioParameters->rssiDbm = -48;
+            }
+        }
+    } else {
+        // Cat-M1/NB1:
+        // <rat>,<MCC>,<MNC>
+        // <EARFCN>,<Lband>,<ul_BW>,<dl_BW>,<TAC>,<P-CID>,<RSRP_value>,<RSRQ_value>,<NBMsinr>,<esm_cause>,<emm_state>,<tx_pwr>,<drx_cycle_len>,<tmsi>
+        // e.g.
+        // 6,310,410
+        // 5110,12,10,10,830e,162,-86,-14,131,-1,3,255,128,"FB306E02"
+
+        // Don't want anything from the rest of the first line
+        uAtClientSkipParameters(atHandle, 2);
+        // Now the line of interest
+        uAtClientResponseStart(atHandle, NULL);
+        // EARFCN is the first integer
+        pRadioParameters->earfcn = uAtClientReadInt(atHandle);
+        // Skip <Lband>, <ul_BW>, <dl_BW> and <TAC>
+        uAtClientSkipParameters(atHandle, 4);
+        // Read <P-CID>
+        pRadioParameters->cellId = uAtClientReadInt(atHandle);
+        // RSRP is element 7, as a plain-old dBm value
+        x = uAtClientReadInt(atHandle);
+        // RSRQ is element 8, as a plain-old dB value.
+        y = uAtClientReadInt(atHandle);
+        if (uAtClientErrorGet(atHandle) == 0) {
+            // Note that these last two are usually negative
+            // integers, hence we check for errors here so as
+            // not to mix up what might be a negative error
+            // code with a negative return value.
+            pRadioParameters->rsrpDbm = x;
+            pRadioParameters->rsrqDb = y;
+        }
     }
+
     uAtClientResponseStop(atHandle);
 
     return uAtClientUnlock(atHandle);
