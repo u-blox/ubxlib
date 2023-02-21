@@ -225,7 +225,8 @@ int32_t uBleGapScan(uDeviceHandle_t devHandle,
             // Get the responses synchronously
             uBleScanResult_t result;
             bool ok = true;
-            while (ok && uAtClientResponseStart(atHandle, "+UBTD:") == 0) {
+            bool keepGoing = true;
+            while (keepGoing && uAtClientResponseStart(atHandle, "+UBTD:") == 0) {
                 errorCode = (int32_t)U_ERROR_COMMON_SUCCESS;
                 ok = uAtClientReadString(atHandle,
                                          result.address,
@@ -247,10 +248,8 @@ int32_t uBleGapScan(uDeviceHandle_t devHandle,
                         ok = true;
                     }
                 }
-                if (ok) {
-                    ok = cb(&result);
-                } else {
-                    errorCode = U_BLE_ERROR_TEMPORARY_FAILURE;
+                if (ok && cb) {
+                    keepGoing = cb(&result);
                 }
             }
             uAtClientResponseStop(atHandle);
