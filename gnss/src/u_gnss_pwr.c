@@ -293,12 +293,6 @@ int32_t uGnssPwrOn(uDeviceHandle_t gnssHandle)
                 }
             }
 
-            if ((errorCode == 0) &&
-                ((pInstance->transportType == U_GNSS_TRANSPORT_UBX_UART) ||
-                 (pInstance->transportType == U_GNSS_TRANSPORT_UBX_I2C))) {
-                errorCode = uGnssPrivateSetProtocolOut(pInstance, U_GNSS_PROTOCOL_NMEA, false);
-            }
-
             if ((errorCode < 0) && (pInstance->pinGnssEnablePower >= 0)) {
                 // If we were unable to send all the relevant commands and
                 // there is a power enable then switch it off again so that

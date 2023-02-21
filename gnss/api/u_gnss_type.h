@@ -174,33 +174,6 @@ typedef enum {
                                           uCellMuxAddChannel() if you are talking to
                                           a GNSS device either inside or connected
                                           via a cellular module. */
-    U_GNSS_TRANSPORT_UBX_UART,  /**< \deprecated the transport handle should be a UART handle
-                                     over which UBX commands will be transferred;
-                                     NMEA will be switched off; THIS IS DEPRECATED,
-                                     PLEASE USE #U_GNSS_TRANSPORT_UART instead
-                                     and use uGnssCfgSetProtocolOut() to switch
-                                     off NMEA message output if required. */
-    U_GNSS_TRANSPORT_UBX_I2C,   /**< \deprecated the transport handle should be an I2C handle
-                                     over which UBX commands will be transferred;
-                                     NMEA will be switched off; THIS IS DEPRECATED,
-                                     PLEASE USE #U_GNSS_TRANSPORT_I2C instead and
-                                     use uGnssCfgSetProtocolOut() to switch off NMEA
-                                     message output if required. */
-    U_GNSS_TRANSPORT_MAX_NUM_WITH_UBX,
-    U_GNSS_TRANSPORT_UBX_AT = U_GNSS_TRANSPORT_AT,      /**< \deprecated the transport handle should be an AT client
-                                                             handle over which UBX commands will be
-                                                             transferred; THIS IS DEPRECATED, PLEASE
-                                                             USE #U_GNSS_TRANSPORT_AT instead. */
-    U_GNSS_TRANSPORT_NMEA_UART = U_GNSS_TRANSPORT_UART, /**< \deprecated the transport handle should be a UART handle
-                                                             over which NMEA commands may be received;
-                                                             UBX commands will still be used by this code.
-                                                             THIS IS DEPRECATED, PLEASE USE
-                                                             #U_GNSS_TRANSPORT_UART. */
-    U_GNSS_TRANSPORT_NMEA_I2C = U_GNSS_TRANSPORT_I2C,   /**< \deprecated the transport handle should be an I2C handle
-                                                             over which NMEA commands may be received;
-                                                             UBX commands will still be used by this code.
-                                                             THIS IS DEPRECATED, PLEASE USE
-                                                             #U_GNSS_TRANSPORT_I2C. */
     U_GNSS_TRANSPORT_MAX_NUM
 } uGnssTransportType_t;
 

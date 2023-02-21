@@ -353,7 +353,7 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveBlocking")
     char command[U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES];
     uGnssMessageId_t messageId;
     size_t iterations;
-    uGnssTransportType_t transportTypes[U_GNSS_TRANSPORT_MAX_NUM_WITH_UBX];
+    uGnssTransportType_t transportTypes[U_GNSS_TRANSPORT_MAX_NUM];
 
     // In case a previous test failed
     uGnssTestPrivateCleanup(&gHandles);
@@ -486,7 +486,7 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveNonBlocking")
     // Enough room to poll UBX-RXM-MEASX
     char command[U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES];
     size_t iterations;
-    uGnssTransportType_t transportTypes[U_GNSS_TRANSPORT_MAX_NUM_WITH_UBX];
+    uGnssTransportType_t transportTypes[U_GNSS_TRANSPORT_MAX_NUM];
     uGnssCommunicationStats_t communicationStats;
     const char *pProtocolName;
 

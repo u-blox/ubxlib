@@ -328,16 +328,12 @@ size_t uGnssTestPrivateTransportTypesSet(uGnssTransportType_t *pTransportTypes,
         if (uart >= 0) {
             *pTransportTypes = U_GNSS_TRANSPORT_UART;
             pTransportTypes++;
-            *pTransportTypes = U_GNSS_TRANSPORT_UBX_UART;
-            pTransportTypes++;
-            numEntries += 2;
+            numEntries++;
         }
         if (i2c >= 0) {
             *pTransportTypes = U_GNSS_TRANSPORT_I2C;
             pTransportTypes++;
-            *pTransportTypes = U_GNSS_TRANSPORT_UBX_I2C;
-            pTransportTypes++;
-            numEntries += 2;
+            numEntries++;
         }
         if (spi >= 0) {
             *pTransportTypes = U_GNSS_TRANSPORT_SPI;
@@ -407,8 +403,6 @@ int32_t uGnssTestPrivatePreamble(uGnssModuleType_t moduleType,
         errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
         switch (transportType) {
             case U_GNSS_TRANSPORT_UART:
-            //lint -fallthrough
-            case U_GNSS_TRANSPORT_UBX_UART:
                 U_TEST_PRINT_LINE("opening GNSS UART %d...", U_CFG_APP_GNSS_UART);
                 // Open a UART with the standard parameters
                 errorCode = uPortUartOpen(U_CFG_APP_GNSS_UART,
@@ -424,8 +418,6 @@ int32_t uGnssTestPrivatePreamble(uGnssModuleType_t moduleType,
                 }
                 break;
             case U_GNSS_TRANSPORT_I2C:
-            //lint -fallthrough
-            case U_GNSS_TRANSPORT_UBX_I2C:
                 U_TEST_PRINT_LINE("opening GNSS I2C %d...", U_CFG_APP_GNSS_I2C);
                 errorCode = uPortI2cInit();
                 if (errorCode == 0) {
@@ -591,13 +583,9 @@ void uGnssTestPrivatePostamble(uGnssTestPrivate_t *pParameters,
         if (pParameters->streamHandle >= 0) {
             switch (pParameters->transportType) {
                 case U_GNSS_TRANSPORT_UART:
-                //lint -fallthrough
-                case U_GNSS_TRANSPORT_UBX_UART:
                     uPortUartClose(pParameters->streamHandle);
                     break;
                 case U_GNSS_TRANSPORT_I2C:
-                //lint -fallthrough
-                case U_GNSS_TRANSPORT_UBX_I2C:
                     uPortI2cClose(pParameters->streamHandle);
                     uPortI2cDeinit();
                     break;
@@ -639,13 +627,9 @@ void uGnssTestPrivateCleanup(uGnssTestPrivate_t *pParameters)
         if (pParameters->streamHandle >= 0) {
             switch (pParameters->transportType) {
                 case U_GNSS_TRANSPORT_UART:
-                //lint -fallthrough
-                case U_GNSS_TRANSPORT_UBX_UART:
                     uPortUartClose(pParameters->streamHandle);
                     break;
                 case U_GNSS_TRANSPORT_I2C:
-                //lint -fallthrough
-                case U_GNSS_TRANSPORT_UBX_I2C:
                     uPortI2cClose(pParameters->streamHandle);
                     uPortI2cDeinit();
                     break;

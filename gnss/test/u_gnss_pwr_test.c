@@ -105,7 +105,7 @@ U_PORT_TEST_FUNCTION("[gnssPwr]", "gnssPwrBasic")
     uDeviceHandle_t gnssHandle;
     int32_t heapUsed;
     size_t iterations;
-    uGnssTransportType_t transportTypes[U_GNSS_TRANSPORT_MAX_NUM_WITH_UBX];
+    uGnssTransportType_t transportTypes[U_GNSS_TRANSPORT_MAX_NUM];
     int32_t y;
 
     // Whatever called us likely initialised the
@@ -139,8 +139,6 @@ U_PORT_TEST_FUNCTION("[gnssPwr]", "gnssPwrBasic")
         switch (transportTypes[x]) {
             case U_GNSS_TRANSPORT_UART:
             //lint -fallthrough
-            case U_GNSS_TRANSPORT_UBX_UART:
-            //lint -fallthrough
             case U_GNSS_TRANSPORT_SPI:
                 // If we are communicating via UART or SPI we can
                 // also test the power-off-to-back-up version
@@ -151,8 +149,6 @@ U_PORT_TEST_FUNCTION("[gnssPwr]", "gnssPwrBasic")
                 U_PORT_TEST_ASSERT(uGnssPwrOffBackup(gnssHandle) == 0);
                 break;
             case U_GNSS_TRANSPORT_I2C:
-            //lint -fallthrough
-            case U_GNSS_TRANSPORT_UBX_I2C:
                 U_TEST_PRINT_LINE("not testing uGnssPwrOffBackup() 'cos we're on I2C...");
                 break;
             case U_GNSS_TRANSPORT_VIRTUAL_SERIAL:

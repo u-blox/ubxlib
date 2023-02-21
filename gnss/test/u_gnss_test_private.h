@@ -83,7 +83,7 @@ const char *pGnssTestPrivateTransportTypeName(uGnssTransportType_t transportType
 /** Set the transport types to be tested.
  *
  * @param pTransportTypes  a pointer to the first entry in an array of
- *                         U_GNSS_TRANSPORT_MAX_NUM_WITH_UBX transport types.
+ *                         #U_GNSS_TRANSPORT_MAX_NUM transport types.
  * @param uart             the value of U_CFG_APP_GNSS_UART, the UART
  *                         on which the GNSS chip is connected or -1
  *                         if there is no direct UART connection to the

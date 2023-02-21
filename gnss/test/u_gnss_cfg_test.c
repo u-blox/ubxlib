@@ -318,7 +318,7 @@ U_PORT_TEST_FUNCTION("[gnssCfg]", "gnssCfgBasic")
     int32_t y;
     int32_t w;
     bool onNotOff;
-    uGnssTransportType_t transportTypes[U_GNSS_TRANSPORT_MAX_NUM_WITH_UBX];
+    uGnssTransportType_t transportTypes[U_GNSS_TRANSPORT_MAX_NUM];
     uGnssMessageId_t messageId;
 
     // In case a previous test failed
@@ -615,7 +615,7 @@ U_PORT_TEST_FUNCTION("[gnssCfg]", "gnssCfgValBasic")
     uGnssCfgVal_t *pCfgValList = NULL;
     int32_t numValues;
     size_t iterations;
-    uGnssTransportType_t transportTypes[U_GNSS_TRANSPORT_MAX_NUM_WITH_UBX];
+    uGnssTransportType_t transportTypes[U_GNSS_TRANSPORT_MAX_NUM];
 
     // In case a previous test failed
     uGnssTestPrivateCleanup(&gHandles);

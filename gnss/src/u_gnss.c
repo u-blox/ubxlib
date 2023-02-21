@@ -82,9 +82,7 @@ static const char *const gpTransportTypeText[] = {"None",       // U_GNSS_TRANSP
                                                   "AT",         // U_GNSS_TRANSPORT_AT
                                                   "I2C",        // U_GNSS_TRANSPORT_I2C
                                                   "SPI",        // U_GNSS_TRANSPORT_SPI
-                                                  "Virtual Serial", // U_GNSS_TRANSPORT_VIRTUAL_SERIAL
-                                                  "UBX UART",   // U_GNSS_TRANSPORT_UBX_UART
-                                                  "UBX I2C"     // U_GNSS_TRANSPORT_UBX_I2C
+                                                  "Virtual Serial" // U_GNSS_TRANSPORT_VIRTUAL_SERIAL
                                                  };
 #endif
 
@@ -106,16 +104,12 @@ static uGnssPrivateInstance_t *pGetGnssInstanceTransportHandle(uGnssTransportTyp
         if (pInstance->transportType == transportType) {
             switch (transportType) {
                 case U_GNSS_TRANSPORT_UART:
-                //lint -fallthrough
-                case U_GNSS_TRANSPORT_UBX_UART:
                     match = (pInstance->transportHandle.uart == transportHandle.uart);
                     break;
                 case U_GNSS_TRANSPORT_AT:
                     match = (pInstance->transportHandle.pAt == transportHandle.pAt);
                     break;
                 case U_GNSS_TRANSPORT_I2C:
-                //lint -fallthrough
-                case U_GNSS_TRANSPORT_UBX_I2C:
                     match = (pInstance->transportHandle.i2c == transportHandle.i2c);
                     break;
                 case U_GNSS_TRANSPORT_SPI:
@@ -293,9 +287,8 @@ int32_t uGnssAdd(uGnssModuleType_t moduleType,
             errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
             if (((size_t) moduleType < gUGnssPrivateModuleListSize) &&
                 ((transportType > U_GNSS_TRANSPORT_NONE) &&
-                 (transportType < U_GNSS_TRANSPORT_MAX_NUM_WITH_UBX)) &&
+                 (transportType < U_GNSS_TRANSPORT_MAX_NUM)) &&
                 ((transportType == U_GNSS_TRANSPORT_I2C) ||
-                 (transportType == U_GNSS_TRANSPORT_UBX_I2C) ||
                  (pGetGnssInstanceTransportHandle(transportType, transportHandle) == NULL))) {
                 errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
                 // Allocate memory for the instance
@@ -325,8 +318,7 @@ int32_t uGnssAdd(uGnssModuleType_t moduleType,
                         // The below also holds for virtual serial since the GNSS module
                         // is connected through another (e.g. cellular) module via I2C.
                         pInstance->portNumber = U_GNSS_PORT_I2C;
-                        if ((transportType == U_GNSS_TRANSPORT_UART) ||
-                            (transportType == U_GNSS_TRANSPORT_UBX_UART)) {
+                        if (transportType == U_GNSS_TRANSPORT_UART) {
                             pInstance->portNumber = U_GNSS_PORT_UART;
                         } else if (transportType == U_GNSS_TRANSPORT_SPI) {
                             pInstance->portNumber = U_GNSS_PORT_SPI;
