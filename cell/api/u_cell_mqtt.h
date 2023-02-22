@@ -681,6 +681,10 @@ int32_t uCellMqttUnsubscribe(uDeviceHandle_t cellHandle,
 
 /** Read an MQTT message.
  *
+ * Note: if the MQTT message is longer than the buffer provided to
+ * this function then it will copy as much as it can and return the
+ * error code #U_ERROR_COMMON_TRUNCATED.
+ *
  * @param cellHandle                 the handle of the cellular instance to
  *                                   be used.
  * @param[out] pTopicNameStr         a place to put the null-terminated
@@ -858,7 +862,12 @@ int32_t uCellMqttSnUnsubscribeNormalTopic(uDeviceHandle_t cellHandle,
  * MQTT message then the topic name will be populated with the MQTT-SN
  * topic name that you received when you called
  * uCellMqttSnSubscribeNormalTopic().
+ *
  * Must be connected to an MQTT-SN broker for this to work.
+ *
+ * Note: if the MQTT-SN message is longer than the buffer provided to
+ * this function then it will copy as much as it can and return the
+ * error code #U_ERROR_COMMON_TRUNCATED.
  *
  * @param cellHandle                the handle of the cellular instance to
  *                                  be used.

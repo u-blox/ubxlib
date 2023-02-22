@@ -582,7 +582,7 @@ int32_t uMqttClientMessageRead(uMqttClientContext_t *pContext,
                                              pMessageSizeBytes,
                                              (uMqttQos_t *) pQos);
         }
-        if (errorCode == 0) {
+        if ((errorCode == 0) || (errorCode == (int32_t) U_ERROR_COMMON_TRUNCATED)) {
             pContext->totalMessagesReceived++;
         }
 

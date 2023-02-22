@@ -1891,6 +1891,7 @@ static int32_t readMessage(const uCellPrivateInstance_t *pInstance,
     int32_t messageBytesAvailable;
     int32_t messageBytesRead = 0;
     int32_t topicBytesAvailable;
+    bool truncated = false;
 
     pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
     mqttSn = pContext->mqttSn;
@@ -2010,6 +2011,7 @@ static int32_t readMessage(const uCellPrivateInstance_t *pInstance,
                                                           messageSizeBytes, true);
                     if (messageBytesAvailable > messageBytesRead) {
                         //...and then the rest poured away to NULL
+                        truncated = true;
                         uAtClientReadBytes(atHandle, NULL,
                                            // Cast in two stages to keep Lint happy
                                            (size_t) (unsigned) (messageBytesAvailable -
@@ -2030,6 +2032,7 @@ static int32_t readMessage(const uCellPrivateInstance_t *pInstance,
                     //lint -e(568) Suppress value never being negative
                     (!mqttSn || ((topicNameType >= 0) &&
                                  (topicNameType < (int32_t) U_CELL_MQTT_SN_TOPIC_NAME_TYPE_MAX_NUM)))) {
+                    errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
                     // Good.  Topic and message have
                     // already been done above,
                     // now fill in the other bits
@@ -2050,7 +2053,9 @@ static int32_t readMessage(const uCellPrivateInstance_t *pInstance,
                     if (pContext->numUnreadMessages == 1) {
                         pContext->numUnreadMessages--;
                     }
-                    errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                    if (truncated) {
+                        errorCode = (int32_t) U_ERROR_COMMON_TRUNCATED;
+                    }
                 }
             } else {
                 printErrorCodes(pInstance);

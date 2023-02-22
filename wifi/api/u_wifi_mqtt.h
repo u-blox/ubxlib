@@ -195,6 +195,10 @@ int32_t uWifiMqttGetUnread(const uMqttClientContext_t *pContext);
 
 /** Read messages and their corresponding topics for a given MQTT session.
  *
+ * Note: if the MQTT message is longer than the buffer provided to
+ * this function then it will copy as much as it can and return the
+ * error code #U_ERROR_COMMON_TRUNCATED.
+ *
  * @param[in] pContext           client context returned by pUMqttClientOpen().
  * @param[out] pTopicNameStr     user should provide empty buffer of topicNameSizeBytes.
  * @param topicNameSizeBytes     topicNameSizeBytes should be >= minimum length of topic string.

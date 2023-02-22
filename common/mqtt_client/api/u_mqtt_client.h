@@ -453,6 +453,10 @@ int32_t uMqttClientUnsubscribe(const uMqttClientContext_t *pContext,
 
 /** MQTT only: read an MQTT message.
  *
+ * Note: if the MQTT message is longer than the buffer provided to
+ * this function then it will copy as much as it can and return the
+ * error code #U_ERROR_COMMON_TRUNCATED.
+ *
  * @param[in] pContext              a pointer to the internal MQTT context
  *                                  structure that was originally returned
  *                                  by pUMqttClientOpen().
@@ -740,6 +744,10 @@ int32_t uMqttClientSnUnsubscribeNormalTopic(const uMqttClientContext_t *pContext
  * be populated with the MQTT-SN topic ID that you received when
  * you called uMqttClientSnSubscribeNormalTopic().
  * Must be connected to an MQTT-SN broker for this to work.
+ *
+ * Note: if the MQTT-SN message is longer than the buffer provided to
+ * this function then it will copy as much as it can and return the
+ * error code #U_ERROR_COMMON_TRUNCATED.
  *
  * @param[in] pContext              a pointer to the internal MQTT context
  *                                  structure that was originally returned

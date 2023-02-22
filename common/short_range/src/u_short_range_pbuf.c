@@ -269,7 +269,7 @@ int32_t uShortRangePktListConsumePacket(uShortRangePktList_t *pPktList, char *pD
                 err = (int32_t)U_ERROR_COMMON_SUCCESS;
 
                 if (pTemp->totalLen > 0) {
-                    err = (int32_t)U_ERROR_COMMON_TEMPORARY_FAILURE;
+                    err = (int32_t)U_ERROR_COMMON_TRUNCATED;
                 }
 
                 *ppTemp = pTemp->pNext;
