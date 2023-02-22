@@ -248,7 +248,7 @@ U_PORT_TEST_FUNCTION("[pbuf]", "pbufPktList")
     U_PORT_TEST_ASSERT(errCode == (int32_t)U_ERROR_COMMON_SUCCESS);
 
     errCode = uShortRangePktListConsumePacket(&pktList, pBuffer3, &totalLen, NULL);
-    U_PORT_TEST_ASSERT(errCode == (int32_t)U_ERROR_COMMON_INVALID_PARAMETER);
+    U_PORT_TEST_ASSERT(errCode == (int32_t)U_ERROR_COMMON_EMPTY);
 
     uShortRangeMemPoolDeInit();
     uPortFree(pBuffer1);

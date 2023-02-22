@@ -511,6 +511,13 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClient")
 
                     U_PORT_TEST_ASSERT(uMqttClientGetUnread(gpMqttContextA) == 0);
 
+                    // Read again - should return U_ERROR_COMMON_EMPTY
+                    y = uMqttClientMessageRead(gpMqttContextA, pTopicIn,
+                                               U_MQTT_CLIENT_TEST_READ_TOPIC_MAX_LENGTH_BYTES,
+                                               pMessageIn, &s, &qos);
+                    U_TEST_PRINT_LINE_MQTT("attempting to read a message when there are none returned %d.", y);
+                    U_PORT_TEST_ASSERT(y == (int32_t) U_ERROR_COMMON_EMPTY);
+
                     // Cancel the subscribe
                     U_TEST_PRINT_LINE_MQTT("unsubscribing from topic \"%s\"...", pTopicOut);
                     gStopTimeMs = uPortGetTickTimeMs() +

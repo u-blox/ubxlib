@@ -1932,7 +1932,7 @@ static int32_t readMessage(const uCellPrivateInstance_t *pInstance,
             uAtClientResponseStop(atHandle);
             if ((uAtClientUnlock(atHandle) == 0) && (status == 1)) {
                 // Wait for a URC containing the message
-                errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
+                errorCode = (int32_t) U_ERROR_COMMON_EMPTY;
                 startTimeMs = uPortGetTickTimeMs();
                 while (!pUrcMessage->messageRead &&
                        (uPortGetTickTimeMs() - startTimeMs < (U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000)) &&
@@ -1962,6 +1962,7 @@ static int32_t readMessage(const uCellPrivateInstance_t *pInstance,
             }
         } else {
             // We want just the one message
+            errorCode = (int32_t) U_ERROR_COMMON_EMPTY;
             uAtClientWriteInt(atHandle, 1);
             uAtClientCommandStop(atHandle);
             uAtClientResponseStart(atHandle, MQTT_COMMAND_AT_RESPONSE_STRING(mqttSn));
@@ -1969,53 +1970,56 @@ static int32_t readMessage(const uCellPrivateInstance_t *pInstance,
             // Skip the first parameter, which is just
             // our UMQTTC command number again
             uAtClientSkipParameters(atHandle, 1);
-            // Next comes the QoS
+            // Next should come the QoS: if it is not there
+            // then there are no messages
             qos = (uCellMqttQos_t) uAtClientReadInt(atHandle);
-            if (mqttSn) {
-                // For MQTT-SN retrieve the topic name type
-                topicNameType = uAtClientReadInt(atHandle);
-            }
-            // Then we can skip the length of
-            // the topic and message added together
-            uAtClientSkipParameters(atHandle, 1);
-            // Read the topic name length
-            topicBytesAvailable = uAtClientReadInt(atHandle);
-            // Now read the part of the topic name string
-            // we can absorb
-            if ((int32_t) topicNameSizeBytes > topicBytesAvailable) {
-                topicNameSizeBytes = topicBytesAvailable;
-            }
-            topicNameBytesRead = uAtClientReadString(atHandle,
-                                                     pTopicNameStr,
-                                                     topicNameSizeBytes + 1, // +1 for terminator
-                                                     false);
-            // Read the number of message bytes to follow
-            messageBytesAvailable = uAtClientReadInt(atHandle);
-            if (messageBytesAvailable > 0) {
-                if ((int32_t) messageSizeBytes > messageBytesAvailable) {
-                    messageSizeBytes = messageBytesAvailable;
+            if (qos >= 0) {
+                if (mqttSn) {
+                    // For MQTT-SN retrieve the topic name type
+                    topicNameType = uAtClientReadInt(atHandle);
                 }
-                // Now read the message bytes, being careful
-                // to not look for stop tags as this can be
-                // a binary message
-                uAtClientIgnoreStopTag(atHandle);
-                // Get the leading quote mark out of the way
-                uAtClientReadBytes(atHandle, NULL, 1, true);
-                // Now read out all the actual data,
-                // first the bit we want
-                messageBytesRead = uAtClientReadBytes(atHandle, pMessage,
-                                                      messageSizeBytes, true);
-                if (messageBytesAvailable > messageBytesRead) {
-                    //...and then the rest poured away to NULL
-                    uAtClientReadBytes(atHandle, NULL,
-                                       // Cast in two stages to keep Lint happy
-                                       (size_t) (unsigned) (messageBytesAvailable -
-                                                            messageBytesRead), false);
+                // Then we can skip the length of
+                // the topic and message added together
+                uAtClientSkipParameters(atHandle, 1);
+                // Read the topic name length
+                topicBytesAvailable = uAtClientReadInt(atHandle);
+                // Now read the part of the topic name string
+                // we can absorb
+                if ((int32_t) topicNameSizeBytes > topicBytesAvailable) {
+                    topicNameSizeBytes = topicBytesAvailable;
                 }
+                topicNameBytesRead = uAtClientReadString(atHandle,
+                                                         pTopicNameStr,
+                                                         topicNameSizeBytes + 1, // +1 for terminator
+                                                         false);
+                // Read the number of message bytes to follow
+                messageBytesAvailable = uAtClientReadInt(atHandle);
+                if (messageBytesAvailable > 0) {
+                    if ((int32_t) messageSizeBytes > messageBytesAvailable) {
+                        messageSizeBytes = messageBytesAvailable;
+                    }
+                    // Now read the message bytes, being careful
+                    // to not look for stop tags as this can be
+                    // a binary message
+                    uAtClientIgnoreStopTag(atHandle);
+                    // Get the leading quote mark out of the way
+                    uAtClientReadBytes(atHandle, NULL, 1, true);
+                    // Now read out all the actual data,
+                    // first the bit we want
+                    messageBytesRead = uAtClientReadBytes(atHandle, pMessage,
+                                                          messageSizeBytes, true);
+                    if (messageBytesAvailable > messageBytesRead) {
+                        //...and then the rest poured away to NULL
+                        uAtClientReadBytes(atHandle, NULL,
+                                           // Cast in two stages to keep Lint happy
+                                           (size_t) (unsigned) (messageBytesAvailable -
+                                                                messageBytesRead), false);
+                    }
+                }
+                // Make sure to wait for the stop tag before
+                // we finish
+                uAtClientRestoreStopTag(atHandle);
             }
-            // Make sure to wait for the stop tag before
-            // we finish
-            uAtClientRestoreStopTag(atHandle);
             uAtClientResponseStop(atHandle);
             if (uAtClientUnlock(atHandle) == 0) {
                 // Now have all the bits, check them
