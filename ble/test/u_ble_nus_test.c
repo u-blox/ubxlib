@@ -216,7 +216,7 @@ U_PORT_TEST_FUNCTION("[bleNus]", "bleNusClient")
     preamble(U_BLE_CFG_ROLE_CENTRAL);
     U_TEST_PRINT_LINE("scanning for server");
     gPeerMac[0] = 0;
-    for (int i = 0; !SERVER_FOUND && i < PEER_WAIT_TIME_S / 10; i++) {
+    for (uint32_t i = 0; !SERVER_FOUND && i < PEER_WAIT_TIME_S / 10; i++) {
         U_TEST_PRINT_LINE("try #%d", i + 1);
         U_PORT_TEST_ASSERT(uBleGapScan(gDeviceHandle,
                                        U_BLE_GAP_SCAN_DISCOVER_ALL_ONCE,
@@ -224,8 +224,19 @@ U_PORT_TEST_FUNCTION("[bleNus]", "bleNusClient")
                                        scanResponse) == 0);
     }
     U_PORT_TEST_ASSERT(SERVER_FOUND);
-    U_TEST_PRINT_LINE("connecting to: %s", gPeerMac);
-    U_PORT_TEST_ASSERT(uBleNusInit(gDeviceHandle, gPeerMac, peerIncoming) == 0);
+    // BLE connection may fail so do multiple tries if that happens
+    bool ok = false;
+    for (uint32_t i = 0; !ok && i < 3; i++) {
+        U_TEST_PRINT_LINE("connecting to: %s, try #%d", gPeerMac, i + 1);
+        if (uBleNusInit(gDeviceHandle, gPeerMac, peerIncoming) == 0) {
+            ok = true;
+        } else {
+            U_TEST_PRINT_LINE("failed to initiate NUS server connection");
+            uBleNusDeInit();
+            uPortTaskBlock(2000);
+        }
+    }
+    U_PORT_TEST_ASSERT(ok);
     uPortTaskBlock(2000);
     U_TEST_PRINT_LINE("sending command: %s", EXT_SERVER_COMMAND);
     U_PORT_TEST_ASSERT(uBleNusWrite(EXT_SERVER_COMMAND,
