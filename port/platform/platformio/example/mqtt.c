@@ -26,7 +26,7 @@
 
 #include "ubxlib.h"
 
-#define BROKER_NAME "ubxlib.it-sgn.u-blox.com"
+#define BROKER_NAME "ubxlib.redirectme.net"
 
 // Change the line below based on which type of module you want to use.
 // Then change all -1 values below to appropriate pin and settings values

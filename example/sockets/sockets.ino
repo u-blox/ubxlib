@@ -198,7 +198,7 @@ void loop() {
         // Get the IP address of the echo server using
         // the network's DNS resolution facility
         printf("Looking up server address...\n");
-        uSockGetHostByName(devHandle, "ubxlib.it-sgn.u-blox.com",
+        uSockGetHostByName(devHandle, "ubxlib.redirectme.net",
                            &(address.ipAddress));
         printf("Address is: ");
         printAddress(&address, false);
