@@ -40,6 +40,7 @@
 
 #include "u_port_debug.h"
 #include "u_port_os.h"
+#include "u_port_heap.h"
 
 #include "u_at_client.h"
 
@@ -171,6 +172,14 @@ static const uCellNetRat_t gModuleRatBandMaskToCellRatR6[] = {
     U_CELL_NET_RAT_GSM_GPRS_EGPRS,      // 2: 2G (also applied to UTRAN)
     U_CELL_NET_RAT_LTE                  // 3: LTE
 };
+
+/** All the parameters for the greeting callback.
+ */
+typedef struct {
+    uDeviceHandle_t cellHandle;
+    void (*pCallback) (uDeviceHandle_t, void *);
+    void *pCallbackParameter;
+} uCellCfgGreeting_t;
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS: RAT CONVERSION
@@ -802,6 +811,99 @@ static int32_t setRatRankSaraRx(uCellPrivateInstance_t *pInstance,
 }
 
 /* ----------------------------------------------------------------
+ * STATIC FUNCTIONS: GREETING MESSAGE RELATED
+ * -------------------------------------------------------------- */
+
+// Set, or unset, a greeting message.
+int32_t setGreeting(uAtClientHandle_t atHandle, const char *pStr)
+{
+    int32_t mode = 0;
+
+    if (pStr != NULL) {
+        mode = 1;
+    }
+
+    uAtClientLock(atHandle);
+    uAtClientCommandStart(atHandle, "AT+CSGT=");
+    uAtClientWriteInt(atHandle, mode);
+    if (pStr != NULL) {
+        uAtClientWriteString(atHandle, pStr, true);
+    }
+    uAtClientCommandStopReadResponse(atHandle);
+    return uAtClientUnlock(atHandle);
+}
+
+// Get the current greeting message.
+int32_t getGreeting(uAtClientHandle_t atHandle, char *pStr, size_t size)
+{
+    int32_t errorCodeOrSize;
+    int32_t mode;
+    int32_t bytesRead;
+
+    uAtClientLock(atHandle);
+    uAtClientCommandStart(atHandle, "AT+CSGT?");
+    uAtClientCommandStop(atHandle);
+    uAtClientResponseStart(atHandle, "+CSGT:");
+    bytesRead = uAtClientReadString(atHandle, pStr, size, false);
+    mode = uAtClientReadInt(atHandle);
+    uAtClientResponseStop(atHandle);
+    errorCodeOrSize = uAtClientUnlock(atHandle);
+    if (errorCodeOrSize == 0) {
+        if (mode == 0) {
+            bytesRead = 0;
+            *pStr = 0;
+        }
+        errorCodeOrSize = bytesRead;
+    }
+
+    return errorCodeOrSize;
+}
+
+// Callback via which the user's greeting callback is called.
+// This must be called through the uAtClientCallback() mechanism
+// in order to prevent customer code blocking the AT client.
+static void greetingCallback(uAtClientHandle_t atHandle, void *pParameter)
+{
+    uCellCfgGreeting_t *pGreeting = (uCellCfgGreeting_t *) pParameter;
+
+    (void) atHandle;
+
+    if (pGreeting != NULL) {
+        if (pGreeting->pCallback != NULL) {
+            pGreeting->pCallback(pGreeting->cellHandle,
+                                 pGreeting->pCallbackParameter);
+        }
+        uPortFree(pGreeting);
+    }
+}
+
+// URC handler for when the greeting message has been detected.
+//lint -esym(818, pParameter) Suppress pParameter could be const, need to
+// follow prototype
+static void GREETING_urc(uAtClientHandle_t atHandle, void *pParameter)
+{
+    const uCellPrivateInstance_t *pInstance = (uCellPrivateInstance_t *) pParameter;
+    uCellCfgGreeting_t *pGreeting;
+
+    (void) atHandle;
+
+    if (pInstance->pGreetingCallback != NULL) {
+        // Put the data for the callback into a struct to our
+        // local callback via the AT client's callback mechanism
+        // to decouple it from any URC handler.
+        // Note: it is up to greetingCallback() to free the
+        // allocated memory.
+        pGreeting = (uCellCfgGreeting_t *) pUPortMalloc(sizeof(*pGreeting));
+        if (pGreeting != NULL) {
+            pGreeting->cellHandle = pInstance->cellHandle;
+            pGreeting->pCallback = pInstance->pGreetingCallback;
+            pGreeting->pCallbackParameter = pInstance->pGreetingCallbackParameter;
+            uAtClientCallback(atHandle, greetingCallback, pGreeting);
+        }
+    }
+}
+
+/* ----------------------------------------------------------------
  * STATIC FUNCTIONS: GENERAL
  * -------------------------------------------------------------- */
 
@@ -831,7 +933,6 @@ int32_t setAndStoreBaudRate(const uCellPrivateInstance_t *pInstance,
 
     return errorCode;
 }
-
 
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
@@ -1470,11 +1571,8 @@ int32_t uCellCfgSetGreeting(uDeviceHandle_t cellHandle, const char *pStr)
     int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
     uCellPrivateInstance_t *pInstance;
     uAtClientHandle_t atHandle;
-    int32_t mode = 0;
-
-    if (pStr != NULL) {
-        mode = 1;
-    }
+    size_t size;
+    char buffer[U_CELL_CFG_GREETING_CALLBACK_MAX_LEN_BYTES + 1]; // +1 for terminator
 
     if (gUCellPrivateMutex != NULL) {
 
@@ -1483,14 +1581,69 @@ int32_t uCellCfgSetGreeting(uDeviceHandle_t cellHandle, const char *pStr)
         pInstance = pUCellPrivateGetInstance(cellHandle);
         if (pInstance != NULL) {
             atHandle = pInstance->atHandle;
-            uAtClientLock(atHandle);
-            uAtClientCommandStart(atHandle, "AT+CSGT=");
-            uAtClientWriteInt(atHandle, mode);
-            if (pStr != NULL) {
-                uAtClientWriteString(atHandle, pStr, true);
+            if (pInstance->pGreetingCallback != NULL) {
+                // If there's already a greeting callback, remove
+                // it 'cos this is the "non-callback" form
+                size = getGreeting(atHandle, buffer, sizeof(buffer));
+                if (size > 0) {
+                    uAtClientRemoveUrcHandler(atHandle, buffer);
+                }
+                pInstance->pGreetingCallback = NULL;
+                pInstance->pGreetingCallbackParameter = NULL;
             }
-            uAtClientCommandStopReadResponse(atHandle);
-            errorCode = uAtClientUnlock(atHandle);
+            // Now actually set the greeting
+            errorCode = setGreeting(atHandle, pStr);
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return errorCode;
+}
+
+// Set a greeting message with a callback.
+int32_t uCellCfgSetGreetingCallback(uDeviceHandle_t cellHandle,
+                                    const char *pStr,
+                                    void (*pCallback) (uDeviceHandle_t, void *),
+                                    void *pCallbackParam)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    uCellPrivateInstance_t *pInstance;
+    uAtClientHandle_t atHandle;
+    size_t size;
+    char buffer[U_CELL_CFG_GREETING_CALLBACK_MAX_LEN_BYTES + 1]; // +1 for terminator
+
+    if (gUCellPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        if (((pStr != NULL) && (strlen(pStr) <= U_CELL_CFG_GREETING_CALLBACK_MAX_LEN_BYTES)) ||
+            (pCallback == NULL)) {
+            pInstance = pUCellPrivateGetInstance(cellHandle);
+            if (pInstance != NULL) {
+                atHandle = pInstance->atHandle;
+                // Remove any existing greeting and callback
+                size = getGreeting(atHandle, buffer, sizeof(buffer));
+                if (size > 0) {
+                    uAtClientRemoveUrcHandler(atHandle, buffer);
+                }
+                // Set the new greeting
+                errorCode = setGreeting(atHandle, pStr);
+                if (errorCode == 0) {
+                    if (pCallback != NULL) {
+                        errorCode = uAtClientSetUrcHandler(atHandle, pStr,
+                                                           GREETING_urc, pInstance);
+                        if (errorCode != 0) {
+                            // Clean up on error
+                            setGreeting(atHandle, NULL);
+                        }
+                    }
+                    if (errorCode == 0) {
+                        pInstance->pGreetingCallback = pCallback;
+                        pInstance->pGreetingCallbackParameter = pCallbackParam;
+                    }
+                }
+            }
         }
 
         U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
@@ -1504,9 +1657,6 @@ int32_t uCellCfgGetGreeting(uDeviceHandle_t cellHandle, char *pStr, size_t size)
 {
     int32_t errorCodeOrSize = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
     uCellPrivateInstance_t *pInstance;
-    uAtClientHandle_t atHandle;
-    int32_t mode;
-    int32_t bytesRead;
 
     if (gUCellPrivateMutex != NULL) {
 
@@ -1514,25 +1664,11 @@ int32_t uCellCfgGetGreeting(uDeviceHandle_t cellHandle, char *pStr, size_t size)
 
         pInstance = pUCellPrivateGetInstance(cellHandle);
         if ((pInstance != NULL) && (pStr != NULL)) {
-            atHandle = pInstance->atHandle;
-            uAtClientLock(atHandle);
-            uAtClientCommandStart(atHandle, "AT+CSGT?");
-            uAtClientCommandStop(atHandle);
-            uAtClientResponseStart(atHandle, "+CSGT:");
-            bytesRead = uAtClientReadString(atHandle, pStr, size, false);
-            mode = uAtClientReadInt(atHandle);
-            uAtClientResponseStop(atHandle);
-            errorCodeOrSize = uAtClientUnlock(atHandle);
-            if (errorCodeOrSize == 0) {
-                if (mode == 0) {
-                    bytesRead = 0;
-                }
-                errorCodeOrSize = bytesRead;
-                if (bytesRead > 0) {
-                    uPortLog("U_CELL_CFG: greeting message is \"%s\".\n", pStr);
-                } else {
-                    uPortLog("U_CELL_CFG: no greeting message is set.\n");
-                }
+            errorCodeOrSize = getGreeting(pInstance->atHandle, pStr, size);
+            if (errorCodeOrSize > 0) {
+                uPortLog("U_CELL_CFG: greeting message is \"%s\".\n", pStr);
+            } else if (errorCodeOrSize == 0) {
+                uPortLog("U_CELL_CFG: no greeting message is set.\n");
             } else {
                 uPortLog("U_CELL_CFG: unable to read greeting message.\n");
             }

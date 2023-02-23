@@ -67,6 +67,18 @@ extern "C" {
 # define U_CELL_CFG_GNSS_SERVER_NAME_MAX_LEN_BYTES 256
 #endif
 
+/** A greeting message that may be used with
+ * uCellCfgSetGreetingCallback().
+ */
+#define U_CELL_CFG_GREETING "+ModuleHasBooted"
+
+#ifndef U_CELL_CFG_GREETING_CALLBACK_MAX_LEN_BYTES
+/** The maximum length of a greeting message when a callback is
+ * going to be used with it.
+ */
+# define U_CELL_CFG_GREETING_CALLBACK_MAX_LEN_BYTES 64
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -343,6 +355,40 @@ int32_t uCellCfgFactoryReset(uDeviceHandle_t cellHandle, int32_t fsRestoreType,
  */
 int32_t uCellCfgSetGreeting(uDeviceHandle_t cellHandle, const char *pStr);
 
+/** As uCellCfgSetGreeting() but also sets a callback which will be
+ * called when the greeting message is emitted by the module, allowing
+ * you to detect when the module has rebooted all by itself (as well as
+ * by command).
+ *
+ * Note: if DTR is being used to control power saving (i.e. a DTR
+ * pin has been set using uCellPwrSetDtrPowerSavingPin()) then the
+ * greeting message is NOT emitted by the module at a reboot.
+ *
+ * Obviously for this to be useful it is important that the greeting
+ * message is unique; you may consider using #U_CELL_CFG_GREETING.
+ *
+ * The same restrictions concerning auto-bauding apply here as to
+ * uCellCfgSetGreeting().  Calling uCellCfgSetGreeting() after calling
+ * this function will remove the callback.
+ *
+ * @param cellHandle         the handle of the cellular instance.
+ * @param[in] pStr           the null-terminated greeting message; cannot
+ *                           be NULL unless pCallback is NULL.  Can be
+ *                           no more than
+ *                           #U_CELL_CFG_GREETING_CALLBACK_MAX_LEN_BYTES
+ *                           in length (excluding the null-terminator).
+ * @param[in] pCallback      the callback; use NULL to remove a previous
+ *                           callback.
+ * @param[in] pCallbackParam user parameter which will be passed to pCallback
+ *                           as its second parameter; may be NULL.
+ * @return                   zero on success or negative error code on
+ *                           failure.
+ */
+int32_t uCellCfgSetGreetingCallback(uDeviceHandle_t cellHandle,
+                                    const char *pStr,
+                                    void (*pCallback) (uDeviceHandle_t, void *),
+                                    void *pCallbackParam);
+
 /** Get the current greeting message.
  *
  * @param cellHandle  the handle of the cellular instance.
@@ -358,7 +404,8 @@ int32_t uCellCfgSetGreeting(uDeviceHandle_t cellHandle, const char *pStr);
  *                    error code.  If there is no greeting message
  *                    zero will be returned.
  */
-int32_t uCellCfgGetGreeting(uDeviceHandle_t cellHandle, char *pStr, size_t size);
+int32_t uCellCfgGetGreeting(uDeviceHandle_t cellHandle, char *pStr,
+                            size_t size);
 
 /** Switch off auto-bauding in the cellular module.  This will fix
  * the baud rate of the cellular module to the current baud rate,

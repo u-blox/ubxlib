@@ -416,6 +416,8 @@ typedef struct uCellPrivateInstance_t {
     void *pRegistrationStatusCallbackParameter;
     void (*pConnectionStatusCallback) (bool, void *);
     void *pConnectionStatusCallbackParameter;
+    void (*pGreetingCallback) (uDeviceHandle_t, void *);
+    void *pGreetingCallbackParameter;
     uCellPrivateNet_t *pScanResults;    /**< Anchor for list of network scan results. */
     int32_t sockNextLocalPort;
     void *pSecurityC2cContext;  /**< Hook for a chip to chip security context. */

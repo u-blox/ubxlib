@@ -88,6 +88,13 @@
 # define U_CELL_CFG_TEST_GREETING_STR "beeble"
 #endif
 
+#ifndef U_CELL_CFG_TEST_GREETING_CALLBACK_INVALID_STR
+/** An invalid length of string for a greeting-with-callback
+ * i.e. 65 characters.
+ */
+# define U_CELL_CFG_TEST_GREETING_CALLBACK_INVALID_STR "01234567890123456789012345678901234567890123456789012345678901234"
+#endif
+
 #ifndef U_CELL_CFG_TEST_GNSS_IP_STR
 /** The server string to use when testing forwarding of GNSS messages
  * with AT+UGPRF.
@@ -212,6 +219,15 @@ static void testBandMask(uDeviceHandle_t cellHandle,
     } else {
         U_PORT_TEST_ASSERT(errorCode != 0);
     }
+}
+
+// Callback for the greeting configuration test.
+static void greetingCalback(uDeviceHandle_t cellHandle, void *pParameter)
+{
+    int32_t *pParam = (int32_t *) pParameter;
+
+    (void) cellHandle;
+    (*pParam)++;
 }
 
 /* ----------------------------------------------------------------
@@ -841,6 +857,7 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgGreeting")
     int32_t x;
     int32_t y;
     int32_t heapUsed;
+    int32_t param = 0;
 
     // In case a previous test failed
     uCellTestPrivateCleanup(&gHandles);
@@ -865,6 +882,72 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgGreeting")
     U_TEST_PRINT_LINE("greeting is now \"%s\".", buffer);
     U_PORT_TEST_ASSERT(strcmp(buffer, U_CELL_CFG_TEST_GREETING_STR) == 0);
     U_PORT_TEST_ASSERT(y == strlen(buffer));
+
+    // Set a greeting with callback with invalid parameters
+    U_PORT_TEST_ASSERT(uCellCfgSetGreetingCallback(cellHandle,
+                                                   NULL,
+                                                   greetingCalback,
+                                                   &param) < 0);
+    U_PORT_TEST_ASSERT(uCellCfgSetGreetingCallback(cellHandle,
+                                                   U_CELL_CFG_TEST_GREETING_CALLBACK_INVALID_STR,
+                                                   greetingCalback,
+                                                   &param) < 0);
+
+    U_TEST_PRINT_LINE("setting greeting with callback to \"%s\"...",
+                      U_CELL_CFG_GREETING);
+    U_PORT_TEST_ASSERT(uCellCfgSetGreetingCallback(cellHandle,
+                                                   U_CELL_CFG_GREETING,
+                                                   greetingCalback,
+                                                   &param) == 0);
+    y = uCellCfgGetGreeting(cellHandle, buffer, sizeof(buffer));
+    U_TEST_PRINT_LINE("greeting is now \"%s\".", buffer);
+    U_PORT_TEST_ASSERT(strcmp(buffer, U_CELL_CFG_GREETING) == 0);
+    U_PORT_TEST_ASSERT(y == strlen(buffer));
+
+#if !defined(U_CFG_TEST_DISABLE_GREETING_CALLBACK) && (!defined(U_CFG_APP_PIN_CELL_DTR) || (U_CFG_APP_PIN_CELL_DTR < 0))
+    // The greeting message is not emitted if DTR is used and we don't
+    // test this on some instances
+    U_TEST_PRINT_LINE("rebooting...");
+    U_PORT_TEST_ASSERT(uCellPwrReboot(cellHandle, NULL) == 0);
+    U_PORT_TEST_ASSERT(param == 1);
+#endif
+
+    U_TEST_PRINT_LINE("removing greeting with callback...");
+    U_PORT_TEST_ASSERT(uCellCfgSetGreetingCallback(cellHandle,
+                                                   NULL, NULL, NULL) == 0);
+    y = uCellCfgGetGreeting(cellHandle, buffer, sizeof(buffer));
+    U_TEST_PRINT_LINE("greeting is now \"%s\".", buffer);
+    U_PORT_TEST_ASSERT(y == 0);
+    U_PORT_TEST_ASSERT(strlen(buffer) == 0);
+
+    U_TEST_PRINT_LINE("setting greeting with callback to \"%s\" again...",
+                      U_CELL_CFG_GREETING);
+    U_PORT_TEST_ASSERT(uCellCfgSetGreetingCallback(cellHandle,
+                                                   U_CELL_CFG_GREETING,
+                                                   greetingCalback,
+                                                   &param) == 0);
+    y = uCellCfgGetGreeting(cellHandle, buffer, sizeof(buffer));
+    U_TEST_PRINT_LINE("greeting is now \"%s\".", buffer);
+    U_PORT_TEST_ASSERT(strcmp(buffer, U_CELL_CFG_GREETING) == 0);
+    U_PORT_TEST_ASSERT(y == strlen(buffer));
+
+    U_TEST_PRINT_LINE("setting greeting to non-callback \"%s\"...",
+                      U_CELL_CFG_GREETING);
+    U_PORT_TEST_ASSERT(uCellCfgSetGreeting(cellHandle,
+                                           U_CELL_CFG_GREETING) == 0);
+
+    y = uCellCfgGetGreeting(cellHandle, buffer, sizeof(buffer));
+    U_TEST_PRINT_LINE("greeting is now \"%s\".", buffer);
+    U_PORT_TEST_ASSERT(strcmp(buffer, U_CELL_CFG_GREETING) == 0);
+    U_PORT_TEST_ASSERT(y == strlen(buffer));
+
+#if !defined(U_CFG_TEST_DISABLE_GREETING_CALLBACK) && (!defined(U_CFG_APP_PIN_CELL_DTR) || (U_CFG_APP_PIN_CELL_DTR < 0))
+    // The greeting message is not emitted if DTR is used and we don't
+    // test this on some instances
+    U_TEST_PRINT_LINE("rebooting to make sure we don't know...");
+    U_PORT_TEST_ASSERT(uCellPwrReboot(cellHandle, NULL) == 0);
+    U_PORT_TEST_ASSERT(param == 1);
+#endif
 
     U_TEST_PRINT_LINE("putting greeting back to what it was...");
     if (x > 0) {
