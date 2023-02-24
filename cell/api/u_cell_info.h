@@ -135,7 +135,10 @@ int32_t uCellInfoGetRxQual(uDeviceHandle_t cellHandle);
  * uCellInfoGetRsrpDbm() and uCellInfoGetRsrqDb() in that a
  * pointer must be passed in to obtain the result.  This is
  * because negative, positive and zero values for SNR are valid.
- * SNR is RSRP / (RSSI - RSRP) and so if RSSI and RSRP are the
+ * For Cat-M1/NB/LTE the signal to interference and noise
+ * ratio (SINR) reported directly by the module is returned.
+ * For 3G, EC/N0 is reported.  For 2G, SNR is
+ * RSRP / (RSSI - RSRP) and if RSSI and RSRP are the
  * same a maximal integer value will be returned.
  * SNR may not be available unless the module has successfully
  * registered with the cellular network.

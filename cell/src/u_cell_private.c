@@ -607,6 +607,7 @@ void uCellPrivateClearRadioParameters(uCellPrivateRadioParameters_t *pParameters
     pParameters->rsrqDb = 0x7FFFFFFF;
     pParameters->cellId = -1;
     pParameters->earfcn = -1;
+    pParameters->snrDb = 0x7FFFFFFF;
 }
 
 // Clear the dynamic parameters of an instance,

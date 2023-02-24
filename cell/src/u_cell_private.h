@@ -288,6 +288,7 @@ typedef struct {
     int32_t rxQual;   /**< The RxQual of the serving cell. */
     int32_t cellId;   /**< The cell ID of the serving cell. */
     int32_t earfcn;   /**< The EARFCN of the serving cell. */
+    int32_t snrDb;   /**< The SINR as reported by the module (LTE only). */
 } uCellPrivateRadioParameters_t;
 
 /** Structure to hold a network name, MCC/MNC and RAT
