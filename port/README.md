@@ -35,7 +35,7 @@ Before including `ubxlib.cmake` you must set the variable `UBXLIB_BASE` to root 
 
 You must also specify what `ubxlib` features to enable using the `UBXLIB_FEATURES` variable described below.
 
-To bring the platform-specific files into your CMake file, take a look at, for instance, the Windows-platform (CMakeLists.txt)[platform/windows/mcu/win32/runner/CMakeLists.txt] file.
+To bring the platform-specific files into your CMake file, take a look at, for instance, the Windows-platform [CMakeLists.txt](platform/windows/mcu/win32/runner/CMakeLists.txt) file.
 
 ## UBXLIB_FEATURES
 Available features currently are:
