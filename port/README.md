@@ -72,7 +72,7 @@ For ports that use `make` [ubxlib.mk](ubxlib.mk) can be used to collect the non-
 
 Just like the shared CMake file you must first set the variable `UBXLIB_BASE` to root directory of `ubxlib` and configure the `ubxlib` features using the `UBXLIB_FEATURES` (please see [UBXLIB_FEATURES](#UBXLIB_FEATURES) above). `ubxlib.mk` will then define the same output variables as the shared CMake above (see [Output Variables](#Output-Variables))
 
-To bring the platform-specific files into your `Makefile`, take a look at, for instance, the STM32F4 (Makefile)[platform/stm32cube/mcu/stm32f4/runner/Makefile].
+To bring the platform-specific files into your `Makefile`, take a look at, for instance, the STM32F4 [Makefile](platform/stm32cube/mcu/stm32f4/runner/Makefile).
 
 ## Example
 ```makefile
