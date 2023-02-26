@@ -364,12 +364,17 @@ typedef enum {
     U_CELL_PRIVATE_PROFILE_STATE_MAX_NUM
 } uCellPrivateProfileState_t;
 
-/** Structure describing a file on file system, used when listing
- * stored files on file system.
+/** Structure describing a file, used when listing stored files
+ * on the file system.  Note that, in order to save space
+ * and avoid the need for two heap allocations, the structure
+ * contains a pointer to the filename and, when malloc()ing space
+ * for the structure, sufficient space will be requested to store
+ * the structure _plus_ the filename which will be copied into the
+ * space immediately following the structure.
  */
 typedef struct uCellPrivateFileListContainer_t {
-    /** The name of the file. */
-    char fileName[U_CELL_FILE_NAME_MAX_LENGTH + 1];
+    char *pFileName;  /**< A pointer to the file name, NOT null terminated. */
+    size_t fileNameLength; /**< The length of the file name. */
     struct uCellPrivateFileListContainer_t *pNext;
 } uCellPrivateFileListContainer_t;
 

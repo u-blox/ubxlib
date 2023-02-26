@@ -460,11 +460,17 @@ static int32_t fileListGetRemove(uCellPrivateFileListContainer_t **ppFileContain
 {
     int32_t errorOrCount = (int32_t) U_ERROR_COMMON_NOT_FOUND;
     uCellPrivateFileListContainer_t *pTmp = *ppFileContainer;
+    size_t fileNameLength;
 
     if (pTmp != NULL) {
         if (pFile != NULL) {
-            strncpy(pFile, pTmp->fileName,
-                    U_CELL_FILE_NAME_MAX_LENGTH + 1);
+            fileNameLength = pTmp->fileNameLength;
+            if (fileNameLength > U_CELL_FILE_NAME_MAX_LENGTH) {
+                fileNameLength = U_CELL_FILE_NAME_MAX_LENGTH;
+            }
+            memcpy(pFile, pTmp->pFileName, fileNameLength);
+            // Add a terminator
+            *(pFile + fileNameLength) = 0;
         }
         pTmp = (*ppFileContainer)->pNext;
         uPortFree(*ppFileContainer);
@@ -1170,6 +1176,7 @@ int32_t uCellPrivateFileListFirst(const uCellPrivateInstance_t *pInstance,
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
     uAtClientHandle_t atHandle;
+    char *pFileNameTmp;
     uCellPrivateFileListContainer_t *pFileContainer;
     bool keepGoing = true;
     int32_t bytesRead = 0;
@@ -1177,58 +1184,72 @@ int32_t uCellPrivateFileListFirst(const uCellPrivateInstance_t *pInstance,
 
     // Check parameters
     if ((pInstance != NULL) && (ppFileListContainer != NULL) && (pFileName != NULL)) {
-        errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
-        atHandle = pInstance->atHandle;
-        // Do the ULSTFILE thang with the AT interface
-        uAtClientLock(atHandle);
-        uAtClientCommandStart(atHandle, "AT+ULSTFILE=");
-        // List files operation
-        uAtClientWriteInt(atHandle, 0);
-        if (pInstance->pFileSystemTag != NULL) {
-            // Write tag
-            uAtClientWriteString(atHandle, pInstance->pFileSystemTag, true);
-        }
-        uAtClientCommandStop(atHandle);
-        uAtClientResponseStart(atHandle, "+ULSTFILE:");
-        while (keepGoing) {
-            keepGoing = false;
-            errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
-            pFileContainer = (uCellPrivateFileListContainer_t *) pUPortMalloc(sizeof(*pFileContainer));
-            if (pFileContainer != NULL) {
-                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+        errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
+        // Allocate temporary storage for a file name string
+        pFileNameTmp = pUPortMalloc(U_CELL_FILE_NAME_MAX_LENGTH + 1);
+        if (pFileNameTmp != NULL) {
+            errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
+            atHandle = pInstance->atHandle;
+            // Do the ULSTFILE thang with the AT interface
+            uAtClientLock(atHandle);
+            uAtClientCommandStart(atHandle, "AT+ULSTFILE=");
+            // List files operation
+            uAtClientWriteInt(atHandle, 0);
+            if (pInstance->pFileSystemTag != NULL) {
+                // Write tag
+                uAtClientWriteString(atHandle, pInstance->pFileSystemTag, true);
+            }
+            uAtClientCommandStop(atHandle);
+            uAtClientResponseStart(atHandle, "+ULSTFILE:");
+            while (keepGoing) {
                 // Read file name
-                bytesRead = uAtClientReadString(atHandle, pFileContainer->fileName,
-                                                sizeof(pFileContainer->fileName), false);
+                keepGoing = false;
+                bytesRead = uAtClientReadString(atHandle, pFileNameTmp,
+                                                U_CELL_FILE_NAME_MAX_LENGTH + 1,
+                                                false);
+                if (bytesRead > 0) {
+                    errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
+                    // Allocate space for the structure plus the actual file name
+                    // stored immediately after the structure in the same malloc()ed space
+                    pFileContainer = (uCellPrivateFileListContainer_t *) pUPortMalloc(sizeof(*pFileContainer) +
+                                                                                      bytesRead);
+                    if (pFileContainer != NULL) {
+                        keepGoing = true;
+                        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                        // Point pFileName just beyond the end of the structure
+                        pFileContainer->pFileName = ((char *) pFileContainer) + sizeof(*pFileContainer);
+                        // Copy the file name to this location (noting no null terminator
+                        /// since it has a separate length indicator)
+                        memcpy(pFileContainer->pFileName, pFileNameTmp, bytesRead);
+                        pFileContainer->fileNameLength = bytesRead;
+                        // Add the container to the end of the list
+                        count = filelListAddCount(ppFileListContainer, pFileContainer);
+                    }
+                }
             }
-            if (bytesRead > 0) {
-                bytesRead = 0;
-                keepGoing = true;
-                // Add the container to the end of the list
-                count = filelListAddCount(ppFileListContainer, pFileContainer);
-            } else {
-                // Nothing there, free it
-                uPortFree(pFileContainer);
-            }
-        }
-        uAtClientResponseStop(atHandle);
+            uAtClientResponseStop(atHandle);
 
-        // Do the following parts inside the AT lock,
-        // providing protection for the linked-list.
-        if (errorCode == (int32_t) U_ERROR_COMMON_NO_MEMORY) {
-            // If we ran out of memory, clear the whole list,
-            // don't want to report partial information
-            fileListClear(&pFileContainer);
-        } else {
-            if (count > 0) {
-                // Set the return value, copy out the first item in the list
-                // and remove it.
-                errorCode = (int32_t) count;
-                fileListGetRemove(ppFileListContainer, pFileName);
+            // Do the following parts inside the AT lock,
+            // providing protection for the linked-list.
+            if (errorCode == (int32_t) U_ERROR_COMMON_NO_MEMORY) {
+                // If we ran out of memory, clear the whole list,
+                // don't want to report partial information
+                fileListClear(&pFileContainer);
             } else {
-                errorCode = (int32_t) U_ERROR_COMMON_NOT_FOUND;
+                if (count > 0) {
+                    // Set the return value, copy out the first item in the list
+                    // and remove it.
+                    errorCode = (int32_t) count;
+                    fileListGetRemove(ppFileListContainer, pFileName);
+                } else {
+                    errorCode = (int32_t) U_ERROR_COMMON_NOT_FOUND;
+                }
             }
+            uAtClientUnlock(atHandle);
+
+            // Free temporary storage
+            uPortFree(pFileNameTmp);
         }
-        uAtClientUnlock(atHandle);
     }
 
     return errorCode;
