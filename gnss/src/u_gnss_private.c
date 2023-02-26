@@ -113,6 +113,14 @@
 # error U_GNSS_DEFAULT_SPI_FILL_THRESHOLD must be less than or equal to U_GNSS_SPI_FILL_THRESHOLD_MAX
 #endif
 
+#ifndef U_GNSS_PRIVATE_STREAMED_POS_ENSURE_SETTINGS_RETRIES
+/** Sometimes, when position has been streamed, restoring save settings
+ * for measurement rate and message rate can fail; this is the number
+ * of retries to perform when it fails.
+ */
+# define U_GNSS_PRIVATE_STREAMED_POS_ENSURE_SETTINGS_RETRIES 2
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -1643,6 +1651,8 @@ void uGnssPrivateCleanUpPosTask(uGnssPrivateInstance_t *pInstance)
 // Shut down and free memory from a running streamed position.
 void uGnssPrivateCleanUpStreamedPos(uGnssPrivateInstance_t *pInstance)
 {
+    size_t tries = 1 + U_GNSS_PRIVATE_STREAMED_POS_ENSURE_SETTINGS_RETRIES;
+    int32_t y;
     uGnssPrivateStreamedPosition_t *pStreamedPosition;
     uGnssPrivateMessageId_t privateMessageId =  {.type = U_GNSS_PROTOCOL_UBX,
                                                  .id.ubx = 0x0107
@@ -1658,22 +1668,32 @@ void uGnssPrivateCleanUpStreamedPos(uGnssPrivateInstance_t *pInstance)
         // Put any saved settings back
         if ((pStreamedPosition->measurementPeriodMs >= 0) ||
             (pStreamedPosition->navigationCount >= 0)) {
-            uGnssPrivateSetRate(pInstance,
-                                pStreamedPosition->measurementPeriodMs,
-                                pStreamedPosition->navigationCount,
-                                U_GNSS_TIME_SYSTEM_NONE);
+            // When we have been receiving streamed position from GNSS
+            // setting the rate again afterwards sometimes fails: either
+            // the outgoing message doesn't get to the GNSS chip or it does
+            // and the ack doesn't get back, so we give this a few tries
+            y = -1;
+            for (size_t x = 0; (x < tries) && (y < 0); x++) {
+                y = uGnssPrivateSetRate(pInstance,
+                                        pStreamedPosition->measurementPeriodMs,
+                                        pStreamedPosition->navigationCount,
+                                        U_GNSS_TIME_SYSTEM_NONE);
+            }
         }
         if (pStreamedPosition->messageRate >= 0) {
-            if (U_GNSS_PRIVATE_HAS(pInstance->pModule,
-                                   U_GNSS_PRIVATE_FEATURE_OLD_CFG_API)) {
-                uGnssPrivateSetMsgRate(pInstance,
-                                       &privateMessageId,
-                                       pStreamedPosition->messageRate);
-            } else {
-                cfgVal.value = pStreamedPosition->messageRate;
-                uGnssCfgPrivateValSetList(pInstance, &cfgVal, 1,
-                                          U_GNSS_CFG_VAL_TRANSACTION_NONE,
-                                          U_GNSS_CFG_VAL_LAYER_RAM);
+            y = -1;
+            for (size_t x = 0; (x < tries) && (y < 0); x++) {
+                if (U_GNSS_PRIVATE_HAS(pInstance->pModule,
+                                       U_GNSS_PRIVATE_FEATURE_OLD_CFG_API)) {
+                    y = uGnssPrivateSetMsgRate(pInstance,
+                                               &privateMessageId,
+                                               pStreamedPosition->messageRate);
+                } else {
+                    cfgVal.value = pStreamedPosition->messageRate;
+                    y = uGnssCfgPrivateValSetList(pInstance, &cfgVal, 1,
+                                                  U_GNSS_CFG_VAL_TRANSACTION_NONE,
+                                                  U_GNSS_CFG_VAL_LAYER_RAM);
+                }
             }
         }
         // Now we can free the storage
