@@ -3,6 +3,14 @@ Hopefully this will help if you have an issue with the automated test system.
 # A Test is Failing: Should I be Concerned?
 With so many tests run using end-to-end connectivity and real modules on what is now quite a complex lump of `ubxlib` software there will _always_ be intermittent failures, that's just life.  When you have pushed a branch and the tests have run you should take a look at each test failure and satisfy yourself that it cannot be caused by you.  A list of the known intermittent failure modes can be found on the [wiki page](https://github.com/u-blox/ubxlib_priv/wiki/Known-Test-Failure-Modes) of the `ubxlib_priv` repo; check the failures against this, maybe run the testing again to check for persistent failures and, of course, please keep the list up to date.
 
+# All of the HTTP and/or MQTT and/or Sockets Tests Are Failing: What Should I Do?
+There are a few possibilities:
+- If the failure is occuring both for Wifi and for cellular then:
+  - If the failure is for just _one_ of HTTP or MQTT or sockets then the test application for that specific service, running on our echo test server, has likely failed.  FYI, I've only ever seen this happen for HTTP (the HTTP echo application very occasionally hits a segment fault).  Currently only Rob can fix this.
+  - Otherwise the echo test server itelf, or the internet connection to it, must have failed; currently only Rob can fix this.
+- If the failure is occuring for cellular _only_ (likely accompanied by other cellular-only failures to do with connectivity, e.g. DNS look-up) then:
+  - Something must be up with the Nutaq box which provides the Cat-M1 cellular network to the test system.  This requires manual intervention: there is a sign attached to the test system rack which points out where the power switch of the Nutaq box is: you will need to ask Helen Dalton or Phil Ware in the Cambourne office to do a long-press of the power button to power the Nutaq box down (the fans never go off, so you don't know when it is off unfortunately; just hold the button down for 10 seconds), wait a few seconds and then press the power button once more to power it back up again.
+
 # The Jenkins Web Interface is Not Responding: What Should I Do?
 There could be a number of reasons for this, here they are in order of decreasing likeliness:
 - Internet connectivity into the Cambourne office is down: this happens rather more frequently than it should; watch for IT announcements for the longer outages.  There is nothing that can be done about it, unfortunately, the system will become available again when internet connectivity is restored.
