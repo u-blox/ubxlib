@@ -310,6 +310,8 @@ typedef enum {
 } uAtClientScope_t;
 
 /** The definition of a URC.
+ * Note: the pPrefix string is copied into the
+ * space following this structure
  */
 typedef struct uAtClientUrc_t {
     const char *pPrefix;       /** The prefix for this URC, e.g. "+CEREG:". */
@@ -1603,19 +1605,29 @@ static int32_t bufferReadChar(uAtClientInstance_t *pClient)
 // without bringing more data into it, and if the string
 // is there consume it.
 static bool bufferMatch(const uAtClientInstance_t *pClient,
-                        const char *pString, size_t length)
+                        const char *pString, size_t length,
+                        bool ignoreNullsAtStart)
 {
     uAtClientReceiveBuffer_t *pReceiveBuffer = pClient->pReceiveBuffer;
+    size_t readIndex;
     bool found = false;
 
     bufferRewind(pClient);
 
-    if ((pReceiveBuffer->length - pReceiveBuffer->readIndex) >= length) {
-        if (pString && (memcmp(U_AT_CLIENT_DATA_BUFFER_PTR(pReceiveBuffer) +
-                               pReceiveBuffer->readIndex,
+    readIndex = pReceiveBuffer->readIndex;
+    if (ignoreNullsAtStart) {
+        while ((pReceiveBuffer->length - readIndex < length) &&
+               (*(U_AT_CLIENT_DATA_BUFFER_PTR(pReceiveBuffer) + readIndex) == 0)) {
+            readIndex++;
+        }
+    }
+
+    if ((pReceiveBuffer->length - readIndex) >= length) {
+        if (pString && (memcmp(U_AT_CLIENT_DATA_BUFFER_PTR(pReceiveBuffer) + readIndex,
                                pString, length) == 0)) {
             // Consume the matching part
-            pReceiveBuffer->readIndex += length;
+            readIndex += length;
+            pReceiveBuffer->readIndex += readIndex;
             found = true;
         }
     }
@@ -1757,7 +1769,10 @@ static bool bufferMatchOneUrc(uAtClientInstance_t *pClient)
          pUrc = pUrc->pNext) {
         prefixLength = pUrc->prefixLength;
         if (pClient->pReceiveBuffer->length >= prefixLength) {
-            if (bufferMatch(pClient, pUrc->pPrefix, prefixLength)) {
+            // Do the check ignoring nulls at the start in case
+            // a URC is emitted near power-on which can suffer from
+            // such nulls
+            if (bufferMatch(pClient, pUrc->pPrefix, prefixLength, true)) {
                 setScope(pClient, U_AT_CLIENT_SCOPE_INFORMATION);
                 now = uPortGetTickTimeMs();
                 // Before heading off into URCness, save
@@ -1943,23 +1958,23 @@ static bool deviceErrorInBuffer(uAtClientInstance_t *pClient)
     bool found;
 
     found = bufferMatch(pClient, U_AT_CLIENT_CME_ERROR,
-                        U_AT_CLIENT_CME_ERROR_LENGTH_BYTES);
+                        U_AT_CLIENT_CME_ERROR_LENGTH_BYTES, false);
     if (found) {
         setDeviceError(pClient, U_AT_CLIENT_DEVICE_ERROR_TYPE_CME);
     } else {
         found = bufferMatch(pClient, U_AT_CLIENT_CMS_ERROR,
-                            U_AT_CLIENT_CMS_ERROR_LENGTH_BYTES);
+                            U_AT_CLIENT_CMS_ERROR_LENGTH_BYTES, false);
         if (found) {
             setDeviceError(pClient, U_AT_CLIENT_DEVICE_ERROR_TYPE_CMS);
         } else {
             found = bufferMatch(pClient, U_AT_CLIENT_ERROR,
-                                U_AT_CLIENT_ERROR_LENGTH_BYTES);
+                                U_AT_CLIENT_ERROR_LENGTH_BYTES, false);
             if (found) {
                 setDeviceError(pClient,
                                U_AT_CLIENT_DEVICE_ERROR_TYPE_ERROR);
             } else {
                 found = bufferMatch(pClient, U_AT_CLIENT_ABORTED,
-                                    U_AT_CLIENT_ABORTED_LENGTH_BYTES);
+                                    U_AT_CLIENT_ABORTED_LENGTH_BYTES, false);
                 if (found) {
                     setDeviceError(pClient,
                                    U_AT_CLIENT_DEVICE_ERROR_TYPE_ABORTED);
@@ -1986,10 +2001,10 @@ static bool processResponse(uAtClientInstance_t *pClient,
            !processingDone) {
         // Remove any CR/LF's at the start
         while (bufferMatch(pClient, U_AT_CLIENT_CRLF,
-                           U_AT_CLIENT_CRLF_LENGTH_BYTES)) {}
+                           U_AT_CLIENT_CRLF_LENGTH_BYTES, false)) {}
         // Check for the end of the response, i.e. "OK"
         if (bufferMatch(pClient, gResponseStopTag.pString,
-                        gResponseStopTag.length)) {
+                        gResponseStopTag.length, false)) {
             setScope(pClient, U_AT_CLIENT_SCOPE_RESPONSE);
             pClient->stopTag.found = true;
         } else {
@@ -1997,7 +2012,7 @@ static bool processResponse(uAtClientInstance_t *pClient,
             if (!deviceErrorInBuffer(pClient)) {
                 // No error, check for the prefix
                 if ((pPrefix != NULL) && bufferMatch(pClient, pPrefix,
-                                                     strlen(pPrefix))) {
+                                                     strlen(pPrefix), false)) {
                     prefixMatched = true;
                     processingDone = true;
                 } else {
@@ -3648,7 +3663,7 @@ int32_t uAtClientWaitCharacter(uAtClientHandle_t atHandle,
                 do {
                     // Need to remove any CR/LF's at the start
                     while (bufferMatch(pClient, U_AT_CLIENT_CRLF,
-                                       U_AT_CLIENT_CRLF_LENGTH_BYTES)) {}
+                                       U_AT_CLIENT_CRLF_LENGTH_BYTES, false)) {}
                     urcFound = bufferMatchOneUrc(pClient);
                 } while (urcFound);
 
@@ -3711,22 +3726,30 @@ int32_t uAtClientSetUrcHandler(uAtClientHandle_t atHandle,
     uAtClientUrc_t *pUrc = NULL;
     uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
     size_t prefixLength;
+    char *pDest;
 
     U_AT_CLIENT_LOCK_CLIENT_MUTEX(pClient);
 
     if ((pPrefix != NULL) && (pHandler != NULL)) {
         errorCode = U_ERROR_COMMON_NO_MEMORY;
         if (!findUrcHandler(pClient, pPrefix)) {
-            pUrc = (uAtClientUrc_t *) pUPortMalloc(sizeof(uAtClientUrc_t));
+            prefixLength = strlen(pPrefix);
+            pUrc = (uAtClientUrc_t *) pUPortMalloc(sizeof(uAtClientUrc_t) + prefixLength + 1);
             if (pUrc != NULL) {
-                prefixLength = strlen(pPrefix);
                 if (prefixLength > pClient->urcMaxStringLength) {
                     pClient->urcMaxStringLength = prefixLength;
                     if (pClient->urcMaxStringLength > pClient->maxRespLength) {
                         pClient->maxRespLength = pClient->urcMaxStringLength;
                     }
                 }
-                pUrc->pPrefix = pPrefix;
+                // Copy the prefix into the space following the structure
+                // Note: since we have a length we shouldn't need the null
+                // terminator but this code was originally written with the
+                // prefix as a const char * in FLASH (so NOT copied),
+                // hence it is safer to stick with that convention
+                pDest = ((char *) pUrc) + sizeof(uAtClientUrc_t);
+                strncpy(pDest, pPrefix, prefixLength  + 1);
+                pUrc->pPrefix = pDest;
                 pUrc->prefixLength = prefixLength;
                 pUrc->pHandler = pHandler;
                 pUrc->pHandlerParam = pHandlerParam;
@@ -3749,7 +3772,7 @@ int32_t uAtClientSetUrcHandler(uAtClientHandle_t atHandle,
         // Only insert the URC in the list outside the pClient mutex lock,
         // since we need to prevent a URC happening while we do so and we
         // can't do that within the locks as a URC callback might have
-        // locked  pClient->mutex
+        // locked pClient->mutex
         U_PORT_MUTEX_LOCK(pClient->urcPermittedMutex);
 
         pUrc->pNext = pClient->pUrcList;
@@ -3936,8 +3959,8 @@ int32_t uAtClientUrcDirect(uAtClientHandle_t atHandle,
                    (!pClient->stopTag.found) && !prefixFound) {
                 // Remove the CR/LF's that should be at the start
                 while (bufferMatch(pClient, U_AT_CLIENT_CRLF,
-                                   U_AT_CLIENT_CRLF_LENGTH_BYTES)) {}
-                prefixFound = bufferMatch(pClient, pPrefix, strlenPrefix);
+                                   U_AT_CLIENT_CRLF_LENGTH_BYTES, false)) {}
+                prefixFound = bufferMatch(pClient, pPrefix, strlenPrefix, false);
                 // If no prefix was found, check for a URC; yes,
                 // another URC might arrive while we're waiting for
                 // _this_ URC. If we don't find a URC either then
