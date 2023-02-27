@@ -833,7 +833,8 @@ int32_t setGreeting(uAtClientHandle_t atHandle, const char *pStr)
     return uAtClientUnlock(atHandle);
 }
 
-// Get the current greeting message.
+// Get the current greeting message; a null
+// terminator will be included.
 int32_t getGreeting(uAtClientHandle_t atHandle, char *pStr, size_t size)
 {
     int32_t errorCodeOrSize;
@@ -900,6 +901,65 @@ static void GREETING_urc(uAtClientHandle_t atHandle, void *pParameter)
             pGreeting->pCallbackParameter = pInstance->pGreetingCallbackParameter;
             uAtClientCallback(atHandle, greetingCallback, pGreeting);
         }
+    }
+}
+
+// Add a greeting URC, handling SARA-R41x oddness if necessary.
+static int32_t addGreetingUrc(uCellPrivateInstance_t *pInstance,
+                              const char *pStr)
+{
+    int32_t errorCode;
+    // +1 for terminator, +3 for the SARA-R41X workaround
+    char buffer[U_CELL_CFG_GREETING_CALLBACK_MAX_LEN_BYTES + 1 + 3];
+
+    if (U_CELL_PRIVATE_MODULE_IS_SARA_R41X(pInstance->pModule->moduleType)) {
+        // This is necessary since SARA-R41X modules add an odd set of
+        // control characters before the greeting string: usually this is
+        // a null and then 0x0a (LF) 0x0d (CR), rather than the usual CR/LF.
+        // The null is obliterating a CR, which can sometimes appears, so
+        // the greeting string can be prefixed with 00 0a 0d or 0d 0a 0d;
+        // the AT client will remove the null itself, so we need URC
+        // handlers for the 0a 0d case and the 0d 0a 0d case.
+        // Shuffle everything in the buffer up by three
+        strncpy(buffer + 3, pStr, sizeof(buffer) - 3);
+        // Add CR/LF/CR at the start
+        buffer[0] = 0x0d;
+        buffer[1] = 0x0a;
+        buffer[2] = 0x0d;
+        errorCode = uAtClientSetUrcHandler(pInstance->atHandle, buffer,
+                                           GREETING_urc, pInstance);
+        if (errorCode == 0) {
+            // And the same for LF/CR
+            errorCode = uAtClientSetUrcHandler(pInstance->atHandle, buffer + 1,
+                                               GREETING_urc, pInstance);
+        }
+    } else {
+        errorCode = uAtClientSetUrcHandler(pInstance->atHandle, pStr,
+                                           GREETING_urc, pInstance);
+    }
+
+    return errorCode;
+}
+
+// Remove a greeting URC, handling SARA-R41x oddness if necessary.
+static void removeGreetingUrc(uCellPrivateInstance_t *pInstance,
+                              const char *pStr)
+{
+    // +1 for terminator, +3 for the SARA-R41X workaround
+    char buffer[U_CELL_CFG_GREETING_CALLBACK_MAX_LEN_BYTES + 1 + 3];
+
+    if (U_CELL_PRIVATE_MODULE_IS_SARA_R41X(pInstance->pModule->moduleType)) {
+        // Same reasoning as for addGreetingUrc()
+        strncpy(buffer + 3, pStr, sizeof(buffer) - 3);
+        // Add CR/LF/CR at the start
+        buffer[0] = 0x0d;
+        buffer[1] = 0x0a;
+        buffer[2] = 0x0d;
+        uAtClientRemoveUrcHandler(pInstance->atHandle, buffer);
+        // And the same for LF/CR
+        uAtClientRemoveUrcHandler(pInstance->atHandle, buffer + 1);
+    } else {
+        uAtClientRemoveUrcHandler(pInstance->atHandle, pStr);
     }
 }
 
@@ -1572,7 +1632,8 @@ int32_t uCellCfgSetGreeting(uDeviceHandle_t cellHandle, const char *pStr)
     uCellPrivateInstance_t *pInstance;
     uAtClientHandle_t atHandle;
     size_t size;
-    char buffer[U_CELL_CFG_GREETING_CALLBACK_MAX_LEN_BYTES + 1]; // +1 for terminator
+    // +1 for terminator
+    char buffer[U_CELL_CFG_GREETING_CALLBACK_MAX_LEN_BYTES + 1];
 
     if (gUCellPrivateMutex != NULL) {
 
@@ -1586,7 +1647,7 @@ int32_t uCellCfgSetGreeting(uDeviceHandle_t cellHandle, const char *pStr)
                 // it 'cos this is the "non-callback" form
                 size = getGreeting(atHandle, buffer, sizeof(buffer));
                 if (size > 0) {
-                    uAtClientRemoveUrcHandler(atHandle, buffer);
+                    removeGreetingUrc(pInstance, buffer);
                 }
                 pInstance->pGreetingCallback = NULL;
                 pInstance->pGreetingCallbackParameter = NULL;
@@ -1611,7 +1672,8 @@ int32_t uCellCfgSetGreetingCallback(uDeviceHandle_t cellHandle,
     uCellPrivateInstance_t *pInstance;
     uAtClientHandle_t atHandle;
     size_t size;
-    char buffer[U_CELL_CFG_GREETING_CALLBACK_MAX_LEN_BYTES + 1]; // +1 for terminator
+    // +1 for terminator
+    char buffer[U_CELL_CFG_GREETING_CALLBACK_MAX_LEN_BYTES + 1];
 
     if (gUCellPrivateMutex != NULL) {
 
@@ -1622,17 +1684,16 @@ int32_t uCellCfgSetGreetingCallback(uDeviceHandle_t cellHandle,
             pInstance = pUCellPrivateGetInstance(cellHandle);
             if (pInstance != NULL) {
                 atHandle = pInstance->atHandle;
-                // Remove any existing greeting and callback
+                // Remove any existing callback
                 size = getGreeting(atHandle, buffer, sizeof(buffer));
                 if (size > 0) {
-                    uAtClientRemoveUrcHandler(atHandle, buffer);
+                    removeGreetingUrc(pInstance, buffer);
                 }
                 // Set the new greeting
                 errorCode = setGreeting(atHandle, pStr);
                 if (errorCode == 0) {
                     if (pCallback != NULL) {
-                        errorCode = uAtClientSetUrcHandler(atHandle, pStr,
-                                                           GREETING_urc, pInstance);
+                        errorCode = addGreetingUrc(pInstance, pStr);
                         if (errorCode != 0) {
                             // Clean up on error
                             setGreeting(atHandle, NULL);

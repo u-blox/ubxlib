@@ -80,6 +80,14 @@ extern "C" {
      ((moduleType) == U_CELL_MODULE_TYPE_SARA_R410M_03B) || \
      ((moduleType) == U_CELL_MODULE_TYPE_SARA_R422))
 
+/** Return true if the given module type is SARA-R41x-xx.
+ */
+#define U_CELL_PRIVATE_MODULE_IS_SARA_R41X(moduleType)      \
+    (((moduleType) == U_CELL_MODULE_TYPE_SARA_R410M_02B) || \
+     ((moduleType) == U_CELL_MODULE_TYPE_SARA_R412M_02B) || \
+     ((moduleType) == U_CELL_MODULE_TYPE_SARA_R412M_03B) || \
+     ((moduleType) == U_CELL_MODULE_TYPE_SARA_R410M_03B))
+
 /** Return true if the supported RATS bitmap includes LTE.
  */
 #define U_CELL_PRIVATE_SUPPORTED_RATS_LTE(supportedRatsBitmap)  \
