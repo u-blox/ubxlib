@@ -1281,6 +1281,7 @@ static void cmuxDecode(uCellMuxPrivateContext_t *pContext, uint32_t eventBitMap)
                                                        pContext->readHandle,
                                                        parserList, &parserContext);
             if (errorCodeOrLength > 0) {
+                discardLength = 0;
                 pDeviceSerial = pUCellMuxPrivateGetDeviceSerial(pContext, parserContext.address);
                 pChannelContext = (uCellMuxPrivateChannelContext_t *) pUInterfaceContext(pDeviceSerial);
                 if ((pChannelContext != NULL) &&
@@ -1313,7 +1314,6 @@ static void cmuxDecode(uCellMuxPrivateContext_t *pContext, uint32_t eventBitMap)
                                     if (bufferLength > sizeof(pContext->scratch)) {
                                         bufferLength = sizeof(pContext->scratch);
                                     }
-                                    discardLength = 0;
                                     if (parserContext.informationLengthBytes > bufferLength) {
                                         discardLength = parserContext.informationLengthBytes - bufferLength;
                                         parserContext.informationLengthBytes = bufferLength;
@@ -1328,7 +1328,7 @@ static void cmuxDecode(uCellMuxPrivateContext_t *pContext, uint32_t eventBitMap)
                                             parserContext.informationLengthBytes = bufferLength;
                                         }
 #ifdef U_CELL_MUX_ENABLE_DEBUG
-                                        uPortLog("U_CELL_CMUX_%d: decoded I-field %d byte(s), buffer %d/%d.\n",
+                                        uPortLog("U_CELL_CMUX_%d: writing %d byte(s) of decode I-field, buffer %d/%d.\n",
                                                  pChannelContext->channel,
                                                  parserContext.informationLengthBytes,
                                                  serialGetReceiveSizeInnards(pDeviceSerial),
@@ -1384,7 +1384,7 @@ static void cmuxDecode(uCellMuxPrivateContext_t *pContext, uint32_t eventBitMap)
                                             uRingBufferReadHandle(&(pContext->ringBuffer), pContext->readHandle,
                                                                   NULL, discardLength);
 #ifdef U_CELL_MUX_ENABLE_DEBUG
-                                            uPortLog("U_CELL_CMUX_%d: discarded I-field %d byte(s).\n",
+                                            uPortLog("U_CELL_CMUX_%d: discarded %d byte(s) of I-field.\n",
                                                      pChannelContext->channel, discardLength);
 #endif
                                         }
@@ -1425,9 +1425,10 @@ static void cmuxDecode(uCellMuxPrivateContext_t *pContext, uint32_t eventBitMap)
                 }
 
                 if (!stalled) {
-                    // Discard the frame from the ring-buffer if we've processed it
+                    // Remove any suff we have not already discarded from the ring-buffer
+                    // if we've processed it
                     uRingBufferReadHandle(&(pContext->ringBuffer), pContext->readHandle,
-                                          NULL, errorCodeOrLength);
+                                          NULL, errorCodeOrLength - discardLength);
                 }
             }
         }
