@@ -1,24 +1,19 @@
 <img src="/readme_images/ubxlib-logo.svg" width="400">
 
-[![important message](/readme_images/important_msg.svg)](/UPCOMING.md)
-
 # Introduction to `ubxlib`
-
 This repository contains an add-on to microcontroller and RTOS SDKs for building embedded applications with u-blox products and services. It provides portable C libraries which expose APIs with examples. `ubxlib` supports [u-blox](https://www.u-blox.com) modules with [cellular](https://www.u-blox.com/en/cellular-modules) (2G/3G/4G), [short-range](https://www.u-blox.com/en/short-range-radio-chips-and-modules) (Bluetooth and Wi-Fi) and [positioning](https://www.u-blox.com/en/positioning-chips-and-modules) (GNSS) functionality. The `ubxlib` libraries present high level C APIs for use in customer applications (e.g. connect to a network, open a TCP socket, establish location, etc.) and implements these APIs on selected popular MCUs, also available inside u-blox modules.
 
 The goal of `ubxlib` is to deliver a single tested solution, with examples, which provides uniform easy-to-use APIs across several u-blox products. Releases of `ubxlib` are tested automatically for all configurations on multiple boards in a [test farm](/port/platform/common/automation/DATABASE.md).
 
 ![ubxlib high level overview](/readme_images/ubxlib_high_level.png)
 
-The easiest way to quickly explore `ubxlib` is to start with a board listed in the [test farm](/port/platform/common/automation/DATABASE.md). u-blox EVKs (evaluation kits) or application boards can be found [here](https://www.u-blox.com/en/evk-search) or at major electronics distributors and code examples which run on the u-blox [XPLR-IOT-1 platform](https://www.u-blox.com/en/product/xplr-iot-1) can be found [here](https://github.com/u-blox/ubxlib_examples_xplr_iot).
+The easiest way to quickly explore `ubxlib` is to start with a board listed in the [test farm](/port/platform/common/automation/DATABASE.md). u-blox EVKs (evaluation kits) or application boards can be found [here](https://www.u-blox.com/en/evk-search) or at major electronics distributors and code examples which run on the u-blox [XPLR-IOT-1 platform](https://www.u-blox.com/en/product/xplr-iot-1) can be found [here](https://github.com/u-blox/ubxlib_examples_xplr_iot).  If you've heard enough and want to get started with the [XPLR-IOT-1 platform](https://www.u-blox.com/en/product/xplr-iot-1), or maybe with [PlatformIO](https://platformio.org/), jump straight to **[How To Use This Repo](#how-to-use-this-repo)** below.
 
 `ubxlib` runs on a host microcontroller and has a peripheral attached. This setup is very common in embedded applications. An example of such a host-peripheral configuration with EVK-NINA-B301 (Bluetooth 5.0) and EVK-R4 (SARA-R4 with 2G/3G/4G) in which the `ubxlib` host sets up a TCP connection is shown in the following figure. Many other combinations can be achieved, with the supported hosts and peripherals in the tables in the next section.
-
 
 ![EVK setup](/readme_images/EVK_NINA_R4.png)
 
 # APIs
-
 The key APIs provided by this repo, and their relationships with each other, are shown in the picture below.
 
 ![APIs](/readme_images/apis.jpg)
@@ -39,7 +34,6 @@ The key APIs provided by this repo, and their relationships with each other, are
 All APIs are documented with Doxygen compatible comments: simply download the latest [Doxygen](https://doxygen.nl/) and either run it from the `ubxlib` directory at a command prompt or open [Doxyfile](/Doxyfile) in the Doxygen GUI and run it to obtain the output.
 
 # Supported `ubxlib` host platforms and APIs
-
 Hosts run `ubxlib` and interact with an attached periperal. A host platform contains an MCU, toolchain and RTOS/SDK as listed in the table below. Hosts are typically u-blox open CPU (standalone) modules or other MCUs. To use a host you need a development board or an EVK. Currently `ubxlib` supports the following purchasable boards out-of-the box.
 
 - [u-blox C030-U201 board](https://www.u-blox.com/en/product/c030-application-board)
@@ -66,7 +60,6 @@ If your MCU is not on the list:
 <sup>* For development/test purposes only.</sup>
 
 # Supported modules as `ubxlib` peripherals and APIs
-
 Peripherals are u-blox modules which accept commands (e.g. AT-commands) over a serial interface and have no open MCU environment. To run the APIs they need to be attached to a host which runs `ubxlib`. For example in the [test farm](/port/platform/common/automation/DATABASE.md) combinations of hosts and peripherals are listed.
 
 |`ubxlib` peripherals |NINA-B41 series<br />NINA-B31 series<br />NINA-B1 series<br />ANNA-B1|NINA-W13|NINA-W15|SARA-U2 series|SARA-R4 series<br />SARA-R5 series<br />LARA-R6 series<br />|SARA-R510M8S<br />SARA-R422M8S|M8/M9/M10 series|
@@ -131,7 +124,16 @@ In order for u-blox to support multiple platforms with this code there is also a
             ...
 ```
 
-# How To Use This Repo
+# How to use this Repo
+There are a few possible approaches to adopting `ubxlib`.  If you do not have a fixed environment (MCU, toolchain, RTOS, etc.) then the first two options offer an easy start; if you are constrained in how you must work (i.e. you must use a particular MCU or toolchain or RTOS), or you are happy to dive into the detail from the outset, then the third way is for you.
+
+## The Easy Way 1: XPLR IoT
+If you would like to explore cellular, positioning, Wifi and BLE, along with a suite of sensors, all at once, you might consider purchasing a u-blox [XPLR-IOT-1 platform](https://www.u-blox.com/en/product/xplr-iot-1) and using the associated [ubxlib examples repo](https://github.com/u-blox/ubxlib_examples_xplr_iot), which allows you to install, build and run [Zephyr](https://www.zephyrproject.org/)-based applications.
+
+## The Easy Way 2: PlatformIO
+`ubxlib` is supported as a [PlatformIO](https://platformio.org/) library; if you have a board that either (a) runs [Zephyr](https://www.zephyrproject.org/) or (b) contains an ESP32 chip (running [ESP-IDF](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/index.html) or [Arduino](https://www.arduino.cc/)), then just follow the instructions [here](/port/platform/platformio) to load `ubxlib` directly into the [PlatformIO](https://platformio.org/) Visual Studio Code-based IDE.
+
+## The Hard Way: Down in the Detail
 This repo uses Git submodules: make sure that once it has been cloned you do something like:
 
 `git submodule update --init --recursive`
@@ -144,7 +146,8 @@ Having chosen your MCU and installed the platform tools, navigate to the directo
 
 Configuration information for the examples and the tests can be found in the `cfg` directory of your chosen MCU.  Depending on how you have connected your MCU to a u-blox module you may need to override this configuration, e.g. to change which MCU pin is connected to which pin of the u-blox module.  The `README.md` in the `runner` directory of your chosen MCU will tell you how to override conditional compilation flags in order to do this.
 
-# Examples: How To Use `ubxlib`
+# Examples
+A number of examples are provided with this repo:
 
 |  Technology  | Example |
 |--------------|----------|
@@ -156,15 +159,14 @@ Configuration information for the examples and the tests can be found in the `cf
 | Cellular     | An [MQTT/MQTT-SN client](/example/mqtt_client "MQTT/MQTT-SN example") using the [MQTT/MQTT-SN client](/common/mqtt_client "MQTT/MQTT-SN client API") API.|
 | Cellular     | An [HTTP client](/example/http_client "HTTP example") using the [HTTP client](/common/http_client "HTTP client API") API.|
 | Cellular     | [CellLocate](/example/location "CellLocate example") example.|
-| Bluetooth    | SPS (serial port service). |
+| Bluetooth    | See the BLE examples in the [XPLR-IOT-1 ubxlib examples repo](https://github.com/u-blox/ubxlib_examples_xplr_iot/tree/master/examples). |
 | Wi-Fi        | The [sockets](/example/sockets "sockets example") example brings up a TCP/UDP socket by using the [device](/common/device "device API"), [network](/common/network "network API") and [sock](/common/sock "sock API") APIs.  |
 | GNSS         | [location](/example/location "location example") example using a GNSS chip connected directly or via a cellular module.|
 | GNSS         | [cfg_val](/example/gnss "CFGVALXXX example") example configuring an M9 or later GNSS chip with CFGVALXXX messages.|
 | GNSS         | [message](/example/gnss "message example") example communicating directly with a GNSS chip, messages of your choice.|
 | GNSS         | [position](/example/gnss "position example") example obtaining streamed position directly from a GNSS chip.|
 
-# Quick Start Guide
-It is easy to get started with `ubxlib` using the [examples](/example) listed above and the build files in this repository as a basis.  A step-by-step description of how to get started with an application based on `ubxlib` is given below.
+You may use the code from any of these examples as a basis for your work as follows:
 - Copy the source files for the [example](/example) that is closest to your intended application to your project directory.
 - Remove all definitions and include files that are related purely to the `ubxlib` test system; for example you only need to include the [ubxlib.h](/ubxlib.h) file and you will want the entry point to be something like `int main()` rather than `U_PORT_TEST_FUNCTION(...)`.
 - Adapt the definitions needed for your example, see the include file `u_cfg_app_platform_specific.h` for your platform; some examples of definitions that need to be set are:
@@ -176,9 +178,9 @@ It is easy to get started with `ubxlib` using the [examples](/example) listed ab
   - if needed, add the source file(s) of your application to the make/cmake files.
 - Build and flash your adapted example using your IDE of choice or command-line make/cmake.
 
-General information about the build system is available in the [port directory](/port) and platform specific information is available in the [platform specific port directory](/port/platform) for your chosen MCU.
+General information about how to integrate `ubxlib` into a build system is available in the [port directory](/port) and platform specific information is available in the [platform specific port directory](/port/platform) for your chosen MCU.
 
-# Feature Request And Roadmap
+# Feature Request and Roadmap
 New features can be requested and up-voted [here](https://github.com/u-blox/ubxlib/issues/12). The comments of this issue also contains an outlook about features of upcoming releases. Also it is the right place to discuss features and their priority.
 
 # License
