@@ -111,6 +111,9 @@ typedef void (pTimerCallback_t) (const uPortTimerHandle_t, void *);
 
 /** Create, and start, a task.
  *
+ * Note: just before pFunction exits, make sure to call
+ * uPortTaskDelete(NULL) in order to free memory.
+ *
  * @param[in] pFunction    the function that forms the task.
  * @param[in] pName        a null-terminated string naming the task,
  *                         may be NULL.
