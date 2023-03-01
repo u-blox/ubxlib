@@ -800,10 +800,11 @@ int32_t uCellInfoGetSnrDb(uDeviceHandle_t cellHandle, int32_t *pSnrDb)
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if ((pInstance != NULL) && (pSnrDb != NULL)) {
             pRadioParameters = &(pInstance->radioParameters);
-            errorCode = (int32_t) U_ERROR_COMMON_NOT_FOUND;
+            errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
             rat = uCellPrivateGetActiveRat(pInstance);
             if ((rat == U_CELL_NET_RAT_GSM_GPRS_EGPRS) ||
                 (rat == U_CELL_NET_RAT_EGPRS)) {
+                // Don't have SNR in 2G, just calculate it from RSSI and RSRP
                 errorCode = (int32_t) U_CELL_ERROR_VALUE_OUT_OF_RANGE;
                 // SNR = RSRP / (RSSI - RSRP).
                 if ((pRadioParameters->rssiDbm != 0) &&
@@ -819,12 +820,16 @@ int32_t uCellInfoGetSnrDb(uDeviceHandle_t cellHandle, int32_t *pSnrDb)
                     }
                 }
             } else {
-                if (pRadioParameters->snrDb != 0x7FFFFFFF) {
-                    // If we have a stored SNIR value that we've been
-                    // able to read directly out of the module, then
-                    // report that
-                    *pSnrDb = pRadioParameters->snrDb;
-                    errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                       U_CELL_PRIVATE_FEATURE_SNR_REPORTED)) {
+                    errorCode = (int32_t) U_ERROR_COMMON_NOT_FOUND;
+                    if (pRadioParameters->snrDb != 0x7FFFFFFF) {
+                        // If we have a stored SNIR value that we've been
+                        // able to read directly out of the module, then
+                        // report that
+                        *pSnrDb = pRadioParameters->snrDb;
+                        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                    }
                 }
             }
         }

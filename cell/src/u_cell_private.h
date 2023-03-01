@@ -222,7 +222,8 @@ typedef enum {
     U_CELL_PRIVATE_FEATURE_SOCK_SET_LOCAL_PORT,
     U_CELL_PRIVATE_FEATURE_FOTA,
     U_CELL_PRIVATE_FEATURE_UART_POWER_SAVING,
-    U_CELL_PRIVATE_FEATURE_CMUX
+    U_CELL_PRIVATE_FEATURE_CMUX,
+    U_CELL_PRIVATE_FEATURE_SNR_REPORTED
 } uCellPrivateFeature_t;
 
 /** The characteristics that may differ between cellular modules.

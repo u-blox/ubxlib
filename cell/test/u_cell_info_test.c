@@ -342,7 +342,8 @@ U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoRadioParameters")
         if (x == 0) {
             U_TEST_PRINT_LINE("SNR is %d dB.", snrDb);
         }
-        U_PORT_TEST_ASSERT((x == 0) || (x == U_CELL_ERROR_VALUE_OUT_OF_RANGE));
+        U_PORT_TEST_ASSERT((x == 0) || (x == (int32_t) U_CELL_ERROR_VALUE_OUT_OF_RANGE) ||
+                           (x == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED));
     }
 
     // Disconnect

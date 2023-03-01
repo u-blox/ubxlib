@@ -231,7 +231,8 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SOCK_SET_LOCAL_PORT)                 |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_FOTA)                                |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UART_POWER_SAVING)                   |
-         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CMUX)  /* features */
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CMUX)                                |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SNR_REPORTED) /* features */
         ),
         4 /* Default CMUX channel for GNSS */
     },
@@ -290,7 +291,8 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTTSN)                                |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_FOTA)                                  |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UART_POWER_SAVING)                     |
-         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CMUX)  /* features */
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CMUX)                                  |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SNR_REPORTED) /* features */
         ),
         3 /* Default CMUX channel for GNSS */
     },
@@ -317,7 +319,8 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTTSN)                              |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SOCK_SET_LOCAL_PORT)                 |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_FOTA)                                |
-         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CMUX) /* features */
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CMUX)                                |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SNR_REPORTED) /* features */
         ),
         3 /* Default CMUX channel for GNSS */
     }
