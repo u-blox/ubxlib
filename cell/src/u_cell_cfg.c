@@ -909,8 +909,8 @@ static int32_t addGreetingUrc(uCellPrivateInstance_t *pInstance,
                               const char *pStr)
 {
     int32_t errorCode;
-    // +1 for terminator, +3 for the SARA-R41X workaround
-    char buffer[U_CELL_CFG_GREETING_CALLBACK_MAX_LEN_BYTES + 1 + 3];
+    // +1 for terminator, +2 for the SARA-R41X workaround
+    char buffer[U_CELL_CFG_GREETING_CALLBACK_MAX_LEN_BYTES + 1 + 2];
 
     if (U_CELL_PRIVATE_MODULE_IS_SARA_R41X(pInstance->pModule->moduleType)) {
         // This is necessary since SARA-R41X modules add an odd set of
@@ -918,18 +918,17 @@ static int32_t addGreetingUrc(uCellPrivateInstance_t *pInstance,
         // a null and then 0x0a (LF) 0x0d (CR), rather than the usual CR/LF.
         // The null is obliterating a CR, which can sometimes appears, so
         // the greeting string can be prefixed with 00 0a 0d or 0d 0a 0d;
-        // the AT client will remove the null itself, so we need URC
-        // handlers for the 0a 0d case and the 0d 0a 0d case.
-        // Shuffle everything in the buffer up by three
-        strncpy(buffer + 3, pStr, sizeof(buffer) - 3);
-        // Add CR/LF/CR at the start
-        buffer[0] = 0x0d;
-        buffer[1] = 0x0a;
-        buffer[2] = 0x0d;
+        // the AT client will remove the null itself, and will also strip
+        // any CR/LF (0d 0a), so we need URC handlers for 0a 0d <URC> and 0d <URC>.
+        // Shuffle everything in the buffer up by two
+        strncpy(buffer + 2, pStr, sizeof(buffer) - 2);
+        // Add LF/CR at the start
+        buffer[0] = 0x0a;
+        buffer[1] = 0x0d;
         errorCode = uAtClientSetUrcHandler(pInstance->atHandle, buffer,
                                            GREETING_urc, pInstance);
         if (errorCode == 0) {
-            // And the same for LF/CR
+            // And the same for just CR
             errorCode = uAtClientSetUrcHandler(pInstance->atHandle, buffer + 1,
                                                GREETING_urc, pInstance);
         }
@@ -945,18 +944,17 @@ static int32_t addGreetingUrc(uCellPrivateInstance_t *pInstance,
 static void removeGreetingUrc(uCellPrivateInstance_t *pInstance,
                               const char *pStr)
 {
-    // +1 for terminator, +3 for the SARA-R41X workaround
-    char buffer[U_CELL_CFG_GREETING_CALLBACK_MAX_LEN_BYTES + 1 + 3];
+    // +1 for terminator, +2 for the SARA-R41X workaround
+    char buffer[U_CELL_CFG_GREETING_CALLBACK_MAX_LEN_BYTES + 1 + 2];
 
     if (U_CELL_PRIVATE_MODULE_IS_SARA_R41X(pInstance->pModule->moduleType)) {
         // Same reasoning as for addGreetingUrc()
-        strncpy(buffer + 3, pStr, sizeof(buffer) - 3);
-        // Add CR/LF/CR at the start
-        buffer[0] = 0x0d;
-        buffer[1] = 0x0a;
-        buffer[2] = 0x0d;
+        strncpy(buffer + 2, pStr, sizeof(buffer) - 2);
+        // Add LF/CR at the start
+        buffer[0] = 0x0a;
+        buffer[1] = 0x0d;
         uAtClientRemoveUrcHandler(pInstance->atHandle, buffer);
-        // And the same for LF/CR
+        // And the same for just CR
         uAtClientRemoveUrcHandler(pInstance->atHandle, buffer + 1);
     } else {
         uAtClientRemoveUrcHandler(pInstance->atHandle, pStr);
