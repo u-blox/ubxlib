@@ -36,7 +36,7 @@ def run(ubxlib_dir, reporter):
     U_LOG = ULog.get_logger(PROMPT)
 
     # Print out what we've been told to do
-    text = "build the PlatformIO examples from ubxlib directory \"" + ubxlib_dir + "\""
+    text = f"build the PlatformIO examples from ubxlib directory {ubxlib_dir}"
     U_LOG.info(text)
 
     reporter.event(u_report.EVENT_TYPE_BUILD,

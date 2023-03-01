@@ -81,6 +81,15 @@ def instance_command(ctx, instance_str, cmd):
     if UBXLIB_DEFINES_VAR in environ and environ[UBXLIB_DEFINES_VAR].strip():
         defines.extend(environ[UBXLIB_DEFINES_VAR].strip().split(";"))
 
+    # If UBXLIB_FEATURES appears in the #defines list, add it to the
+    # environment where it can be used to test leaving components out
+    # on some platforms
+    if defines:
+        for define in defines:
+            parts = define.split("UBXLIB_FEATURES=")
+            if len(parts) > 1:
+                environ["UBXLIB_FEATURES"] = parts[1].strip()
+
     # Merge in any filter string we might have
     if (cmd == Command.BUILD or cmd == Command.TEST) and ctx.filter:
         defines = u_utils.merge_filter(defines, ctx.filter)

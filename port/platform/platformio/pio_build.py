@@ -28,6 +28,7 @@ from glob import glob
 
 Import('env')
 
+# Set up the platform
 framework = env['PIOFRAMEWORK'][0]
 if "arduino" in framework:
     if not "espressif32" in env['PIOPLATFORM']:
@@ -42,11 +43,32 @@ ubxlib_dir = realpath(this_dir + "/../../..")
 # The files to read lists of source/include files from
 file_list = ["inc_src.txt"]
 
+# Set up the ubxlib features
+ubxlib_features = "cell gnss short_range"
+if "UBXLIB_FEATURES" in os.environ:
+    ubxlib_features = os.environ["UBXLIB_FEATURES"]
+
+module_test = False
 if "U_UBXLIB_AUTO" in os.environ and int(os.environ["U_UBXLIB_AUTO"]) >= 10:
     # If we are running under automation and are going to run a test
     # (on the test automation system tests are instance numbers 10
     # or higher), then we need to bring in the test code also
     file_list.append("inc_src_test.txt")
+    module_test = True
+
+def add_include_path(line, exclude):
+    ''' Add line to the include paths if not in exclude '''
+    for path in glob(ubxlib_dir + "/" + line, recursive=True):
+        if not search(exclude, path.replace("\\", "/")):
+            env.Append(CPPPATH=[path])
+
+def add_source_path(line, src_filter, exclude, section_parameter):
+    ''' Add line to src_filter if not in exclude, obeying section filtering '''
+    if not section_parameter or section_parameter in ubxlib_features:
+        for path in glob(ubxlib_dir + "/" + line, recursive=True):
+            if not search(exclude, path.replace("\\", "/")):
+                src_filter.append(f"+<{path}>")
+
 
 src_filter = ["-<*>"]
 for file_name in file_list:
@@ -58,21 +80,29 @@ for file_name in file_list:
             # Ignore comments and empty lines
             continue
         line = sub("\$FRAMEWORK", framework, line)
-        m = match(r"^\[(\w+)\]", line)
+        m = match(r"^\[(\w+)( +\w+)*\]", line)
         if m:
             # New section
             section = m.group(1)
+            section_parameter = None
+            if m.lastindex > 1:
+                # New section with a parameter (e.g. [INCLUDE gnss])
+                section_parameter = m.group(2).strip()
         elif section == "EXCLUDE":
-            # Reg exp for paths to exclude from wild card searches
-            exclude += ("|" if exclude else "") + line
+            if not section_parameter or section_parameter in ubxlib_features:
+                # Reg exp for paths to exclude from wild card searches
+                exclude += ("|" if exclude else "") + line
+        elif section == "MODULE":
+            add_include_path(line + "/api/", exclude)
+            add_source_path(line + "/src/*.c", src_filter, exclude, section_parameter)
+            add_include_path(line + "/src/", exclude) # Ideally this would be private
+            if module_test:
+                add_source_path(line + "/test/*.c", src_filter, exclude, section_parameter)
+                add_include_path(line + "/test/", exclude) # Ideally this would be private
+        elif section == "INCLUDE":
+            add_include_path(line, exclude)
         else:
-            # File or directory
-            for path in glob(ubxlib_dir + "/" + line, recursive=True):
-                if not search(exclude, path.replace("\\", "/")):
-                    if section == "INCLUDE":
-                        env.Append(CPPPATH=[path])
-                    else:
-                        if section == "SOURCE" or section == framework:
-                            src_filter.append(f"+<{path}>")
+            if section == "SOURCE" or section == framework:
+                add_source_path(line, src_filter, exclude, section_parameter)
 
 env.Append(SRC_FILTER=src_filter)
