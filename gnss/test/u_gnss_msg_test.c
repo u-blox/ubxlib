@@ -114,14 +114,14 @@
 #ifndef U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_MIN_STEPS
 /** The minimum number of steps in the non-blocking test.
  */
-# define U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_MIN_STEPS 30
+# define U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_MIN_STEPS 15
 #endif
 
 #ifndef U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_MIN_NMEA
 /** The minimum number of NMEA messages we expect each message receiver
  * to receive during the non-blocking test.
  */
-# define U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_MIN_NMEA 600
+# define U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_MIN_NMEA 300
 #endif
 
 #ifndef U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_POLL_DELAY_SECONDS

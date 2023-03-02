@@ -192,6 +192,8 @@ static uCellTestPrivate_t gHandles = U_CELL_TEST_PRIVATE_DEFAULTS;
  */
 static size_t gSystemHeapLost = 0;
 
+# if ((U_CFG_APP_PIN_CELL_PWR_ON >= 0) && !defined(U_CFG_TEST_CELL_PWR_DISABLE)) || \
+  !defined(U_CFG_CELL_DISABLE_UART_POWER_SAVING)
 /** Used for keepGoingCallback() timeout.
  */
 static int64_t gStopTimeMs;
@@ -199,6 +201,7 @@ static int64_t gStopTimeMs;
 /** A variable to track errors in the callbacks.
  */
 static int32_t gCallbackErrorCode = 0;
+# endif
 
 # ifndef U_CFG_CELL_DISABLE_UART_POWER_SAVING
 
@@ -231,7 +234,9 @@ uCellPwrTest3gppPowerSavingParameters_t g3gppPowerSavingCallbackParameter = {0};
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-// Callback function for the cellular power-down process
+# if ((U_CFG_APP_PIN_CELL_PWR_ON >= 0) && !defined(U_CFG_TEST_CELL_PWR_DISABLE)) || \
+  !defined(U_CFG_CELL_DISABLE_UART_POWER_SAVING)
+// Callback function for the cellular power-down and connection process.
 static bool keepGoingCallback(uDeviceHandle_t cellHandle)
 {
     bool keepGoing = true;
@@ -246,8 +251,9 @@ static bool keepGoingCallback(uDeviceHandle_t cellHandle)
 
     return keepGoing;
 }
+# endif
 
-# if U_CFG_APP_PIN_CELL_PWR_ON >= 0
+# if (U_CFG_APP_PIN_CELL_PWR_ON >= 0) && !defined(U_CFG_TEST_CELL_PWR_DISABLE)
 
 // Test power on/off and aliveness, parameterised by the VInt pin.
 static void testPowerAliveVInt(uCellTestPrivate_t *pHandles,
@@ -453,7 +459,7 @@ static void wakeCallback(uDeviceHandle_t cellHandle, void *pParam)
 }
 #  endif // if (U_CFG_APP_PIN_CELL_VINT >= 0) && !defined(U_CFG_CELL_DISABLE_UART_POWER_SAVING)
 
-# endif // if U_CFG_APP_PIN_CELL_PWR_ON >= 0
+# endif // # if (U_CFG_APP_PIN_CELL_PWR_ON >= 0) && !defined(U_CFG_TEST_CELL_PWR_DISABLE)
 
 # ifndef U_CFG_CELL_DISABLE_UART_POWER_SAVING
 // Connect to a cellular network.
@@ -708,7 +714,7 @@ static bool setEdrx(uDeviceHandle_t cellHandle, int32_t *pSockHandle,
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-# if U_CFG_APP_PIN_CELL_PWR_ON >= 0
+# if (U_CFG_APP_PIN_CELL_PWR_ON >= 0) && !defined(U_CFG_TEST_CELL_PWR_DISABLE)
 
 /** Test all the power functions apart from reboot.
  *
@@ -780,7 +786,7 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwr")
                        (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
 }
 
-# endif // if U_CFG_APP_PIN_CELL_PWR_ON >= 0
+# endif // if (U_CFG_APP_PIN_CELL_PWR_ON >= 0) && !defined(U_CFG_TEST_CELL_PWR_DISABLE)
 
 /** Test reboot.
  */
