@@ -140,6 +140,19 @@ int32_t uNetworkInterfaceUp(uDeviceHandle_t devHandle,
                             uNetworkType_t netType,
                             const void *pCfg)
 {
+    // Workaround for Espressif linker missing out files that
+    // only contain functions which also have weak alternatives
+    // (see https://www.esp32.com/viewtopic.php?f=13&t=8418&p=35899).
+    // Basically any file that might end up containing only functions
+    // that also have WEAK linked counterparts will be lost, so we need
+    // to add a dummy function in those files and call it from somewhere
+    // that will always be present in the build, which for cellular we
+    // choose to be here
+    uNetworkPrivateBleLink();
+    uNetworkPrivateCellLink();
+    uNetworkPrivateGnssLink();
+    uNetworkPrivateWifiLink();
+
     // Lock the API
     int32_t errorCode = uDeviceLock();
     uDeviceInstance_t *pInstance;

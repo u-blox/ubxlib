@@ -56,6 +56,23 @@ if "U_UBXLIB_AUTO" in os.environ and int(os.environ["U_UBXLIB_AUTO"]) >= 10:
     file_list.append("inc_src_test.txt")
     module_test = True
 
+def section_parameter_true(section_parameter):
+    ''' Check if a section parameter is included or not, handling negation '''
+    return_value = False
+    section_parameter_neg = False
+    section_string = section_parameter
+
+    if section_string and section_string.startswith("!"):
+        section_string = section_string[1:]
+        section_parameter_neg = True
+    if section_parameter_neg:
+        if section_string not in ubxlib_features:
+            return_value = True
+    else:
+        if not section_string or section_string in ubxlib_features:
+            return_value = True
+    return return_value
+
 def add_include_path(line, exclude):
     ''' Add line to the include paths if not in exclude '''
     for path in glob(ubxlib_dir + "/" + line, recursive=True):
@@ -64,11 +81,10 @@ def add_include_path(line, exclude):
 
 def add_source_path(line, src_filter, exclude, section_parameter):
     ''' Add line to src_filter if not in exclude, obeying section filtering '''
-    if not section_parameter or section_parameter in ubxlib_features:
+    if section_parameter_true(section_parameter):
         for path in glob(ubxlib_dir + "/" + line, recursive=True):
             if not search(exclude, path.replace("\\", "/")):
                 src_filter.append(f"+<{path}>")
-
 
 src_filter = ["-<*>"]
 for file_name in file_list:
@@ -80,16 +96,17 @@ for file_name in file_list:
             # Ignore comments and empty lines
             continue
         line = sub("\$FRAMEWORK", framework, line)
-        m = match(r"^\[(\w+)( +\w+)*\]", line)
+        m = match(r"^\[(\w+)( +!{0,1}\w+)*\]", line)
         if m:
             # New section
             section = m.group(1)
             section_parameter = None
+            section_parameter_neg = False
             if m.lastindex > 1:
-                # New section with a parameter (e.g. [INCLUDE gnss])
+                # New section with a parameter (e.g. [INCLUDE gnss] or [SOURCE !gnss])
                 section_parameter = m.group(2).strip()
         elif section == "EXCLUDE":
-            if not section_parameter or section_parameter in ubxlib_features:
+            if section_parameter_true(section_parameter):
                 # Reg exp for paths to exclude from wild card searches
                 exclude += ("|" if exclude else "") + line
         elif section == "MODULE":

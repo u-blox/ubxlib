@@ -100,6 +100,18 @@ int32_t uDeviceInit()
 {
     int32_t errorCode = uDeviceMutexCreate();
 
+    // Workaround for Espressif linker missing out files that
+    // only contain functions which also have weak alternatives
+    // (see https://www.esp32.com/viewtopic.php?f=13&t=8418&p=35899).
+    // Basically any file that might end up containing only functions
+    // that also have WEAK linked counterparts will be lost, so we need
+    // to add a dummy function in those files and call it from somewhere
+    // that will always be present in the build, which for cellular we
+    // choose to be here
+    uDevicePrivateCellLink();
+    uDevicePrivateGnssLink();
+    uDevicePrivateShortRangeLink();
+
     if (errorCode == 0) {
         uDevicePrivateInit();
         errorCode = uDevicePrivateCellInit();

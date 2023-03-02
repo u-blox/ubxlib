@@ -57,10 +57,6 @@
 #include "u_cell_mux_private.h"
 
 // The headers below necessary to work around an Espressif linker problem, see uCellInit()
-#include "u_device_private_cell.h"
-#include "u_network.h"
-#include "u_network_config_cell.h"
-#include "u_network_private_cell.h"
 #include "u_sock.h"
 #include "u_cell_sock.h"     // For uCellSockPrivateLink()
 #include "u_cell_sec.h"      // For uCellSecPrivateLink()
@@ -174,8 +170,6 @@ int32_t uCellInit()
     // to add a dummy function in those files and call it from somewhere
     // that will always be present in the build, which for cellular we
     // choose to be here
-    uDevicePrivateCellLink();
-    uNetworkPrivateCellLink();
     uCellSockPrivateLink();
     uCellSecPrivateLink();
     uCellSecTlsPrivateLink();

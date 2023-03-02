@@ -95,12 +95,25 @@ common/device/src/u_device_private_short_range_stub.c
 common/network/src/u_network_private_cell.c
 common/device/src/u_device_private_cell.c
 
+[SOURCE !cell]
+common/network/src/u_network_private_cell_link.c
+common/device/src/u_device_private_cell_link.c
+
 [SOURCE gnss]
 common/network/src/u_network_private_gnss.c
 common/device/src/u_device_private_gnss.c
+
+[SOURCE !gnss]
+common/network/src/u_network_private_gnss_link.c
+common/device/src/u_device_private_gnss_link.c
 
 [SOURCE short_range]
 common/network/src/u_network_private_ble_extmod.c
 common/network/src/u_network_private_ble_intmod.c
 common/network/src/u_network_private_wifi.c
 common/device/src/u_device_private_short_range.c
+
+[SOURCE !short_range]
+common/network/src/u_network_private_ble_extmod_link.c
+common/network/src/u_network_private_wifi_link.c
+common/device/src/u_device_private_short_range_link.c

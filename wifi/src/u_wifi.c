@@ -52,9 +52,6 @@
 #include "u_hex_bin_convert.h"
 
 // THe headers below are necessary to work around an Espressif linker problem, see uWifiInit()
-#include "u_network.h"
-#include "u_network_config_wifi.h"
-#include "u_network_private_wifi.h"
 #include "u_sock.h"
 #include "u_wifi_sock.h"     // For uWifiSockPrivateLink()
 #include "u_mqtt_common.h"
@@ -482,7 +479,6 @@ int32_t uWifiInit()
     // to add a dummy function in those files and call it from somewhere
     // that will always be present in the build, which for Wifi we
     // choose to be here
-    uNetworkPrivateWifiLink();
     uWifiSockPrivateLink();
     uWifiMqttPrivateLink();
 

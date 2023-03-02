@@ -54,10 +54,6 @@
 #include "u_gnss_private.h"
 
 // The headers below are necessary to work around an Espressif linker problem, see uGnssInit()
-#include "u_device_private_gnss.h"
-#include "u_network.h"
-#include "u_network_config_gnss.h"
-#include "u_network_private_gnss.h"
 #include "u_gnss_pos.h" // For uGnssPosPrivateLink()
 
 /* ----------------------------------------------------------------
@@ -205,8 +201,6 @@ int32_t uGnssInit()
     // to add a dummy function in those files and call it from somewhere
     // that will always be present in the build, which for GNSS we
     // choose to be here
-    uDevicePrivateGnssLink();
-    uNetworkPrivateGnssLink();
     uGnssPosPrivateLink();
 
     if (gUGnssPrivateMutex == NULL) {

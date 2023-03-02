@@ -56,6 +56,7 @@ common/device/src/u_device_private_short_range_stub.c
 common/network/src/u_network.c
 common/network/src/u_network_shared.c
 common/network/src/u_network_private_ble_extmod.c
+common/network/src/u_network_private_ble_extmod_stub.c
 common/network/src/u_network_private_ble_intmod.c
 common/network/src/u_network_private_cell.c
 common/network/src/u_network_private_cell_stub.c
