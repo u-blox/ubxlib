@@ -34,7 +34,7 @@ The key APIs provided by this repo, and their relationships with each other, are
 All APIs are documented with Doxygen compatible comments: simply download the latest [Doxygen](https://doxygen.nl/) and either run it from the `ubxlib` directory at a command prompt or open [Doxyfile](/Doxyfile) in the Doxygen GUI and run it to obtain the output.
 
 # Supported `ubxlib` host platforms and APIs
-Hosts run `ubxlib` and interact with an attached periperal. A host platform contains an MCU, toolchain and RTOS/SDK as listed in the table below. Hosts are typically u-blox open CPU (standalone) modules or other MCUs. To use a host you need a development board or an EVK. Currently `ubxlib` supports the following purchasable boards out-of-the box.
+Hosts run `ubxlib` and interact with an attached periperal. A host platform contains an MCU, toolchain and RTOS/SDK as listed in the table below. Hosts are typically u-blox open CPU (standalone) modules or other MCUs. To use a host you need a development board or an EVK. Currently `ubxlib` supports and tests the following purchasable boards out-of-the box.
 
 - [u-blox C030-U201 board](https://www.u-blox.com/en/product/c030-application-board)
 - [Nordic nRF52840 DK board](https://www.nordicsemi.com/Products/Development-hardware/nrf52840-dk)
@@ -45,10 +45,11 @@ Hosts run `ubxlib` and interact with an attached periperal. A host platform cont
 - [u-blox XPLR-IOT-1](https://www.u-blox.com/en/product/xplr-iot-1)
 
 If your MCU is on the list but your board is not:
-- Just set the HW pins in the source file of the example to match how your MCU is wired to the u-blox peripheral.
+- just set the HW pins in the source file of the example to match how your MCU is wired to the u-blox peripheral.
 
 If your MCU is not on the list:
-- To port `ubxlib` to a new host platform follow the [DIY instructions](/port#diy) for the port API.
+- if you are using [PlatformIO](https://platformio.org/) and [Zephyr](https://www.zephyrproject.org/) then any MCU that Zephyr supports should work with `ubxlib`, just follow the instructions [here](/port/platform/platformio) to bring `ubxlib` into your existing [PlatformIO](https://platformio.org/) environment,
+- otherwise, to port `ubxlib` to a new host platform follow the [DIY instructions](/port#diy) for the port API.
 
 |`ubxlib` hosts |NINA-W10|NINA-B40 series<br />NINA-B30 series<br />NINA-B1 series<br />ANNA-B1 series<br />|NORA-B1 series|C030 board|PC<sup>*</sup>|PC<sup>*</sup>|
 |-----------|-----------|--------------|-----|-----|------|------|
