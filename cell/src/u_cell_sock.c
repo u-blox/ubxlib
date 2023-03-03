@@ -1402,7 +1402,11 @@ int32_t uCellSockReceiveFrom(uDeviceHandle_t cellHandle,
                         // They will get their received data, there
                         // is no need to worry.
                     }
-                    uAtClientUnlock(atHandle);
+                    if ((uAtClientUnlock(atHandle) != 0) || (x < 0)) {
+                        // Looks like the socket has gone
+                        pSocket->pendingBytes = 0;
+                        negErrnoLocalOrSize = -U_SOCK_EIO;
+                    }
                 }
                 if (pSocket->pendingBytes > 0) {
                     // In the UDP case we HAVE to read the number
@@ -1708,7 +1712,11 @@ int32_t uCellSockRead(uDeviceHandle_t cellHandle,
                         // They will get their received data, there
                         // is no need to worry.
                     }
-                    uAtClientUnlock(atHandle);
+                    if ((uAtClientUnlock(atHandle) != 0) || (x < 0)) {
+                        // Looks like the socket has gone
+                        pSocket->pendingBytes = 0;
+                        negErrnoLocalOrSize = -U_SOCK_EIO;
+                    }
                 }
                 if (pSocket->pendingBytes > 0) {
                     negErrnoLocalOrSize = U_SOCK_ENONE;
