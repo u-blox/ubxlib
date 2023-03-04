@@ -31,10 +31,15 @@ These steps need to be performed once to get the server sorted and each client a
 ## Server
 These steps are carried out on the same machine as the Jenkins Docker container is running.  The DNS entry through which the machine is externally visible is assumed to be `ubxlib-test-system.redirectme.net` and the e-mail address of the administrator is assumed to be `ubxlib@u-blox.com`.
 
-### External Access
-- By whatever means at your disposal give the externally-visible IP address of the `ubxlib` test system's router a DNS address on the public internet.  For instance, you might use a service such as [noip](https://www.noip.com/), with the router running the necessary dynamic DNS client (most routers support this).
+### DNS Address
+By whatever means at your disposal give the externally-visible IP address of the `ubxlib` test system's router a DNS address on the public internet.  For instance, you might use a service such as [noip](https://www.noip.com/), with the router running the necessary dynamic DNS client (most routers support this).  Note that, if the WAN-side of your router will be behind a firewall your DNS provider must allow you to create TXT records for your domain,.
 
-- Obtain a private key for the Jenkins machine and get it signed by a CA by running Certbot in a Docker container as follows:
+### HTTPS Certificate: "Router On Public Internet" Case
+If the WAN-side of the router inside the `ubxlib` test system is on the public internet, you can use Certbot and Let's Encrypt to obtain a certificate for your HTTP server with Certbot in `--standalone` mode, i.e. it spins-up a temporary HTTP server on port 80 (it HAS to be port 80), and Let's Encrypt can make an incoming TCP connection on that port to perform the verification process.
+
+- Set the router to port-forward incoming TCP connection requests on port 80 to the same port on the Jenkins machine.
+
+- Obtain a private key for it and get that signed by a CA (Let's Encrypt) by running Certbot in a Docker container as follows:
 
 ```
 sudo docker run -it --rm --name certbot -v /etc/letsencrypt:/etc/letsencrypt -v /var/lib/letsencrypt:/var/lib/letsencrypt -p 80:80 certbot/certbot certonly --standalone
@@ -42,13 +47,36 @@ sudo docker run -it --rm --name certbot -v /etc/letsencrypt:/etc/letsencrypt -v 
 
   ...giving it the e-mail address `ubxlib@u-blox.com` and the URL `ubxlib-test-system.redirectme.net` when prompted.
 
-- Note: `ubxlib@u-blox.com` will be sent an e-mail a few weeks before the certificate (3 months validity) expires; renew it with:
+- The private key and signed certificate will have been placed into `/etc/letsencrypt/live/ubxlib-test-system.redirectme.net`.
+
+- `ubxlib@u-blox.com` will be sent an e-mail a few weeks before the certificate (3 months validity) expires; if port 80 will ALWAYS be open for incoming TCP connections you may renew it automatically by running the following command on the Jenkins machine, say, once a day:
 
 ```
 sudo docker run -it --rm --name certbot -v /etc/letsencrypt:/etc/letsencrypt -v /var/lib/letsencrypt:/var/lib/letsencrypt -p 80:80 certbot/certbot renew
 ```
 
+- Note: once you have NGINX running, after updating certificates you will need to reload it to start using them: `docker exec -it nginx nginx -s reload`.
+
+### HTTPS Certificate: "Router Behind Firewall" Case
+If the WAN-side of the router inside the `ubxlib` test system is behind a firewall you can no longer use the usual Certbot HTTP route to get a certificate for your HTTP server.  This is because ports can only be made open for incoming connections through the [Tunneling](#tunneling) mechanism and that does NOT work for ports numbered less than 1024 (that's just the way Linux is written) and Let's Encrypt will ONLY use port 80 to establish trust over HTTP.  Instead you must use the DNS authentication mechanism that Certbot/Let's Encrypt offers, where trust is established by checking that you own the DNS entry for the server.  Unforunately `noip` only allows this to be done manually, and hence the renewal process cannot be automated.
+
+- Log-in to the place that provides the DNS record for `ubxlib-test-system.redirectme.net` and be ready to add a new TXT record.
+
+- Obtain a private key fpr `ubxlib-test-system.redirectme.net` and get that signed by a CA (Let's Encrypt) by running Certbot in a Docker container as follows:
+
+```
+sudo docker run -it --rm --name certbot -v /etc/letsencrypt:/etc/letsencrypt -v /var/lib/letsencrypt:/var/lib/letsencrypt certbot/certbot certonly --manual --debug-challenges --preferred-challenges dns -d ubxlib-test-system.redirectme.net
+```
+
+  ...giving it the e-mail address `ubxlib@u-blox.com` and the URL `ubxlib-test-system.redirectme.net` if prompted.
+
+- You will be asked to add a TXT record to the `ubxlib-test-system.redirectme.net` domain name record, with a `_acme-challenge` sub-domain (i.e. prefix) and with the value being a random text string that Let's Encrypt will check.  Do this and confirm to `CertBot` that you have done so.
+
 - The private key and signed certificate will have been placed into `/etc/letsencrypt/live/ubxlib-test-system.redirectme.net`.
+
+- Note: `ubxlib@u-blox.com` will be sent an e-mail a few weeks before the certificate (3 months validity) expires, at which point you can renew it manually by repeating the process above.
+
+- Note: once you have NGINX running, after updating certificates you will need to reload it to start using them: `docker exec -it nginx nginx -s reload`.
 
 ### Setting Up As A Certificate Authority
 Note: the keys/certificates etc. used here are entirely separate from those generated by Certbot above, don't mix the two.  Also, the naming pattern used by Cerbot (more correct in my view), in which the file extension `.pem` designates the format of the file, is replaced here by what appears to be the more usual format for SSL stuff, which is that certificates end with `.crt`, keys with `.key` and certificate signing requests with `.csr`; all are PEM format anyway.
