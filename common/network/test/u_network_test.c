@@ -938,8 +938,6 @@ U_PORT_TEST_FUNCTION("[network]", "networkLoc")
     uPortI2cDeinit();
     uPortDeinit();
 
-    uPortLog("### heap free after deinit 9 %d (%d).\n", uPortGetHeapFree(), uPortGetHeapFree() - rob);
-
 #ifndef __XTENSA__
     // Check for memory leaks
     // TODO: this if'defed out for ESP32 (xtensa compiler) at
