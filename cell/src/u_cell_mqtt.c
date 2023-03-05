@@ -1504,6 +1504,7 @@ static int32_t publish(const uCellPrivateInstance_t *pInstance,
     bool isAscii;
     bool messageWritten = false;
     int32_t startTimeMs;
+    int32_t promptTimeoutSeconds = U_CELL_MQTT_PROMPT_TIMEOUT_NORMAL_SECONDS;
     size_t tryCount = 0;
 
     pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
@@ -1608,9 +1609,19 @@ static int32_t publish(const uCellPrivateInstance_t *pInstance,
                     uAtClientWriteInt(atHandle, (int32_t) messageSizeBytes);
                     uAtClientCommandStop(atHandle);
                     // Wait for the prompt
+                    // If keep-alive is on and the module happens to have
+                    // sent an MQTT ping to the broker around now then the
+                    // prompt will be delayed until the ping response has
+                    // come back.  If we are in fringe conditions, it could
+                    // take up to 30 seconds for the module to give up and
+                    // return the prompt.  Hence, if keep-alive is on,
+                    // we allow a lot longer for the prompt
+                    if (pContext->keptAlive) {
+                        promptTimeoutSeconds = U_CELL_MQTT_PROMPT_TIMEOUT_KEEP_ALIVE_SECONDS;
+                    }
+                    uAtClientTimeoutSet(atHandle, (promptTimeoutSeconds +
+                                                   U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS) * 1000);
                     if (uAtClientWaitCharacter(atHandle, '>') == 0) {
-                        // Allow plenty of time for this to complete
-                        uAtClientTimeoutSet(atHandle, 10000);
                         // Wait for it...
                         uPortTaskBlock(50);
                         // Write the binary message

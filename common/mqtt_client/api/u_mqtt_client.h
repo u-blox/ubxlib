@@ -384,6 +384,11 @@ int32_t uMqttClientSetDisconnectCallback(const uMqttClientContext_t *pContext,
  * non-NULL then it will called while this function is waiting for the
  * publish to complete.
  *
+ * Note that, for a cellular connection, in fringe coverage
+ * conditions, the time taken to publsh may be double the normal
+ * #U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS if keep-alive
+ * is on and a ping has just been sent to the broker.
+ *
  * @param[in] pContext      a pointer to the internal MQTT context
  *                          structure that was originally returned
  *                          by pUMqttClientOpen().
@@ -590,13 +595,16 @@ int32_t uMqttClientSnGetTopicNameShort(const uMqttSnTopicName_t *pTopicName,
  * publish to an MQTT topic you do NOT need to use this function:
  * instead use the pTopicName returned by
  * uMqttClientSnSubscribeNormalTopic().
+ *
  * Note: this function should not be used for MQTT-SN short topic
  * names (e.g. "xy") because they already fit into 16-bits; just use
  * uMqttClientSnSetTopicNameShort() to create the topic name and
  * use it with uMqttClientSnSubscribe().
+ *
  * Note that this does NOT subscribe to the topic, it just gets you
  * an ID, you need to call uMqttClientSnSubscribe() to do the
  * subscribing.
+ *
  * Must be connected to an MQTT-SN broker for this to work.
  *
  * @param[in] pContext       a pointer to the internal MQTT context.
@@ -615,10 +623,17 @@ int32_t uMqttClientSnRegisterNormalTopic(const uMqttClientContext_t *pContext,
  * uMqttClientSnSetTopicIdPredefined()/ uMqttClientSnSetTopicNameShort()
  * or as returned by uMqttClientSnRegisterNormalTopic()/
  * uMqttClientSnSubscribeNormalTopic()).
+ *
  * Must be connected to an MQTT-SN broker for this to work.
+ *
  * If pKeepGoingCallback() inside the pConnection structure passed to
  * uMqttClientConnect() was non-NULL then it will called while this
  * function is waiting for the publish to complete.
+ *
+ * Note that, for a cellular connection, in fringe coverage
+ * conditions, the time taken to publsh may be double the normal
+ * #U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS if keep-alive
+ * is on and a ping has just been sent to the broker.
  *
  * @param[in] pContext           a pointer to the internal MQTT context
  *                               structure that was originally returned
@@ -743,6 +758,7 @@ int32_t uMqttClientSnUnsubscribeNormalTopic(const uMqttClientContext_t *pContext
  * if the message is from a normal MQTT topic then the topic name will
  * be populated with the MQTT-SN topic ID that you received when
  * you called uMqttClientSnSubscribeNormalTopic().
+ *
  * Must be connected to an MQTT-SN broker for this to work.
  *
  * Note: if the MQTT-SN message is longer than the buffer provided to

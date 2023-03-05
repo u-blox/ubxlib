@@ -102,6 +102,23 @@ extern "C" {
 # define U_CELL_MQTT_RETRIES_DEFAULT 2
 #endif
 
+#ifndef U_CELL_MQTT_PROMPT_TIMEOUT_NORMAL_SECONDS
+/** How long to wait for the publish prompt to be returned by
+ * the module for a binary publish when no keep-alive might
+ * get in the way.
+ */
+# define U_CELL_MQTT_PROMPT_TIMEOUT_NORMAL_SECONDS 10
+#endif
+
+#ifndef U_CELL_MQTT_PROMPT_TIMEOUT_KEEP_ALIVE_SECONDS
+/** How long to wait for the publish prompt to be returned by
+ * the module for a binary publish when keep-alive is on
+ * (and so the module may be waiting for a response to its
+ * keep-alive ping to the broker).
+ */
+# define U_CELL_MQTT_PROMPT_TIMEOUT_KEEP_ALIVE_SECONDS 30
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -606,6 +623,13 @@ bool uCellMqttIsSupported(uDeviceHandle_t cellHandle);
  * function set during initialisation will be called while
  * this function is waiting for publish to complete.
  *
+ * Note: if MQTT keep-alive is on and the module has just sent
+ * an MQTT ping to the broker the ability to begin a publish will
+ * be delayed until the ping completes, which in fringe conditions
+ * could be up to #U_CELL_MQTT_PROMPT_TIMEOUT_KEEP_ALIVE_SECONDS
+ * seconds.  This is in addition to the time taken to do the
+ * publish itself (#U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS).
+ *
  * @param cellHandle        the handle of the cellular instance to
  *                          be used.
  * @param[in] pTopicNameStr the null-terminated topic string
@@ -731,10 +755,11 @@ bool uCellMqttSnIsSupported(uDeviceHandle_t cellHandle);
  * uCellMqttSnSubscribeNormalTopic().  This function does not need
  * to be used for MQTT-SN short topic names (e.g. "xy") because they
  * already fit into 16-bits.
+ *
  * Note that this does NOT subscribe to the topic, it just gets you
  * an ID, you need to call uCellMqttSnSubscribe() to do the subscribing.
+ *
  * Must be connected to an MQTT-SN broker for this to work.
-
  *
  * @param cellHandle         the handle of the cellular instance to
  *                           be used.
@@ -752,7 +777,15 @@ int32_t uCellMqttSnRegisterNormalTopic(uDeviceHandle_t cellHandle,
  * in that it uses an MQTT-SN topic name, which will be a predefined ID
  * or a short name or as returned by uCellMqttSnRegisterNormalTopic()/
  * uCellMqttSnSubscribeNormalTopic()).
+ *
  * Must be connected to an MQTT-SN broker for this to work.
+ *
+ * Note: if MQTT keep-alive is on and the module has just sent
+ * an MQTT ping to the broker the ability to begin a publish will
+ * be delayed until the ping completes, which in fringe conditions
+ * could be up to #U_CELL_MQTT_PROMPT_TIMEOUT_KEEP_ALIVE_SECONDS
+ * seconds.  This is in addition to the time taken to do the
+ * publish itself (#U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS).
  *
  * @param cellHandle          the handle of the cellular instance to
  *                            be used.
