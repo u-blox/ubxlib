@@ -836,7 +836,6 @@ U_PORT_TEST_FUNCTION("[network]", "networkLoc")
     // correct initial heap size
     uPortDeinit();
     heapUsed = uPortGetHeapFree();
-    int32_t rob = heapUsed;
 
     U_PORT_TEST_ASSERT(uPortInit() == 0);
     // Don't check these for success as not all platforms support I2C or SPI
