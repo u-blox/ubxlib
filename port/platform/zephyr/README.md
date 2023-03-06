@@ -41,13 +41,7 @@ You must then also enable `UBXLIB` either via [menuconfig](https://docs.zephyrpr
 CONFIG_UBXLIB=y
 ```
 
-`ubxlib` also requires some Zephyr config to be enabled, but you currently need to check [runner/prj.conf](runner/prj.conf)/[runner_linux/prj.conf](runner_linux/prj.conf) to get these correct but note that you will definitely need to set the following:
-
-```
-CONFIG_INIT_STACKS=y
-CONFIG_THREAD_STACK_INFO=y
-CONFIG_THREAD_NAME=y
-```
+`ubxlib` also requires some Zephyr config to be enabled: check [default.conf](default.conf) for the basics or, for details to do with BLE configuration or including I2C/SPI etc., check [runner/prj.conf](runner/prj.conf)/[runner_linux/prj.conf](runner_linux/prj.conf).
 
 # SDK Usage
 

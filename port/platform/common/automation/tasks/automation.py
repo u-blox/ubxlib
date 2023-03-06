@@ -273,6 +273,14 @@ def instance_command(ctx, instance_str, cmd):
         elif instance[0] == 7:
             u_package.load(ctx, ["platformio"])
             return_code = u_run_build_pio_example.run(u_utils.UBXLIB_DIR, ctx.reporter)
+        elif instance[0] == 8:
+            if mcu.lower() != "linux32":
+                nrfconnect.check_installation(ctx)
+                return_code = nrfconnect.build(ctx, cmake_dir=f"{u_utils.UBXLIB_DIR}/zephyr/test",
+                                               board_name=board, output_name="", build_dir=ctx.build_dir,
+                                               u_flags=defines)
+            else:
+                raise Exit(f"Unsupported command for mcu: '{mcu}'")
         check_return_code(return_code)
 
     else:

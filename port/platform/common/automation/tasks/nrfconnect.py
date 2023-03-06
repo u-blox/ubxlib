@@ -109,6 +109,8 @@ def build(ctx, cmake_dir=DEFAULT_CMAKE_DIR, board_name=DEFAULT_BOARD_NAME,
 
     build_dir = os.path.join(build_dir, output_name)
     ctx.run(f'{ctx.zephyr_pre_command}west build -p {pristine} -b {board_name} {cmake_dir} --build-dir {build_dir}')
+    # This specific case gives a return code so that automation.py can call it directly for instance 8
+    return 0
 
 @task(
     pre=[check_installation],
