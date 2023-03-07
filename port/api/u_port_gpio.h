@@ -72,6 +72,8 @@ typedef enum {
 
 /** The possible GPIO drive capabilities.
  * A number from 0 to 3 where 0 is weakest.
+ * Not all platforms support setting the
+ * drive strength.
  */
 typedef enum {
     U_PORT_GPIO_DRIVE_CAPABILITY_WEAKEST = 0,

@@ -235,6 +235,8 @@ static void checkStackExtents(uAtClientHandle_t atHandle)
 // The preamble for tests involving two UARTs.
 static void twoUartsPreamble()
 {
+    char buffer[10];
+
     gUartAHandle = uPortUartOpen(U_CFG_TEST_UART_A,
                                  U_CFG_TEST_BAUD_RATE,
                                  NULL,
@@ -244,6 +246,11 @@ static void twoUartsPreamble()
                                  U_CFG_TEST_PIN_UART_A_CTS,
                                  U_CFG_TEST_PIN_UART_A_RTS);
     U_PORT_TEST_ASSERT(gUartAHandle >= 0);
+
+    // Flush (some platforms (e.g. Zephyr) write a banner on boot)
+    do {
+        uPortTaskBlock(100);
+    } while (uPortUartRead(gUartAHandle, buffer, sizeof(buffer)) > 0);
 
     U_TEST_PRINT_LINE("AT client will be on UART %d, TXD pin %d (0x%02x)"
                       " and RXD pin %d (0x%02x).",
@@ -260,6 +267,11 @@ static void twoUartsPreamble()
                                  U_CFG_TEST_PIN_UART_B_CTS,
                                  U_CFG_TEST_PIN_UART_B_RTS);
     U_PORT_TEST_ASSERT(gUartBHandle >= 0);
+
+    // Flush (some platforms (e.g. Zephyr) write a banner on boot)
+    do {
+        uPortTaskBlock(100);
+    } while (uPortUartRead(gUartBHandle, buffer, sizeof(buffer)) > 0);
 
     U_TEST_PRINT_LINE("AT server will be on UART %d, TXD pin %d (0x%02x)"
                       " and RXD pin %d (0x%02x).",
