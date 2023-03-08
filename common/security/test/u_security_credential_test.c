@@ -157,8 +157,9 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialFormats")
     }
 
     // Test each device type
-    for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext, x++) {
+    for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
         devHandle = *pTmp->pDevHandle;
+        U_TEST_PRINT_LINE("testing %s...", gpUNetworkTestTypeName[pTmp->networkType]);
         for (size_t y = 0; y < gUSecurityCredentialTestFormatSize; y++) {
             // Store the security credential
             U_TEST_PRINT_LINE("storing credential %s...",
