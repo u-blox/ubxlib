@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -106,8 +106,11 @@
 
 // BLE/cellular/GNSS/Wi-Fi APIs
 #include <u_ble.h>
+#include <u_ble_gap.h>
+#include <u_ble_gatt.h>
 #include <u_ble_cfg.h>
 #include <u_ble_sps.h>
+#include <u_ble_nus.h>
 #include <u_cell_net.h>
 #include <u_cell.h>
 #include <u_cell_cfg.h>
@@ -122,6 +125,7 @@
 #include <u_cell_sec_tls.h>
 #include <u_cell_sock.h>
 #include <u_cell_fota.h>
+#include <u_cell_mux.h>
 #include <u_gnss_type.h>
 #include <u_gnss.h>
 #include <u_gnss_cfg_val_key.h>
@@ -135,6 +139,7 @@
 #include <u_wifi_cfg.h>
 #include <u_wifi_mqtt.h>
 #include <u_wifi_sock.h>
+#include <u_wifi_http.h>
 
 /** @}*/
 

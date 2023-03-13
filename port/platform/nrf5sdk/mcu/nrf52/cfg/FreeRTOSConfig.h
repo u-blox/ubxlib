@@ -69,7 +69,7 @@
 // HEAP_SIZE in the Makefile for a GCC build and the value
 // of arm_linker_heap_size in the .emProject file for the
 // SES build are modified to match.
-#define configTOTAL_HEAP_SIZE                                                     ( 50 * 1024 )
+#define configTOTAL_HEAP_SIZE                                                     ( 52 * 1024 )
 #define configMAX_TASK_NAME_LEN                                                   ( 16 )
 #define configUSE_16_BIT_TICKS                                                    0
 #define configIDLE_SHOULD_YIELD                                                   1

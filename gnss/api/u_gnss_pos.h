@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,6 +46,10 @@ extern "C" {
 # define U_GNSS_POS_TIMEOUT_SECONDS 240
 #endif
 
+/** The default streamed position period in milliseconds.
+ */
+#define U_GNSS_POS_STREAMED_PERIOD_DEFAULT_MS 1000
+
 /** The recommended minimum number of satellites required to
  * be visible and meet the criteria when calling uGnssPosGetRrlp()
  * for the Cloud Locate service.
@@ -87,8 +91,9 @@ void uGnssPosPrivateLink(void);
  * FUNCTIONS
  * -------------------------------------------------------------- */
 
-/** Get the current position, returning on success or when
- * pKeepGoingCallback returns false.
+/** Get the current position, one-shot, returning on success or when
+ * pKeepGoingCallback returns false; this will work with any
+ * transport type.
  *
  * @param gnssHandle                       the handle of the GNSS instance
  *                                         to use.
@@ -156,9 +161,12 @@ int32_t uGnssPosGet(uDeviceHandle_t gnssHandle,
                     bool (*pKeepGoingCallback) (uDeviceHandle_t));
 
 /** A non-blocking version of uGnssPosGet(), so this is still a
- * one-shot operation but the answer arrives via a callback.  Should
- * you wish to cancel a request, or start a new request without waiting
- * for the answer to the previous request, then you must call
+ * one-shot operation but the answer arrives via a callback; this will work
+ * with any transport, however see uGnssPosGetStreamedStart() if you want
+ * streamed position.
+ *
+ * Should you wish to cancel a request, or start a new request without
+ * waiting for the answer to the previous request, then you must call
  * uGnssPosGetStop() first (otherwise #U_ERROR_COMMON_NO_MEMORY will
  * be returned).  uGnssPosGetStart() creates a mutex for thread-safety
  * which remains in memory until the GNSS API is deinitialised; should
@@ -191,14 +199,73 @@ int32_t uGnssPosGetStart(uDeviceHandle_t gnssHandle,
                                             int64_t timeUtc));
 
 /** Cancel a uGnssPosGetStart(); after this function has returned the
- * callback passed to uGnssPosGetStart() will not be called until another
- * uGnssPosGetStart() is begun.  uGnssPosGetStart() also creates a mutex
- * for thread safety which will remain in the system even after
+ * callback passed to uGnssPosGetStart() will not be called until
+ * another uGnssPosGetStart() is begun.  The start function also creates
+ * a mutex for thread safety which will remain in the system even after
  * pCallback has been called; this will free the memory it occupies.
  *
  * @param gnssHandle  the handle of the GNSS instance.
  */
 void uGnssPosGetStop(uDeviceHandle_t gnssHandle);
+
+/** Get position readings streamed constantly to a callback; this will
+ * only work with one of the streamed transports (for instance UART, I2C,
+ * SPI or Virtual Serial), it will NOT work with AT-command-based transport
+ * (#U_GNSS_TRANSPORT_AT).  uGnssPosGetStart() allocates some storage
+ * which remains in memory until the GNSS API is deinitialised; should
+ * you wish to free that memory then calling uGnssPosGetStreamedStop()
+ * will also do that.
+ *
+ * Note: under the hood the UBX protocol is used to establish position.
+ * By default, NMEA position is _also_ output from the GNSS chip: to
+ * reduce the load on the system you may want to, at least temporarily,
+ * disable NMEA output using uGnssCfgSetProtocolOut(); if you use
+ * uLocationGetContinuousStart() instead of uGnssPosGetStreamedStart()
+ * it will do this for you.
+ *
+ * Note: this uses one of the #U_GNSS_MSG_RECEIVER_MAX_NUM message
+ * handles from the uGnssMsg API.
+ *
+ * To cancel streamed position, call uGnssPosGetStreamedStop().
+ *
+ * @param gnssHandle       the handle of the GNSS instance to use.
+ * @param rateMs           the desired time between position fixes in
+ *                         milliseconds. The rate specified here will
+ *                         be applied to the measurement interval and
+ *                         the navigation count (i.e. the number of measurements
+ *                         required to make a navigation solution) will
+ *                         be 1.  If you want to use a navigation count
+ *                         greater 1 one you may set that by calling
+ *                         uGnssCfgSetRate() before this function and
+ *                         then setting rateMs here to -1, which will leave
+ *                         the rate settings unchanged.
+ * @param[in] pCallback    a callback that will be called when fixes are
+ *                         obtained.  The parameters to the callback are as
+ *                         described in uGnssPosGetStart().
+ *                         Note: don't call back into this API from your
+ *                         pCallback, it could lead to recursion.
+ * @return                 zero on success or negative error code on
+ *                         failure.
+ */
+int32_t uGnssPosGetStreamedStart(uDeviceHandle_t gnssHandle,
+                                 int32_t rateMs,
+                                 void (*pCallback) (uDeviceHandle_t gnssHandle,
+                                                    int32_t errorCode,
+                                                    int32_t latitudeX1e7,
+                                                    int32_t longitudeX1e7,
+                                                    int32_t altitudeMillimetres,
+                                                    int32_t radiusMillimetres,
+                                                    int32_t speedMillimetresPerSecond,
+                                                    int32_t svs,
+                                                    int64_t timeUtc));
+
+/** Cancel a uGnssPosGetStreamedStart(); after this function has returned
+ * the callback passed to uGnssPosGetStreamedStart() will not be called
+ * until another uGnssPosGetStreamedStart() is begun.
+ *
+ * @param gnssHandle  the handle of the GNSS instance.
+ */
+void uGnssPosGetStreamedStop(uDeviceHandle_t gnssHandle);
 
 /** Get the binary RRLP information directly from the GNSS chip,
  * as returned by the UBX-RXM-MEASX command of the UBX protocol.  This

@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -97,7 +97,7 @@
  * task stack size explicitly here and end the main task after
  * kicking the new one off.
  */
-# define U_CFG_OS_APP_TASK_STACK_SIZE_BYTES 8192
+# define U_CFG_OS_APP_TASK_STACK_SIZE_BYTES 9216
 #endif
 
 /** The priority of the task running the examples and tests: should

@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,6 +39,17 @@ extern "C" {
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
+
+/** Stuff we need to remember when creating a GNSS network; only used
+ * if the underlying device is not a GNSS device.
+ */
+typedef struct {
+    uDeviceHandle_t gnssDeviceHandle;
+    bool usingCmux;
+    bool cellMuxAlreadyEnabled; /**< need to remember this when connected via cellular. */
+    bool cellMuxGnssChannelAlreadyEnabled; /**< need to remember this when connected via cellular. */
+    bool cellUartSleepWakeOnDataWasEnabled;  /**< need to remember this when connected via cellular. */
+} uNetworkPrivateGnssContext_t;
 
 /* ----------------------------------------------------------------
  * FUNCTIONS

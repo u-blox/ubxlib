@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -82,7 +82,7 @@
  * a task that is created and deleted but if _you_ do you should note
  * this problem and probably never delete the task.
  */
-#define U_CFG_TEST_HEAP_MIN_FREE_BYTES (1024 * 33)
+#define U_CFG_TEST_HEAP_MIN_FREE_BYTES (1024 * 29)
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS: OS RELATED

@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,6 +28,8 @@
  */
 #include "devicetree.h"
 #include "u_runner.h"
+#include "u_port_clib_platform_specific.h" // For rand
+#include "version.h" // For KERNEL_VERSION_MAJOR
 
 /** @file
  * @brief Porting layer and configuration items passed in at application
@@ -184,6 +186,17 @@
  * the pins used during the UART port testing for ubxlib.
  * The values defined here are simply to satisfy
  * the UART port API and are otherwise ignored.
+ *
+ * ZEPHYR VERSION 3: the _GET macros are present
+ * here so that one has a chance of finding out, in
+ * the TEST code, what pins have ended up being
+ * assigned to what functions.  However, in Zephyr 3, an
+ * abstraction (pinctrl) has been introduced to allow
+ * the pins to be set at run-time and, while that is
+ * a good thing, it has made it impossible, now, to
+ * determine what pin has ended up being assigned to
+ * what HW block function either at compile time or
+ * at run-time.  Sorry!
  */
 
 /** Tx pin for UART testing: should be connected either to the
@@ -194,19 +207,21 @@
 # define U_CFG_TEST_PIN_UART_A_TXD   -1
 #endif
 
+#if KERNEL_VERSION_MAJOR < 3
 /** Macro to return the TXD pin for UART A: note that dashes
  * in the DTS node name must be converted to underscores.
  * 0xffffffff is a magic value in nRF speak, mapping to
  * NRF_UARTE_PSEL_DISCONNECTED.
  */
-#if (U_CFG_TEST_UART_A < 0)
-# define U_CFG_TEST_PIN_UART_A_TXD_GET -1
-#else
-# if DT_NODE_HAS_PROP(DT_NODELABEL(U_CFG_TEST_CAT(uart, U_CFG_TEST_UART_A)), tx_pin) &&    \
-     (DT_PROP(DT_NODELABEL(U_CFG_TEST_CAT(uart, U_CFG_TEST_UART_A)), tx_pin) < 0xffffffff)
-#  define U_CFG_TEST_PIN_UART_A_TXD_GET DT_PROP(DT_NODELABEL(U_CFG_TEST_CAT(uart, U_CFG_TEST_UART_A)), tx_pin)
-# else
+# if (U_CFG_TEST_UART_A < 0)
 #  define U_CFG_TEST_PIN_UART_A_TXD_GET -1
+# else
+#  if DT_NODE_HAS_PROP(DT_NODELABEL(U_CFG_TEST_CAT(uart, U_CFG_TEST_UART_A)), tx_pin) &&    \
+      (DT_PROP(DT_NODELABEL(U_CFG_TEST_CAT(uart, U_CFG_TEST_UART_A)), tx_pin) < 0xffffffff)
+#   define U_CFG_TEST_PIN_UART_A_TXD_GET DT_PROP(DT_NODELABEL(U_CFG_TEST_CAT(uart, U_CFG_TEST_UART_A)), tx_pin)
+#  else
+#   define U_CFG_TEST_PIN_UART_A_TXD_GET -1
+#  endif
 # endif
 #endif
 
@@ -218,19 +233,21 @@
 # define U_CFG_TEST_PIN_UART_A_RXD   -1
 #endif
 
+#if KERNEL_VERSION_MAJOR < 3
 /** Macro to return the RXD pin for UART A: note that dashes
  * in the DTS node name must be converted to underscores.
  * 0xffffffff is a magic value in nRF speak, mapping to
  * NRF_UARTE_PSEL_DISCONNECTED.
  */
-#if (U_CFG_TEST_UART_A < 0)
-# define U_CFG_TEST_PIN_UART_A_RXD_GET -1
-#else
-# if DT_NODE_HAS_PROP(DT_NODELABEL(U_CFG_TEST_CAT(uart, U_CFG_TEST_UART_A)), rx_pin) &&    \
-     (DT_PROP(DT_NODELABEL(U_CFG_TEST_CAT(uart, U_CFG_TEST_UART_A)), rx_pin) < 0xffffffff)
-#  define U_CFG_TEST_PIN_UART_A_RXD_GET DT_PROP(DT_NODELABEL(U_CFG_TEST_CAT(uart, U_CFG_TEST_UART_A)), rx_pin)
-# else
+# if (U_CFG_TEST_UART_A < 0)
 #  define U_CFG_TEST_PIN_UART_A_RXD_GET -1
+# else
+#  if DT_NODE_HAS_PROP(DT_NODELABEL(U_CFG_TEST_CAT(uart, U_CFG_TEST_UART_A)), rx_pin) &&    \
+      (DT_PROP(DT_NODELABEL(U_CFG_TEST_CAT(uart, U_CFG_TEST_UART_A)), rx_pin) < 0xffffffff)
+#   define U_CFG_TEST_PIN_UART_A_RXD_GET DT_PROP(DT_NODELABEL(U_CFG_TEST_CAT(uart, U_CFG_TEST_UART_A)), rx_pin)
+#  else
+#   define U_CFG_TEST_PIN_UART_A_RXD_GET -1
+#  endif
 # endif
 #endif
 
@@ -242,19 +259,21 @@
 # define U_CFG_TEST_PIN_UART_A_CTS   -1
 #endif
 
+#if KERNEL_VERSION_MAJOR < 3
 /** Macro to return the CTS pin for UART A: note that dashes
  * in the DTS node name must be converted to underscores.
  * 0xffffffff is a magic value in nRF speak, mapping to
  * NRF_UARTE_PSEL_DISCONNECTED.
  */
-#if (U_CFG_TEST_UART_A < 0)
-# define U_CFG_TEST_PIN_UART_A_CTS_GET -1
-#else
-# if DT_NODE_HAS_PROP(DT_NODELABEL(U_CFG_TEST_CAT(uart, U_CFG_TEST_UART_A)), cts_pin) &&    \
-     (DT_PROP(DT_NODELABEL(U_CFG_TEST_CAT(uart, U_CFG_TEST_UART_A)), cts_pin) < 0xffffffff)
-#  define U_CFG_TEST_PIN_UART_A_CTS_GET DT_PROP(DT_NODELABEL(U_CFG_TEST_CAT(uart, U_CFG_TEST_UART_A)), cts_pin)
-# else
+# if (U_CFG_TEST_UART_A < 0)
 #  define U_CFG_TEST_PIN_UART_A_CTS_GET -1
+# else
+#  if DT_NODE_HAS_PROP(DT_NODELABEL(U_CFG_TEST_CAT(uart, U_CFG_TEST_UART_A)), cts_pin) &&    \
+      (DT_PROP(DT_NODELABEL(U_CFG_TEST_CAT(uart, U_CFG_TEST_UART_A)), cts_pin) < 0xffffffff)
+#   define U_CFG_TEST_PIN_UART_A_CTS_GET DT_PROP(DT_NODELABEL(U_CFG_TEST_CAT(uart, U_CFG_TEST_UART_A)), cts_pin)
+#  else
+#   define U_CFG_TEST_PIN_UART_A_CTS_GET -1
+#  endif
 # endif
 #endif
 
@@ -266,19 +285,21 @@
 # define U_CFG_TEST_PIN_UART_A_RTS   -1
 #endif
 
+#if KERNEL_VERSION_MAJOR < 3
 /** Macro to return the RTS pin for UART A: note that dashes
  * in the DTS node name must be converted to underscores.
  * 0xffffffff is a magic value in nRF speak, mapping to
  * NRF_UARTE_PSEL_DISCONNECTED.
  */
-#if (U_CFG_TEST_UART_A < 0)
-# define U_CFG_TEST_PIN_UART_A_RTS_GET -1
-#else
-# if DT_NODE_HAS_PROP(DT_NODELABEL(U_CFG_TEST_CAT(uart, U_CFG_TEST_UART_A)), rts_pin) &&    \
-     (DT_PROP(DT_NODELABEL(U_CFG_TEST_CAT(uart, U_CFG_TEST_UART_A)), rts_pin) < 0xffffffff)
-#  define U_CFG_TEST_PIN_UART_A_RTS_GET DT_PROP(DT_NODELABEL(U_CFG_TEST_CAT(uart, U_CFG_TEST_UART_A)), rts_pin)
-# else
+# if (U_CFG_TEST_UART_A < 0)
 #  define U_CFG_TEST_PIN_UART_A_RTS_GET -1
+# else
+#  if DT_NODE_HAS_PROP(DT_NODELABEL(U_CFG_TEST_CAT(uart, U_CFG_TEST_UART_A)), rts_pin) &&    \
+      (DT_PROP(DT_NODELABEL(U_CFG_TEST_CAT(uart, U_CFG_TEST_UART_A)), rts_pin) < 0xffffffff)
+#   define U_CFG_TEST_PIN_UART_A_RTS_GET DT_PROP(DT_NODELABEL(U_CFG_TEST_CAT(uart, U_CFG_TEST_UART_A)), rts_pin)
+#  else
+#   define U_CFG_TEST_PIN_UART_A_RTS_GET -1
+#  endif
 # endif
 #endif
 

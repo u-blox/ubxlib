@@ -172,4 +172,29 @@ class UExecutablePackage(UBasePackage):
                 print(f"Unable to run {run_path} with switches {self.cfg['run_with_switches']}")
                 shutil.rmtree(self.package_dir)
 
+class UHttpGetPackage(UBasePackage):
+    """Just HTTP GET a file"""
+    def check_installed(self, ctx: Context):
+        """Check if the package is installed"""
+        is_ok = False
+        if 'url' in self.cfg:
+            is_ok = os.path.isfile(os.path.join(self.package_dir, os.path.basename(self.cfg['url'])))
+        if is_ok and 'check_command' in self.cfg:
+            is_ok = False
+            try:
+                is_ok = ctx.run(f"{self.cfg['check_command']}", hide=True).ok
+            except:
+                pass
+        return is_ok
+
+    def install(self, ctx):
+        """Get the file"""
+        is_ok = False
+        if 'url' in self.cfg:
+            os.makedirs(self.package_dir, exist_ok=True)
+            with open(os.path.join(self.package_dir, os.path.basename(self.cfg['url'])), 'wb') as file:
+                content_length = u_pkg_utils.download(self.cfg['url'], file)
+                if int(content_length) > 0:
+                    is_ok = True
+        return is_ok
 

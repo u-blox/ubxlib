@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -53,6 +53,9 @@
 #include "u_cell_pwr.h"
 #include "u_cell_cfg.h"
 #include "u_cell_info.h"
+#ifdef U_CELL_TEST_MUX_ALWAYS
+# include "u_cell_mux.h"
+#endif
 
 #include "u_cell_test_cfg.h"
 #include "u_cell_test_private.h"
@@ -421,6 +424,10 @@ int32_t uCellTestPrivatePreamble(uCellModuleType_t moduleType,
                     }
 
                     if (errorCode == 0) {
+#ifdef U_CELL_TEST_MUX_ALWAYS
+                        U_TEST_PRINT_LINE("enabling CMUX for all tests.");
+                        errorCode = uCellMuxEnable(cellHandle);
+#endif
                         U_TEST_PRINT_LINE("test preamble end.");
                     }
                 }

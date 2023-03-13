@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,10 @@
  * from the Zephyr device tree.
  */
 #include "devicetree.h"
+
+/* This inclusion is required to get the Zephyr version.
+ */
+#include "version.h"
 
 /** @file
  * @brief This header file contains configuration information for
@@ -208,6 +212,15 @@
  * but make NO DIFFERENCE WHATSOEVER to how the world works.  On this
  * platform the Zephyr device tree dictates what pins are used
  * by the UART.
+ *
+ * ZEPHYR VERSION 3: the _GET macros are present here for the
+ * flow control lines so that one has a chance of finding out,
+ * in the TEST code, what pins have ended up being assigned to what
+ * functions.  However, in Zephyr 3, an abstraction (pinctrl) has
+ * been introduced to allow the pins to be set at run-time and,
+ * while that is a good thing, it has made it impossible, now,
+ * to determine what pin has ended up being assigned to what HW
+ * block function either at compile time or at run-time.  Sorry!
  */
 
 #ifndef U_CFG_APP_PIN_CELL_TXD
@@ -226,35 +239,39 @@
 # define U_CFG_APP_PIN_CELL_RTS               -1
 #endif
 
+#if KERNEL_VERSION_MAJOR < 3
 /** Macro to return the CTS pin for cellular: note that dashes
  * in the DTS node name must be converted to underscores.
  * 0xffffffff is a magic value in nRF speak, mapping to
  * NRF_UARTE_PSEL_DISCONNECTED.
  */
-#if (U_CFG_APP_CELL_UART < 0)
-# define U_CFG_TEST_PIN_UART_A_CTS_GET -1
-#else
-# if DT_NODE_HAS_PROP(DT_NODELABEL(U_CFG_APP_CAT(uart, U_CFG_APP_CELL_UART)), cts_pin) &&    \
-    (DT_PROP(DT_NODELABEL(U_CFG_APP_CAT(uart, U_CFG_APP_CELL_UART)), cts_pin) < 0xffffffff)
-#  define U_CFG_APP_PIN_CELL_CTS_GET DT_PROP(DT_NODELABEL(U_CFG_APP_CAT(uart, U_CFG_APP_CELL_UART)), cts_pin)
-# else
+# if (U_CFG_APP_CELL_UART < 0)
 #  define U_CFG_APP_PIN_CELL_CTS_GET -1
+# else
+#  if DT_NODE_HAS_PROP(DT_NODELABEL(U_CFG_APP_CAT(uart, U_CFG_APP_CELL_UART)), cts_pin) &&    \
+     (DT_PROP(DT_NODELABEL(U_CFG_APP_CAT(uart, U_CFG_APP_CELL_UART)), cts_pin) < 0xffffffff)
+#   define U_CFG_APP_PIN_CELL_CTS_GET DT_PROP(DT_NODELABEL(U_CFG_APP_CAT(uart, U_CFG_APP_CELL_UART)), cts_pin)
+#  else
+#   define U_CFG_APP_PIN_CELL_CTS_GET -1
+#  endif
 # endif
 #endif
 
+#if KERNEL_VERSION_MAJOR < 3
 /** Macro to return the RTS pin for cellular: note that dashes
  * in the DTS node name must be converted to underscores.
  * 0xffffffff is a magic value in nRF speak, mapping to
  * NRF_UARTE_PSEL_DISCONNECTED.
  */
-#if (U_CFG_APP_CELL_UART < 0)
-# define U_CFG_TEST_PIN_UART_A_RTS_GET -1
-#else
-# if DT_NODE_HAS_PROP(DT_NODELABEL(U_CFG_APP_CAT(uart, U_CFG_APP_CELL_UART)), rts_pin) &&    \
-    (DT_PROP(DT_NODELABEL(U_CFG_APP_CAT(uart, U_CFG_APP_CELL_UART)), rts_pin) < 0xffffffff)
-#  define U_CFG_APP_PIN_CELL_RTS_GET DT_PROP(DT_NODELABEL(U_CFG_APP_CAT(uart, U_CFG_APP_CELL_UART)), rts_pin)
-# else
+# if (U_CFG_APP_CELL_UART < 0)
 #  define U_CFG_APP_PIN_CELL_RTS_GET -1
+# else
+#  if DT_NODE_HAS_PROP(DT_NODELABEL(U_CFG_APP_CAT(uart, U_CFG_APP_CELL_UART)), rts_pin) &&    \
+     (DT_PROP(DT_NODELABEL(U_CFG_APP_CAT(uart, U_CFG_APP_CELL_UART)), rts_pin) < 0xffffffff)
+#   define U_CFG_APP_PIN_CELL_RTS_GET DT_PROP(DT_NODELABEL(U_CFG_APP_CAT(uart, U_CFG_APP_CELL_UART)), rts_pin)
+#  else
+#   define U_CFG_APP_PIN_CELL_RTS_GET -1
+#  endif
 # endif
 #endif
 

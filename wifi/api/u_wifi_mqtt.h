@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -194,6 +194,10 @@ void uWifiMqttClose(uMqttClientContext_t *pContext);
 int32_t uWifiMqttGetUnread(const uMqttClientContext_t *pContext);
 
 /** Read messages and their corresponding topics for a given MQTT session.
+ *
+ * Note: if the MQTT message is longer than the buffer provided to
+ * this function then it will copy as much as it can and return the
+ * error code #U_ERROR_COMMON_TRUNCATED.
  *
  * @param[in] pContext           client context returned by pUMqttClientOpen().
  * @param[out] pTopicNameStr     user should provide empty buffer of topicNameSizeBytes.

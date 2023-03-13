@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -510,6 +510,13 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClient")
                     U_PORT_TEST_ASSERT(memcmp(pMessageIn, pMessageOut, s) == 0);
 
                     U_PORT_TEST_ASSERT(uMqttClientGetUnread(gpMqttContextA) == 0);
+
+                    // Read again - should return U_ERROR_COMMON_EMPTY
+                    y = uMqttClientMessageRead(gpMqttContextA, pTopicIn,
+                                               U_MQTT_CLIENT_TEST_READ_TOPIC_MAX_LENGTH_BYTES,
+                                               pMessageIn, &s, &qos);
+                    U_TEST_PRINT_LINE_MQTT("attempting to read a message when there are none returned %d.", y);
+                    U_PORT_TEST_ASSERT(y == (int32_t) U_ERROR_COMMON_EMPTY);
 
                     // Cancel the subscribe
                     U_TEST_PRINT_LINE_MQTT("unsubscribing from topic \"%s\"...", pTopicOut);

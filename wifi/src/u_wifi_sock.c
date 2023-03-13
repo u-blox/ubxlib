@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -1332,9 +1332,9 @@ int32_t uWifiSockReceiveFrom(uDeviceHandle_t devHandle,
                                                      NULL);
 
         if ((errnoLocal == (int32_t)U_ERROR_COMMON_NO_MEMORY) ||
-            (errnoLocal == (int32_t)U_ERROR_COMMON_INVALID_PARAMETER)) {
+            (errnoLocal == (int32_t)U_ERROR_COMMON_EMPTY)) {
             errnoLocal = -U_SOCK_EWOULDBLOCK;
-        } else if (errnoLocal == (int32_t)U_ERROR_COMMON_TEMPORARY_FAILURE) {
+        } else if (errnoLocal == (int32_t)U_ERROR_COMMON_TRUNCATED) {
             errnoLocal = -U_SOCK_EMSGSIZE;
         } else if (errnoLocal == (int32_t)U_ERROR_COMMON_SUCCESS) {
             errnoLocal = (int32_t)dataSizeBytes;

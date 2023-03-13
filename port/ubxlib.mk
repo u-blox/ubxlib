@@ -75,6 +75,11 @@ UBXLIB_SRC += \
 	${UBXLIB_BASE}/common/network/src/u_network_private_wifi.c \
 	${UBXLIB_BASE}/common/device/src/u_device_private_short_range.c
 else
+# Make the linker happy
+UBXLIB_SRC += \
+	${UBXLIB_BASE}/common/network/src/u_network_private_ble_extmod_link.c \
+	${UBXLIB_BASE}/common/network/src/u_network_private_wifi_link.c \
+	${UBXLIB_BASE}/common/device/src/u_device_private_short_range_link.c
 # Always add all of the includes
 UBXLIB_INC += \
 	${UBXLIB_BASE}/common/short_range/api \
@@ -93,6 +98,10 @@ UBXLIB_SRC += \
 	${UBXLIB_BASE}/common/network/src/u_network_private_cell.c \
 	${UBXLIB_BASE}/common/device/src/u_device_private_cell.c
 else
+# Make the linker happy
+UBXLIB_SRC += \
+	${UBXLIB_BASE}/common/network/src/u_network_private_cell_link.c \
+	${UBXLIB_BASE}/common/device/src/u_device_private_cell_link.c
 # Always add all of the includes
 UBXLIB_INC += \
 	${UBXLIB_BASE}/cell/api
@@ -107,6 +116,10 @@ UBXLIB_SRC += \
 	${UBXLIB_BASE}/common/network/src/u_network_private_gnss.c \
 	${UBXLIB_BASE}/common/device/src/u_device_private_gnss.c
 else
+# Make the linker happy
+UBXLIB_SRC += \
+	${UBXLIB_BASE}/common/network/src/u_network_private_gnss_link.c \
+	${UBXLIB_BASE}/common/device/src/u_device_private_gnss_link.c
 # Always add all of the includes
 UBXLIB_INC += \
 	${UBXLIB_BASE}/gnss/api

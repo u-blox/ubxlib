@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,6 +36,7 @@
 #include "stdbool.h"
 #include "string.h"    // strlen()
 #include "time.h"      // struct tm
+#include "ctype.h"     // isdigit()
 
 #include "u_cfg_sw.h"
 
@@ -48,6 +49,8 @@
 #include "u_port_uart.h"
 
 #include "u_at_client.h"
+
+#include "u_device_shared.h"
 
 #include "u_cell_module_type.h"
 #include "u_cell_file.h"
@@ -132,6 +135,21 @@ static int32_t rssiUtranToDbm(int32_t rssi)
     return rssiDbm;
 }
 
+// Convert the UTRAN ecnoLev number to dB.
+// 0:     less than -24 dB
+// 1..48: -24 dB to 0 dB in 0.5 dB steps
+// 49:    less than 0 dB
+// Returns 0x7FFFFFFF if the number is not known.
+static int32_t ecnoLevToDb(int32_t ecnoLev)
+{
+    int32_t ecnoDb = 0x7FFFFFFF;
+
+    if ((ecnoLev >= 0) && (ecnoLev <= 49)) {
+        ecnoDb = -((ecnoLev - 49) >> 2);
+    }
+
+    return ecnoDb;
+}
 
 // Get an ID string from the cellular module.
 static int32_t getString(uAtClientHandle_t atHandle,
@@ -170,6 +188,36 @@ static int32_t getString(uAtClientHandle_t atHandle,
     return errorCodeOrSize;
 }
 
+// Get SINR as an integer from a decimal (e.g -13.75) in a string,
+// or 0x7FFFFFFF if not known
+static int32_t getSinr(const char *pStr, int32_t divisor)
+{
+    int32_t sinrDb = 0x7FFFFFFF;
+    int32_t x;
+    char *pTmp;
+
+    x = strtol(pStr, &pTmp, 10);
+    // 255 means "not present/known"
+    if (x != 255) {
+        sinrDb = x;
+        if (*pTmp == '.') {
+            // Round based on mantissa
+            pTmp++;
+            if (isdigit((int32_t) *pTmp) && (*pTmp >= 0x35)) {
+                if (x >= 0) {
+                    sinrDb++;
+                } else {
+                    sinrDb--;
+                }
+            }
+        }
+        sinrDb += divisor / 2; // This to round to the nearest integer
+        sinrDb /= divisor;
+    }
+
+    return sinrDb;
+}
+
 // Fill in the radio parameters the AT+CSQ way
 static int32_t getRadioParamsCsq(uAtClientHandle_t atHandle,
                                  uCellPrivateRadioParameters_t *pRadioParameters)
@@ -205,6 +253,7 @@ static int32_t getRadioParamsUcged2SaraR5(uAtClientHandle_t atHandle,
                                           uCellPrivateRadioParameters_t *pRadioParameters)
 {
     int32_t x;
+    char buffer[10]; // More than enough room for an SNIR reading, e.g. 13.75, with a terminator
 
     // +UCGED: 2
     // <rat>,<svc>,<MCC>,<MNC>
@@ -242,6 +291,12 @@ static int32_t getRadioParamsUcged2SaraR5(uAtClientHandle_t atHandle,
         // negative return value.
         pRadioParameters->rsrqDb = rsrqToDb(x);
     }
+    // SINR is element 13, directly in dB, a decimal number
+    // with a mantissa, 255 if unknown.
+    x = uAtClientReadString(atHandle, buffer, sizeof(buffer), false);
+    if (x > 0) {
+        pRadioParameters->snrDb = getSinr(buffer, 1);
+    }
     uAtClientResponseStop(atHandle);
 
     return uAtClientUnlock(atHandle);
@@ -254,41 +309,87 @@ static int32_t getRadioParamsUcged2SaraR422(uAtClientHandle_t atHandle,
     int32_t x;
     int32_t y;
 
-    // +UCGED: 2
-    // <rat>,<MCC>,<MNC>
-    // <EARFCN>,<Lband>,<ul_BW>,<dl_BW>,<TAC>,<P-CID>,<RSRP_value>,<RSRQ_value>,<NBMsinr>,<esm_cause>,<emm_state>,<tx_pwr>,<drx_cycle_len>,<tmsi>
-    // e.g.
-    // 6,310,410
-    // 5110,12,10,10,830e,162,-86,-14,131,-1,3,255,128,"FB306E02"
     uAtClientLock(atHandle);
     uAtClientCommandStart(atHandle, "AT+UCGED?");
     uAtClientCommandStop(atHandle);
     // The line with just "+UCGED: 2" on it
     uAtClientResponseStart(atHandle, "+UCGED:");
     uAtClientSkipParameters(atHandle, 1);
-    // Don't want anything from the next line
+
+    // UCGED has two flavours for SARA-R422, one for GSM and the other for Cat-M1/NB1
+    // Read the next line to get the RAT, which is always the first parameter
     uAtClientResponseStart(atHandle, NULL);
-    uAtClientSkipParameters(atHandle, 3);
-    // Now the line of interest
-    uAtClientResponseStart(atHandle, NULL);
-    // EARFCN is the first integer
-    pRadioParameters->earfcn = uAtClientReadInt(atHandle);
-    // Skip <Lband>, <ul_BW>, <dl_BW> and <TAC>
-    uAtClientSkipParameters(atHandle, 4);
-    // Read <P-CID>
-    pRadioParameters->cellId = uAtClientReadInt(atHandle);
-    // RSRP is element 7, as a plain-old dBm value
     x = uAtClientReadInt(atHandle);
-    // RSRQ is element 8, as a plain-old dB value.
-    y = uAtClientReadInt(atHandle);
-    if (uAtClientErrorGet(atHandle) == 0) {
-        // Note that these last two are usually negative
-        // integers, hence we check for errors here so as
-        // not to mix up what might be a negative error
-        // code with a negative return value.
-        pRadioParameters->rsrpDbm = x;
-        pRadioParameters->rsrqDb = y;
+    if (x == 2) {
+        // GSM:
+        // 2,<svc>,<MCC>,<MNC>
+        // <ARFCN>,<band1900>,<GcellId>,<BSIC>,<Glac>,<Grac>,<rxlev>,<grr>,<t_adv>,<Gspeech_mode>
+        // e.g.
+        // 2,4,001,01
+        // 810,1,0000,01,0000,80,63,255,255,255
+
+        // Don't want anything from the rest of the first line
+        uAtClientSkipParameters(atHandle, 3);
+        // Now the line of interest
+        uAtClientResponseStart(atHandle, NULL);
+        // ARFCN is the first integer
+        pRadioParameters->earfcn = uAtClientReadInt(atHandle);
+        // Skip <band1900>
+        uAtClientSkipParameters(atHandle, 1);
+        // Read <GcellId>
+        pRadioParameters->cellId = uAtClientReadInt(atHandle);
+        // RSSI is in the rxlev parameter element 7
+        // If we don't already have it (from doing AT+CSQ),
+        // get it from here
+        if (pRadioParameters->rssiDbm == 0) {
+            // Skip <BSIC>, <Glac>, <Grac>
+            uAtClientSkipParameters(atHandle, 3);
+            x = uAtClientReadInt(atHandle);
+            if ((x >= 0) && (x <= 63)) {
+                pRadioParameters->rssiDbm =  -(110 - x);
+            }
+            if (pRadioParameters->rssiDbm > -48) {
+                pRadioParameters->rssiDbm = -48;
+            }
+        }
+    } else {
+        // Cat-M1/NB1:
+        // <rat>,<MCC>,<MNC>
+        // <EARFCN>,<Lband>,<ul_BW>,<dl_BW>,<TAC>,<P-CID>,<RSRP_value>,<RSRQ_value>,<NBMsinr>,<esm_cause>,<emm_state>,<tx_pwr>,<drx_cycle_len>,<tmsi>
+        // e.g.
+        // 6,310,410
+        // 5110,12,10,10,830e,162,-86,-14,131,-1,3,255,128,"FB306E02"
+
+        // Don't want anything from the rest of the first line
+        uAtClientSkipParameters(atHandle, 2);
+        // Now the line of interest
+        uAtClientResponseStart(atHandle, NULL);
+        // EARFCN is the first integer
+        pRadioParameters->earfcn = uAtClientReadInt(atHandle);
+        // Skip <Lband>, <ul_BW>, <dl_BW> and <TAC>
+        uAtClientSkipParameters(atHandle, 4);
+        // Read <P-CID>
+        pRadioParameters->cellId = uAtClientReadInt(atHandle);
+        // RSRP is element 7, as a plain-old dBm value
+        x = uAtClientReadInt(atHandle);
+        // RSRQ is element 8, as a plain-old dB value.
+        y = uAtClientReadInt(atHandle);
+        if (uAtClientErrorGet(atHandle) == 0) {
+            // Note that these last two are usually negative
+            // integers, hence we check for errors here so as
+            // not to mix up what might be a negative error
+            // code with a negative return value.
+            pRadioParameters->rsrpDbm = x;
+            pRadioParameters->rsrqDb = y;
+        }
+        // SINR is element 9, encoded in 1/5ths of a dB where
+        // 0 is -20 dB and the maximum is 250 (30 dB)
+        x = uAtClientReadInt(atHandle);
+        if (x >= 0) {
+            pRadioParameters->snrDb = (x - (20 * 5)) / 5;
+        }
     }
+
     uAtClientResponseStop(atHandle);
 
     return uAtClientUnlock(atHandle);
@@ -302,7 +403,7 @@ static int32_t getRadioParamsUcged2LaraR6(uAtClientHandle_t atHandle,
     int32_t skipParameters = 2;
     int32_t x;
     int32_t y;
-
+    char buffer[10]; // More than enough room for an SNIR reading, e.g. 13.75, with a terminator
     // The formats are RAT dependent as follows:
     //
     // 2G:
@@ -328,7 +429,7 @@ static int32_t getRadioParamsUcged2LaraR6(uAtClientHandle_t atHandle,
     //
     // +UCGED: 2
     // 4,<svc>,<MCC>,<MNC>
-    // <EARFCN>,<Lband>,<ul_BW>,<dl_BW>,<TAC>,<LcellId>,<P-CID>,<mTmsi>,<mmeGrId>,<mmeCode>,<RSRP>,<RSRQ>... etc.
+    // <EARFCN>,<Lband>,<ul_BW>,<dl_BW>,<TAC>,<LcellId>,<P-CID>,<mTmsi>,<mmeGrId>,<mmeCode>,<RSRP>,<RSRQ>,<Lsinr>... etc.
     // e.g.
     // 4,0,001,01
     // 2525,5,25,50,2b67,69f6bc7,111,00000000,ffff,ff,67,19,0.00,255,255,255,67,11,255,0,255,255,0,0
@@ -368,6 +469,8 @@ static int32_t getRadioParamsUcged2LaraR6(uAtClientHandle_t atHandle,
             uAtClientSkipParameters(atHandle, 4);
             // Read <rssi> and convert it to dBm
             pRadioParameters->rssiDbm = rssiUtranToDbm(uAtClientReadInt(atHandle));
+            // Read <ecn0_lev> and convert it to dB
+            pRadioParameters->snrDb = ecnoLevToDb(uAtClientReadInt(atHandle));
             // Ignore the rest
             break;
         case 4:
@@ -390,6 +493,12 @@ static int32_t getRadioParamsUcged2LaraR6(uAtClientHandle_t atHandle,
                 // code with a negative return value.
                 pRadioParameters->rsrpDbm = x;
                 pRadioParameters->rsrqDb = y;
+            }
+            // SINR is element 13, directly in tenths of a dB, a
+            // decimal number with a mantissa, 255 if unknown.
+            x = uAtClientReadString(atHandle, buffer, sizeof(buffer), false);
+            if (x > 0) {
+                pRadioParameters->snrDb = getSinr(buffer, 10);
             }
             break;
         default:
@@ -520,6 +629,9 @@ int32_t uCellInfoRefreshRadioParameters(uDeviceHandle_t cellHandle)
                 uPortLog("             RxQual:  %d\n", pRadioParameters->rxQual);
                 uPortLog("             cell ID: %d\n", pRadioParameters->cellId);
                 uPortLog("             EARFCN:  %d\n", pRadioParameters->earfcn);
+                if (pRadioParameters->snrDb != 0x7FFFFFFF) {
+                    uPortLog("             SNR:     %d\n", pRadioParameters->snrDb);
+                }
             } else {
                 uPortLog("U_CELL_INFO: unable to refresh radio parameters.\n");
             }
@@ -678,6 +790,7 @@ int32_t uCellInfoGetSnrDb(uDeviceHandle_t cellHandle, int32_t *pSnrDb)
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
     uCellPrivateRadioParameters_t *pRadioParameters;
+    uCellNetRat_t rat;
 
     if (gUCellPrivateMutex != NULL) {
 
@@ -687,18 +800,36 @@ int32_t uCellInfoGetSnrDb(uDeviceHandle_t cellHandle, int32_t *pSnrDb)
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if ((pInstance != NULL) && (pSnrDb != NULL)) {
             pRadioParameters = &(pInstance->radioParameters);
-            errorCode = (int32_t) U_CELL_ERROR_VALUE_OUT_OF_RANGE;
-            // SNR = RSRP / (RSSI - RSRP).
-            if ((pRadioParameters->rssiDbm != 0) &&
-                (pRadioParameters->rssiDbm <= pRadioParameters->rsrpDbm)) {
-                *pSnrDb = INT_MAX;
-                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-            } else if ((pRadioParameters->rssiDbm != 0) && (pRadioParameters->rsrpDbm != 0)) {
-                int32_t ix = pRadioParameters->rssiDbm - (pRadioParameters->rsrpDbm + 1);
-                if (ix >= 0) {
-                    const signed char snrLut[] = {6, 2, 0, -2, -3, -5, -6, -7, -8, -10};
-                    *pSnrDb = (ix < (int32_t) sizeof(snrLut)) ? snrLut[ix] : (- ix - 1);
+            errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+            rat = uCellPrivateGetActiveRat(pInstance);
+            if ((rat == U_CELL_NET_RAT_GSM_GPRS_EGPRS) ||
+                (rat == U_CELL_NET_RAT_EGPRS)) {
+                // Don't have SNR in 2G, just calculate it from RSSI and RSRP
+                errorCode = (int32_t) U_CELL_ERROR_VALUE_OUT_OF_RANGE;
+                // SNR = RSRP / (RSSI - RSRP).
+                if ((pRadioParameters->rssiDbm != 0) &&
+                    (pRadioParameters->rssiDbm <= pRadioParameters->rsrpDbm)) {
+                    *pSnrDb = INT_MAX;
                     errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                } else if ((pRadioParameters->rssiDbm != 0) && (pRadioParameters->rsrpDbm != 0)) {
+                    int32_t ix = pRadioParameters->rssiDbm - (pRadioParameters->rsrpDbm + 1);
+                    if (ix >= 0) {
+                        const signed char snrLut[] = {6, 2, 0, -2, -3, -5, -6, -7, -8, -10};
+                        *pSnrDb = (ix < (int32_t) sizeof(snrLut)) ? snrLut[ix] : (- ix - 1);
+                        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                    }
+                }
+            } else {
+                if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                       U_CELL_PRIVATE_FEATURE_SNR_REPORTED)) {
+                    errorCode = (int32_t) U_ERROR_COMMON_NOT_FOUND;
+                    if (pRadioParameters->snrDb != 0x7FFFFFFF) {
+                        // If we have a stored SNIR value that we've been
+                        // able to read directly out of the module, then
+                        // report that
+                        *pSnrDb = pRadioParameters->snrDb;
+                        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                    }
                 }
             }
         }
@@ -1061,7 +1192,8 @@ bool uCellInfoIsRtsFlowControlEnabled(uDeviceHandle_t cellHandle)
     bool isEnabled = false;
     uCellPrivateInstance_t *pInstance;
     int32_t atStreamHandle;
-    uAtClientStream_t atStreamType;
+    uAtClientStream_t atStreamType = U_AT_CLIENT_STREAM_TYPE_MAX;
+    uDeviceSerial_t *pDeviceSerial;
 
     if (gUCellPrivateMutex != NULL) {
 
@@ -1070,8 +1202,16 @@ bool uCellInfoIsRtsFlowControlEnabled(uDeviceHandle_t cellHandle)
         pInstance = pUCellPrivateGetInstance(cellHandle);
         if (pInstance != NULL) {
             atStreamHandle = uAtClientStreamGet(pInstance->atHandle, &atStreamType);
-            if (atStreamType == U_AT_CLIENT_STREAM_TYPE_UART) {
-                isEnabled = uPortUartIsRtsFlowControlEnabled(atStreamHandle);
+            switch (atStreamType) {
+                case U_AT_CLIENT_STREAM_TYPE_UART:
+                    isEnabled = uPortUartIsRtsFlowControlEnabled(atStreamHandle);
+                    break;
+                case U_AT_CLIENT_STREAM_TYPE_VIRTUAL_SERIAL:
+                    pDeviceSerial = (uDeviceSerial_t *) atStreamHandle;
+                    isEnabled = pDeviceSerial->isRtsFlowControlEnabled(pDeviceSerial);
+                    break;
+                default:
+                    break;
             }
         }
 
@@ -1087,7 +1227,8 @@ bool uCellInfoIsCtsFlowControlEnabled(uDeviceHandle_t cellHandle)
     bool isEnabled = false;
     uCellPrivateInstance_t *pInstance;
     int32_t atStreamHandle;
-    uAtClientStream_t atStreamType;
+    uAtClientStream_t atStreamType = U_AT_CLIENT_STREAM_TYPE_MAX;
+    uDeviceSerial_t *pDeviceSerial;
 
     if (gUCellPrivateMutex != NULL) {
 
@@ -1096,8 +1237,16 @@ bool uCellInfoIsCtsFlowControlEnabled(uDeviceHandle_t cellHandle)
         pInstance = pUCellPrivateGetInstance(cellHandle);
         if (pInstance != NULL) {
             atStreamHandle = uAtClientStreamGet(pInstance->atHandle, &atStreamType);
-            if (atStreamType == U_AT_CLIENT_STREAM_TYPE_UART) {
-                isEnabled = uPortUartIsCtsFlowControlEnabled(atStreamHandle);
+            switch (atStreamType) {
+                case U_AT_CLIENT_STREAM_TYPE_UART:
+                    isEnabled = uPortUartIsCtsFlowControlEnabled(atStreamHandle);
+                    break;
+                case U_AT_CLIENT_STREAM_TYPE_VIRTUAL_SERIAL:
+                    pDeviceSerial = (uDeviceSerial_t *) atStreamHandle;
+                    isEnabled = pDeviceSerial->isCtsFlowControlEnabled(pDeviceSerial);
+                    break;
+                default:
+                    break;
             }
         }
 

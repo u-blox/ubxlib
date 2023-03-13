@@ -263,8 +263,9 @@ Use this method if the user is not able to generate a private key on their devic
 ```
 openssl genrsa -des3 -out devicename.key 4096
 openssl req -new -key devicename.key -out ubxlib_test_system_devicename.csr
-openssl x509 -req -days 365 -in ubxlib_test_system_devicename.csr -CA ubxlib_test_system_ca.crt -CAkey ubxlib_test_system.key -set_serial 01 -out ubxlib_test_system_devicename.crt
 ```
+
+- Handle the signing request as described in the section above (store it on the machine running Jenkins/NGINX in the directory `/etc/ssl/csr` and sign it, etc.).
 
 - Create a password-protected PFX file which will include the private key you generated for them, the signed certificate for it and the public Certificate Authority for the`ubxlib` test system.
 

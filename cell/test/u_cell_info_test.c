@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -133,7 +133,9 @@ U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoImeiEtc")
     char buffer[64];
     int32_t bytesRead;
     int32_t heapUsed;
+#if defined(U_CFG_APP_PIN_CELL_RTS_GET) || defined(U_CFG_APP_PIN_CELL_CTS_GET)
     bool isEnabled;
+#endif
 
     // In case a previous test failed
     uCellTestPrivateCleanup(&gHandles);
@@ -224,18 +226,34 @@ U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoImeiEtc")
                                             sizeof(buffer)) >= 0);
     U_PORT_TEST_ASSERT(strlen(buffer) <= U_CELL_INFO_ICCID_BUFFER_SIZE);
 
-    U_TEST_PRINT_LINE("checking flow control lines...");
+#ifdef U_CFG_APP_PIN_CELL_RTS_GET
+    U_TEST_PRINT_LINE("checking RTS...");
     isEnabled = uCellInfoIsRtsFlowControlEnabled(cellHandle);
-#if U_CFG_APP_PIN_CELL_RTS_GET >= 0
+# ifdef U_CELL_TEST_MUX_ALWAYS
+    // Flow control is always enabled for CMUX
     U_PORT_TEST_ASSERT(isEnabled);
-#else
+# else
+#  if U_CFG_APP_PIN_CELL_RTS_GET >= 0
+    U_PORT_TEST_ASSERT(isEnabled);
+#  else
     U_PORT_TEST_ASSERT(!isEnabled);
+#  endif
+# endif
 #endif
+
+#ifdef U_CFG_APP_PIN_CELL_CTS_GET
+    U_TEST_PRINT_LINE("checking CTS...");
     isEnabled = uCellInfoIsCtsFlowControlEnabled(cellHandle);
-#if U_CFG_APP_PIN_CELL_CTS_GET >= 0
+# ifdef U_CELL_TEST_MUX_ALWAYS
+    // Flow control is always enabled for CMUX
     U_PORT_TEST_ASSERT(isEnabled);
-#else
+# else
+#  if U_CFG_APP_PIN_CELL_CTS_GET >= 0
+    U_PORT_TEST_ASSERT(isEnabled);
+#  else
     U_PORT_TEST_ASSERT(!isEnabled);
+#  endif
+# endif
 #endif
 
     // Do the standard postamble, leaving the module on for the next
@@ -324,7 +342,8 @@ U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoRadioParameters")
         if (x == 0) {
             U_TEST_PRINT_LINE("SNR is %d dB.", snrDb);
         }
-        U_PORT_TEST_ASSERT((x == 0) || (x == U_CELL_ERROR_VALUE_OUT_OF_RANGE));
+        U_PORT_TEST_ASSERT((x == 0) || (x == (int32_t) U_CELL_ERROR_VALUE_OUT_OF_RANGE) ||
+                           (x == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED));
     }
 
     // Disconnect

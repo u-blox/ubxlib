@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -142,6 +142,7 @@ void uPortI2cClose(int32_t handle);
  * method is out-of-band, i.e. wire the reset pins of your I2C
  * devices together and hang them off a GPIO pin of this MCU that
  * you can reset them all with.
+ *
  * Note that if the I2C interface was adopted rather than
  * opened this will return #U_ERROR_COMMON_NOT_SUPPORTED.
  *
@@ -161,6 +162,7 @@ int32_t uPortI2cCloseRecoverBus(int32_t handle);
  * back up again, hence if this function returns an error the
  * I2C instance should be closed and re-opened to ensure
  * that all is good.
+ *
  * Note that if the I2C interface was adopted rather than
  * opened this will return #U_ERROR_COMMON_NOT_SUPPORTED.
  * Note for STM32F4 platform: there is an erratta:
@@ -187,11 +189,13 @@ int32_t uPortI2cGetClock(int32_t handle);
 
 /** Set the timeout for an I2C instance; this timeout is PER BYTE,
  * i.e. it is very short.  Not all platforms support setting the
- * I2C timeout through an API (e.g. Zephyr doesn't).  Where setting
- * of a timeout in this way is supported, and this function is not
- * called, #U_PORT_I2C_TIMEOUT_MILLISECONDS will be used.  It is
- * best to call this once after opening the I2C instance since
- * setting the timeout may reset the I2C HW.
+ * I2C timeout through an API (e.g. Zephyr doesn't), or at all
+ * (ESP32S3 doesn't).  Where setting of a timeout in this way is
+ * supported, and this function is not called,
+ * #U_PORT_I2C_TIMEOUT_MILLISECONDS will be used.  It is best to
+ * call this once after opening the I2C instance since setting the
+ * timeout may reset the I2C HW.
+ *
  * Note that on some platforms, if the I2C interface was adopted
  * rather than opened, this will return #U_ERROR_COMMON_NOT_SUPPORTED.
  *
@@ -202,7 +206,9 @@ int32_t uPortI2cGetClock(int32_t handle);
 int32_t uPortI2cSetTimeout(int32_t handle, int32_t timeoutMs);
 
 /** Get the timeout for an I2C instance.  Not all platforms support
- * getting the I2C timeout through an API (e.g. Zephyr doesn't).
+ * getting the I2C timeout through an API (e.g. Zephyr and ESP32S3
+ * don't).
+ *
  * Note that on some platforms, if the I2C interface was adopted
  * rather than opened, this will return #U_ERROR_COMMON_NOT_SUPPORTED.
  *
@@ -215,6 +221,7 @@ int32_t uPortI2cGetTimeout(int32_t handle);
 /** Send and/or receive over the I2C interface as a controller.
  * Note that the NRF52 and NRF53 chips require all buffers to
  * be in RAM.
+ *
  * Note that the uPortI2cSetTimeout() (or the equivalent set
  * by a platform at compile-time) applies for the whole of this
  * transaction, i.e. the peripheral must begin responding within

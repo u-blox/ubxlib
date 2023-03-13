@@ -20,4 +20,9 @@ Obviously you will need a SIM in your board, an antenna connected and you may ne
 
 ## Using A Wi-Fi Module
 
-NOT YET SUPPORTED
+`U_CFG_TEST_SHORT_RANGE_MODULE_TYPE`: consult [u_short_range_module_type.h](/common/short_range/api/u_short_range_module_type.h) to determine the type name for the short range module you intend to use.
+For instance, to use NINA-W15 you would set `U_CFG_TEST_SHORT_RANGE_MODULE_TYPE` to U_SHORT_RANGE_MODULE_TYPE_NINA_W15`.
+
+`U_CFG_APP_SHORT_RANGE_UART`: this sets the internal HW UART block that your chosen MCU will use to talk to the short range module. If you wish to change the default value refer to the file `u_cfg_app_platform_specific.h` under your chosen [port/platform](/port/platform).
+
+Make sure antenna is connected on to the board and you should be connected to wifi access point for http_client to work.

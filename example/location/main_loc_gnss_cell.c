@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -212,10 +212,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocGnssCell")
     }
 
     // Close the device
-    // Note: we don't power the device down here in order
-    // to speed up testing; you may prefer to power it off
-    // by setting the second parameter to true.
-    uDeviceClose(devHandle, false);
+    uDeviceClose(devHandle, true);
 
     // Tidy up
     uDeviceDeinit();

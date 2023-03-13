@@ -1,0 +1,119 @@
+# This file should contain the paths to all header and source
+# files that are required for building ubxlib on PlatformIO.
+# Paths are relative to the ubxlib root directory, forward-slashes
+# must be used.
+# Note that test/automation and the examples from the ubxlib root
+# directory are NOT brought in here since they are not required for
+# normal use: for those see inc_src_test.txt.
+# Framework specific directories will only be included for the
+# actual framework used and ignored otherwise.
+# For references to the current build framework the macro
+# $FRAMEWORK can be used.
+
+# This section contains regular expressions matching paths which
+# should be excluded in subsequent wild card searches
+[EXCLUDE]
+/port/platform/(?!common|$FRAMEWORK)
+/example/
+u_port_clib.c
+/common/lib_common
+
+# A module directory is one which contains one or more of
+# api, src and test sub-directories with the src and test
+# directories containing .c files (can also contain .h files)
+[MODULE]
+common/at_client
+common/error
+common/assert
+common/location
+common/mqtt_client
+common/http_client
+common/security
+common/sock
+common/ubx_protocol
+common/spartn
+common/utils
+port/platform/common/debug_utils
+# Even though the common network and device directories are
+# organised as modules, they contain source files which need
+# to be separated in terms of cell/gnss/short_range and hence
+# their components are treated separately below
+# The port directory is also treated separately as the src
+# directory is not immediately below it
+
+[MODULE cell]
+cell
+
+[MODULE gnss]
+gnss
+
+[MODULE short_range]
+common/short_range
+ble
+wifi
+
+# Include file directories (ones which aren't in a module)
+[INCLUDE]
+**/cfg/
+port/api
+port/platform/common/*/
+port/platform/common/debug_utils/src/freertos/additions/
+port/clib/
+port/platform/$FRAMEWORK
+# Ideally this would be private
+port/platform/$FRAMEWORK/src
+common/type/api
+common/network/api
+common/device/api
+# Ideally these would be private
+common/network/src
+common/device/src
+
+# Source files (ones which aren't in a module)
+[SOURCE]
+port/platform/$FRAMEWORK/src/*.c
+port/platform/common/event_queue/u_port_event_queue.c
+port/platform/common/mbedtls/u_port_crypto.c
+port/clib/u_port_clib_mktime64.c
+port/u_port_heap.c
+port/platform/common/mutex_debug/u_mutex_debug.c
+common/network/src/u_network.c
+common/network/src/u_network_shared.c
+common/network/src/u_network_private_ble_extmod_stub.c
+common/network/src/u_network_private_cell_stub.c
+common/network/src/u_network_private_gnss_stub.c
+common/network/src/u_network_private_wifi_stub.c
+common/device/src/u_device.c
+common/device/src/u_device_serial.c
+common/device/src/u_device_shared.c
+common/device/src/u_device_private.c
+common/device/src/u_device_private_cell_stub.c
+common/device/src/u_device_private_gnss_stub.c
+common/device/src/u_device_private_short_range_stub.c
+
+[SOURCE cell]
+common/network/src/u_network_private_cell.c
+common/device/src/u_device_private_cell.c
+
+[SOURCE !cell]
+common/network/src/u_network_private_cell_link.c
+common/device/src/u_device_private_cell_link.c
+
+[SOURCE gnss]
+common/network/src/u_network_private_gnss.c
+common/device/src/u_device_private_gnss.c
+
+[SOURCE !gnss]
+common/network/src/u_network_private_gnss_link.c
+common/device/src/u_device_private_gnss_link.c
+
+[SOURCE short_range]
+common/network/src/u_network_private_ble_extmod.c
+common/network/src/u_network_private_ble_intmod.c
+common/network/src/u_network_private_wifi.c
+common/device/src/u_device_private_short_range.c
+
+[SOURCE !short_range]
+common/network/src/u_network_private_ble_extmod_link.c
+common/network/src/u_network_private_wifi_link.c
+common/device/src/u_device_private_short_range_link.c

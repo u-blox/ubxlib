@@ -5,11 +5,11 @@ from pathlib import PurePath
 from scripts import u_utils, u_data, u_connection, u_select, u_report
 from scripts import u_run_log, u_run_windows, u_run_linux, u_run_doxygen, u_run_astyle
 from scripts import u_run_pylint, u_run_static_size, u_run_no_floating_point
-from scripts import u_run_check_ubxlib_h, u_run_check_malloc
+from scripts import u_run_check_ubxlib_h, u_run_check_malloc, u_run_build_pio_example
 
 from scripts.packages import u_package
 from scripts.u_logging import ULog
-from . import nrf5, esp_idf, nrfconnect, stm32cubef4, arduino
+from . import nrf5, esp_idf, nrfconnect, stm32cubef4, arduino, platformio
 from enum import Enum
 import sys
 import json
@@ -55,7 +55,8 @@ def instance_command(ctx, instance_str, cmd):
     # is used to switch ESP-IDF to using u_runner rather than the
     # usual ESP-IDF unit test menu system).
     # For this purpose we add ENV_UBXLIB_AUTO to the environment
-    environ[u_utils.ENV_UBXLIB_AUTO] = "1"
+    # and set it to the major digit of the instance
+    environ[u_utils.ENV_UBXLIB_AUTO] = str(instance[0])
 
     # Read out instance info from DATABASE.md
     platform = u_data.get_platform_for_instance(db_data, instance)
@@ -79,6 +80,15 @@ def instance_command(ctx, instance_str, cmd):
     # Add these in.
     if UBXLIB_DEFINES_VAR in environ and environ[UBXLIB_DEFINES_VAR].strip():
         defines.extend(environ[UBXLIB_DEFINES_VAR].strip().split(";"))
+
+    # If UBXLIB_FEATURES appears in the #defines list, add it to the
+    # environment where it can be used to test leaving components out
+    # on some platforms
+    if defines:
+        for define in defines:
+            parts = define.split("UBXLIB_FEATURES=")
+            if len(parts) > 1:
+                environ["UBXLIB_FEATURES"] = parts[1].strip()
 
     # Merge in any filter string we might have
     if (cmd == Command.BUILD or cmd == Command.TEST) and ctx.filter:
@@ -206,6 +216,34 @@ def instance_command(ctx, instance_str, cmd):
         else:
             raise Exit(f"'{platform}' only supports 'test' command")
 
+    elif platform == "platformio":
+        platformio.check_installation(ctx)
+        if cmd == Command.BUILD:
+            platformio.build(ctx, platform=None, board=board, framework=toolchain,
+                            output_name="", build_dir=ctx.build_dir, u_flags=defines)
+        elif cmd == Command.FLASH:
+            platformio.flash(ctx, serial_port=connection["serial_port"],
+                             output_name="", build_dir=ctx.build_dir)
+        elif cmd == Command.LOG:
+            # Platform IO's own logging system doesn't work with automation
+            # (ioctl errors are returned 'cos, underneath, it is just miniterm)
+            # so we use the native logging mechanism for the given toolchain
+            if toolchain == "espidf" or  toolchain == "arduino":
+                esp_idf.log(ctx, serial_port=connection["serial_port"],
+                            output_name="", build_dir=ctx.build_dir,
+                            dtr_state=monitor_dtr_rts_on,
+                            rts_state=monitor_dtr_rts_on,
+                            elf_file=".pio/build/ubxlib_test/firmware.elf")
+            elif toolchain == "zephyr":
+                nrfconnect.log(ctx, output_name="", build_dir=ctx.build_dir, debugger_serial=serial,
+                               elf_file=".pio/build/ubxlib_test/firmware.elf")
+            else:
+                raise Exit(f"Unsupported toolchain for {platform}: '{toolchain}'")
+        elif cmd == Command.TEST:
+            check_return_code(u_run_log.run(instance, ctx.build_dir, ctx.reporter, ctx.test_report))
+        else:
+            raise Exit(f"Unsupported command for platform: '{platform}'")
+
     elif instance[0] < 10:
         # Handle Lint, AStyle and so on...
         if cmd != Command.TEST:
@@ -220,22 +258,33 @@ def instance_command(ctx, instance_str, cmd):
             u_package.load(ctx, ["make", "arm_embedded_gcc"])
             return_code = u_run_static_size.run(defines, u_utils.UBXLIB_DIR, ctx.reporter)
         elif instance[0] == 5:
-            u_package.load(ctx, ["make", "arm_embedded_gcc"])
-            return_code = u_run_no_floating_point.run(defines, u_utils.UBXLIB_DIR, ctx.reporter)
+            if instance[1] == 1:
+                u_package.load(ctx, ["make", "arm_embedded_gcc"])
+                return_code = u_run_no_floating_point.run(defines, u_utils.UBXLIB_DIR, ctx.reporter)
+            elif instance[1] == 2:
+                print(defines)
+                u_package.load(ctx, ["make", "arm_embedded_gcc"])
+                return_code = u_run_static_size.run(defines, u_utils.UBXLIB_DIR, ctx.reporter)
+            elif instance[1] == 3:
+                return_code = u_run_check_ubxlib_h.run(u_utils.UBXLIB_DIR, ctx.reporter)
+            elif instance[1] == 4:
+                return_code = u_run_check_malloc.run(u_utils.UBXLIB_DIR, ctx.reporter)
         # instance 6 is codechecker and that will be handled by the platforms above
         elif instance[0] == 7:
-            print(defines)
-            u_package.load(ctx, ["make", "arm_embedded_gcc"])
-            return_code = u_run_static_size.run(defines, u_utils.UBXLIB_DIR, ctx.reporter)
+            u_package.load(ctx, ["platformio"])
+            return_code = u_run_build_pio_example.run(u_utils.UBXLIB_DIR, ctx.reporter)
         elif instance[0] == 8:
-            return_code = u_run_check_ubxlib_h.run(u_utils.UBXLIB_DIR, ctx.reporter)
-        elif instance[0] == 9:
-            return_code = u_run_check_malloc.run(u_utils.UBXLIB_DIR, ctx.reporter)
+            if mcu.lower() != "linux32":
+                nrfconnect.check_installation(ctx)
+                return_code = nrfconnect.build(ctx, cmake_dir=f"{u_utils.UBXLIB_DIR}/zephyr/test",
+                                               board_name=board, output_name="", build_dir=ctx.build_dir,
+                                               u_flags=defines)
+            else:
+                raise Exit(f"Unsupported command for mcu: '{mcu}'")
         check_return_code(return_code)
 
     else:
         raise Exit(f"Unsupported platform: '{platform}'")
-
 
 @task()
 def export(ctx):

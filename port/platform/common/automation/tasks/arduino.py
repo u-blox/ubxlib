@@ -150,7 +150,7 @@ def build(ctx, sketch_path=DEFAULT_SKETCH_PATH,
     }
 )
 def clean(ctx, output_name=DEFAULT_OUTPUT_NAME, build_dir=DEFAULT_BUILD_DIR):
-    """Remove all files for a nRF5 SDK build"""
+    """Remove all files"""
     build_dir = os.path.join(build_dir, output_name)
     if os.path.exists(build_dir):
         shutil.rmtree(build_dir)

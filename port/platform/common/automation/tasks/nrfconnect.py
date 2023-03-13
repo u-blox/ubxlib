@@ -109,6 +109,8 @@ def build(ctx, cmake_dir=DEFAULT_CMAKE_DIR, board_name=DEFAULT_BOARD_NAME,
 
     build_dir = os.path.join(build_dir, output_name)
     ctx.run(f'{ctx.zephyr_pre_command}west build -p {pristine} -b {board_name} {cmake_dir} --build-dir {build_dir}')
+    # This specific case gives a return code so that automation.py can call it directly for instance 8
+    return 0
 
 @task(
     pre=[check_installation],
@@ -137,7 +139,7 @@ def flash(ctx, debugger_serial="", output_name=DEFAULT_OUTPUT_NAME,
     """Flash a nRF connect SDK based application"""
     build_dir = os.path.abspath(os.path.join(build_dir, output_name))
     if debugger_serial != "":
-        debugger_serial = f"--snr {debugger_serial}"
+        debugger_serial = f"--dev-id {debugger_serial}"
     hex_arg = "" if hex_file == None else f"--hex-file {hex_file}"
     ctx.run(f'{ctx.zephyr_pre_command}west flash --skip-rebuild {hex_arg} -d {build_dir} {debugger_serial} --erase --recover')
 

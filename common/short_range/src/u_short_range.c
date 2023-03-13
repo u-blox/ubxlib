@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -223,6 +223,7 @@ static int32_t uShortRangeAdd(uShortRangeModuleType_t moduleType,
                 pInstance->connections[i].type = U_SHORT_RANGE_CONNECTION_TYPE_INVALID;
             }
 
+            pInstance->devHandle = pDevInstance;
             pInstance->atHandle = atHandle;
             pInstance->mode = U_SHORT_RANGE_MODE_EDM;
             pInstance->startTimeMs = 500;
@@ -1064,13 +1065,12 @@ int32_t uShortRangeGetSerialNumber(uDeviceHandle_t devHandle, char *pSerialNumbe
             uAtClientCommandStart(atHandle, "AT+CGSN");
             uAtClientCommandStop(atHandle);
             uAtClientResponseStart(atHandle, NULL);
-            readBytes = uAtClientReadBytes(atHandle, pSerialNumber,
-                                           U_SHORT_RANGE_SERIAL_NUMBER_LENGTH, false);
+            readBytes = uAtClientReadString(atHandle, pSerialNumber,
+                                            U_SHORT_RANGE_SERIAL_NUMBER_LENGTH, false);
             uAtClientResponseStop(atHandle);
             err = uAtClientUnlock(atHandle);
 
             if (err == (int32_t)U_ERROR_COMMON_SUCCESS) {
-                pSerialNumber[readBytes] = '\0';
                 err = readBytes;
                 break;
             }

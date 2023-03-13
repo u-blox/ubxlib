@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,7 +41,7 @@ extern "C" {
 
 #ifndef U_GNSS_POWER_UP_TIME_SECONDS
 /** How long to wait for a GNSS chip to be available after it is
- * powered up.  If you change this and you also use the cell locate
+ * powered up.  If you change this and you use the cell locate
  * API then you might want to change the value of
  * #U_CELL_LOC_GNSS_POWER_UP_TIME_SECONDS also.
  */
@@ -57,7 +57,7 @@ extern "C" {
 
 #ifndef U_GNSS_AT_POWER_UP_TIME_SECONDS
 /** How long to wait for the response to AT+UGPS=1.  If you
- * change this and you also use the cell locate API then you
+ * change this and you use the cell locate API then you
  * might want to change the value of
  * #U_CELL_LOC_GNSS_POWER_UP_TIME_SECONDS also.
  */
@@ -66,7 +66,7 @@ extern "C" {
 
 #ifndef U_GNSS_AT_POWER_DOWN_TIME_SECONDS
 /** How long to wait for the response to AT+UGPS=0.  If you
- * change this and you also use the cell locate API then you
+ * change this and you use the cell locate API then you
  * might want to change the value of
  * #U_CELL_LOC_GNSS_POWER_DOWN_TIME_SECONDS also.
  */
@@ -77,7 +77,7 @@ extern "C" {
 /** Some intermediate modules (for example SARA-R4) can be touchy
  * about a power-up or power-down request occurring close
  * on the heels of a previous GNSS-related command  If you
- * change this and you also use the cell locate API then you
+ * change this and you use the cell locate API then you
  * might want to change the value of
  * #U_CELL_LOC_GNSS_POWER_CHANGE_WAIT_MILLISECONDS also.
  */
@@ -85,7 +85,7 @@ extern "C" {
 #endif
 
 #ifndef U_GNSS_AT_POWER_ON_RETRIES
-/** When GNSS is connected via an intermediat module that
+/** When GNSS is connected via an intermediate module that
  * intermediate module can sometimes already be talking to
  * the GNSS module when we ask it to power the GNSS module
  * on, resulting in the error response "+CME ERROR: Invalid
@@ -112,18 +112,21 @@ extern "C" {
  * -------------------------------------------------------------- */
 
 /** Power a GNSS chip on.  If the transport type for the given GNSS
- * instance is #U_GNSS_TRANSPORT_AT then you must have powered
- * the associated [cellular] module up (e.g. with a call to uDeviceOpen()
- * or uCellPwrOn()) before calling this function.  Also powering up
- * a GNSS module which is attached via a cellular module will "claim"
- * the GNSS module for this GNSS interface and so if you use the cellLoc
- * API at the same time you MUST either call uGnssPwrOff() first or
- * you must disable GNSS for Cell Locate (either by setting disableGnss
- * to true in the pLocationAssist structure when calling the location API
- * or by calling uCellLocSetGnssEnable() with false) otherwise cellLoc
- * location establishment will fail.
+ * instance is #U_GNSS_TRANSPORT_AT or #U_GNSS_TRANSPORT_VIRTUAL_SERIAL
+ * then you must have powered any associated [cellular] module up
+ * (e.g. with a call to uDeviceOpen() or uCellPwrOn()) before calling
+ * this function; for the #U_GNSS_TRANSPORT_VIRTUAL_SERIAL case you
+ * should likely call uGnssSetIntermediate() before calling this function.
+ * Also, powering up a GNSS module which is attached via a cellular
+ * module will "claim" the GNSS module for this GNSS interface and so,
+ * if you use the cellLoc API at the same time you MUST either call
+ * uGnssPwrOff() first or you must disable GNSS for Cell Locate (either
+ * by setting disableGnss to true in the pLocationAssist structure when
+ * calling the location API or by calling uCellLocSetGnssEnable() with
+ * false), otherwise cellLoc location establishment will fail.
  *
  * @param gnssHandle  the handle of the GNSS instance to power on.
+ * @return            zero on success else negative error code.
  */
 int32_t uGnssPwrOn(uDeviceHandle_t gnssHandle);
 
@@ -133,9 +136,10 @@ int32_t uGnssPwrOn(uDeviceHandle_t gnssHandle);
  */
 bool uGnssPwrIsAlive(uDeviceHandle_t gnssHandle);
 
-/** Power a GNSS chip off
+/** Power a GNSS chip off.
  *
  * @param gnssHandle  the handle of the GNSS instance to power off.
+ * @return            zero on success else negative error code.
  */
 int32_t uGnssPwrOff(uDeviceHandle_t gnssHandle);
 
@@ -153,6 +157,7 @@ int32_t uGnssPwrOff(uDeviceHandle_t gnssHandle);
  * because the module will be communicating with the GNSS chip over I2C.
  *
  * @param gnssHandle  the handle of the GNSS instance to power on.
+ * @return            zero on success else negative error code.
  */
 int32_t uGnssPwrOffBackup(uDeviceHandle_t gnssHandle);
 

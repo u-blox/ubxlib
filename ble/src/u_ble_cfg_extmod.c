@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -92,21 +92,6 @@ static int32_t setStartupMode(const uAtClientHandle_t atHandle, int32_t mode)
     error = uAtClientUnlock(atHandle);
 
     return error;
-}
-
-static int32_t getBleRole(const uAtClientHandle_t atHandle)
-{
-    int32_t roleOrError;
-
-    uAtClientLock(atHandle);
-    uAtClientCommandStart(atHandle, "AT+UBTLE?");
-    uAtClientCommandStop(atHandle);
-    uAtClientResponseStart(atHandle, "+UBTLE:");
-    roleOrError = uAtClientReadInt(atHandle);
-    uAtClientResponseStop(atHandle);
-    uAtClientUnlock(atHandle);
-
-    return roleOrError;
 }
 
 static int32_t setBleRole(const uAtClientHandle_t atHandle, int32_t role)
@@ -217,7 +202,7 @@ static int32_t restart(const uAtClientHandle_t atHandle, bool store)
         error = (int32_t)uAtClientUnlock(atHandle);
 
         if (error == (int32_t) U_ERROR_COMMON_SUCCESS) {
-            uPortTaskBlock(500);
+            uPortTaskBlock(5000);
             uAtClientFlush(atHandle);
         }
     }
@@ -225,10 +210,29 @@ static int32_t restart(const uAtClientHandle_t atHandle, bool store)
     return error;
 }
 
+/* ----------------------------------------------------------------
+ * PUBLIC FUNCTIONS THAT ARE PRIVATE TO BLE EXTMOD
+ * -------------------------------------------------------------- */
+
+int32_t uBlePrivateGetRole(const uAtClientHandle_t atHandle)
+{
+    int32_t roleOrError;
+
+    uAtClientLock(atHandle);
+    uAtClientCommandStart(atHandle, "AT+UBTLE?");
+    uAtClientCommandStop(atHandle);
+    uAtClientResponseStart(atHandle, "+UBTLE:");
+    roleOrError = uAtClientReadInt(atHandle);
+    uAtClientResponseStop(atHandle);
+    uAtClientUnlock(atHandle);
+
+    return roleOrError;
+}
 
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
+
 int32_t uBleCfgConfigure(uDeviceHandle_t devHandle,
                          const uBleCfg_t *pCfg)
 {
@@ -246,7 +250,7 @@ int32_t uBleCfgConfigure(uDeviceHandle_t devHandle,
                 bool restartNeeded = false;
                 atHandle = pInstance->atHandle;
 
-                int32_t role = getBleRole(atHandle);
+                int32_t role = uBlePrivateGetRole(atHandle);
                 if (role != (int32_t) pCfg->role) {
                     errorCode = setBleRole(atHandle, (int32_t) pCfg->role);
                     if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {

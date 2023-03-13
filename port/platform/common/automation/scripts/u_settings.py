@@ -148,6 +148,8 @@ __DEFAULT_SETTINGS["CONNECTION_INSTANCE_22" + __SETTINGS_POSTFIX_AGENT_SPECIFIC]
 # Don't need one for instance 24 [Zephyr/Linux] since there is nothing to program
 __DEFAULT_SETTINGS["CONNECTION_INSTANCE_25" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = \
     {"serial_port": "/dev/silabs_cp210x_uart"}
+__DEFAULT_SETTINGS["CONNECTION_INSTANCE_26" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = \
+    {"serial_port": "/dev/segger_jlink_nrf52840", "debugger":"000685174508"}
 # u_data.py
 __DEFAULT_SETTINGS["DATA_FILE"] = "DATABASE.md"
 __DEFAULT_SETTINGS["CELLULAR_MODULE_TYPE_PREFIX"] = "U_CELL_MODULE_TYPE_"

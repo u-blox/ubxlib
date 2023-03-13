@@ -42,6 +42,10 @@
 
 #include "u_cell_loc.h"
 
+#include "u_gnss_module_type.h"
+#include "u_gnss_type.h"
+#include "u_gnss.h"
+#include "u_gnss_cfg.h"
 #include "u_gnss_pos.h"
 
 #include "u_mqtt_common.h"  // Needed by
@@ -68,15 +72,29 @@
  * -------------------------------------------------------------- */
 
 /* ----------------------------------------------------------------
+ * STATIC FUNCTION PROTOTYPES
+ * -------------------------------------------------------------- */
+
+static int32_t startAsync(uDeviceHandle_t devHandle, int32_t desiredRateMs,
+                          uLocationType_t type,
+                          const uLocationAssist_t *pLocationAssist,
+                          const char *pAuthenticationTokenStr,
+                          void (*pCallback) (uDeviceHandle_t devHandle,
+                                             int32_t errorCode,
+                                             const uLocation_t *pLocation));
+
+/* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
 // Configure Cell Locate.
 static int32_t cellLocConfigure(uDeviceHandle_t cellHandle,
+                                int32_t desiredRateMs,
                                 const uLocationAssist_t *pLocationAssist,
                                 const char *pAuthenticationTokenStr)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+    int32_t desiredTimeoutSeconds = desiredRateMs / 1000;
 
     if (pLocationAssist != NULL) {
         uCellLocSetGnssEnable(cellHandle, !pLocationAssist->disableGnss);
@@ -84,9 +102,14 @@ static int32_t cellLocConfigure(uDeviceHandle_t cellHandle,
             uCellLocSetDesiredAccuracy(cellHandle,
                                        pLocationAssist->desiredAccuracyMillimetres);
         }
-        if (pLocationAssist->desiredTimeoutSeconds >= 0) {
-            uCellLocSetDesiredFixTimeout(cellHandle,
-                                         pLocationAssist->desiredTimeoutSeconds);
+        // Use desiredRateMs if it is greater than a second and less than
+        // the location assist timeout value
+        if ((desiredTimeoutSeconds <= 0) ||
+            (pLocationAssist->desiredTimeoutSeconds < desiredTimeoutSeconds)) {
+            desiredTimeoutSeconds = pLocationAssist->desiredTimeoutSeconds;
+        }
+        if (desiredTimeoutSeconds >= 0) {
+            uCellLocSetDesiredFixTimeout(cellHandle, desiredTimeoutSeconds);
         }
     }
 
@@ -118,21 +141,34 @@ static void gnssPosCallback(uDeviceHandle_t devHandle,
         U_PORT_MUTEX_LOCK(gULocationMutex);
 
         pEntry = pULocationSharedRequestPop(U_LOCATION_TYPE_GNSS);
-        if ((pEntry != NULL) && (pEntry->pCallback != NULL)) {
-            location.type = U_LOCATION_TYPE_GNSS;
-            if (errorCode == 0) {
-                location.latitudeX1e7 = latitudeX1e7;
-                location.longitudeX1e7 = longitudeX1e7;
-                location.altitudeMillimetres = altitudeMillimetres;
-                location.radiusMillimetres = radiusMillimetres;
-                location.speedMillimetresPerSecond = speedMillimetresPerSecond;
-                location.svs = svs;
+        if (pEntry != NULL) {
+            if (pEntry->pCallback != NULL) {
+                location.type = U_LOCATION_TYPE_GNSS;
+                if (errorCode == 0) {
+                    location.latitudeX1e7 = latitudeX1e7;
+                    location.longitudeX1e7 = longitudeX1e7;
+                    location.altitudeMillimetres = altitudeMillimetres;
+                    location.radiusMillimetres = radiusMillimetres;
+                    location.speedMillimetresPerSecond = speedMillimetresPerSecond;
+                    location.svs = svs;
+                }
+                if (timeUtc >= 0) {
+                    // Time may be valid even if the error code is non-zero
+                    location.timeUtc = timeUtc;
+                }
+                pEntry->pCallback(devHandle, errorCode, &location);
             }
-            if (timeUtc >= 0) {
-                // Time may be valid even if the error code is non-zero
-                location.timeUtc = timeUtc;
+            if (pEntry->desiredRateMs > 0) {
+                // Must be in continuous mode: for GNSS we don't need
+                // to call startAsync() ('cos either we're one-shot
+                // or GNSS is doing the repeated calling into here through
+                // streamed position) but we do need to push an entry
+                // into the request queue so that we can grab it the
+                // next time we're called
+                uLocationSharedRequestPush(devHandle, pEntry->desiredRateMs,
+                                           U_LOCATION_TYPE_GNSS,
+                                           pEntry->pCallback);
             }
-            pEntry->pCallback(devHandle, errorCode, &location);
         }
         uPortFree(pEntry);
 
@@ -159,28 +195,124 @@ static void cellLocCallback(uDeviceHandle_t devHandle,
         U_PORT_MUTEX_LOCK(gULocationMutex);
 
         pEntry = pULocationSharedRequestPop(U_LOCATION_TYPE_CLOUD_CELL_LOCATE);
-        if ((pEntry != NULL) && (pEntry->pCallback != NULL)) {
-            if (errorCode == 0) {
-                location.type = U_LOCATION_TYPE_CLOUD_CELL_LOCATE;
-                location.latitudeX1e7 = latitudeX1e7;
-                location.longitudeX1e7 = longitudeX1e7;
-                location.altitudeMillimetres = altitudeMillimetres;
-                location.radiusMillimetres = radiusMillimetres;
-                location.speedMillimetresPerSecond = speedMillimetresPerSecond;
-                location.svs = svs;
-                location.timeUtc = timeUtc;
-                pEntry->pCallback(devHandle, errorCode, &location);
-            } else {
-                // No point in populating the location for
-                // Cell Locate if the error code is zero as there's
-                // nothing valid to give
-                pEntry->pCallback(devHandle, errorCode, NULL);
+        if (pEntry != NULL) {
+            if (pEntry->pCallback != NULL) {
+                if (errorCode == 0) {
+                    location.type = U_LOCATION_TYPE_CLOUD_CELL_LOCATE;
+                    location.latitudeX1e7 = latitudeX1e7;
+                    location.longitudeX1e7 = longitudeX1e7;
+                    location.altitudeMillimetres = altitudeMillimetres;
+                    location.radiusMillimetres = radiusMillimetres;
+                    location.speedMillimetresPerSecond = speedMillimetresPerSecond;
+                    location.svs = svs;
+                    location.timeUtc = timeUtc;
+                    pEntry->pCallback(devHandle, errorCode, &location);
+                } else {
+                    // No point in populating the location for
+                    // Cell Locate if the error code is zero as there's
+                    // nothing valid to give
+                    pEntry->pCallback(devHandle, errorCode, NULL);
+                }
+            }
+            if (pEntry->desiredRateMs > 0) {
+                // Must be in continuous mode, start again
+                startAsync(devHandle, pEntry->desiredRateMs,
+                           pEntry->type, NULL, NULL,
+                           pEntry->pCallback);
             }
         }
         uPortFree(pEntry);
 
         U_PORT_MUTEX_UNLOCK(gULocationMutex);
     }
+}
+
+// Start an asynchronous GNSS location attempt.
+// gULocationMutex should be locked before this is called.
+static int32_t startAsyncGnss(uDeviceHandle_t devHandle,
+                              int32_t desiredRateMs,
+                              void (*pCallback) (uDeviceHandle_t devHandle,
+                                                 int32_t errorCode,
+                                                 const uLocation_t *pLocation))
+{
+    uGnssTransportType_t transportType = U_GNSS_TRANSPORT_NONE;
+    uGnssTransportHandle_t transportHandle;
+
+    int32_t errorCode = uLocationSharedRequestPush(devHandle, desiredRateMs,
+                                                   U_LOCATION_TYPE_GNSS,
+                                                   pCallback);
+    if (errorCode == 0) {
+        if (desiredRateMs > 0) {
+            errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+            // If the caller wants continuous position, we do
+            // that using the GNSS streamed position API.
+            uGnssGetTransportHandle(devHandle, &transportType, &transportHandle);
+            if (transportType != U_GNSS_TRANSPORT_AT) {
+                if (desiredRateMs < U_GNSS_POS_STREAMED_PERIOD_DEFAULT_MS) {
+                    // Switch off NMEA messages to keep the rate up
+                    uGnssCfgSetProtocolOut(devHandle, U_GNSS_PROTOCOL_NMEA, false);
+                }
+                errorCode = uGnssPosGetStreamedStart(devHandle, desiredRateMs,
+                                                     gnssPosCallback);
+            }
+        } else {
+            // One-shot mode
+            errorCode = uGnssPosGetStart(devHandle, gnssPosCallback);
+        }
+        if (errorCode != 0) {
+            uPortFree(pULocationSharedRequestPop(U_LOCATION_TYPE_GNSS));
+        }
+    }
+
+    return errorCode;
+}
+
+// Start an asynchronous location attempt.
+// gULocationMutex should be locked before this is called.
+int32_t startAsync(uDeviceHandle_t devHandle, int32_t desiredRateMs,
+                   uLocationType_t type,
+                   const uLocationAssist_t *pLocationAssist,
+                   const char *pAuthenticationTokenStr,
+                   void (*pCallback) (uDeviceHandle_t devHandle,
+                                      int32_t errorCode,
+                                      const uLocation_t *pLocation))
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    int32_t devType = uDeviceGetDeviceType(devHandle);
+
+    if (devType == (int32_t) U_DEVICE_TYPE_SHORT_RANGE) {
+        errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+    } else if (devType == (int32_t) U_DEVICE_TYPE_CELL) {
+        if (type == U_LOCATION_TYPE_CLOUD_CELL_LOCATE) {
+            errorCode = cellLocConfigure(devHandle, desiredRateMs,
+                                         pLocationAssist,
+                                         pAuthenticationTokenStr);
+            if (errorCode == 0) {
+                errorCode = uLocationSharedRequestPush(devHandle,
+                                                       desiredRateMs,
+                                                       type,
+                                                       pCallback);
+                if (errorCode == 0) {
+                    errorCode = uCellLocGetStart(devHandle, cellLocCallback);
+                    if (errorCode != 0) {
+                        uPortFree(pULocationSharedRequestPop(U_LOCATION_TYPE_CLOUD_CELL_LOCATE));
+                    }
+                }
+            }
+        } else if (type == U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE) {
+            errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+            // TODO
+        } else if (type == U_LOCATION_TYPE_GNSS) {
+            // A GNSS device inside or connected-via a cellular device
+            errorCode = startAsyncGnss(devHandle, desiredRateMs, pCallback);
+        }
+    } else if (devType == (int32_t) U_DEVICE_TYPE_GNSS) {
+        // type, pLocationAssist and pAuthenticationTokenStr are
+        // irrelevant in this case, we just ask GNSS.
+        errorCode = startAsyncGnss(devHandle, desiredRateMs, pCallback);
+    }
+
+    return errorCode;
 }
 
 /* ----------------------------------------------------------------
@@ -210,7 +342,7 @@ int32_t uLocationGet(uDeviceHandle_t devHandle, uLocationType_t type,
             errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
             location.type = type;
             if (location.type == U_LOCATION_TYPE_CLOUD_CELL_LOCATE) {
-                errorCode = cellLocConfigure(devHandle,
+                errorCode = cellLocConfigure(devHandle, 0,
                                              pLocationAssist,
                                              pAuthenticationTokenStr);
                 if (errorCode == 0) {
@@ -297,48 +429,36 @@ int32_t uLocationGetStart(uDeviceHandle_t devHandle, uLocationType_t type,
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
 
     if (gULocationMutex != NULL) {
-        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
 
         U_PORT_MUTEX_LOCK(gULocationMutex);
 
-        int32_t devType = uDeviceGetDeviceType(devHandle);
-        if (devType == (int32_t) U_DEVICE_TYPE_SHORT_RANGE) {
-            errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
-        } else if (devType == (int32_t) U_DEVICE_TYPE_CELL) {
-            if (type == U_LOCATION_TYPE_CLOUD_CELL_LOCATE) {
-                errorCode = cellLocConfigure(devHandle,
-                                             pLocationAssist,
-                                             pAuthenticationTokenStr);
-                if (errorCode == 0) {
-                    errorCode = uLocationSharedRequestPush(devHandle,
-                                                           type,
-                                                           pCallback);
-                    if (errorCode == 0) {
-                        errorCode = uCellLocGetStart(devHandle, cellLocCallback);
-                        if (errorCode != 0) {
-                            uPortFree(pULocationSharedRequestPop(U_LOCATION_TYPE_CLOUD_CELL_LOCATE));
-                        }
-                    }
-                }
-            } else if (type == U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE) {
-                errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        errorCode = startAsync(devHandle, 0, type, pLocationAssist,
+                               pAuthenticationTokenStr, pCallback);
 
-                // TODO
+        U_PORT_MUTEX_UNLOCK(gULocationMutex);
+    }
 
-            }
-        } else if (devType == (int32_t) U_DEVICE_TYPE_GNSS) {
-            // type, pLocationAssist and pAuthenticationTokenStr are
-            // irrelevant in this case, we just ask GNSS
-            errorCode = uLocationSharedRequestPush(devHandle,
-                                                   U_LOCATION_TYPE_GNSS,
-                                                   pCallback);
-            if (errorCode == 0) {
-                errorCode = uGnssPosGetStart(devHandle, gnssPosCallback);
-                if (errorCode != 0) {
-                    uPortFree(pULocationSharedRequestPop(U_LOCATION_TYPE_GNSS));
-                }
-            }
-        }
+    return errorCode;
+}
+
+// Get the current location to a callback, continuously.
+int32_t uLocationGetContinuousStart(uDeviceHandle_t devHandle,
+                                    int32_t desiredRateMs,
+                                    uLocationType_t type,
+                                    const uLocationAssist_t *pLocationAssist,
+                                    const char *pAuthenticationTokenStr,
+                                    void (*pCallback) (uDeviceHandle_t devHandle,
+                                                       int32_t errorCode,
+                                                       const uLocation_t *pLocation))
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+
+    if (gULocationMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gULocationMutex);
+
+        errorCode = startAsync(devHandle, desiredRateMs, type, pLocationAssist,
+                               pAuthenticationTokenStr, pCallback);
 
         U_PORT_MUTEX_UNLOCK(gULocationMutex);
     }
@@ -372,7 +492,7 @@ int32_t uLocationGetStatus(uDeviceHandle_t devHandle)
     return errorCodeOrStatus;
 }
 
-// Cancel a uLocationGetStart().
+// Cancel a uLocationGetStart()/uLocationGetContinuousStart().
 void uLocationGetStop(uDeviceHandle_t devHandle)
 {
     if (gULocationMutex != NULL) {
@@ -384,8 +504,13 @@ void uLocationGetStop(uDeviceHandle_t devHandle)
             // Irrelevant
         } else if (devType == (int32_t) U_DEVICE_TYPE_CELL) {
             uCellLocGetStop(devHandle);
+            // Also stop these here in case the GNSS device
+            // was being acceed via the cellular device
+            uGnssPosGetStop(devHandle);
+            uGnssPosGetStreamedStop(devHandle);
         } else if (devType == (int32_t) U_DEVICE_TYPE_GNSS) {
             uGnssPosGetStop(devHandle);
+            uGnssPosGetStreamedStop(devHandle);
         }
 
         U_PORT_MUTEX_UNLOCK(gULocationMutex);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -86,18 +86,27 @@
 # define U_PACKED_STRUCT(NAME) struct __attribute__((packed)) NAME
 #endif
 
-#endif // _U_COMPILER_H_
-
-
-/** U_CLANG_ANALYZER_NORETURN: attribute used for telling clang that
+/** U_NO_RETURN: attribute used for telling compiler that
  *  a function never returns. Typically functions such as assert handlers.
  */
-#ifdef __clang_analyzer__
-# define U_CLANG_ANALYZER_NORETURN __attribute__((analyzer_noreturn))
+
+#ifdef _MSC_VER
+/** Microsoft Visual C++ definition.
+ */
+# define U_NO_RETURN
 #else
-# define U_CLANG_ANALYZER_NORETURN
+/** Default (GCC) definition.
+ */
+# if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+#  include <stdnoreturn.h>
+#  define U_NO_RETURN noreturn
+# else
+#  define U_NO_RETURN __attribute__((noreturn))
+# endif
 #endif
 
 /** @}*/
+
+#endif // _U_COMPILER_H_
 
 // End of file

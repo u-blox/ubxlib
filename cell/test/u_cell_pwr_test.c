@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -64,6 +64,9 @@
 #include "u_cell_pwr.h"
 #include "u_cell_info.h"  // In order to fetch the IMEI as a test command for power saving
 #include "u_cell_sock.h"  // So that we can transfer some data during E-DRX tests
+#ifdef U_CELL_TEST_MUX_ALWAYS
+# include "u_cell_mux.h"
+#endif
 
 #include "u_cell_test_cfg.h"
 #include "u_cell_test_private.h"
@@ -189,6 +192,8 @@ static uCellTestPrivate_t gHandles = U_CELL_TEST_PRIVATE_DEFAULTS;
  */
 static size_t gSystemHeapLost = 0;
 
+# if ((U_CFG_APP_PIN_CELL_PWR_ON >= 0) && !defined(U_CFG_TEST_CELL_PWR_DISABLE)) || \
+  !defined(U_CFG_CELL_DISABLE_UART_POWER_SAVING)
 /** Used for keepGoingCallback() timeout.
  */
 static int64_t gStopTimeMs;
@@ -196,6 +201,7 @@ static int64_t gStopTimeMs;
 /** A variable to track errors in the callbacks.
  */
 static int32_t gCallbackErrorCode = 0;
+# endif
 
 # ifndef U_CFG_CELL_DISABLE_UART_POWER_SAVING
 
@@ -228,7 +234,9 @@ uCellPwrTest3gppPowerSavingParameters_t g3gppPowerSavingCallbackParameter = {0};
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-// Callback function for the cellular power-down process
+# if ((U_CFG_APP_PIN_CELL_PWR_ON >= 0) && !defined(U_CFG_TEST_CELL_PWR_DISABLE)) || \
+  !defined(U_CFG_CELL_DISABLE_UART_POWER_SAVING)
+// Callback function for the cellular power-down and connection process.
 static bool keepGoingCallback(uDeviceHandle_t cellHandle)
 {
     bool keepGoing = true;
@@ -243,8 +251,9 @@ static bool keepGoingCallback(uDeviceHandle_t cellHandle)
 
     return keepGoing;
 }
+# endif
 
-# if U_CFG_APP_PIN_CELL_PWR_ON >= 0
+# if (U_CFG_APP_PIN_CELL_PWR_ON >= 0) && !defined(U_CFG_TEST_CELL_PWR_DISABLE)
 
 // Test power on/off and aliveness, parameterised by the VInt pin.
 static void testPowerAliveVInt(uCellTestPrivate_t *pHandles,
@@ -332,6 +341,9 @@ static void testPowerAliveVInt(uCellTestPrivate_t *pHandles,
                                       NULL) == 0);
         U_TEST_PRINT_LINE("checking that module is alive...");
         U_PORT_TEST_ASSERT(uCellPwrIsAlive(cellHandle));
+#  ifdef U_CELL_TEST_MUX_ALWAYS
+        U_PORT_TEST_ASSERT(uCellMuxEnable(cellHandle) == 0);
+#  endif
         // Give the module time to sort itself out
         U_TEST_PRINT_LINE("waiting %d second(s) before powering off...",
                           pModule->minAwakeTimeSeconds);
@@ -383,6 +395,9 @@ static void testPowerAliveVInt(uCellTestPrivate_t *pHandles,
         U_TEST_PRINT_LINE("checking that module is alive...");
         U_PORT_TEST_ASSERT(uCellPwrIsAlive(cellHandle));
         // Let the module sort itself out
+#  ifdef U_CELL_TEST_MUX_ALWAYS
+        U_PORT_TEST_ASSERT(uCellMuxEnable(cellHandle) == 0);
+#  endif
         U_TEST_PRINT_LINE("waiting %d second(s) before powering off...",
                           pModule->minAwakeTimeSeconds);
         uPortTaskBlock(pModule->minAwakeTimeSeconds * 1000);
@@ -444,7 +459,7 @@ static void wakeCallback(uDeviceHandle_t cellHandle, void *pParam)
 }
 #  endif // if (U_CFG_APP_PIN_CELL_VINT >= 0) && !defined(U_CFG_CELL_DISABLE_UART_POWER_SAVING)
 
-# endif // if U_CFG_APP_PIN_CELL_PWR_ON >= 0
+# endif // # if (U_CFG_APP_PIN_CELL_PWR_ON >= 0) && !defined(U_CFG_TEST_CELL_PWR_DISABLE)
 
 # ifndef U_CFG_CELL_DISABLE_UART_POWER_SAVING
 // Connect to a cellular network.
@@ -628,6 +643,9 @@ static bool setEdrx(uDeviceHandle_t cellHandle, int32_t *pSockHandle,
                                                 pagingWindowSeconds) == 0);
     if (uCellPwrRebootIsRequired(cellHandle)) {
         U_PORT_TEST_ASSERT(uCellPwrReboot(cellHandle, NULL) == 0);
+#ifdef U_CELL_TEST_MUX_ALWAYS
+        U_PORT_TEST_ASSERT(uCellMuxEnable(cellHandle) == 0);
+#endif
         // Re-make the cellular connection 'cos the request to get
         // the assigned E-DRX parameters won't work otherwise
         U_PORT_TEST_ASSERT(connectNetwork(cellHandle) == 0);
@@ -696,7 +714,7 @@ static bool setEdrx(uDeviceHandle_t cellHandle, int32_t *pSockHandle,
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-# if U_CFG_APP_PIN_CELL_PWR_ON >= 0
+# if (U_CFG_APP_PIN_CELL_PWR_ON >= 0) && !defined(U_CFG_TEST_CELL_PWR_DISABLE)
 
 /** Test all the power functions apart from reboot.
  *
@@ -768,7 +786,7 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwr")
                        (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
 }
 
-# endif // if U_CFG_APP_PIN_CELL_PWR_ON >= 0
+# endif // if (U_CFG_APP_PIN_CELL_PWR_ON >= 0) && !defined(U_CFG_TEST_CELL_PWR_DISABLE)
 
 /** Test reboot.
  */
@@ -793,6 +811,9 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrReboot")
     // change bandmask and RAT.
     U_TEST_PRINT_LINE("rebooting cellular...");
     U_PORT_TEST_ASSERT(uCellPwrReboot(gHandles.cellHandle, NULL) == 0);
+#ifdef U_CELL_TEST_MUX_ALWAYS
+    U_PORT_TEST_ASSERT(uCellMuxEnable(gHandles.cellHandle) == 0);
+#endif
 
     U_PORT_TEST_ASSERT(uCellPwrIsAlive(gHandles.cellHandle));
 
@@ -1018,6 +1039,9 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSaving3gpp")
                 if (uCellPwrRebootIsRequired(cellHandle)) {
                     // If necessary reboot
                     U_PORT_TEST_ASSERT(uCellPwrReboot(cellHandle, NULL) == 0);
+#ifdef U_CELL_TEST_MUX_ALWAYS
+                    U_PORT_TEST_ASSERT(uCellMuxEnable(cellHandle) == 0);
+#endif
                 }
                 // Remake the cellular connection
                 U_PORT_TEST_ASSERT(connectNetwork(cellHandle) == 0);
@@ -1025,6 +1049,9 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSaving3gpp")
                 if (uCellPwrRebootIsRequired(cellHandle)) {
                     // If necessary reboot and remake the cellular connection
                     U_PORT_TEST_ASSERT(uCellPwrReboot(cellHandle, NULL) == 0);
+#ifdef U_CELL_TEST_MUX_ALWAYS
+                    U_PORT_TEST_ASSERT(uCellMuxEnable(cellHandle) == 0);
+#endif
                     U_PORT_TEST_ASSERT(connectNetwork(cellHandle) == 0);
                 }
             }
@@ -1039,6 +1066,9 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSaving3gpp")
                                                                false, -1, -1) == 0);
         if (uCellPwrRebootIsRequired(cellHandle)) {
             U_PORT_TEST_ASSERT(uCellPwrReboot(cellHandle, NULL) == 0);
+#ifdef U_CELL_TEST_MUX_ALWAYS
+            U_PORT_TEST_ASSERT(uCellMuxEnable(cellHandle) == 0);
+#endif
             U_PORT_TEST_ASSERT(connectNetwork(cellHandle) == 0);
             uCellTestPrivateLwm2mDisable(cellHandle);
         }
@@ -1083,6 +1113,9 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSaving3gpp")
                                                                U_CELL_PWR_TEST_PERIODIC_WAKEUP_SECONDS) == 0);
         if (uCellPwrRebootIsRequired(cellHandle)) {
             U_PORT_TEST_ASSERT(uCellPwrReboot(cellHandle, NULL) == 0);
+#ifdef U_CELL_TEST_MUX_ALWAYS
+            U_PORT_TEST_ASSERT(uCellMuxEnable(cellHandle) == 0);
+#endif
             U_PORT_TEST_ASSERT(connectNetwork(cellHandle) == 0);
             uCellTestPrivateLwm2mDisable(cellHandle);
         }
@@ -1284,6 +1317,9 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSaving3gpp")
         }
         if (uCellPwrRebootIsRequired(cellHandle)) {
             U_PORT_TEST_ASSERT(uCellPwrReboot(cellHandle, NULL) == 0);
+#ifdef U_CELL_TEST_MUX_ALWAYS
+            U_PORT_TEST_ASSERT(uCellMuxEnable(cellHandle) == 0);
+#endif
         }
 
     } else {
@@ -1402,6 +1438,9 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSavingEDrx")
                 if (uCellPwrRebootIsRequired(cellHandle)) {
                     // If necessary reboot and remake the cellular connection
                     U_PORT_TEST_ASSERT(uCellPwrReboot(cellHandle, NULL) == 0);
+#ifdef U_CELL_TEST_MUX_ALWAYS
+                    U_PORT_TEST_ASSERT(uCellMuxEnable(cellHandle) == 0);
+#endif
                     U_PORT_TEST_ASSERT(connectNetwork(cellHandle) == 0);
                     gSockHandle = connectToEchoServer(cellHandle, &echoServerAddress);
                 }
@@ -1504,6 +1543,9 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSavingEDrx")
             }
             if (uCellPwrRebootIsRequired(cellHandle)) {
                 U_PORT_TEST_ASSERT(uCellPwrReboot(cellHandle, NULL) == 0);
+#ifdef U_CELL_TEST_MUX_ALWAYS
+                U_PORT_TEST_ASSERT(uCellMuxEnable(cellHandle) == 0);
+#endif
             }
         } else {
             U_TEST_PRINT_LINE("looks like E-DRX is not supported"
@@ -1551,6 +1593,9 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrCleanUp")
                                                 false, -1, -1);
             if (uCellPwrRebootIsRequired(gHandles.cellHandle)) {
                 uCellPwrReboot(gHandles.cellHandle, NULL);
+#ifdef U_CELL_TEST_MUX_ALWAYS
+                uCellMuxEnable(gHandles.cellHandle);
+#endif
             }
         }
     }

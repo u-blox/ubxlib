@@ -38,7 +38,7 @@ extern "C" {
 /** The maximum number of parameters to test on an AT command
  * or response.
  */
-#define U_AT_CLIENT_TEST_MAX_NUM_PARAMETERS 32
+#define U_AT_CLIENT_TEST_MAX_NUM_PARAMETERS 16
 
 /* ----------------------------------------------------------------
  * TYPES

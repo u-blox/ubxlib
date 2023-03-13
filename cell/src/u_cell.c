@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,6 +43,9 @@
 #include "u_port_gpio.h"
 
 #include "u_at_client.h"
+
+#include "u_ringbuffer.h"
+
 #include "u_device_shared.h"
 
 #include "u_cell_module_type.h"
@@ -50,12 +53,10 @@
 #include "u_cell.h"         // Order is
 #include "u_cell_net.h"     // important here
 #include "u_cell_private.h" // don't change it
+#include "u_cell_mux.h"
+#include "u_cell_mux_private.h"
 
 // The headers below necessary to work around an Espressif linker problem, see uCellInit()
-#include "u_device_private_cell.h"
-#include "u_network.h"
-#include "u_network_config_cell.h"
-#include "u_network_private_cell.h"
 #include "u_sock.h"
 #include "u_cell_sock.h"     // For uCellSockPrivateLink()
 #include "u_cell_sec.h"      // For uCellSecPrivateLink()
@@ -63,6 +64,7 @@
 #include "u_cell_mqtt.h"     // For uCellMqttPrivateLink()
 #include "u_cell_http.h"     // For uCellHttpPrivateLink()
 #include "u_cell_loc.h"      // For uCellLocPrivateLink()
+#include "u_cell_mux.h"      // For uCellMuxPrivateLink()
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -138,6 +140,8 @@ static void removeCellInstance(uCellPrivateInstance_t *pInstance)
             uPortFree(pInstance->pFotaContext);
             // Free any HTTP context
             uCellPrivateHttpRemoveContext(pInstance);
+            // Free any CMUX context
+            uCellMuxPrivateRemoveContext(pInstance);
             uDeviceDestroyInstance(U_DEVICE_INSTANCE(pInstance->cellHandle));
             uPortFree(pInstance);
             pCurrent = NULL;
@@ -166,15 +170,13 @@ int32_t uCellInit()
     // to add a dummy function in those files and call it from somewhere
     // that will always be present in the build, which for cellular we
     // choose to be here
-    uDevicePrivateCellLink();
-    uNetworkPrivateCellLink();
     uCellSockPrivateLink();
     uCellSecPrivateLink();
     uCellSecTlsPrivateLink();
     uCellMqttPrivateLink();
     uCellHttpPrivateLink();
     uCellLocPrivateLink();
-
+    uCellMuxPrivateLink();
 
     if (gUCellPrivateMutex == NULL) {
         // Create the mutex that protects the linked list

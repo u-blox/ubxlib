@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -110,6 +110,9 @@ typedef void (pTimerCallback_t) (const uPortTimerHandle_t, void *);
  * -------------------------------------------------------------- */
 
 /** Create, and start, a task.
+ *
+ * Note: just before pFunction exits, make sure to call
+ * uPortTaskDelete(NULL) in order to free memory.
  *
  * Note: in some operating systems (e.g. Zephyr) we use a
  * conditional compilation flag, U_CFG_OS_MAX_THREADS, to

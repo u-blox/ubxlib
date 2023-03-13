@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 /** @file
  * @brief Thread dumper for Zephyr.
  */
-#include "zephyr.h"
+#include "kernel.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -49,9 +49,10 @@ static void thread_dump(const struct k_thread *thread, void *user_data)
     uint32_t stackTop = stackBottom + thread->stack_info.size;
     uint32_t sp = thread->callee_saved.psp;
     (void)user_data;
+    char stateStr[25];
     uPortLogF("  %s (%s): bottom: %08x, top: %08x, sp: %08x\n",
               thread->name,
-              k_thread_state_str((k_tid_t)thread),
+              k_thread_state_str((k_tid_t)thread, stateStr, sizeof(stateStr)),
               (unsigned int)stackBottom,
               (unsigned int)stackTop,
               (unsigned int)sp);

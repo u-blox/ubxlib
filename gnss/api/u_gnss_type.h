@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -45,6 +45,13 @@
 /** The recommended UART buffer length for the GNSS driver;
  * 256 bytes is OK for a 9600 baud UART but on Windows/Linux
  * with a USB interface it needs to be more like 1024.
+ * Note also that, if you are going to access a GNSS module
+ * that is inside or connected-via a cellular module using
+ * the CMUX multiplexing protocol rather than the AT interface,
+ * then this number should be twice or more the frame size on
+ * that protocol #U_CELL_MUX_PRIVATE_INFORMATION_LENGTH_MAX_BYTES,
+ * to avoid the multiplexer stalling; it likely will be since
+ * the frame size is generally small.
  */
 # define U_GNSS_UART_BUFFER_LENGTH_BYTES 1024
 #endif
@@ -154,36 +161,19 @@ typedef enum {
     U_GNSS_TRANSPORT_UART,      /**< the transport handle should be a UART handle. */
     U_GNSS_TRANSPORT_AT,        /**< the transport handle should be an AT client
                                      handle; currently only UBX-format messages may
-                                     be received when this transport type is in use. */
+                                     be received when this transport type is in use.
+                                     It is better to enable CMUX on the cellular
+                                     module with uCellMuxEnable() and then open
+                                     a virtual serial port to the GNSS device with
+                                     uCellMuxAddChannel(), then any GNSS message
+                                     format may be used and position will be streamed. */
     U_GNSS_TRANSPORT_I2C,       /**< the transport handle should be an I2C handle. */
     U_GNSS_TRANSPORT_SPI,       /**< the transport handle should be an SPI handle. */
-    U_GNSS_TRANSPORT_UBX_UART,  /**< \deprecated the transport handle should be a UART handle
-                                     over which UBX commands will be transferred;
-                                     NMEA will be switched off; THIS IS DEPRECATED,
-                                     PLEASE USE #U_GNSS_TRANSPORT_UART instead
-                                     and use uGnssCfgSetProtocolOut() to switch
-                                     off NMEA message output if required. */
-    U_GNSS_TRANSPORT_UBX_I2C,   /**< \deprecated the transport handle should be an I2C handle
-                                     over which UBX commands will be transferred;
-                                     NMEA will be switched off; THIS IS DEPRECATED,
-                                     PLEASE USE #U_GNSS_TRANSPORT_I2C instead and
-                                     use uGnssCfgSetProtocolOut() to switch off NMEA
-                                     message output if required. */
-    U_GNSS_TRANSPORT_MAX_NUM_WITH_UBX,
-    U_GNSS_TRANSPORT_UBX_AT = U_GNSS_TRANSPORT_AT,      /**< \deprecated the transport handle should be an AT client
-                                                             handle over which UBX commands will be
-                                                             transferred; THIS IS DEPRECATED, PLEASE
-                                                             USE #U_GNSS_TRANSPORT_AT instead. */
-    U_GNSS_TRANSPORT_NMEA_UART = U_GNSS_TRANSPORT_UART, /**< \deprecated the transport handle should be a UART handle
-                                                             over which NMEA commands may be received;
-                                                             UBX commands will still be used by this code.
-                                                             THIS IS DEPRECATED, PLEASE USE
-                                                             #U_GNSS_TRANSPORT_UART. */
-    U_GNSS_TRANSPORT_NMEA_I2C = U_GNSS_TRANSPORT_I2C,   /**< \deprecated the transport handle should be an I2C handle
-                                                             over which NMEA commands may be received;
-                                                             UBX commands will still be used by this code.
-                                                             THIS IS DEPRECATED, PLEASE USE
-                                                             #U_GNSS_TRANSPORT_I2C. */
+    U_GNSS_TRANSPORT_VIRTUAL_SERIAL, /**< the transport handle should be a virtual serial,
+                                          port handle, e.g. as returned by
+                                          uCellMuxAddChannel() if you are talking to
+                                          a GNSS device either inside or connected
+                                          via a cellular module. */
     U_GNSS_TRANSPORT_MAX_NUM
 } uGnssTransportType_t;
 
@@ -195,6 +185,7 @@ typedef union {
     int32_t uart;   /**< for transport type #U_GNSS_TRANSPORT_UART. */
     int32_t i2c;    /**< for transport type #U_GNSS_TRANSPORT_I2C. */
     int32_t spi;    /**< for transport type #U_GNSS_TRANSPORT_SPI. */
+    void *pDeviceSerial; /**< for transport type #U_GNSS_TRANSPORT_VIRTUAL_SERIAL. */
 } uGnssTransportHandle_t;
 
 /** The port type on the GNSS chip itself; this is different
@@ -203,7 +194,7 @@ typedef union {
  * and some GNSS chips have two UART ports which need to be
  * identified separately; effectively this is the GNSS chip's own
  * internal port ID, which needs to be used in some messages
- * (e.g. those querying the communications state).
+ * (for example those querying the communications state).
  */
 typedef enum {
     U_GNSS_PORT_I2C = 0,
@@ -249,7 +240,7 @@ typedef struct {
                            this to NULL or an empty string to match all NMEA
                            messages, "G" to match both "GPGGA" and "GNZDA",
                            "GP" to match all sentences of the "GP" talker,
-                           etc.  Any matching is done in a case-sensitive way
+                           etc.  Any matching is done in a case-sensitive way.
                            Use of a "?" indicates a wildcard, matching any
                            character at that position, so for instance "G?GSV"
                            would match "GPGSV", "GLGSV", "GAGSV", etc. */
@@ -294,6 +285,18 @@ typedef enum {
     U_GNSS_UTC_STANDARD_NICT = 9 /**< National Institute of Information and Communications Technology, Japan;
                                       derived from QZSS time. */
 } uGnssUtcStandard_t;
+
+/** The possible time systems; not all time systems are supported by all modules.
+ */
+typedef enum {
+    U_GNSS_TIME_SYSTEM_NONE = -1,
+    U_GNSS_TIME_SYSTEM_UTC = 0,
+    U_GNSS_TIME_SYSTEM_GPS = 1,
+    U_GNSS_TIME_SYSTEM_GLONASS = 2,
+    U_GNSS_TIME_SYSTEM_BEIDOU = 3,
+    U_GNSS_TIME_SYSTEM_GALILEO = 4,
+    U_GNSS_TIME_SYSTEM_NAVIC = 5
+} uGnssTimeSystem_t;
 
 /** @}*/
 

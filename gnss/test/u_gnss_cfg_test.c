@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,6 +46,8 @@
 
 #include "u_error_common.h"
 
+#include "u_at_client.h" // Required by u_gnss_private.h
+
 #include "u_port.h"
 #include "u_port_heap.h"
 #include "u_port_debug.h"
@@ -81,6 +83,13 @@
 # define U_GNSS_CFG_TEST_MIN_HEAP_TO_READ_ALL_BYTES (1024 * 16)
 #endif
 
+#ifndef U_GNSS_CFG_TEST_MSG_RATE_MESSAGE_ID
+/** The UBX message ID to test message rate setting/getting with.
+ * Choosing UBX-LOG-INFO for no particular reason.
+ */
+# define U_GNSS_CFG_TEST_MSG_RATE_MESSAGE_ID 0x2108
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -104,6 +113,26 @@ static int32_t gFixMode = -1;
 /** The initial UTC standard.
 */
 static int32_t gUtcStandard = -1;
+
+/** The initial active antenna mode.
+*/
+static int32_t gAntennaActive = -1;
+
+/** The initial measurement rate.
+ */
+static int32_t gMeasurementRateMs = -1;
+
+/** The initial navigation count.
+ */
+static int32_t gNavigationCount = -1;
+
+/** The initial time system.
+ */
+static uGnssTimeSystem_t gTimeSystem = U_GNSS_TIME_SYSTEM_NONE;
+
+/** The initial U_GNSS_CFG_TEST_MSG_RATE_MESSAGE_ID message rate.
+ */
+static int32_t gMsgRate = -1;
 
 /** Array of UTC standard values to check (ones that are supported by
  * all module types).
@@ -283,10 +312,14 @@ U_PORT_TEST_FUNCTION("[gnssCfg]", "gnssCfgBasic")
     uDeviceHandle_t gnssHandle;
     int32_t heapUsed;
     size_t iterations;
+    int32_t a = -1;
+    int32_t b = -1;
+    uGnssTimeSystem_t t = U_GNSS_TIME_SYSTEM_NONE;
     int32_t y;
     int32_t w;
     bool onNotOff;
-    uGnssTransportType_t transportTypes[U_GNSS_TRANSPORT_MAX_NUM_WITH_UBX];
+    uGnssTransportType_t transportTypes[U_GNSS_TRANSPORT_MAX_NUM];
+    uGnssMessageId_t messageId;
 
     // In case a previous test failed
     uGnssTestPrivateCleanup(&gHandles);
@@ -372,6 +405,151 @@ U_PORT_TEST_FUNCTION("[gnssCfg]", "gnssCfgBasic")
         // Put the initial UTC standard back
         U_PORT_TEST_ASSERT(uGnssCfgSetUtcStandard(gnssHandle, (uGnssUtcStandard_t) gUtcStandard) == 0);
 
+        // Get the initial active antenna mode
+        gAntennaActive = uGnssCfgGetAntennaActive(gnssHandle);
+        U_PORT_TEST_ASSERT(gAntennaActive >= 0);
+        U_TEST_PRINT_LINE("active antenna mode is 0x%02x.", gAntennaActive);
+        // Set the opposite mode, then read it back and check it is as expected
+        U_PORT_TEST_ASSERT(uGnssCfgSetAntennaActive(gnssHandle, !((bool) gAntennaActive)) == 0);
+        U_PORT_TEST_ASSERT(uGnssCfgGetAntennaActive(gnssHandle) == !(bool) gAntennaActive);
+        U_TEST_PRINT_LINE("active antenna mode is now 0x%02x.", !(bool) gAntennaActive);
+        // Put the initial active antenna mode back
+        U_PORT_TEST_ASSERT(uGnssCfgSetAntennaActive(gnssHandle, (bool) gAntennaActive) == 0);
+        U_TEST_PRINT_LINE("active antenna mode is 0x%02x again.", gAntennaActive);
+
+        // Get the initial rate parameters
+        y = uGnssCfgGetRate(gnssHandle, &gMeasurementRateMs, &gNavigationCount, &gTimeSystem);
+        U_PORT_TEST_ASSERT(y >= 0);
+        U_TEST_PRINT_LINE("rate is every %d ms (measurement rate %d ms,"
+                          " navigation count %d, time system %d).", y,
+                          gMeasurementRateMs, gNavigationCount, gTimeSystem);
+        U_PORT_TEST_ASSERT(y == gMeasurementRateMs * gNavigationCount);
+        // Set new parameters
+        w = 0;
+        if (gTimeSystem == (uGnssTimeSystem_t) 0) {
+            w = 1;
+        }
+        U_PORT_TEST_ASSERT(uGnssCfgSetRate(gnssHandle, gMeasurementRateMs + 1000,
+                                           gNavigationCount + 1, (uGnssTimeSystem_t) w) == 0);
+        // Read and check the new rate parameters
+        y = uGnssCfgGetRate(gnssHandle, &a, &b, &t);
+        U_PORT_TEST_ASSERT(y >= 0);
+        U_PORT_TEST_ASSERT(a == gMeasurementRateMs + 1000);
+        U_PORT_TEST_ASSERT(b == gNavigationCount + 1);
+        U_PORT_TEST_ASSERT(t == (uGnssTimeSystem_t) w);
+        U_TEST_PRINT_LINE("rate is now every %d ms (measurement rate %d ms,"
+                          " navigation count %d, time system %d).", y, a, b, t);
+        U_PORT_TEST_ASSERT(y == a * b);
+
+        // Set just the measurement rate back to what it was, leaving the others -1
+        U_PORT_TEST_ASSERT(uGnssCfgSetRate(gnssHandle, gMeasurementRateMs, -1,
+                                           U_GNSS_TIME_SYSTEM_NONE) == 0);
+        a = -1;
+        b = -1;
+        t = U_GNSS_TIME_SYSTEM_NONE;
+        // Read and check the rate parameters again
+        y = uGnssCfgGetRate(gnssHandle, &a, &b, &t);
+        U_PORT_TEST_ASSERT(y >= 0);
+        U_PORT_TEST_ASSERT(a == gMeasurementRateMs);
+        U_PORT_TEST_ASSERT(b == gNavigationCount + 1);
+        U_PORT_TEST_ASSERT(t == (uGnssTimeSystem_t) w);
+        U_TEST_PRINT_LINE("rate is now every %d ms (measurement rate %d ms,"
+                          " navigation count %d, time system %d).", y, a, b, t);
+        U_PORT_TEST_ASSERT(y == a * b);
+
+        // Set just the navigation count back to what it was, leaving the others -1
+        U_PORT_TEST_ASSERT(uGnssCfgSetRate(gnssHandle, -1, gNavigationCount, U_GNSS_TIME_SYSTEM_NONE) == 0);
+        a = -1;
+        b = -1;
+        t = U_GNSS_TIME_SYSTEM_NONE;
+        // Read and check the rate parameters again
+        y = uGnssCfgGetRate(gnssHandle, &a, &b, &t);
+        U_PORT_TEST_ASSERT(y >= 0);
+        U_PORT_TEST_ASSERT(a == gMeasurementRateMs);
+        U_PORT_TEST_ASSERT(b == gNavigationCount);
+        U_PORT_TEST_ASSERT(t == (uGnssTimeSystem_t) w);
+        U_TEST_PRINT_LINE("rate is now every %d ms (measurement rate %d ms,"
+                          " navigation count %d, time system %d).", y, a, b, t);
+        U_PORT_TEST_ASSERT(y == a * b);
+
+        // And just the time system
+        U_PORT_TEST_ASSERT(uGnssCfgSetRate(gnssHandle, -1, -1, gTimeSystem) == 0);
+        a = -1;
+        b = -1;
+        t = U_GNSS_TIME_SYSTEM_NONE;
+        // Read and check the rate parameters again
+        y = uGnssCfgGetRate(gnssHandle, &a, &b, &t);
+        U_PORT_TEST_ASSERT(y >= 0);
+        U_PORT_TEST_ASSERT(a == gMeasurementRateMs);
+        U_PORT_TEST_ASSERT(b == gNavigationCount);
+        U_PORT_TEST_ASSERT(t == gTimeSystem);
+        U_TEST_PRINT_LINE("rate is now every %d ms (measurement rate %d ms,"
+                          " navigation count %d, time system %d).", y, a, b, t);
+        U_PORT_TEST_ASSERT(y == a * b);
+
+        // Finally, set nothing
+        U_PORT_TEST_ASSERT(uGnssCfgSetRate(gnssHandle, -1, -1, U_GNSS_TIME_SYSTEM_NONE) == 0);
+        a = -1;
+        b = -1;
+        t = U_GNSS_TIME_SYSTEM_NONE;
+        // Read and check the rate parameters again
+        y = uGnssCfgGetRate(gnssHandle, &a, &b, &t);
+        U_PORT_TEST_ASSERT(y >= 0);
+        U_PORT_TEST_ASSERT(a == gMeasurementRateMs);
+        U_PORT_TEST_ASSERT(b == gNavigationCount);
+        U_PORT_TEST_ASSERT(t == gTimeSystem);
+        U_TEST_PRINT_LINE("rate is back to every %d ms (measurement rate %d ms,"
+                          " navigation count %d, time system %d).", y, a, b, t);
+        U_PORT_TEST_ASSERT(y == a * b);
+
+        // Check that we can leave stuff out of reading the rate also
+        y = uGnssCfgGetRate(gnssHandle, &a, &b, NULL);
+        U_PORT_TEST_ASSERT(y >= 0);
+        U_PORT_TEST_ASSERT(a == gMeasurementRateMs);
+        U_PORT_TEST_ASSERT(b == gNavigationCount);
+        U_TEST_PRINT_LINE("rate is every %d ms (measurement rate %d ms,"
+                          " navigation count %d).", y, a, b);
+        U_PORT_TEST_ASSERT(y == a * b);
+        y = uGnssCfgGetRate(gnssHandle, &a, NULL, NULL);
+        U_PORT_TEST_ASSERT(y >= 0);
+        U_PORT_TEST_ASSERT(a == gMeasurementRateMs);
+        U_TEST_PRINT_LINE("rate is every %d ms (measurement rate %d ms).", y, a);
+        U_PORT_TEST_ASSERT(y == gMeasurementRateMs * gNavigationCount);
+        y = uGnssCfgGetRate(gnssHandle, NULL, NULL, NULL);
+        U_PORT_TEST_ASSERT(y >= 0);
+        U_PORT_TEST_ASSERT(a == gMeasurementRateMs);
+        U_TEST_PRINT_LINE("rate is every %d ms.", y);
+        U_PORT_TEST_ASSERT(y == gMeasurementRateMs * gNavigationCount);
+        gTimeSystem = U_GNSS_TIME_SYSTEM_NONE;
+        gMeasurementRateMs = -1;
+        gNavigationCount = -1;
+
+        messageId.type = U_GNSS_PROTOCOL_UBX;
+        messageId.id.ubx = U_GNSS_CFG_TEST_MSG_RATE_MESSAGE_ID;
+        gMsgRate = uGnssCfgGetMsgRate(gnssHandle, &messageId);
+        U_TEST_PRINT_LINE("initial message rate for UBX message ID 0x%04x is %d.",
+                          U_GNSS_CFG_TEST_MSG_RATE_MESSAGE_ID, gMsgRate);
+        w = gMsgRate;
+        if (w >= 0) {
+            w++;
+            U_TEST_PRINT_LINE("setting message rate to %d.", w);
+            y = uGnssCfgSetMsgRate(gnssHandle, &messageId, w);
+            U_PORT_TEST_ASSERT(y == 0);
+            y = uGnssCfgGetMsgRate(gnssHandle, &messageId);
+            U_TEST_PRINT_LINE("message rate is now %d.", y);
+            U_PORT_TEST_ASSERT(y == w);
+            U_TEST_PRINT_LINE("putting message rate back to %d.", gMsgRate);
+            y = uGnssCfgSetMsgRate(gnssHandle, &messageId, gMsgRate);
+            U_PORT_TEST_ASSERT(y == 0);
+            gMsgRate = -1;
+        } else {
+            U_TEST_PRINT_LINE("uGnssCfgGetMsgRate() returned %d, not testing it.", w);
+            // Note: NACK case is for instance 25 (HPG board) on the test system
+            // which has a kind of betweeen M9-M10 version of M9 in it.
+            U_PORT_TEST_ASSERT((w == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) ||
+                               (w == (int32_t) U_ERROR_COMMON_PLATFORM));
+        }
+
         U_TEST_PRINT_LINE("getting/setting output protocols.");
         if (transportTypes[x] == U_GNSS_TRANSPORT_AT) {
             // Can't do protocol output control when there's an AT interface in the way
@@ -437,7 +615,7 @@ U_PORT_TEST_FUNCTION("[gnssCfg]", "gnssCfgValBasic")
     uGnssCfgVal_t *pCfgValList = NULL;
     int32_t numValues;
     size_t iterations;
-    uGnssTransportType_t transportTypes[U_GNSS_TRANSPORT_MAX_NUM_WITH_UBX];
+    uGnssTransportType_t transportTypes[U_GNSS_TRANSPORT_MAX_NUM];
 
     // In case a previous test failed
     uGnssTestPrivateCleanup(&gHandles);
@@ -714,6 +892,7 @@ U_PORT_TEST_FUNCTION("[gnssCfg]", "gnssCfgValBasic")
 U_PORT_TEST_FUNCTION("[gnssCfg]", "gnssCfgCleanUp")
 {
     int32_t x;
+    uGnssMessageId_t messageId;
 
     if ((gDynamic >= 0) && (gHandles.gnssHandle != NULL)) {
         // Put the initial dynamic setting back
@@ -723,6 +902,23 @@ U_PORT_TEST_FUNCTION("[gnssCfg]", "gnssCfgCleanUp")
     if ((gFixMode >= 0) && (gHandles.gnssHandle != NULL)) {
         // Put the initial fix mode back
         uGnssCfgSetFixMode(gHandles.gnssHandle, (uGnssFixMode_t) gFixMode);
+    }
+
+    if ((gAntennaActive >= 0) && (gHandles.gnssHandle != NULL)) {
+        // Put the initial active antenna mode back
+        uGnssCfgSetAntennaActive(gHandles.gnssHandle, (bool) gAntennaActive);
+    }
+
+    if (gHandles.gnssHandle != NULL) {
+        // Put the rate settings back (-1 will just not be set so no need to check)
+        uGnssCfgSetRate(gHandles.gnssHandle, gMeasurementRateMs, gNavigationCount, gTimeSystem);
+    }
+
+    // Put the message rate setting back
+    if ((gMsgRate >= 0) && (gHandles.gnssHandle != NULL)) {
+        messageId.type = U_GNSS_PROTOCOL_UBX;
+        messageId.id.ubx = U_GNSS_CFG_TEST_MSG_RATE_MESSAGE_ID;
+        uGnssCfgSetMsgRate(gHandles.gnssHandle, &messageId, gMsgRate);
     }
 
     uGnssTestPrivateCleanup(&gHandles);

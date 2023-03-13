@@ -19,7 +19,7 @@ SUBSYSTEM=="tty", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="374b", ENV{ID_STLI
 
 # SEGGER JLink Base standalone debugger
 SUBSYSTEMS=="usb", ENV{ID_SEGGER_JLINK_BASE_1_INTERFACE_NUMBER}="$attr{bInterfaceNumber}", MODE:="0666", SYMLINK+="segger_jlink_base"
-SUBSYSTEM=="tty", ATTRS{idVendor}=="1366", ATTRS{idProduct}=="0101", ENV{ID_SEGGER_JLINK__BASE_1_INTERFACE_NUMBER}=="04", MODE:="0666", SYMLINK+="segger_jlink_base_uart"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="1366", ATTRS{idProduct}=="0101", ENV{ID_SEGGER_JLINK_BASE_1_INTERFACE_NUMBER}=="04", MODE:="0666", SYMLINK+="segger_jlink_base_uart"
 
 # SEGGER JLink, as used on the Nordic NRF52840DK board
 SUBSYSTEMS=="usb", ENV{ID_SEGGER_JLINK_NRF52840DK_INTERFACE_NUMBER}="$attr{bInterfaceNumber}", MODE:="0666", SYMLINK+="segger_jlink_nrf52840"

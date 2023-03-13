@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -285,10 +285,12 @@ int32_t uMqttClientDisconnect(const uMqttClientContext_t *pContext);
  */
 bool uMqttClientIsConnected(const uMqttClientContext_t *pContext);
 
-/** Set a callback to be called when new messages are available
- * to be read; the callback may then call uMqttClientGetUnread()
- * to get the number of unread messages.  Note that this callback will
- * only be called when the number of unread messages has increased.
+/** Set a callback to be called when new messages are available to be
+ * read; the callback may then call uMqttClientGetUnread() to get
+ * the number of unread messages.  There is a single, static,
+ * callback, hence a second call here will simple replace the previous
+ * callback. Your callback will only be called when the number of
+ * unread messages has increased.
  *
  * NOTE: it would be tempting to read a new unread message in your message
  * callback.  However, note that if your device has been out of coverage
@@ -297,8 +299,7 @@ bool uMqttClientIsConnected(const uMqttClientContext_t *pContext);
  * best if your MQTT message reads are carried out in their own thread;
  * this thread would begin reading when a non-zero number of messages are
  * available to read and continue to read messages until there are no more.
- * This takes the load out of the call-back queue and prevents
- * multiple-triggering.
+ * This takes the load out of the call-back queue.
  *
  * @param[in] pContext        a pointer to the internal MQTT context
  *                            structure that was originally returned
@@ -382,6 +383,11 @@ int32_t uMqttClientSetDisconnectCallback(const uMqttClientContext_t *pContext,
  * non-NULL then it will called while this function is waiting for the
  * publish to complete.
  *
+ * Note that, for a cellular connection, in fringe coverage
+ * conditions, the time taken to publsh may be double the normal
+ * #U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS if keep-alive
+ * is on and a ping has just been sent to the broker.
+ *
  * @param[in] pContext      a pointer to the internal MQTT context
  *                          structure that was originally returned
  *                          by pUMqttClientOpen().
@@ -450,6 +456,10 @@ int32_t uMqttClientUnsubscribe(const uMqttClientContext_t *pContext,
                                const char *pTopicFilterStr);
 
 /** MQTT only: read an MQTT message.
+ *
+ * Note: if the MQTT message is longer than the buffer provided to
+ * this function then it will copy as much as it can and return the
+ * error code #U_ERROR_COMMON_TRUNCATED.
  *
  * @param[in] pContext              a pointer to the internal MQTT context
  *                                  structure that was originally returned
@@ -580,17 +590,21 @@ int32_t uMqttClientSnGetTopicNameShort(const uMqttSnTopicName_t *pTopicName,
  * a normal MQTT topic, for example "thing/this", using MQTT-SN,
  * which only has a 16-bit topic field, then you must register the
  * normal MQTT topic to obtain an MQTT-SN topic ID for it.
+ *
  * Note: if you intend to subscribe to an MQTT topic as well as
  * publish to an MQTT topic you do NOT need to use this function:
  * instead use the pTopicName returned by
  * uMqttClientSnSubscribeNormalTopic().
+ *
  * Note: this function should not be used for MQTT-SN short topic
  * names (e.g. "xy") because they already fit into 16-bits; just use
  * uMqttClientSnSetTopicNameShort() to create the topic name and
  * use it with uMqttClientSnSubscribe().
+ *
  * Note that this does NOT subscribe to the topic, it just gets you
  * an ID, you need to call uMqttClientSnSubscribe() to do the
  * subscribing.
+ *
  * Must be connected to an MQTT-SN broker for this to work.
  *
  * @param[in] pContext       a pointer to the internal MQTT context.
@@ -609,10 +623,17 @@ int32_t uMqttClientSnRegisterNormalTopic(const uMqttClientContext_t *pContext,
  * uMqttClientSnSetTopicIdPredefined()/ uMqttClientSnSetTopicNameShort()
  * or as returned by uMqttClientSnRegisterNormalTopic()/
  * uMqttClientSnSubscribeNormalTopic()).
+ *
  * Must be connected to an MQTT-SN broker for this to work.
+ *
  * If pKeepGoingCallback() inside the pConnection structure passed to
  * uMqttClientConnect() was non-NULL then it will called while this
  * function is waiting for the publish to complete.
+ *
+ * Note that, for a cellular connection, in fringe coverage
+ * conditions, the time taken to publsh may be double the normal
+ * #U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS if keep-alive
+ * is on and a ping has just been sent to the broker.
  *
  * @param[in] pContext           a pointer to the internal MQTT context
  *                               structure that was originally returned
@@ -737,7 +758,12 @@ int32_t uMqttClientSnUnsubscribeNormalTopic(const uMqttClientContext_t *pContext
  * if the message is from a normal MQTT topic then the topic name will
  * be populated with the MQTT-SN topic ID that you received when
  * you called uMqttClientSnSubscribeNormalTopic().
+ *
  * Must be connected to an MQTT-SN broker for this to work.
+ *
+ * Note: if the MQTT-SN message is longer than the buffer provided to
+ * this function then it will copy as much as it can and return the
+ * error code #U_ERROR_COMMON_TRUNCATED.
  *
  * @param[in] pContext              a pointer to the internal MQTT context
  *                                  structure that was originally returned

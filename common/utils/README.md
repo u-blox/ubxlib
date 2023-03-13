@@ -10,3 +10,12 @@ Functions to convert a buffer of ASCII hex encoded into a buffer of binary and v
 
 ## [u_time](api/u_time.h)
 Functions to assist with time manipulation.
+
+## [u_base64](api/u_base64.h)
+Functions to convert to and from base64.
+
+## [u_mempool](api/u_mempool.h)
+A memory pool API used internally by the short-range code for efficient EDM transport.
+
+## [u_interface](api/u_interface.h)
+Functions to help when creating interface types (i.e. jump-tables).

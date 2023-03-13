@@ -157,6 +157,22 @@ u_add_source_file(cell ${UBXLIB_BASE}/common/device/src/u_device_private_cell.c)
 u_add_module_dir(gnss ${UBXLIB_BASE}/gnss)
 u_add_source_file(gnss ${UBXLIB_BASE}/common/network/src/u_network_private_gnss.c)
 u_add_source_file(gnss ${UBXLIB_BASE}/common/device/src/u_device_private_gnss.c)
+
+# Bring in linker workaround files, needed for ESP-IDF (and no harm for others)
+if (NOT short_range IN_LIST UBXLIB_FEATURES)
+  list(APPEND UBXLIB_SRC ${UBXLIB_BASE}/common/device/src/u_device_private_short_range_link.c)
+  list(APPEND UBXLIB_SRC ${UBXLIB_BASE}/common/network/src/u_network_private_ble_extmod_link.c)
+  list(APPEND UBXLIB_SRC ${UBXLIB_BASE}/common/network/src/u_network_private_wifi_link.c)
+endif()
+if (NOT cell IN_LIST UBXLIB_FEATURES)
+  list(APPEND UBXLIB_SRC ${UBXLIB_BASE}/common/device/src/u_device_private_cell_link.c)
+  list(APPEND UBXLIB_SRC ${UBXLIB_BASE}/common/network/src/u_network_private_cell_link.c)
+endif()
+if (NOT gnss IN_LIST UBXLIB_FEATURES)
+  list(APPEND UBXLIB_SRC ${UBXLIB_BASE}/common/device/src/u_device_private_gnss_link.c)
+  list(APPEND UBXLIB_SRC ${UBXLIB_BASE}/common/network/src/u_network_private_gnss_link.c)
+endif()
+
 # lib_common
 # We have a dependency issue with libfibonacci so lib_common/test needs to manually
 # included by the runner app instead at the moment. For this reason we just add the

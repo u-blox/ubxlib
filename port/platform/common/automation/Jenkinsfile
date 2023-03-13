@@ -21,9 +21,9 @@ default_build_sub_dir = "build"
 // tests running forever or a board getting into a boot-loop
 timeout_overall_seconds = 60 * 60 * 12
 timeout_checkout_seconds = 60 * 5
-timeout_build_seconds = 60 * 10
+timeout_build_seconds = 60 * 20 // Long because on first run tools may have to be installed
 timeout_power_up_seconds = 60
-timeout_flash_seconds = 60 * 10 // Long because on first run tools may have to be installed
+timeout_flash_seconds = 60 * 20 // Long because on first run tools may have to be installed
 timeout_test_seconds = 60 * 60
 check_instance_max = 9
 dut_start_time_seconds = 10
@@ -289,7 +289,9 @@ def buildAndTestPipeline(instance_str, json_entry, filter) {
                             // Needed for Zephyr flashing using west command:
                             "**/CMakeCache.txt", "**/.config", "**/*.yaml",
                             // Needed for ESP-IDF flashing using esptool.py:
-                            "**/flasher_args.json"
+                            "**/flasher_args.json",
+                            // Needed for PlatformIO:
+                            "**/platformio.ini"
                         ].collect { "${build_dir}/$it" }.join(', ')
                         stash_includes += ", ${includes}"
                         def excludes = [

@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -124,7 +124,7 @@ typedef struct {
                            the u-blox GNSS reference manual or you may use
                            the macros defined in u_gnss_cfg_val_key.h;
                            for instance, key ID CFG-ANA-USE_ANA would be
-                           #U_GNSS_CFG_VAL_KEY_ID_ANA_USE_ANA_L (i.e. prefix
+                           #U_GNSS_CFG_VAL_KEY_ID_ANA_USE_ANA_L (prefix
                            with U_GNSS_CFG_VAL_KEY_ID_, drop the CFG, replace
                            any dashes with underscores and add the type on
                            the end (just so it sticks in your mind)). */
@@ -138,20 +138,21 @@ typedef struct {
 typedef enum {
     U_GNSS_CFG_VAL_TRANSACTION_NONE     = 0, /**< no transaction, just a single set/del;
                                                   if a transaction was previously in
-                                                  progress, i.e. had not been executed,
+                                                  progress, so had NOT been executed,
                                                   this will CANCEL it. */
     U_GNSS_CFG_VAL_TRANSACTION_BEGIN    = 1, /**< marks the first in a sequence of
                                                   set/del operations which will be stored
                                                   inside the GNSS chip and only executed
-                                                  when #U_GNSS_CFG_VAL_TRANSACTION_EXCUTE
+                                                  when #U_GNSS_CFG_VAL_TRANSACTION_EXECUTE
                                                   is set; if a transaction was previously
-                                                  in progress, i.e. had not been executed,
+                                                  in progress and had NOT been executed,
                                                   this will CANCEL it. */
     U_GNSS_CFG_VAL_TRANSACTION_CONTINUE = 2, /**< this set/del operation is part of an
                                                   existing transaction; if no transaction
                                                   is in progress this will generate an
                                                   error. */
-    U_GNSS_CFG_VAL_TRANSACTION_EXCUTE   = 3, /**< perform the set/del operations in the
+    U_GNSS_CFG_VAL_TRANSACTION_EXCUTE   = 3, /**< \deprecated see #U_GNSS_CFG_VAL_TRANSACTION_EXECUTE. */
+    U_GNSS_CFG_VAL_TRANSACTION_EXECUTE  = 3, /**< perform the set/del operations in the
                                                   transaction; at this point error checking
                                                   will be carried out on all of the set/del
                                                   operations if any of them write to RAM. */
@@ -176,6 +177,114 @@ typedef enum {
  * FUNCTIONS: SPECIFIC CONFIGURATION FUNCTIONS
  * -------------------------------------------------------------- */
 
+/** Get the rate at which position is obtained.
+ *
+ * @param gnssHandle               the handle of the GNSS instance.
+ * @param[in] pMeasurementPeriodMs a place to put the period between
+ *                                 measurements in milliseconds; may
+ *                                 be NULL.
+ * @param[in] pNavigationCount     a place to put the number of
+ *                                 measurements that should result in
+ *                                 a navigation solution; may be NULL.
+ * @param[in] pTimeSystem          a place to put the time system to
+ *                                 which measurements are aligned; may
+ *                                 be NULL.
+ * @return                         the navigation rate in milliseconds;
+ *                                 for instance, if the measurement period
+ *                                 is one second and the navigation count
+ *                                 five then the return value will be 5000,
+ *                                 meaning a navigation solution will be
+ *                                 made every five seconds.
+ */
+int32_t uGnssCfgGetRate(uDeviceHandle_t gnssHandle,
+                        int32_t *pMeasurementPeriodMs,
+                        int32_t *pNavigationCount,
+                        uGnssTimeSystem_t *pTimeSystem);
+
+/** Set the rate at which position is obtained.  Note that, if you intend
+ * to obtain position at this rate using a particular protocol, you need to
+ * set the message rate for the navigation messsage ID on that protocol
+ * to a non-zero value by calling uGnssCfgSetMsgRate() with that message ID;
+ * by default NMEA navigation solutions (GGA etc.) are enabled at a rate of
+ * once for every message (so likely once a second), while the UBX-NAV
+ * messages of the UBX protocol are by default set to a rate of 0
+ * (i.e. disabled).
+ *
+ * @param gnssHandle           the handle of the GNSS instance.
+ * @param measurementPeriodMs  the period between measurements in
+ *                             milliseconds; specify -1 to leave this
+ *                             unchanged.
+ * @param navigationCount      the number of measurements that should
+ *                             result in a navigation solution; for
+ *                             instance, if measurementPeriodMs is 500
+ *                             and navigationCount four then a navigation
+ *                             solution will result ever 2 seconds.
+ *                             Specify -1 to leave this unchanged.
+ * @param timeSystem           the time system to which measurements
+ *                             are aligned; the value passed in is
+ *                             deliberately not range checked so that
+ *                             future types unknown to this code
+ *                             may be used. Specify -1 to leave this
+ *                             unchanged.
+ * @return                     zero on success or negative error code.
+ */
+int32_t uGnssCfgSetRate(uDeviceHandle_t gnssHandle,
+                        int32_t measurementPeriodMs,
+                        int32_t navigationCount,
+                        uGnssTimeSystem_t timeSystem);
+
+/** Get the rate at which a given UBX message ID is emitted on the
+ * current transport; this ONLY WORKS FOR M8 AND M9 modules: for
+ * M10 modules and later you must find the relevant member from
+ * U_GNSS_CFG_VAL_KEY_ID_MSGOUT_* in u_gnss_cfg_val_key.h
+ * and get the value of that item, for example:
+ *
+ * ```
+ * uint8_t value;
+ * uGnssCfgValGet(devHandle,
+ *                U_GNSS_CFG_VAL_KEY_ID_MSGOUT_UBX_NAV_PVT_I2C_U1,
+ *                (void *) &value, sizeof(value),
+ *                U_GNSS_CFG_VAL_LAYER_RAM);
+ * ```
+ *
+ * The naming here can be confusing: make sure you have the _KEY_ID_,
+ * i.e. representing something like 0x20910006 and *NOT* the ITEM_ID
+ * (which is just the last four digits).
+ *
+ * @param gnssHandle      the handle of the GNSS instance.
+ * @param[in] pMessageId  a pointer to the message ID; cannot
+ *                        be NULL and, for M8 modules, only UBX
+ *                        protocol message rates can currently be
+ *                        retrieved this way.
+ * @return                on success the rate (0 for never, 1 for
+ *                        once every message, 2 for "emit every
+ *                        other message", etc.) else negative
+ *                        error code.
+ */
+int32_t uGnssCfgGetMsgRate(uDeviceHandle_t gnssHandle,
+                           uGnssMessageId_t *pMessageId);
+
+/** Set the rate at which a given UBX message ID is emitted on the
+ * current transport; this ONLY WORKS FOR M8 AND M9  modules:
+ * for M10 modules and later you must find the relevant member
+ * from U_GNSS_CFG_VAL_KEY_ID_MSGOUT_* in u_gnss_cfg_val_key.h
+ * and set the value of that item, for example:
+ *
+ * U_GNSS_CFG_SET_VAL_RAM(devHandle, MSGOUT_UBX_NAV_PVT_I2C_U1, 1);
+ *
+ * @param gnssHandle      the handle of the GNSS instance.
+ * @param[in] pMessageId  a pointer to the message ID; cannot
+ *                        be NULL and only UBX protocol message
+ *                        rates can currently be configured this way.
+ * @param rate            the rate: 0 for never, 1 for once every
+ *                        message, 2 for "emit every other message",
+ *                        etc.
+ * @return                zero on success or negative error code.
+ */
+int32_t uGnssCfgSetMsgRate(uDeviceHandle_t gnssHandle,
+                           uGnssMessageId_t *pMessageId,
+                           int32_t rate);
+
 /** Get the dynamic platform model from the GNSS chip.
  *
  * @param gnssHandle  the handle of the GNSS instance.
@@ -191,7 +300,7 @@ int32_t uGnssCfgGetDynamic(uDeviceHandle_t gnssHandle);
  *                    value is deliberately not range-checked to allow
  *                    future dynamic platform models to be passed
  *                    in without the requirement to modify this code.
- * @return            zero on succes or negative error code.
+ * @return            zero on success or negative error code.
  */
 int32_t uGnssCfgSetDynamic(uDeviceHandle_t gnssHandle, uGnssDynamic_t dynamic);
 
@@ -209,7 +318,7 @@ int32_t uGnssCfgGetFixMode(uDeviceHandle_t gnssHandle);
  *                    range-checked to allow future fix modes to be
  *                    passed in without the requirement to modify
  *                    this code.
- * @return            zero on succes or negative error code.
+ * @return            zero on success or negative error code.
  */
 int32_t uGnssCfgSetFixMode(uDeviceHandle_t gnssHandle, uGnssFixMode_t fixMode);
 
@@ -229,14 +338,14 @@ int32_t uGnssCfgGetUtcStandard(uDeviceHandle_t gnssHandle);
  *                    this code.  Use #U_GNSS_UTC_STANDARD_AUTOMATIC
  *                    it you don't really care, you'd just like UTC
  *                    time please (which is the default).
- * @return            zero on succes or negative error code.
+ * @return            zero on success or negative error code.
  */
 int32_t uGnssCfgSetUtcStandard(uDeviceHandle_t gnssHandle,
                                uGnssUtcStandard_t utcStandard);
 
 /** Get the protocol types output by the GNSS chip; not relevant
  * where an AT transport is in use since only the UBX protocol is
- * currently supported through that transport.
+ * supported through that transport.
  *
  * @param gnssHandle the handle of the GNSS instance.
  * @return           a bit-map of the protocol types that are
@@ -246,7 +355,7 @@ int32_t uGnssCfgGetProtocolOut(uDeviceHandle_t gnssHandle);
 
 /** Set the protocol type output by the GNSS chip; not relevant
  * where an AT transport is in use since only the UBX protocol is
- * currently supported through that transport.
+ * supported through that transport.
  *
  * @param gnssHandle the handle of the GNSS instance.
  * @param protocol   the protocol type; #U_GNSS_PROTOCOL_ALL may
@@ -256,11 +365,28 @@ int32_t uGnssCfgGetProtocolOut(uDeviceHandle_t gnssHandle);
  *                   UBX protocol output cannot be switched off
  *                   since it is used by this code.
  * @param onNotOff   whether the given protocol should be on or off.
- * @return           zero on succes or negative error code.
+ * @return           zero on success or negative error code.
  */
 int32_t uGnssCfgSetProtocolOut(uDeviceHandle_t gnssHandle,
                                uGnssProtocol_t protocol,
                                bool onNotOff);
+
+/** Get whether the antenna has active power or not.
+ *
+ * @param gnssHandle  the handle of the GNSS instance.
+ * @return            1 if the antenna has active power, 0 if it
+ *                    does not, else negative error code.
+ */
+int32_t uGnssCfgGetAntennaActive(uDeviceHandle_t gnssHandle);
+
+/** Set whether the antenna has active power or not.
+ *
+ * @param gnssHandle  the handle of the GNSS instance.
+ * @param active      true if the antenna is to be actively
+ *                    powered, else false.
+ * @return            zero on success or negative error code.
+ */
+int32_t uGnssCfgSetAntennaActive(uDeviceHandle_t gnssHandle, bool active);
 
 /* ----------------------------------------------------------------
  * FUNCTIONS: GENERIC CONFIGURATION USING VALGET/VALSET/VALDEL, FROM M9
@@ -399,7 +525,7 @@ int32_t uGnssCfgValGetListAlloc(uDeviceHandle_t gnssHandle,
  *                     #U_GNSS_CFG_VAL_TRANSACTION_CONTINUE.  If this is
  *                     the last in such a sequence and the values should
  *                     now be applied, use
- *                     #U_GNSS_CFG_VAL_TRANSACTION_EXCUTE.  Note that once
+ *                     #U_GNSS_CFG_VAL_TRANSACTION_EXECUTE.  Note that once
  *                     a "set" transaction has begun all of the set operations
  *                     must follow with #U_GNSS_CFG_VAL_TRANSACTION_CONTINUE
  *                     and then be executed - interleaving any other set/del
@@ -407,7 +533,7 @@ int32_t uGnssCfgValGetListAlloc(uDeviceHandle_t gnssHandle,
  *                     will result in the transaction being cancelled.  If you
  *                     don't want to set a value but just execute a "set"
  *                     transaction then call uGnssCfgValSetList() with no
- *                     items and #U_GNSS_CFG_VAL_TRANSACTION_EXCUTE.
+ *                     items and #U_GNSS_CFG_VAL_TRANSACTION_EXECUTE.
  * @param layers       the layers to set the value in, a bit-map of
  *                     #uGnssCfgValLayer_t values OR'ed together.  Use
  *                     #U_GNSS_CFG_VAL_LAYER_RAM to just set the current value
@@ -448,7 +574,7 @@ int32_t uGnssCfgValSet(uDeviceHandle_t gnssHandle,
  *                     #U_GNSS_CFG_VAL_TRANSACTION_CONTINUE.  If this is
  *                     the last in such a sequence and the values should
  *                     now be applied, use
- *                     #U_GNSS_CFG_VAL_TRANSACTION_EXCUTE.  Note that once
+ *                     #U_GNSS_CFG_VAL_TRANSACTION_EXECUTE.  Note that once
  *                     a "set" transaction has begun all of the set operations
  *                     must follow with #U_GNSS_CFG_VAL_TRANSACTION_CONTINUE and
  *                     then be executed - interleaving any other set/del operation,
@@ -497,7 +623,7 @@ int32_t uGnssCfgValSetList(uDeviceHandle_t gnssHandle,
  *                     #U_GNSS_CFG_VAL_TRANSACTION_CONTINUE.  If this is
  *                     the last in such a sequence and the values should
  *                     now be applied, use
- *                     #U_GNSS_CFG_VAL_TRANSACTION_EXCUTE.  Note that once
+ *                     #U_GNSS_CFG_VAL_TRANSACTION_EXECUTE.  Note that once
  *                     a "del" transaction has begun all of the del operations
  *                     must follow with #U_GNSS_CFG_VAL_TRANSACTION_CONTINUE and
  *                     then be executed - interleaving any other set/del operation,
@@ -505,7 +631,7 @@ int32_t uGnssCfgValSetList(uDeviceHandle_t gnssHandle,
  *                     the transaction being cancelled.  If you don't want to set
 *                      a value but just execute a "del" transaction then call
  *                     uGnssCfgValDelList() / uGnssCfgValDelListX() with no items
- *                     and #U_GNSS_CFG_VAL_TRANSACTION_EXCUTE.
+ *                     and #U_GNSS_CFG_VAL_TRANSACTION_EXECUTE.
  * @param layers       the layers to delete the value from, a bit-map of
  *                     #uGnssCfgValLayer_t values OR'ed together.  Only
  *                     #U_GNSS_CFG_VAL_LAYER_BBRAM and #U_GNSS_CFG_VAL_LAYER_FLASH
@@ -540,7 +666,7 @@ int32_t uGnssCfgValDel(uDeviceHandle_t gnssHandle, uint32_t keyId,
  *                       #U_GNSS_CFG_VAL_TRANSACTION_CONTINUE.  If this is
  *                       the last in such a sequence and the values should
  *                       now be applied, use
- *                       #U_GNSS_CFG_VAL_TRANSACTION_EXCUTE.  Note that once
+ *                       #U_GNSS_CFG_VAL_TRANSACTION_EXECUTE.  Note that once
  *                       a "del" transaction has begun all of the del operations
  *                       must follow with #U_GNSS_CFG_VAL_TRANSACTION_CONTINUE and
  *                       then be executed - interleaving any other set/del operation,
@@ -583,7 +709,7 @@ int32_t uGnssCfgValDelList(uDeviceHandle_t gnssHandle,
  *                     #U_GNSS_CFG_VAL_TRANSACTION_CONTINUE.  If this is
  *                     the last in such a sequence and the values should
  *                     now be applied, use
- *                     #U_GNSS_CFG_VAL_TRANSACTION_EXCUTE.  Note that once
+ *                     #U_GNSS_CFG_VAL_TRANSACTION_EXECUTE.  Note that once
  *                     a "del" transaction has begun all of the del operations
  *                     must follow with #U_GNSS_CFG_VAL_TRANSACTION_CONTINUE and
  *                     then be executed - interleaving any other set/del operation,

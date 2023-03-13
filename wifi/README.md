@@ -7,7 +7,9 @@ The Wi-Fi APIs are split into the following groups:
 - `cfg`: configuration of the Wi-Fi module.
 - `sock`: sockets, for exchanging data (but see the [common/sock](/common/sock) component for the best way to do this).
 - `mqtt`: MQTT client over wifi network. Refer to [common/mqtt_client](/common/mqtt_client) component for generic
-mqtt client implementation.
+MQTT client implementation.
+- `http`: HTTP client over wifi network. Refer to [common/http_client](/common/http_client) component for generic
+HTTP client implementation.
 
 The module types supported by this implementation are listed in [u_wifi_module_type.h](api/u_wifi_module_type.h).
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -285,12 +285,6 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssAddStream")
     uGnssRemove(gnssHandleA);
 
     U_TEST_PRINT_LINE("adding it again...");
-    // Still need to test the UBX form until we remove it
-    if (gTransportTypeA == U_GNSS_TRANSPORT_UART) {
-        gTransportTypeA = U_GNSS_TRANSPORT_UBX_UART;
-    } else if (gTransportTypeA == U_GNSS_TRANSPORT_I2C) {
-        gTransportTypeA = U_GNSS_TRANSPORT_UBX_I2C;
-    }
     errorCode = uGnssAdd(U_GNSS_MODULE_TYPE_M8,
                          gTransportTypeA,
                          transportHandleA,
@@ -303,12 +297,12 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssAddStream")
                                                &transportType,
                                                &transportHandle) == 0);
     switch (gTransportTypeA) {
-        case U_GNSS_TRANSPORT_UBX_UART:
-            U_PORT_TEST_ASSERT(transportType == U_GNSS_TRANSPORT_UBX_UART);
+        case U_GNSS_TRANSPORT_UART:
+            U_PORT_TEST_ASSERT(transportType == U_GNSS_TRANSPORT_UART);
             U_PORT_TEST_ASSERT(transportHandle.uart == transportHandleA.uart);
             break;
-        case U_GNSS_TRANSPORT_UBX_I2C:
-            U_PORT_TEST_ASSERT(transportType == U_GNSS_TRANSPORT_UBX_I2C);
+        case U_GNSS_TRANSPORT_I2C:
+            U_PORT_TEST_ASSERT(transportType == U_GNSS_TRANSPORT_I2C);
             U_PORT_TEST_ASSERT(transportHandle.i2c == transportHandleA.i2c);
             break;
         case U_GNSS_TRANSPORT_SPI:
@@ -326,13 +320,9 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssAddStream")
     U_TEST_PRINT_LINE("removing stream...");
     switch (gTransportTypeA) {
         case U_GNSS_TRANSPORT_UART:
-        //lint -fallthrough
-        case U_GNSS_TRANSPORT_UBX_UART:
             uPortUartClose(gStreamAHandle);
             break;
         case U_GNSS_TRANSPORT_I2C:
-        //lint -fallthrough
-        case U_GNSS_TRANSPORT_UBX_I2C:
             uPortI2cClose(gStreamAHandle);
             break;
         case U_GNSS_TRANSPORT_SPI:
@@ -520,13 +510,9 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssCleanUp")
     if (gStreamAHandle >= 0) {
         switch (gTransportTypeA) {
             case U_GNSS_TRANSPORT_UART:
-            //lint -fallthrough
-            case U_GNSS_TRANSPORT_UBX_UART:
                 uPortUartClose(gStreamAHandle);
                 break;
             case U_GNSS_TRANSPORT_I2C:
-            //lint -fallthrough
-            case U_GNSS_TRANSPORT_UBX_I2C:
                 uPortI2cClose(gStreamAHandle);
                 break;
             case U_GNSS_TRANSPORT_SPI:

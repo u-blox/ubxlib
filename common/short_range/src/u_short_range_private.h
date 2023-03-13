@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,8 @@
  * please keep #includes to your .c files. */
 
 #include "u_device_shared.h"
+#include "u_http_client.h"
+#include "u_wifi_http.h"
 
 /** @file
  * @brief This header file defines types, functions and inclusions that
@@ -126,6 +128,8 @@ typedef struct uShortRangePrivateInstance_t {
 //lint -esym(768, uShortRangePrivateInstance_t::pBtDataAvailableCallback)
     void (*pBtDataAvailableCallback)(int32_t, void *);
     void *pBtDataCallbackParameter;
+    uHttpClientContext_t *pHttpContext;
+    uWifiHttpCallback_t *pWifiHttpCallBack;
     struct uShortRangePrivateInstance_t *pNext;
 } uShortRangePrivateInstance_t;
 

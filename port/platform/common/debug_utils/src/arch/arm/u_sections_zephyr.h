@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,11 +25,11 @@
  */
 
 #ifndef CODE_START
-# define CODE_START ((uint32_t)_image_text_start)
+#define CODE_START ((uint32_t)__text_region_start)
 #endif
 
 #ifndef CODE_END
-# define CODE_END ((uint32_t)_image_text_end)
+#define CODE_END ((uint32_t)__text_region_end)
 #endif
 
 #endif // _U_SECTIONS_ZEPHYR_H_

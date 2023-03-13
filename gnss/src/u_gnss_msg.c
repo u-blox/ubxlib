@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -279,6 +279,177 @@ int32_t msgReceiveCallbackRead(uDeviceHandle_t gnssHandle,
 }
 
 /* ----------------------------------------------------------------
+ * PUBLIC FUNCTIONS THAT ARE PRIVATE TO GNSS
+ * -------------------------------------------------------------- */
+
+// Start monitoring the output of the GNSS chip for a message.
+int32_t uGnssMsgPrivateReceiveStart(uGnssPrivateInstance_t *pInstance,
+                                    const uGnssPrivateMessageId_t *pPrivateMessageId,
+                                    uGnssMsgReceiveCallback_t pCallback,
+                                    void *pCallbackParam)
+{
+    int32_t errorCodeOrHandle = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    uGnssPrivateMsgReceive_t *pMsgReceive;
+    uGnssPrivateMsgReader_t *pReader;
+    const char *pTaskName = "gnssMsgRx";
+
+    if ((pInstance != NULL) && (pPrivateMessageId != NULL) && (pCallback != NULL)) {
+        errorCodeOrHandle = (int32_t) U_ERROR_COMMON_NO_MEMORY;
+        pReader = (uGnssPrivateMsgReader_t *) pUPortMalloc(sizeof(uGnssPrivateMsgReader_t));
+        if (pReader != NULL) {
+            memset(pReader, 0, sizeof(*pReader));
+            // If the message receive task is not running
+            // at the moment, start it
+            if (pInstance->pMsgReceive == NULL) {
+                pInstance->pMsgReceive = (uGnssPrivateMsgReceive_t *) pUPortMalloc(sizeof(
+                                                                                       uGnssPrivateMsgReceive_t));
+                if (pInstance->pMsgReceive != NULL) {
+                    pMsgReceive = pInstance->pMsgReceive;
+                    memset(pMsgReceive, 0, sizeof(*pMsgReceive));
+                    // Take a "master" read handle
+                    pMsgReceive->ringBufferReadHandle = uRingBufferTakeReadHandle(&(pInstance->ringBuffer));
+                    if (pMsgReceive->ringBufferReadHandle >= 0) {
+                        // Allocate a temporary buffer that we can use to pull data
+                        // from the streaming source into the ring-buffer from our
+                        // asynchronous task
+                        pMsgReceive->pTemporaryBuffer = (char *) pUPortMalloc(U_GNSS_MSG_TEMPORARY_BUFFER_LENGTH_BYTES);
+                        if (pMsgReceive->pTemporaryBuffer != NULL) {
+                            // Create the mutex that controls access to the linked-list of readers
+                            errorCodeOrHandle = uPortMutexCreate(&(pMsgReceive->readerMutexHandle));
+                            if (errorCodeOrHandle == 0) {
+                                // Create the queue that allows us to get the task to exit
+                                errorCodeOrHandle = uPortQueueCreate(U_GNSS_MSG_RECEIVE_TASK_QUEUE_LENGTH,
+                                                                     U_GNSS_MSG_RECEIVE_TASK_QUEUE_ITEM_SIZE_BYTES,
+                                                                     &(pMsgReceive->taskExitQueueHandle));
+                                if (errorCodeOrHandle == 0) {
+                                    // Create the mutex for task running status
+                                    errorCodeOrHandle = uPortMutexCreate(&(pMsgReceive->taskRunningMutexHandle));
+                                    if (errorCodeOrHandle == 0) {
+                                        //... and then the task
+                                        errorCodeOrHandle = uPortTaskCreate(msgReceiveTask,
+                                                                            pTaskName,
+                                                                            U_GNSS_MSG_RECEIVE_TASK_STACK_SIZE_BYTES,
+                                                                            pInstance, U_GNSS_MSG_RECEIVE_TASK_PRIORITY,
+                                                                            &(pMsgReceive->taskHandle));
+                                        if (errorCodeOrHandle == 0) {
+                                            // Wait for the task to lock the mutex,
+                                            // which shows it is running
+                                            while (uPortMutexTryLock(pMsgReceive->taskRunningMutexHandle, 0) == 0) {
+                                                uPortMutexUnlock(pMsgReceive->taskRunningMutexHandle);
+                                                uPortTaskBlock(U_CFG_OS_YIELD_MS);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        if (errorCodeOrHandle != 0) {
+                            // Tidy up if we couldn't get OS resources
+                            if (pMsgReceive->taskHandle != NULL) {
+                                uPortTaskDelete(msgReceiveTask);
+                            }
+                            if (pMsgReceive->taskRunningMutexHandle != NULL) {
+                                uPortMutexDelete(pMsgReceive->taskRunningMutexHandle);
+                            }
+                            if (pMsgReceive->taskExitQueueHandle != NULL) {
+                                uPortQueueDelete(pMsgReceive->taskExitQueueHandle);
+                            }
+                            if (pMsgReceive->readerMutexHandle != NULL) {
+                                uPortMutexDelete(pMsgReceive->readerMutexHandle);
+                            }
+                            uPortFree(pInstance->pTemporaryBuffer);
+                            uRingBufferGiveReadHandle(&(pInstance->ringBuffer),
+                                                      pMsgReceive->ringBufferReadHandle);
+                            uPortFree(pInstance->pMsgReceive);
+                            pInstance->pMsgReceive = NULL;
+                        }
+                    } else {
+                        // Out of handles already
+                        uPortFree(pInstance->pMsgReceive);
+                        pInstance->pMsgReceive = NULL;
+                    }
+                }
+            }
+            if (pInstance->pMsgReceive == NULL) {
+                // Clean up on error
+                uPortFree(pReader);
+                pReader = NULL;
+            }
+        }
+        if (pReader != NULL) {
+            // The task etc. must be running, we have a read handle,
+            // now populate the rest of the reader structure
+            // and add it to the front of the list
+            pReader->handle = pInstance->pMsgReceive->nextHandle;
+            pInstance->pMsgReceive->nextHandle++;
+            pReader->privateMessageId = *pPrivateMessageId;
+            pReader->pCallback = (void *) pCallback;
+            pReader->pCallbackParam = pCallbackParam;
+            pReader->pNext = pInstance->pMsgReceive->pReaderList;
+
+            U_PORT_MUTEX_LOCK(pInstance->pMsgReceive->readerMutexHandle);
+
+            pInstance->pMsgReceive->pReaderList = pReader;
+
+            U_PORT_MUTEX_UNLOCK(pInstance->pMsgReceive->readerMutexHandle);
+
+            // Return the handle
+            errorCodeOrHandle = pReader->handle;
+        }
+    }
+
+    return errorCodeOrHandle;
+}
+
+// Stop monitoring the output of the GNSS chip for a message.
+int32_t uGnssMsgPrivateReceiveStop(uGnssPrivateInstance_t *pInstance,
+                                   int32_t asyncHandle)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    uGnssPrivateMsgReceive_t *pMsgReceive;
+    uGnssPrivateMsgReader_t *pCurrent;
+    uGnssPrivateMsgReader_t *pPrev = NULL;
+
+    if (pInstance != NULL) {
+        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+        if (pInstance->pMsgReceive != NULL) {
+            pMsgReceive = pInstance->pMsgReceive;
+
+            U_PORT_MUTEX_LOCK(pMsgReceive->readerMutexHandle);
+
+            // Remove the entry from the list
+            errorCode = (int32_t) U_ERROR_COMMON_NOT_FOUND;
+            pCurrent = pMsgReceive->pReaderList;
+            while (pCurrent != NULL) {
+                if (pCurrent->handle == asyncHandle) {
+                    if (pPrev != NULL) {
+                        pPrev->pNext = pCurrent->pNext;
+                    } else {
+                        pMsgReceive->pReaderList = pCurrent->pNext;
+                    }
+                    uPortFree(pCurrent);
+                    pCurrent = NULL;
+                    errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                } else {
+                    pPrev = pCurrent;
+                    pCurrent = pPrev->pNext;
+                }
+            }
+
+            U_PORT_MUTEX_UNLOCK(pMsgReceive->readerMutexHandle);
+
+            if (pMsgReceive->pReaderList == NULL) {
+                // All gone, shut the task etc. down also
+                uGnssPrivateStopMsgReceive(pInstance);
+            }
+
+        }
+    }
+
+    return errorCode;
+}
+
+/* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS: MISC
  * -------------------------------------------------------------- */
 
@@ -352,7 +523,6 @@ int32_t uGnssMsgSend(uDeviceHandle_t gnssHandle, const char *pBuffer, size_t siz
     int32_t errorCodeOrLength = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uGnssPrivateInstance_t *pInstance;
     int32_t privateStreamType;
-    int32_t streamHandle = -1;
 
     if (gUGnssPrivateMutex != NULL) {
 
@@ -364,21 +534,19 @@ int32_t uGnssMsgSend(uDeviceHandle_t gnssHandle, const char *pBuffer, size_t siz
 
             errorCodeOrLength = (int32_t) U_GNSS_ERROR_TRANSPORT;
             privateStreamType = uGnssPrivateGetStreamType(pInstance->transportType);
-            streamHandle = uGnssPrivateGetStreamHandle(privateStreamType,
-                                                       pInstance->transportHandle);
 
             U_PORT_MUTEX_LOCK(pInstance->transportMutex);
 
-            if (streamHandle >= 0) {
+            if (privateStreamType >= 0) {
                 // Streaming transport
                 switch (privateStreamType) {
                     case U_GNSS_PRIVATE_STREAM_TYPE_UART: {
-                        errorCodeOrLength = uPortUartWrite(streamHandle,
+                        errorCodeOrLength = uPortUartWrite(pInstance->transportHandle.uart,
                                                            pBuffer, size);
                     }
                     break;
                     case U_GNSS_PRIVATE_STREAM_TYPE_I2C: {
-                        errorCodeOrLength = uPortI2cControllerSend(streamHandle,
+                        errorCodeOrLength = uPortI2cControllerSend(pInstance->transportHandle.i2c,
                                                                    pInstance->i2cAddress,
                                                                    pBuffer, size, false);
                         if (errorCodeOrLength == 0) {
@@ -401,7 +569,7 @@ int32_t uGnssMsgSend(uDeviceHandle_t gnssHandle, const char *pBuffer, size_t siz
                             if (thisSize > U_GNSS_SPI_FILL_THRESHOLD_MAX) {
                                 thisSize = U_GNSS_SPI_FILL_THRESHOLD_MAX;
                             }
-                            errorCodeOrLength = uPortSpiControllerSendReceiveBlock(streamHandle,
+                            errorCodeOrLength = uPortSpiControllerSendReceiveBlock(pInstance->transportHandle.spi,
                                                                                    pBuffer + offset,
                                                                                    thisSize,
                                                                                    spiBuffer,
@@ -415,6 +583,13 @@ int32_t uGnssMsgSend(uDeviceHandle_t gnssHandle, const char *pBuffer, size_t siz
                         }
                         if (errorCodeOrLength >= 0) {
                             errorCodeOrLength = offset;
+                        }
+                    }
+                    break;
+                    case U_GNSS_PRIVATE_STREAM_TYPE_VIRTUAL_SERIAL: {
+                        uDeviceSerial_t *pDeviceSerial = pInstance->transportHandle.pDeviceSerial;
+                        if (pDeviceSerial != NULL) {
+                            errorCodeOrLength = pDeviceSerial->write(pDeviceSerial, pBuffer, size);
                         }
                     }
                     break;
@@ -479,9 +654,7 @@ int32_t uGnssMsgReceiveStart(uDeviceHandle_t gnssHandle,
 {
     int32_t errorCodeOrHandle = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uGnssPrivateInstance_t *pInstance;
-    uGnssPrivateMsgReceive_t *pMsgReceive;
-    uGnssPrivateMsgReader_t *pReader;
-    const char *pTaskName = "gnssMsgRx";
+    uGnssPrivateMessageId_t privateMessageId;
 
     if (gUGnssPrivateMutex != NULL) {
 
@@ -489,109 +662,12 @@ int32_t uGnssMsgReceiveStart(uDeviceHandle_t gnssHandle,
 
         errorCodeOrHandle = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         pInstance = pUGnssPrivateGetInstance(gnssHandle);
-        if ((pInstance != NULL) && (pMessageId != NULL) && (pCallback != NULL)) {
-            errorCodeOrHandle = (int32_t) U_ERROR_COMMON_NO_MEMORY;
-            pReader = (uGnssPrivateMsgReader_t *) pUPortMalloc(sizeof(uGnssPrivateMsgReader_t));
-            if (pReader != NULL) {
-                memset(pReader, 0, sizeof(*pReader));
-                // If the message receive task is not running
-                // at the moment, start it
-                if (pInstance->pMsgReceive == NULL) {
-                    pInstance->pMsgReceive = (uGnssPrivateMsgReceive_t *) pUPortMalloc(sizeof(
-                                                                                           uGnssPrivateMsgReceive_t));
-                    if (pInstance->pMsgReceive != NULL) {
-                        pMsgReceive = pInstance->pMsgReceive;
-                        memset(pMsgReceive, 0, sizeof(*pMsgReceive));
-                        // Take a "master" read handle
-                        pMsgReceive->ringBufferReadHandle = uRingBufferTakeReadHandle(&(pInstance->ringBuffer));
-                        if (pMsgReceive->ringBufferReadHandle >= 0) {
-                            // Allocate a temporary buffer that we can use to pull data
-                            // from the streaming source into the ring-buffer from our
-                            // asynchronous task
-                            pMsgReceive->pTemporaryBuffer = (char *) pUPortMalloc(U_GNSS_MSG_TEMPORARY_BUFFER_LENGTH_BYTES);
-                            if (pMsgReceive->pTemporaryBuffer != NULL) {
-                                // Create the mutex that controls access to the linked-list of readers
-                                errorCodeOrHandle = uPortMutexCreate(&(pMsgReceive->readerMutexHandle));
-                                if (errorCodeOrHandle == 0) {
-                                    // Create the queue that allows us to get the task to exit
-                                    errorCodeOrHandle = uPortQueueCreate(U_GNSS_MSG_RECEIVE_TASK_QUEUE_LENGTH,
-                                                                         U_GNSS_MSG_RECEIVE_TASK_QUEUE_ITEM_SIZE_BYTES,
-                                                                         &(pMsgReceive->taskExitQueueHandle));
-                                    if (errorCodeOrHandle == 0) {
-                                        // Create the mutex for task running status
-                                        errorCodeOrHandle = uPortMutexCreate(&(pMsgReceive->taskRunningMutexHandle));
-                                        if (errorCodeOrHandle == 0) {
-                                            //... and then the task
-                                            errorCodeOrHandle = uPortTaskCreate(msgReceiveTask,
-                                                                                pTaskName,
-                                                                                U_GNSS_MSG_RECEIVE_TASK_STACK_SIZE_BYTES,
-                                                                                pInstance, U_GNSS_MSG_RECEIVE_TASK_PRIORITY,
-                                                                                &(pMsgReceive->taskHandle));
-                                            if (errorCodeOrHandle == 0) {
-                                                // Wait for the task to lock the mutex,
-                                                // which shows it is running
-                                                while (uPortMutexTryLock(pMsgReceive->taskRunningMutexHandle, 0) == 0) {
-                                                    uPortMutexUnlock(pMsgReceive->taskRunningMutexHandle);
-                                                    uPortTaskBlock(U_CFG_OS_YIELD_MS);
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            if (errorCodeOrHandle != 0) {
-                                // Tidy up if we couldn't get OS resources
-                                if (pMsgReceive->taskHandle != NULL) {
-                                    uPortTaskDelete(msgReceiveTask);
-                                }
-                                if (pMsgReceive->taskRunningMutexHandle != NULL) {
-                                    uPortMutexDelete(pMsgReceive->taskRunningMutexHandle);
-                                }
-                                if (pMsgReceive->taskExitQueueHandle != NULL) {
-                                    uPortQueueDelete(pMsgReceive->taskExitQueueHandle);
-                                }
-                                if (pMsgReceive->readerMutexHandle != NULL) {
-                                    uPortMutexDelete(pMsgReceive->readerMutexHandle);
-                                }
-                                uPortFree(pInstance->pTemporaryBuffer);
-                                uRingBufferGiveReadHandle(&(pInstance->ringBuffer),
-                                                          pMsgReceive->ringBufferReadHandle);
-                                uPortFree(pInstance->pMsgReceive);
-                                pInstance->pMsgReceive = NULL;
-                            }
-                        } else {
-                            // Out of handles already
-                            uPortFree(pInstance->pMsgReceive);
-                            pInstance->pMsgReceive = NULL;
-                        }
-                    }
-                }
-                if (pInstance->pMsgReceive == NULL) {
-                    // Clean up on error
-                    uPortFree(pReader);
-                    pReader = NULL;
-                }
-            }
-            if (pReader != NULL) {
-                // The task etc. must be running, we have a read handle,
-                // now populate the rest of the reader structure
-                // and add it to the front of the list
-                pReader->handle = pInstance->pMsgReceive->nextHandle;
-                pInstance->pMsgReceive->nextHandle++;
-                uGnssPrivateMessageIdToPrivate(pMessageId, &(pReader->privateMessageId));
-                pReader->pCallback = (void *) pCallback;
-                pReader->pCallbackParam = pCallbackParam;
-                pReader->pNext = pInstance->pMsgReceive->pReaderList;
-
-                U_PORT_MUTEX_LOCK(pInstance->pMsgReceive->readerMutexHandle);
-
-                pInstance->pMsgReceive->pReaderList = pReader;
-
-                U_PORT_MUTEX_UNLOCK(pInstance->pMsgReceive->readerMutexHandle);
-
-                // Return the handle
-                errorCodeOrHandle = pReader->handle;
-            }
+        if ((pInstance != NULL) &&
+            (uGnssPrivateMessageIdToPrivate(pMessageId, &privateMessageId) == 0)) {
+            errorCodeOrHandle = uGnssMsgPrivateReceiveStart(pInstance,
+                                                            &privateMessageId,
+                                                            pCallback,
+                                                            pCallbackParam);
         }
 
         U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
@@ -627,9 +703,6 @@ int32_t uGnssMsgReceiveStop(uDeviceHandle_t gnssHandle, int32_t asyncHandle)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uGnssPrivateInstance_t *pInstance;
-    uGnssPrivateMsgReceive_t *pMsgReceive;
-    uGnssPrivateMsgReader_t *pCurrent;
-    uGnssPrivateMsgReader_t *pPrev = NULL;
 
     if (gUGnssPrivateMutex != NULL) {
 
@@ -638,39 +711,7 @@ int32_t uGnssMsgReceiveStop(uDeviceHandle_t gnssHandle, int32_t asyncHandle)
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         pInstance = pUGnssPrivateGetInstance(gnssHandle);
         if (pInstance != NULL) {
-            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-            if (pInstance->pMsgReceive != NULL) {
-                pMsgReceive = pInstance->pMsgReceive;
-
-                U_PORT_MUTEX_LOCK(pMsgReceive->readerMutexHandle);
-
-                // Remove the entry from the list
-                errorCode = (int32_t) U_ERROR_COMMON_NOT_FOUND;
-                pCurrent = pMsgReceive->pReaderList;
-                while (pCurrent != NULL) {
-                    if (pCurrent->handle == asyncHandle) {
-                        if (pPrev != NULL) {
-                            pPrev->pNext = pCurrent->pNext;
-                        } else {
-                            pMsgReceive->pReaderList = pCurrent->pNext;
-                        }
-                        uPortFree(pCurrent);
-                        pCurrent = NULL;
-                        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-                    } else {
-                        pPrev = pCurrent;
-                        pCurrent = pPrev->pNext;
-                    }
-                }
-
-                U_PORT_MUTEX_UNLOCK(pMsgReceive->readerMutexHandle);
-
-                if (pMsgReceive->pReaderList == NULL) {
-                    // All gone, shut the task etc. down also
-                    uGnssPrivateStopMsgReceive(pInstance);
-                }
-
-            }
+            errorCode = uGnssMsgPrivateReceiveStop(pInstance, asyncHandle);
         }
 
         U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);

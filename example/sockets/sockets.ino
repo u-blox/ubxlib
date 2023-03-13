@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -198,7 +198,7 @@ void loop() {
         // Get the IP address of the echo server using
         // the network's DNS resolution facility
         printf("Looking up server address...\n");
-        uSockGetHostByName(devHandle, "ubxlib.it-sgn.u-blox.com",
+        uSockGetHostByName(devHandle, "ubxlib.redirectme.net",
                            &(address.ipAddress));
         printf("Address is: ");
         printAddress(&address, false);

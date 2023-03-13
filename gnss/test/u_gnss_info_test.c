@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,6 +46,8 @@
 #include "u_cfg_test_platform_specific.h"
 
 #include "u_error_common.h"
+
+#include "u_at_client.h" // Required by u_gnss_private.h
 
 #include "u_port.h"
 #include "u_port_heap.h"
@@ -124,7 +126,7 @@ U_PORT_TEST_FUNCTION("[gnssInfo]", "gnssInfoStatic")
     size_t z;
     char *pTmp;
     size_t iterations;
-    uGnssTransportType_t transportTypes[U_GNSS_TRANSPORT_MAX_NUM_WITH_UBX];
+    uGnssTransportType_t transportTypes[U_GNSS_TRANSPORT_MAX_NUM];
 
     // In case a previous test failed
     uGnssTestPrivateCleanup(&gHandles);

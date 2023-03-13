@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@
 #include "u_port_os.h"      // Needed by u_port_private.h
 #include "u_port_gpio.h"
 
-#include "zephyr.h"
+#include "kernel.h"
 #include "device.h"
 #include "drivers/gpio.h"
 #include "version.h"
@@ -41,20 +41,6 @@
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
-
-/*
-    **** NOTE ****
-    The statements below is due to a change made in Zephyr 3.x.
-    For some reason the gpio drive mode macros have changed from
-    being generic to soc specific. The old macros are still there
-    but marked as deprecated and hence giving build warnings.
-    There is currently no directly correlated macros for Nrf and
-    we also want to use the code in this file for other
-    Zephyr targets. However in coming versions of ubxlib we have
-    to deal with some solution for this.
-*/
-#undef __DEPRECATED_MACRO
-#define __DEPRECATED_MACRO
 
 /* ----------------------------------------------------------------
  * TYPES
@@ -131,11 +117,19 @@ int32_t uPortGpioConfig(uPortGpioConfig_t *pConfig)
                 case U_PORT_GPIO_DRIVE_CAPABILITY_STRONG:
                 case U_PORT_GPIO_DRIVE_CAPABILITY_WEAK:
                 case U_PORT_GPIO_DRIVE_CAPABILITY_WEAKEST:
+#if KERNEL_VERSION_MAJOR < 3
+                    // For some reason the gpio drive mode macros have
+                    // changed from being generic to soc specific in
+                    // Zephyr 3 and later, hence we can't easily
+                    // support them here.
                     flags |= GPIO_DS_DFLT_HIGH | GPIO_DS_DFLT_LOW;
+#endif
                     break;
                 case U_PORT_GPIO_DRIVE_CAPABILITY_STRONGEST:
+#if KERNEL_VERSION_MAJOR < 3
                     // presuming that the alternative drive strength is stronger
                     flags |= GPIO_DS_ALT_HIGH | GPIO_DS_ALT_LOW;
+#endif
                     break;
                 default:
                     badConfig = true;
@@ -200,3 +194,4 @@ int32_t uPortGpioGet(int32_t pin)
 }
 
 // End of file
+

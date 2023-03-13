@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -94,8 +94,8 @@ void uAssertHookSet(upAssertFailed_t *pAssertFailed);
  *                     failure occurred, from __LINE__.
  */
 //lint -function(exit, uAssertFailed) tell Lint that this has the same
-// proprties as exit()
-void uAssertFailed(const char *pFileStr, int32_t line) U_CLANG_ANALYZER_NORETURN;
+// properties as exit()
+U_NO_RETURN void uAssertFailed(const char *pFileStr, int32_t line);
 
 #ifdef __cplusplus
 }

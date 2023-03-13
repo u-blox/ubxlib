@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -72,6 +72,8 @@ typedef enum {
 
 /** The possible GPIO drive capabilities.
  * A number from 0 to 3 where 0 is weakest.
+ * Not all platforms support setting the
+ * drive strength.
  */
 typedef enum {
     U_PORT_GPIO_DRIVE_CAPABILITY_WEAKEST = 0,

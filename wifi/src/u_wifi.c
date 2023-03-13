@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -60,6 +60,7 @@
 #include "u_mqtt_common.h"
 #include "u_mqtt_client.h"
 #include "u_wifi_mqtt.h"     // For uWifiMqttPrivateLink()
+#include "u_wifi_http.h"     // For uWifiHttpPrivateLink()
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -485,6 +486,7 @@ int32_t uWifiInit()
     uNetworkPrivateWifiLink();
     uWifiSockPrivateLink();
     uWifiMqttPrivateLink();
+    uWifiHttpPrivateLink();
 
     return uShortRangeInit();
 }

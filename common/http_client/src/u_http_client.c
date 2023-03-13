@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -75,6 +75,8 @@
 #include "u_cell.h"
 #include "u_cell_sec_tls.h"
 #include "u_cell_http.h"
+
+#include "u_wifi_http.h"
 
 #include "u_http_client.h"
 
@@ -506,6 +508,37 @@ static int32_t cellPutPost(uDeviceHandle_t devHandle, int32_t httpHandle,
     return errorCode;
 }
 
+// Do the wifi-specific bits of opening an HTTP instance.
+static int32_t wifiOpen(uHttpClientContext_t *pContext,
+                        const uHttpClientConnection_t *pConnection)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
+    uHttpClientContextWifi_t *pContextWifi;
+
+    pContext->pPriv = pUPortMalloc(sizeof(uHttpClientContextWifi_t));
+    if (pContext->pPriv != NULL) {
+        pContextWifi = (uHttpClientContextWifi_t *) pContext->pPriv;
+        memset(pContextWifi, 0, sizeof(*pContextWifi));
+        pContextWifi->replyOffset = 0; // fragmented replies
+        pContextWifi->httpHandle = uWifiHttpOpen(pContext->devHandle,
+                                                 pConnection->pServerName,
+                                                 pConnection->pUserName,
+                                                 pConnection->pPassword,
+                                                 pConnection->timeoutSeconds,
+                                                 NULL,
+                                                 (void *)pContext);
+        if (pContextWifi->httpHandle < 0) {
+            // Clean up on error
+            errorCode = (uErrorCode_t) pContextWifi->httpHandle;
+            uWifiHttpClose(pContext->devHandle, pContextWifi->httpHandle);
+            uPortFree(pContext->pPriv);
+        } else {
+            errorCode = U_ERROR_COMMON_SUCCESS;
+        }
+    }
+    return errorCode;
+}
+
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS: GENERAL
  * -------------------------------------------------------------- */
@@ -608,7 +641,6 @@ static int32_t block(volatile uHttpClientContext_t *pContext)
                 statusCodeOrError = pContext->statusCodeOrError;
             }
         }
-
         if (statusCodeOrError != 0) {
             errorCode = statusCodeOrError;
         }
@@ -660,6 +692,7 @@ uHttpClientContext_t *pUHttpClientOpen(uDeviceHandle_t devHandle,
                 }
             }
         }
+
         if ((gLastOpenError == U_ERROR_COMMON_SUCCESS) &&
             (pContext != NULL)) { // this to keep clang happy
             // Sort out the technology-specific bits
@@ -667,8 +700,7 @@ uHttpClientContext_t *pUHttpClientOpen(uDeviceHandle_t devHandle,
             if (U_DEVICE_IS_TYPE(devHandle, U_DEVICE_TYPE_CELL)) {
                 gLastOpenError = cellOpen(pContext, pConnection);
             } else if (U_DEVICE_IS_TYPE(devHandle, U_DEVICE_TYPE_SHORT_RANGE)) {
-                // TODO
-                gLastOpenError = U_ERROR_COMMON_NOT_IMPLEMENTED;
+                gLastOpenError = wifiOpen(pContext, pConnection);
             }
         }
 
@@ -710,7 +742,7 @@ void uHttpClientClose(uHttpClientContext_t *pContext)
         if (U_DEVICE_IS_TYPE(pContext->devHandle, U_DEVICE_TYPE_CELL)) {
             cellClose(pContext->devHandle, ((uHttpClientContextCell_t *) pContext->pPriv)->httpHandle);
         } else if (U_DEVICE_IS_TYPE(pContext->devHandle, U_DEVICE_TYPE_SHORT_RANGE)) {
-            // TODO
+            uWifiHttpClose(pContext->devHandle, ((uHttpClientContextWifi_t *) pContext->pPriv)->httpHandle);
         }
 
         if (pContext->pSecurityContext != NULL) {
@@ -749,9 +781,11 @@ int32_t uHttpClientPutRequest(uHttpClientContext_t *pContext,
                                         U_CELL_HTTP_REQUEST_PUT,
                                         pPath, pData, size, pContentType);
             } else if (U_DEVICE_IS_TYPE(pContext->devHandle, U_DEVICE_TYPE_SHORT_RANGE)) {
-                // TODO
+                errorCode = uWifiHttpRequestEx(pContext->devHandle,
+                                               ((uHttpClientContextWifi_t *) pContext->pPriv)->httpHandle,
+                                               U_WIFI_HTTP_REQUEST_PUT,
+                                               pPath, pData, size, pContentType);
             }
-
             if (errorCode == 0) {
                 // Handle blocking
                 errorCode = block((volatile uHttpClientContext_t *) pContext);
@@ -797,9 +831,20 @@ int32_t uHttpClientPostRequest(uHttpClientContext_t *pContext,
                     pContext->pContentType = NULL;
                 }
             } else if (U_DEVICE_IS_TYPE(pContext->devHandle, U_DEVICE_TYPE_SHORT_RANGE)) {
-                // TODO
+                pContext->pResponse = pResponseBody;
+                pContext->pResponseSize = pResponseSize;
+                pContext->pContentType = pResponseContentType;
+                errorCode = uWifiHttpRequestEx(pContext->devHandle,
+                                               ((uHttpClientContextWifi_t *) pContext->pPriv)->httpHandle,
+                                               U_WIFI_HTTP_REQUEST_POST,
+                                               pPath, pData, size, pContentType);
+                if (errorCode != 0) {
+                    // Make sure to forget the user's pointers on error
+                    pContext->pResponse = NULL;
+                    pContext->pResponseSize = NULL;
+                    pContext->pContentType = NULL;
+                }
             }
-
             if (errorCode == 0) {
                 // Handle blocking
                 errorCode = block((volatile uHttpClientContext_t *) pContext);
@@ -841,9 +886,20 @@ int32_t uHttpClientGetRequest(uHttpClientContext_t *pContext,
                     pContext->pContentType = NULL;
                 }
             } else if (U_DEVICE_IS_TYPE(pContext->devHandle, U_DEVICE_TYPE_SHORT_RANGE)) {
-                // TODO
+                pContext->pResponse = pResponseBody;
+                pContext->pResponseSize = pSize;
+                pContext->pContentType = pContentType;
+                errorCode = uWifiHttpRequestEx(pContext->devHandle,
+                                               ((uHttpClientContextWifi_t *) pContext->pPriv)->httpHandle,
+                                               U_WIFI_HTTP_REQUEST_GET_BINARY,
+                                               pPath, NULL, 0, NULL);
+                if (errorCode != 0) {
+                    // Make sure to forget the user's pointers on error
+                    pContext->pResponse = NULL;
+                    pContext->pResponseSize = NULL;
+                    pContext->pContentType = NULL;
+                }
             }
-
             if (errorCode == 0) {
                 // Handle blocking
                 errorCode = block((volatile uHttpClientContext_t *) pContext);
@@ -883,9 +939,8 @@ int32_t uHttpClientHeadRequest(uHttpClientContext_t *pContext,
                     pContext->pResponseSize = NULL;
                 }
             } else if (U_DEVICE_IS_TYPE(pContext->devHandle, U_DEVICE_TYPE_SHORT_RANGE)) {
-                // TODO
+                // Not supported for Shortrange
             }
-
             if (errorCode == 0) {
                 // Handle blocking
                 errorCode = block((volatile uHttpClientContext_t *) pContext);
@@ -916,9 +971,11 @@ int32_t uHttpClientDeleteRequest(uHttpClientContext_t *pContext,
                                              U_CELL_HTTP_REQUEST_DELETE, pPath,
                                              NULL, NULL, NULL);
             } else if (U_DEVICE_IS_TYPE(pContext->devHandle, U_DEVICE_TYPE_SHORT_RANGE)) {
-                // TODO
+                errorCode = uWifiHttpRequest(pContext->devHandle,
+                                             ((uHttpClientContextWifi_t *) pContext->pPriv)->httpHandle,
+                                             U_WIFI_HTTP_REQUEST_DELETE, pPath,
+                                             NULL, NULL);
             }
-
             if (errorCode == 0) {
                 // Handle blocking
                 errorCode = block((volatile uHttpClientContext_t *) pContext);

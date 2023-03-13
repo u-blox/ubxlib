@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,6 +44,8 @@
 #include "u_port_debug.h"
 
 #include "u_time.h"
+
+#include "u_at_client.h"
 
 #include "u_ubx_protocol.h"
 

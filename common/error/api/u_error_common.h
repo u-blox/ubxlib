@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -68,6 +68,8 @@ typedef enum {
     U_ERROR_COMMON_TEMPORARY_FAILURE = U_ERROR_BASE - 13,
     U_ERROR_COMMON_AUTHENTICATION_FAILURE = U_ERROR_BASE - 14,
     U_ERROR_COMMON_BUSY = U_ERROR_BASE - 15,
+    U_ERROR_COMMON_EMPTY = U_ERROR_BASE - 16,
+    U_ERROR_COMMON_TRUNCATED = U_ERROR_BASE - 17,
     U_ERROR_COMMON_MIN = U_ERROR_BASE - 255,
     U_ERROR_CELL_MAX = U_ERROR_BASE - 256,
     U_ERROR_CELL_MIN = U_ERROR_BASE - 511,

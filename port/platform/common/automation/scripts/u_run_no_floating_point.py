@@ -29,7 +29,7 @@ MAP_FILE_NAME = "no_float/static_size_no_float.map"
 # STATIC_SIZE directory (off ubxlib root)
 MAKEFILE_DIR = "port/platform/static_size"
 
-# Sub-directory used by static_size.py when building
+# Sub-directory used when building
 BUILD_SUBDIR = "build"
 
 # A list of functions that indicate floating point is in use
@@ -77,11 +77,6 @@ FLOAT_FUNCTIONS = ["__adddf3",
                    "__nesf2",
                    "__pow5mult"]
 
-# Note: all the work is done by the static_size.py
-# script down in port/platform/static_size, all we
-# do here is configure it as we wish and wrap it
-# in order to shoot the output into the usual
-# streams for automation
 def run(defines, ubxlib_dir, reporter):
     '''Build to check static sizes'''
     return_value = -1

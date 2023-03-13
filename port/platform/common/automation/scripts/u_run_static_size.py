@@ -26,14 +26,9 @@ GNU_SIZE = "arm-none-eabi-size"
 # STATIC_SIZE directory (off ubxlib root)
 MAKEFILE_DIR = "port/platform/static_size"
 
-# Sub-directory used by static_size.py when building
+# Sub-directory used when building
 BUILD_SUBDIR = "build"
 
-# Note: all the work is done by the static_size.py
-# script down in port/platform/static_size, all we
-# do here is configure it as we wish and wrap it
-# in order to shoot the output into the usual
-# streams for automation
 def run(defines, ubxlib_dir, reporter):
     '''Build to check static sizes'''
     return_value = -1

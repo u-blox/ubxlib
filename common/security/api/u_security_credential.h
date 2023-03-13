@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -134,13 +134,20 @@ typedef struct {
  * that is already stored in the cellular module's file system, please see
  * uSecurityCredentialImportFromFile().
  *
- * For an X.509 certificate PEM or DER format may be used; for a
- * security key unencrypted PEM format, specifically with the header
+ * For an X.509 certificate PEM or DER format may be used, except for
+ * short-range modules which only support PEM format.  For security keys,
+ * unencrypted PEM format, specifically with the header
  * "BEGIN RSA PRIVATE KEY" rather than just "BEGIN PRIVATE KEY",
- * should preferably be used since use of a password, or the generic
+ * should preferably be used since employing a password, or the generic
  * "BEGIN PRIVATE KEY" header, or DER format, for security key storage
  * is not supported by all u-blox modules.  The certificate/key will
  * be converted to DER format inside the module before it is stored.
+ *
+ * Note that PEM format certificates MUST conform to the format of
+ * RFC 7468 (https://www.rfc-editor.org/rfc/rfc7468#section-2), i.e.
+ * with line breaks after the header-line, exactly every 64 characters
+ * of the data that follows and after the last line of data (which may
+ * of course be shorter), preceding the tail-line.
  *
  * The u-blox module may place limitations on the fields present in
  * an X.509 certificate; consult the security section of your u-blox

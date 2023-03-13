@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,6 +40,8 @@
 
 #include "u_device_shared.h"
 
+#include "u_at_client.h"
+
 #include "u_port_heap.h"
 #include "u_port_os.h"
 #include "u_port_debug.h"
@@ -52,10 +54,6 @@
 #include "u_gnss_private.h"
 
 // The headers below are necessary to work around an Espressif linker problem, see uGnssInit()
-#include "u_device_private_gnss.h"
-#include "u_network.h"
-#include "u_network_config_gnss.h"
-#include "u_network_private_gnss.h"
 #include "u_gnss_pos.h" // For uGnssPosPrivateLink()
 
 /* ----------------------------------------------------------------
@@ -80,8 +78,7 @@ static const char *const gpTransportTypeText[] = {"None",       // U_GNSS_TRANSP
                                                   "AT",         // U_GNSS_TRANSPORT_AT
                                                   "I2C",        // U_GNSS_TRANSPORT_I2C
                                                   "SPI",        // U_GNSS_TRANSPORT_SPI
-                                                  "UBX UART",   // U_GNSS_TRANSPORT_UBX_UART
-                                                  "UBX I2C"     // U_GNSS_TRANSPORT_UBX_I2C
+                                                  "Virtual Serial" // U_GNSS_TRANSPORT_VIRTUAL_SERIAL
                                                  };
 #endif
 
@@ -103,20 +100,19 @@ static uGnssPrivateInstance_t *pGetGnssInstanceTransportHandle(uGnssTransportTyp
         if (pInstance->transportType == transportType) {
             switch (transportType) {
                 case U_GNSS_TRANSPORT_UART:
-                //lint -fallthrough
-                case U_GNSS_TRANSPORT_UBX_UART:
                     match = (pInstance->transportHandle.uart == transportHandle.uart);
                     break;
                 case U_GNSS_TRANSPORT_AT:
                     match = (pInstance->transportHandle.pAt == transportHandle.pAt);
                     break;
                 case U_GNSS_TRANSPORT_I2C:
-                //lint -fallthrough
-                case U_GNSS_TRANSPORT_UBX_I2C:
                     match = (pInstance->transportHandle.i2c == transportHandle.i2c);
                     break;
                 case U_GNSS_TRANSPORT_SPI:
                     match = (pInstance->transportHandle.spi == transportHandle.spi);
+                    break;
+                case U_GNSS_TRANSPORT_VIRTUAL_SERIAL:
+                    match = (pInstance->transportHandle.pDeviceSerial == transportHandle.pDeviceSerial);
                     break;
                 default:
                     break;
@@ -151,6 +147,8 @@ static void deleteGnssInstance(uGnssPrivateInstance_t *pInstance)
         if (pInstance == pCurrent) {
             // Stop any asynchronous position establishment task
             uGnssPrivateCleanUpPosTask(pInstance);
+            // Stop and clean up streamed position
+            uGnssPrivateCleanUpStreamedPos(pInstance);
             // Stop asynchronus message receive from happening
             uGnssPrivateStopMsgReceive(pInstance);
             // Free the SPI buffer, if there is one
@@ -203,8 +201,6 @@ int32_t uGnssInit()
     // to add a dummy function in those files and call it from somewhere
     // that will always be present in the build, which for GNSS we
     // choose to be here
-    uDevicePrivateGnssLink();
-    uNetworkPrivateGnssLink();
     uGnssPosPrivateLink();
 
     if (gUGnssPrivateMutex == NULL) {
@@ -285,9 +281,8 @@ int32_t uGnssAdd(uGnssModuleType_t moduleType,
             errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
             if (((size_t) moduleType < gUGnssPrivateModuleListSize) &&
                 ((transportType > U_GNSS_TRANSPORT_NONE) &&
-                 (transportType < U_GNSS_TRANSPORT_MAX_NUM_WITH_UBX)) &&
+                 (transportType < U_GNSS_TRANSPORT_MAX_NUM)) &&
                 ((transportType == U_GNSS_TRANSPORT_I2C) ||
-                 (transportType == U_GNSS_TRANSPORT_UBX_I2C) ||
                  (pGetGnssInstanceTransportHandle(transportType, transportHandle) == NULL))) {
                 errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
                 // Allocate memory for the instance
@@ -314,9 +309,10 @@ int32_t uGnssAdd(uGnssModuleType_t moduleType,
                         pInstance->pinGnssEnablePower = pinGnssEnablePower;
                         pInstance->atModulePinPwr = -1;
                         pInstance->atModulePinDataReady = -1;
+                        // The below also holds for virtual serial since the GNSS module
+                        // is connected through another (e.g. cellular) module via I2C.
                         pInstance->portNumber = U_GNSS_PORT_I2C;
-                        if ((transportType == U_GNSS_TRANSPORT_UART) ||
-                            (transportType == U_GNSS_TRANSPORT_UBX_UART)) {
+                        if (transportType == U_GNSS_TRANSPORT_UART) {
                             pInstance->portNumber = U_GNSS_PORT_UART;
                         } else if (transportType == U_GNSS_TRANSPORT_SPI) {
                             pInstance->portNumber = U_GNSS_PORT_SPI;
@@ -466,6 +462,58 @@ int32_t uGnssAdd(uGnssModuleType_t moduleType,
 
     return errorCode;
 }
+
+// Set the intermediate device handle.
+int32_t uGnssSetIntermediate(uDeviceHandle_t gnssHandle,
+                             uDeviceHandle_t intermediateHandle)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uGnssPrivateInstance_t *pInstance;
+
+    if (gUGnssPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
+
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        pInstance = pUGnssPrivateGetInstance(gnssHandle);
+        if (pInstance != NULL) {
+            errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+            if (pInstance->transportType == U_GNSS_TRANSPORT_VIRTUAL_SERIAL) {
+                pInstance->intermediateHandle = intermediateHandle;
+                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
+    }
+
+    return errorCode;
+}
+
+// Get the intermediate device handle.
+int32_t uGnssGetIntermediate(uDeviceHandle_t gnssHandle,
+                             uDeviceHandle_t *pIntermediateHandle)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uGnssPrivateInstance_t *pInstance;
+
+    if (gUGnssPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
+
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        pInstance = pUGnssPrivateGetInstance(gnssHandle);
+        if ((pInstance != NULL) && (pIntermediateHandle != NULL)) {
+            *pIntermediateHandle = pInstance->intermediateHandle;
+            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
+    }
+
+    return errorCode;
+}
+
 
 // Set the I2C address of the GNSS device.
 int32_t uGnssSetI2cAddress(uDeviceHandle_t gnssHandle, int32_t i2cAddress)

@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -71,9 +71,9 @@ U_WEAK void uAssertFailed(const char *pFileStr, int32_t line)
         gpAssertFailed(pFileStr, line);
     } else {
         uPortLog("*** ASSERT FAILURE at %s:%d ***\n", pFileStr, line);
-        // Enter infinite loop
-        for (;;) {}
     }
+    // Enter infinite loop
+    for (;;) {}
 }
 
 // End of file

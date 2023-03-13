@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -573,14 +573,14 @@ bool uNetworkTestHasHttp(uDeviceType_t deviceType,
 {
     (void) deviceType;
     (void) moduleType;
-    // TODO: add Wi-Fi
+
     // The LARA-R6 module on the test system fails this
     // test intermittently; LARA-R6 seems to forget the
     // server host name part of the way through the test run,
     // no obvious reason why, hence allowing the option of
     // disabling the test for cellular for now.
-#ifndef U_HTTP_CLIENT_CELL_DISABLE_TEST
-    return (networkType == U_NETWORK_TYPE_CELL);
+#ifndef U_HTTP_CLIENT_DISABLE_TEST
+    return (networkType == U_NETWORK_TYPE_CELL || networkType == U_NETWORK_TYPE_WIFI);
 #else
     return false;
 #endif

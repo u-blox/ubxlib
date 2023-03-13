@@ -17,7 +17,7 @@ JLINK_SERIAL_NUMBER :=
 # (and in the SES SDK you'll find a variable
 # "arm_linker_heap_size" nestling in the .emProject
 # file, if you want to align the two SDKs).
-HEAP_SIZE        := 51200
+HEAP_SIZE        := 53248
 
 $(info    MAKEFILE_DIR is "$(MAKEFILE_DIR)")
 $(info    OUTPUT_DIRECTORY will be "$(OUTPUT_DIRECTORY)")

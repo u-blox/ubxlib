@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -49,6 +49,7 @@
 #include "u_error_common.h"
 
 #include "u_port.h"
+#include "u_port_heap.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"   // Required by u_cell_private.h
 #include "u_port_uart.h"
@@ -62,6 +63,9 @@
 #include "u_cell_private.h" // So that we can get at some innards
 #include "u_cell_pwr.h"
 #include "u_cell_cfg.h"
+#ifdef U_CELL_TEST_MUX_ALWAYS
+# include "u_cell_mux.h"
+#endif
 
 #include "u_cell_test_cfg.h"
 #include "u_cell_test_private.h"
@@ -81,7 +85,21 @@
 #ifndef U_CELL_CFG_TEST_GREETING_STR
 /** The greeting message to use during testing.
  */
-#define U_CELL_CFG_TEST_GREETING_STR "beeble"
+# define U_CELL_CFG_TEST_GREETING_STR "beeble"
+#endif
+
+#ifndef U_CELL_CFG_TEST_GREETING_CALLBACK_INVALID_STR
+/** An invalid length of string for a greeting-with-callback
+ * i.e. 65 characters.
+ */
+# define U_CELL_CFG_TEST_GREETING_CALLBACK_INVALID_STR "01234567890123456789012345678901234567890123456789012345678901234"
+#endif
+
+#ifndef U_CELL_CFG_TEST_GNSS_IP_STR
+/** The server string to use when testing forwarding of GNSS messages
+ * with AT+UGPRF.
+ */
+# define U_CELL_CFG_TEST_GNSS_IP_STR "myserver:1234"
 #endif
 
 /* ----------------------------------------------------------------
@@ -95,6 +113,10 @@
 /** Used for keepGoingCallback() timeout.
  */
 static int64_t gStopTimeMs;
+
+/** The GNSS profile bit map.
+ */
+static int32_t gGnssProfileBitMapOriginal = -1;
 
 /** Handles.
  */
@@ -168,6 +190,9 @@ static void testBandMask(uDeviceHandle_t cellHandle,
         U_PORT_TEST_ASSERT(uCellPwrRebootIsRequired(cellHandle));
         // Re-boot for the change to take effect
         U_PORT_TEST_ASSERT(uCellPwrReboot(cellHandle, NULL) == 0);
+#ifdef U_CELL_TEST_MUX_ALWAYS
+        U_PORT_TEST_ASSERT(uCellMuxEnable(cellHandle) == 0);
+#endif
         U_PORT_TEST_ASSERT(!uCellPwrRebootIsRequired(cellHandle));
         // For SARA-R5 we can only read it back if it is the current RAT
         if ((moduleType != U_CELL_MODULE_TYPE_SARA_R5) ||
@@ -187,10 +212,22 @@ static void testBandMask(uDeviceHandle_t cellHandle,
                                                    originalBandMask2) == 0);
             // Re-boot for the change to take effect
             U_PORT_TEST_ASSERT(uCellPwrReboot(cellHandle, NULL) == 0);
+#ifdef U_CELL_TEST_MUX_ALWAYS
+            U_PORT_TEST_ASSERT(uCellMuxEnable(cellHandle) == 0);
+#endif
         }
     } else {
         U_PORT_TEST_ASSERT(errorCode != 0);
     }
+}
+
+// Callback for the greeting configuration test.
+static void greetingCalback(uDeviceHandle_t cellHandle, void *pParameter)
+{
+    int32_t *pParam = (int32_t *) pParameter;
+
+    (void) cellHandle;
+    (*pParam)++;
 }
 
 /* ----------------------------------------------------------------
@@ -309,6 +346,9 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgGetSetRat")
         U_PORT_TEST_ASSERT(uCellCfgSetRat(cellHandle, supportedRats[x]) == 0);
         U_PORT_TEST_ASSERT(uCellPwrRebootIsRequired(cellHandle));
         U_PORT_TEST_ASSERT(uCellPwrReboot(cellHandle, NULL) == 0);
+#ifdef U_CELL_TEST_MUX_ALWAYS
+        U_PORT_TEST_ASSERT(uCellMuxEnable(cellHandle) == 0);
+#endif
         U_PORT_TEST_ASSERT(!uCellPwrRebootIsRequired(cellHandle));
 
         for (size_t rank = 0; rank < pModule->maxNumSimultaneousRats; rank++) {
@@ -446,6 +486,9 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgSetGetRatRank")
     }
     U_PORT_TEST_ASSERT(uCellPwrRebootIsRequired(cellHandle));
     U_PORT_TEST_ASSERT(uCellPwrReboot(cellHandle, NULL) == 0);
+#ifdef U_CELL_TEST_MUX_ALWAYS
+    U_PORT_TEST_ASSERT(uCellMuxEnable(cellHandle) == 0);
+#endif
     U_PORT_TEST_ASSERT(!uCellPwrRebootIsRequired(cellHandle));
 
     // Check that worked and remember what was set
@@ -505,6 +548,9 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgSetGetRatRank")
             U_PORT_TEST_ASSERT(uCellCfgSetRatRank(cellHandle, setRats[rank], rank) == 0);
             U_PORT_TEST_ASSERT(uCellPwrRebootIsRequired(cellHandle));
             U_PORT_TEST_ASSERT(uCellPwrReboot(cellHandle, NULL) == 0);
+#ifdef U_CELL_TEST_MUX_ALWAYS
+            U_PORT_TEST_ASSERT(uCellMuxEnable(cellHandle) == 0);
+#endif
             U_PORT_TEST_ASSERT(!uCellPwrRebootIsRequired(cellHandle));
             // Remove duplicates from the set RAT list
             for (size_t x = 0; x < pModule->maxNumSimultaneousRats; x++) {
@@ -653,6 +699,9 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgGetSetMnoProfile")
                                                  mnoProfile) == 0);
         U_PORT_TEST_ASSERT(uCellPwrRebootIsRequired(cellHandle));
         U_PORT_TEST_ASSERT(uCellPwrReboot(cellHandle, NULL) == 0);
+#ifdef U_CELL_TEST_MUX_ALWAYS
+        U_PORT_TEST_ASSERT(uCellMuxEnable(cellHandle) == 0);
+#endif
         U_PORT_TEST_ASSERT(!uCellPwrRebootIsRequired(cellHandle));
         readMnoProfile = uCellCfgGetMnoProfile(cellHandle);
         U_TEST_PRINT_LINE("MNO profile is now %d.", readMnoProfile);
@@ -808,6 +857,7 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgGreeting")
     int32_t x;
     int32_t y;
     int32_t heapUsed;
+    int32_t param = 0;
 
     // In case a previous test failed
     uCellTestPrivateCleanup(&gHandles);
@@ -833,12 +883,150 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgGreeting")
     U_PORT_TEST_ASSERT(strcmp(buffer, U_CELL_CFG_TEST_GREETING_STR) == 0);
     U_PORT_TEST_ASSERT(y == strlen(buffer));
 
+    // Set a greeting with callback with invalid parameters
+    U_PORT_TEST_ASSERT(uCellCfgSetGreetingCallback(cellHandle,
+                                                   NULL,
+                                                   greetingCalback,
+                                                   &param) < 0);
+    U_PORT_TEST_ASSERT(uCellCfgSetGreetingCallback(cellHandle,
+                                                   U_CELL_CFG_TEST_GREETING_CALLBACK_INVALID_STR,
+                                                   greetingCalback,
+                                                   &param) < 0);
+
+    U_TEST_PRINT_LINE("setting greeting with callback to \"%s\"...",
+                      U_CELL_CFG_GREETING);
+    U_PORT_TEST_ASSERT(uCellCfgSetGreetingCallback(cellHandle,
+                                                   U_CELL_CFG_GREETING,
+                                                   greetingCalback,
+                                                   &param) == 0);
+    y = uCellCfgGetGreeting(cellHandle, buffer, sizeof(buffer));
+    U_TEST_PRINT_LINE("greeting is now \"%s\".", buffer);
+    U_PORT_TEST_ASSERT(strcmp(buffer, U_CELL_CFG_GREETING) == 0);
+    U_PORT_TEST_ASSERT(y == strlen(buffer));
+
+#if !defined(U_CFG_TEST_DISABLE_GREETING_CALLBACK) && (!defined(U_CFG_APP_PIN_CELL_DTR) || (U_CFG_APP_PIN_CELL_DTR < 0))
+    // The greeting message is not emitted if DTR is used and we don't
+    // test this on some instances
+    U_TEST_PRINT_LINE("rebooting...");
+    U_PORT_TEST_ASSERT(uCellPwrReboot(cellHandle, NULL) == 0);
+    U_PORT_TEST_ASSERT(param == 1);
+#endif
+
+    U_TEST_PRINT_LINE("removing greeting with callback...");
+    U_PORT_TEST_ASSERT(uCellCfgSetGreetingCallback(cellHandle,
+                                                   NULL, NULL, NULL) == 0);
+    y = uCellCfgGetGreeting(cellHandle, buffer, sizeof(buffer));
+    U_TEST_PRINT_LINE("greeting is now \"%s\".", buffer);
+    U_PORT_TEST_ASSERT(y == 0);
+    U_PORT_TEST_ASSERT(strlen(buffer) == 0);
+
+    U_TEST_PRINT_LINE("setting greeting with callback to \"%s\" again...",
+                      U_CELL_CFG_GREETING);
+    U_PORT_TEST_ASSERT(uCellCfgSetGreetingCallback(cellHandle,
+                                                   U_CELL_CFG_GREETING,
+                                                   greetingCalback,
+                                                   &param) == 0);
+    y = uCellCfgGetGreeting(cellHandle, buffer, sizeof(buffer));
+    U_TEST_PRINT_LINE("greeting is now \"%s\".", buffer);
+    U_PORT_TEST_ASSERT(strcmp(buffer, U_CELL_CFG_GREETING) == 0);
+    U_PORT_TEST_ASSERT(y == strlen(buffer));
+
+    U_TEST_PRINT_LINE("setting greeting to non-callback \"%s\"...",
+                      U_CELL_CFG_GREETING);
+    U_PORT_TEST_ASSERT(uCellCfgSetGreeting(cellHandle,
+                                           U_CELL_CFG_GREETING) == 0);
+
+    y = uCellCfgGetGreeting(cellHandle, buffer, sizeof(buffer));
+    U_TEST_PRINT_LINE("greeting is now \"%s\".", buffer);
+    U_PORT_TEST_ASSERT(strcmp(buffer, U_CELL_CFG_GREETING) == 0);
+    U_PORT_TEST_ASSERT(y == strlen(buffer));
+
+#if !defined(U_CFG_TEST_DISABLE_GREETING_CALLBACK) && (!defined(U_CFG_APP_PIN_CELL_DTR) || (U_CFG_APP_PIN_CELL_DTR < 0))
+    // The greeting message is not emitted if DTR is used and we don't
+    // test this on some instances
+    U_TEST_PRINT_LINE("rebooting to make sure we don't know...");
+    U_PORT_TEST_ASSERT(uCellPwrReboot(cellHandle, NULL) == 0);
+    U_PORT_TEST_ASSERT(param == 1);
+#endif
+
     U_TEST_PRINT_LINE("putting greeting back to what it was...");
     if (x > 0) {
         U_PORT_TEST_ASSERT(uCellCfgSetGreeting(cellHandle, bufferOriginal) == 0);
     } else {
         U_PORT_TEST_ASSERT(uCellCfgSetGreeting(cellHandle, NULL) == 0);
     }
+
+    // Do the standard postamble, leaving the module on for the next
+    // test to speed things up
+    uCellTestPrivatePostamble(&gHandles, false);
+
+    // Check for memory leaks
+    heapUsed -= uPortGetHeapFree();
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
+    // heapUsed < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT(heapUsed <= 0);
+}
+
+/** Test setting GNSS profile.
+ */
+U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgGnssProfile")
+{
+    uDeviceHandle_t cellHandle;
+    char *pServerNameOriginal;
+    char *pServerName;
+    int32_t x;
+    int32_t heapUsed;
+
+    // In case a previous test failed
+    uCellTestPrivateCleanup(&gHandles);
+
+    // Obtain the initial heap size
+    heapUsed = uPortGetHeapFree();
+
+    // Do the standard preamble
+    U_PORT_TEST_ASSERT(uCellTestPrivatePreamble(U_CFG_TEST_CELL_MODULE_TYPE,
+                                                &gHandles, true) == 0);
+    cellHandle = gHandles.cellHandle;
+
+    // Malloc space to hold the original GNSS profile server string and the
+    // on we will read back during testing
+    pServerNameOriginal = (char *) pUPortMalloc(U_CELL_CFG_GNSS_SERVER_NAME_MAX_LEN_BYTES);
+    U_PORT_TEST_ASSERT(pServerNameOriginal != NULL);
+    pServerName = (char *) pUPortMalloc(U_CELL_CFG_GNSS_SERVER_NAME_MAX_LEN_BYTES);
+    U_PORT_TEST_ASSERT(pServerName != NULL);
+    memset(pServerName, 0xFF, U_CELL_CFG_GNSS_SERVER_NAME_MAX_LEN_BYTES);
+
+    U_TEST_PRINT_LINE("getting GNSS profile...");
+    gGnssProfileBitMapOriginal = uCellCfgGetGnssProfile(cellHandle, pServerNameOriginal,
+                                                        U_CELL_CFG_GNSS_SERVER_NAME_MAX_LEN_BYTES);
+    U_TEST_PRINT_LINE("GNSS profile is 0x%02x, \"%s\".", gGnssProfileBitMapOriginal,
+                      pServerNameOriginal);
+
+    U_TEST_PRINT_LINE("setting GNSS profile to MUX plus IP at \"%s\"...", U_CELL_CFG_TEST_GNSS_IP_STR);
+    // We only check U_CELL_CFG_GNSS_PROFILE_IP plus one other (MUX)
+    // since all modules support those
+    U_PORT_TEST_ASSERT(uCellCfgSetGnssProfile(cellHandle,
+                                              U_CELL_CFG_GNSS_PROFILE_IP | U_CELL_CFG_GNSS_PROFILE_MUX,
+                                              U_CELL_CFG_TEST_GNSS_IP_STR) == 0);
+
+    U_TEST_PRINT_LINE("checking GNSS profile...");
+    x = uCellCfgGetGnssProfile(cellHandle, pServerName, U_CELL_CFG_GNSS_SERVER_NAME_MAX_LEN_BYTES);
+    U_TEST_PRINT_LINE("GNSS profile is now 0x%02x, \"%s\".", x, pServerName);
+    U_PORT_TEST_ASSERT(x == (U_CELL_CFG_GNSS_PROFILE_IP | U_CELL_CFG_GNSS_PROFILE_MUX));
+    U_PORT_TEST_ASSERT(strncmp(pServerName, U_CELL_CFG_TEST_GNSS_IP_STR,
+                               sizeof(U_CELL_CFG_TEST_GNSS_IP_STR) - 1) == 0);
+
+    // Make sure that the value that ends up in the profile does NOT include a server
+    // name as that causes confusion inside the module
+    U_TEST_PRINT_LINE("putting GNSS profile back to what it was without server...");
+    U_PORT_TEST_ASSERT(uCellCfgSetGnssProfile(cellHandle,
+                                              gGnssProfileBitMapOriginal & ~U_CELL_CFG_GNSS_PROFILE_IP,
+                                              NULL) == 0);
+
+    // Free memory
+    uPortFree(pServerNameOriginal);
+    uPortFree(pServerName);
 
     // Do the standard postamble, leaving the module on for the next
     // test to speed things up
@@ -859,6 +1047,15 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgGreeting")
 U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgCleanUp")
 {
     int32_t x;
+
+    if ((gHandles.cellHandle != NULL) && (gGnssProfileBitMapOriginal >= 0)) {
+        // Make sure that the value that ends up in the GNSS profile
+        // does NOT include a server name as that causes confusion
+        // inside the module
+        uCellCfgSetGnssProfile(gHandles.cellHandle,
+                               gGnssProfileBitMapOriginal & ~U_CELL_CFG_GNSS_PROFILE_IP,
+                               NULL);
+    }
 
     uCellTestPrivateCleanup(&gHandles);
 

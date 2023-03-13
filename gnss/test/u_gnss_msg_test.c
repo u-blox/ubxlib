@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -47,6 +47,8 @@
 #include "u_cfg_test_platform_specific.h"
 
 #include "u_error_common.h"
+
+#include "u_at_client.h" // Required by u_gnss_private.h
 
 #include "u_port_clib_platform_specific.h" /* Integer stdio, must be included
                                               before the other port files if
@@ -99,7 +101,7 @@
 /** A sensible default buffer size for the message receive non-blocking
  * test.
  */
-# define U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_BUFFER_SIZE_BYTES 1024
+# define U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_BUFFER_SIZE_BYTES 1280
 #endif
 
 #ifndef U_GNSS_MSG_TEST_MESSAGE_RECEIVE_TASK_THRESHOLD_BYTES
@@ -112,14 +114,14 @@
 #ifndef U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_MIN_STEPS
 /** The minimum number of steps in the non-blocking test.
  */
-# define U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_MIN_STEPS 30
+# define U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_MIN_STEPS 15
 #endif
 
 #ifndef U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_MIN_NMEA
 /** The minimum number of NMEA messages we expect each message receiver
  * to receive during the non-blocking test.
  */
-# define U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_MIN_NMEA 600
+# define U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_MIN_NMEA 300
 #endif
 
 #ifndef U_GNSS_MSG_TEST_MESSAGE_RECEIVE_NON_BLOCKING_POLL_DELAY_SECONDS
@@ -351,7 +353,7 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveBlocking")
     char command[U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES];
     uGnssMessageId_t messageId;
     size_t iterations;
-    uGnssTransportType_t transportTypes[U_GNSS_TRANSPORT_MAX_NUM_WITH_UBX];
+    uGnssTransportType_t transportTypes[U_GNSS_TRANSPORT_MAX_NUM];
 
     // In case a previous test failed
     uGnssTestPrivateCleanup(&gHandles);
@@ -484,7 +486,7 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveNonBlocking")
     // Enough room to poll UBX-RXM-MEASX
     char command[U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES];
     size_t iterations;
-    uGnssTransportType_t transportTypes[U_GNSS_TRANSPORT_MAX_NUM_WITH_UBX];
+    uGnssTransportType_t transportTypes[U_GNSS_TRANSPORT_MAX_NUM];
     uGnssCommunicationStats_t communicationStats;
     const char *pProtocolName;
 

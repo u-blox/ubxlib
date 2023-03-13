@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -47,6 +47,8 @@
 #include "u_cfg_test_platform_specific.h"
 
 #include "u_error_common.h"
+
+#include "u_at_client.h" // Required by u_gnss_private.h
 
 #include "u_port_clib_platform_specific.h" /* Integer stdio, must be included
                                               before the other port files if
@@ -122,7 +124,7 @@ U_PORT_TEST_FUNCTION("[gnssUtil]", "gnssUtilTransparent")
     // Enough room to encode the poll for a UBX-MON-VER message
     char command[U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES];
     size_t iterations;
-    uGnssTransportType_t transportTypes[U_GNSS_TRANSPORT_MAX_NUM_WITH_UBX];
+    uGnssTransportType_t transportTypes[U_GNSS_TRANSPORT_MAX_NUM];
 
     // In case a previous test failed
     uGnssTestPrivateCleanup(&gHandles);
@@ -133,14 +135,15 @@ U_PORT_TEST_FUNCTION("[gnssUtil]", "gnssUtilTransparent")
     iterations = uGnssTestPrivateTransportTypesSet(transportTypes, U_CFG_APP_GNSS_UART,
                                                    U_CFG_APP_GNSS_I2C, U_CFG_APP_GNSS_SPI);
     for (size_t w = 0; w < iterations; w++) {
-        // Can't do this when the NMEA stream is active, just too messy, and also can't
-        // do this for SPI as we don't know where the response message starts in
+        // Can't do this for SPI as we don't know where the response message starts in
         // the continuous SPI receive stream (OK, we could work it out, but there's little
         // point as the transparent receive mechanism is not the right thing to do for
-        // SPI in any case)
-        if ((transportTypes[w] != U_GNSS_TRANSPORT_NMEA_UART) &&
-            (transportTypes[w] != U_GNSS_TRANSPORT_NMEA_I2C) &&
-            (transportTypes[w] != U_GNSS_TRANSPORT_SPI)) {
+        // SPI in any case).
+        // Also can't do it for Virtual Serial as the grouping of received messages in
+        // time that results makes it very difficult to separate what is a response to
+        // the message we have sent and what is just other traffic
+        if ((transportTypes[w] != U_GNSS_TRANSPORT_SPI) &&
+            (transportTypes[w] != U_GNSS_TRANSPORT_VIRTUAL_SERIAL)) {
             // Do the standard preamble
             U_TEST_PRINT_LINE("testing on transport %s...",
                               pGnssTestPrivateTransportTypeName(transportTypes[w]));
@@ -152,6 +155,11 @@ U_PORT_TEST_FUNCTION("[gnssUtil]", "gnssUtilTransparent")
 
             // So that we can see what we're doing
             uGnssSetUbxMessagePrint(gnssHandle, true);
+
+            // Make sure that NMEA is off (though don't check the
+            // return value is there are cases (e.g. AT) where this
+            // will return an error)
+            uGnssCfgSetProtocolOut(gnssHandle, U_GNSS_PROTOCOL_NMEA, false);
 
             pBuffer1 = (char *) pUPortMalloc(U_GNSS_UTIL_TEST_VERSION_SIZE_MAX_BYTES);
             U_PORT_TEST_ASSERT(pBuffer1 != NULL);
@@ -175,7 +183,12 @@ U_PORT_TEST_FUNCTION("[gnssUtil]", "gnssUtilTransparent")
                                                    pBuffer2,
                                                    U_GNSS_UTIL_TEST_VERSION_SIZE_MAX_BYTES);
             U_TEST_PRINT_LINE("%d byte(s) returned.", x);
-            U_PORT_TEST_ASSERT(x == y + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES);
+
+            // We can only check y bytes of this response as the transparent send/receive
+            // mechanism doesn't know where the message ends and may bring with it bits
+            // of NMEA message that follow (even if NMEA is switched off there is often
+            // residual stuff buffered)
+            U_PORT_TEST_ASSERT(x >= y + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES);
             for (z = x + 1; x < U_GNSS_UTIL_TEST_VERSION_SIZE_MAX_BYTES; x++) {
                 U_PORT_TEST_ASSERT(*(pBuffer2 + z) == 0x66);
             }
@@ -201,8 +214,7 @@ U_PORT_TEST_FUNCTION("[gnssUtil]", "gnssUtilTransparent")
             }
 
             // Check that the bodies are the same
-            U_PORT_TEST_ASSERT(memcmp(pBuffer1, pBuffer2 + 6,
-                                      x - U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES) == 0);
+            U_PORT_TEST_ASSERT(memcmp(pBuffer1, pBuffer2 + 6, y) == 0);
 
             // Repeat but ignore the body this time
             x = uUbxProtocolEncode(0x0a, 0x04, NULL, 0, command);

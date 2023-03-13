@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@
  * must be connected to pin B via a 1k resistor.
  */
 #ifndef U_CFG_TEST_PIN_A
-# define U_CFG_TEST_PIN_A         13 // AKA 0.13, GPIO_1, D4
+# define U_CFG_TEST_PIN_A         3 // AKA 0.03, GPIO_16, A5
 #endif
 
 /** Pin B for GPIO testing: will be used as both an input and
@@ -35,13 +35,13 @@
  * a 1k resistor and directly to pin C.
  */
 #ifndef U_CFG_TEST_PIN_B
-# define U_CFG_TEST_PIN_B         11 // AKA 0.11, GPIO_32, D5
+# define U_CFG_TEST_PIN_B         28 // AKA 0.28, GPIO_17, A4
 #endif
 /** Pin C for GPIO testing: must be connected to pin B,
  * will be used as an input only.
  */
 #ifndef U_CFG_TEST_PIN_C
-# define U_CFG_TEST_PIN_C         41 // AKA 1.09, GPIO_33, D8
+# define U_CFG_TEST_PIN_C         2 // AKA 0.02, GPIO_18, A3
 #endif
 
 /** Reset pin for a GNSS module, required when such a module is

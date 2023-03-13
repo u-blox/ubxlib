@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef _U_BLE_TEST_PRIVATE_H_
-#define _U_BLE_TEST_PRIVATE_H_
+#ifndef _U_WIFI_TEST_PRIVATE_H_
+#define _U_WIFI_TEST_PRIVATE_H_
 
 /* Only header files representing a direct and unavoidable
  * dependency between the API of this module and the API
@@ -34,6 +34,12 @@ extern "C" {
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
+
+/** Default values for uWifiTestPrivate_t.
+ */
+//lint -esym(755, U_WIFI_TEST_PRIVATE_DEFAULTS) Suppress not referenced,
+// which it might not be if U_CFG_TEST_WIFI_MODULE_TYPE is not defined.
+#define U_WIFI_TEST_PRIVATE_DEFAULTS {-1, -1, NULL, NULL}
 
 /* ----------------------------------------------------------------
  * TYPES
@@ -118,6 +124,6 @@ void uWifiTestPrivateCleanup(uWifiTestPrivate_t *pParameters);
 }
 #endif
 
-#endif // _U_BLE_TEST_PRIVATE_H_
+#endif // _U_WIFI_TEST_PRIVATE_H_
 
 // End of file

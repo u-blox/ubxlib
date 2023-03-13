@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -80,7 +80,9 @@ void uGnssDeinit();
  *
  * @param moduleType         the GNSS module type.
  * @param transportType      the type of transport that has been set up
- *                           to talk with the GNSS module.
+ *                           to talk with the GNSS module; if you are using
+ *                           #U_GNSS_TRANSPORT_VIRTUAL_SERIAL, see also
+ *                           uGnssSetIntermediate().
  * @param transportHandle    the handle of the transport to use to
  *                           talk with the GNSS module.  This must
  *                           already have been created by the caller.
@@ -104,6 +106,38 @@ int32_t uGnssAdd(uGnssModuleType_t moduleType,
                  int32_t pinGnssEnablePower,
                  bool leavePowerAlone,
                  uDeviceHandle_t *pGnssHandle);
+
+/** If you have called uGnssAdd() with the transport type
+ * #U_GNSS_TRANSPORT_VIRTUAL_SERIAL because the GNSS chip is inside or
+ * connected via an intermediate (for example cellular) module then you
+ * should call this function to let the GNSS instance know that there
+ * is such an intermediate device.  This is because some procedures,
+ * e.g. powering the GNSS device on or off, need to be done differently
+ * when there is an intermediate module.  You do NOT need to call this
+ * function (it will return an error) if you are using
+ * #U_GNSS_TRANSPORT_AT as the code will already know that there is an
+ * intermediate module in that case; likewise, if you are using
+ * #U_GNSS_TRANSPORT_VIRTUAL_SERIAL for another reason, no intermediate
+ * module is involved, you do not need to call this function.
+ *
+ * @param gnssHandle          the handle of the GNSS instance.
+ * @param intermediateHandle  the handle of the intermediate (e.g. cellular)
+ *                            instance.
+ * @return                    zero on success else negative error code.
+ */
+int32_t uGnssSetIntermediate(uDeviceHandle_t gnssHandle,
+                             uDeviceHandle_t intermediateHandle);
+
+/** Get the handle of the intermediate device set using
+ * uGnssSetIntermediate().
+ *
+ * @param gnssHandle           the handle of the GNSS instance.
+ * @param pIntermediateHandle  a place to put the handle of the
+ *                             intermediate device; cannot be NULL.
+ * @return                     zero on success else negative error code.
+ */
+int32_t uGnssGetIntermediate(uDeviceHandle_t gnssHandle,
+                             uDeviceHandle_t *pIntermediateHandle);
 
 /** Set the I2C address at which the GNSS device can be expected to
  * be found.  If not called the default #U_GNSS_I2C_ADDRESS is assumed.
@@ -223,8 +257,8 @@ int32_t uGnssGetSpiFillThreshold(uDeviceHandle_t gnssHandle);
  * continuing for the maximum time (since there will always be "valid"
  * [but 0xFF] data to read).  Setting the threshold to a small value
  * is equally inadvisable, since it may result in valid data (i.e.
- * consecutive genuine 0xFF 0xFF bytes contained in a message body)
- * being discarded as fill.
+ * consecutive genuine 0xFF bytes contained in a message body) being
+ * discarded as fill.
  *
  * @param gnssHandle  the handle of the GNSS instance.
  * @param count       the number of 0xFF bytes which constitute fill,
@@ -233,8 +267,7 @@ int32_t uGnssGetSpiFillThreshold(uDeviceHandle_t gnssHandle);
  */
 int32_t uGnssSetSpiFillThreshold(uDeviceHandle_t gnssHandle, int32_t count);
 
-/** Get whether printing of UBX commands and responses
- * is on or off.
+/** Get whether printing of UBX commands and responses is on or off.
  *
  * @param gnssHandle   the handle of the GNSS instance.
  * @return             true if printing UBX commands and

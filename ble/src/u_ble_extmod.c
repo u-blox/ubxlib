@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,10 +44,6 @@
 #include "u_ble.h"
 #include "u_ble_private.h"
 
-// The headers below are necessary to work around an Espressif linker problem, see uBleInit()
-#include "u_network.h"
-#include "u_network_config_ble.h"
-#include "u_network_private_ble.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -72,16 +68,6 @@
 // Initialise the ble driver.
 int32_t uBleInit(void)
 {
-    // Workaround for Espressif linker missing out files that
-    // only contain functions which also have weak alternatives
-    // (see https://www.esp32.com/viewtopic.php?f=13&t=8418&p=35899)
-    // Basically any file that might end up containing only functions
-    // that also have WEAK linked counterparts will be lost, so we need
-    // to add a dummy function in those files and call it from somewhere
-    // that will always be present in the build, which for BLE we
-    // choose to be here
-    uNetworkPrivateBleLink();
-
     uBleSpsPrivateInit();
     return uShortRangeInit();
 }

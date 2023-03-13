@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -248,7 +248,7 @@ U_PORT_TEST_FUNCTION("[pbuf]", "pbufPktList")
     U_PORT_TEST_ASSERT(errCode == (int32_t)U_ERROR_COMMON_SUCCESS);
 
     errCode = uShortRangePktListConsumePacket(&pktList, pBuffer3, &totalLen, NULL);
-    U_PORT_TEST_ASSERT(errCode == (int32_t)U_ERROR_COMMON_INVALID_PARAMETER);
+    U_PORT_TEST_ASSERT(errCode == (int32_t)U_ERROR_COMMON_EMPTY);
 
     uShortRangeMemPoolDeInit();
     uPortFree(pBuffer1);

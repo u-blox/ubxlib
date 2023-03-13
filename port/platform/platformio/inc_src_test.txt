@@ -1,0 +1,39 @@
+# This file should contain the paths to additional header and source
+# files that are required for building the test/automation
+# code of ubxlib on PlatformIO; for the ubxlib core code see
+# inc_src.txt.
+# Paths are relative to the ubxlib root directory, forward-slashes
+# must be used.
+# For references to the current build framework the macro
+# $FRAMEWORK can be used.
+# Note: there is no need to mention the test files of a module
+# here, those are automatically brought in based on the modules
+# already listed in inc_src.txt when this file is included.
+
+# This section contains regular expressions matching paths which
+# should be excluded in the sections that follow
+[EXCLUDE]
+/port/platform/(?!common|$FRAMEWORK)
+/common/lib_common
+
+[INCLUDE]
+port/platform/common/runner
+common/device/test
+common/network/test
+
+# Source files
+[SOURCE]
+port/platform/test
+common/device/test
+common/network/test
+example/**/*.c
+port/platform/common/runner/u_runner.c
+
+# Source files brought in only for a specific framework
+[zephyr]
+# Bring in some extra things that the minimal Zephry C library,
+# which we use when testing, doesn't have
+port/platform/zephyr/src/u_port_clib.c
+port/clib/u_port_clib_isblank.c
+port/clib/u_port_clib_mktime.c
+port/clib/u_port_setjmp.S

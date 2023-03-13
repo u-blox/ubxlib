@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -249,32 +249,36 @@ int32_t uShortRangePktListConsumePacket(uShortRangePktList_t *pPktList, char *pD
 
     if ((pPktList != NULL) &&
         (pData != NULL) &&
-        (pPktList->pktCount > 0) &&
+        (pPktList->pktCount >= 0) &&
         (pLen != NULL)) {
 
-        err = (int32_t)U_ERROR_COMMON_NO_MEMORY;
-        pTemp = pPktList->pBufListHead;
-        ppTemp = &pPktList->pBufListHead;
+        err = (int32_t)U_ERROR_COMMON_EMPTY;
 
-        if ((pTemp != NULL) && (pTemp->totalLen > 0)) {
+        if (pPktList->pktCount > 0) {
+            err = (int32_t)U_ERROR_COMMON_NO_MEMORY;
+            pTemp = pPktList->pBufListHead;
+            ppTemp = &pPktList->pBufListHead;
 
-            if (pEdmChannel != NULL) {
-                *pEdmChannel = pTemp->edmChannel;
-            }
+            if ((pTemp != NULL) && (pTemp->totalLen > 0)) {
 
-            *pLen = uShortRangePbufListConsumeData(pTemp, pData, *pLen);
-            err = (int32_t)U_ERROR_COMMON_SUCCESS;
+                if (pEdmChannel != NULL) {
+                    *pEdmChannel = pTemp->edmChannel;
+                }
 
-            if (pTemp->totalLen > 0) {
-                err = (int32_t)U_ERROR_COMMON_TEMPORARY_FAILURE;
-            }
+                *pLen = uShortRangePbufListConsumeData(pTemp, pData, *pLen);
+                err = (int32_t)U_ERROR_COMMON_SUCCESS;
 
-            *ppTemp = pTemp->pNext;
-            pPktList->pktCount--;
-            uShortRangePbufListFree(pTemp);
+                if (pTemp->totalLen > 0) {
+                    err = (int32_t)U_ERROR_COMMON_TRUNCATED;
+                }
 
-            if (pPktList->pktCount == 0) {
-                memset((void *)pPktList, 0, sizeof(uShortRangePktList_t));
+                *ppTemp = pTemp->pNext;
+                pPktList->pktCount--;
+                uShortRangePbufListFree(pTemp);
+
+                if (pPktList->pktCount == 0) {
+                    memset((void *)pPktList, 0, sizeof(uShortRangePktList_t));
+                }
             }
         }
     }

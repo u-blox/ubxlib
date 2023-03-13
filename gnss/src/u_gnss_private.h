@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -90,9 +90,15 @@ extern "C" {
  */
 #define U_GNSS_POS_TASK_FLAG_HAS_RUN    0x01
 
-/** Flag to indicate that the posttask should continue running.
+/** Flag to indicate that the pos task should keep waiting
+ * for a single position fix.
  */
 #define U_GNSS_POS_TASK_FLAG_KEEP_GOING 0x02
+
+/** Flag to indicate that the pos task should call the callback
+ * for each position fix in continuous mode.
+ */
+#define U_GNSS_POS_TASK_FLAG_CONTINUOUS 0x04
 
 /** The value that constitues "no data" on SPI.
  */
@@ -109,7 +115,8 @@ extern "C" {
 // Lint can't seem to find it inside macros.
 typedef enum {
     U_GNSS_PRIVATE_FEATURE_CFGVALXXX,
-    U_GNSS_PRIVATE_FEATURE_GEOFENCE
+    U_GNSS_PRIVATE_FEATURE_GEOFENCE,
+    U_GNSS_PRIVATE_FEATURE_OLD_CFG_API
 } uGnssPrivateFeature_t;
 
 /** The characteristics that may differ between GNSS modules.
@@ -132,6 +139,7 @@ typedef enum {
     U_GNSS_PRIVATE_STREAM_TYPE_UART,
     U_GNSS_PRIVATE_STREAM_TYPE_I2C,
     U_GNSS_PRIVATE_STREAM_TYPE_SPI,
+    U_GNSS_PRIVATE_STREAM_TYPE_VIRTUAL_SERIAL,
     U_GNSS_PRIVATE_STREAM_TYPE_MAX_NUM
 } uGnssPrivateStreamType_t;
 
@@ -184,6 +192,25 @@ typedef struct {
     uGnssPrivateMsgReader_t *pReaderList;
 } uGnssPrivateMsgReceive_t;
 
+/** Parameters to pass to the streamed position callback.
+ */
+typedef struct {
+    uDeviceHandle_t gnssHandle;
+    int32_t asyncHandle;
+    void (*pCallback) (uDeviceHandle_t gnssHandle,
+                       int32_t errorCode,
+                       int32_t latitudeX1e7,
+                       int32_t longitudeX1e7,
+                       int32_t altitudeMillimetres,
+                       int32_t radiusMillimetres,
+                       int32_t speedMillimetresPerSecond,
+                       int32_t svs,
+                       int64_t timeUtc);
+    int32_t measurementPeriodMs; /**< set to -1 of nothing to restore. */
+    int32_t navigationCount;     /**< set to -1 of nothing to restore. */
+    int32_t messageRate;         /**< set to -1 of nothing to restore. */
+} uGnssPrivateStreamedPosition_t;
+
 /** Definition of a GNSS instance.
  * Note: a pointer to this structure is passed to the asynchronous
  * "get position" function (posGetTask()) which does NOT lock the
@@ -195,6 +222,7 @@ typedef struct {
 // *INDENT-OFF* (otherwise AStyle makes a mess of this)
 typedef struct uGnssPrivateInstance_t {
     uDeviceHandle_t gnssHandle; /**< the handle for this instance. */
+    uDeviceHandle_t intermediateHandle; /**< the handle of the device that the GNSS chip is connected via. */
     const uGnssPrivateModule_t *pModule; /**< pointer to the module type. */
     uGnssTransportType_t transportType; /**< the type of transport to use. */
     uGnssTransportHandle_t transportHandle; /**< the handle of the transport to use. */
@@ -223,6 +251,8 @@ typedef struct uGnssPrivateInstance_t {
     volatile uint8_t posTaskFlags; /**< flags to synchronisation the pos task. */
     uGnssPrivateMsgReceive_t *pMsgReceive; /**< stuff associated with the asychronous
                                                 message receive utility functions. */
+    uGnssPrivateStreamedPosition_t *pStreamedPosition; /**< context data for streamed position, hooked
+                                                            here so that we can free it */
     struct uGnssPrivateInstance_t *pNext;
 } uGnssPrivateInstance_t;
 // *INDENT-ON*
@@ -276,13 +306,131 @@ uGnssPrivateInstance_t *pUGnssPrivateGetInstance(uDeviceHandle_t handle);
 //lint -esym(765, pUGnssPrivateGetModule) may be compiled-out in various ways
 const uGnssPrivateModule_t *pUGnssPrivateGetModule(uDeviceHandle_t gnssHandle);
 
+/** Get the AT handle of the intermediate device.
+ *
+ * Note: gUGnssPrivateMutex should be locked before this is called.
+ *
+ * @param[in] pInstance  a pointer to the GNSS instance, cannot be NULL.
+ * @return               the AT handle of the intermediate device or NULL
+ *                       if there is no such device or the handle could not
+ *                       be obtained.
+ */
+uAtClientHandle_t uGnssPrivateGetIntermediateAtHandle(uGnssPrivateInstance_t *pInstance);
+
 /** Send a buffer as hex.
  *
  * @param[in] pBuffer       the buffer to print; cannot be NULL.
  * @param bufferLengthBytes the number of bytes to print.
  */
-void uGnssPrivatePrintBuffer(const char *pBuffer,
-                             size_t bufferLengthBytes);
+void uGnssPrivatePrintBuffer(const char *pBuffer, size_t bufferLengthBytes);
+
+/** Get the rate at which position is obtained.
+ *
+ * @param[in] pInstance            a pointer to the GNSS instance, cannot
+ *                                 be NULL.
+ * @param[in] pMeasurementPeriodMs a place to put the period between
+ *                                 measurements in milliseconds; may
+ *                                 be NULL.
+ * @param[in] pNavigationCount     a place to put the number of measurements
+ *                                 that should result in a navigation
+ *                                 solution; may be NULL.
+ * @param[in] pTimeSystem          a place to put the time system to
+ *                                 which measurements are aligned; may
+ *                                 be NULL.
+ * @return                         the navigation rate in milliseconds; for
+ *                                 instance, if the measurement period
+ *                                 is one second and the navigation count
+ *                                 five then the return value will be 5000,
+ *                                 meaning a navigation solution will be
+ *                                 made every five seconds.
+ */
+int32_t uGnssPrivateGetRate(uGnssPrivateInstance_t *pInstance,
+                            int32_t *pMeasurementPeriodMs,
+                            int32_t *pNavigationCount,
+                            uGnssTimeSystem_t *pTimeSystem);
+
+/** Set the rate at which position is obtained.
+ *
+ * @param[in] pInstance        a pointer to the GNSS instance, cannot
+ *                             be NULL.
+ * @param measurementPeriodMs  the period between measurements in
+ *                             milliseconds; specify -1 to leave this
+ *                             unchanged.
+ * @param navigationCount      the number of measurements that should
+ *                             result in a navigation solution; for
+ *                             instance, if measurementPeriodMs is 500
+ *                             and navigationCount four then a navigation
+ *                             solution will result ever 2 seconds.
+ *                             Specify -1 to leave this unchanged.
+ * @param timeSystem           the time system to which measurements
+ *                             are aligned; the value passed in is
+ *                             deliberately not range checked so that
+ *                             future types unknown to this code
+ *                             may be used. Specify -1 to leave this
+ *                             unchanged.
+ * @return                     zero on success or negative error code.
+ */
+int32_t uGnssPrivateSetRate(uGnssPrivateInstance_t *pInstance,
+                            int32_t measurementPeriodMs,
+                            int32_t navigationCount,
+                            uGnssTimeSystem_t timeSystem);
+
+/** Get the rate at which a given UBX message ID is emitted on the
+ * current transport; this ONLY WORKS FOR M8 AND M9 modules: for
+ * M10 modules and later you must find the relevant member from
+ * U_GNSS_CFG_VAL_KEY_ITEM_MSGOUT_* in u_gnss_cfg_val_key.h
+ * and get the value of that item, e.g.:
+ *
+ * ```
+ * uint32_t keyId = U_GNSS_CFG_VAL_KEY_ITEM_MSGOUT_UBX_NAV_PVT_I2C_U1;
+ * uGnssCfgVal_t *pCfgVal = NULL;
+ * if (uGnssCfgPrivateValGetListAlloc(pInstance, &keyId, 1,
+ *                                    &pCfgVal, U_GNSS_CFG_VAL_LAYER_RAM) == 0);
+ *     // The rate is in pCfgVal->value
+ *     // Don't forget to free pCfgVal afterwards
+ *     uPortFree(pCfgVal);
+ * }
+ * ```
+ *
+ * @param[in] pInstance          a pointer to the GNSS instance, cannot
+ *                               be NULL.
+ * @param[in] pPrivateMessageId  a pointer to the private message ID; cannot
+ *                               be NULL and only UBX protocol message
+ *                               rates can currently be retrieved this way.
+ * @return                       on success the rate (0 for never, 1 for
+ *                               once every message, 2 for "emit every
+ *                               other message", etc.) else negative
+ *                               error code.
+ */
+int32_t uGnssPrivateGetMsgRate(uGnssPrivateInstance_t *pInstance,
+                               uGnssPrivateMessageId_t *pPrivateMessageId);
+
+/** Set the rate at which a given UBX message ID is emitted on the
+ * current transport; this ONLY WORKS FOR M8 AND M9 modules: for
+ * M10 modules and later you must find the relevant member from
+ * U_GNSS_CFG_VAL_KEY_ITEM_MSGOUT_* in u_gnss_cfg_val_key.h
+ * and set the value of that item, e.g.:
+ *
+ * ```
+ * uGnssCfgVal_t cfgVal = {U_GNSS_CFG_VAL_KEY_ITEM_MSGOUT_UBX_NAV_PVT_I2C_U1, 1};
+ * uGnssCfgPrivateValSetList(pInstance, &cfgVal, 1,
+ *                           U_GNSS_CFG_VAL_TRANSACTION_NONE,
+ *                           U_GNSS_CFG_VAL_LAYER_RAM);
+ * ```
+ *
+ * @param[in] pInstance          a pointer to the GNSS instance, cannot
+ *                               be NULL.
+ * @param[in] pPrivateMessageId  a pointer to the private message ID; cannot
+ *                               be NULL and only UBX protocol message
+ *                               rates can currently be configured this way.
+ * @param rate                   the rate: 0 for never, 1 for once every
+ *                               message, 2 for "emit every other message",
+ *                               etc.
+ * @return                       zero on success or negative error code.
+ */
+int32_t uGnssPrivateSetMsgRate(uGnssPrivateInstance_t *pInstance,
+                               uGnssPrivateMessageId_t *pPrivateMessageId,
+                               int32_t rate);
 
 /** Get the protocol types output by the GNSS chip; not relevant
  * where an AT transports is in use since only the UBX protocol is
@@ -310,7 +458,7 @@ int32_t uGnssPrivateGetProtocolOut(uGnssPrivateInstance_t *pInstance);
  *                       UBX protocol output cannot be switched off
  *                       since it is used by this code.
  * @param onNotOff       whether the given protocol should be on or off.
- * @return               zero on succes or negative error code.
+ * @return               zero on success or negative error code.
  */
 int32_t uGnssPrivateSetProtocolOut(uGnssPrivateInstance_t *pInstance,
                                    uGnssProtocol_t protocol,
@@ -324,6 +472,15 @@ int32_t uGnssPrivateSetProtocolOut(uGnssPrivateInstance_t *pInstance,
  */
 void uGnssPrivateCleanUpPosTask(uGnssPrivateInstance_t *pInstance);
 
+/** Shut down and free memory from streamd position; should be called
+ * before uGnssPrivateStopMsgReceive().
+ *
+ * Note: gUGnssPrivateMutex should be locked before this is called.
+ *
+ * @param[in] pInstance  a pointer to the GNSS instance, cannot  be NULL.
+ */
+void uGnssPrivateCleanUpStreamedPos(uGnssPrivateInstance_t *pInstance);
+
 /** Check whether a GNSS chip that we are using via a cellular module
  * is on-board the cellular module, in which case the AT+GPIOC
  * comands are not used.
@@ -331,8 +488,8 @@ void uGnssPrivateCleanUpPosTask(uGnssPrivateInstance_t *pInstance);
  * Note: gUGnssPrivateMutex should be locked before this is called.
  *
  * @param[in] pInstance  a pointer to the GNSS instance, cannot  be NULL.
- * @return              true if there is a GNSS chip inside the cellular
- *                      module, else false.
+ * @return               true if there is a GNSS chip inside the cellular
+ *                       module, else false.
 */
 bool uGnssPrivateIsInsideCell(const uGnssPrivateInstance_t *pInstance);
 
@@ -392,7 +549,7 @@ bool uGnssPrivateMessageIdIsWanted(uGnssPrivateMessageId_t *pMessageId,
                                    uGnssPrivateMessageId_t *pMessageIdWanted);
 
 /* ----------------------------------------------------------------
- * FUNCTIONS: STREAMING TRANSPORT ONLY
+ * FUNCTIONS: STREAMING TRANSPORT (UART/I2C/VIRTUAL SERIAL) ONLY
  * -------------------------------------------------------------- */
 
 /** Get the private stream type from a given GNSS transport type.
@@ -404,31 +561,23 @@ bool uGnssPrivateMessageIdIsWanted(uGnssPrivateMessageId_t *pMessageId,
  */
 int32_t uGnssPrivateGetStreamType(uGnssTransportType_t transportType);
 
-/** Get the stream handle from the GNSS transport handle.
- *
- * @param privateStreamType  the private stream type.
- * @param transportHandle    the transport handle union.
- * @return                   the stream handle else negative error.
- */
-int32_t uGnssPrivateGetStreamHandle(uGnssPrivateStreamType_t privateStreamType,
-                                    uGnssTransportHandle_t transportHandle);
-
 /** Get the number of bytes waiting for us from the GNSS chip when using
- * a streaming transport (e.g. UART or I2C or SPI).
+ * a streaming transport (e.g. UART or I2C or SPI or virtual serial).
  *
  * Note: in the case of SPI it is not possible to determine whether
  * there is any data to be received without actually reading it, hence
- * this function does that and stores the data the internal pSpiRingBuffer
+ * this function does that and stores the data in the internal pSpiRingBuffer
  * from which the caller can extract it.
  *
  * @param[in] pInstance  a pointer to the GNSS instance, cannot be NULL.
- * @return               the number of bytes available to be received,
- *                       else negative error code.
+ * @return              the number of bytes available to be received,
+ *                      else negative error code.
  */
 int32_t uGnssPrivateStreamGetReceiveSize(uGnssPrivateInstance_t *pInstance);
 
 /** Fill the internal ring buffer with as much data as possible from
- * the GNSS chip when using a streaming transport (e.g. UART or I2C or SPI).
+ * the GNSS chip when using a streaming transport (e.g. UART or I2C or SPI or
+ * virtual serial).
  *
  * Note that the total maximum time that this function might take is
  * timeoutMs + maxTimeMs.  For a "quick check", to just read in a
@@ -474,6 +623,7 @@ int32_t uGnssPrivateStreamFillRingBuffer(uGnssPrivateInstance_t *pInstance,
  * Note: it is important that pDiscard (see below) is obeyed, i.e.
  * always discard that many bytes of data from the ring-buffer at the
  * given read handle before this function is called again.
+ *
  * Note: gUGnssPrivateMutex should be locked before this is called, but
  * it is also safe to call this from the task that is checking for
  * asynchronous messages, even though that doesn't lock gUGnssPrivateMutex,
@@ -551,8 +701,8 @@ int32_t uGnssPrivateStreamPeekRingBuffer(uGnssPrivateInstance_t *pInstance,
                                          size_t offset,
                                          int32_t maxTimeMs);
 
-/** Send a UBX format message over UART or I2C or SPI (do not wait for the
- * response).
+/** Send a UBX format message over UART or I2C or virtual serial (do not
+ * wait for the response).
  *
  * Note: gUGnssPrivateMutex should be locked before this is called.
  *
@@ -576,7 +726,12 @@ int32_t uGnssPrivateSendOnlyStreamUbxMessage(uGnssPrivateInstance_t *pInstance,
 
 /** Send a UBX format message that does not have an acknowledgement
  * over a stream and check that it was accepted by the GNSS chip
- * by querying the GNSS chip's message count.
+ * by querying the GNSS chip's message count.  Note that in the case
+ * where the GNSS chip is inside or connected via an intermediate
+ * (e.g. cellular) module, that module may also be talking to the GNSS
+ * chip over the same interface and so, for that case, no additional
+ * checking by this "counting" mechanism is done; we have to rely on
+ * the transport being good.
  *
  * Note: gUGnssPrivateMutex should be locked before this is called.
  *

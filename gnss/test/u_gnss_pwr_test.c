@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -50,6 +50,8 @@
 #include "u_port_debug.h"
 #include "u_port_os.h"   // Required by u_gnss_private.h
 #include "u_port_uart.h"
+
+#include "u_at_client.h" // Required by u_gnss_private.h
 
 #include "u_cell_module_type.h"
 
@@ -103,7 +105,7 @@ U_PORT_TEST_FUNCTION("[gnssPwr]", "gnssPwrBasic")
     uDeviceHandle_t gnssHandle;
     int32_t heapUsed;
     size_t iterations;
-    uGnssTransportType_t transportTypes[U_GNSS_TRANSPORT_MAX_NUM_WITH_UBX];
+    uGnssTransportType_t transportTypes[U_GNSS_TRANSPORT_MAX_NUM];
     int32_t y;
 
     // Whatever called us likely initialised the
@@ -137,8 +139,6 @@ U_PORT_TEST_FUNCTION("[gnssPwr]", "gnssPwrBasic")
         switch (transportTypes[x]) {
             case U_GNSS_TRANSPORT_UART:
             //lint -fallthrough
-            case U_GNSS_TRANSPORT_UBX_UART:
-            //lint -fallthrough
             case U_GNSS_TRANSPORT_SPI:
                 // If we are communicating via UART or SPI we can
                 // also test the power-off-to-back-up version
@@ -149,9 +149,10 @@ U_PORT_TEST_FUNCTION("[gnssPwr]", "gnssPwrBasic")
                 U_PORT_TEST_ASSERT(uGnssPwrOffBackup(gnssHandle) == 0);
                 break;
             case U_GNSS_TRANSPORT_I2C:
-            //lint -fallthrough
-            case U_GNSS_TRANSPORT_UBX_I2C:
                 U_TEST_PRINT_LINE("not testing uGnssPwrOffBackup() 'cos we're on I2C...");
+                break;
+            case U_GNSS_TRANSPORT_VIRTUAL_SERIAL:
+                U_TEST_PRINT_LINE("not testing uGnssPwrOffBackup() 'cos we're on Virtual Serial...");
                 break;
             case U_GNSS_TRANSPORT_AT:
                 U_PORT_TEST_ASSERT(uGnssPwrOffBackup(gnssHandle) == U_ERROR_COMMON_NOT_SUPPORTED);

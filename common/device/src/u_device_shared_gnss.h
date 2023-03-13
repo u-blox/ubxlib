@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,8 +44,11 @@ extern "C" {
 /** The things we need to remember per GNSS device.
  */
 typedef struct {
-    int32_t transportHandle;
-    uDeviceTransportType_t transportType;
+    union {
+        int32_t int32Handle;
+        uDeviceSerial_t *pDeviceSerial;
+    } transportHandle;
+    uDeviceTransportType_t deviceTransportType;
 } uDeviceGnssInstance_t;
 
 #ifdef __cplusplus

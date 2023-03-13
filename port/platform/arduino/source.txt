@@ -27,7 +27,9 @@ cell/src/u_cell_file.c
 cell/src/u_cell_loc.c
 cell/src/u_cell_gpio.c
 cell/src/u_cell_fota.c
+cell/src/u_cell_mux.c
 cell/src/u_cell_private.c
+cell/src/u_cell_mux_private.c
 cell/src/u_cell_mno_db.c
 gnss/src/u_gnss.c
 gnss/src/u_gnss_pwr.c
@@ -54,6 +56,7 @@ common/device/src/u_device_private_short_range_stub.c
 common/network/src/u_network.c
 common/network/src/u_network_shared.c
 common/network/src/u_network_private_ble_extmod.c
+common/network/src/u_network_private_ble_extmod_stub.c
 common/network/src/u_network_private_ble_intmod.c
 common/network/src/u_network_private_cell.c
 common/network/src/u_network_private_cell_stub.c
