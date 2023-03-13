@@ -5,7 +5,6 @@ cmake_minimum_required(VERSION 3.13.1)
 get_filename_component(UBXLIB_BASE ../../../.. ABSOLUTE)
 
 # Add custom u-blox boards
-list(APPEND BOARD_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../boards/short_range/zephyr/)
 list(APPEND BOARD_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../boards/cellular/)
 
 # Add ubxlib as a Zephyr module

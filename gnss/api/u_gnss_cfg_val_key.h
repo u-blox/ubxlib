@@ -66,11 +66,13 @@ extern "C" {
 #define U_GNSS_CFG_VAL_KEY_ITEM_ID_ALL 0xFFFF
 
 /** Macro to get the item ID from a key ID.
+ *
  * Note that the reserved part is included since that's how "all" is indicated.
  */
 #define U_GNSS_CFG_VAL_KEY_GET_ITEM_ID(keyId)  (((uint32_t) (keyId)) & 0xFFFF)
 
 /** Macro to get the group ID (#uGnssCfgValKeyGroupId_t) from a key ID.
+ *
  * Note that the reserved part is included since that's how "all" is indicated.
  */
 #define U_GNSS_CFG_VAL_KEY_GET_GROUP_ID(keyId)  ((((uint32_t) (keyId)) >> 16) & 0xFFF)
@@ -1189,11 +1191,11 @@ typedef enum {
     U_GNSS_CFG_VAL_KEY_ITEM_NMEA_PROTVER_E1       = 0x01, /**< NMEA protocol version, see #uGnssCfgValKeyItemValueNmeaProtver_t. */
     U_GNSS_CFG_VAL_KEY_ITEM_NMEA_MAXSVS_E1        = 0x02, /**< maximum number of SVs to report per Talker ID, see
                                                                #uGnssCfgValKeyItemValueNmeaMaxsvs_t. */
-    U_GNSS_CFG_VAL_KEY_ITEM_NMEA_COMPAT_L         = 0x03, /**< this might be needed for certain applications, e.g.
+    U_GNSS_CFG_VAL_KEY_ITEM_NMEA_COMPAT_L         = 0x03, /**< this might be needed for certain applications, maybe
                                                                for an NMEA parser that expects a fixed number of digits
                                                                in position coordinates. */
     U_GNSS_CFG_VAL_KEY_ITEM_NMEA_CONSIDER_L       = 0x04, /**< this will affect NMEA output used satellite count; ff set,
-                                                               also considered satellites (e.g. RAIMED) are counted as used
+                                                               also considered satellites (for example RAIMED) are counted as used
                                                                satellites as well. */
     U_GNSS_CFG_VAL_KEY_ITEM_NMEA_LIMIT82_L        = 0x05, /**< enable strict limit to 82 characters maximum NMEA message length. */
     U_GNSS_CFG_VAL_KEY_ITEM_NMEA_HIGHPREC_L       = 0x06, /**< enable high precision mode; this flag cannot be set in
@@ -1481,17 +1483,17 @@ typedef enum {
     U_GNSS_CFG_VAL_KEY_ITEM_RINV_DATA_SIZE_U1 = 0x03, /**< size of data to store/be stored in the remote inventory
                                                            (maximum 30 bytes). */
     U_GNSS_CFG_VAL_KEY_ITEM_RINV_CHUNK0_X8    = 0x04, /**< data bytes 1 to 8 (LSB) to store/be stored in remote
-                                                           inventory, left-most is LSB, e.g. "ABCD" will
+                                                           inventory, left-most is LSB, for example  "ABCD" will
                                                            appear as 0x44434241. */
     U_GNSS_CFG_VAL_KEY_ITEM_RINV_CHUNK1_X8    = 0x05, /**< data bytes 9 to 16 to store/be stored in remote
-                                                           inventory, left-most is LSB, e.g. "ABCD" will
+                                                           inventory, left-most is LSB, for example "ABCD" will
                                                            appear as 0x44434241. */
     U_GNSS_CFG_VAL_KEY_ITEM_RINV_CHUNK2_X8    = 0x06, /**< data bytes 17 to 24 to store/be stored in remote
-                                                           inventory, left-most is LSB, e.g. "ABCD" will
+                                                           inventory, left-most is LSB, for example "ABCD" will
                                                            appear as 0x44434241. */
     U_GNSS_CFG_VAL_KEY_ITEM_RINV_CHUNK3_X8    = 0x07  /**< data bytes 25 to 30 (MSB) to store/be stored in remote
-                                                           inventory, max 6 bytes, left-most is LSB, e.g. "ABCD"
-                                                           will appear as 0x44434241. */
+                                                           inventory, max 6 bytes, left-most is LSB, for example
+                                                           "ABCD" will appear as 0x44434241. */
 } uGnssCfgValKeyItemRinv_t;
 
 /** Item IDs for #U_GNSS_CFG_VAL_KEY_GROUP_ID_RTCM.
@@ -1625,8 +1627,8 @@ typedef enum {
                                                                         (accuracy) is updated; units are 2^-8 deg/s. */
     U_GNSS_CFG_VAL_KEY_ITEM_SFIMU_GYRO_FREQUENCY_U1        = 0x09, /**< nominal gyroscope sensor data sampling frequency
                                                                         in Hz. */
-    U_GNSS_CFG_VAL_KEY_ITEM_SFIMU_GYRO_LATENCY_U2          = 0x0a, /**< gyroscope sensor data latency due to e.g. CAN bus
-                                                                        in milliseconds. */
+    U_GNSS_CFG_VAL_KEY_ITEM_SFIMU_GYRO_LATENCY_U2          = 0x0a, /**< gyroscope sensor data latency due to, for example,
+                                                                        CAN bus in milliseconds. */
     U_GNSS_CFG_VAL_KEY_ITEM_SFIMU_GYRO_ACCURACY_U2         = 0x0b, /**< accuracy of gyroscope sensor data in units of
                                                                         1e-3 deg/s; if not set the accuracy is estimated
                                                                         automatically. */
@@ -1635,8 +1637,8 @@ typedef enum {
                                                                         updated; units are 2^-6 m/s^2. */
     U_GNSS_CFG_VAL_KEY_ITEM_SFIMU_ACCEL_FREQUENCY_U1       = 0x16, /**< nominal accelerometer sensor data sampling frequency
                                                                         in Hz. */
-    U_GNSS_CFG_VAL_KEY_ITEM_SFIMU_ACCEL_LATENCY_U2         = 0x17, /**< accelerometer sensor data latency due to e.g. CAN bus
-                                                                        in ms. */
+    U_GNSS_CFG_VAL_KEY_ITEM_SFIMU_ACCEL_LATENCY_U2         = 0x17, /**< accelerometer sensor data latency due to, for example,
+                                                                        CAN bus in milliseconds. */
     U_GNSS_CFG_VAL_KEY_ITEM_SFIMU_ACCEL_ACCURACY_U2        = 0x18, /**< accuracy of accelerometer sensor data in units of
                                                                         1e-4 m/s^2; if not set, the accuracy is estimated
                                                                         automatically. */
@@ -1693,7 +1695,8 @@ typedef enum {
                                                                counter maximum value if it can be represented as a number
                                                                of set bits (i.e. 2^N). If it cannot be represented in this
                                                                way it must be set to the correct absolute tick value manually. */
-    U_GNSS_CFG_VAL_KEY_ITEM_SFODO_LATENCY_U2          = 0x0a, /**< wheel tick data latency due to e.g. CAN bus in ms. */
+    U_GNSS_CFG_VAL_KEY_ITEM_SFODO_LATENCY_U2          = 0x0a, /**< wheel tick data latency due to , for example, CAN bus
+                                                               in milliseconds. */
     U_GNSS_CFG_VAL_KEY_ITEM_SFODO_FREQUENCY_U1        = 0x0b, /**< nominal wheel tick data frequency in Hz (0 = not set). */
     U_GNSS_CFG_VAL_KEY_ITEM_SFODO_CNT_BOTH_EDGES_L    = 0x0d, /**< count both rising and falling edges on wheel tick signal
                                                                (only relevant if wheel tick is measured by the u-blox

@@ -210,7 +210,7 @@ uDeviceSerial_t *pUCellMuxChannelGetDeviceSerial(uDeviceHandle_t cellHandle,
 
 /** Remove a multiplexer channel.  Note that this does NOT free
  * memory to ensure thread safety; memory is free'd when the cellular
- * instance is closed.
+ * instance is closed (or see uCellMuxFree()).
  *
  * @param cellHandle        the handle of the cellular instance.
  * @param[in] pDeviceSerial the handle of the virtual serial port that
@@ -238,8 +238,8 @@ int32_t uCellMuxRemoveChannel(uDeviceHandle_t cellHandle,
 int32_t uCellMuxDisable(uDeviceHandle_t cellHandle);
 
 /** uCellMuxRemoveChannel() / uCellMuxDisable() do not free memory in
- * order to ensure thread-safety: should any asynchronous callback
- * functions, e.g. carrying user data, occur as a multiplexer is being
+ * order to ensure thread-safety: should any asynchronous callback functions,
+ * for example carrying user data, occur as a multiplexer is being
  * closed they might otherwise call into free()'ed memory space; memory
  * is only free()'ed when the cellular instance is closed.  However,
  * if you can't wait, you really need that memory back, and you are

@@ -41,7 +41,7 @@ extern "C" {
 
 #ifndef U_GNSS_POWER_UP_TIME_SECONDS
 /** How long to wait for a GNSS chip to be available after it is
- * powered up.  If you change this and you also use the cell locate
+ * powered up.  If you change this and you use the cell locate
  * API then you might want to change the value of
  * #U_CELL_LOC_GNSS_POWER_UP_TIME_SECONDS also.
  */
@@ -57,7 +57,7 @@ extern "C" {
 
 #ifndef U_GNSS_AT_POWER_UP_TIME_SECONDS
 /** How long to wait for the response to AT+UGPS=1.  If you
- * change this and you also use the cell locate API then you
+ * change this and you use the cell locate API then you
  * might want to change the value of
  * #U_CELL_LOC_GNSS_POWER_UP_TIME_SECONDS also.
  */
@@ -66,7 +66,7 @@ extern "C" {
 
 #ifndef U_GNSS_AT_POWER_DOWN_TIME_SECONDS
 /** How long to wait for the response to AT+UGPS=0.  If you
- * change this and you also use the cell locate API then you
+ * change this and you use the cell locate API then you
  * might want to change the value of
  * #U_CELL_LOC_GNSS_POWER_DOWN_TIME_SECONDS also.
  */
@@ -77,7 +77,7 @@ extern "C" {
 /** Some intermediate modules (for example SARA-R4) can be touchy
  * about a power-up or power-down request occurring close
  * on the heels of a previous GNSS-related command  If you
- * change this and you also use the cell locate API then you
+ * change this and you use the cell locate API then you
  * might want to change the value of
  * #U_CELL_LOC_GNSS_POWER_CHANGE_WAIT_MILLISECONDS also.
  */
@@ -85,7 +85,7 @@ extern "C" {
 #endif
 
 #ifndef U_GNSS_AT_POWER_ON_RETRIES
-/** When GNSS is connected via an intermediat module that
+/** When GNSS is connected via an intermediate module that
  * intermediate module can sometimes already be talking to
  * the GNSS module when we ask it to power the GNSS module
  * on, resulting in the error response "+CME ERROR: Invalid

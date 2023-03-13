@@ -86,7 +86,7 @@
 # define U_PACKED_STRUCT(NAME) struct __attribute__((packed)) NAME
 #endif
 
-/** U_NORETURN: attribute used for telling compiler that
+/** U_NO_RETURN: attribute used for telling compiler that
  *  a function never returns. Typically functions such as assert handlers.
  */
 

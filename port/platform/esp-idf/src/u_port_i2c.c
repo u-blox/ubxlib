@@ -43,10 +43,7 @@
 #endif
 
 /** Convert a millisecond I2C timeout into an ESP32 value, which
- * are in units of the cycle time of an 80 MHz clock and is per-bit
- * (whereas we use timeouts per byte).  For instance, for a 10 ms
- * timeout in our terms, that's a timeout of 10 / 8 / 0.0000125 = 
- * 10,0000 (when the maximum permitted value is 31).
+ * are in units of the cycle time of an 80 MHz clock.
  * The timeout is per-bit, but a timeout is a timeout, and on the last
  * bit it will be the timeout for the whole byte.
  */

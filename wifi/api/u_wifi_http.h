@@ -48,7 +48,7 @@ extern "C" {
 
 #ifndef U_WIFI_HTTP_DATA_MAX_LENGTH_BYTES
 /** The maximum amount of data that can be sent in a
- * uWifiHttpRequest();
+ * uWifiHttpRequest().
  */
 # define U_WIFI_HTTP_DATA_MAX_LENGTH_BYTES 450
 #endif
@@ -229,7 +229,8 @@ int32_t uWifiHttpRequest(uDeviceHandle_t wifiHandle, int32_t httpHandle,
  *                                to perform the request on, for example
  *                                "/thing/form.html"; cannot be NULL.
  * @param[in] pData               the binary blob to send.
- * @param[in] contentLength       length of the blob, in bytes.
+ * @param[in] contentLength       length of the blob, in bytes; cannot be more
+ *                                than #U_WIFI_HTTP_DATA_MAX_LENGTH_BYTES.
  * @param[in] pContentType        the null-terminated content type, for example
  *                                "application/text"; cannot be more than
  *                                #U_WIFI_HTTP_CONTENT_TYPE_MAX_LENGTH_BYTES.

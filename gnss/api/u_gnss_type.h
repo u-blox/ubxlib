@@ -194,7 +194,7 @@ typedef union {
  * and some GNSS chips have two UART ports which need to be
  * identified separately; effectively this is the GNSS chip's own
  * internal port ID, which needs to be used in some messages
- * (e.g. those querying the communications state).
+ * (for example those querying the communications state).
  */
 typedef enum {
     U_GNSS_PORT_I2C = 0,
@@ -240,7 +240,7 @@ typedef struct {
                            this to NULL or an empty string to match all NMEA
                            messages, "G" to match both "GPGGA" and "GNZDA",
                            "GP" to match all sentences of the "GP" talker,
-                           etc.  Any matching is done in a case-sensitive way
+                           etc.  Any matching is done in a case-sensitive way.
                            Use of a "?" indicates a wildcard, matching any
                            character at that position, so for instance "G?GSV"
                            would match "GPGSV", "GLGSV", "GAGSV", etc. */

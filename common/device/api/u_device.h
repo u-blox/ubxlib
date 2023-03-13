@@ -161,10 +161,10 @@ typedef struct {
     int32_t clockHertz;        /**< To use the default I2C clock frequency
                                     of #U_PORT_I2C_CLOCK_FREQUENCY_HERTZ
                                     then do NOT set this field, simply
-                                    let the compiler initialise it to zero,
+                                    let the compiler initialise it to zero
                                     and the default clock frequence will be
                                     employed; however, if you wish to set a
-                                    different clock frequency you may set it
+                                    different clock frequency, you may set it
                                     here.  Note that if alreadyOpen is set
                                     to true then this will be IGNORED. */
     bool alreadyOpen;          /**< Set this to true if the application code

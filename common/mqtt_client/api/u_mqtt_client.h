@@ -299,8 +299,7 @@ bool uMqttClientIsConnected(const uMqttClientContext_t *pContext);
  * best if your MQTT message reads are carried out in their own thread;
  * this thread would begin reading when a non-zero number of messages are
  * available to read and continue to read messages until there are no more.
- * This takes the load out of the call-back queue and prevents
- * multiple-triggering.
+ * This takes the load out of the call-back queue.
  *
  * @param[in] pContext        a pointer to the internal MQTT context
  *                            structure that was originally returned
@@ -591,6 +590,7 @@ int32_t uMqttClientSnGetTopicNameShort(const uMqttSnTopicName_t *pTopicName,
  * a normal MQTT topic, for example "thing/this", using MQTT-SN,
  * which only has a 16-bit topic field, then you must register the
  * normal MQTT topic to obtain an MQTT-SN topic ID for it.
+ *
  * Note: if you intend to subscribe to an MQTT topic as well as
  * publish to an MQTT topic you do NOT need to use this function:
  * instead use the pTopicName returned by

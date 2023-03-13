@@ -49,12 +49,10 @@ extern "C" {
  * -------------------------------------------------------------- */
 
 /** \deprecated Send a command of your choosing to the GNSS chip and,
- * optionally, wait for the response.  This function is deprecated:
- * please instead send whatever you wish over the UART/I2C/SPI/Virtual
- * Serial port layer to the GNSS chip.  Note that doing so
- * simultaneously with the use of the GNSS APIs here may mean that you
- * read data that was intended as replies to messages sent internally
- * from this code; to avoid this, don't mix the two approaches.
+ * optionally, wait for the response.  This function is deprecated,
+ * using it could cause loss of data required by other parts of this
+ * code: please instead use the uGnssMsg API, where no such danger
+ * exists.
  *
  * @param gnssHandle             the handle of the GNSS instance.
  * @param[in] pCommand           the command to send; may be NULL.

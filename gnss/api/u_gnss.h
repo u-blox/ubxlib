@@ -108,8 +108,8 @@ int32_t uGnssAdd(uGnssModuleType_t moduleType,
                  uDeviceHandle_t *pGnssHandle);
 
 /** If you have called uGnssAdd() with the transport type
- * #U_GNSS_TRANSPORT_VIRTUAL_SERIAL because the GNSS chip is inside
- * or connected via an intermediate (e.g. cellular) module then you
+ * #U_GNSS_TRANSPORT_VIRTUAL_SERIAL because the GNSS chip is inside or
+ * connected via an intermediate (for example cellular) module then you
  * should call this function to let the GNSS instance know that there
  * is such an intermediate device.  This is because some procedures,
  * e.g. powering the GNSS device on or off, need to be done differently
@@ -257,8 +257,8 @@ int32_t uGnssGetSpiFillThreshold(uDeviceHandle_t gnssHandle);
  * continuing for the maximum time (since there will always be "valid"
  * [but 0xFF] data to read).  Setting the threshold to a small value
  * is equally inadvisable, since it may result in valid data (i.e.
- * consecutive genuine 0xFF 0xFF bytes contained in a message body)
- * being discarded as fill.
+ * consecutive genuine 0xFF bytes contained in a message body) being
+ * discarded as fill.
  *
  * @param gnssHandle  the handle of the GNSS instance.
  * @param count       the number of 0xFF bytes which constitute fill,
@@ -267,8 +267,7 @@ int32_t uGnssGetSpiFillThreshold(uDeviceHandle_t gnssHandle);
  */
 int32_t uGnssSetSpiFillThreshold(uDeviceHandle_t gnssHandle, int32_t count);
 
-/** Get whether printing of UBX commands and responses
- * is on or off.
+/** Get whether printing of UBX commands and responses is on or off.
  *
  * @param gnssHandle   the handle of the GNSS instance.
  * @return             true if printing UBX commands and

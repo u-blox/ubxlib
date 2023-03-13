@@ -124,7 +124,7 @@ typedef struct {
                            the u-blox GNSS reference manual or you may use
                            the macros defined in u_gnss_cfg_val_key.h;
                            for instance, key ID CFG-ANA-USE_ANA would be
-                           #U_GNSS_CFG_VAL_KEY_ID_ANA_USE_ANA_L (i.e. prefix
+                           #U_GNSS_CFG_VAL_KEY_ID_ANA_USE_ANA_L (prefix
                            with U_GNSS_CFG_VAL_KEY_ID_, drop the CFG, replace
                            any dashes with underscores and add the type on
                            the end (just so it sticks in your mind)). */
@@ -138,20 +138,21 @@ typedef struct {
 typedef enum {
     U_GNSS_CFG_VAL_TRANSACTION_NONE     = 0, /**< no transaction, just a single set/del;
                                                   if a transaction was previously in
-                                                  progress, i.e. had not been executed,
+                                                  progress, so had NOT been executed,
                                                   this will CANCEL it. */
     U_GNSS_CFG_VAL_TRANSACTION_BEGIN    = 1, /**< marks the first in a sequence of
                                                   set/del operations which will be stored
                                                   inside the GNSS chip and only executed
-                                                  when #U_GNSS_CFG_VAL_TRANSACTION_EXCUTE
+                                                  when #U_GNSS_CFG_VAL_TRANSACTION_EXECUTE
                                                   is set; if a transaction was previously
-                                                  in progress, i.e. had not been executed,
+                                                  in progress and had NOT been executed,
                                                   this will CANCEL it. */
     U_GNSS_CFG_VAL_TRANSACTION_CONTINUE = 2, /**< this set/del operation is part of an
                                                   existing transaction; if no transaction
                                                   is in progress this will generate an
                                                   error. */
-    U_GNSS_CFG_VAL_TRANSACTION_EXCUTE   = 3, /**< perform the set/del operations in the
+    U_GNSS_CFG_VAL_TRANSACTION_EXCUTE   = 3, /**< \deprecated see #U_GNSS_CFG_VAL_TRANSACTION_EXECUTE. */
+    U_GNSS_CFG_VAL_TRANSACTION_EXECUTE  = 3, /**< perform the set/del operations in the
                                                   transaction; at this point error checking
                                                   will be carried out on all of the set/del
                                                   operations if any of them write to RAM. */
@@ -206,7 +207,7 @@ int32_t uGnssCfgGetRate(uDeviceHandle_t gnssHandle,
  * to a non-zero value by calling uGnssCfgSetMsgRate() with that message ID;
  * by default NMEA navigation solutions (GGA etc.) are enabled at a rate of
  * once for every message (so likely once a second), while the UBX-NAV
- * messsages of the UBX protocol are by default set to a rate of 0
+ * messages of the UBX protocol are by default set to a rate of 0
  * (i.e. disabled).
  *
  * @param gnssHandle           the handle of the GNSS instance.
@@ -236,7 +237,7 @@ int32_t uGnssCfgSetRate(uDeviceHandle_t gnssHandle,
  * current transport; this ONLY WORKS FOR M8 AND M9 modules: for
  * M10 modules and later you must find the relevant member from
  * U_GNSS_CFG_VAL_KEY_ID_MSGOUT_* in u_gnss_cfg_val_key.h
- * and get the value of that item, e.g.:
+ * and get the value of that item, for example:
  *
  * ```
  * uint8_t value;
@@ -264,10 +265,10 @@ int32_t uGnssCfgGetMsgRate(uDeviceHandle_t gnssHandle,
                            uGnssMessageId_t *pMessageId);
 
 /** Set the rate at which a given UBX message ID is emitted on the
- * current transport.; this ONLY WORKS FOR M8 AND M9  modules:
+ * current transport; this ONLY WORKS FOR M8 AND M9  modules:
  * for M10 modules and later you must find the relevant member
  * from U_GNSS_CFG_VAL_KEY_ID_MSGOUT_* in u_gnss_cfg_val_key.h
- * and set the value of that item, e.g.:
+ * and set the value of that item, for example:
  *
  * U_GNSS_CFG_SET_VAL_RAM(devHandle, MSGOUT_UBX_NAV_PVT_I2C_U1, 1);
  *
@@ -344,7 +345,7 @@ int32_t uGnssCfgSetUtcStandard(uDeviceHandle_t gnssHandle,
 
 /** Get the protocol types output by the GNSS chip; not relevant
  * where an AT transport is in use since only the UBX protocol is
- * currently supported through that transport.
+ * supported through that transport.
  *
  * @param gnssHandle the handle of the GNSS instance.
  * @return           a bit-map of the protocol types that are
@@ -354,7 +355,7 @@ int32_t uGnssCfgGetProtocolOut(uDeviceHandle_t gnssHandle);
 
 /** Set the protocol type output by the GNSS chip; not relevant
  * where an AT transport is in use since only the UBX protocol is
- * currently supported through that transport.
+ * supported through that transport.
  *
  * @param gnssHandle the handle of the GNSS instance.
  * @param protocol   the protocol type; #U_GNSS_PROTOCOL_ALL may
@@ -524,7 +525,7 @@ int32_t uGnssCfgValGetListAlloc(uDeviceHandle_t gnssHandle,
  *                     #U_GNSS_CFG_VAL_TRANSACTION_CONTINUE.  If this is
  *                     the last in such a sequence and the values should
  *                     now be applied, use
- *                     #U_GNSS_CFG_VAL_TRANSACTION_EXCUTE.  Note that once
+ *                     #U_GNSS_CFG_VAL_TRANSACTION_EXECUTE.  Note that once
  *                     a "set" transaction has begun all of the set operations
  *                     must follow with #U_GNSS_CFG_VAL_TRANSACTION_CONTINUE
  *                     and then be executed - interleaving any other set/del
@@ -532,7 +533,7 @@ int32_t uGnssCfgValGetListAlloc(uDeviceHandle_t gnssHandle,
  *                     will result in the transaction being cancelled.  If you
  *                     don't want to set a value but just execute a "set"
  *                     transaction then call uGnssCfgValSetList() with no
- *                     items and #U_GNSS_CFG_VAL_TRANSACTION_EXCUTE.
+ *                     items and #U_GNSS_CFG_VAL_TRANSACTION_EXECUTE.
  * @param layers       the layers to set the value in, a bit-map of
  *                     #uGnssCfgValLayer_t values OR'ed together.  Use
  *                     #U_GNSS_CFG_VAL_LAYER_RAM to just set the current value
@@ -573,7 +574,7 @@ int32_t uGnssCfgValSet(uDeviceHandle_t gnssHandle,
  *                     #U_GNSS_CFG_VAL_TRANSACTION_CONTINUE.  If this is
  *                     the last in such a sequence and the values should
  *                     now be applied, use
- *                     #U_GNSS_CFG_VAL_TRANSACTION_EXCUTE.  Note that once
+ *                     #U_GNSS_CFG_VAL_TRANSACTION_EXECUTE.  Note that once
  *                     a "set" transaction has begun all of the set operations
  *                     must follow with #U_GNSS_CFG_VAL_TRANSACTION_CONTINUE and
  *                     then be executed - interleaving any other set/del operation,
@@ -622,7 +623,7 @@ int32_t uGnssCfgValSetList(uDeviceHandle_t gnssHandle,
  *                     #U_GNSS_CFG_VAL_TRANSACTION_CONTINUE.  If this is
  *                     the last in such a sequence and the values should
  *                     now be applied, use
- *                     #U_GNSS_CFG_VAL_TRANSACTION_EXCUTE.  Note that once
+ *                     #U_GNSS_CFG_VAL_TRANSACTION_EXECUTE.  Note that once
  *                     a "del" transaction has begun all of the del operations
  *                     must follow with #U_GNSS_CFG_VAL_TRANSACTION_CONTINUE and
  *                     then be executed - interleaving any other set/del operation,
@@ -630,7 +631,7 @@ int32_t uGnssCfgValSetList(uDeviceHandle_t gnssHandle,
  *                     the transaction being cancelled.  If you don't want to set
 *                      a value but just execute a "del" transaction then call
  *                     uGnssCfgValDelList() / uGnssCfgValDelListX() with no items
- *                     and #U_GNSS_CFG_VAL_TRANSACTION_EXCUTE.
+ *                     and #U_GNSS_CFG_VAL_TRANSACTION_EXECUTE.
  * @param layers       the layers to delete the value from, a bit-map of
  *                     #uGnssCfgValLayer_t values OR'ed together.  Only
  *                     #U_GNSS_CFG_VAL_LAYER_BBRAM and #U_GNSS_CFG_VAL_LAYER_FLASH
@@ -665,7 +666,7 @@ int32_t uGnssCfgValDel(uDeviceHandle_t gnssHandle, uint32_t keyId,
  *                       #U_GNSS_CFG_VAL_TRANSACTION_CONTINUE.  If this is
  *                       the last in such a sequence and the values should
  *                       now be applied, use
- *                       #U_GNSS_CFG_VAL_TRANSACTION_EXCUTE.  Note that once
+ *                       #U_GNSS_CFG_VAL_TRANSACTION_EXECUTE.  Note that once
  *                       a "del" transaction has begun all of the del operations
  *                       must follow with #U_GNSS_CFG_VAL_TRANSACTION_CONTINUE and
  *                       then be executed - interleaving any other set/del operation,
@@ -708,7 +709,7 @@ int32_t uGnssCfgValDelList(uDeviceHandle_t gnssHandle,
  *                     #U_GNSS_CFG_VAL_TRANSACTION_CONTINUE.  If this is
  *                     the last in such a sequence and the values should
  *                     now be applied, use
- *                     #U_GNSS_CFG_VAL_TRANSACTION_EXCUTE.  Note that once
+ *                     #U_GNSS_CFG_VAL_TRANSACTION_EXECUTE.  Note that once
  *                     a "del" transaction has begun all of the del operations
  *                     must follow with #U_GNSS_CFG_VAL_TRANSACTION_CONTINUE and
  *                     then be executed - interleaving any other set/del operation,

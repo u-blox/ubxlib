@@ -1,5 +1,5 @@
 # Introduction
-These directories provide the implementation of the porting layer on the Zephyr platform.  Instructions on how to install the necessary tools and perform the build can be found in the [runner](runner) directory for Nordic platforms and the [runner_linux](runner_linux) directory for Linux/Posix.  This is intended to become a generic Zephyr platform, however at the moment it only supports:
+These directories provide the implementation of the porting layer on the Zephyr platform.  Instructions on how to install the necessary tools and perform the build can be found in the [runner](runner) directory for Nordic platforms and the [runner_linux](runner_linux) directory for Linux/Posix.  While this should, generically, work with any Zephyr board, you should note that we only test with the following HW:
 
 - Nordic MCUs, which require a **specific** version/configuration of Zephyr,
 - Linux/posix, for debugging/development only, just like [windows](../windows).
@@ -13,10 +13,8 @@ Note: the directory structure here differs from that in the other platform direc
 - [runner_linux](runner_linux): contains the test application configuration and build files for Linux/Posix on the Zephyr platform.
 - [boards](boards): contains custom u-blox boards that are not \[yet\] in the Zephyr repo.
 
-# SDK Installation
-`ubxlib` is tested with the version of Zephyr that comes with `nRFConnect SDK version 2.2.0` which is the recommended version.
-
-`ubxlib` has been tested to build with all versions nRFConnect SDK from 1.6.1 up til 2.2.0. The test suite for `ubxlib` is however only using 2.2.0.
+# SDK Installation (NRF Connect)
+`ubxlib` is tested with the version of Zephyr that comes with `nRFConnect SDK version 2.2.0` which is the recommended version; it is intended to build with all versions nRFConnect SDK from 1.6.1 up til 2.2.0.
 
 Follow the instructions to install the development tools:
 
@@ -79,12 +77,11 @@ socat /dev/pts/3,echo=0,raw /dev/pts/3,echo=0,raw
 ...would loop `/dev/pts/3` (in the example above UART 0) back on itself.
 
 ## Device Tree
-Zephyr pin choices for any HW peripheral managed by Zephyr (e.g. UART, I2C, SPI, etc.) are made at compile-time in the Zephyr device tree, they cannot be passed into the `` functions as run-time variables.  Look in the `zephyr/zephyr.dts` file located in your build directory to find the resulting pin allocations for these peripherals.
+Zephyr pin choices for any HW peripheral managed by Zephyr (e.g. UART, I2C, SPI, etc.) are made at compile-time in the Zephyr device tree, they cannot be passed into the functions as run-time variables.  Look in the `zephyr/zephyr.dts` file located in your build directory to find the resulting pin allocations for these peripherals.
 
 If you want to find out more about device tree please see Zephyr [Introduction to devicetree](https://docs.zephyrproject.org/latest/guides/dts/intro.html)
 
-## Important UART Note
-Since pin assignment for UARTs are made in the device tree, functions such as `uPortUartOpen()` which take pin assignments as parameters, should have all the pins set to -1.  You can look through the resulting `zephyr/zephyr.dts` located in your build directory to find the UART you want to use.  The UARTs will be named `uart0`, `uart1`, ... in the device tree - the ending number is the value you should use to tell `ubxlib` what UART to open.
+You will, though, still need to pass into `ubxlib` the HW block that is used: e.g. UART 0, UART 1, etc.  The UARTs, for instance, will be named `uart0`, `uart1`... in the device tree; the ending number is the value you should use to tell `ubxlib` what device to open.
 
 ## Additional Notes
 - Always clean the build directory when upgrading to a new `ubxlib` version.

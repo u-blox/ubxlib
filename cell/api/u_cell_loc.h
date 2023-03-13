@@ -253,7 +253,7 @@ int32_t uCellLocSetPinGnssPwr(uDeviceHandle_t cellHandle, int32_t pin);
  */
 int32_t uCellLocSetPinGnssDataReady(uDeviceHandle_t cellHandle, int32_t pin);
 
-/** Configure the Cell Locate server parameters, in particular
+/** Configure the Cell Locate server parameters, in particular the
  * authentication token that is required to use the Cell Locate
  * service.  This may be obtained from the Location Services
  * section of your Thingstream portal
@@ -312,6 +312,7 @@ bool uCellLocGnssInsideCell(uDeviceHandle_t cellHandle);
  * the cellular module is currently registered on a network
  * (e.g. as a result of uCellNetConnect() or uCellNetRegister()
  * being called).
+ *
  * IMPORTANT: if Cell Locate is unable to establish a location
  * it may still return a valid time and a location of all zeros
  * but with a very large radius (e.g. 200 km), hence it is always
@@ -412,7 +413,7 @@ int32_t uCellLocGetStatus(uDeviceHandle_t cellHandle);
  * cellular module but the module may still send such an answer and,
  * since there is no reference count in it, if uCellLocGetStart() is
  * called again quickly it may pick up the first answer (and then
- * the subsequent answer one will be ignored, etc.).
+ * the subsequent answer will be ignored, etc.).
  *
  * @param cellHandle  the handle of the cellular instance.
  */

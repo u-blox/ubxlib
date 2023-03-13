@@ -209,12 +209,12 @@ int32_t uGnssPosGetStart(uDeviceHandle_t gnssHandle,
 void uGnssPosGetStop(uDeviceHandle_t gnssHandle);
 
 /** Get position readings streamed constantly to a callback; this will
- * only work with one of the streamed transports (e.g. UART, I2C, SPI or
- * Virtual Serial), it will NOT work with AT-command-based transport
+ * only work with one of the streamed transports (for instance UART, I2C,
+ * SPI or Virtual Serial), it will NOT work with AT-command-based transport
  * (#U_GNSS_TRANSPORT_AT).  uGnssPosGetStart() allocates some storage
  * which remains in memory until the GNSS API is deinitialised; should
- * you wish to free the memory occupied by the mutex then calling
- * uGnssPosGetStreamedStop() will also do that.
+ * you wish to free that memory then calling uGnssPosGetStreamedStop()
+ * will also do that.
  *
  * Note: under the hood the UBX protocol is used to establish position.
  * By default, NMEA position is _also_ output from the GNSS chip: to

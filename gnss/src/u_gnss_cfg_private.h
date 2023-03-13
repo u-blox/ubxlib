@@ -94,7 +94,7 @@ int32_t uGnssCfgPrivateValGetListAlloc(uGnssPrivateInstance_t *pInstance,
  *                      #U_GNSS_CFG_VAL_TRANSACTION_CONTINUE.  If this is
  *                      the last in such a sequence and the values should
  *                      now be applied, use
- *                      #U_GNSS_CFG_VAL_TRANSACTION_EXCUTE.  Note that once
+ *                      #U_GNSS_CFG_VAL_TRANSACTION_EXECUTE.  Note that once
  *                      a "set" transaction has begun all of the set operations
  *                      must follow with #U_GNSS_CFG_VAL_TRANSACTION_CONTINUE and
  *                      then be executed - interleaving any other set/del operation,
@@ -137,7 +137,7 @@ int32_t uGnssCfgPrivateValSetList(uGnssPrivateInstance_t *pInstance,
  *                       #U_GNSS_CFG_VAL_TRANSACTION_CONTINUE.  If this is
  *                       the last in such a sequence and the values should
  *                       now be applied, use
- *                       #U_GNSS_CFG_VAL_TRANSACTION_EXCUTE.  Note that once
+ *                       #U_GNSS_CFG_VAL_TRANSACTION_EXECUTE.  Note that once
  *                       a "del" transaction has begun all of the del operations
  *                       must follow with #U_GNSS_CFG_VAL_TRANSACTION_CONTINUE and
  *                       then be executed - interleaving any other set/del operation,

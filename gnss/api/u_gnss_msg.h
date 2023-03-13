@@ -31,18 +31,6 @@
 /** @file
  * @brief This header file defines the generic message handle
  * functions of the GNSS API.
- *
- * IMPORTANT: the functions in this API currently only work for GNSS
- * chips directly connected to this MCU (e.g. via I2C or UART or SPI),
- * they do NOT work for GNSS chips connected via an intermediate
- * [e.g. cellular] module.  To send and receive messages to a GNSS
- * module connected via an intermediate module please use
- * uGnssUtilUbxTransparentSendReceive().
- *
- * It is planned, in future, to make transport via an intermediate
- * cellular module work in the same way as the UART/I2C/SPI streaming
- * interfaces (by implementing support for 3GPP TS 27.010 +CMUX in this
- * code), at which point this function will be deprecated.
  */
 
 #ifdef __cplusplus
@@ -117,11 +105,13 @@ extern "C" {
  * avoid data loss.  The ONLY GNSS API calls that pCallback may make
  * are uGnssMsgReceiveCallbackRead() / uGnssMsgReceiveCallbackExtract(),
  * no others or you risk getting* mutex-locked.
+ *
  * If you are checking for a specific UBX-format message (i.e. no
  * wild-cards) and a NACK is received for that message then
  * errorCodeOrLength will be set to #U_GNSS_ERROR_NACK and there
  * will be no message to read, otherwise errorCodeOrLength will
  * indicate the length of the message.
+ *
  * A simple construction might be to have set the pCallbackParam
  * when you called uGnssMsgReceiveStart() to the address of your
  * buffer and then the callback might be:
@@ -238,11 +228,9 @@ void uGnssMsgReceiveFlush(uDeviceHandle_t gnssHandle, bool asyncAlso);
  * }
  * ```
  *
- * IMPORTANT: this currently only works for GNSS chips directly
- * connected to this MCU, it does NOT work for GNSS chips connected
- * via an intermediate [e.g. cellular] module.  To send
- * messages to a GNSS module connected via an intermediate
- * module please use uGnssUtilUbxTransparentSendReceive().
+ * IMPORTANT: this does not work for modules connected via an AT
+ * transport, please instead open a Virtual Serial connection for
+ * that case (see uCellMuxAddChannel()).
  *
  * @param gnssHandle      the handle of the GNSS instance.
  * @param[in] pBuffer     the message to send; cannot be NULL.
@@ -262,11 +250,6 @@ int32_t uGnssMsgSend(uDeviceHandle_t gnssHandle,
 /** Monitor the output of the GNSS chip for a given message, blocking
  * (see uGnssMsgReceiveStart() for a non-blocking version).
  *
- * Note that for UBX-format messages, which may be quite long, the
- * checksum on the message is NOT checked: if you are interested
- * in the message you may confirm that it is coherent by calling
- * uGnssMsgIsGood().
- *
  * Note: if the message ID is set to a particular UBX-format message (i.e.
  * no wild-cards) and a NACK is received for that message then the
  * error code #U_GNSS_ERROR_NACK will be returned.
@@ -278,9 +261,9 @@ int32_t uGnssMsgSend(uDeviceHandle_t gnssHandle,
  * could instead use uGnssMsgReceiveStart(), which does pass back
  * the decoded message ID to the pCallback.
  *
- * IMPORTANT: this currently only works for GNSS chips directly
- * connected to this MCU, it does NOT work for GNSS chips connected
- * via an intermediate [e.g. cellular] module.
+ * IMPORTANT: this does not work for modules connected via an AT
+ * transport, please instead open a Virtual Serial connection for
+ * that case (see uCellMuxAddChannel()).
  *
  * @param gnssHandle             the handle of the GNSS instance.
  * @param[in] pMessageId         the message ID to capture.  If
@@ -339,9 +322,9 @@ int32_t uGnssMsgReceive(uDeviceHandle_t gnssHandle,
  * #U_GNSS_MSG_RECEIVER_MAX_NUM of these running at any one time.
  * Message handlers callbacks are called mostly-recently-added first.
  *
- * IMPORTANT: this currently only works for GNSS chips directly
- * connected to this MCU, it does NOT work for GNSS chips connected
- * via an intermediate [e.g. cellular] module.
+ * IMPORTANT: this does not work for modules connected via an AT
+ * transport, please instead open a Virtual Serial connection for
+ * that case (see uCellMuxAddChannel()).
  *
  * @param gnssHandle             the handle of the GNSS instance.
  * @param[in] pMessageId         a pointer to the message ID to capture;
@@ -405,10 +388,8 @@ int32_t uGnssMsgReceiveCallbackRead(uDeviceHandle_t gnssHandle,
  * once this is called the message will not be available to any of your
  * other pCallbacks.  Use this if the message you wish to read is very
  * large, larger than this codes' internal ring buffer
- * (#U_GNSS_MSG_RING_BUFFER_LENGTH_BYTES) and so you need to read
- * it directly in this way, in other words when the internal buffer simply
- * isn't big enough to store the msssage and pass it around; normally
- * you would use uGnssMsgReceiveCallbackRead().
+ * (#U_GNSS_MSG_RING_BUFFER_LENGTH_BYTES); normally you would use
+ * uGnssMsgReceiveCallbackRead().
  *
  * IMPORTANT: this function can ONLY be called from the message
  * receive pCallback, it is NOT thread-safe to call it from anywhere else.

@@ -363,7 +363,7 @@ int32_t uLocationGet(uDeviceHandle_t devHandle, uLocationType_t type,
  * for this function to work.  This is a one-shot establishment:
  * once pCallback has been called it is over, you must call this
  * function again to start a new location establishment attempt.  If you
- * want your callback to be called continuously until told to stop, see
+ * want your callback to be called continuously until told to stop, use
  * uLocationGetContinuousStart().
  *
  * Note that if you have a GNSS chip inside your cellular module
@@ -446,7 +446,7 @@ int32_t uLocationGetStart(uDeviceHandle_t devHandle, uLocationType_t type,
  * there is a known issue where, if a GNSS multiplexer channel (required for
  * streamed position) is opened, closed, and then re-opened the GNSS chip will
  * be unresponsive.  For that case, please call this function once at
- * start of day.
+ * startup, only calling uLocationGetStop() when you are shutting down.
  *
  * If you are requesting #U_LOCATION_TYPE_GNSS at a high rate (e.g. faster than
  * once per second) then, since this code only uses UBX messages, it will
