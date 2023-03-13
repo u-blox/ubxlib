@@ -621,7 +621,7 @@ U_PORT_TEST_FUNCTION("[httpClient]", "httpClient")
                 U_PORT_TEST_ASSERT(uHttpClientOpenResetLastError() == 0);
 
                 // Create a path
-                snprintf(pathBuffer, sizeof(pathBuffer), "/%s_%d_%d.html", serialNumber, x, y);
+                snprintf(pathBuffer, sizeof(pathBuffer), "/%.16s_%d_%d.html", serialNumber, x, y);
 
                 // For every request operation...
                 busyCount = 0;
