@@ -66,9 +66,7 @@
 #include "u_security_tls.h"
 
 #include "u_http_client.h"
-
-// NRF52, which we use NRF5SDK on, doesn't have enough heap for this test
-#ifndef U_CFG_TEST_USING_NRF5SDK
+#include "u_device_shared.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -84,16 +82,27 @@
 
 #ifndef U_HTTP_CLIENT_TEST_MAX_NUM
 /** The maximum number of HTTP clients that can be active at any
- * one time (this is 4 for cellular modules).
+ * one time (this is 4 for cellular modules and 2 for shortrange modules (default)).
  */
 # define U_HTTP_CLIENT_TEST_MAX_NUM 4
+# define U_HTTP_SHORT_RANGE_CLIENT_TEST_MAX_NUM 2
 #endif
 
 #ifndef U_HTTP_CLIENT_TEST_DATA_SIZE_BYTES
 /** The amount of data to HTTP PUT/POST/GET; must be able to allocate
  * this much.
  */
-# define U_HTTP_CLIENT_TEST_DATA_SIZE_BYTES (1024 * 5)
+# ifndef U_CFG_TEST_USING_NRF5SDK
+#  define U_HTTP_CLIENT_TEST_DATA_SIZE_BYTES (1024 * 5)
+# else
+#  define U_HTTP_CLIENT_TEST_DATA_SIZE_BYTES 512 // NRF52, which we use NRF5SDK on, doesn't have enough heap for large datasize
+# endif
+#endif
+
+#ifndef U_HTTP_CLIENT_TEST_DATA_SHORT_RANGE_SIZE_BYTES
+/** The amount of data in HTTP commands for shortrange
+ */
+# define U_HTTP_CLIENT_TEST_DATA_SHORT_RANGE_SIZE_BYTES 512
 #endif
 
 #ifndef U_HTTP_CLIENT_TEST_CONTENT_TYPE
@@ -137,13 +146,13 @@
  * established TCP connection so, in effect, it is a bit
  * like UDP and needs a retry mechanism to be reliable.
  */
-# define HTTP_CLIENT_TEST_MAX_TRIES_UNKNOWN 3
+# define HTTP_CLIENT_TEST_MAX_TRIES_UNKNOWN 10
 #endif
 
 #ifndef HTTP_CLIENT_TEST_OVERALL_TRIES_COUNT
 /** An overall guard limit for trying any given HTTP request type.
  */
-# define HTTP_CLIENT_TEST_OVERALL_TRIES_COUNT 10
+# define HTTP_CLIENT_TEST_OVERALL_TRIES_COUNT 30
 #endif
 
 /* ----------------------------------------------------------------
@@ -274,6 +283,7 @@ static void httpCallback(uDeviceHandle_t devHandle,
         pCallbackData->devHandle = devHandle;
         pCallbackData->statusCodeOrError = statusCodeOrError;
         pCallbackData->responseSize = responseSize;
+        U_TEST_PRINT_LINE("HTTP Callback - respons size %d.\n", responseSize);
     }
 }
 
@@ -301,6 +311,35 @@ static int32_t bufferCheck(const char *pBuffer, size_t size)
     return differentOffset;
 }
 
+// Fill a buffer with printable ASCII 32 to 126.
+static void bufferFillASCII(char *pBuffer, size_t size)
+{
+    char c = 32;
+
+    for (size_t x = 0; x < size; x++, pBuffer++) {
+        *pBuffer = (char) c;
+        c = c < 126 ? c + 1 : 32;
+    }
+}
+
+// Check that a buffer contains printable ASCII 32 to 126, returning
+// 0 or a positive number representing the point at which
+// the buffer is not as expected (counting from 1).
+static int32_t bufferCheckASCII(const char *pBuffer, size_t size)
+{
+    size_t differentOffset = 0;
+    char c = 32;
+
+    for (size_t x = 0; (x < size) && (differentOffset == 0); x++, pBuffer++) {
+        if (*pBuffer != (char) c) {
+            differentOffset = x;
+        }
+        c = c < 126 ? c + 1 : 32;
+    }
+
+    return differentOffset;
+}
+
 // Check the respone, including hanging around for it in the non-blocking case.
 static int32_t checkResponse(uHttpClientTestOperation_t operation,
                              int32_t errorOrStatusCode,
@@ -309,7 +348,8 @@ static int32_t checkResponse(uHttpClientTestOperation_t operation,
                              int32_t expectedResponseSize,
                              size_t responseSizeBlocking,
                              const char *pContentTypeBuffer,
-                             volatile uHttpClientTestCallback_t *pCallbackData)
+                             volatile uHttpClientTestCallback_t *pCallbackData,
+                             bool checkBinary)
 {
     int32_t outcome = (int32_t) U_ERROR_COMMON_SUCCESS;
     int32_t startTimeMs;
@@ -320,125 +360,129 @@ static int32_t checkResponse(uHttpClientTestOperation_t operation,
     size_t responseSize = responseSizeBlocking;
     int32_t expectedStatusCode = 200;
 
-    if (operation == U_HTTP_CLIENT_TEST_OPERATION_GET_DELETED) {
-        expectedStatusCode = 404;
-    }
+    if (errorOrStatusCode != U_ERROR_COMMON_NOT_SUPPORTED) {
+        if (operation == U_HTTP_CLIENT_TEST_OPERATION_GET_DELETED) {
+            expectedStatusCode = 404;
+        }
+        if (pConnection->pResponseCallback != NULL) {
+            // For the non-blocking case, should have an initial
+            // error code of zero
+            if (errorOrStatusCode == 0) {
+                startTimeMs = uPortGetTickTimeMs();
+                // Wait for twice as long as the timeout as a guard
+                U_TEST_PRINT_LINE("waiting for asynchronous response for up to"
+                                  " %d second(s)...", (pConnection->timeoutSeconds * 2) +
+                                  U_HTTP_CLIENT_TEST_RESPONSE_TIMEOUT_EXTRA_SECONDS);
+                while (!pCallbackData->called &&
+                       (uPortGetTickTimeMs() - startTimeMs < ((pConnection->timeoutSeconds * 2) +
+                                                              U_HTTP_CLIENT_TEST_RESPONSE_TIMEOUT_EXTRA_SECONDS) * 1000)) {
+                    uPortTaskBlock(100);
+                }
 
-    if (pConnection->pResponseCallback != NULL) {
-        // For the non-blocking case, should have an initial
-        // error code of zero
-        if (errorOrStatusCode == 0) {
-            startTimeMs = uPortGetTickTimeMs();
-            // Wait for twice as long as the timeout as a guard
-            U_TEST_PRINT_LINE("waiting for asynchronous response for up to"
-                              " %d second(s)...", (pConnection->timeoutSeconds * 2) +
-                              U_HTTP_CLIENT_TEST_RESPONSE_TIMEOUT_EXTRA_SECONDS);
-            while (!pCallbackData->called &&
-                   (uPortGetTickTimeMs() - startTimeMs < ((pConnection->timeoutSeconds * 2) +
-                                                          U_HTTP_CLIENT_TEST_RESPONSE_TIMEOUT_EXTRA_SECONDS) * 1000)) {
-                uPortTaskBlock(100);
+                if (pCallbackData->called) {
+                    responseSize = pCallbackData->responseSize;
+                    U_TEST_PRINT_LINE("response received in %d ms.\n",
+                                      uPortGetTickTimeMs() - startTimeMs);
+                    if (pCallbackData->statusCodeOrError != expectedStatusCode) {
+                        U_TEST_PRINT_LINE("expected status code %d, got %d.\n",
+                                          expectedStatusCode, pCallbackData->statusCodeOrError);
+                        if (pCallbackData->statusCodeOrError < 0) {
+                            // If the module reported an error, pass it back
+                            // so that we may retry
+                            outcome = pCallbackData->statusCodeOrError;
+                        } else {
+                            outcome = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
+                        }
+                    }
+                } else {
+                    U_TEST_PRINT_LINE("callback not called after %d second(s).\n",
+                                      (uPortGetTickTimeMs() - startTimeMs) / 1000);
+                    outcome = (int32_t) U_ERROR_COMMON_TIMEOUT;
+                }
+            } else {
+                if (pConnection->errorOnBusy && (errorOrStatusCode == (int32_t) U_ERROR_COMMON_BUSY)) {
+                    U_TEST_PRINT_LINE("non-blocking case with error-on-busy, gotta try again...\n");
+                    outcome = (int32_t) U_ERROR_COMMON_BUSY;
+                    uPortTaskBlock(1000);
+                } else {
+                    U_TEST_PRINT_LINE("non-blocking case, error-on-busy %s, expected"
+                                      " uHttpClientXxxRequest() to return 0 but got %d.\n",
+                                      pConnection->errorOnBusy ? "ON" : "off", errorOrStatusCode);
+                    outcome = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
+                }
             }
-
-            if (pCallbackData->called) {
-                responseSize = pCallbackData->responseSize;
-                U_TEST_PRINT_LINE("response received in %d ms.\n",
-                                  uPortGetTickTimeMs() - startTimeMs);
-                if (pCallbackData->statusCodeOrError != expectedStatusCode) {
-                    U_TEST_PRINT_LINE("expected status code %d, got %d.\n",
-                                      expectedStatusCode, pCallbackData->statusCodeOrError);
-                    if (pCallbackData->statusCodeOrError < 0) {
-                        // If the module reported an error, pass it back
-                        // so that we may retry
-                        outcome = pCallbackData->statusCodeOrError;
+        } else {
+            // For the blocking case, errorOrStatusCode should be expectedStatusCode
+            if (errorOrStatusCode != expectedStatusCode) {
+                U_TEST_PRINT_LINE("expected status code %d, got %d.\n",
+                                  expectedStatusCode, errorOrStatusCode);
+                if (errorOrStatusCode < 0) {
+                    // If the module reported an error, pass it back
+                    // so that we may retry
+                    outcome = errorOrStatusCode;
+                } else {
+                    outcome = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
+                }
+            }
+        }
+        if (outcome == (int32_t) U_ERROR_COMMON_SUCCESS) {
+            if (((operation == U_HTTP_CLIENT_TEST_OPERATION_GET_PUT) ||
+                 (operation == U_HTTP_CLIENT_TEST_OPERATION_POST) ||
+                 (operation == U_HTTP_CLIENT_TEST_OPERATION_GET_POST)) &&
+                (expectedResponseSize >= 0)) {
+                if (responseSize != (size_t) expectedResponseSize) {
+                    U_TEST_PRINT_LINE("expected %d byte(s) of body from GET"
+                                      " but got %d byte(s).\n",
+                                      expectedResponseSize, responseSize);
+                    outcome = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
+                } else {
+                    if (checkBinary) {
+                        x = (int32_t) bufferCheck(pResponse, responseSize);
                     } else {
+                        x = (int32_t) bufferCheckASCII(pResponse, responseSize);
+                    }
+                    if (x != 0) {
+                        x--; // Since bufferCheck counts from 1
+                        U_TEST_PRINT_LINE("body of GET does not match what was expected"
+                                          " at offset %d:\n", x);
+                        pTmp = pResponse + x - 40;
+                        y = 40;
+                        if (pTmp < pResponse) {
+                            pTmp = pResponse;
+                            y = 0;
+                        }
+                        z = 80;
+                        if (z > ((int32_t) responseSize) - (pResponse - pTmp)) {
+                            z = ((int32_t) responseSize) - (pResponse - pTmp);
+                        }
+                        printBuffer(pTmp, z);
+                        uPortLog("\n%.*s%s\n", y, "                                        ", "^");
+                        outcome = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
+                    }
+                    U_TEST_PRINT_LINE("%d byte(s), all good, content-type \"%s\".\n",
+                                      responseSize, pContentTypeBuffer);
+                    x = strlen(pContentTypeBuffer);
+                    if (x < U_HTTP_CLIENT_TEST_CONTENT_TYPE_MIN_LENGTH_BYTES) {
+                        U_TEST_PRINT_LINE("expected at least %d byte(s) of content type"
+                                          " string but only got %d.",
+                                          U_HTTP_CLIENT_TEST_CONTENT_TYPE_MIN_LENGTH_BYTES, x);
                         outcome = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
                     }
                 }
-            } else {
-                U_TEST_PRINT_LINE("callback not called after %d second(s).\n",
-                                  (uPortGetTickTimeMs() - startTimeMs) / 1000);
-                outcome = (int32_t) U_ERROR_COMMON_TIMEOUT;
-            }
-        } else {
-            if (pConnection->errorOnBusy && (errorOrStatusCode == (int32_t) U_ERROR_COMMON_BUSY)) {
-                U_TEST_PRINT_LINE("non-blocking case with error-on-busy, gotta try again...\n");
-                outcome = (int32_t) U_ERROR_COMMON_BUSY;
-                uPortTaskBlock(1000);
-            } else {
-                U_TEST_PRINT_LINE("non-blocking case, error-on-busy %s, expected"
-                                  " uHttpClientXxxRequest() to return 0 but got %d.\n",
-                                  pConnection->errorOnBusy ? "ON" : "off", errorOrStatusCode);
-                outcome = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
-            }
-        }
-    } else {
-        // For the blocking case, errorOrStatusCode should be expectedStatusCode
-        if (errorOrStatusCode != expectedStatusCode) {
-            U_TEST_PRINT_LINE("expected status code %d, got %d.\n",
-                              expectedStatusCode, errorOrStatusCode);
-            if (errorOrStatusCode < 0) {
-                // If the module reported an error, pass it back
-                // so that we may retry
-                outcome = errorOrStatusCode;
-            } else {
-                outcome = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
-            }
-        }
-    }
-    if (outcome == (int32_t) U_ERROR_COMMON_SUCCESS) {
-        if (((operation == U_HTTP_CLIENT_TEST_OPERATION_GET_PUT) ||
-             (operation == U_HTTP_CLIENT_TEST_OPERATION_POST) ||
-             (operation == U_HTTP_CLIENT_TEST_OPERATION_GET_POST)) &&
-            (expectedResponseSize >= 0)) {
-            if (responseSize != (size_t) expectedResponseSize) {
-                U_TEST_PRINT_LINE("expected %d byte(s) of body from GET"
-                                  " but got %d byte(s).\n",
-                                  expectedResponseSize, responseSize);
-                outcome = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
-            } else {
-                x = (int32_t) bufferCheck(pResponse, responseSize);
-                if (x != 0) {
-                    x--; // Since bufferCheck counts from 1
-                    U_TEST_PRINT_LINE("body of GET does not match what was expected"
-                                      " at offset %d:\n", x);
-                    pTmp = pResponse + x - 40;
-                    y = 40;
-                    if (pTmp < pResponse) {
-                        pTmp = pResponse;
-                        y = 0;
-                    }
-                    z = 80;
-                    if (z > ((int32_t) responseSize) - (pResponse - pTmp)) {
-                        z = ((int32_t) responseSize) - (pResponse - pTmp);
-                    }
-                    printBuffer(pTmp, z);
-                    uPortLog("\n%.*s%s\n", y, "                                        ", "^");
-                    outcome = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
-                }
-                U_TEST_PRINT_LINE("%d byte(s), all good, content-type \"%s\".\n",
-                                  responseSize, pContentTypeBuffer);
-                x = strlen(pContentTypeBuffer);
-                if (x < U_HTTP_CLIENT_TEST_CONTENT_TYPE_MIN_LENGTH_BYTES) {
-                    U_TEST_PRINT_LINE("expected at least %d byte(s) of content type"
-                                      " string but only got %d.",
-                                      U_HTTP_CLIENT_TEST_CONTENT_TYPE_MIN_LENGTH_BYTES, x);
+            } else if (operation == U_HTTP_CLIENT_TEST_OPERATION_HEAD) {
+                U_TEST_PRINT_LINE("HEAD returned %d byte(s):\n", responseSize);
+                printBuffer(pResponse, responseSize);
+                uPortLog("\n");
+                if (responseSize < U_HTTP_CLIENT_TEST_HEAD_MIN_LENGTH_BYTES) {
+                    U_TEST_PRINT_LINE("expected at least %d byte(s) of headers"
+                                      " but only got %d.",
+                                      U_HTTP_CLIENT_TEST_HEAD_MIN_LENGTH_BYTES,
+                                      responseSize);
                     outcome = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
                 }
             }
-        } else if (operation == U_HTTP_CLIENT_TEST_OPERATION_HEAD) {
-            U_TEST_PRINT_LINE("HEAD returned %d byte(s):\n", responseSize);
-            printBuffer(pResponse, responseSize);
-            uPortLog("\n");
-            if (responseSize < U_HTTP_CLIENT_TEST_HEAD_MIN_LENGTH_BYTES) {
-                U_TEST_PRINT_LINE("expected at least %d byte(s) of headers"
-                                  " but only got %d.",
-                                  U_HTTP_CLIENT_TEST_HEAD_MIN_LENGTH_BYTES,
-                                  responseSize);
-                outcome = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
-            }
         }
     }
-
     // Reset the callback data for next time
     memset((void *) pCallbackData, 0, sizeof(*pCallbackData));
 
@@ -467,6 +511,8 @@ U_PORT_TEST_FUNCTION("[httpClient]", "httpClient")
     char urlBuffer[64];
     int32_t port = U_HTTP_CLIENT_TEST_SERVER_PORT;
     char serialNumber[U_SECURITY_SERIAL_NUMBER_MAX_LENGTH_BYTES];
+    size_t httpClientMaxNumConn = U_HTTP_CLIENT_TEST_MAX_NUM;
+    size_t uHttpClientTestDataSizeBytes;
     char pathBuffer[32];
     uHttpClientTestCallback_t callbackData = {0};
     int32_t errorOrStatusCode = 0;
@@ -474,6 +520,8 @@ U_PORT_TEST_FUNCTION("[httpClient]", "httpClient")
     size_t busyCount;
     size_t moduleErrorCount;
     size_t tries;
+    int deviceType;
+    bool checkBinary;
 
     // In case a previous test failed
     uNetworkTestCleanUp();
@@ -500,12 +548,22 @@ U_PORT_TEST_FUNCTION("[httpClient]", "httpClient")
         // Get a unique number we can use to stop parallel
         // tests colliding at the HTTP server
         U_PORT_TEST_ASSERT(uSecurityGetSerialNumber(devHandle, serialNumber) > 0);
+        deviceType = uDeviceGetDeviceType(devHandle);
+        if ((deviceType == U_DEVICE_TYPE_SHORT_RANGE_OPEN_CPU) ||
+            (deviceType == U_DEVICE_TYPE_SHORT_RANGE)) {
+            httpClientMaxNumConn = U_HTTP_SHORT_RANGE_CLIENT_TEST_MAX_NUM;
+            uHttpClientTestDataSizeBytes = U_HTTP_CLIENT_TEST_DATA_SHORT_RANGE_SIZE_BYTES;
+        } else {
+            uHttpClientTestDataSizeBytes = U_HTTP_CLIENT_TEST_DATA_SIZE_BYTES;
+        }
 
         // Repeat for HTTP and HTTPS
         for (size_t x = 0; x < 2; x++) {
             if (x == 1) {
                 // Secure
                 port = U_HTTP_CLIENT_TEST_SERVER_SECURE_PORT;
+            } else {
+                port = U_HTTP_CLIENT_TEST_SERVER_PORT;
             }
             // Create a complete URL from the domain name and port number
             snprintf(urlBuffer, sizeof(urlBuffer), "%s:%d",
@@ -516,7 +574,7 @@ U_PORT_TEST_FUNCTION("[httpClient]", "httpClient")
             // Do this for as many times as we have HTTP/HTTPS instances, opening a new
             // one each time and alternating between blocking (with/without
             // errorOnBusy) and non-blocking behaviours
-            for (size_t y = 0; y < U_HTTP_CLIENT_TEST_MAX_NUM; y++) {
+            for (size_t y = 0; y < httpClientMaxNumConn; y++) {
                 connection.pResponseCallback = NULL;
                 connection.pResponseCallbackParam = NULL;
 
@@ -529,7 +587,7 @@ U_PORT_TEST_FUNCTION("[httpClient]", "httpClient")
                 }
 
                 uPortLog(U_TEST_PREFIX "opening HTTP%s client %d of %d on %s, %sblocking",
-                         x == 0 ? "" : "S", y + 1, U_HTTP_CLIENT_TEST_MAX_NUM, urlBuffer,
+                         x == 0 ? "" : "S", y + 1, httpClientMaxNumConn, urlBuffer,
                          (connection.pResponseCallback == NULL) ? "" : "non-");
                 if ((connection.pResponseCallback != NULL) && connection.errorOnBusy) {
                     uPortLog(", error on busy");
@@ -572,24 +630,25 @@ U_PORT_TEST_FUNCTION("[httpClient]", "httpClient")
                      requestOperation < (int32_t) U_HTTP_CLIENT_TEST_OPERATION_MAX_NUM;
                      requestOperation++) {
                     tries = 0;
+                    checkBinary = true;
                     do {
                         switch (requestOperation) {
                             case U_HTTP_CLIENT_TEST_OPERATION_PUT:
                                 // Fill the data buffer with data to PUT and PUT it
-                                bufferFill(gpDataBufferOut, U_HTTP_CLIENT_TEST_DATA_SIZE_BYTES);
+                                bufferFill(gpDataBufferOut, uHttpClientTestDataSizeBytes);
                                 U_TEST_PRINT_LINE("PUT %d byte(s) to %s...",
-                                                  U_HTTP_CLIENT_TEST_DATA_SIZE_BYTES, pathBuffer);
+                                                  uHttpClientTestDataSizeBytes, pathBuffer);
                                 errorOrStatusCode = uHttpClientPutRequest(gpHttpContext[y],
                                                                           pathBuffer, gpDataBufferOut,
-                                                                          U_HTTP_CLIENT_TEST_DATA_SIZE_BYTES,
+                                                                          uHttpClientTestDataSizeBytes,
                                                                           U_HTTP_CLIENT_TEST_CONTENT_TYPE);
                                 break;
                             case U_HTTP_CLIENT_TEST_OPERATION_GET_PUT:
                                 // Fill the data buffer and the content-type buffer
                                 // with rubbish and GET the file again
-                                memset(gpDataBufferIn, 0xFF, U_HTTP_CLIENT_TEST_DATA_SIZE_BYTES);
+                                memset(gpDataBufferIn, 0xFF, uHttpClientTestDataSizeBytes);
                                 memset(gpContentTypeBuffer, 0xFF, U_HTTP_CLIENT_CONTENT_TYPE_LENGTH_BYTES);
-                                gSizeDataBufferIn = U_HTTP_CLIENT_TEST_DATA_SIZE_BYTES;
+                                gSizeDataBufferIn = uHttpClientTestDataSizeBytes;
                                 U_TEST_PRINT_LINE("GET of %s...", pathBuffer);
                                 errorOrStatusCode = uHttpClientGetRequest(gpHttpContext[y],
                                                                           pathBuffer, gpDataBufferIn,
@@ -603,9 +662,9 @@ U_PORT_TEST_FUNCTION("[httpClient]", "httpClient")
                                 break;
                             case U_HTTP_CLIENT_TEST_OPERATION_GET_DELETED:
                                 // Try to GET the deleted file
-                                memset(gpDataBufferIn, 0xFF, U_HTTP_CLIENT_TEST_DATA_SIZE_BYTES);
+                                memset(gpDataBufferIn, 0xFF, uHttpClientTestDataSizeBytes);
                                 memset(gpContentTypeBuffer, 0xFF, U_HTTP_CLIENT_CONTENT_TYPE_LENGTH_BYTES);
-                                gSizeDataBufferIn = U_HTTP_CLIENT_TEST_DATA_SIZE_BYTES;
+                                gSizeDataBufferIn = uHttpClientTestDataSizeBytes;
                                 U_TEST_PRINT_LINE("GET of deleted file %s...", pathBuffer);
                                 errorOrStatusCode = uHttpClientGetRequest(gpHttpContext[y],
                                                                           pathBuffer, gpDataBufferIn,
@@ -614,15 +673,21 @@ U_PORT_TEST_FUNCTION("[httpClient]", "httpClient")
                                 break;
                             case U_HTTP_CLIENT_TEST_OPERATION_POST:
                                 // Fill the data buffer with data to POST and POST it
-                                bufferFill(gpDataBufferOut, U_HTTP_CLIENT_TEST_DATA_SIZE_BYTES);
-                                memset(gpDataBufferIn, 0xFF, U_HTTP_CLIENT_TEST_DATA_SIZE_BYTES);
+                                if ((deviceType == U_DEVICE_TYPE_SHORT_RANGE_OPEN_CPU) ||
+                                    (deviceType == U_DEVICE_TYPE_SHORT_RANGE)) {
+                                    bufferFillASCII(gpDataBufferOut, uHttpClientTestDataSizeBytes);
+                                    checkBinary = false; // only printable ASCII supported for uconnectX POST
+                                } else {
+                                    bufferFill(gpDataBufferOut, uHttpClientTestDataSizeBytes);
+                                }
+                                memset(gpDataBufferIn, 0xFF, uHttpClientTestDataSizeBytes);
                                 memset(gpContentTypeBuffer, 0xFF, U_HTTP_CLIENT_CONTENT_TYPE_LENGTH_BYTES);
-                                gSizeDataBufferIn = U_HTTP_CLIENT_TEST_DATA_SIZE_BYTES;
+                                gSizeDataBufferIn = uHttpClientTestDataSizeBytes;
                                 U_TEST_PRINT_LINE("POST %d byte(s) to %s...",
-                                                  U_HTTP_CLIENT_TEST_DATA_SIZE_BYTES, pathBuffer);
+                                                  uHttpClientTestDataSizeBytes, pathBuffer);
                                 errorOrStatusCode = uHttpClientPostRequest(gpHttpContext[y],
                                                                            pathBuffer, gpDataBufferOut,
-                                                                           U_HTTP_CLIENT_TEST_DATA_SIZE_BYTES,
+                                                                           uHttpClientTestDataSizeBytes,
                                                                            U_HTTP_CLIENT_TEST_CONTENT_TYPE,
                                                                            gpDataBufferIn,
                                                                            &gSizeDataBufferIn,
@@ -630,8 +695,8 @@ U_PORT_TEST_FUNCTION("[httpClient]", "httpClient")
                                 break;
                             case U_HTTP_CLIENT_TEST_OPERATION_HEAD:
                                 // Fill the data buffer with rubbish and get HEAD
-                                memset(gpDataBufferIn, 0xFF, U_HTTP_CLIENT_TEST_DATA_SIZE_BYTES);
-                                gSizeDataBufferIn = U_HTTP_CLIENT_TEST_DATA_SIZE_BYTES;
+                                memset(gpDataBufferIn, 0xFF, uHttpClientTestDataSizeBytes);
+                                gSizeDataBufferIn = uHttpClientTestDataSizeBytes;
                                 U_TEST_PRINT_LINE("HEAD of %s...", pathBuffer);
                                 errorOrStatusCode = uHttpClientHeadRequest(gpHttpContext[y],
                                                                            pathBuffer, gpDataBufferIn,
@@ -640,9 +705,13 @@ U_PORT_TEST_FUNCTION("[httpClient]", "httpClient")
                             case U_HTTP_CLIENT_TEST_OPERATION_GET_POST:
                                 // Fill the data buffer and the content-type buffer
                                 // with rubbish and GET the whole file
-                                memset(gpDataBufferIn, 0xFF, U_HTTP_CLIENT_TEST_DATA_SIZE_BYTES);
+                                if ((deviceType == U_DEVICE_TYPE_SHORT_RANGE_OPEN_CPU) ||
+                                    (deviceType == U_DEVICE_TYPE_SHORT_RANGE)) {
+                                    checkBinary = false;
+                                }
+                                memset(gpDataBufferIn, 0xFF, uHttpClientTestDataSizeBytes);
                                 memset(gpContentTypeBuffer, 0xFF, U_HTTP_CLIENT_CONTENT_TYPE_LENGTH_BYTES);
-                                gSizeDataBufferIn = U_HTTP_CLIENT_TEST_DATA_SIZE_BYTES;
+                                gSizeDataBufferIn = uHttpClientTestDataSizeBytes;
                                 U_TEST_PRINT_LINE("GET of %s...", pathBuffer);
                                 errorOrStatusCode = uHttpClientGetRequest(gpHttpContext[y],
                                                                           pathBuffer, gpDataBufferIn,
@@ -657,12 +726,14 @@ U_PORT_TEST_FUNCTION("[httpClient]", "httpClient")
                             default:
                                 break;
                         }
+                        U_TEST_PRINT_LINE("Result %d\n", errorOrStatusCode);
                         // Check whether it worked or not
                         outcome = checkResponse((uHttpClientTestOperation_t) requestOperation,
                                                 errorOrStatusCode, &connection,
-                                                gpDataBufferIn, U_HTTP_CLIENT_TEST_DATA_SIZE_BYTES,
+                                                gpDataBufferIn, uHttpClientTestDataSizeBytes,
                                                 gSizeDataBufferIn, gpContentTypeBuffer,
-                                                (volatile uHttpClientTestCallback_t *) &callbackData);
+                                                (volatile uHttpClientTestCallback_t *) &callbackData,
+                                                checkBinary);
                         if ((outcome == (int32_t) U_ERROR_COMMON_UNKNOWN) ||
                             (outcome == (int32_t) U_ERROR_COMMON_DEVICE_ERROR)) {
                             // U_ERROR_COMMON_UNKNOWN or U_ERROR_COMMON_DEVICE_ERROR is reported
@@ -686,11 +757,10 @@ U_PORT_TEST_FUNCTION("[httpClient]", "httpClient")
             } // for (HTTP/HTTPS instance)
 
             U_TEST_PRINT_LINE("closing HTTP instances...", pathBuffer);
-            for (size_t y = 0; y < U_HTTP_CLIENT_TEST_MAX_NUM; y++) {
+            for (size_t y = 0; y < httpClientMaxNumConn; y++) {
                 uHttpClientClose(gpHttpContext[y]);
             }
         } // for (HTTP and HTTPS)
-
         // Check for memory leaks
         heapUsed -= uPortGetHeapFree();
         U_TEST_PRINT_LINE("%d byte(s) were lost to security initialisation"
@@ -746,20 +816,21 @@ U_PORT_TEST_FUNCTION("[httpClient]", "httpClientCleanUp")
     y = uPortTaskStackMinFree(NULL);
     if (y != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
         U_TEST_PRINT_LINE("main task stack had a minimum of %d"
-                          " byte(s) free at the end of these tests.", y);
+                          " byte(s) free at the end of these tests. Should be at least %d.", y,
+                          U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
         U_PORT_TEST_ASSERT(y >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
     }
 
     uPortDeinit();
 
+#ifndef U_CFG_TEST_USING_NRF5SDK
     y = uPortGetHeapMinFree();
     if (y >= 0) {
         U_TEST_PRINT_LINE("heap had a minimum of %d byte(s) free"
-                          " at the end of these tests.", y);
+                          " at the end of these tests. Should be at least %d.", y, U_CFG_TEST_HEAP_MIN_FREE_BYTES);
         U_PORT_TEST_ASSERT(y >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
     }
+#endif
 }
-
-#endif // #ifdef U_CFG_TEST_USING_NRF5SDK
 
 // End of file

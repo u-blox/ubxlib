@@ -57,6 +57,7 @@
 #include "u_mqtt_common.h"
 #include "u_mqtt_client.h"
 #include "u_wifi_mqtt.h"     // For uWifiMqttPrivateLink()
+#include "u_wifi_http.h"     // For uWifiHttpPrivateLink()
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -481,6 +482,7 @@ int32_t uWifiInit()
     // choose to be here
     uWifiSockPrivateLink();
     uWifiMqttPrivateLink();
+    uWifiHttpPrivateLink();
 
     return uShortRangeInit();
 }

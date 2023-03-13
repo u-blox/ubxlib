@@ -38,9 +38,66 @@
 #include "u_compiler.h" // U_WEAK
 #include "u_error_common.h"
 #include "u_device.h"
+#include "u_wifi_http.h"
 
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
+
+U_WEAK int32_t uWifiHttpOpen(uDeviceHandle_t wifiHandle, const char *pServerName,
+                             const char *pUserName, const char *pPassword,
+                             int32_t timeoutSeconds, uWifiHttpCallback_t *pCallback,
+                             void *pCallbackParam)
+{
+    (void) wifiHandle;
+    (void) pServerName;
+    (void) pUserName;
+    (void) pPassword;
+    (void) timeoutSeconds;
+    (void) pCallback;
+    (void) pCallbackParam;
+    return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+}
+
+U_WEAK void uWifiHttpClose(uDeviceHandle_t wifiHandle, int32_t httpHandle)
+{
+    (void) wifiHandle;
+    (void) httpHandle;
+}
+
+U_WEAK int32_t uWifiHttpRequest(uDeviceHandle_t wifiHandle, int32_t httpHandle,
+                                uWifiHttpRequest_t requestType, const char *pPath,
+                                const char *pContent, const char *pContentType)
+{
+    (void) wifiHandle;
+    (void) httpHandle;
+    (void) requestType;
+    (void) pPath;
+    (void) pContent;
+    (void) pContentType;
+    return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+}
+
+U_WEAK int32_t uWifiHttpRequestEx(uDeviceHandle_t wifiHandle, int32_t httpHandle,
+                                  uWifiHttpRequest_t requestType, const char *pPath,
+                                  const char *pData, size_t contentLength, const char *pContentType)
+{
+    (void) wifiHandle;
+    (void) httpHandle;
+    (void) requestType;
+    (void) pPath;
+    (void) pData;
+    (void) contentLength;
+    (void) pContentType;
+    return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+}
+
+U_WEAK int32_t uWifiHttpGetLastErrorCode(uDeviceHandle_t wifiHandle,
+                                         int32_t httpHandle)
+{
+    (void) wifiHandle;
+    (void) httpHandle;
+    return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+}
 
 // End of file

@@ -139,6 +139,7 @@
 #include <u_wifi_cfg.h>
 #include <u_wifi_mqtt.h>
 #include <u_wifi_sock.h>
+#include <u_wifi_http.h>
 
 /** @}*/
 

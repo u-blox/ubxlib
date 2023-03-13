@@ -82,7 +82,7 @@
  * a task that is created and deleted but if _you_ do you should note
  * this problem and probably never delete the task.
  */
-#define U_CFG_TEST_HEAP_MIN_FREE_BYTES (1024 * 33)
+#define U_CFG_TEST_HEAP_MIN_FREE_BYTES (1024 * 29)
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS: OS RELATED

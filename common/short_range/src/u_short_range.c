@@ -1065,13 +1065,12 @@ int32_t uShortRangeGetSerialNumber(uDeviceHandle_t devHandle, char *pSerialNumbe
             uAtClientCommandStart(atHandle, "AT+CGSN");
             uAtClientCommandStop(atHandle);
             uAtClientResponseStart(atHandle, NULL);
-            readBytes = uAtClientReadBytes(atHandle, pSerialNumber,
-                                           U_SHORT_RANGE_SERIAL_NUMBER_LENGTH, false);
+            readBytes = uAtClientReadString(atHandle, pSerialNumber,
+                                            U_SHORT_RANGE_SERIAL_NUMBER_LENGTH, false);
             uAtClientResponseStop(atHandle);
             err = uAtClientUnlock(atHandle);
 
             if (err == (int32_t)U_ERROR_COMMON_SUCCESS) {
-                pSerialNumber[readBytes] = '\0';
                 err = readBytes;
                 break;
             }
