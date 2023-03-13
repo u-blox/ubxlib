@@ -1,5 +1,5 @@
 ﻿/*
- * Copyright 2019-2022 u-blox Ltd
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,7 +42,11 @@
 # define U_PORT_I2C_MAX_NUM 2
 #endif
 
-/** Convert a millisecond I2C timeout into an ESP32 value.
+/** Convert a millisecond I2C timeout into an ESP32 value, which
+ * are in units of the cycle time of an 80 MHz clock and is per-bit
+ * (whereas we use timeouts per byte).  For instance, for a 10 ms
+ * timeout in our terms, that's a timeout of 10 / 8 / 0.0000125 = 
+ * 10,0000 (when the maximum permitted value is 31).
  * The timeout is per-bit, but a timeout is a timeout, and on the last
  * bit it will be the timeout for the whole byte.
  */
