@@ -104,7 +104,7 @@ extern "C" {
  * This callback should be executed as quickly as possible to
  * avoid data loss.  The ONLY GNSS API calls that pCallback may make
  * are uGnssMsgReceiveCallbackRead() / uGnssMsgReceiveCallbackExtract(),
- * no others or you risk getting* mutex-locked.
+ * no others or you risk getting mutex-locked.
  *
  * If you are checking for a specific UBX-format message (i.e. no
  * wild-cards) and a NACK is received for that message then
@@ -320,7 +320,7 @@ int32_t uGnssMsgReceive(uDeviceHandle_t gnssHandle,
  * this function, or alternatively call uGnssMsgReceiveStopAll()
  * to stop them all and free memory.  There can be a maximum of
  * #U_GNSS_MSG_RECEIVER_MAX_NUM of these running at any one time.
- * Message handlers callbacks are called mostly-recently-added first.
+ * Message handler callbacks are called mostly-recently-added first.
  *
  * IMPORTANT: this does not work for modules connected via an AT
  * transport, please instead open a Virtual Serial connection for
