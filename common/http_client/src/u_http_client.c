@@ -110,7 +110,7 @@
  * can probably increase this, but bear in mind that the
  * cellular module can only write to flash so fast.
  */
-# define U_HTTP_CLIENT_CELL_FILE_CHUNK_LENGTH 1024
+# define U_HTTP_CLIENT_CELL_FILE_CHUNK_LENGTH 100
 #endif
 
 /** The maximum length of the first line of an HTTP response.
