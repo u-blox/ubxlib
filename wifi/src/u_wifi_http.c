@@ -514,9 +514,9 @@ int32_t uWifiHttpRequestEx(uDeviceHandle_t wifiHandle, int32_t httpHandle,
                 if (err != U_ERROR_COMMON_SUCCESS) {
                     errorCode = err;
                 }
-                U_PORT_MUTEX_UNLOCK(gUShortRangePrivateMutex);
             }
         }
+        U_PORT_MUTEX_UNLOCK(gUShortRangePrivateMutex);
     }
     return errorCode;
 }
