@@ -67,9 +67,9 @@ extern "C" {
  *                               IMPORTANT: the ONLY GNSS API calls that
  *                               pCallback may make are
  *                               uGnssMsgReceiveCallbackRead() and
- *                               uGnssMsgIsGood(), no others or you risk
- *                               getting mutex-locked.  pCallback cannot be
- *                               NULL.
+ *                               uGnssMsgReceiveCallbackExtract(), no others
+ *                               or you risk getting mutex-locked.  pCallback
+ *                               cannot be NULL.
  * @param[in] pCallbackParam     will be passed to pCallback as its last
  *                               parameter.
  * @return                       a handle for this asynchronous reader on

@@ -343,10 +343,10 @@ int32_t uGnssMsgReceive(uDeviceHandle_t gnssHandle,
  *                               IMPORTANT: the ONLY GNSS API calls that
  *                               pCallback may make are
  *                               uGnssMsgReceiveCallbackRead() and
- *                               uGnssMsgIsGood(), no others or you risk
- *                               getting mutex-locked. pCallback is run in
- *                               the context of a task with a stack of size
- *                               #U_GNSS_MSG_RECEIVE_TASK_STACK_SIZE_BYTES;
+ *                               uGnssMsgReceiveCallbackExtract(), no others
+ *                               or you risk getting mutex-locked. pCallback
+ *                               is run in the context of a task with a stack
+ *                               of size #U_GNSS_MSG_RECEIVE_TASK_STACK_SIZE_BYTES;
  *                               you may you may call uGnssMsgReceiveStackMinFree()
  *                               just before calling uGnssMsgReceiveStop()
  *                               to check if the remaining stack margin was
@@ -366,8 +366,8 @@ int32_t uGnssMsgReceiveStart(uDeviceHandle_t gnssHandle,
  * into your buffer but NOT REMOVING IT from the internal ring buffer,
  * so that it is still there to be passed to any other of your pCallbacks.
  * This is the function you would normally use; if you have a long message
- * of specific interest you may wish to use uGnssMsgReceiveCallbackExtract()
- * instead.
+ * of specific interest to a single reader you may wish to use
+ * uGnssMsgReceiveCallbackExtract() instead to get it out of the way.
  *
  * IMPORTANT: this function can ONLY be called from the message receive
  * pCallback, it is NOT thread-safe to call it from anywhere else.
@@ -387,8 +387,7 @@ int32_t uGnssMsgReceiveCallbackRead(uDeviceHandle_t gnssHandle,
  * to REMOVE a message from the internal ring buffer into your buffer;
  * once this is called the message will not be available to any of your
  * other pCallbacks.  Use this if the message you wish to read is very
- * large, larger than this codes' internal ring buffer
- * (#U_GNSS_MSG_RING_BUFFER_LENGTH_BYTES); normally you would use
+ * large and you want to get it out of the way; normally you would use
  * uGnssMsgReceiveCallbackRead().
  *
  * IMPORTANT: this function can ONLY be called from the message
