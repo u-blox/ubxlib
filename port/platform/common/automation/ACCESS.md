@@ -356,7 +356,15 @@ cat ~/ubxlib_test_system_client_key.pub >> /home/ubxlib/.ssh/authorized_keys
 
   ...then you can delete `~/ubxlib_test_system_client_key.pub`.
 
-- The client should now be able to SSH into the Jenkins machine with something like `ssh -i path/to/ubxlib_test_system_client_key -p <ssh_port> ubxlib@jenkinsurl`.  If this doesn't work, try looking at `systemctl status sshd_external.service` or taking Wireshark logs on the client and server machines to see what SSH might be objecting to.
+- Restart the SSH service with:
+
+```
+systemctl restart sshd_external.service
+```
+
+- The client _should_ now be able to SSH into the Jenkins machine with something like `ssh -i path/to/ubxlib_test_system_client_key -p <ssh_port> ubxlib@jenkinsurl`.  However, for whatever reason, this just returns `Permission denied (publickey,gssapi-keyex,gssapi-with-mic)`; what definitely works, both on Linux and Windows, is to use [PuTTY](https://www.putty.org/), for which you need [to convert your private key to a `.ppk` file](https://sites.google.com/site/xiangyangsite/home/technical-tips/linux-unix/common-tips/how-to-convert-ssh-id_rsa-keys-to-putty-ppk).
+
+If this doesn't work, try looking at `systemctl status sshd_external.service` or taking Wireshark logs on the client and server machines to see what SSH might be objecting to.
 
 - Similarly, the client should be able to SFTP into the Jenkins machine with something like `sftp -i path/to/ubxlib_test_system_client_key -P <ssh_port> ubxlib@jenkinsurl` (noting the capital `-P` this time) or, if a GUI is preferred, using something like [FileZilla](https://filezilla-project.org/).
 
