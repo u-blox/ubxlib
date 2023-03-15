@@ -347,7 +347,7 @@ int32_t uGnssMsgReceive(uDeviceHandle_t gnssHandle,
  *                               or you risk getting mutex-locked. pCallback
  *                               is run in the context of a task with a stack
  *                               of size #U_GNSS_MSG_RECEIVE_TASK_STACK_SIZE_BYTES;
- *                               you may you may call uGnssMsgReceiveStackMinFree()
+ *                               you may call uGnssMsgReceiveStackMinFree()
  *                               just before calling uGnssMsgReceiveStop()
  *                               to check if the remaining stack margin was
  *                               big enough.  pCallback cannot be NULL.

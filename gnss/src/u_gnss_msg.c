@@ -41,8 +41,8 @@
  * data can still be brought in from the streaming source, if there's room,
  * but only if there's room while *respecting* such locked read pointers.
  * Each read pointer is independent, so the different readers can absorb
- * data at different rates, and discard things they aren't interested, without
- * affecting the others.
+ * data at different rates, and discard things they aren't interested in,
+ * without affecting the others.
  *
  * When a reader is not actively interested in reading stuff from the
  * ring-buffer, its read pointer is left unlocked, which means that it can
@@ -459,9 +459,11 @@ bool uGnssMsgIdIsWanted(uGnssMessageId_t *pMessageId,
 {
     bool isWanted = false;
 
-    if (pMessageIdWanted->type == U_GNSS_PROTOCOL_ANY) {
+    if ((pMessageIdWanted->type == U_GNSS_PROTOCOL_ANY) ||
+        (pMessageIdWanted->type == U_GNSS_PROTOCOL_ALL)) {
         isWanted = true;
-    } else if ((pMessageIdWanted->type == U_GNSS_PROTOCOL_ALL) &&
+    } else if (((pMessageIdWanted->type == U_GNSS_PROTOCOL_ANY) ||
+                (pMessageIdWanted->type == U_GNSS_PROTOCOL_ALL)) &&
                (pMessageId->type != U_GNSS_PROTOCOL_UNKNOWN)) {
         isWanted = true;
     } else if ((pMessageIdWanted->type == U_GNSS_PROTOCOL_UNKNOWN) &&

@@ -1815,6 +1815,10 @@ int32_t uGnssPrivateMessageIdToPrivate(const uGnssMessageId_t *pMessageId,
                 errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
                 break;
             case U_GNSS_PROTOCOL_UNKNOWN:
+            //fall-through
+            case U_GNSS_PROTOCOL_ALL:
+            //fall-through
+            case U_GNSS_PROTOCOL_ANY:
                 errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
                 break;
             default:
@@ -1852,6 +1856,10 @@ int32_t uGnssPrivateMessageIdToPublic(const uGnssPrivateMessageId_t *pPrivateMes
                 errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
                 break;
             case U_GNSS_PROTOCOL_UNKNOWN:
+            //fall-through
+            case U_GNSS_PROTOCOL_ALL:
+            //fall-through
+            case U_GNSS_PROTOCOL_ANY:
                 errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
                 break;
             default:
@@ -1868,9 +1876,11 @@ bool uGnssPrivateMessageIdIsWanted(uGnssPrivateMessageId_t *pMessageId,
 {
     bool isWanted = false;
 
-    if (pMessageIdWanted->type == U_GNSS_PROTOCOL_ANY) {
+    if ((pMessageIdWanted->type == U_GNSS_PROTOCOL_ANY) ||
+        (pMessageIdWanted->type == U_GNSS_PROTOCOL_ALL)) {
         isWanted = true;
-    } else if ((pMessageIdWanted->type == U_GNSS_PROTOCOL_ALL) &&
+    } else if (((pMessageIdWanted->type == U_GNSS_PROTOCOL_ANY) ||
+                (pMessageIdWanted->type == U_GNSS_PROTOCOL_ALL)) &&
                (pMessageId->type != U_GNSS_PROTOCOL_UNKNOWN)) {
         isWanted = true;
     } else if ((pMessageIdWanted->type == U_GNSS_PROTOCOL_UNKNOWN) &&
