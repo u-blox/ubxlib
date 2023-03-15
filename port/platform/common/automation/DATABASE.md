@@ -1,7 +1,7 @@
 # Instance Matrix
 The table below defines the instances of test hardware available on the `ubxlib` test farm and how each one is currently configured.  It is parsed and used by the functions in [u_data.py](u_data.py) to know what to do so please always ensure that it is a properly formatted Markdown format table. The columns of the table are:
 
-- a unique instance ID: the first digit of the instance ID represents either a physical thing (a board connected via a COM port/debugger, or a distinct process (e.g. run Lint)), the remaining digits represent variants, e.g. using different SDKs on a board; the second/third digit(s) of the instance ID must be used consistently (e.g. for NRF52840 variant 0 is always the nRF5 SDK, variant 1 is always the Zephyr SDK, etc.),
+- a unique instance ID: the first digit of the instance ID represents either a physical thing (a board connected via a COM port/debugger) or a distinct process (e.g. run Lint), the remaining digits represent variants, e.g. using different SDKs on a board; the second/third digit(s) of the instance ID must be used consistently (e.g. for NRF52840 variant 0 is always the nRF5 SDK, variant 1 is always the Zephyr SDK, etc.),
 - the duration field should be the approximate expected duration of the instance in minutes, used when working out how to spread the test load,
 - the MCU field must match a unique MCU name from one of the [port/platform](/port/platform)`/<platform>/mcu/<mcu>` directories (e.g. `esp32`),
 - some platforms (e.g. Zephyr and Arduino) require a board-level definition as well as an MCU; this may be provided in the "board" column,
