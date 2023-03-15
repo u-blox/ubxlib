@@ -30,4 +30,4 @@ ssh-keygen -f path/to/ubxlib_test_system_devicename_key -t ecdsa -b 521
 
 ...where `path/to/` is `~/.ssh/` for Linux or `%homedrive%%homepath%\.ssh\` for Windows and `devicename` is replaced just like above; please password protect the key file.
 
-E-mail `ubxlib_test_system_client_key.pub` (NOT the non-`.pub` file, that must never leave the client machine) to [ubxlib@u-blox.com](mailto:ubxlib@u-blox.com) and the client machine will be granted SSH/SFTP access.
+E-mail `ubxlib_test_system_devicename_key.pub` (NOT the non-`.pub` file, that must never leave the client machine) to [ubxlib@u-blox.com](mailto:ubxlib@u-blox.com) and the client machine will be granted SSH/SFTP access.
