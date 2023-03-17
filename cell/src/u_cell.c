@@ -177,6 +177,7 @@ int32_t uCellInit()
     uCellHttpPrivateLink();
     uCellLocPrivateLink();
     uCellMuxPrivateLink();
+    uCellFilePrivateLink();
 
     if (gUCellPrivateMutex == NULL) {
         // Create the mutex that protects the linked list
