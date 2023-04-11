@@ -71,13 +71,13 @@ extern "C" {
 #ifndef U_CELL_SOCK_CONNECT_TIMEOUT_SECONDS
 /** The amount of time allowed to connect a socket.
  */
-# define U_CELL_SOCK_CONNECT_TIMEOUT_SECONDS 30
+# define U_CELL_SOCK_CONNECT_TIMEOUT_SECONDS 332
 #endif
 
 #ifndef U_CELL_SOCK_DNS_LOOKUP_TIME_SECONDS
 /** The amount of time allowed to perform a DNS look-up.
  */
-# define U_CELL_SOCK_DNS_LOOKUP_TIME_SECONDS 60
+# define U_CELL_SOCK_DNS_LOOKUP_TIME_SECONDS 332
 #endif
 
 /* ----------------------------------------------------------------
@@ -148,6 +148,9 @@ int32_t uCellSockCreate(uDeviceHandle_t cellHandle,
                         uSockProtocol_t protocol);
 
 /** Connect to a server.
+ *
+ * Important: this function may not return for up to
+ * #U_CELL_SOCK_CONNECT_TIMEOUT_SECONDS seconds.
  *
  * @param cellHandle         the handle of the cellular instance.
  * @param sockHandle         the handle of the socket.
@@ -534,6 +537,9 @@ int32_t uCellSockAccept(uDeviceHandle_t cellHandle,
  * -------------------------------------------------------------- */
 
 /** Perform a DNS look-up.
+ *
+ * IMPORTANT: this function may not return for up to
+ * #U_CELL_SOCK_DNS_LOOKUP_TIME_SECONDS.
  *
  * @param cellHandle          the handle of the cellular instance.
  * @param[in] pHostName       the host name to look up, for example
