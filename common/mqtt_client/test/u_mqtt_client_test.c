@@ -235,8 +235,7 @@ static void messageIndicationCallback(int32_t numUnread, void *pParam)
 
 #if !U_CFG_OS_CLIB_LEAKS
     // Only print stuff if the C library isn't going to leak
-    U_TEST_PRINT_LINE_MQTT("messageIndicationCallback() called.");
-    U_TEST_PRINT_LINE_MQTT("%d message(s) unread.", numUnread);
+    U_TEST_PRINT_LINE_MQTT("messageIndicationCallback() called, %d message(s) unread.", numUnread);
 #endif
 
     *pNumUnread = numUnread;
@@ -512,6 +511,11 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClient")
                     U_PORT_TEST_ASSERT(uMqttClientGetUnread(gpMqttContextA) == 0);
 
                     // Read again - should return U_ERROR_COMMON_EMPTY
+                    // Note that in the cellular case, for some modules (e.g. SARA-R4),
+                    // and with the long cellular MQTT timeouts, this can take several
+                    // minutes to return as the module just ignores you if there are no
+                    // messages (rather than returning an indication that there is nothing)
+                    U_TEST_PRINT_LINE_MQTT("reading a message when there are none (may take some time).");
                     y = uMqttClientMessageRead(gpMqttContextA, pTopicIn,
                                                U_MQTT_CLIENT_TEST_READ_TOPIC_MAX_LENGTH_BYTES,
                                                pMessageIn, &s, &qos);
@@ -923,7 +927,7 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClientSn")
         uPortFree(pMessageOut);
         uPortFree(pTopicNameOutMqtt);
 
-        U_TEST_PRINT_LINE_MQTTSN("taking down cellular network...");
+        U_TEST_PRINT_LINE_MQTTSN("taking down %s...", gpUNetworkTestTypeName[pTmp->networkType]);
         U_PORT_TEST_ASSERT(uNetworkInterfaceDown(devHandle,
                                                  pTmp->networkType) == 0);
 

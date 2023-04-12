@@ -47,7 +47,7 @@
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
-#include "string.h"    // strlen(), strncpy()
+#include "string.h"    // strlen(), strncpy(), memset()
 
 #include "u_error_common.h"
 
@@ -178,18 +178,14 @@ uMqttClientContext_t *pUMqttClientOpen(uDeviceHandle_t devHandle,
         // do something here, currently returning not
         // implemented in any case
         gLastOpenError = U_ERROR_COMMON_NOT_IMPLEMENTED;
-
     }
 
     if (gLastOpenError == U_ERROR_COMMON_SUCCESS) {
         gLastOpenError = U_ERROR_COMMON_NO_MEMORY;
         pContext = (uMqttClientContext_t *) pUPortMalloc(sizeof(*pContext));
         if (pContext != NULL) {
+            memset(pContext, 0, sizeof(*pContext));
             pContext->devHandle = devHandle;
-            pContext->mutexHandle = NULL;
-            pContext->pSecurityContext = NULL;
-            pContext->totalMessagesSent = 0;
-            pContext->totalMessagesReceived = 0;
             pContext->pPriv = pPriv;
             if (uPortMutexCreate((uPortMutexHandle_t *) &(pContext->mutexHandle)) == 0) { // *NOPAD*
                 gLastOpenError = U_ERROR_COMMON_SUCCESS;

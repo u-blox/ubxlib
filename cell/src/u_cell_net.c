@@ -475,7 +475,7 @@ static inline uCellNetStatus_t CXREG_urc(uCellPrivateInstance_t *pInstance,
         // of CEREG type 4 (so not for CREG or CGREG) and on SARA-R4xx-02B in
         // all cases and on LARA-R6 JUST in the "response to AT+CEREG" case (the
         // URC is different), an additional parameter is inserted (not added on
-        // the end, inserted)/ which has to be skipped before the RAT can be read.
+        // the end, inserted), which has to be skipped before the RAT can be read.
         if ((gRegTypes[2 /* CEREG */].type == 4) &&
             (((pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R410M_02B) ||
               (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R412M_02B)) ||

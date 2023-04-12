@@ -40,7 +40,7 @@ extern "C" {
  * for inactivity by calling the uDebugUtilsCheckInactivity_t
  * callback.
  */
-# define U_DEBUG_UTILS_INACTIVITY_TASK_CHECK_PERIOD_SEC 60
+# define U_DEBUG_UTILS_INACTIVITY_TASK_CHECK_PERIOD_SEC 180
 #endif
 
 /* ----------------------------------------------------------------
