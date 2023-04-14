@@ -1216,7 +1216,7 @@ static int32_t registerNetwork(uCellPrivateInstance_t *pInstance,
 }
 
 // Make sure we are attached to the cellular network.
-static int32_t attachNetwork(const uCellPrivateInstance_t *pInstance)
+static int32_t waitAttach(const uCellPrivateInstance_t *pInstance)
 {
     int32_t errorCode = (int32_t) U_CELL_ERROR_ATTACH_FAILURE;
     uAtClientHandle_t atHandle = pInstance->atHandle;
@@ -2159,7 +2159,7 @@ int32_t uCellNetConnect(uDeviceHandle_t cellHandle,
                             // with AT+CGACT or using AT+UPSD (even for EUTRAN).
                             // Since this sequence works for both RANs, it is
                             // best to be consistent.
-                            errorCode = attachNetwork(pInstance);
+                            errorCode = waitAttach(pInstance);
                         }
                         if (errorCode == 0) {
                             // Activate the context
@@ -2272,7 +2272,7 @@ int32_t uCellNetRegister(uDeviceHandle_t cellHandle,
                     // This step _shouldn't_ be necessary.  However,
                     // for reasons I don't understand, SARA-R4 can
                     // be registered but not attached.
-                    errorCode = attachNetwork(pInstance);
+                    errorCode = waitAttach(pInstance);
                 }
 
                 if (errorCode == 0) {
@@ -2394,7 +2394,7 @@ int32_t uCellNetActivate(uDeviceHandle_t cellHandle,
                                         // This step _shouldn't_ be necessary.  However,
                                         // for reasons I don't understand, SARA-R4 can
                                         // be registered but not attached.
-                                        errorCode = attachNetwork(pInstance);
+                                        errorCode = waitAttach(pInstance);
                                     }
                                     if (errorCode != 0) {
                                         // Switch radio off after failure
