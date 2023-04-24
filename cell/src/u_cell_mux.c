@@ -1681,12 +1681,14 @@ int32_t uCellMuxEnable(uDeviceHandle_t cellHandle)
                                                 // of our instance to the new AT handle, leaving the
                                                 // old AT handle locked
                                                 pInstance->atHandle = atHandle;
-                                                // The setting of AT+CMEE is port-specific, so we need
-                                                // to set that here for the new port
+                                                // The setting of echo-off and AT+CMEE is port-specific,
+                                                // so we need to set those here for the new port
 #ifdef U_CFG_CELL_ENABLE_NUMERIC_ERROR
                                                 cmeeMode = 1;
 #endif
                                                 uAtClientLock(atHandle);
+                                                uAtClientCommandStart(atHandle, "ATE0");
+                                                uAtClientCommandStopReadResponse(atHandle);
                                                 uAtClientCommandStart(atHandle, "AT+CMEE=");
                                                 uAtClientWriteInt(atHandle, cmeeMode);
                                                 uAtClientCommandStopReadResponse(atHandle);
