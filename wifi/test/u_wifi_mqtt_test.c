@@ -99,29 +99,29 @@
  * VARIABLES
  * -------------------------------------------------------------- */
 
-uMqttClientContext_t *mqttClientCtx;
+uMqttClientContext_t *gpMqttClientCtx;
 
-char uniqueClientId[U_SHORT_RANGE_SERIAL_NUMBER_LENGTH];
+char gUniqueClientId[U_SHORT_RANGE_SERIAL_NUMBER_LENGTH];
 
-const uMqttClientConnection_t mqttUnsecuredConnection = {
+const uMqttClientConnection_t gMqttUnsecuredConnection = {
     .pBrokerNameStr = "ubxlib.redirectme.net",
     .pUserNameStr = "test_user",
     .pPasswordStr = "test_passwd",
-    .pClientIdStr = uniqueClientId,
+    .pClientIdStr = gUniqueClientId,
     .localPort = 1883
 };
 
 
-const uMqttClientConnection_t mqttSecuredConnection = {
+const uMqttClientConnection_t gMqttSecuredConnection = {
     .pBrokerNameStr = "ubxlib.redirectme.net",
     .pUserNameStr = "test_user",
     .pPasswordStr = "test_passwd",
-    .pClientIdStr = uniqueClientId,
+    .pClientIdStr = gUniqueClientId,
     .localPort = 8883,
     .keepAlive = true
 };
 
-uSecurityTlsSettings_t mqttTlsSettings = {
+uSecurityTlsSettings_t gMqttTlsSettings = {
 
     .pRootCaCertificateName = "ubxlib.redirectme.crt",
     .pClientCertificateName = NULL,
@@ -153,28 +153,22 @@ static const char *gpRootCaCert = "-----BEGIN CERTIFICATE-----\n"
                                   "-----END CERTIFICATE-----\n";
 
 //lint -e(843) Suppress warning "could be declared as const"
-const char *testPublishMsg[MQTT_PUBLISH_TOTAL_MSG_COUNT] =  {"Hello test",
-                                                             "aaaaaaaaaaaaaaaaaaa",
-                                                             "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-                                                             "ccccccccccccccccccccccccccccccccccccccccccc"
-                                                            };
+const char *gTestPublishMsg[MQTT_PUBLISH_TOTAL_MSG_COUNT] =  {"Hello test",
+                                                              "aaaaaaaaaaaaaaaaaaa",
+                                                              "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                                                              "ccccccccccccccccccccccccccccccccccccccccccc"
+                                                             };
 static uWifiTestPrivate_t gHandles = { -1, -1, NULL, NULL };
 
-static const uint32_t gWifiStatusMaskAllUp = U_WIFI_STATUS_MASK_IPV4_UP |
-                                             U_WIFI_STATUS_MASK_IPV6_UP;
+static volatile bool gMqttSessionDisconnected = false;
 
-
-static volatile bool mqttSessionDisconnected = false;
-static volatile int32_t gWifiConnected = 0;
-static volatile uint32_t gWifiStatusMask = 0;
-
-static uShortRangeUartConfig_t uart = { .uartPort = U_CFG_APP_SHORT_RANGE_UART,
-                                        .baudRate = U_SHORT_RANGE_UART_BAUD_RATE,
-                                        .pinTx = U_CFG_APP_PIN_SHORT_RANGE_TXD,
-                                        .pinRx = U_CFG_APP_PIN_SHORT_RANGE_RXD,
-                                        .pinCts = U_CFG_APP_PIN_SHORT_RANGE_CTS,
-                                        .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS
-                                      };
+static uShortRangeUartConfig_t gUart = { .uartPort = U_CFG_APP_SHORT_RANGE_UART,
+                                         .baudRate = U_SHORT_RANGE_UART_BAUD_RATE,
+                                         .pinTx = U_CFG_APP_PIN_SHORT_RANGE_TXD,
+                                         .pinRx = U_CFG_APP_PIN_SHORT_RANGE_RXD,
+                                         .pinCts = U_CFG_APP_PIN_SHORT_RANGE_CTS,
+                                         .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS
+                                       };
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -182,89 +176,36 @@ static uShortRangeUartConfig_t uart = { .uartPort = U_CFG_APP_SHORT_RANGE_UART,
 
 static void setUniqueClientId(uDeviceHandle_t devHandle)
 {
-    int32_t len = uShortRangeGetSerialNumber(devHandle, uniqueClientId);
+    int32_t len = uShortRangeGetSerialNumber(devHandle, gUniqueClientId);
     if (len > 2) {
-        if (uniqueClientId[0] == '"') {
+        if (gUniqueClientId[0] == '"') {
             // Remove the quote characters
-            memmove(uniqueClientId, uniqueClientId + 1, len - 1);
-            uniqueClientId[len - 2] = 0;
+            memmove(gUniqueClientId, gUniqueClientId + 1, len - 1);
+            gUniqueClientId[len - 2] = 0;
         }
 
     } else {
         // Failed to get serial number, use a random number
-        snprintf(uniqueClientId, sizeof(uniqueClientId), "%d", rand());
+        snprintf(gUniqueClientId, sizeof(gUniqueClientId), "%d", rand());
     }
 }
 
-static void wifiConnectionCallback(uDeviceHandle_t devHandle,
-                                   int32_t connId,
-                                   int32_t status,
-                                   int32_t channel,
-                                   char *pBssid,
-                                   int32_t disconnectReason,
-                                   void *pCallbackParameter)
+static void mqttSubscribeCb(int32_t unreadMsgCount, void *pCbParam)
 {
-    (void)devHandle;
-    (void)connId;
-    (void)channel;
-    (void)pBssid;
-    (void)disconnectReason;
-    (void)pCallbackParameter;
-    if (status == U_WIFI_CON_STATUS_CONNECTED) {
-        U_TEST_PRINT_LINE("connected Wifi connId: %d, bssid: %s, channel: %d.",
-                          connId, pBssid, channel);
-        gWifiConnected = 1;
-    } else {
-#ifdef U_CFG_ENABLE_LOGGING
-        //lint -esym(752, strDisconnectReason)
-        static const char strDisconnectReason[6][20] = {
-            "Unknown", "Remote Close", "Out of range",
-            "Roaming", "Security problems", "Network disabled"
-        };
-        if ((disconnectReason < 0) || (disconnectReason >= 6)) {
-            // For all other values use "Unknown"
-            //lint -esym(438, disconnectReason)
-            disconnectReason = 0;
-        }
-        U_TEST_PRINT_LINE("wifi connection lost connId: %d, reason: %d (%s).",
-                          connId, disconnectReason,
-                          strDisconnectReason[disconnectReason]);
-#endif
-        gWifiConnected = 0;
-    }
-}
-static void wifiNetworkStatusCallback(uDeviceHandle_t devHandle,
-                                      int32_t interfaceType,
-                                      uint32_t statusMask,
-                                      void *pCallbackParameter)
-{
-    (void)devHandle;
-    (void)interfaceType;
-    (void)statusMask;
-    (void)pCallbackParameter;
-    U_TEST_PRINT_LINE("network status IPv4 %s, IPv6 %s.",
-                      ((statusMask & U_WIFI_STATUS_MASK_IPV4_UP) > 0) ? "up" : "down",
-                      ((statusMask & U_WIFI_STATUS_MASK_IPV6_UP) > 0) ? "up" : "down");
-
-    gWifiStatusMask = statusMask;
-}
-
-static void mqttSubscribeCb(int32_t unreadMsgCount, void *cbParam)
-{
-    (void)cbParam;
+    (void)pCbParam;
     //lint -e(715) suppress symbol not referenced
     U_TEST_PRINT_LINE("MQTT unread msg count = %d.", unreadMsgCount);
 }
 
-static void mqttDisconnectCb(int32_t status, void *cbParam)
+static void mqttDisconnectCb(int32_t status, void *pCbParam)
 {
-    (void)cbParam;
+    (void)pCbParam;
     (void)status;
-    mqttSessionDisconnected = true;
+    gMqttSessionDisconnected = true;
 }
 
 
-static int32_t mqttSubscribe(uMqttClientContext_t *mqttClientCtx,
+static int32_t mqttSubscribe(uMqttClientContext_t *gpMqttClientCtx,
                              const char *pTopicFilterStr,
                              uMqttQos_t maxQos)
 {
@@ -274,14 +215,14 @@ static int32_t mqttSubscribe(uMqttClientContext_t *mqttClientCtx,
     // Retry until connection succeeds
     for (count = 0; ((count < MQTT_RETRY_COUNT) && (err < 0)); count++) {
 
-        err = uMqttClientSubscribe(mqttClientCtx, pTopicFilterStr, maxQos);
+        err = uMqttClientSubscribe(gpMqttClientCtx, pTopicFilterStr, maxQos);
         uPortTaskBlock(1000);
     }
 
     return err;
 }
 
-static int32_t mqttPublish(uMqttClientContext_t *mqttClientCtx,
+static int32_t mqttPublish(uMqttClientContext_t *gpMqttClientCtx,
                            const char *pTopicNameStr,
                            const char *pMessage,
                            size_t messageSizeBytes,
@@ -296,7 +237,7 @@ static int32_t mqttPublish(uMqttClientContext_t *mqttClientCtx,
     for (count = 0; ((count < MQTT_RETRY_COUNT) &&
                      (err != (int32_t) U_ERROR_COMMON_SUCCESS)); count++) {
 
-        err = uMqttClientPublish(mqttClientCtx,
+        err = uMqttClientPublish(gpMqttClientCtx,
                                  pTopicNameStr,
                                  pMessage,
                                  messageSizeBytes,
@@ -340,57 +281,58 @@ static int32_t wifiMqttUnsubscribeTest(bool isSecuredConnection)
     snprintf(pTopicOut1, U_MQTT_CLIENT_TEST_READ_TOPIC_MAX_LENGTH_BYTES,
              "ubx_test/%u", (unsigned int) topicId1);
 
-    mqttClientCtx = NULL;
+    gpMqttClientCtx = NULL;
 
     if (isSecuredConnection == false) {
 
-        mqttClientCtx = pUMqttClientOpen(gHandles.devHandle, NULL);
-        U_PORT_TEST_ASSERT(mqttClientCtx != NULL);
+        gpMqttClientCtx = pUMqttClientOpen(gHandles.devHandle, NULL);
+        U_PORT_TEST_ASSERT(gpMqttClientCtx != NULL);
 
-        err = uMqttClientConnect(mqttClientCtx, &mqttUnsecuredConnection);
+        err = uMqttClientConnect(gpMqttClientCtx, &gMqttUnsecuredConnection);
         U_PORT_TEST_ASSERT(err == (int32_t)U_ERROR_COMMON_SUCCESS);
     } else {
 
-        mqttClientCtx = pUMqttClientOpen(gHandles.devHandle, &mqttTlsSettings);
-        U_PORT_TEST_ASSERT(mqttClientCtx != NULL);
+        gpMqttClientCtx = pUMqttClientOpen(gHandles.devHandle, &gMqttTlsSettings);
+        U_PORT_TEST_ASSERT(gpMqttClientCtx != NULL);
 
-        err = uMqttClientConnect(mqttClientCtx, &mqttSecuredConnection);
+        err = uMqttClientConnect(gpMqttClientCtx, &gMqttSecuredConnection);
         U_PORT_TEST_ASSERT(err == (int32_t)U_ERROR_COMMON_SUCCESS);
 
     }
 
 
     //lint -e(731) suppress boolean argument to equal / not equal
-    U_PORT_TEST_ASSERT(uMqttClientIsConnected(mqttClientCtx) == true);
+    U_PORT_TEST_ASSERT(uMqttClientIsConnected(gpMqttClientCtx) == true);
 
-    err = uMqttClientSetMessageCallback(mqttClientCtx, mqttSubscribeCb, (void *)mqttClientCtx);
+    err = uMqttClientSetMessageCallback(gpMqttClientCtx, mqttSubscribeCb, (void *)gpMqttClientCtx);
     U_PORT_TEST_ASSERT(err == (int32_t)U_ERROR_COMMON_SUCCESS);
 
-    err = uMqttClientSetDisconnectCallback(mqttClientCtx, mqttDisconnectCb, NULL);
+    err = uMqttClientSetDisconnectCallback(gpMqttClientCtx, mqttDisconnectCb, NULL);
     U_PORT_TEST_ASSERT(err == (int32_t)U_ERROR_COMMON_SUCCESS);
 
-    err = mqttSubscribe(mqttClientCtx, pTopicOut1, qos);
+    err = mqttSubscribe(gpMqttClientCtx, pTopicOut1, qos);
     U_PORT_TEST_ASSERT(err == (int32_t)qos);
 
 
     for (count = 0; count < MQTT_PUBLISH_TOTAL_MSG_COUNT; count++) {
 
-        err = mqttPublish(mqttClientCtx,
+        err = mqttPublish(gpMqttClientCtx,
                           pTopicOut1,
-                          testPublishMsg[count],
-                          strlen(testPublishMsg[count]),
+                          gTestPublishMsg[count],
+                          strlen(gTestPublishMsg[count]),
                           qos,
                           false);
         U_PORT_TEST_ASSERT(err == (int32_t)U_ERROR_COMMON_SUCCESS);
     }
 
 
-    U_PORT_TEST_ASSERT(uMqttClientGetTotalMessagesSent(mqttClientCtx) == MQTT_PUBLISH_TOTAL_MSG_COUNT);
+    U_PORT_TEST_ASSERT(uMqttClientGetTotalMessagesSent(gpMqttClientCtx) ==
+                       MQTT_PUBLISH_TOTAL_MSG_COUNT);
 
 
     for (count = 0; count < MQTT_RETRY_COUNT; count++) {
 
-        if (uMqttClientGetTotalMessagesSent(mqttClientCtx) == uMqttClientGetUnread(mqttClientCtx)) {
+        if (uMqttClientGetTotalMessagesSent(gpMqttClientCtx) == uMqttClientGetUnread(gpMqttClientCtx)) {
             err = (int32_t)U_ERROR_COMMON_SUCCESS;
             break;
         } else {
@@ -400,11 +342,11 @@ static int32_t wifiMqttUnsubscribeTest(bool isSecuredConnection)
     }
 
     U_PORT_TEST_ASSERT(err == (int32_t)U_ERROR_COMMON_SUCCESS);
-    while (uMqttClientGetUnread(mqttClientCtx) != 0) {
+    while (uMqttClientGetUnread(gpMqttClientCtx) != 0) {
 
         msgBufSz = U_MQTT_CLIENT_TEST_READ_MESSAGE_MAX_LENGTH_BYTES;
 
-        uMqttClientMessageRead(mqttClientCtx,
+        uMqttClientMessageRead(gpMqttClientCtx,
                                pTopicIn,
                                U_MQTT_CLIENT_TEST_READ_TOPIC_MAX_LENGTH_BYTES,
                                pMessageIn,
@@ -414,38 +356,38 @@ static int32_t wifiMqttUnsubscribeTest(bool isSecuredConnection)
         U_TEST_PRINT_LINE("for topic %s msgBuf content %s msg size %d.",
                           pTopicIn, pMessageIn, msgBufSz);
     }
-    U_PORT_TEST_ASSERT(uMqttClientGetTotalMessagesReceived(mqttClientCtx) ==
+    U_PORT_TEST_ASSERT(uMqttClientGetTotalMessagesReceived(gpMqttClientCtx) ==
                        MQTT_PUBLISH_TOTAL_MSG_COUNT);
 
-    err = uMqttClientUnsubscribe(mqttClientCtx, pTopicOut1);
+    err = uMqttClientUnsubscribe(gpMqttClientCtx, pTopicOut1);
     U_PORT_TEST_ASSERT(err == (int32_t)U_ERROR_COMMON_SUCCESS);
 
     for (count = 0; count < MQTT_PUBLISH_TOTAL_MSG_COUNT; count++) {
 
-        err = mqttPublish(mqttClientCtx,
+        err = mqttPublish(gpMqttClientCtx,
                           pTopicOut1,
-                          testPublishMsg[count],
-                          strlen(testPublishMsg[count]),
+                          gTestPublishMsg[count],
+                          strlen(gTestPublishMsg[count]),
                           qos,
                           false);
         U_PORT_TEST_ASSERT(err == (int32_t)U_ERROR_COMMON_SUCCESS);
     }
 
-    U_PORT_TEST_ASSERT(uMqttClientGetUnread(mqttClientCtx) == 0);
+    U_PORT_TEST_ASSERT(uMqttClientGetUnread(gpMqttClientCtx) == 0);
 
-    mqttSessionDisconnected = false;
-    err = uMqttClientDisconnect(mqttClientCtx);
+    gMqttSessionDisconnected = false;
+    err = uMqttClientDisconnect(gpMqttClientCtx);
     U_PORT_TEST_ASSERT(err == (int32_t)U_ERROR_COMMON_SUCCESS);
 
 
-    for (count = 0; ((count < MQTT_RETRY_COUNT) && !mqttSessionDisconnected); count++) {
+    for (count = 0; ((count < MQTT_RETRY_COUNT) && !gMqttSessionDisconnected); count++) {
         uPortTaskBlock(1000);
     }
 
-    U_PORT_TEST_ASSERT(mqttSessionDisconnected == true);
-    mqttSessionDisconnected = false;
+    U_PORT_TEST_ASSERT(gMqttSessionDisconnected == true);
+    gMqttSessionDisconnected = false;
 
-    uMqttClientClose(mqttClientCtx);
+    uMqttClientClose(gpMqttClientCtx);
     uPortFree(pTopicIn);
     uPortFree(pTopicOut1);
     uPortFree(pMessageIn);
@@ -494,46 +436,46 @@ static int32_t wifiMqttPublishSubscribeTest(bool isSecuredConnection)
     snprintf(pTopicOut2, U_MQTT_CLIENT_TEST_READ_TOPIC_MAX_LENGTH_BYTES,
              "ubx_test/%u", (unsigned int) topicId2);
 
-    mqttClientCtx = NULL;
+    gpMqttClientCtx = NULL;
 
     if (isSecuredConnection == false) {
 
-        mqttClientCtx = pUMqttClientOpen(gHandles.devHandle, NULL);
-        U_PORT_TEST_ASSERT(mqttClientCtx != NULL);
+        gpMqttClientCtx = pUMqttClientOpen(gHandles.devHandle, NULL);
+        U_PORT_TEST_ASSERT(gpMqttClientCtx != NULL);
 
-        err = uMqttClientConnect(mqttClientCtx, &mqttUnsecuredConnection);
+        err = uMqttClientConnect(gpMqttClientCtx, &gMqttUnsecuredConnection);
         U_PORT_TEST_ASSERT(err == (int32_t)U_ERROR_COMMON_SUCCESS);
 
     } else {
 
-        mqttClientCtx = pUMqttClientOpen(gHandles.devHandle, &mqttTlsSettings);
-        U_PORT_TEST_ASSERT(mqttClientCtx != NULL);
+        gpMqttClientCtx = pUMqttClientOpen(gHandles.devHandle, &gMqttTlsSettings);
+        U_PORT_TEST_ASSERT(gpMqttClientCtx != NULL);
 
-        err = uMqttClientConnect(mqttClientCtx, &mqttSecuredConnection);
+        err = uMqttClientConnect(gpMqttClientCtx, &gMqttSecuredConnection);
         U_PORT_TEST_ASSERT(err == (int32_t)U_ERROR_COMMON_SUCCESS);
 
     }
     //lint -e(731) suppress boolean argument to equal / not equal
-    U_PORT_TEST_ASSERT(uMqttClientIsConnected(mqttClientCtx) == true);
+    U_PORT_TEST_ASSERT(uMqttClientIsConnected(gpMqttClientCtx) == true);
 
-    err = uMqttClientSetMessageCallback(mqttClientCtx, mqttSubscribeCb, (void *)mqttClientCtx);
+    err = uMqttClientSetMessageCallback(gpMqttClientCtx, mqttSubscribeCb, (void *)gpMqttClientCtx);
     U_PORT_TEST_ASSERT(err == (int32_t)U_ERROR_COMMON_SUCCESS);
 
-    err = uMqttClientSetDisconnectCallback(mqttClientCtx, mqttDisconnectCb, NULL);
+    err = uMqttClientSetDisconnectCallback(gpMqttClientCtx, mqttDisconnectCb, NULL);
     U_PORT_TEST_ASSERT(err == (int32_t)U_ERROR_COMMON_SUCCESS);
 
-    err = mqttSubscribe(mqttClientCtx, pTopicOut1, qos);
+    err = mqttSubscribe(gpMqttClientCtx, pTopicOut1, qos);
     U_PORT_TEST_ASSERT(err == (int32_t)qos);
 
-    err = mqttSubscribe(mqttClientCtx, pTopicOut2, qos);
+    err = mqttSubscribe(gpMqttClientCtx, pTopicOut2, qos);
     U_PORT_TEST_ASSERT(err == (int32_t)qos);
 
     for (count = 0; count < MQTT_PUBLISH_TOTAL_MSG_COUNT; count++) {
 
-        err = mqttPublish(mqttClientCtx,
+        err = mqttPublish(gpMqttClientCtx,
                           pTopicOut1,
-                          testPublishMsg[count],
-                          strlen(testPublishMsg[count]),
+                          gTestPublishMsg[count],
+                          strlen(gTestPublishMsg[count]),
                           qos,
                           false);
         U_PORT_TEST_ASSERT(err == (int32_t)U_ERROR_COMMON_SUCCESS);
@@ -542,22 +484,22 @@ static int32_t wifiMqttPublishSubscribeTest(bool isSecuredConnection)
 
     for (count = 0; count < MQTT_PUBLISH_TOTAL_MSG_COUNT; count++) {
 
-        err = mqttPublish(mqttClientCtx,
+        err = mqttPublish(gpMqttClientCtx,
                           pTopicOut2,
-                          testPublishMsg[count],
-                          strlen(testPublishMsg[count]),
+                          gTestPublishMsg[count],
+                          strlen(gTestPublishMsg[count]),
                           qos,
                           false);
         U_PORT_TEST_ASSERT(err == (int32_t)U_ERROR_COMMON_SUCCESS);
     }
 
-    U_PORT_TEST_ASSERT(uMqttClientGetTotalMessagesSent(mqttClientCtx) == (MQTT_PUBLISH_TOTAL_MSG_COUNT
-                                                                          << 1));
+    U_PORT_TEST_ASSERT(uMqttClientGetTotalMessagesSent(gpMqttClientCtx) == (MQTT_PUBLISH_TOTAL_MSG_COUNT
+                                                                            << 1));
 
 
     for (count = 0; count < MQTT_RETRY_COUNT; count++) {
 
-        if (uMqttClientGetTotalMessagesSent(mqttClientCtx) == uMqttClientGetUnread(mqttClientCtx)) {
+        if (uMqttClientGetTotalMessagesSent(gpMqttClientCtx) == uMqttClientGetUnread(gpMqttClientCtx)) {
             err = (int32_t)U_ERROR_COMMON_SUCCESS;
             break;
         } else {
@@ -567,11 +509,11 @@ static int32_t wifiMqttPublishSubscribeTest(bool isSecuredConnection)
     }
 
     U_PORT_TEST_ASSERT(err == (int32_t)U_ERROR_COMMON_SUCCESS);
-    while (uMqttClientGetUnread(mqttClientCtx) != 0) {
+    while (uMqttClientGetUnread(gpMqttClientCtx) != 0) {
 
         msgBufSz = U_MQTT_CLIENT_TEST_READ_MESSAGE_MAX_LENGTH_BYTES;
 
-        uMqttClientMessageRead(mqttClientCtx,
+        uMqttClientMessageRead(gpMqttClientCtx,
                                pTopicIn,
                                U_MQTT_CLIENT_TEST_READ_TOPIC_MAX_LENGTH_BYTES,
                                pMessageIn,
@@ -581,25 +523,25 @@ static int32_t wifiMqttPublishSubscribeTest(bool isSecuredConnection)
         U_TEST_PRINT_LINE("for topic %s msgBuf content %s msg size %d.",
                           pTopicIn, pMessageIn, msgBufSz);
     }
-    U_PORT_TEST_ASSERT(uMqttClientGetTotalMessagesReceived(mqttClientCtx) ==
+    U_PORT_TEST_ASSERT(uMqttClientGetTotalMessagesReceived(gpMqttClientCtx) ==
                        (MQTT_PUBLISH_TOTAL_MSG_COUNT << 1));
 
-    err = uMqttClientDisconnect(mqttClientCtx);
+    err = uMqttClientDisconnect(gpMqttClientCtx);
     U_PORT_TEST_ASSERT(err == (int32_t)U_ERROR_COMMON_SUCCESS);
 
 
     for (count = 0; count < MQTT_RETRY_COUNT; count++) {
 
-        if (mqttSessionDisconnected) {
+        if (gMqttSessionDisconnected) {
             break;
         } else {
             uPortTaskBlock(1000);
         }
     }
-    U_PORT_TEST_ASSERT(mqttSessionDisconnected == true);
-    mqttSessionDisconnected = false;
+    U_PORT_TEST_ASSERT(gMqttSessionDisconnected == true);
+    gMqttSessionDisconnected = false;
 
-    uMqttClientClose(mqttClientCtx);
+    uMqttClientClose(gpMqttClientCtx);
     uPortFree(pTopicIn);
     uPortFree(pTopicOut1);
     uPortFree(pTopicOut2);
@@ -608,93 +550,38 @@ static int32_t wifiMqttPublishSubscribeTest(bool isSecuredConnection)
     return err;
 }
 
-static uWifiTestError_t startWifi(void)
-{
-    int32_t waitCtr = 0;
-    //lint -e(438) suppress testError warning
-    uWifiTestError_t testError = U_WIFI_TEST_ERROR_NONE;
-
-    gWifiStatusMask = 0;
-    gWifiConnected = 0;
-    // Do the standard preamble
-    //lint -e(40) suppress undeclared identifier 'U_CFG_TEST_SHORT_RANGE_MODULE_TYPE'
-    if (0 != uWifiTestPrivatePreamble((uWifiModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
-                                      &uart,
-                                      &gHandles)) {
-        testError = U_WIFI_TEST_ERROR_PREAMBLE;
-    }
-    if (testError == U_WIFI_TEST_ERROR_NONE) {
-        // Add unsolicited response cb for connection status
-        uWifiSetConnectionStatusCallback(gHandles.devHandle,
-                                         wifiConnectionCallback, NULL);
-        // Add unsolicited response cb for IP status
-        uWifiSetNetworkStatusCallback(gHandles.devHandle,
-                                      wifiNetworkStatusCallback, NULL);
-
-        // Connect to wifi network
-        int32_t status;
-        status = uWifiStationConnect(gHandles.devHandle,
-                                     U_PORT_STRINGIFY_QUOTED(U_WIFI_TEST_CFG_SSID),
-                                     U_WIFI_AUTH_WPA_PSK,
-                                     U_PORT_STRINGIFY_QUOTED(U_WIFI_TEST_CFG_WPA2_PASSPHRASE));
-        if (status == (int32_t) U_WIFI_ERROR_ALREADY_CONNECTED_TO_SSID) {
-            gWifiConnected = true;
-            gWifiStatusMask = gWifiStatusMaskAllUp;
-        } else if (status != 0) {
-            testError = U_WIFI_TEST_ERROR_CONNECT;
-        }
-    }
-    //Wait for connection and IP events.
-    //There could be multiple IP events depending on network comfiguration.
-    while (!testError && (!gWifiConnected || (gWifiStatusMask != gWifiStatusMaskAllUp))) {
-        if (waitCtr >= 15) {
-            if (!gWifiConnected) {
-                U_TEST_PRINT_LINE("unable to connect to WiFi network.");
-                testError = U_WIFI_TEST_ERROR_CONNECTED;
-            } else {
-                U_TEST_PRINT_LINE("unable to retrieve IP address.");
-                testError = U_WIFI_TEST_ERROR_IPRECV;
-            }
-            break;
-        }
-
-        uPortTaskBlock(1000);
-        waitCtr++;
-    }
-    U_TEST_PRINT_LINE("wifi handle = %d.", gHandles.devHandle);
-
-    return testError;
-}
-
-static void stopWifi(void)
-{
-    uWifiTestPrivatePostamble(&gHandles);
-}
-
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
+
 U_PORT_TEST_FUNCTION("[wifiMqtt]", "wifiMqttPublishSubscribeTest")
 {
-    U_PORT_TEST_ASSERT_EQUAL(U_WIFI_TEST_ERROR_NONE, startWifi());
+    U_PORT_TEST_ASSERT(uWifiTestPrivatePreamble((uWifiModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
+                                                &gUart, &gHandles) == 0);
+    U_PORT_TEST_ASSERT(uWifiTestPrivateConnect(&gHandles) == U_WIFI_TEST_ERROR_NONE);
     wifiMqttPublishSubscribeTest(false);
-    stopWifi();
+    uWifiTestPrivatePostamble(&gHandles);
 }
 
 U_PORT_TEST_FUNCTION("[wifiMqtt]", "wifiMqttUnsubscribeTest")
 {
-    U_PORT_TEST_ASSERT_EQUAL(U_WIFI_TEST_ERROR_NONE, startWifi());
+    U_PORT_TEST_ASSERT(uWifiTestPrivatePreamble((uWifiModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
+                                                &gUart, &gHandles) == 0);
+    U_PORT_TEST_ASSERT(uWifiTestPrivateConnect(&gHandles) == U_WIFI_TEST_ERROR_NONE);
     wifiMqttUnsubscribeTest(false);
-    stopWifi();
+    uWifiTestPrivatePostamble(&gHandles);
 }
 
 U_PORT_TEST_FUNCTION("[wifiMqtt]", "wifiMqttSecuredPublishSubscribeTest")
 {
     int32_t err;
-    U_PORT_TEST_ASSERT_EQUAL(U_WIFI_TEST_ERROR_NONE, startWifi());
+
+    U_PORT_TEST_ASSERT(uWifiTestPrivatePreamble((uWifiModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
+                                                &gUart, &gHandles) == 0);
+    U_PORT_TEST_ASSERT(uWifiTestPrivateConnect(&gHandles) == U_WIFI_TEST_ERROR_NONE);
     err = uSecurityCredentialStore(gHandles.devHandle,
                                    U_SECURITY_CREDENTIAL_ROOT_CA_X509,
-                                   mqttTlsSettings.pRootCaCertificateName,
+                                   gMqttTlsSettings.pRootCaCertificateName,
                                    gpRootCaCert,
                                    strlen(gpRootCaCert),
                                    NULL,
@@ -703,18 +590,21 @@ U_PORT_TEST_FUNCTION("[wifiMqtt]", "wifiMqttSecuredPublishSubscribeTest")
     wifiMqttPublishSubscribeTest(true);
     err = uSecurityCredentialRemove(gHandles.devHandle,
                                     U_SECURITY_CREDENTIAL_ROOT_CA_X509,
-                                    mqttTlsSettings.pRootCaCertificateName);
+                                    gMqttTlsSettings.pRootCaCertificateName);
     U_PORT_TEST_ASSERT(err == (int32_t)U_ERROR_COMMON_SUCCESS);
-    stopWifi();
+    uWifiTestPrivatePostamble(&gHandles);
 }
 
 U_PORT_TEST_FUNCTION("[wifiMqtt]", "wifiMqttSecuredUnsubscribeTest")
 {
     int32_t err;
-    U_PORT_TEST_ASSERT_EQUAL(U_WIFI_TEST_ERROR_NONE, startWifi());
+
+    U_PORT_TEST_ASSERT(uWifiTestPrivatePreamble((uWifiModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
+                                                &gUart, &gHandles) == 0);
+    U_PORT_TEST_ASSERT(uWifiTestPrivateConnect(&gHandles) == U_WIFI_TEST_ERROR_NONE);
     err = uSecurityCredentialStore(gHandles.devHandle,
                                    U_SECURITY_CREDENTIAL_ROOT_CA_X509,
-                                   mqttTlsSettings.pRootCaCertificateName,
+                                   gMqttTlsSettings.pRootCaCertificateName,
                                    gpRootCaCert,
                                    strlen(gpRootCaCert),
                                    NULL,
@@ -723,9 +613,9 @@ U_PORT_TEST_FUNCTION("[wifiMqtt]", "wifiMqttSecuredUnsubscribeTest")
     wifiMqttUnsubscribeTest(true);
     err = uSecurityCredentialRemove(gHandles.devHandle,
                                     U_SECURITY_CREDENTIAL_ROOT_CA_X509,
-                                    mqttTlsSettings.pRootCaCertificateName);
+                                    gMqttTlsSettings.pRootCaCertificateName);
     U_PORT_TEST_ASSERT(err == (int32_t)U_ERROR_COMMON_SUCCESS);
-    stopWifi();
+    uWifiTestPrivatePostamble(&gHandles);
 }
 #endif // U_SHORT_RANGE_TEST_WIFI()
 

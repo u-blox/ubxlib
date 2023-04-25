@@ -98,6 +98,13 @@ int32_t uWifiTestPrivatePreamble(uWifiModuleType_t moduleType,
                                  const uShortRangeUartConfig_t *pUartConfig,
                                  uWifiTestPrivate_t *pParameters);
 
+/** Connect to the Wifi network used during testing.
+ *
+ * @param pParameters the place to put the parameters.
+ * @return            zero on success else negative error code.
+ */
+uWifiTestError_t uWifiTestPrivateConnect(uWifiTestPrivate_t *pParameters);
+
 /** The standard postamble for a Wifi test.
  *
  * @param pParameters a pointer to the parameters struct.

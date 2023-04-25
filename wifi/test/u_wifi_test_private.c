@@ -40,6 +40,7 @@
 #include "u_error_common.h"
 
 #include "u_port.h"
+#include "u_port_os.h"
 #include "u_port_debug.h"
 #include "u_port_uart.h"
 
@@ -72,9 +73,71 @@
  * VARIABLES
  * -------------------------------------------------------------- */
 
+static const uint32_t gStatusMaskAllUp = U_WIFI_STATUS_MASK_IPV4_UP |
+                                         U_WIFI_STATUS_MASK_IPV6_UP;
+
+static volatile int32_t gConnected = 0;
+static volatile uint32_t gStatusMask = 0;
+
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
+
+static void connectionCallback(uDeviceHandle_t devHandle,
+                               int32_t connId,
+                               int32_t status,
+                               int32_t channel,
+                               char *pBssid,
+                               int32_t disconnectReason,
+                               void *pCallbackParameter)
+{
+    (void)devHandle;
+    (void)connId;
+    (void)channel;
+    (void)pBssid;
+    (void)disconnectReason;
+    (void)pCallbackParameter;
+
+    if (status == U_WIFI_CON_STATUS_CONNECTED) {
+        U_TEST_PRINT_LINE("connected Wifi connId: %d, bssid: %s, channel: %d.",
+                          connId, pBssid, channel);
+        gConnected = 1;
+    } else {
+#ifdef U_CFG_ENABLE_LOGGING
+        //lint -esym(752, strDisconnectReason)
+        static const char strDisconnectReason[6][20] = {
+            "Unknown", "Remote Close", "Out of range",
+            "Roaming", "Security problems", "Network disabled"
+        };
+        if ((disconnectReason < 0) || (disconnectReason >= 6)) {
+            // For all other values use "Unknown"
+            //lint -esym(438, disconnectReason)
+            disconnectReason = 0;
+        }
+        U_TEST_PRINT_LINE("wifi connection lost connId: %d, reason: %d (%s).",
+                          connId, disconnectReason,
+                          strDisconnectReason[disconnectReason]);
+#endif
+        gConnected = 0;
+    }
+}
+
+static void networkStatusCallback(uDeviceHandle_t devHandle,
+                                  int32_t interfaceType,
+                                  uint32_t statusMask,
+                                  void *pCallbackParameter)
+{
+    (void)devHandle;
+    (void)interfaceType;
+    (void)statusMask;
+    (void)pCallbackParameter;
+
+    U_TEST_PRINT_LINE("network status IPv4 %s, IPv6 %s.",
+                      ((statusMask & U_WIFI_STATUS_MASK_IPV4_UP) > 0) ? "up" : "down",
+                      ((statusMask & U_WIFI_STATUS_MASK_IPV6_UP) > 0) ? "up" : "down");
+
+    gStatusMask = statusMask;
+}
 
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
@@ -99,8 +162,8 @@ int32_t uWifiTestPrivatePreamble(uWifiModuleType_t moduleType,
         uDeviceHandle_t devHandle = NULL;
         U_TEST_PRINT_LINE("opening UART %d...", U_CFG_APP_SHORT_RANGE_UART);
 
-        errorCodeOrHandle = uShortRangeOpenUart((uShortRangeModuleType_t)moduleType, pUartConfig,
-                                                true, &devHandle);
+        errorCodeOrHandle = uShortRangeOpenUart((uShortRangeModuleType_t)moduleType,
+                                                pUartConfig, true, &devHandle);
 
         if (errorCodeOrHandle >= (int32_t) U_ERROR_COMMON_SUCCESS) {
             errorCodeOrHandle = uShortRangeGetUartHandle(devHandle);
@@ -142,6 +205,58 @@ int32_t uWifiTestPrivatePreamble(uWifiModuleType_t moduleType,
     }
 
     return errorCodeOrHandle;
+}
+
+// Set up a Wifi connection.
+uWifiTestError_t uWifiTestPrivateConnect(uWifiTestPrivate_t *pParameters)
+{
+    int32_t waitCtr = 0;
+    //lint -e(438) suppress testError warning
+    uWifiTestError_t testError = U_WIFI_TEST_ERROR_NONE;
+
+    gStatusMask = 0;
+    gConnected = 0;
+
+    // Add unsolicited response cb for connection status
+    uWifiSetConnectionStatusCallback(pParameters->devHandle,
+                                     connectionCallback, NULL);
+    // Add unsolicited response cb for IP status
+    uWifiSetNetworkStatusCallback(pParameters->devHandle,
+                                  networkStatusCallback, NULL);
+
+    // Connect to wifi network
+    int32_t status;
+    status = uWifiStationConnect(pParameters->devHandle,
+                                 U_PORT_STRINGIFY_QUOTED(U_WIFI_TEST_CFG_SSID),
+                                 U_WIFI_AUTH_WPA_PSK,
+                                 U_PORT_STRINGIFY_QUOTED(U_WIFI_TEST_CFG_WPA2_PASSPHRASE));
+    if (status == (int32_t) U_WIFI_ERROR_ALREADY_CONNECTED_TO_SSID) {
+        gConnected = true;
+        gStatusMask = gStatusMaskAllUp;
+    } else if (status != 0) {
+        testError = U_WIFI_TEST_ERROR_CONNECT;
+    }
+
+    //Wait for connection and IP events.
+    //There could be multiple IP events depending on network comfiguration.
+    while (!testError && (!gConnected || (gStatusMask != gStatusMaskAllUp))) {
+        if (waitCtr >= 15) {
+            if (!gConnected) {
+                U_TEST_PRINT_LINE("unable to connect to WiFi network.");
+                testError = U_WIFI_TEST_ERROR_CONNECTED;
+            } else {
+                U_TEST_PRINT_LINE("unable to retrieve IP address.");
+                testError = U_WIFI_TEST_ERROR_IPRECV;
+            }
+            break;
+        }
+
+        uPortTaskBlock(1000);
+        waitCtr++;
+    }
+    U_TEST_PRINT_LINE("wifi handle = %d.", pParameters->devHandle);
+
+    return testError;
 }
 
 // The standard postamble for a wifi test.
