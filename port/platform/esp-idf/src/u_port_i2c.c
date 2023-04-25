@@ -173,10 +173,16 @@ static int32_t receive(int32_t handle, uint16_t address, char *pData, size_t siz
         }
         if (errorCodeOrLength == (int32_t) U_ERROR_COMMON_SUCCESS) {
             // Now read the data, the last byte with a nack, and execute it
-            if ((size > 0) &&
-                ((i2c_master_read(cmd, (uint8_t *) pData, size - 1, I2C_MASTER_ACK) != ESP_OK) ||
-                 (i2c_master_read_byte(cmd, (uint8_t *) (pData + size - 1), I2C_MASTER_LAST_NACK) != ESP_OK))) {
-                errorCodeOrLength = (int32_t) U_ERROR_COMMON_PLATFORM;
+            // Now read the data, the last byte with a nack, and execute it
+            if (size > 1) {
+                if ((i2c_master_read(cmd, (uint8_t *) pData, size - 1, I2C_MASTER_ACK) != ESP_OK) ||
+                    (i2c_master_read_byte(cmd, (uint8_t *) (pData + size - 1), I2C_MASTER_LAST_NACK) != ESP_OK)) {
+                    errorCodeOrLength = (int32_t) U_ERROR_COMMON_PLATFORM;
+                }
+            } else if (size > 0) {
+                if (i2c_master_read_byte(cmd, (uint8_t *) (pData + size - 1), I2C_MASTER_LAST_NACK) != ESP_OK) {
+                    errorCodeOrLength = (int32_t) U_ERROR_COMMON_PLATFORM;
+                }
             }
             if ((errorCodeOrLength == (int32_t) U_ERROR_COMMON_SUCCESS) &&
                 (i2c_master_stop(cmd) == ESP_OK) &&
