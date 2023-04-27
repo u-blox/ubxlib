@@ -28,3 +28,8 @@ SUBSYSTEM=="tty", ATTRS{idVendor}=="1366", ATTRS{idProduct}=="1015", ENV{ID_SEGG
 # SEGGER JLink, as used on the Nordic NRF5340DK board
 SUBSYSTEMS=="usb", ENV{ID_SEGGER_JLINK_NRF5240DK_INTERFACE_NUMBER}="$attr{bInterfaceNumber}", MODE:="0666", SYMLINK+="segger_jlink_nrf5340"
 SUBSYSTEM=="tty", ATTRS{idVendor}=="1366", ATTRS{idProduct}=="1055", ENV{ID_SEGGER_JLINK_NRF5240DK_INTERFACE_NUMBER}=="06", MODE:="0666", SYMLINK+="segger_jlink_nrf5340_uart"
+
+# STLink V2.1 standalone debugger
+SUBSYSTEMS=="usb", ENV{ID_STLINK_V2_1_STANDALONE_INTERFACE_NUMBER}="$attr{bInterfaceNumber}", MODE:="0666", SYMLINK+="stlink_v2_1_standalone"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="3748", ENV{ID_STLINK_V2_1_STANDALONE_INTERFACE_NUMBER}=="07", MODE:="0666", SYMLINK+="stlink_v2_1_standalone_uart"
+

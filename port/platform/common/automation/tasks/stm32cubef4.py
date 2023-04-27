@@ -88,7 +88,7 @@ def build(ctx, makefile_dir=DEFAULT_MAKEFILE_DIR, output_name=DEFAULT_OUTPUT_NAM
         # Seems it must be a relative path and `\` directory separators must NOT be used.
         build_dir = os.path.relpath(ctx.build_dir, makefile_dir).replace("\\", "/")
         build_cmd = f'make -j{jobs} UBXLIB_PATH={ctx.config.root_dir} OUTPUT_DIRECTORY={build_dir} '\
-                    f'CFLAGS=\'{cflags}\' {" ".join(ctx.stm32cubef4_env)}'
+                    f'CFLAGS=\"{cflags}\" {" ".join(ctx.stm32cubef4_env)}'
         if is_static_analyze:
             ctx.analyze_dir = f"{ctx.build_dir}/analyze"
             check_proc = ctx.run(f'CodeChecker check -b "{build_cmd}" -o {ctx.analyze_dir} ' \
@@ -128,7 +128,7 @@ def flash(ctx, file=DEFAULT_FLASH_FILE, debugger_serial="",
     build_dir = Path(build_dir, output_name).absolute().as_posix()
     cmds = OPENOCD_DISABLE_PORTS_CMDS
     if debugger_serial != "":
-        cmds.append(f'hla_serial {debugger_serial}')
+        cmds.append(f'adapter serial {debugger_serial}')
     cmds += [
         f'program {build_dir}/{file} reset',
         'exit'
@@ -157,17 +157,22 @@ def log(ctx, debugger_serial="", port=40404,
 
     cmds = OPENOCD_DISABLE_PORTS_CMDS
     if debugger_serial != "":
-        cmds.append(f'hla_serial {debugger_serial}')
+        cmds.append(f'adapter serial {debugger_serial}')
     cmds += [
         'init',
-        f'tpiu config internal :{port} uart off \$_TARGET_SYSTEM_FREQUENCY \$_TARGET_SWO_FREQUENCY',
+        f'stm32f4x.tpiu configure -output :{port}',
+        'stm32f4x.tpiu configure -protocol uart',
+        'stm32f4x.tpiu configure -formatter 0',
+        'stm32f4x.tpiu configure -traceclk \$_TARGET_SYSTEM_FREQUENCY',
+        'stm32f4x.tpiu configure -pin-freq \$_TARGET_SWO_FREQUENCY',
+        'stm32f4x.tpiu enable',
         'itm port 0 on',
         'reset init',
         'resume'
     ]
     args = _to_openocd_args(cmds)
     promise = ctx.run(f'openocd -f {u_utils.OPENOCD_CFG_DIR}/stm32f4.cfg {args}', asynchronous=True)
-    # Let OpenOCD startup first
+    # Let OpenOCD start up first
     time.sleep(5)
     try:
         line = ""
