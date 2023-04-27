@@ -87,9 +87,13 @@ def build(ctx, makefile_dir=DEFAULT_MAKEFILE_DIR, output_name=DEFAULT_OUTPUT_NAM
         # OUTPUT_DIRECTORY is very picky in Windows.
         # Seems it must be a relative path and `\` directory separators must NOT be used.
         build_dir = os.path.relpath(ctx.build_dir, makefile_dir).replace("\\", "/")
-        build_cmd = f'make -j{jobs} UBXLIB_PATH={ctx.config.root_dir} OUTPUT_DIRECTORY={build_dir} '\
-                    f'CFLAGS=\"{cflags}\" {" ".join(ctx.stm32cubef4_env)}'
         if is_static_analyze:
+            # We do build_cmd differently for static analysis (single quotes
+            # around the cflags rather than double); the double quotes are
+            # the only ones that work with make on Windows, the single ones
+            # are the only ones that work with the static analyzer on Linux.
+            build_cmd = f'make -j{jobs} UBXLIB_PATH={ctx.config.root_dir} OUTPUT_DIRECTORY={build_dir} '\
+                        f'CFLAGS=\'{cflags}\' {" ".join(ctx.stm32cubef4_env)}'
             ctx.analyze_dir = f"{ctx.build_dir}/analyze"
             check_proc = ctx.run(f'CodeChecker check -b "{build_cmd}" -o {ctx.analyze_dir} ' \
                                  f'--config {u_utils.CODECHECKER_CFG_FILE} -i {u_utils.CODECHECKER_IGNORE_FILE}', warn=True)
@@ -98,6 +102,8 @@ def build(ctx, makefile_dir=DEFAULT_MAKEFILE_DIR, output_name=DEFAULT_OUTPUT_NAM
             elif check_proc.exited >= 128:
                 raise Exit("CodeChecker fatal error")
         else:
+            build_cmd = f'make -j{jobs} UBXLIB_PATH={ctx.config.root_dir} OUTPUT_DIRECTORY={build_dir} '\
+                        f'CFLAGS=\"{cflags}\" {" ".join(ctx.stm32cubef4_env)}'
             ctx.run(build_cmd)
 
 @task(
