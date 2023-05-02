@@ -94,15 +94,11 @@
  */
 # ifndef U_CFG_TEST_USING_NRF5SDK
 #  define U_HTTP_CLIENT_TEST_DATA_SIZE_BYTES (1024 * 5)
+# define U_HTTP_CLIENT_TEST_DATA_SHORT_RANGE_SIZE_BYTES 2000
 # else
 #  define U_HTTP_CLIENT_TEST_DATA_SIZE_BYTES 512 // NRF52, which we use NRF5SDK on, doesn't have enough heap for large datasize
+#  define U_HTTP_CLIENT_TEST_DATA_SHORT_RANGE_SIZE_BYTES 512
 # endif
-#endif
-
-#ifndef U_HTTP_CLIENT_TEST_DATA_SHORT_RANGE_SIZE_BYTES
-/** The amount of data in HTTP commands for shortrange
- */
-# define U_HTTP_CLIENT_TEST_DATA_SHORT_RANGE_SIZE_BYTES 512
 #endif
 
 #ifndef U_HTTP_CLIENT_TEST_CONTENT_TYPE
