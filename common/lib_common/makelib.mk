@@ -82,7 +82,7 @@ all: $(library_c)
 
 $(library_c): $(library_bin)
 	@echo "* Generating C array"
-	$(v)python $(LIB_COMMON_PATH)/genlibcfile.py $(library_bin) $(LIB_NAME) > $@
+	$(v)python3 $(LIB_COMMON_PATH)/genlibcfile.py $(library_bin) $(LIB_NAME) > $@
 	@echo "$(abspath $@)"
 
 $(library_bin): $(library_descr_bin) $(library_code_final_bin)
@@ -92,7 +92,7 @@ $(library_bin): $(library_descr_bin) $(library_code_final_bin)
 
 $(library_code_final_bin): $(library_descr_bin) $(library_code_bin) 
 	@echo "* Building library blob "
-	$(v)python $(LIB_COMMON_PATH)/genencryptedbin.py $(library_descr_bin) $(library_code_bin) $(USE_ENCRYPTION) $@
+	$(v)python3 $(LIB_COMMON_PATH)/genencryptedbin.py $(library_descr_bin) $(library_code_bin) $(USE_ENCRYPTION) $@
 	@echo "$(abspath $@)"
 
 $(library_code_bin): $(library_code_elf) 
@@ -123,7 +123,7 @@ $(library_descr_o): $(library_descr_c)
 
 $(library_descr_c): $(library_code_sym)
 	@echo "* Generating library descriptor"
-	$(v)python $(LIB_COMMON_PATH)/genlibhdr.py $< > $@
+	$(v)python3 $(LIB_COMMON_PATH)/genlibhdr.py $< > $@
 
 $(library_code_sym): $(library_code_elf) $(library_code_bin)
 	@echo "* Dumping library symbols"
