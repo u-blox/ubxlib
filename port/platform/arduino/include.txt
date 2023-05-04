@@ -40,6 +40,7 @@ common/spartn/api
 common/short_range/api
 common/short_range/src
 common/utils/api
+common/dns/api
 ble/api
 ble/src
 cell/api

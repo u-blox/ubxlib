@@ -51,6 +51,7 @@ gnss
 common/short_range
 ble
 wifi
+common/dns
 
 # Include file directories (ones which aren't in a module)
 [INCLUDE]

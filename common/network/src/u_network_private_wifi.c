@@ -349,6 +349,8 @@ int32_t uNetworkPrivateChangeStateWifi(uDeviceHandle_t devHandle,
     if ((pCfg == NULL) || (pCfg->version != 0) || (pCfg->type != U_NETWORK_TYPE_WIFI)) {
         return (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
     }
+    bool isSta = (pCfg->mode == U_WIFI_MODE_STA) || (pCfg->mode == U_WIFI_MODE_STA_AP);
+    bool isAp = (pCfg->mode == U_WIFI_MODE_AP) || (pCfg->mode == U_WIFI_MODE_STA_AP);
 
     // Callback message queue, may or may not be initiated before
     uPortQueueHandle_t queueHandle = getQueueHandle(devHandle);
@@ -374,13 +376,25 @@ int32_t uNetworkPrivateChangeStateWifi(uDeviceHandle_t devHandle,
             // Clear status queue since we are only interested in fresh messages
             statusQueueClear(queueHandle);
 
-            errorCode = uWifiStationConnect(devHandle,
-                                            pCfg->pSsid,
-                                            (uWifiAuth_t)pCfg->authentication,
-                                            pCfg->pPassPhrase);
+            if (isSta) {
+                errorCode = uWifiStationConnect(devHandle,
+                                                pCfg->pSsid,
+                                                (uWifiAuth_t)pCfg->authentication,
+                                                pCfg->pPassPhrase);
+            }
+            if (errorCode == 0 && isAp) {
+                errorCode = uWifiAccessPointStart(devHandle,
+                                                  pCfg->pApSssid,
+                                                  (uWifiAuth_t)pCfg->apAuthentication,
+                                                  pCfg->pApPassPhrase,
+                                                  pCfg->pApIpAddress);
+            }
+
             if (errorCode == 0) {
                 // Wait until the network layer is up before return
-                errorCode = statusQueueWaitForWifiConnected(queueHandle, 20);
+                if (isSta) {
+                    errorCode = statusQueueWaitForWifiConnected(queueHandle, 20);
+                }
                 if (errorCode == 0) {
                     errorCode = statusQueueWaitForNetworkUp(queueHandle,
                                                             U_NETWORK_PRIVATE_WIFI_NETWORK_TIMEOUT_SEC);
@@ -420,12 +434,16 @@ int32_t uNetworkPrivateChangeStateWifi(uDeviceHandle_t devHandle,
             errorCode = uWifiSetConnectionStatusCallback(devHandle,
                                                          wifiConnectionCallback,
                                                          devHandle);
-            if (errorCode == 0) {
+            if (errorCode == 0 && isSta) {
                 errorCode = uWifiStationDisconnect(devHandle);
-                uPortLog("uWifiStationDisconnect: %d\n", errorCode);
+                uPortLog(LOG_TAG "uWifiStationDisconnect: %d\n", errorCode);
+            }
+            if (errorCode == 0 && isAp) {
+                errorCode = uWifiAccessPointStop(devHandle);
+                uPortLog(LOG_TAG "uWifiAccessPointStop: %d\n", errorCode);
             }
 
-            if (errorCode == 0) {
+            if (errorCode == 0 && isSta) {
                 // Wait until the wifi have been disabled before return
                 errorCode = statusQueueWaitForWifiDisabled(queueHandle, 5);
             }

@@ -32,6 +32,7 @@
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
+#include "stdio.h"
 #include "string.h"    // memset()
 
 #include "u_error_common.h"
@@ -45,6 +46,7 @@
 #include "u_short_range_module_type.h"
 #include "u_short_range.h"
 #include "u_short_range_private.h"
+#include "u_short_range_cfg.h"
 
 #include "u_wifi_module_type.h"
 #include "u_wifi.h"
@@ -103,16 +105,13 @@ typedef struct {
     int32_t interfaceId;
 } uWifiworkEvent_t;
 
-//lint -esym(749, uWifiStaCfgAction_t::STA_ACTION_RESET) Suppress not referenced
-//lint -esym(749, uWifiStaCfgAction_t::STA_ACTION_LOAD) Suppress not referenced
-//lint -esym(749, uWifiStaCfgAction_t::STA_ACTION_STORE) Suppress not referenced
 typedef enum {
-    STA_ACTION_RESET = 0,
-    STA_ACTION_STORE = 1,
-    STA_ACTION_LOAD = 2,
-    STA_ACTION_ACTIVATE = 3,
-    STA_ACTION_DEACTIVATE = 4
-} uWifiStaCfgAction_t;
+    CFG_ACTION_RESET = 0,
+    CFG_ACTION_STORE = 1,
+    CFG_ACTION_LOAD = 2,
+    CFG_ACTION_ACTIVATE = 3,
+    CFG_ACTION_DEACTIVATE = 4
+} uWifiCfgAction_t;
 
 /* ----------------------------------------------------------------
  * STATIC VARIABLES
@@ -136,6 +135,30 @@ static inline int32_t getInstance(uDeviceHandle_t devHandle,
     }
 
     return (int32_t)U_ERROR_COMMON_SUCCESS;
+}
+
+/** Helper function for reading a Wifi station config string value */
+static int32_t readWifiStaConfigString(uAtClientHandle_t atHandle,
+                                       int32_t configId,
+                                       int32_t tag,
+                                       char *pString,
+                                       size_t lengthBytes)
+{
+    int32_t retValue;
+    uAtClientLock(atHandle);
+    uAtClientCommandStart(atHandle, "AT+UWSC=");
+    uAtClientWriteInt(atHandle, configId);
+    uAtClientWriteInt(atHandle, tag);
+    uAtClientCommandStop(atHandle);
+    uAtClientResponseStart(atHandle, "+UWSC:");
+    uAtClientSkipParameters(atHandle, 2);
+    retValue = uAtClientReadString(atHandle, pString, lengthBytes, false);
+    uAtClientResponseStop(atHandle);
+    int32_t errorCode = uAtClientUnlock(atHandle);
+    if (errorCode < 0) {
+        retValue = errorCode;
+    }
+    return retValue;
 }
 
 /** Helper function for writing a Wifi station config integer value */
@@ -215,12 +238,100 @@ static int32_t readWifiStaStatusInt(uAtClientHandle_t atHandle,
 /** Helper function for triggering a Wifi station config action */
 static int32_t writeWifiStaCfgAction(uAtClientHandle_t atHandle,
                                      int32_t cfgId,
-                                     uWifiStaCfgAction_t action)
+                                     uWifiCfgAction_t action)
 {
     uAtClientLock(atHandle);
     uAtClientCommandStart(atHandle, "AT+UWSCA=");
     uAtClientWriteInt(atHandle, cfgId);
     uAtClientWriteInt(atHandle, (int32_t) action);
+    uAtClientCommandStopReadResponse(atHandle);
+    return uAtClientUnlock(atHandle);
+}
+
+/** Helper function for reading a Wifi station config string value */
+static int32_t readWifiApConfigString(uAtClientHandle_t atHandle,
+                                      int32_t configId,
+                                      int32_t tag,
+                                      char *pString,
+                                      size_t lengthBytes)
+{
+    int32_t retValue;
+    uAtClientLock(atHandle);
+    uAtClientCommandStart(atHandle, "AT+UWAPC=");
+    uAtClientWriteInt(atHandle, configId);
+    uAtClientWriteInt(atHandle, tag);
+    uAtClientCommandStop(atHandle);
+    uAtClientResponseStart(atHandle, "+UWAPC:");
+    uAtClientSkipParameters(atHandle, 2);
+    retValue = uAtClientReadString(atHandle, pString, lengthBytes, false);
+    uAtClientResponseStop(atHandle);
+    int32_t errorCode = uAtClientUnlock(atHandle);
+    if (errorCode < 0) {
+        retValue = errorCode;
+    }
+    return retValue;
+}
+
+/** Helper function for writing a Wifi access point config integer value */
+static int32_t writeWifiApCfgInt(uAtClientHandle_t atHandle,
+                                 int32_t cfgId,
+                                 int32_t tag,
+                                 int32_t value)
+{
+    uAtClientLock(atHandle);
+    uAtClientCommandStart(atHandle, "AT+UWAPC=");
+    uAtClientWriteInt(atHandle, cfgId);
+    uAtClientWriteInt(atHandle, tag);
+    uAtClientWriteInt(atHandle, value);
+    uAtClientCommandStopReadResponse(atHandle);
+    return uAtClientUnlock(atHandle);
+}
+
+/** Helper function for writing a Wifi access point config string value */
+static int32_t writeWifiApCfgStr(uAtClientHandle_t atHandle,
+                                 int32_t cfgId,
+                                 int32_t tag,
+                                 const char *pValue)
+{
+    uAtClientLock(atHandle);
+    uAtClientCommandStart(atHandle, "AT+UWAPC=");
+    uAtClientWriteInt(atHandle, cfgId);
+    uAtClientWriteInt(atHandle, tag);
+    uAtClientWriteString(atHandle, pValue, true);
+    uAtClientCommandStopReadResponse(atHandle);
+    return uAtClientUnlock(atHandle);
+}
+
+/** Helper function for reading a Wifi access point status int value */
+static int32_t readWifiApStatusInt(uAtClientHandle_t atHandle,
+                                   int32_t statusId)
+{
+    int32_t retValue;
+    uAtClientLock(atHandle);
+    uAtClientCommandStart(atHandle, "AT+UWAPSTAT=");
+    uAtClientWriteInt(atHandle, statusId);
+    uAtClientCommandStop(atHandle);
+    uAtClientResponseStart(atHandle, "+UWAPSTAT:");
+    // Skip status_id
+    uAtClientSkipParameters(atHandle, 1);
+    retValue = uAtClientReadInt(atHandle);
+    uAtClientResponseStop(atHandle);
+    int32_t errorCode = uAtClientUnlock(atHandle);
+    if (errorCode < 0) {
+        retValue = errorCode;
+    }
+    return retValue;
+}
+
+/** Helper function for triggering a Wifi access point config action */
+static int32_t writeWifiApCfgAction(uAtClientHandle_t atHandle,
+                                    int32_t cfgId,
+                                    uWifiCfgAction_t action)
+{
+    uAtClientLock(atHandle);
+    uAtClientCommandStart(atHandle, "AT+UWAPCA=");
+    uAtClientWriteInt(atHandle, cfgId);
+    uAtClientWriteInt(atHandle, (int32_t)action);
     uAtClientCommandStopReadResponse(atHandle);
     return uAtClientUnlock(atHandle);
 }
@@ -397,8 +508,11 @@ static void networkStatusCallback(uAtClientHandle_t atHandle,
     if (pCallback) {
         // Read out the interface type
         ifaceType = readIfaceStatusInt(atHandle, pEvt->interfaceId, 2);
-        // Ignore everything but Wifi STA for now
-        if (ifaceType == U_IFACE_TYPE_WIFI_STA) {
+        // Normally a check for this interface type being U_IFACE_TYPE_WIFI_STA should
+        // be made but there is a bug in uConnect which gives the type U_IFACE_TYPE_UNKNOWN
+        // when the credentials have been restored from persistent memory. This although the
+        // wifi station has been started. So we assume that this type is also ok
+        if (ifaceType <= U_IFACE_TYPE_WIFI_AP) {
             char ipV4Str[16] = "";
             // We are only interested if the IPv6 addr is valid or not. When it's invalid
             // it will just say "::". For this reason we only use a small readbuffer below:
@@ -466,6 +580,42 @@ static void UUND_urc(uAtClientHandle_t atHandle,
             }
         }
     }
+}
+
+static int32_t StaCfgAction(uDeviceHandle_t devHandle, int32_t op)
+{
+    int32_t errorCode;
+    uShortRangePrivateInstance_t *pInstance;
+
+    errorCode = uShortRangeLock();
+    if (errorCode != (int32_t)U_ERROR_COMMON_SUCCESS) {
+        return errorCode;
+    }
+    errorCode = getInstance(devHandle, &pInstance);
+    if (errorCode == (int32_t)U_ERROR_COMMON_SUCCESS) {
+        uAtClientHandle_t atHandle = pInstance->atHandle;
+        errorCode = writeWifiStaCfgAction(atHandle, 0, op);
+    }
+    uShortRangeUnlock();
+    return errorCode;
+}
+
+static int32_t ApCfgAction(uDeviceHandle_t devHandle, int32_t op)
+{
+    int32_t errorCode;
+    uShortRangePrivateInstance_t *pInstance;
+
+    errorCode = uShortRangeLock();
+    if (errorCode != (int32_t)U_ERROR_COMMON_SUCCESS) {
+        return errorCode;
+    }
+    errorCode = getInstance(devHandle, &pInstance);
+    if (errorCode == (int32_t)U_ERROR_COMMON_SUCCESS) {
+        uAtClientHandle_t atHandle = pInstance->atHandle;
+        errorCode = writeWifiApCfgAction(atHandle, 0, op);
+    }
+    uShortRangeUnlock();
+    return errorCode;
 }
 
 /* ----------------------------------------------------------------
@@ -581,7 +731,7 @@ int32_t uWifiStationConnect(uDeviceHandle_t devHandle, const char *pSsid,
 
         // Read connection status
         int32_t conStatus = readWifiStaStatusInt(atHandle, 3);
-        if (conStatus == 2) {
+        if ((conStatus == 2) && (pSsid != NULL)) {
             // Wifi already connected. Check if the SSID is the same
             char ssid[32 + 1];
             errorCode = (int32_t) U_WIFI_ERROR_ALREADY_CONNECTED;
@@ -599,26 +749,30 @@ int32_t uWifiStationConnect(uDeviceHandle_t devHandle, const char *pSsid,
             uPortLog(LOG_TAG "Activating wifi STA mode\n");
             errorCode = writeWifiStaCfgInt(atHandle, 0, 0, 0);
         }
-        if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
-            // Set SSID
-            errorCode = writeWifiStaCfgStr(atHandle, 0, 2, pSsid);
-        }
-        if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
-            // Set authentication
-            errorCode = writeWifiStaCfgInt(atHandle, 0, 5, (int32_t)authentication);
-        }
-        if ((errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) &&
-            (authentication != U_WIFI_AUTH_OPEN)) {
-            // Set PSK/passphrase
-            errorCode = writeWifiStaCfgStr(atHandle, 0, 8, pPassPhrase);
-        }
-        if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
-            // Set IP mode to static IP
-            errorCode = writeWifiStaCfgInt(atHandle, 0, 100, 2);
+        if (pSsid == NULL) {
+            errorCode = writeWifiStaCfgAction(atHandle, 0, CFG_ACTION_LOAD);
+        } else {
+            if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
+                // Set SSID
+                errorCode = writeWifiStaCfgStr(atHandle, 0, 2, pSsid);
+            }
+            if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
+                // Set authentication
+                errorCode = writeWifiStaCfgInt(atHandle, 0, 5, (int32_t)authentication);
+            }
+            if ((errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) &&
+                (authentication != U_WIFI_AUTH_OPEN)) {
+                // Set PSK/passphrase
+                errorCode = writeWifiStaCfgStr(atHandle, 0, 8, pPassPhrase);
+            }
+            if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
+                // Set IP mode to static IP
+                errorCode = writeWifiStaCfgInt(atHandle, 0, 100, 2);
+            }
         }
         if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
             // Activate wifi
-            errorCode = writeWifiStaCfgAction(atHandle, 0, STA_ACTION_ACTIVATE);
+            errorCode = writeWifiStaCfgAction(atHandle, 0, CFG_ACTION_ACTIVATE);
         }
     }
 
@@ -644,7 +798,7 @@ int32_t uWifiStationDisconnect(uDeviceHandle_t devHandle)
         int32_t conStatus = readWifiStaStatusInt(atHandle, 3);
         if (conStatus != 0) {
             uPortLog(LOG_TAG "De-activating wifi STA mode\n");
-            errorCode = writeWifiStaCfgAction(atHandle, 0, STA_ACTION_DEACTIVATE);
+            errorCode = writeWifiStaCfgAction(atHandle, 0, CFG_ACTION_DEACTIVATE);
         } else {
             // Wifi is already disabled
             errorCode = (int32_t) U_WIFI_ERROR_ALREADY_DISCONNECTED;
@@ -656,6 +810,219 @@ int32_t uWifiStationDisconnect(uDeviceHandle_t devHandle)
     return errorCode;
 }
 
+int32_t uWifiSetHostName(uDeviceHandle_t devHandle, const char *pHostName)
+{
+    if (!pHostName) {
+        return U_ERROR_COMMON_INVALID_PARAMETER;
+    }
+    int32_t errorCode;
+    errorCode = uShortRangeLock();
+    if (errorCode != (int32_t)U_ERROR_COMMON_SUCCESS) {
+        return errorCode;
+    }
+    uShortRangePrivateInstance_t *pInstance;
+    errorCode = getInstance(devHandle, &pInstance);
+    if (errorCode == (int32_t)U_ERROR_COMMON_SUCCESS) {
+        uAtClientHandle_t atHandle = pInstance->atHandle;
+        uAtClientLock(atHandle);
+        uAtClientCommandStart(atHandle, "AT+UNHN=");
+        uAtClientWriteString(atHandle, pHostName, false);
+        uAtClientCommandStopReadResponse(atHandle);
+        errorCode = uAtClientUnlock(atHandle);
+    }
+    uShortRangeUnlock();
+    return errorCode;
+}
+
+int32_t uWifiStationStoreConfig(uDeviceHandle_t devHandle, bool erase)
+{
+    int32_t errorCode = (int32_t)U_ERROR_COMMON_SUCCESS;
+    if (erase) {
+        errorCode = StaCfgAction(devHandle, CFG_ACTION_RESET);
+    }
+    if (errorCode == (int32_t)U_ERROR_COMMON_SUCCESS) {
+        errorCode = StaCfgAction(devHandle, CFG_ACTION_STORE);
+    }
+    return errorCode;
+}
+
+bool uWifiStationHasStoredConfig(uDeviceHandle_t devHandle)
+{
+    int32_t errorCode;
+    uShortRangePrivateInstance_t *pInstance;
+    bool has = false;
+
+    errorCode = uShortRangeLock();
+    if (errorCode != (int32_t)U_ERROR_COMMON_SUCCESS) {
+        return errorCode;
+    }
+    errorCode = getInstance(devHandle, &pInstance);
+    if (errorCode == (int32_t)U_ERROR_COMMON_SUCCESS) {
+        // Load saved credentials and check if there is a valid ssid
+        uAtClientHandle_t atHandle = pInstance->atHandle;
+        errorCode = writeWifiStaCfgAction(atHandle, 0, CFG_ACTION_LOAD);
+        if (errorCode == (int32_t)U_ERROR_COMMON_SUCCESS) {
+            char ssid[U_WIFI_SSID_SIZE] = {0};
+            readWifiStaConfigString(atHandle, 0, 2, ssid, sizeof(ssid));
+            has = ssid[0] != 0;
+        }
+    }
+    uShortRangeUnlock();
+
+    return has;
+}
+
+int32_t uWifiAccessPointStart(uDeviceHandle_t devHandle,
+                              const char *pSsid,
+                              uWifiAuth_t authentication,
+                              const char *pPassPhrase,
+                              const char *pIpAddress)
+{
+    int32_t errorCode;
+    uShortRangePrivateInstance_t *pInstance;
+
+    errorCode = uShortRangeLock();
+    if (errorCode != (int32_t)U_ERROR_COMMON_SUCCESS) {
+        return errorCode;
+    }
+
+    errorCode = getInstance(devHandle, &pInstance);
+    if (errorCode == (int32_t)U_ERROR_COMMON_SUCCESS) {
+        uAtClientHandle_t atHandle = pInstance->atHandle;
+
+        // Read AP status
+        int32_t conStatus = readWifiApStatusInt(atHandle, 3);
+        if (conStatus == 1) {
+            // AP already active
+            errorCode = writeWifiApCfgAction(atHandle, 0, CFG_ACTION_DEACTIVATE);
+            uPortTaskBlock(2000);
+        }
+
+        // Configure AP
+        if (errorCode == (int32_t)U_ERROR_COMMON_SUCCESS) {
+            uPortLog(LOG_TAG "Activating wifi AP\n");
+            // Set AP inactive during startup
+            errorCode = writeWifiApCfgInt(atHandle, 0, 0, 0);
+        }
+        if (pSsid == NULL) {
+            errorCode = writeWifiApCfgAction(atHandle, 0, CFG_ACTION_LOAD);
+        } else {
+            if (errorCode == (int32_t)U_ERROR_COMMON_SUCCESS) {
+                // Set SSID
+                errorCode = writeWifiApCfgStr(atHandle, 0, 2, pSsid);
+            }
+            if (errorCode == (int32_t)U_ERROR_COMMON_SUCCESS) {
+                // Set authentication, has two integers as parameters
+                uAtClientLock(atHandle);
+                uAtClientCommandStart(atHandle, "AT+UWAPC=");
+                uAtClientWriteInt(atHandle, 0);
+                uAtClientWriteInt(atHandle, 5);
+                uAtClientWriteInt(atHandle, (int32_t)authentication);
+                uAtClientWriteInt(atHandle, 1);
+                uAtClientCommandStopReadResponse(atHandle);
+                errorCode = uAtClientUnlock(atHandle);
+            }
+            if ((errorCode == (int32_t)U_ERROR_COMMON_SUCCESS) &&
+                (authentication != U_WIFI_AUTH_OPEN)) {
+                // Set PSK/passphrase
+                errorCode = writeWifiApCfgStr(atHandle, 0, 8, pPassPhrase);
+            }
+            if (errorCode == (int32_t)U_ERROR_COMMON_SUCCESS) {
+                // Enable DNS
+                errorCode = writeWifiApCfgInt(atHandle, 0, 106, 1);
+            }
+            if (errorCode == (int32_t)U_ERROR_COMMON_SUCCESS) {
+                // Static IP
+                errorCode = writeWifiApCfgInt(atHandle, 0, 100, 1);
+            }
+            if (errorCode == (int32_t)U_ERROR_COMMON_SUCCESS) {
+                // DNS
+                errorCode = writeWifiApCfgStr(atHandle, 0, 101, pIpAddress);
+                if (errorCode == (int32_t)U_ERROR_COMMON_SUCCESS) {
+                    errorCode = writeWifiApCfgStr(atHandle, 0, 103, pIpAddress);
+                }
+                if (errorCode == (int32_t)U_ERROR_COMMON_SUCCESS) {
+                    errorCode = writeWifiApCfgStr(atHandle, 0, 104, pIpAddress);
+                }
+            }
+        }
+        if (errorCode == (int32_t)U_ERROR_COMMON_SUCCESS) {
+            // Activate AP
+            errorCode = writeWifiApCfgAction(atHandle, 0, CFG_ACTION_ACTIVATE);
+        }
+    }
+
+    uShortRangeUnlock();
+
+    return errorCode;
+}
+
+int32_t uWifiAccessPointStop(uDeviceHandle_t devHandle)
+{
+    int32_t errorCode;
+    uShortRangePrivateInstance_t *pInstance;
+
+    errorCode = uShortRangeLock();
+    if (errorCode != (int32_t)U_ERROR_COMMON_SUCCESS) {
+        return errorCode;
+    }
+
+    errorCode = getInstance(devHandle, &pInstance);
+    if (errorCode == (int32_t)U_ERROR_COMMON_SUCCESS) {
+        uAtClientHandle_t atHandle = pInstance->atHandle;
+        // Read connection status
+        int32_t conStatus = readWifiApStatusInt(atHandle, 3);
+        if (conStatus != 0) {
+            uPortLog(LOG_TAG "Stopping Wifi access point\n");
+            errorCode = writeWifiApCfgAction(atHandle, 0, CFG_ACTION_DEACTIVATE);
+        } else {
+            // Not started
+            errorCode = (int32_t)U_WIFI_ERROR_AP_NOT_STARTED;
+        }
+    }
+
+    uShortRangeUnlock();
+
+    return errorCode;
+}
+
+int32_t uWifiAccessPointStoreConfig(uDeviceHandle_t devHandle, bool erase)
+{
+    int32_t errorCode = (int32_t)U_ERROR_COMMON_SUCCESS;
+    if (erase) {
+        errorCode = ApCfgAction(devHandle, CFG_ACTION_RESET);
+    }
+    if (errorCode == (int32_t)U_ERROR_COMMON_SUCCESS) {
+        errorCode = ApCfgAction(devHandle, CFG_ACTION_STORE);
+    }
+    return errorCode;
+}
+
+bool uWifiAccessPointHasStoredConfig(uDeviceHandle_t devHandle)
+{
+    int32_t errorCode;
+    uShortRangePrivateInstance_t *pInstance;
+    bool has = false;
+
+    errorCode = uShortRangeLock();
+    if (errorCode != (int32_t)U_ERROR_COMMON_SUCCESS) {
+        return errorCode;
+    }
+    errorCode = getInstance(devHandle, &pInstance);
+    if (errorCode == (int32_t)U_ERROR_COMMON_SUCCESS) {
+        // Load saved credentials and check if there is a valid ssid
+        uAtClientHandle_t atHandle = pInstance->atHandle;
+        errorCode = writeWifiApCfgAction(atHandle, 0, CFG_ACTION_LOAD);
+        if (errorCode == (int32_t)U_ERROR_COMMON_SUCCESS) {
+            char ssid[32 + 1] = {0};
+            readWifiApConfigString(atHandle, 0, 2, ssid, sizeof(ssid));
+            has = ssid[0] != 0;
+        }
+    }
+    uShortRangeUnlock();
+
+    return has;
+}
 
 int32_t uWifiStationScan(uDeviceHandle_t devHandle, const char *pSsid,
                          uWifiScanResultCallback_t pCallback)

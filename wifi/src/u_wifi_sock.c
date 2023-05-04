@@ -39,6 +39,7 @@
 
 #include "u_assert.h"
 
+#include "u_port.h"
 #include "u_port_os.h"
 #include "u_cfg_sw.h"
 #include "u_port_debug.h"
@@ -54,7 +55,7 @@
 #include "u_short_range.h"
 #include "u_short_range_private.h"
 #include "u_short_range_edm_stream.h"
-
+#include "u_short_range_cfg.h"
 #include "u_wifi_module_type.h"
 #include "u_wifi_sock.h"
 
@@ -82,6 +83,8 @@ typedef enum {
 typedef struct {
     int32_t sockHandle; /**< The handle of the socket instance
                              -1 if this socket is not in use. */
+    int32_t clientHandle;
+    bool isClient;
     uDeviceHandle_t devHandle; /**< The u-blox device handle.
                              -1 if this socket is not in use. */
     int32_t connHandle; /**< The connection handle that the wifi module
@@ -96,6 +99,8 @@ typedef struct {
     bool closing;
     uSockAddress_t remoteAddress;
     int32_t localPort;
+    int32_t serverId;
+    int32_t remotePort;
     uShortRangePbufList_t *pTcpRxBuff;
     uShortRangePktList_t udpPktList;
     int32_t intOpts[WIFI_INT_OPT_MAX];
@@ -131,6 +136,8 @@ static uDeviceHandle_t gInstanceDeviceHandleList[U_WIFI_MAX_INSTANCE_COUNT];
 
 /** The sockets: a nice simple array, nothing fancy.
  */
+
+uPortMutexHandle_t gSocketsMutex = NULL;
 static uWifiSockSocket_t gSockets[U_WIFI_SOCK_MAX_NUM_SOCKETS];
 static uPingContext_t gPingContext;
 
@@ -138,6 +145,11 @@ static uPingContext_t gPingContext;
  * VARIABLES
  * -------------------------------------------------------------- */
 
+/* Workaround for WiFi captive portal. Used to control the accept()
+   timeout for now. Will be removed once a full select() implementation
+   is available.
+*/
+int32_t gUWifiSocketAcceptTimeoutS = -1;
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -147,6 +159,9 @@ static void freeSocket(uWifiSockSocket_t *pSock)
 {
     if (pSock != NULL) {
         pSock->sockHandle = -1;
+        pSock->edmChannel = -1;
+        pSock->isClient = false;
+        pSock->connected = false;
         if (pSock->semaphore != NULL) {
             uPortSemaphoreDelete(pSock->semaphore);
             pSock->semaphore = NULL;
@@ -159,6 +174,9 @@ static uWifiSockSocket_t *pAllocateSocket(uDeviceHandle_t devHandle)
     bool outOfMemory = false;
     uWifiSockSocket_t *pSock = NULL;
 
+    if (uPortMutexLock(gSocketsMutex) != 0) {
+        return NULL;
+    }
     for (int32_t index = 0; index < U_WIFI_SOCK_MAX_NUM_SOCKETS; index++) {
         if (gSockets[index].sockHandle == -1) {
             int32_t tmp;
@@ -184,6 +202,8 @@ static uWifiSockSocket_t *pAllocateSocket(uDeviceHandle_t devHandle)
         freeSocket(pSock);
         pSock = NULL;
     }
+
+    uPortMutexUnlock(gSocketsMutex);
 
     return pSock;
 }
@@ -306,6 +326,70 @@ static uWifiSockSocket_t *pFindSocketByEdmChannel(uDeviceHandle_t devHandle, int
     return pSock;
 }
 
+static uWifiSockSocket_t *pFindClientSocketByPort(uDeviceHandle_t devHandle,
+                                                  int32_t port)
+{
+    uWifiSockSocket_t *pSock;
+
+    for (int32_t index = 0; index < U_WIFI_SOCK_MAX_NUM_SOCKETS; index++) {
+        pSock = &(gSockets[index]);
+        if (pSock->sockHandle == index &&
+            pSock->devHandle == devHandle &&
+            pSock->isClient &&
+            pSock->localPort == port) {
+            return pSock;
+        }
+    }
+
+    return NULL;
+}
+
+static uWifiSockSocket_t *pFindOrCreateClientSocket(uDeviceHandle_t devHandle,
+                                                    const uShortRangeConnectDataIp_t *pConnectData)
+{
+    int32_t localPort;
+    int32_t remotePort;
+    uShortRangeIpProtocol_t shortRangeProt;
+    if (pConnectData->type == U_SHORT_RANGE_CONNECTION_IPv4) {
+        shortRangeProt = pConnectData->ipv4.protocol;
+        localPort = pConnectData->ipv4.localPort;
+        remotePort = pConnectData->ipv4.remotePort;
+    } else {
+        shortRangeProt = pConnectData->ipv6.protocol;
+        localPort = pConnectData->ipv6.localPort;
+        remotePort = pConnectData->ipv6.remotePort;
+    }
+    uSockProtocol_t prot =
+        shortRangeProt == U_SHORT_RANGE_IP_PROTOCOL_UDP ? U_SOCK_PROTOCOL_UDP : U_SOCK_PROTOCOL_TCP;
+    uSockType_t type =
+        prot == U_SOCK_PROTOCOL_UDP ? U_SOCK_TYPE_DGRAM : U_SOCK_TYPE_STREAM;
+    uWifiSockSocket_t *pSock = NULL;
+    for (int32_t index = 0; index < U_WIFI_SOCK_MAX_NUM_SOCKETS; index++) {
+        if (gSockets[index].isClient &&
+            gSockets[index].devHandle == devHandle &&
+            gSockets[index].protocol == prot &&
+            gSockets[index].localPort == localPort &&
+            gSockets[index].remotePort == remotePort) {
+            pSock = &(gSockets[index]);
+            break;
+        }
+    }
+    if (!pSock) {
+        int32_t sockHandle = uWifiSockCreate(devHandle, type, prot);
+        if (sockHandle >= 0) {
+            pSock = &(gSockets[sockHandle]);
+            pSock->isClient = true;
+            pSock->localPort = localPort;
+            pSock->remotePort = remotePort;
+            uPortLog("U_WIFI_SOCK: Created client socket: %d - %d - %d\n", sockHandle, localPort, remotePort);
+        } else {
+            uPortLog("U_WIFI_SOCK: ERROR Failed to create client socket\n");
+        }
+    } else {
+    }
+    return pSock;
+}
+
 static inline int32_t getInstance(uDeviceHandle_t devHandle,
                                   uShortRangePrivateInstance_t **ppInstance)
 {
@@ -391,6 +475,7 @@ static int32_t setOptionInt(uWifiSockSocket_t *pSock,
 // Convert a short range IP struct to uSockAddress structs
 static void convertToSockAddress(const uShortRangeConnectDataIp_t *pShoAddr,
                                  uint16_t *pLocalPort,
+                                 uint16_t *pRemotePort,
                                  uSockAddress_t *pRemoteSockAddr)
 {
     if (pShoAddr->type == U_SHORT_RANGE_CONNECTION_IPv4) {
@@ -398,6 +483,7 @@ static void convertToSockAddress(const uShortRangeConnectDataIp_t *pShoAddr,
         pRemoteSockAddr->ipAddress.type = U_SOCK_ADDRESS_TYPE_V4;
         pRemoteSockAddr->ipAddress.address.ipv4 = 0;
         *pLocalPort = pShoAddr->ipv4.localPort;
+        *pRemotePort = pShoAddr->ipv4.remotePort;
         for (int i = 0; i < 4; i++) {
             pRemoteSockAddr->ipAddress.address.ipv4 |=
                 ((uint32_t)pShoAddr->ipv4.remoteAddress[i]) << (8 * (3 - i));
@@ -406,6 +492,7 @@ static void convertToSockAddress(const uShortRangeConnectDataIp_t *pShoAddr,
         pRemoteSockAddr->port = pShoAddr->ipv6.remotePort;
         pRemoteSockAddr->ipAddress.type = U_SOCK_ADDRESS_TYPE_V6;
         *pLocalPort = pShoAddr->ipv6.localPort;
+        *pRemotePort = pShoAddr->ipv6.remotePort;
         for (int i = 0; i < 4; i++) {
             pRemoteSockAddr->ipAddress.address.ipv6[i] = 0;
             for (int j = 0; j < 4; j++) {
@@ -414,6 +501,38 @@ static void convertToSockAddress(const uShortRangeConnectDataIp_t *pShoAddr,
                     ((uint32_t)pShoAddr->ipv6.remoteAddress[(i * 4) + j]) << (8 * (3 - j));
             }
         }
+    }
+}
+
+static void atConnectionCallback(uDeviceHandle_t devHandle,
+                                 int32_t connHandle,
+                                 uShortRangeConnectionEventType_t eventType,
+                                 uShortRangeConnectDataIp_t *pConnectData,
+                                 void *pCallbackParameter)
+{
+    (void)devHandle;
+    (void)pConnectData;
+    (void)devHandle;
+    (void)pCallbackParameter;
+    if (eventType == U_SHORT_RANGE_EVENT_CONNECTED) {
+        uSockAddress_t remoteAddr;
+        uint16_t localPort;
+        uint16_t remotePort;
+        convertToSockAddress(pConnectData,
+                             &localPort,
+                             &remotePort,
+                             &remoteAddr);
+        uWifiSockSocket_t *pSock = pFindConnectingSocketByRemoteAddress(devHandle, &remoteAddr);
+        if (!pSock) {
+            // Incoming client connection
+            pSock = pFindOrCreateClientSocket(devHandle, pConnectData);
+        }
+        if (pSock) {
+            pSock->connHandle = connHandle;
+        } else {
+            uPortLog("U_WIFI_SOCK: ERROR Failed to find socket for connection: %d\n", connHandle);
+        }
+
     }
 }
 
@@ -447,14 +566,26 @@ static void edmIpConnectionCallback(int32_t edmHandle,
         case U_SHORT_RANGE_EVENT_CONNECTED: {
             uSockAddress_t remoteAddr;
             uint16_t localPort;
+            uint16_t remotePort;
             convertToSockAddress(pConnectData,
                                  &localPort,
+                                 &remotePort,
                                  &remoteAddr);
             pSock = pFindConnectingSocketByRemoteAddress(devHandle, &remoteAddr);
             if (pSock) {
                 pSock->edmChannel = edmChannel;
                 pSock->connected = true;
                 pSock->localPort = localPort;
+                uPortSemaphoreGive(pSock->semaphore);
+            } else {
+                pSock = pFindOrCreateClientSocket(devHandle, pConnectData);
+                if (pSock) {
+                    pSock->edmChannel = edmChannel;
+                    pSock->remoteAddress = remoteAddr;
+                    pSock->connected = true;
+                } else {
+                    uPortLog("U_WIFI_SOCK: ERROR Failed to find socket for edm: %d\n", edmChannel);
+                }
             }
             break;
         }
@@ -478,13 +609,9 @@ static void edmIpConnectionCallback(int32_t edmHandle,
             break;
     }
 
-    if (pSock) {
-        uPortSemaphoreGive(pSock->semaphore);
-    }
-
     uShortRangeUnlock();
 
-    // Call the user callbacka after the mutex has been unlocked
+    // Call the user callbacks after the mutex has been unlocked
     if (pUserClosedCb) {
         pUserClosedCb(devHandle, sockHandle);
     }
@@ -514,14 +641,12 @@ static void edmIpDataCallback(int32_t edmHandle, int32_t edmChannel,
     if (pSock) {
         sockHandle = pSock->sockHandle;
         if (pSock->protocol == U_SOCK_PROTOCOL_UDP) {
-
             if (uShortRangePktListAppend(&pSock->udpPktList,
                                          pBufList) != (int32_t)U_ERROR_COMMON_SUCCESS) {
                 uPortLog("U_WIFI_SOCK: UDP pkt insert failed\n");
                 uShortRangePbufListFree(pBufList);
             }
         } else {
-
             if (pSock->pTcpRxBuff == NULL) {
                 pSock->pTcpRxBuff = pBufList;
             } else {
@@ -647,9 +772,8 @@ static int32_t closePeer(uAtClientHandle_t atHandle,
     uAtClientCommandStart(atHandle, "AT+UDCPC=");
     uAtClientWriteInt(atHandle, connHandle);
     uAtClientCommandStopReadResponse(atHandle);
-    if (uAtClientUnlock(atHandle) != (int32_t) U_ERROR_COMMON_SUCCESS) {
-        errnoLocal = -U_SOCK_EIO;
-    }
+    // Ignore possible error here as the client may have closed the socket
+    uAtClientUnlock(atHandle);
 
     return errnoLocal;
 }
@@ -686,8 +810,12 @@ int32_t deinitInstance(uDeviceHandle_t devHandle)
                                                                     NULL,
                                                                     NULL);
         }
+        if (shortRangeEC == (int32_t)U_ERROR_COMMON_SUCCESS) {
+            shortRangeEC = uShortRangeSetIpConnectionStatusCallback(
+                               devHandle, NULL, NULL);
+        }
 
-        if (shortRangeEC != (int32_t) U_ERROR_COMMON_SUCCESS) {
+        if (shortRangeEC != (int32_t)U_ERROR_COMMON_SUCCESS) {
             errnoLocal = -U_SOCK_ENOSR;
         }
     }
@@ -721,6 +849,10 @@ int32_t uWifiSockInit(void)
         int32_t tmp = uPortSemaphoreCreate(&gPingContext.semaphore, 0, 1);
         if (tmp != (int32_t) U_ERROR_COMMON_SUCCESS) {
             errnoLocal = -U_SOCK_ENOMEM;
+        }
+        if (errnoLocal == U_SOCK_ENONE) {
+            // Create mutex for protecting the socket lists
+            errnoLocal = uPortMutexCreate(&gSocketsMutex);
         }
         for (int i = 0; i < U_WIFI_MAX_INSTANCE_COUNT; i++) {
             gInstanceDeviceHandleList[i] = NULL;
@@ -786,6 +918,12 @@ int32_t uWifiSockInitInstance(uDeviceHandle_t devHandle)
                                                                         pInstance);
             }
 
+            if (shortRangeEC == (int32_t)U_ERROR_COMMON_SUCCESS) {
+                // Need the AT connection callback as well in order to get the connection handle
+                shortRangeEC = uShortRangeSetIpConnectionStatusCallback(
+                                   devHandle, atConnectionCallback, NULL);
+            }
+
             if (shortRangeEC != (int32_t) U_ERROR_COMMON_SUCCESS) {
                 errnoLocal = -U_SOCK_ENOSR;
             }
@@ -805,6 +943,7 @@ int32_t uWifiSockDeinitInstance(uDeviceHandle_t devHandle)
         return -U_SOCK_EIO;
     }
     errnoLocal = deinitInstance(devHandle);
+    uPortMutexDelete(gSocketsMutex);
 
     uShortRangeUnlock();
 
@@ -828,6 +967,7 @@ void uWifiSockDeinit()
 
         freeAllSockets();
         uPortSemaphoreDelete(gPingContext.semaphore);
+        uPortMutexDelete(gSocketsMutex);
         // Nothing more to do, URCs will have been
         // removed on close
         gInitialised = false;
@@ -844,30 +984,30 @@ int32_t uWifiSockCreate(uDeviceHandle_t devHandle,
     uShortRangePrivateInstance_t *pInstance = NULL;
     uWifiSockSocket_t *pSock;
 
-    if (uShortRangeLock() != (int32_t) U_ERROR_COMMON_SUCCESS) {
-        return -U_SOCK_EIO;
-    }
-
     // Find the instance
     sockHandle = getInstance(devHandle, &pInstance);
     if (sockHandle == U_SOCK_ENONE) {
         pSock = pAllocateSocket(devHandle);
         if (pSock != NULL) {
+            pSock->isClient = false;
             pSock->type = type;
             pSock->protocol = protocol;
             pSock->connected = false;
             pSock->closing = false;
             pSock->edmChannel = -1;
             pSock->connHandle = -1;
+            pSock->serverId = -1;
+            pSock->connHandle = -1;
+            pSock->clientHandle = -1;
             memset(&pSock->remoteAddress, 0, sizeof(pSock->remoteAddress));
             pSock->localPort = pInstance->sockNextLocalPort;
             pInstance->sockNextLocalPort = -1;
             memset(pSock->intOpts, 0, sizeof(pSock->intOpts));
             sockHandle = pSock->sockHandle;
+        } else {
+            sockHandle = -1;
         }
     }
-
-    uShortRangeUnlock();
 
     return sockHandle;
 }
@@ -1223,7 +1363,13 @@ int32_t uWifiSockSendTo(uDeviceHandle_t devHandle,
         errnoLocal = -U_SOCK_EOPNOTSUPP;
     }
 
+    int32_t clientHandle = -1;
     if (errnoLocal == U_SOCK_ENONE) {
+        clientHandle = pSock->clientHandle;
+        if (clientHandle >= 0) {
+            pSock->clientHandle = -1;
+            pSock = &(gSockets[clientHandle]);
+        }
         // Check if there are already a peer or if we need to setup a new one
         if (pSock->connHandle < 0) {
             char flagStr[32] = {0};
@@ -1297,6 +1443,11 @@ int32_t uWifiSockSendTo(uDeviceHandle_t devHandle,
 
     uShortRangeUnlock();
 
+    if (clientHandle >= 0) {
+        // For client socket we assume one read and one write and then close the socket
+        uWifiSockClose(devHandle, clientHandle, NULL);
+    }
+
     return errnoLocal;
 }
 
@@ -1314,6 +1465,16 @@ int32_t uWifiSockReceiveFrom(uDeviceHandle_t devHandle,
     }
 
     errnoLocal = getInstanceAndSocket(devHandle, sockHandle, &pInstance, &pSock);
+
+    if (pSock && (pSock->serverId >= 0)) {
+        // Bound socket, check for waiting client
+        uWifiSockSocket_t *pClientSock = pFindClientSocketByPort(devHandle, pSock->localPort);
+        if (pClientSock && pClientSock->edmChannel >= 0) {
+            pSock->remoteAddress = pClientSock->remoteAddress;
+            pSock->clientHandle = pClientSock->sockHandle;
+            pSock = pClientSock;
+        }
+    }
 
     if ((errnoLocal == U_SOCK_ENONE) && (pSock->connHandle < 0)) {
         // uWifiSockSendTo must have been called first in order to setup the peer
@@ -1538,6 +1699,75 @@ int32_t uWifiSockGetLocalAddress(uDeviceHandle_t devHandle,
     uShortRangeUnlock();
 
     return errnoLocal;
+}
+
+int32_t uWifiSockBind(uDeviceHandle_t devHandle,
+                      int32_t sockHandle,
+                      const uSockAddress_t *pLocalAddress)
+{
+    if (sockHandle < 0 || sockHandle >= U_WIFI_SOCK_MAX_NUM_SOCKETS) {
+        return -U_SOCK_EBADFD;
+    }
+    uShortRangePrivateInstance_t *pInstance = NULL;
+    uAtClientHandle_t atHandle;
+    uWifiSockSocket_t *pSocket = &(gSockets[sockHandle]);
+    pSocket->localPort = pLocalAddress->port;
+    char param[10];
+    if (pSocket->protocol == U_SOCK_PROTOCOL_UDP) {
+        snprintf(param, sizeof(param), "%d,1", (int)pSocket->localPort);
+    } else {
+        snprintf(param, sizeof(param), "%d", (int)pSocket->localPort);
+    }
+
+    uErrorCode_t errorCodeOrId = getInstance(devHandle, &pInstance);
+    if (errorCodeOrId == U_SOCK_ENONE) {
+        atHandle = pInstance->atHandle;
+        errorCodeOrId = uShortRangePrivateStartServer(atHandle,
+                                                      pSocket->protocol == U_SOCK_PROTOCOL_UDP ?
+                                                      U_SHORT_RANGE_SERVER_UDP :
+                                                      U_SHORT_RANGE_SERVER_TCP,
+                                                      param);
+        if (errorCodeOrId >= 0) {
+            pSocket->serverId = errorCodeOrId;
+        }
+    }
+    return errorCodeOrId;
+}
+
+int32_t uWifiSockListen(uDeviceHandle_t devHandle,
+                        int32_t sockHandle,
+                        size_t backlog)
+{
+    (void)devHandle;
+    (void)sockHandle;
+    (void)backlog;
+    return U_SOCK_ENONE;
+}
+
+int32_t uWifiSockAccept(uDeviceHandle_t devHandle,
+                        int32_t sockHandle,
+                        uSockAddress_t *pRemoteAddress)
+{
+    if (sockHandle < 0 || sockHandle >= U_WIFI_SOCK_MAX_NUM_SOCKETS) {
+        return -U_SOCK_EBADFD;
+    }
+    uWifiSockSocket_t *pServerSock = &(gSockets[sockHandle]);
+    int32_t startTimeMs = uPortGetTickTimeMs();
+    while (true) {
+        uShortRangeLock();
+        uWifiSockSocket_t *pClientSock = pFindClientSocketByPort(devHandle, pServerSock->localPort);
+        uShortRangeUnlock();
+        if (pClientSock) {
+            *pRemoteAddress = pClientSock->remoteAddress;
+            return pClientSock->sockHandle;
+        } else if (gUWifiSocketAcceptTimeoutS >= 0) {
+            if ((uPortGetTickTimeMs() - startTimeMs) / 1000 >
+                gUWifiSocketAcceptTimeoutS) {
+                return U_ERROR_COMMON_TIMEOUT;
+            }
+        }
+        uPortTaskBlock(1000);
+    }
 }
 
 // End of file

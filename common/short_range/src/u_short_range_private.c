@@ -112,6 +112,24 @@ const size_t gUShortRangePrivateModuleListSize = sizeof(gUShortRangePrivateModul
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
+static int32_t getServer(const uAtClientHandle_t atHandle, uShortRangeServerType_t type)
+{
+    int32_t errorOrId = (int32_t)U_ERROR_COMMON_NOT_FOUND;
+    uAtClientLock(atHandle);
+    uAtClientCommandStart(atHandle, "AT+UDSC");
+    uAtClientCommandStop(atHandle);
+    while (uAtClientResponseStart(atHandle, "+UDSC:") == 0) {
+        int32_t id = uAtClientReadInt(atHandle);
+        if (uAtClientReadInt(atHandle) == (int32_t)type) {
+            errorOrId = id;
+            break;
+        }
+    }
+    uAtClientResponseStop(atHandle);
+    uAtClientUnlock(atHandle);
+    return errorOrId;
+}
+
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS THAT ARE PRIVATE TO SHORT RANGE
  * -------------------------------------------------------------- */
@@ -141,4 +159,47 @@ const uShortRangePrivateModule_t *pUShortRangePrivateGetModule(uDeviceHandle_t d
 
     return pModule;
 }
+
+int32_t uShortRangePrivateStartServer(const uAtClientHandle_t atHandle,
+                                      uShortRangeServerType_t type,
+                                      const char *pParam)
+{
+    int32_t errorOrId = getServer(atHandle, type);
+    if (errorOrId >= 0) {
+        // Only one server of the type can be active
+        return errorOrId;
+    }
+    // Find first empty slot
+    errorOrId = getServer(atHandle, U_SHORT_RANGE_SERVER_DISABLED);
+    if (errorOrId >= 0) {
+        int32_t id = errorOrId;
+        uAtClientLock(atHandle);
+        uAtClientCommandStart(atHandle, "AT+UDSC=");
+        uAtClientWriteInt(atHandle, id);
+        uAtClientWriteInt(atHandle, (int32_t)type);
+        if (pParam) {
+            uAtClientWriteString(atHandle, pParam, false);
+        }
+        uAtClientCommandStopReadResponse(atHandle);
+        errorOrId = uAtClientUnlock(atHandle);
+        if (errorOrId == 0) {
+            errorOrId = id;
+        }
+    }
+    return errorOrId;
+}
+
+int32_t uShortRangePrivateStopServer(const uAtClientHandle_t atHandle, int32_t serverId)
+{
+    int32_t errorCode;
+    uAtClientLock(atHandle);
+    uAtClientCommandStart(atHandle, "AT+UDSC=");
+    uAtClientWriteInt(atHandle, serverId);
+    uAtClientWriteInt(atHandle, 0);
+    uAtClientCommandStopReadResponse(atHandle);
+    errorCode = uAtClientUnlock(atHandle);
+    uPortTaskBlock(1000);
+    return errorCode;
+}
+
 // End of file

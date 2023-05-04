@@ -103,6 +103,7 @@
 #include <u_short_range_edm_stream.h>
 #include <u_short_range_sec_tls.h>
 #include <u_short_range_module_type.h>
+#include <u_dns_server.h>
 
 // BLE/cellular/GNSS/Wi-Fi APIs
 #include <u_ble.h>
@@ -140,6 +141,7 @@
 #include <u_wifi_mqtt.h>
 #include <u_wifi_sock.h>
 #include <u_wifi_http.h>
+#include <u_wifi_captive_portal.h>
 
 /** @}*/
 
