@@ -208,7 +208,7 @@ int32_t uDnsServer(uDeviceHandle_t deviceHandle,
                 }
 
                 // Make sure we have space for the address as well in the buffer
-                valid = ((pData - buff) + 21) < sizeof(buff);
+                valid = valid && (((pData - buff) + 21) < sizeof(buff));
 
                 if (valid) {
                     // Skip remaining
