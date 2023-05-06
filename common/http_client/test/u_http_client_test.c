@@ -283,7 +283,7 @@ static void httpCallback(uDeviceHandle_t devHandle,
         pCallbackData->devHandle = devHandle;
         pCallbackData->statusCodeOrError = statusCodeOrError;
         pCallbackData->responseSize = responseSize;
-        U_TEST_PRINT_LINE("HTTP Callback - respons size %d.\n", responseSize);
+        U_TEST_PRINT_LINE("HTTP Callback - response size %d.\n", responseSize);
     }
 }
 

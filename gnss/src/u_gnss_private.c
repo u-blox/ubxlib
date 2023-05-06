@@ -2425,7 +2425,9 @@ int32_t uGnssPrivateSpiAddReceivedData(uGnssPrivateInstance_t *pInstance,
         (pBuffer != NULL) && (size > 0)) {
         if ((pInstance->spiFillThreshold > 0) && (size >= (size_t) pInstance->spiFillThreshold)) {
             // Check if all we have is fill and chuck stuff away if so
-            for (size_t x = 0; (x < size) && (*pTmp == U_GNSS_PRIVATE_SPI_FILL); x++) {
+            // Note: do the comparison as a uint8_t pointer to avoid
+            // issues with char being signed
+            for (size_t x = 0; (x < size) && ((*(const uint8_t *) pTmp) == U_GNSS_PRIVATE_SPI_FILL); x++) {
                 pTmp++;
             }
             y = pTmp - pBuffer;

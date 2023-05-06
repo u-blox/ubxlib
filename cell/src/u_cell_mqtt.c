@@ -1898,7 +1898,7 @@ static int32_t readMessage(const uCellPrivateInstance_t *pInstance,
     int32_t startTimeMs;
     uCellMqttQos_t qos;
     int32_t topicNameType = -1;
-    int32_t topicNameBytesRead;
+    int32_t topicNameBytesRead = -1;
     int32_t messageBytesAvailable;
     int32_t messageBytesRead = 0;
     int32_t topicBytesAvailable;

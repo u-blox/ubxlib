@@ -359,9 +359,7 @@ void uRingBufferDump(uRingBuffer_t *pRingBuffer)
 
         U_PORT_MUTEX_LOCK((uPortMutexHandle_t) pRingBuffer->mutex);
 
-        if ((pRingBuffer != NULL) && (pRingBuffer->mutex != NULL)) {
-            printHex(pRingBuffer->pBuffer, pRingBuffer->size);
-        }
+        printHex(pRingBuffer->pBuffer, pRingBuffer->size);
         for (size_t x = 0; x < pRingBuffer->maxNumReadPointers; x++) {
             if (pRingBuffer->pDataRead[x] != NULL) {
                 snprintf(buffer1, sizeof(buffer1), "%02d", x);
