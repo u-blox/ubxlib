@@ -17,9 +17,9 @@ This way we get fastest build/check plus expandability of download/test (since a
 From the perspective of Jenkins, everything is driven through \[multiple\] node labels:
 - all agents are labelled `ubxlib`,
 - Linux agents are labelled `linux`, Windows agents are labelled `windows`,
-- the agent(s) that distributes build/test jobs to all of the other agents is labelled `distributor` (this can be any one of the beefy Linux PCs, don't want to block a HW test instance of which there may be only one),
+- agent(s) that distributes build/test jobs to all of the other agents are labelled `distributor` (this can be any one of the beefy Linux PCs, don't want to block a HW test instance of which there may be only one),
 - a beefy agent with no testing HW attached, good for building \[so not a Raspberry Pi\], or performing checks that require no HW (i.e. one of the instances from [DATABASE.md](DATABASE.md) numbered less than 10), is labelled `build`,
-- a Raspberry Pi with a single set of physical HW attached (i.e. an MCU board plus, probably, a Wi-Fi/BLE/GNSS/cellular module) is labelled `test` and `instance_x`, where `x` is the major number of the test instance from [DATABASE.md](DATABASE.md) \[10 or above\] that it supports, reflecting the HW that is attached: e.g. `instance_11` has an ESP-IDF MCU board attached plus a GNSS module and supports 11.0 and 11.1; note that beefy machines may also have the `test` and `instance_x` labels where the tests instances are `windowa` or `linux`.
+- a Raspberry Pi with a single set of physical HW attached (i.e. an MCU board plus, probably, a Wi-Fi/BLE/GNSS/cellular module) is labelled `test` and `instance_x`, where `x` is the major number of the test instance from [DATABASE.md](DATABASE.md) \[10 or above\] that it supports, reflecting the HW that is attached: e.g. `instance_11` has an ESP-IDF MCU board attached plus a GNSS module and supports 11.0 and 11.1; note that beefy machines may also have the `test` and `instance_x` labels where the tests instances are `windows` or `linux`.
 - for admin purposes, PCs are labelled `x86_64`, Raspberry Pis are labelled `aarch64` and things that need a Docker image of 3rd party tools built on them are labelled `docker`.
 
 Hence [Jenkinsfile](Jenkinsfile) is able to find at least one of everything it needs.
