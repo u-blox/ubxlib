@@ -2679,7 +2679,11 @@ U_PORT_TEST_FUNCTION("[port]", "portSpiRequiresSpecificWiring")
 {
 
     // *INDENT-OFF* (otherwise AStyle makes a mess of this)
+#ifndef U_CFG_TEST_GNSS_SPI_INDEX
     uCommonSpiControllerDevice_t device = U_COMMON_SPI_CONTROLLER_DEVICE_DEFAULTS(U_CFG_APP_PIN_GNSS_SPI_SELECT);
+#else
+    uCommonSpiControllerDevice_t device = U_COMMON_SPI_CONTROLLER_DEVICE_INDEX_DEFAULTS(U_CFG_TEST_GNSS_SPI_SELECT_INDEX);
+#endif
     // *INDENT-ON*
     uCommonSpiControllerDevice_t tmp = {0};
     int32_t y = 0;
@@ -2742,13 +2746,14 @@ U_PORT_TEST_FUNCTION("[port]", "portSpiRequiresSpecificWiring")
 
     // Configure SPI for the M8/M9/M10 GNSS chip we will test against
     // Settings should all be left at defaults apart from chip select pin
-    U_TEST_PRINT_LINE("chip select is on pin %d (0x%02x).", device.pinSelect, device.pinSelect);
+    U_TEST_PRINT_LINE("chip select index is %d.", device.indexSelect);
+    U_TEST_PRINT_LINE("chip select pin is %d (0x%02x).", device.pinSelect, device.pinSelect);
     U_PORT_TEST_ASSERT(uPortSpiControllerSetDevice(gSpiHandle, &device) == 0);
     // Get the settings back and check that they are all as expected; the
     // defaults are chosen to match the settings of platforms that do not
     // support one or more parameters
     U_PORT_TEST_ASSERT(uPortSpiControllerGetDevice(gSpiHandle, &tmp) == 0);
-    U_PORT_TEST_ASSERT(tmp.pinSelect == device.pinSelect);
+    U_PORT_TEST_ASSERT(tmp.pinSelect == U_CFG_APP_PIN_GNSS_SPI_SELECT);
     U_PORT_TEST_ASSERT(tmp.frequencyHertz <= device.frequencyHertz);
     U_PORT_TEST_ASSERT(tmp.mode == device.mode);
     U_PORT_TEST_ASSERT(tmp.wordSizeBytes == device.wordSizeBytes);

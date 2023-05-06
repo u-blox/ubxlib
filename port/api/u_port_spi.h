@@ -113,20 +113,22 @@ void uPortSpiClose(int32_t handle);
 
 /** Set the configuration of the device that this controller will
  * talk to.  If this function is not called
- * #U_COMMON_SPI_CONTROLLER_DEVICE_DEFAULTS will apply.  Note that, though
- * the presence of a chip select in #uCommonSpiControllerDevice_t might
- * imply that there can be more than one device, it is only the somewhat
- * enlightened ESP-IDF platform that supports this, hence we are not able
- * to support it here; there can be only one per SPI, calling this again
- * will just change the characteristics of the interface towards that
- * single device.
+ * #U_COMMON_SPI_CONTROLLER_DEVICE_DEFAULTS /
+ * #U_COMMON_SPI_CONTROLLER_DEVICE_INDEX_DEFAULTS will apply (specifically,
+ * no chip select will be employed).  Note that, though the presence
+ * of a chip select in #uCommonSpiControllerDevice_t might imply that
+ * there can be more than one device, it is only the somewhat enlightened
+ * ESP-IDF platform that supports this, hence we are not able to support
+ * it here; there can be only one per SPI, calling this again will just
+ * change the characteristics of the interface towards that single device.
  *
  * @param handle      the handle of the SPI instance.
  * @param[in] pDevice a pointer to the device configuration; it is good
- *                    practice to initialise your device structure to
- *                    #U_COMMON_SPI_CONTROLLER_DEVICE_DEFAULTS and then
- *                    only modify the bits that your device specifically
- *                    needs.  Cannot be NULL.
+ *                    practice to initialise your device structure using
+ *                    #U_COMMON_SPI_CONTROLLER_DEVICE_DEFAULTS or
+ *                    #U_COMMON_SPI_CONTROLLER_DEVICE_INDEX_DEFAULTS and
+ *                    then only modify the bits that your device
+ *                    specifically needs.  Cannot be NULL.
  * @return            zero on success else negative error code.
  */
 int32_t uPortSpiControllerSetDevice(int32_t handle,

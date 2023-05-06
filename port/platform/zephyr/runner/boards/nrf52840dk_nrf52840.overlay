@@ -65,7 +65,6 @@
 
 &spi3 {
 	status = "okay";
-	cs-gpios = <&gpio0 29 GPIO_ACTIVE_LOW>;
 	pinctrl-0 = <&spi3_default>;
 	pinctrl-1 = <&spi3_sleep>;
 	pinctrl-names = "default", "sleep";
