@@ -1879,10 +1879,6 @@ bool uGnssPrivateMessageIdIsWanted(uGnssPrivateMessageId_t *pMessageId,
     if ((pMessageIdWanted->type == U_GNSS_PROTOCOL_ANY) ||
         (pMessageIdWanted->type == U_GNSS_PROTOCOL_ALL)) {
         isWanted = true;
-    } else if (((pMessageIdWanted->type == U_GNSS_PROTOCOL_ANY) ||
-                (pMessageIdWanted->type == U_GNSS_PROTOCOL_ALL)) &&
-               (pMessageId->type != U_GNSS_PROTOCOL_UNKNOWN)) {
-        isWanted = true;
     } else if ((pMessageIdWanted->type == U_GNSS_PROTOCOL_UNKNOWN) &&
                (pMessageId->type == U_GNSS_PROTOCOL_UNKNOWN)) {
         isWanted = true;

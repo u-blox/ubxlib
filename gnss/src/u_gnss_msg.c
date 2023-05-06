@@ -458,30 +458,12 @@ bool uGnssMsgIdIsWanted(uGnssMessageId_t *pMessageId,
                         uGnssMessageId_t *pMessageIdWanted)
 {
     bool isWanted = false;
+    uGnssPrivateMessageId_t privateMessageId;
+    uGnssPrivateMessageId_t privateMessageIdWanted;
 
-    if ((pMessageIdWanted->type == U_GNSS_PROTOCOL_ANY) ||
-        (pMessageIdWanted->type == U_GNSS_PROTOCOL_ALL)) {
-        isWanted = true;
-    } else if (((pMessageIdWanted->type == U_GNSS_PROTOCOL_ANY) ||
-                (pMessageIdWanted->type == U_GNSS_PROTOCOL_ALL)) &&
-               (pMessageId->type != U_GNSS_PROTOCOL_UNKNOWN)) {
-        isWanted = true;
-    } else if ((pMessageIdWanted->type == U_GNSS_PROTOCOL_UNKNOWN) &&
-               (pMessageId->type == U_GNSS_PROTOCOL_UNKNOWN)) {
-        isWanted = true;
-    } else if ((pMessageIdWanted->type == U_GNSS_PROTOCOL_RTCM) &&
-               (pMessageId->type == U_GNSS_PROTOCOL_RTCM)) {
-        isWanted = pMessageIdWanted->id.rtcm == pMessageId->id.rtcm;
-    } else if ((pMessageIdWanted->type == U_GNSS_PROTOCOL_NMEA) &&
-               (pMessageId->type == U_GNSS_PROTOCOL_NMEA)) {
-        isWanted = ((pMessageIdWanted->id.pNmea == NULL) ||   // == any
-                    (strstr(pMessageId->id.pNmea,
-                            pMessageIdWanted->id.pNmea) == pMessageId->id.pNmea));
-    } else if ((pMessageIdWanted->type == U_GNSS_PROTOCOL_UBX) &&
-               (pMessageId->type == U_GNSS_PROTOCOL_UBX)) {
-        isWanted = ((pMessageIdWanted->id.ubx == ((U_GNSS_UBX_MESSAGE_CLASS_ALL << 8) |
-                                                  U_GNSS_UBX_MESSAGE_ID_ALL)) ||
-                    (pMessageIdWanted->id.ubx == pMessageId->id.ubx));
+    if ((uGnssPrivateMessageIdToPrivate(pMessageId, &privateMessageId) == 0) &&
+        (uGnssPrivateMessageIdToPrivate(pMessageIdWanted, &privateMessageIdWanted) == 0)) {
+        isWanted = uGnssPrivateMessageIdIsWanted(&privateMessageId, &privateMessageIdWanted);
     }
 
     return isWanted;
