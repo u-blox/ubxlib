@@ -216,19 +216,27 @@ static void sendSsidList(int32_t sock)
     uSockWrite(sock, gSsidList, strlen(gSsidList));
 }
 
-// Get a json string value
+// Get a json string value, assume quoted name and value,
+// and handle escaped quotes as well.
 static void getVal(const char *txt,
                    const char *name,
                    char *val,
                    size_t maxLength)
 {
     char match[20];
-    snprintf(match, sizeof(match), "\"%s\":\"", name);
+    snprintf(match, sizeof(match), "\"%s", name);
     const char *src = strstr(txt, match);
     size_t dst = 0;
     if (src) {
         src += strlen(match);
-        while (*src != '"' && dst < maxLength - 1) {
+        for (int32_t i = 0; i < 2; i++) {
+            while (*src && *(src++) != '"') {
+            }
+        }
+        while (*src && dst < maxLength - 1) {
+            if ((*src == '"') || (*src == '\\' && *(src + 1) == '"')) {
+                break;
+            }
             val[dst++] = *(src++);
         }
         val[dst] = 0;
