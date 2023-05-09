@@ -943,7 +943,10 @@ int32_t uWifiSockDeinitInstance(uDeviceHandle_t devHandle)
         return -U_SOCK_EIO;
     }
     errnoLocal = deinitInstance(devHandle);
-    uPortMutexDelete(gSocketsMutex);
+    if (gSocketsMutex != NULL) {
+        uPortMutexDelete(gSocketsMutex);
+        gSocketsMutex = NULL;
+    }
 
     uShortRangeUnlock();
 
@@ -967,7 +970,10 @@ void uWifiSockDeinit()
 
         freeAllSockets();
         uPortSemaphoreDelete(gPingContext.semaphore);
-        uPortMutexDelete(gSocketsMutex);
+        if (gSocketsMutex != NULL) {
+            uPortMutexDelete(gSocketsMutex);
+            gSocketsMutex = NULL;
+        }
         // Nothing more to do, URCs will have been
         // removed on close
         gInitialised = false;
