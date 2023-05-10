@@ -158,112 +158,117 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSecPsk")
     returnCode = uDeviceOpen(&gDeviceCfg, &devHandle);
     uPortLog("Opened device with return code %d.\n", returnCode);
 
-    // Bring up the network interface
-    uPortLog("Bringing up the network...\n");
-    if (uNetworkInterfaceUp(devHandle, U_NETWORK_TYPE_CELL,
-                            &gNetworkCfg) == 0) {
+    if (returnCode == 0) {
+        // Bring up the network interface
+        uPortLog("Bringing up the network...\n");
+        if (uNetworkInterfaceUp(devHandle, U_NETWORK_TYPE_CELL,
+                                &gNetworkCfg) == 0) {
 
-        // The module must have previously been security
-        // sealed for this example to work
-        if (uSecurityIsSealed(devHandle)) {
-            uPortLog("Device is security sealed.\n");
+            // The module must have previously been security
+            // sealed for this example to work
+            if (uSecurityIsSealed(devHandle)) {
+                uPortLog("Device is security sealed.\n");
 
-            uPortLog("Requesting generation of a 32-byte PSK"
-                     " and associated PSK ID...\n");
-            size = uSecurityPskGenerate(devHandle, 32,
-                                        psk, pskId);
-            uPortLog("32 bytes of PSK returned:       ");
-            printHex(psk, 32);
-            uPortLog("\n");
-            uPortLog("%d byte(s) of PSK ID returned:  ", size);
-            printHex(pskId, size);
-            uPortLog("\n");
-            uPortLog("This completes the example.\n");
-        } else {
-            uPortLog("This device is not security sealed, the PSK"
-                     " generation example will not run; see comments"
-                     " in the example source code for how to do sealing.\n");
-            // The code below would effect a security seal.
+                uPortLog("Requesting generation of a 32-byte PSK"
+                         " and associated PSK ID...\n");
+                size = uSecurityPskGenerate(devHandle, 32,
+                                            psk, pskId);
+                uPortLog("32 bytes of PSK returned:       ");
+                printHex(psk, 32);
+                uPortLog("\n");
+                uPortLog("%d byte(s) of PSK ID returned:  ", size);
+                printHex(pskId, size);
+                uPortLog("\n");
+                uPortLog("This completes the example.\n");
+            } else {
+                uPortLog("This device is not security sealed, the PSK"
+                         " generation example will not run; see comments"
+                         " in the example source code for how to do sealing.\n");
+                // The code below would effect a security seal.
 #if 0
-            // Since sealing is a once-only irreversible process this code
-            // is #if 0'ed out.  Should you want to perform security
-            // sealing you may compile this code in, maybe move it up to
-            // always occur before the end-to-end encryption code runs
-            // (if the device is detected to not be already sealed) but if
-            // you do so make VERY SURE that the compilation flag discussed
-            // below is set correctly each time.
+                // Since sealing is a once-only irreversible process this code
+                // is #if 0'ed out.  Should you want to perform security
+                // sealing you may compile this code in, maybe move it up to
+                // always occur before the end-to-end encryption code runs
+                // (if the device is detected to not be already sealed) but if
+                // you do so make VERY SURE that the compilation flag discussed
+                // below is set correctly each time.
 
-            // There are two inputs to the sealing process: a device profile
-            // UID (see the README.md in the directory above for how this
-            // is obtained from u-blox) and a serial number of your choosing.
+                // There are two inputs to the sealing process: a device profile
+                // UID (see the README.md in the directory above for how this
+                // is obtained from u-blox) and a serial number of your choosing.
 
-            // To run sealing with this example code, set the value of
-            // U_CFG_SECURITY_DEVICE_PROFILE_UID to the device profile UID
-            // *without* quotation marks, i.e. something like:
-            //
-            // U_CFG_SECURITY_DEVICE_PROFILE_UID=AgbCtixjwqLjwV3VWpfPyz
+                // To run sealing with this example code, set the value of
+                // U_CFG_SECURITY_DEVICE_PROFILE_UID to the device profile UID
+                // *without* quotation marks, i.e. something like:
+                //
+                // U_CFG_SECURITY_DEVICE_PROFILE_UID=AgbCtixjwqLjwV3VWpfPyz
 
 # ifdef U_CFG_SECURITY_DEVICE_PROFILE_UID
-            int32_t x;
-            char serialNumber[U_SECURITY_SERIAL_NUMBER_MAX_LENGTH_BYTES];
+                int32_t x;
+                char serialNumber[U_SECURITY_SERIAL_NUMBER_MAX_LENGTH_BYTES];
 
-            uPortLog("Waiting for bootstrap status...\n");
-            // Before security sealing can be performed the device must
-            // have contacted u-blox security services and "bootstrapped"
-            // itself (a once-only process): check that this has happened
-            for (x = 10; (x > 0) && !uSecurityIsBootstrapped(devHandle); x--) {
-                uPortTaskBlock(5000);
-            }
+                uPortLog("Waiting for bootstrap status...\n");
+                // Before security sealing can be performed the device must
+                // have contacted u-blox security services and "bootstrapped"
+                // itself (a once-only process): check that this has happened
+                for (x = 10; (x > 0) && !uSecurityIsBootstrapped(devHandle); x--) {
+                    uPortTaskBlock(5000);
+                }
 
-            if (uSecurityIsBootstrapped(devHandle)) {
-                uPortLog("Device is bootstrapped.\n");
+                if (uSecurityIsBootstrapped(devHandle)) {
+                    uPortLog("Device is bootstrapped.\n");
 
-                // In this example we obtain the serial number of the
-                // device and use that in the sealing process.  You
-                // may chose your own serial number instead if you wish.
-                x = uSecurityGetSerialNumber(devHandle, serialNumber);
-                if ((x > 0) && x < (int32_t) sizeof(serialNumber)) {
-                    uPortLog("Performing security seal with device profile UID"
-                             " string \"%s\" and serial number \"%s\"...\n",
-                             U_PORT_STRINGIFY_QUOTED(U_CFG_SECURITY_DEVICE_PROFILE_UID),
-                             serialNumber);
-                    if (uSecuritySealSet(devHandle,
-                                         U_PORT_STRINGIFY_QUOTED(U_CFG_SECURITY_DEVICE_PROFILE_UID),
-                                         serialNumber, NULL) == 0) {
-                        uPortLog("Device is security sealed with device profile UID string \"%s\""
-                                 " and serial number \"%s\".\n",
+                    // In this example we obtain the serial number of the
+                    // device and use that in the sealing process.  You
+                    // may chose your own serial number instead if you wish.
+                    x = uSecurityGetSerialNumber(devHandle, serialNumber);
+                    if ((x > 0) && x < (int32_t) sizeof(serialNumber)) {
+                        uPortLog("Performing security seal with device profile UID"
+                                 " string \"%s\" and serial number \"%s\"...\n",
                                  U_PORT_STRINGIFY_QUOTED(U_CFG_SECURITY_DEVICE_PROFILE_UID),
                                  serialNumber);
+                        if (uSecuritySealSet(devHandle,
+                                             U_PORT_STRINGIFY_QUOTED(U_CFG_SECURITY_DEVICE_PROFILE_UID),
+                                             serialNumber, NULL) == 0) {
+                            uPortLog("Device is security sealed with device profile UID string \"%s\""
+                                     " and serial number \"%s\".\n",
+                                     U_PORT_STRINGIFY_QUOTED(U_CFG_SECURITY_DEVICE_PROFILE_UID),
+                                     serialNumber);
+                        } else {
+                            uPortLog("Unable to security seal device!\n");
+                        }
                     } else {
-                        uPortLog("Unable to security seal device!\n");
+                        uPortLog("Unable to obtain a serial number from the device!\n");
                     }
                 } else {
-                    uPortLog("Unable to obtain a serial number from the device!\n");
+                    uPortLog("This device has not bootstrapped itself!\n");
                 }
-            } else {
-                uPortLog("This device has not bootstrapped itself!\n");
-            }
 # else
 #  error U_CFG_SECURITY_DEVICE_PROFILE_UID must be set to your device profile UID (without quotation marks) to use this code.
 # endif
 #endif
+            }
+
+            // When finished with the network layer
+            uPortLog("Taking down network...\n");
+            uNetworkInterfaceDown(devHandle, U_NETWORK_TYPE_CELL);
+        } else {
+            uPortLog("Unable to bring up the network!\n");
         }
 
-        // When finished with the network layer
-        uPortLog("Taking down network...\n");
-        uNetworkInterfaceDown(devHandle, U_NETWORK_TYPE_CELL);
+        // For u-blox internal testing only
+        EXAMPLE_FINAL_STATE(((size > 0) && (size < sizeof(pskId))) || !uSecurityIsSupported(devHandle));
+
+        // Close the device
+        // Note: we don't power the device down here in order
+        // to speed up testing; you may prefer to power it off
+        // by setting the second parameter to true.
+        uDeviceClose(devHandle, false);
+
     } else {
-        uPortLog("Unable to bring up the network!\n");
+        uPortLog("Unable to bring up the device!\n");
     }
-
-    // For u-blox internal testing only
-    EXAMPLE_FINAL_STATE(((size > 0) && (size < sizeof(pskId))) || !uSecurityIsSupported(devHandle));
-
-    // Close the device
-    // Note: we don't power the device down here in order
-    // to speed up testing; you may prefer to power it off
-    // by setting the second parameter to true.
-    uDeviceClose(devHandle, false);
 
     // Tidy up
     uDeviceDeinit();

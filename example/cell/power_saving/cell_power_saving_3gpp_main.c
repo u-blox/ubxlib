@@ -190,69 +190,74 @@ U_PORT_TEST_FUNCTION("[example]", "exampleCellPowerSaving3gpp")
     returnCode = uDeviceOpen(&gDeviceCfg, &devHandle);
     uPortLog("### Opened device with return code %d.\n", returnCode);
 
-    // Set a callback for when the 3GPP power saving parameters are
-    // agreed by the network
-    uCellPwrSet3gppPowerSavingCallback(devHandle, callback, NULL);
+    if (returnCode == 0) {
+        // Set a callback for when the 3GPP power saving parameters are
+        // agreed by the network
+        uCellPwrSet3gppPowerSavingCallback(devHandle, callback, NULL);
 
-    // Set the primary RAT to MY_RAT
-    if (uCellCfgGetRat(devHandle, 0) != MY_RAT) {
-        if (uCellCfgSetRatRank(devHandle, MY_RAT, 0) != 0) {
-            onMyRat = false;
-        }
-    }
-
-    if (onMyRat) {
-        // Set the requested 3GPP power saving values
-        uPortLog("## Requesting 3GPP power saving with active time"
-                 " %d seconds, periodic wake-up %d seconds...\n",
-                 ACTIVE_TIME_SECONDS, PERIODIC_WAKEUP_SECONDS);
-        x = uCellPwrSetRequested3gppPowerSaving(devHandle, MY_RAT, true,
-                                                ACTIVE_TIME_SECONDS,
-                                                PERIODIC_WAKEUP_SECONDS);
-        if (x == 0) {
-            // Reboot the module, if required, to apply the settings
-            if (uCellPwrRebootIsRequired(devHandle)) {
-                uCellPwrReboot(devHandle, NULL);
+        // Set the primary RAT to MY_RAT
+        if (uCellCfgGetRat(devHandle, 0) != MY_RAT) {
+            if (uCellCfgSetRatRank(devHandle, MY_RAT, 0) != 0) {
+                onMyRat = false;
             }
+        }
 
-            // Bring up the network
-            uPortLog("### Bringing up the network...\n");
-            if (uNetworkInterfaceUp(devHandle, U_NETWORK_TYPE_CELL,
-                                    &gNetworkCfg) == 0) {
-
-                // Here you would normally do useful stuff; for the
-                // purposes of this simple power-saving example,
-                // we just wait for our requested 3GPP power
-                // saving settings to be agreed by the network.
-                while (!g3gppPowerSavingSet && (x < 30)) {
-                    uPortTaskBlock(1000);
-                    x++;
+        if (onMyRat) {
+            // Set the requested 3GPP power saving values
+            uPortLog("## Requesting 3GPP power saving with active time"
+                     " %d seconds, periodic wake-up %d seconds...\n",
+                     ACTIVE_TIME_SECONDS, PERIODIC_WAKEUP_SECONDS);
+            x = uCellPwrSetRequested3gppPowerSaving(devHandle, MY_RAT, true,
+                                                    ACTIVE_TIME_SECONDS,
+                                                    PERIODIC_WAKEUP_SECONDS);
+            if (x == 0) {
+                // Reboot the module, if required, to apply the settings
+                if (uCellPwrRebootIsRequired(devHandle)) {
+                    uCellPwrReboot(devHandle, NULL);
                 }
 
-                if (g3gppPowerSavingSet) {
-                    uPortLog("### The 3GPP power saving settings have been agreed.\n");
+                // Bring up the network
+                uPortLog("### Bringing up the network...\n");
+                if (uNetworkInterfaceUp(devHandle, U_NETWORK_TYPE_CELL,
+                                        &gNetworkCfg) == 0) {
+
+                    // Here you would normally do useful stuff; for the
+                    // purposes of this simple power-saving example,
+                    // we just wait for our requested 3GPP power
+                    // saving settings to be agreed by the network.
+                    while (!g3gppPowerSavingSet && (x < 30)) {
+                        uPortTaskBlock(1000);
+                        x++;
+                    }
+
+                    if (g3gppPowerSavingSet) {
+                        uPortLog("### The 3GPP power saving settings have been agreed.\n");
+                    } else {
+                        uPortLog("### Unable to switch 3GPP power saving on!\n");
+                    }
+
+                    // When finished with the network layer
+                    uPortLog("### Taking down network...\n");
+                    uNetworkInterfaceDown(devHandle, U_NETWORK_TYPE_CELL);
                 } else {
-                    uPortLog("### Unable to switch 3GPP power saving on!\n");
+                    uPortLog("### Unable to bring up the network!\n");
                 }
-
-                // When finished with the network layer
-                uPortLog("### Taking down network...\n");
-                uNetworkInterfaceDown(devHandle, U_NETWORK_TYPE_CELL);
             } else {
-                uPortLog("### Unable to bring up the network!\n");
+                uPortLog("### 3GPP power saving is not supported in this configuration!\n");
             }
         } else {
-            uPortLog("### 3GPP power saving is not supported in this configuration!\n");
+            uPortLog("### Unable to set primary RAT to %d!\n", MY_RAT);
         }
-    } else {
-        uPortLog("### Unable to set primary RAT to %d!\n", MY_RAT);
-    }
 
-    // Close the device
-    // Note: we don't power the device down here in order
-    // to speed up testing; you may prefer to power it off
-    // by setting the second parameter to true.
-    uDeviceClose(devHandle, false);
+        // Close the device
+        // Note: we don't power the device down here in order
+        // to speed up testing; you may prefer to power it off
+        // by setting the second parameter to true.
+        uDeviceClose(devHandle, false);
+
+    } else {
+        uPortLog("### Unable to bring up the device!\n");
+    }
 
     // Tidy up
     uDeviceDeinit();

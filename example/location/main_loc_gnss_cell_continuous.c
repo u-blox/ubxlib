@@ -185,50 +185,54 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocGnssCellContinuous")
     returnCode = uDeviceOpen(&gDeviceCfg, &devHandle);
     uPortLog("Opened cellular device with return code %d.\n", returnCode);
 
-    // You may configure the cellular device as required
-    // here using any of the cell API calls.
+    if (returnCode == 0) {
+        // You may configure the cellular device as required
+        // here using any of the cell API calls.
 
-    // Note that in this example we don't bring up the cellular
-    // network interface on the cellular device as we don't need
-    // it; you may choose to do so of course.
+        // Note that in this example we don't bring up the cellular
+        // network interface on the cellular device as we don't need
+        // it; you may choose to do so of course.
 
-    // Bring up the GNSS network layer on the cellular device
-    uPortLog("Bringing up GNSS...\n");
-    if (uNetworkInterfaceUp(devHandle, U_NETWORK_TYPE_GNSS,
-                            &gNetworkCfg) == 0) {
+        // Bring up the GNSS network layer on the cellular device
+        uPortLog("Bringing up GNSS...\n");
+        if (uNetworkInterfaceUp(devHandle, U_NETWORK_TYPE_GNSS,
+                                &gNetworkCfg) == 0) {
 
-        // Here you may use the GNSS API with the device handle
-        // if you wish to configure the GNSS chip etc.
+            // Here you may use the GNSS API with the device handle
+            // if you wish to configure the GNSS chip etc.
 
-        // Start to get location
-        uPortLog("Starting continuous location.\n");
-        returnCode = uLocationGetContinuousStart(devHandle,
-                                                 U_GNSS_POS_STREAMED_PERIOD_DEFAULT_MS,
-                                                 U_LOCATION_TYPE_GNSS,
-                                                 NULL, NULL, callback);
-        if (returnCode == 0) {
+            // Start to get location
+            uPortLog("Starting continuous location.\n");
+            returnCode = uLocationGetContinuousStart(devHandle,
+                                                     U_GNSS_POS_STREAMED_PERIOD_DEFAULT_MS,
+                                                     U_LOCATION_TYPE_GNSS,
+                                                     NULL, NULL, callback);
+            if (returnCode == 0) {
 
-            uPortLog("Waiting up to 60 seconds for 5 location fixes.\n");
-            while ((gLocationCount < 5) && (guardCount < 60)) {
-                uPortTaskBlock(1000);
-                guardCount++;
+                uPortLog("Waiting up to 60 seconds for 5 location fixes.\n");
+                while ((gLocationCount < 5) && (guardCount < 60)) {
+                    uPortTaskBlock(1000);
+                    guardCount++;
+                }
+                // Stop getting location
+                uLocationGetStop(devHandle);
+
+            } else {
+                uPortLog("Unable to start continuous location!\n");
             }
-            // Stop getting location
-            uLocationGetStop(devHandle);
 
+            // When finished with the GNSS network layer
+            uPortLog("Taking down GNSS...\n");
+            uNetworkInterfaceDown(devHandle, U_NETWORK_TYPE_GNSS);
         } else {
-            uPortLog("Unable to start continuous location!\n");
+            uPortLog("Unable to bring up GNSS!\n");
         }
 
-        // When finished with the GNSS network layer
-        uPortLog("Taking down GNSS...\n");
-        uNetworkInterfaceDown(devHandle, U_NETWORK_TYPE_GNSS);
+        // Close the device
+        uDeviceClose(devHandle, true);
     } else {
-        uPortLog("Unable to bring up GNSS!\n");
+        uPortLog("Unable to bring up the cellular device!\n");
     }
-
-    // Close the device
-    uDeviceClose(devHandle, true);
 
     // Tidy up
     uDeviceDeinit();

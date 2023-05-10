@@ -326,15 +326,15 @@ U_PORT_TEST_FUNCTION("[example]", "exampleGnssMsg")
 
         uPortLog("%d NMEA message(s) received.\n", gMessageCount);
 
+        // Close the device
+        // Note: we don't power the device down here in order
+        // to speed up testing; you may prefer to power it off
+        // by setting the second parameter to true.
+        uDeviceClose(devHandle, false);
+
     } else {
         uPortLog("Unable to open GNSS!\n");
     }
-
-    // Close the device
-    // Note: we don't power the device down here in order
-    // to speed up testing; you may prefer to power it off
-    // by setting the second parameter to true.
-    uDeviceClose(devHandle, false);
 
     // Tidy up
     uDeviceDeinit();

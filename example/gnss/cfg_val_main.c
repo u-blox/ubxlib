@@ -304,15 +304,15 @@ U_PORT_TEST_FUNCTION("[example]", "exampleGnssCfgVal")
             // and flash, where fitted) and use transactions; see the
             // functions described in u_gnss_cfg.h for more details.
 
+            // Close the device
+            // Note: we don't power the device down here in order
+            // to speed up testing; you may prefer to power it off
+            // by setting the second parameter to true.
+            uDeviceClose(devHandle, false);
+
         } else {
             uPortLog("Unable to open GNSS!\n");
         }
-
-        // Close the device
-        // Note: we don't power the device down here in order
-        // to speed up testing; you may prefer to power it off
-        // by setting the second parameter to true.
-        uDeviceClose(devHandle, false);
 
         // Tidy up
         uDeviceDeinit();
