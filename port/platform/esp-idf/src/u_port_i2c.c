@@ -358,7 +358,7 @@ int32_t uPortI2cSetClock(int32_t handle, int32_t clockHertz)
                 errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
                 // The only way to configure the clock is to do a full
                 // reconfiguration of the instance
-                x = i2c_get_timeout(handle, &timeoutEsp32);
+                x = i2c_get_timeout(handle, (int *) &timeoutEsp32);
 #ifndef CONFIG_IDF_TARGET_ESP32S3
                 if (x == ESP_OK) {
 #else
@@ -472,7 +472,7 @@ int32_t uPortI2cGetTimeout(int32_t handle)
             errorCodeOrTimeout = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
 #ifndef CONFIG_IDF_TARGET_ESP32S3
             errorCodeOrTimeout = (int32_t) U_ERROR_COMMON_PLATFORM;
-            if (i2c_get_timeout(handle, &timeoutEsp32) == ESP_OK) {
+            if (i2c_get_timeout(handle, (int *) &timeoutEsp32) == ESP_OK) {
                 errorCodeOrTimeout = U_PORT_I2C_TIMEOUT_ESP32_TO_MS(timeoutEsp32);
             }
 #endif

@@ -10,7 +10,7 @@ set(EXTRA_COMPONENT_DIRS "../components"
 set(SDKCONFIG "sdkconfig" CACHE STRING "IDF sdkconfig file path")
 
 # Reduce the component list to a minimum
-set(COMPONENTS "esp32" "esptool_py" "unity" "ubxlib" "main" "ubxlib_runner" "heap")
+set(COMPONENTS "driver" "esptool_py" "unity" "ubxlib" "main" "ubxlib_runner" "heap")
 
 # Set the components to include the "tests" for.
 # This is intended to be overriden in the CMake cache

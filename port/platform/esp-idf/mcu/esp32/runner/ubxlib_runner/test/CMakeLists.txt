@@ -22,7 +22,7 @@ list(APPEND COMPONENT_ADD_INCLUDEDIRS ${UBXLIB_BASE}/port/platform/common/runner
 list(APPEND COMPONENT_SRCS            ${UBXLIB_BASE}/port/platform/common/runner/u_runner.c)
 endif()
 
-set(COMPONENT_REQUIRES "esp32" "esptool_py" "unity")
+set(COMPONENT_REQUIRES "driver" "esptool_py" "unity")
 
 register_component()
 

@@ -53,8 +53,8 @@ set(UBXLIB_PRIVATE_INC ${UBXLIB_PRIVATE_INC} PARENT_SCOPE)
 set(UBXLIB_BASE ${UBXLIB_BASE} PARENT_SCOPE)
 
 
-# For crypto functions
-set(COMPONENT_REQUIRES mbedtls)
+# For crypto functions and, from ESP-IDF v5, for drivers, timers and the debug helper in esp_system
+set(COMPONENT_REQUIRES "driver" "esp_timer" "mbedtls" "esp_system")
 
 register_component()
 
