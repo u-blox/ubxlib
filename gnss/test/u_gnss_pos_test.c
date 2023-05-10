@@ -501,6 +501,10 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosRrlp")
         // So that we can see what we're doing
         uGnssSetUbxMessagePrint(gnssHandle, true);
 
+        // Check the RRLP mode we are running
+        y = uGnssPosGetRrlpMode(gnssHandle);
+        U_PORT_TEST_ASSERT(y == (int32_t) U_GNSS_RRLP_MODE_MEASX);
+
         U_TEST_PRINT_LINE("asking for RRLP information with no thresholds...");
         y = uGnssPosGetRrlp(gnssHandle, pBuffer, U_GNSS_POS_RRLP_SIZE_BYTES,
                             -1, -1, -1, -1, NULL);
@@ -524,6 +528,59 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosRrlp")
         // Must contain at least 6 bytes for the header
         U_PORT_TEST_ASSERT(y >= 6);
         U_PORT_TEST_ASSERT(y <= U_GNSS_POS_RRLP_SIZE_BYTES);
+
+        // Set/get all the other modes: for M10 modules or later they should
+        // be supported
+        y = uGnssPosSetRrlpMode(gnssHandle, U_GNSS_RRLP_MODE_MEAS50);
+        if (y == 0) {
+            U_PORT_TEST_ASSERT(uGnssPosGetRrlpMode(gnssHandle) == (int32_t) U_GNSS_RRLP_MODE_MEAS50);
+        } else {
+            U_PORT_TEST_ASSERT(y == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED);
+            U_PORT_TEST_ASSERT(uGnssPosGetRrlpMode(gnssHandle) == (int32_t) U_GNSS_RRLP_MODE_MEASX);
+        }
+        y = uGnssPosSetRrlpMode(gnssHandle, U_GNSS_RRLP_MODE_MEAS20);
+        if (y == 0) {
+            U_PORT_TEST_ASSERT(uGnssPosGetRrlpMode(gnssHandle) == (int32_t) U_GNSS_RRLP_MODE_MEAS20);
+        } else {
+            U_PORT_TEST_ASSERT(y == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED);
+            U_PORT_TEST_ASSERT(uGnssPosGetRrlpMode(gnssHandle) == (int32_t) U_GNSS_RRLP_MODE_MEASX);
+        }
+        y = uGnssPosSetRrlpMode(gnssHandle, U_GNSS_RRLP_MODE_MEASD12);
+        if (y == 0) {
+            U_PORT_TEST_ASSERT(uGnssPosGetRrlpMode(gnssHandle) == (int32_t) U_GNSS_RRLP_MODE_MEASD12);
+        } else {
+            U_PORT_TEST_ASSERT(y == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED);
+            U_PORT_TEST_ASSERT(uGnssPosGetRrlpMode(gnssHandle) == (int32_t) U_GNSS_RRLP_MODE_MEASX);
+        }
+
+        y = uGnssPosSetRrlpMode(gnssHandle, U_GNSS_RRLP_MODE_MEASC12);
+        if (y == 0) {
+            U_PORT_TEST_ASSERT(uGnssPosGetRrlpMode(gnssHandle) == (int32_t) U_GNSS_RRLP_MODE_MEASC12);
+        } else {
+            U_PORT_TEST_ASSERT(y == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED);
+            U_PORT_TEST_ASSERT(uGnssPosGetRrlpMode(gnssHandle) == (int32_t) U_GNSS_RRLP_MODE_MEASX);
+        }
+
+        if (y == 0) {
+            // Do an RRLP get of the 12C compact mode with whacky thresholds, since
+            // they should be ignored
+            startTimeMs = uPortGetTickTimeMs();
+            gStopTimeMs = startTimeMs + U_GNSS_POS_TEST_TIMEOUT_SECONDS * 1000;
+            U_TEST_PRINT_LINE("asking for compact RRLP information 12C...");
+            // length should be the UBX protocol overhead plus 12 bytes of data
+            y = uGnssPosGetRrlp(gnssHandle, pBuffer, 8 + 12,
+                                INT_MAX, INT_MAX, INT_MAX, INT_MAX,
+                                keepGoingCallback);
+            U_TEST_PRINT_LINE("RRLP took %d second(s) to arrive.",
+                              (int32_t) (uPortGetTickTimeMs() - startTimeMs) / 1000);
+            U_TEST_PRINT_LINE("%d byte(s) of RRLP information was returned.", y);
+            // Must contain at least 6 bytes for the header
+            U_PORT_TEST_ASSERT(y >= 6);
+            U_PORT_TEST_ASSERT(y <= 8 + 12);
+        }
+
+        // Put the RRLP mode back to the default again (should always work)
+        U_PORT_TEST_ASSERT(uGnssPosSetRrlpMode(gnssHandle, U_GNSS_RRLP_MODE_MEASX) == 0);
 
         // Check that we haven't dropped any incoming data
         y = uGnssMsgReceiveStatStreamLoss(gnssHandle);

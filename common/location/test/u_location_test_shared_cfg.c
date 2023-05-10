@@ -83,7 +83,7 @@ static uLocationAssist_t gLocationAssistCellLocate = {500000, // desiredAccuracy
                                                       60,     // desiredTimeoutSeconds
                                                       true,   // disable GNSS for Cell Locate so that
                                                       // a GNSS network can use it
-                                                      -1, -1, -1, -1, NULL, NULL
+                                                      -1, -1, -1, -1, NULL, NULL, -1
                                                       };
 
 /** Location configuration for Cell Locate.
@@ -108,7 +108,8 @@ static uLocationAssist_t gLocationAssistCloudLocate = {-1,   // desiredAccuracyM
                                                        U_LOCATION_TEST_CLOUD_LOCATE_MULTIPATH_INDEX_LIMIT,
                                                        U_LOCATION_CLOUD_LOCATE_PSEUDORANGE_RMS_ERROR_INDEX_LIMIT,
                                                        U_PORT_STRINGIFY_QUOTED(U_CFG_APP_CLOUD_LOCATE_MQTT_CLIENT_ID),
-                                                       NULL  // mqttClientContext must be filled in later
+                                                       NULL,  // mqttClientContext must be filled in later
+                                                       U_LOCATION_TEST_CLOUD_LOCATE_RRLP_DATA_LENGTH_BYTES
                                                        };
 
 /** Location configuration for Cloud Locate.

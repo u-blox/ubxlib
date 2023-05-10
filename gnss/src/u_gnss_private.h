@@ -116,7 +116,8 @@ extern "C" {
 typedef enum {
     U_GNSS_PRIVATE_FEATURE_CFGVALXXX,
     U_GNSS_PRIVATE_FEATURE_GEOFENCE,
-    U_GNSS_PRIVATE_FEATURE_OLD_CFG_API
+    U_GNSS_PRIVATE_FEATURE_OLD_CFG_API,
+    U_GNSS_PRIVATE_FEATURE_RXM_MEAS_50_20_C12_D12
 } uGnssPrivateFeature_t;
 
 /** The characteristics that may differ between GNSS modules.
@@ -253,6 +254,7 @@ typedef struct uGnssPrivateInstance_t {
                                                 message receive utility functions. */
     uGnssPrivateStreamedPosition_t *pStreamedPosition; /**< context data for streamed position, hooked
                                                             here so that we can free it */
+    uGnssRrlpMode_t rrlpMode; /**< The type of MEASX to use with RRLP capture. */
     struct uGnssPrivateInstance_t *pNext;
 } uGnssPrivateInstance_t;
 // *INDENT-ON*

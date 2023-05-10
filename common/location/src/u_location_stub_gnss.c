@@ -132,6 +132,13 @@ U_WEAK void uGnssPosGetStreamedStop(uDeviceHandle_t gnssHandle)
     (void) gnssHandle;
 }
 
+U_WEAK int32_t uGnssPosSetRrlpMode(uDeviceHandle_t gnssHandle, uGnssRrlpMode_t mode)
+{
+    (void) gnssHandle;
+    (void) mode;
+    return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+}
+
 U_WEAK int32_t uGnssPosGetRrlp(uDeviceHandle_t gnssHandle, char *pBuffer,
                                size_t sizeBytes, int32_t svsThreshold,
                                int32_t cNoThreshold,

@@ -172,7 +172,8 @@ const uGnssPrivateModule_t gUGnssPrivateModuleList[] = {
     },
     {
         U_GNSS_MODULE_TYPE_M10,
-        ((1UL << (int32_t) U_GNSS_PRIVATE_FEATURE_CFGVALXXX) /* features */
+        ((1UL << (int32_t) U_GNSS_PRIVATE_FEATURE_CFGVALXXX) |
+         (1UL << (int32_t) U_GNSS_PRIVATE_FEATURE_RXM_MEAS_50_20_C12_D12)  /* features */
         )
     }
 };
