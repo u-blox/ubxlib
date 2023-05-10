@@ -162,7 +162,7 @@ static int32_t getSpiCsControl(int32_t spi, int32_t pin, int32_t index,
     if (((pin < 0) || (pPort != NULL)) &&
         (index <= U_COMMON_SPI_CONTROLLER_MAX_SELECT_INDEX)) {
         errorCode = (int32_t) U_ERROR_COMMON_NOT_FOUND;
-        if ((pin > 0) || (index > 0)) {
+        if ((pin >= 0) || (index >= 0)) {
             switch (spi) {
                 case 0:
 #if DT_NODE_EXISTS(DT_NODELABEL(spi0))

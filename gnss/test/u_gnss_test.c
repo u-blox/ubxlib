@@ -133,12 +133,12 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssAddStream")
 {
     uDeviceHandle_t gnssHandleA;
 # if (U_CFG_APP_GNSS_SPI >= 0)
-#  ifndef U_CFG_TEST_GNSS_SPI_INDEX
-    uCommonSpiControllerDevice_t device = U_COMMON_SPI_CONTROLLER_DEVICE_DEFAULTS(
-                                              U_CFG_APP_PIN_GNSS_SPI_SELECT);
-#  else
+#  ifdef U_CFG_TEST_GNSS_SPI_SELECT_INDEX
     uCommonSpiControllerDevice_t device = U_COMMON_SPI_CONTROLLER_DEVICE_INDEX_DEFAULTS(
                                               U_CFG_TEST_GNSS_SPI_SELECT_INDEX);
+#  else
+    uCommonSpiControllerDevice_t device = U_COMMON_SPI_CONTROLLER_DEVICE_DEFAULTS(
+                                              U_CFG_APP_PIN_GNSS_SPI_SELECT);
 #  endif
 # endif
 # if ((U_CFG_APP_GNSS_SPI < 0) && (U_CFG_APP_GNSS_I2C < 0)) || (U_CFG_TEST_UART_B >= 0)
