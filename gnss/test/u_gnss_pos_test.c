@@ -664,7 +664,7 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosStreamed")
             U_PORT_TEST_ASSERT(gGnssHandle == gnssHandle);
             U_TEST_PRINT_LINE("streamed position callback received error code %d.", gErrorCode);
             U_PORT_TEST_ASSERT(gErrorCode == 0);
-            if (posTimeMs >= 0) {
+            if (gGoodPosCount > 0) {
                 U_TEST_PRINT_LINE("position establishment took %d second(s).", (posTimeMs - startTimeMs) / 1000);
                 U_TEST_PRINT_LINE("the streamed position callback was called with a good position %d time(s)"
                                   " in %d second(s), average every %d millisecond(s) (expected every"
