@@ -160,6 +160,25 @@
 #  define U_PORT_TEST_I2C_ADDRESS 0x42
 # endif
 
+/** The size of the fixed part of a UBX-MON_VER message.
+ */
+# define U_PORT_TEST_I2C_UBX_MON_VER_FIXED_LENGTH 40
+
+# ifndef U_PORT_TEST_I2C_UBX_MON_VER_MAX_SEGMENTS
+/** The maximum number of optional segments we can
+ * receive in a UBX-MON_VER message.
+ */
+#  define U_PORT_TEST_I2C_UBX_MON_VER_MAX_SEGMENTS 10
+# endif
+
+# ifndef U_PORT_TEST_I2C_BUFFER_LENGTH_BYTES
+/** Buffer length for an I2C message, which is enough for
+ * the fixed part of a UBX-MON-VER message plus
+ * U_PORT_TEST_I2C_UBX_MON_VER_MAX_SEGMENTS segments
+ */
+#  define U_PORT_TEST_I2C_BUFFER_LENGTH_BYTES (U_PORT_TEST_I2C_UBX_MON_VER_FIXED_LENGTH + (30 * U_PORT_TEST_I2C_UBX_MON_VER_MAX_SEGMENTS) + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES)
+# endif
+
 # ifndef U_PORT_TEST_I2C_RETRIES
 /** The number of times to retry the I2C test if the
  * value we get back from the device at the far end
@@ -379,6 +398,10 @@ static char gUartBuffer[(U_CFG_TEST_UART_BUFFER_LENGTH_BYTES / 2) +
  * I2C buses can easily get stuck, it would seem.
  */
 static int32_t gI2cHandle = -1;
+
+/** Buffer for a message read over I2C.
+ */
+static char *gpI2cBuffer = NULL;
 #endif
 
 #if (U_CFG_APP_GNSS_SPI >= 0)
@@ -2468,12 +2491,12 @@ U_PORT_TEST_FUNCTION("[port]", "portUartRequiresSpecificWiring")
 U_PORT_TEST_FUNCTION("[port]", "portI2cRequiresSpecificWiring")
 {
     int32_t y;
+    int32_t byteCount = 0;
     int32_t messageClass = -1;
     int32_t messageId = -1;
     int32_t heapUsed;
     int32_t heapClibLossOffset = (int32_t) gSystemHeapLost;
-    // Enough room for the UBX-MON-BATCH message
-    char buffer[12 + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES];
+    char *gpI2cBuffer;
     bool success = false;
 
     // Whatever called us likely initialised the
@@ -2483,6 +2506,10 @@ U_PORT_TEST_FUNCTION("[port]", "portI2cRequiresSpecificWiring")
     heapUsed = uPortGetHeapFree();
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
+    // Enough room for the fixed part of a UBX-MON-VER message
+    // plus 10 segments
+    gpI2cBuffer = pUPortMalloc(U_PORT_TEST_I2C_BUFFER_LENGTH_BYTES);
+    U_PORT_TEST_ASSERT(gpI2cBuffer != NULL);
     // I2C can suffer issues due to pull-ups, speed, the responsiveness
     // of the device at the far end, etc., hence we allow retries of
     // this test if we do not read back the expected number of waiting
@@ -2573,15 +2600,15 @@ U_PORT_TEST_FUNCTION("[port]", "portI2cRequiresSpecificWiring")
 # endif
 
             U_TEST_PRINT_LINE("talking to GNSS chip over I2C...");
-            // Set buffer up to contain the REGSTREAM address, which is valid for all u-blox GNSS devices
+            // Set gpI2cBuffer up to contain the REGSTREAM address, which is valid for all u-blox GNSS devices
             // and means that any I2C read from the GNSS chip will get the next byte it wants to stream at us
-            buffer[0] = 0xFF;
+            *gpI2cBuffer = 0xFF;
             // First talk to an I2C address that is not present
             U_TEST_PRINT_LINE("deliberately using an invalid address (0x%02x).", U_PORT_TEST_I2C_ADDRESS - 1);
             U_PORT_TEST_ASSERT(uPortI2cControllerSend(gI2cHandle, U_PORT_TEST_I2C_ADDRESS - 1, NULL, 0,
                                                       false) < 0);
             U_PORT_TEST_ASSERT(uPortI2cControllerSendReceive(gI2cHandle, U_PORT_TEST_I2C_ADDRESS - 1,
-                                                             buffer, 1, NULL, 0) < 0);
+                                                             gpI2cBuffer, 1, NULL, 0) < 0);
 
             // The following should do nothing and return success
             U_PORT_TEST_ASSERT(uPortI2cControllerSendReceive(gI2cHandle, U_PORT_TEST_I2C_ADDRESS - 1,
@@ -2596,39 +2623,49 @@ U_PORT_TEST_FUNCTION("[port]", "portI2cRequiresSpecificWiring")
 # endif
 
             // Write to the REGSTREAM address on the GNSS device
-            U_PORT_TEST_ASSERT(uPortI2cControllerSend(gI2cHandle, U_PORT_TEST_I2C_ADDRESS, buffer, 1,
+            U_PORT_TEST_ASSERT(uPortI2cControllerSend(gI2cHandle, U_PORT_TEST_I2C_ADDRESS, gpI2cBuffer, 1,
                                                       false) == 0);
-            // Write a longer thing; UBX-MON-BATCH polls the GNSS device for a
-            // 20 byte UBX-MON-BATCH response containing a 12 byte body (see section 32.16
-            // of the u-blox M8 receiver manual); message class 0x0a, message ID 0x32.
-            memset(buffer, 0xFF, sizeof(buffer));
-            y = uUbxProtocolEncode(0x0a, 0x32, NULL, 0, buffer);
+            // Write a longer thing; UBX-MON-VER polls the GNSS device for a
+            // 40 + n·* 30 byte UBX-MON-VER response containing a 40 byte fixed part, which
+            // is all we captue here; message class 0x0a, message ID 0x04.
+            memset(gpI2cBuffer, 0xFF, U_PORT_TEST_I2C_BUFFER_LENGTH_BYTES);
+            y = uUbxProtocolEncode(0x0a, 0x04, NULL, 0, gpI2cBuffer);
             // Send
-            U_PORT_TEST_ASSERT(uPortI2cControllerSend(gI2cHandle, U_PORT_TEST_I2C_ADDRESS, buffer, y,
+            U_PORT_TEST_ASSERT(uPortI2cControllerSend(gI2cHandle, U_PORT_TEST_I2C_ADDRESS, gpI2cBuffer, y,
                                                       false) == 0);
-            // There should now be a 20 byte UBX-MON-BATCH message waiting for us.  The number of
+            // Wait for the GNSS chip to sort itself out
+            uPortTaskBlock(100);
+            // There should now be a 40 + n * 30 byte UBX-MON-VER message waiting for us.  The number of
             // bytes waiting for us is available by a read of register addresses 0xFD and 0xFE in
             // the GNSS chip.  The register address in the GNSS chip auto-increments, so sending
             // 0xFD, with no stop bit, and then a read request for two bytes should get us the
             // [big-endian] length
-            buffer[0] = 0xFD;
-            U_PORT_TEST_ASSERT(uPortI2cControllerSend(gI2cHandle, U_PORT_TEST_I2C_ADDRESS, buffer, 1,
+            *gpI2cBuffer = 0xFD;
+            U_PORT_TEST_ASSERT(uPortI2cControllerSend(gI2cHandle, U_PORT_TEST_I2C_ADDRESS, gpI2cBuffer, 1,
                                                       true) == 0);
             U_PORT_TEST_ASSERT(uPortI2cControllerSendReceive(gI2cHandle, U_PORT_TEST_I2C_ADDRESS, NULL, 0,
-                                                             buffer, 2) == 2);
-            y = (int32_t) ((((uint32_t) buffer[0]) << 8) + (uint32_t) buffer[1]);
-            U_TEST_PRINT_LINE("read of number of bytes waiting returned 0x%02x%02x (%d).", buffer[0],
-                              buffer[1], y);
-            if (y == sizeof(buffer)) {
+                                                             gpI2cBuffer, 2) == 2);
+            y = (int32_t) ((((uint32_t) * gpI2cBuffer) << 8) + (uint32_t) * (gpI2cBuffer + 1));
+            U_TEST_PRINT_LINE("read of number of bytes waiting returned 0x%02x%02x (%d).", *gpI2cBuffer,
+                              *(gpI2cBuffer + 1), y);
+            if (y >= U_PORT_TEST_I2C_UBX_MON_VER_FIXED_LENGTH + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES) {
+                U_PORT_TEST_ASSERT(y <= U_PORT_TEST_I2C_BUFFER_LENGTH_BYTES);
                 // With the register address auto-incremented to 0xFF we can now just read out the
-                // UBX-MON-BATCH response
-                memset(buffer, 0xFF, sizeof(buffer));
-                U_PORT_TEST_ASSERT(uPortI2cControllerSendReceive(gI2cHandle, U_PORT_TEST_I2C_ADDRESS, NULL, 0,
-                                                                 buffer, y) == y);
-                y = uUbxProtocolDecode(buffer, y, &messageClass, &messageId, buffer, sizeof(buffer), NULL);
+                // UBX-MON-VER response
+                memset(gpI2cBuffer, 0xFF, U_PORT_TEST_I2C_BUFFER_LENGTH_BYTES);
+                byteCount = uPortI2cControllerSendReceive(gI2cHandle, U_PORT_TEST_I2C_ADDRESS, NULL, 0,
+                                                          gpI2cBuffer, y);
+                U_TEST_PRINT_LINE("%d byte(s) retrieved.", byteCount);
+                U_PORT_TEST_ASSERT(byteCount == y);
+                y = uUbxProtocolDecode(gpI2cBuffer, byteCount, &messageClass, &messageId,
+                                       gpI2cBuffer, U_PORT_TEST_I2C_BUFFER_LENGTH_BYTES, NULL);
+                U_TEST_PRINT_LINE("%d byte(s) of message decoded (class 0x%02x, ID 0x%02x).", y, messageClass,
+                                  messageId);
+                // Can't be sure that the decoded length is the whole thing since other
+                // message _could_ have landed after it
+                U_PORT_TEST_ASSERT(y >= U_PORT_TEST_I2C_UBX_MON_VER_FIXED_LENGTH);
                 U_PORT_TEST_ASSERT(messageClass == 0x0a);
-                U_PORT_TEST_ASSERT(messageId == 0x32);
-                U_PORT_TEST_ASSERT(y == 12);
+                U_PORT_TEST_ASSERT(messageId == 0x04);
 
                 // Deinit I2C without closing the open instance; should tidy itself up
                 uPortI2cDeinit();
@@ -2652,6 +2689,9 @@ U_PORT_TEST_FUNCTION("[port]", "portI2cRequiresSpecificWiring")
             success = true;
         }
     }
+
+    uPortFree(gpI2cBuffer);
+    gpI2cBuffer = NULL;
 
     U_PORT_TEST_ASSERT(success);
 
@@ -3211,6 +3251,7 @@ U_PORT_TEST_FUNCTION("[port]", "portCleanUp")
         uPortI2cCloseRecoverBus(gI2cHandle);
     }
     uPortI2cDeinit();
+    uPortFree(gpI2cBuffer);
 #endif
 
 #if (U_CFG_APP_GNSS_SPI >= 0)
