@@ -343,8 +343,9 @@ int32_t uWifiCaptivePortal(uDeviceHandle_t deviceHandle,
     gSsid[0] = 0;
     gPw[0] = 0;
     if (pSsid != NULL) {
+        // Make sure that possible auto connected station mode is disconnected
+        uWifiStationDisconnect(gDevHandle);
         // Start the access point
-        uNetworkInterfaceDown(gDevHandle, U_NETWORK_TYPE_WIFI);
         errorCode = uNetworkInterfaceUp(gDevHandle, U_NETWORK_TYPE_WIFI, &networkCfg);
     }
     if (errorCode == 0) {
