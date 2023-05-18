@@ -107,8 +107,10 @@ WORKDIR /workdir
 # Add missing Python modules and apk packages here
 #***************************************************
 
+# Note: there is a bug in version 2.2.1 of invoke which stops it loading module directories
+# correctly, hence the fixing to version 2.0.0 below, which is known to work
 RUN chmod 1777 /tmp && \
-    pip3 install pyserial pylint psutil pylink-square requests_toolbelt rpyc debugpy invoke coloredlogs verboselogs && \
+    pip3 install pyserial pylint psutil pylink-square requests_toolbelt rpyc debugpy invoke==2.0.0 coloredlogs verboselogs && \
     apt-get update && apt-get install -y --no-install-recommends  \
         usbutils gawk iputils-ping openssh-client socat \
 # Needed for OpenOCD
