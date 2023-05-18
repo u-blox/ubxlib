@@ -67,17 +67,13 @@ def check_installation(ctx):
     ctx.zephyr_pre_command = ""
 
     # Load required packages
-    pkgs = u_package.load(ctx, ["arm_embedded_gcc", "nrfconnectsdk", "make", "nrf_cli", "segger_jlink"])
+    pkgs = u_package.load(ctx, ["arm_embedded_gcc", "nrfconnectsdk", "ninja", "cmake", "gperf", "nrf_cli", "segger_jlink"])
     ncs_pkg = pkgs["nrfconnectsdk"]
     ae_gcc_pkg = pkgs["arm_embedded_gcc"]
 
-    if not u_utils.is_linux():
-        # The Zephyr related env variables will be setup by <toolchain>/cmd/env.cmd
-        ctx.zephyr_pre_command = f"{ncs_pkg.get_windows_toolchain_path()}/cmd/env.cmd & "
-    else:
-        ctx.config.run.env["ZEPHYR_BASE"] = f'{ncs_pkg.get_install_path()}/zephyr'
-        ctx.config.run.env["ZEPHYR_TOOLCHAIN_VARIANT"] = 'gnuarmemb'
-        ctx.config.run.env["GNUARMEMB_TOOLCHAIN_PATH"] = ae_gcc_pkg.get_install_path()
+    ctx.config.run.env["ZEPHYR_BASE"] = f'{ncs_pkg.get_install_path()}/zephyr'
+    ctx.config.run.env["ZEPHYR_TOOLCHAIN_VARIANT"] = 'gnuarmemb'
+    ctx.config.run.env["GNUARMEMB_TOOLCHAIN_PATH"] = ae_gcc_pkg.get_install_path()
     ctx.arm_toolchain_path = ae_gcc_pkg.get_install_path() + "/bin"
 
 @task(
@@ -141,7 +137,8 @@ def flash(ctx, debugger_serial="", output_name=DEFAULT_OUTPUT_NAME,
     if debugger_serial != "":
         debugger_serial = f"--dev-id {debugger_serial}"
     hex_arg = "" if hex_file == None else f"--hex-file {hex_file}"
-    ctx.run(f'{ctx.zephyr_pre_command}west flash --skip-rebuild {hex_arg} -d {build_dir} {debugger_serial} --erase --recover')
+    #ctx.run(f'nrfjprog --program {build_dir}/zephyr/zephyr.hex --clockspeed 500 --recover --log', hide=False)
+    ctx.run(f'{ctx.zephyr_pre_command}west flash --skip-rebuild {hex_arg} -d {build_dir} {debugger_serial} --erase --recover --tool-opt="--clockspeed 500"', hide=False)
 
 @task(
     pre=[check_installation],

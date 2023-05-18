@@ -8,8 +8,8 @@ Here we describe how to set up a complete `ubxlib` test system, including Jenkin
 - Jenkins, [NGINX](https://www.nginx.com/) (for secured access) and the SMEE Client (which allows Github to trigger test runs behind a firewall) are installed in separate Docker containers on a single Linux PC.
 - Desktop-type "beefy" Linux PCs are used for building/checking `ubxlib` and running the `Jenkinsfile` which distributes work around the system.
 - Raspberry Pi 4's are used to download those built images of `ubxlib` to MCUs with u-blox modules attached and then monitor the tests as they run; there is a Raspberry Pi for each MCU/module HW configuration defined by [DATABASE.md](DATABASE.md).
-- The third-party MCU vendor tools are built into an [Ubuntu] Docker container which runs on both the Linux desktop PCs and the Raspberry Pis, isolating those tools nicely.
-- This Docker container accesses the `ubxlib` source code and automation scripts, all fetched from Github, natively on the Linux machines through mapped volumes.
+- The scripts that drive the test system all execute inside an [Ubuntu] Docker container, hosted on both the Linux desktop PCs and the Raspberry Pis, providing a uniform/controlled environment.
+- This Docker container accesses the `ubxlib` source code and the third party vendor tools, all fetched from Github, natively on the Linux machines, through mapped volumes.
 - A single Windows PC runs the one required MSVC build/test instance.
 
 This way we get fastest build/check plus expandability of download/test (since any number of Pis can be attached).
