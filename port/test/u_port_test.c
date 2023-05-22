@@ -2491,7 +2491,7 @@ U_PORT_TEST_FUNCTION("[port]", "portUartRequiresSpecificWiring")
 U_PORT_TEST_FUNCTION("[port]", "portI2cRequiresSpecificWiring")
 {
     int32_t y;
-    int32_t byteCount = 0;
+    int32_t z;
     int32_t messageClass = -1;
     int32_t messageId = -1;
     int32_t heapUsed;
@@ -2575,14 +2575,38 @@ U_PORT_TEST_FUNCTION("[port]", "portI2cRequiresSpecificWiring")
             // Test getting and setting the timeout
             y = uPortI2cGetTimeout(gI2cHandle);
             if (y > 0) {
+                U_TEST_PRINT_LINE("I2C timeout is %d ms.", y);
+#if defined(__XTENSA__) && !defined(CONFIG_IDF_TARGET_ESP32)
+                // Need to use >= as the underlying timeout is the nearest power of 2
+                U_PORT_TEST_ASSERT(y >= U_PORT_I2C_TIMEOUT_MILLISECONDS);
+                // Need to multiply-up for a valid test since, for the ESP32x3 cases,
+                // the timeout can only be a power of two of the underlying clock
+                U_TEST_PRINT_LINE("setting I2C timeout to at least %d ms.", U_PORT_I2C_TIMEOUT_MILLISECONDS * 2);
+                U_PORT_TEST_ASSERT(uPortI2cSetTimeout(gI2cHandle, U_PORT_I2C_TIMEOUT_MILLISECONDS * 2) == 0);
+                y = uPortI2cGetTimeout(gI2cHandle);
+                U_TEST_PRINT_LINE("I2C timeout is now %d ms.", y);
+                U_PORT_TEST_ASSERT(y >= U_PORT_I2C_TIMEOUT_MILLISECONDS * 2);
+#else
+                // In all other cases, should be able to get an exact match
+                // and just add one to see a difference
                 U_PORT_TEST_ASSERT(y == U_PORT_I2C_TIMEOUT_MILLISECONDS);
+                U_TEST_PRINT_LINE("setting I2C timeout to %d ms.", U_PORT_I2C_TIMEOUT_MILLISECONDS + 1);
                 U_PORT_TEST_ASSERT(uPortI2cSetTimeout(gI2cHandle, U_PORT_I2C_TIMEOUT_MILLISECONDS + 1) == 0);
-                U_PORT_TEST_ASSERT(uPortI2cGetTimeout(gI2cHandle) == U_PORT_I2C_TIMEOUT_MILLISECONDS + 1);
+                y = uPortI2cGetTimeout(gI2cHandle);
+                U_TEST_PRINT_LINE("I2C timeout is now %d ms.", y);
+                U_PORT_TEST_ASSERT(y == U_PORT_I2C_TIMEOUT_MILLISECONDS + 1);
+#endif
                 // Close, re-open and check that we're back at the default timeout
                 uPortI2cClose(gI2cHandle);
                 gI2cHandle = uPortI2cOpen(U_CFG_APP_GNSS_I2C, U_CFG_APP_PIN_GNSS_SDA, U_CFG_APP_PIN_GNSS_SCL, true);
                 U_PORT_TEST_ASSERT(gI2cHandle >= 0);
-                U_PORT_TEST_ASSERT(uPortI2cGetTimeout(gI2cHandle) == U_PORT_I2C_TIMEOUT_MILLISECONDS);
+                y = uPortI2cGetTimeout(gI2cHandle);
+                U_TEST_PRINT_LINE("I2C timeout is now back to %d ms.", y);
+#if defined (__XTENSA__) && !defined(CONFIG_IDF_TARGET_ESP32)
+                U_PORT_TEST_ASSERT(y < U_PORT_I2C_TIMEOUT_MILLISECONDS * 2);
+#else
+                U_PORT_TEST_ASSERT(y == U_PORT_I2C_TIMEOUT_MILLISECONDS);
+#endif
             } else {
                 U_PORT_TEST_ASSERT((y == U_ERROR_COMMON_NOT_SUPPORTED) || (y == U_ERROR_COMMON_NOT_IMPLEMENTED));
                 U_TEST_PRINT_LINE("get of I2C timeout not supported/implemented, not testing I2C timeout.");
@@ -2649,15 +2673,17 @@ U_PORT_TEST_FUNCTION("[port]", "portI2cRequiresSpecificWiring")
             U_TEST_PRINT_LINE("read of number of bytes waiting returned 0x%02x%02x (%d).", *gpI2cBuffer,
                               *(gpI2cBuffer + 1), y);
             if (y >= U_PORT_TEST_I2C_UBX_MON_VER_FIXED_LENGTH + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES) {
-                U_PORT_TEST_ASSERT(y <= U_PORT_TEST_I2C_BUFFER_LENGTH_BYTES);
                 // With the register address auto-incremented to 0xFF we can now just read out the
                 // UBX-MON-VER response
+                if (y > U_PORT_TEST_I2C_BUFFER_LENGTH_BYTES) {
+                    y = U_PORT_TEST_I2C_BUFFER_LENGTH_BYTES;
+                }
                 memset(gpI2cBuffer, 0xFF, U_PORT_TEST_I2C_BUFFER_LENGTH_BYTES);
-                byteCount = uPortI2cControllerSendReceive(gI2cHandle, U_PORT_TEST_I2C_ADDRESS, NULL, 0,
-                                                          gpI2cBuffer, y);
-                U_TEST_PRINT_LINE("%d byte(s) retrieved.", byteCount);
-                U_PORT_TEST_ASSERT(byteCount == y);
-                y = uUbxProtocolDecode(gpI2cBuffer, byteCount, &messageClass, &messageId,
+                z = uPortI2cControllerSendReceive(gI2cHandle, U_PORT_TEST_I2C_ADDRESS, NULL, 0,
+                                                  gpI2cBuffer, y);
+                U_TEST_PRINT_LINE("%d byte(s) retrieved.", z);
+                U_PORT_TEST_ASSERT(z >= y);
+                y = uUbxProtocolDecode(gpI2cBuffer, z, &messageClass, &messageId,
                                        gpI2cBuffer, U_PORT_TEST_I2C_BUFFER_LENGTH_BYTES, NULL);
                 U_TEST_PRINT_LINE("%d byte(s) of message decoded (class 0x%02x, ID 0x%02x).", y, messageClass,
                                   messageId);

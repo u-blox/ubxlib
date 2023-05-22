@@ -601,7 +601,7 @@ sudo udevadm control --reload
 sudo udevadm trigger
 ```
 
-- To debug issues with your `udev` rules, `sudo udevadm control --log-priority=debug` then `sudo udevadm trigger` followed by `sudo journalctl -n 1000` and scroll down to the end of the log to check for `53-dut.rules` being read and then look for lines where its rules are being triggered.
+- To debug issues with your `udev` rules, `sudo udevadm control --log-priority=debug` then `sudo udevadm trigger` followed by `sudo journalctl -n 10000` and scroll down to the end of the log to check for `53-dut.rules` being read and then look for lines where its rules are being triggered.
 
 - Note: if you edit a `.rules` file, don't forget to reload them all with `sudo udevadm control --reload` before testing.
 
@@ -644,3 +644,27 @@ docker run --rm ubxlib_builder nrfjprog --ids
 - Instance 18 includes a test of Cloud Locate for which client ID, username and password parameters need to be entered as environment variables and a secret in Jenkins:
   - `Manage Jenkins` -> `Configure System` scroll down to `Global properties`, tick `Environment variables` and add the client ID and username on the end of the existing `UBXLIB_EXTRA_DEFINES` environment variable, separated with semicolons, e.g. `U_CFG_APP_CLOUD_LOCATE_MQTT_CLIENT_ID=device:521b5a33-2374-4547-8edc-50743c144509;U_CFG_APP_CLOUD_LOCATE_MQTT_USERNAME=WF592TTWUQ18512KLU6L`, being sure to leave **no** spaces,
   - `Manage Jenkins` -> `Manage Credentials`, create a credential of type `Secret text`, paste the password for the Thingstream account, something like `nsd8hsK/NSDFdgdblfmbQVXbx7jeZ/8vnsiltgty` into the `Secret` field, give it the `ID` `ubxlib_cloud_locate_mqtt_password` and a sensible `Description`, e.g. "Password for the Thingstream account with Cloud Locate", then press `Save`; [Jenkinsfile](Jenkinsfile) will parse this out and into a conditional compilation flag value for the builds.
+
+## Adding a New Test Instance With Physical HW
+Not strictly part of the setup process but, should you need to add an instance that has physical HW attached to the test system afterwards, the generic parts  i.e. after you have, for instance, attached the HW to a new Raspberry Pi and added the new Raspberry Pi to the Jenkins (see above), are as follows:
+
+- Edit [u_settings.py](scripts/u_settings.py) to add the new entry on the end of the `__DEFAULT_SETTINGS["CONNECTION_INSTANCE_...` set; copy an existing one that is close (e.g. copy an NRF one for a new NRF board etc.), e.g.
+
+```
+  __DEFAULT_SETTINGS["CONNECTION_INSTANCE_26" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = \
+  {"serial_port": "/dev/segger_jlink_nrf52840", "debugger":"000685174508"}
+```
+
+...noting that some items don't have a `debugger` (e.g. ESP-IDF doesn't, since on that platform the serial port does everything).
+
+- Edit [u_connection.py](scripts/u_connection.py) to add the new connection on the end.
+- SSH into the Raspberry Pi where the device is attached and edit the file `.ubx_automation/settings_v2_agent_specific.json` to add the new instance, matching what you put in [u_settings.py](scripts/u_settings.py), e.g.:
+
+```
+  "CONNECTION_INSTANCE_26": {
+    "serial_port": "/dev/segger_jlink_nrf52840",
+    "debugger": "000685174508"
+  },
+```
+
+...noting that if, you have run the system with the new [u_settings.py](scripts/u_settings.py) already, there will already be an item there with `_FIX_ME` on the end, in which case edit that entry as appropriate and remove the `_FIX_ME` off the end.

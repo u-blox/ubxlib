@@ -91,7 +91,7 @@ def build(ctx, cmake_dir=DEFAULT_CMAKE_DIR, output_name=DEFAULT_OUTPUT_NAME,
 
     # TODO: Move -DTEST_COMPONENTS=ubxlib_runner out from this file
     ctx.run(f'{ctx.esp_idf_pre_command} idf.py -C {cmake_dir} -B {build_dir} '\
-            f'-DSDKCONFIG:STRING={cmake_dir}/sdkconfig -DTEST_COMPONENTS=ubxlib_runner ' \
+            f'-DSDKCONFIG:STRING={build_dir}/sdkconfig -DTEST_COMPONENTS=ubxlib_runner ' \
             f'build')
 
 @task(

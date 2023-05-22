@@ -42,17 +42,6 @@
 # define U_PORT_I2C_MAX_NUM 2
 #endif
 
-/** Convert a millisecond I2C timeout into an ESP32 value, which
- * are in units of the cycle time of an 80 MHz clock.
- * The timeout is per-bit, but a timeout is a timeout, and on the last
- * bit it will be the timeout for the whole byte.
- */
-#define U_PORT_I2C_TIMEOUT_MS_TO_ESP32(timeoutMs) ((timeoutMs) * 80000)
-
-/** Convert an ESP32 I2C timeout into milliseconds.
- */
-#define U_PORT_I2C_TIMEOUT_ESP32_TO_MS(timeoutEsp32) ((timeoutEsp32) / 80000)
-
 /** Make a 7-bit address with a read bit.
  */
 #define U_PORT_7BIT_ADDRESS_READ(__ADDRESS__) (((__ADDRESS__) << 1) | I2C_MASTER_READ)
@@ -73,6 +62,30 @@
  * is the same whether reading or writing).
  */
 #define U_PORT_10BIT_ADDRESS(__ADDRESS__) ((__ADDRESS__) & 0xFF)
+
+#ifndef U_PORT_I2C_ESP32X3_CLOCK_SOURCE
+/** For ESP32 the I2C clock source is the APB clock (80 MHz)
+ * and this code doesn't care, however for ESP32x3 the clock
+ * source can be selected between the crystal/XTAL (40 MHz) and
+ * the RC network which drives the RTC (17.5 MHz); the I2C
+ * timeout value is calculated differently depending on which
+ * source is employed.  The crystal is the default: switch to
+ * the RC network by setting this #define to
+ * I2C_SCLK_SRC_FLAG_LIGHT_SLEEP.
+ */
+# define U_PORT_I2C_ESP32X3_CLOCK_SOURCE 0
+#endif
+
+#if U_PORT_I2C_ESP32X3_CLOCK_SOURCE == I2C_SCLK_SRC_FLAG_LIGHT_SLEEP
+# define U_PORT_I2C_CLOCK_PERIOD_NS 57
+#else
+# define U_PORT_I2C_CLOCK_PERIOD_NS 25
+#endif
+
+/** The maximum value that an ESP32X3 I2C timeout
+ * register can take.
+ */
+#define U_PORT_I2C_ESP32X3_TIMEOUT_REGISTER_MAX 22
 
 /* ----------------------------------------------------------------
  * TYPES
@@ -102,6 +115,50 @@ static uPortI2cData_t gI2cData[U_PORT_I2C_MAX_NUM];
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
+
+// Convert a millisecond timeout to a value that can be passed to
+// i2c_set_timeout()
+static int32_t timeoutMsToEsp32(int32_t timeoutMs)
+{
+    int32_t timeoutEsp32 = -1;
+
+#ifdef CONFIG_IDF_TARGET_ESP32
+    // Not the X3 case, good 'ole ESP32, nice and simple, units
+    // of one cycle of the 80 MHz APB clock.
+    timeoutEsp32 = timeoutMs * 80000;
+#else
+    int32_t y;
+    // On ESP32X3 and similar the timeout is a power of two times
+    // the chosen source clock period, so 2^x * U_PORT_I2C_CLOCK_PERIOD_NS;
+    // if the 40 MHz crystal is chosen as SCLK then you have
+    // 2^x * 25 ns, where x can be a maximum value of 22, so the
+    // largest timeout value is 2^22 * 25ns = 104.9ms.
+    for (size_t x = 0; (x < U_PORT_I2C_ESP32X3_TIMEOUT_REGISTER_MAX) &&
+         (timeoutEsp32 < 0); x++) {
+        y = (1UL << x) * U_PORT_I2C_CLOCK_PERIOD_NS / 1000000;
+        if (y >= timeoutMs) {
+            timeoutEsp32 = x;
+        }
+    }
+#endif
+
+    return timeoutEsp32;
+}
+
+// Convert a value returned by i2c_get_timeout() into milliseconds.
+static int32_t timeoutEsp32ToMs(int32_t timeoutEsp32)
+{
+    int32_t timeoutMs = -1;
+
+#ifdef CONFIG_IDF_TARGET_ESP32
+    // Not the X3 case, good 'ole ESP32.
+    timeoutMs = timeoutEsp32 / 80000;
+#else
+    timeoutMs = (1UL << timeoutEsp32) * U_PORT_I2C_CLOCK_PERIOD_NS / 1000000;
+#endif
+
+    return timeoutMs;
+}
 
 // Close an I2C instance.
 static void closeI2c(int32_t index)
@@ -219,11 +276,10 @@ static int32_t openI2c(int32_t i2c, int32_t pinSda, int32_t pinSdc,
             cfg.sda_pullup_en = true;
             cfg.scl_pullup_en = true;
             cfg.master.clk_speed = U_PORT_I2C_CLOCK_FREQUENCY_HERTZ;
+            cfg.clk_flags = U_PORT_I2C_ESP32X3_CLOCK_SOURCE;
             if (adopt ||
                 ((i2c_param_config(i2c, &cfg) == ESP_OK) &&
-#ifndef CONFIG_IDF_TARGET_ESP32S3
-                 (i2c_set_timeout(i2c, U_PORT_I2C_TIMEOUT_MS_TO_ESP32(U_PORT_I2C_TIMEOUT_MILLISECONDS)) == ESP_OK) &&
-#endif
+                 (i2c_set_timeout(i2c, timeoutMsToEsp32(U_PORT_I2C_TIMEOUT_MILLISECONDS)) == ESP_OK) &&
                  (i2c_driver_install(i2c, I2C_MODE_MASTER, 0, 0, 0) == ESP_OK))) {
                 // We need to remember the configuration in this case
                 // as the only way to change the clock is to reconfigure
@@ -359,28 +415,21 @@ int32_t uPortI2cSetClock(int32_t handle, int32_t clockHertz)
                 // The only way to configure the clock is to do a full
                 // reconfiguration of the instance
                 x = i2c_get_timeout(handle, (int *) &timeoutEsp32);
-#ifndef CONFIG_IDF_TARGET_ESP32S3
                 if (x == ESP_OK) {
-#else
-                // Can't get the I2C timeout for ESP32 S3
-                (void) x;
-                {
-#endif
                     cfg.mode = I2C_MODE_MASTER;
                     cfg.sda_io_num = gI2cData[handle].pinSda;
                     cfg.scl_io_num = gI2cData[handle].pinSdc;
                     cfg.sda_pullup_en = true;
                     cfg.scl_pullup_en = true;
                     cfg.master.clk_speed = clockHertz;
+                    cfg.clk_flags = U_PORT_I2C_ESP32X3_CLOCK_SOURCE;
 
                     if (i2c_driver_delete(handle) == ESP_OK) {
                         // Mark the instance as not in use in case reconfiguring
                         // it doesn't work
                         gI2cData[handle].clockHertz = -1;
                         if ((i2c_param_config(handle, &cfg) == ESP_OK) &&
-#ifndef CONFIG_IDF_TARGET_ESP32S3
                             (i2c_set_timeout(handle, timeoutEsp32) == ESP_OK) &&
-#endif
                             (i2c_driver_install(handle, I2C_MODE_MASTER, 0, 0, 0) == ESP_OK)) {
                             // All is good
                             gI2cData[handle].pinSda = cfg.sda_io_num;
@@ -434,20 +483,12 @@ int32_t uPortI2cSetTimeout(int32_t handle, int32_t timeoutMs)
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if ((handle >= 0) && (handle < sizeof(gI2cData) / sizeof(gI2cData[0])) &&
             (gI2cData[handle].clockHertz > 0) && (timeoutMs > 0)) {
-            errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
-#ifndef CONFIG_IDF_TARGET_ESP32S3
-            // Note: on the S3 version of the ESP32 chip the timeout register
-            // has gone from 20 bits in length, so max value 0xFFFFF, which at 80 MHz
-            // APB clock is about 13 milliseconds, to 5 bits in length, so 31 APB clock
-            // cycles which is just 0.38 nanoseconds.  No idea why this is but it means
-            // that we can't practically set a timeout for the S3 case.
             if (!gI2cData[handle].adopted) {
                 errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
-                if (i2c_set_timeout(handle, U_PORT_I2C_TIMEOUT_MS_TO_ESP32(timeoutMs)) == ESP_OK) {
+                if (i2c_set_timeout(handle, timeoutMsToEsp32(timeoutMs)) == ESP_OK) {
                     errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
                 }
             }
-#endif
         }
 
         U_PORT_MUTEX_UNLOCK(gMutex);
@@ -469,13 +510,10 @@ int32_t uPortI2cGetTimeout(int32_t handle)
         errorCodeOrTimeout = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if ((handle >= 0) && (handle < sizeof(gI2cData) / sizeof(gI2cData[0])) &&
             (gI2cData[handle].clockHertz > 0)) {
-            errorCodeOrTimeout = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
-#ifndef CONFIG_IDF_TARGET_ESP32S3
             errorCodeOrTimeout = (int32_t) U_ERROR_COMMON_PLATFORM;
             if (i2c_get_timeout(handle, (int *) &timeoutEsp32) == ESP_OK) {
-                errorCodeOrTimeout = U_PORT_I2C_TIMEOUT_ESP32_TO_MS(timeoutEsp32);
+                errorCodeOrTimeout = timeoutEsp32ToMs(timeoutEsp32);
             }
-#endif
         }
 
         U_PORT_MUTEX_UNLOCK(gMutex);

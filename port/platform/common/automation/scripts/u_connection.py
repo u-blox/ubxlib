@@ -63,7 +63,11 @@ CONNECTION_LIST = [
     # etc. but we need the lock field to permit parallel operations.
     {"lock": None, "id": 24},
     # Instance 25, HPG Solution board (ESP32), LARA-R6
-    {"lock": None, "id": 25, **u_settings.CONNECTION_INSTANCE_25}
+    {"lock": None, "id": 25, **u_settings.CONNECTION_INSTANCE_25},
+    # Instance 26, NINA-B4 (NRF52833)
+    {"lock": None, "id": 26, **u_settings.CONNECTION_INSTANCE_26},
+    # Instance 27, C213/C215 board (NORA-B1, ESP32S3)
+    {"lock": None, "id": 27, **u_settings.CONNECTION_INSTANCE_27}
 ]
 
 def init_locks(manager):

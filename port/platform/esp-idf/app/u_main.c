@@ -83,6 +83,9 @@ static void appTask(void *pParam)
     // u_run.py) so run the tests through u_runner as that allows us
     // to do filtering
 
+    // Also, pause before running in order that the test system
+    // starts monitoring before we begin
+    uPortTaskBlock(5000);
     uPortInit();
 
 #if U_CFG_APP_PIN_CELL_RESET >= 0
