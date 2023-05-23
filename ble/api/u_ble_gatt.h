@@ -123,6 +123,8 @@ int32_t uBleGattDiscoverChar(uDeviceHandle_t devHandle,
 
 /** Set callback for peer writes when in central mode.
  *
+ * Note: not all modules support this (e.g. ODIN-W2 does not).
+ *
  * @param[in] devHandle   the handle of the u-blox BLE device.
  * @param[in] cb          a callback routine for write data.
  * @return                zero on success, on failure negative error code.
@@ -135,6 +137,8 @@ int32_t uBleGattSetWriteCallback(uDeviceHandle_t devHandle,
 
 /** Add a server service when in peripheral mode
  *
+ * Note: not all modules support this (e.g. ODIN-W2 does not).
+ *
  * @param[in] devHandle   the handle of the u-blox BLE device.
  * @param[in] pUuid       pointer to a string with the service UUID.
  * @return                zero on success, on failure negative error code.
@@ -143,6 +147,8 @@ int32_t uBleGattAddService(uDeviceHandle_t devHandle,
                            const char *pUuid);
 
 /** Add a server characteristic when in peripheral mode
+ *
+ * Note: not all modules support this (e.g. ODIN-W2 does not).
  *
  * @param[in]  devHandle    the handle of the u-blox BLE device.
  * @param[in]  pUuid        pointer to a string with the characteristic UUID.
@@ -156,6 +162,8 @@ int32_t uBleGattAddCharacteristic(uDeviceHandle_t devHandle,
                                   uint16_t *pValueHandle);
 
 /** Set callback for peer notification writes when in peripheral mode.
+ *
+ * Note: not all modules support this (e.g. ODIN-W2 does not).
  *
  * @param[in] devHandle   the handle of the u-blox BLE device.
  * @param[in] cb          a callback routine for write data.
@@ -209,6 +217,8 @@ int32_t uBleGattWriteValue(uDeviceHandle_t devHandle,
                            bool waitResponse);
 
 /** Write data with notification to a supplied characteristics value handle.
+ *
+ * Note: not all modules support this (e.g. ODIN-W2 does not).
  *
  * @param[in] devHandle    the handle of the u-blox BLE device.
  * @param[in] connHandle   the connection handle retrieved from uBleGapConnect().

@@ -75,6 +75,7 @@ typedef void (*uBleNusReceiveCallback_t)(uint8_t *pValue,
  *  used exclusively and without any other BLE GAP or GATT functions being
  *  called at the same time. Only one connection at the time is allowed.
  *
+ * Note: not all modules support NUS server mode (e.g. ODIN-W2 does not).
  *
  * @param[in] devHandle   the handle of the u-blox BLE device.
  * @param[in] pAddress    peer address when client mode, set to NULL for

@@ -55,7 +55,7 @@ typedef enum {
 //    U_BLE_MODULE_TYPE_NINA_B4  < Modules NINA-B4. BLE only
 //    U_BLE_MODULE_TYPE_NINA_B2  < Modules NINA-B2. BLE and Classic
 //    U_BLE_MODULE_TYPE_NINA_W15 < Modules NINA-W15. Wifi, BLE and Classic
-//    U_BLE_MODULE_TYPE_ODIN_W2  < Modules NINA-B1. Wifi, BLE and Classic
+//    U_BLE_MODULE_TYPE_ODIN_W2  < Modules ODIN-W2. Wifi, BLE and Classic
     U_SHORT_RANGE_MODULE_LIST
 
     U_BLE_MODULE_TYPE_INVALID = U_SHORT_RANGE_MODULE_TYPE_INVALID,   /**< invalid. */
