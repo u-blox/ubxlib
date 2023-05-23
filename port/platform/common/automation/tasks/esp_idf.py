@@ -85,14 +85,24 @@ def build(ctx, cmake_dir=DEFAULT_CMAKE_DIR, output_name=DEFAULT_OUTPUT_NAME,
             clean(ctx, output_name, build_dir)
         ctx.config.run.env["U_FLAGS"] = u_flags["cflags"]
 
+
     cmake_dir = os.path.abspath(cmake_dir)
     build_dir = os.path.abspath(os.path.join(build_dir, output_name))
     os.makedirs(build_dir, exist_ok=True)
 
     # TODO: Move -DTEST_COMPONENTS=ubxlib_runner out from this file
-    ctx.run(f'{ctx.esp_idf_pre_command} idf.py -C {cmake_dir} -B {build_dir} '\
-            f'-DSDKCONFIG:STRING={build_dir}/sdkconfig -DTEST_COMPONENTS=ubxlib_runner ' \
-            f'build')
+    idf_py_text = f'{ctx.esp_idf_pre_command} idf.py -C {cmake_dir} -B {build_dir} '\
+                  f'-DSDKCONFIG:STRING={build_dir}/sdkconfig -DTEST_COMPONENTS=ubxlib_runner '
+
+    # The ESP-IDF MCU type (ESP32, ESP32S3) should have been set in the
+    # environment: need to set it here otherwise, if the previous target
+    # was different, idf.py will just complain and fail the build
+    if "IDF_TARGET" in os.environ:
+        #  This will result in a full clean build, but whadaya do?
+        ctx.run(f'{idf_py_text} set-target {os.environ["IDF_TARGET"]}')
+
+    # Now we can actually do the build
+    ctx.run(f'{idf_py_text} build')
 
 @task(
     help={
