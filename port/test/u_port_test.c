@@ -44,7 +44,7 @@
 #include "u_cfg_app_platform_specific.h"
 #include "u_cfg_test_platform_specific.h"
 
-#include "u_port_clib_platform_specific.h" /* strtok_r() and mktime() and
+#include "u_port_clib_platform_specific.h" /* strtok_r(), mktime(), localtime_r() and
                                               integer stdio, must be included
                                               before the other port files if
                                               any print or scan function
@@ -301,12 +301,12 @@ typedef enum {
 
 #endif
 
-/** Struct for mktime64() testing.
+/** Struct for mktime64() and localtime_r() testing.
  */
 typedef struct {
     struct tm timeStruct;
     int64_t time;
-} mktime64TestData_t;
+} uPortTestTimeData_t;
 
 /* ----------------------------------------------------------------
  * VARIABLES
@@ -410,25 +410,28 @@ static char *gpI2cBuffer = NULL;
 static int32_t gSpiHandle = -1;
 #endif
 
-/** Data for mktime64() testing.
+/** Data for mktime64() and localtime_r() testing.
  */
-static mktime64TestData_t gMktime64TestData[] = {
-    {{0,  0, 0,  1, 0,  70,  0, 0, 0}, 0},
-    {{1,  0, 0,  1, 0,  70,  0, 0, 0}, 1},
-    {{1,  1, 0,  1, 0,  70,  0, 0, 0}, 61},
-    {{1,  1, 1,  1, 0,  70,  0, 0, 0}, 3661},
-    {{1,  1, 1,  1, 1,  70,  0, 0, 0}, 2682061},
-    {{1,  1, 1,  1, 1,  70,  0, 0, 0}, 2682061},
-    {{1,  1, 1,  1, 1,  70,  1, 0, 0}, 2682061},
-    {{1,  1, 1,  1, 1,  70,  1, 1, 0}, 2682061},
-    {{1,  1, 1,  1, 1,  70,  1, 1, 1}, 2682061},
-    {{61, 0, 0,  1, 0,  70,  0, 0, 0}, 61},
-    {{0, 59, 0,  1, 0,  70,  0, 0, 0}, 3540},
-    {{0,  0, 23, 1, 0,  70,  0, 0, 0}, 82800},
-    {{0,  0, 0, 31, 0,  70,  0, 0, 0}, 2592000},
-    {{0,  0, 0,  1, 12, 70,  0, 0, 0}, 31536000},
-    {{0,  0, 0,  1, 0, 137,  0, 0, 0}, 2114380800LL},
-    {{0,  0, 0,  1, 0, 150,  0, 0, 0}, 2524608000LL}
+static uPortTestTimeData_t timeTestData[] = {
+    {{0,  0, 0,  1, 0,  70,  4,   0, 0}, 0},
+    {{1,  0, 0,  1, 0,  70,  4,   0, 0}, 1},
+    {{1,  1, 0,  1, 0,  70,  4,   0, 0}, 61},
+    {{1,  1, 1,  1, 0,  70,  4,   0, 0}, 3661},
+    {{1,  1, 1,  1, 1,  70,  0,  31, 0}, 2682061},
+    {{1,  1, 1,  1, 1,  70,  0,  31, 0}, 2682061},
+    {{1,  1, 1,  1, 1,  70,  0,  31, 0}, 2682061},
+    {{1,  1, 1,  1, 1,  70,  0,  31, 0}, 2682061},
+    {{1,  1, 1,  1, 1,  70,  0,  31, 1}, 2682061},
+    {{61, 0, 0,  1, 0,  72,  6,   0, 0}, 63072061},  // Leap year
+    {{61, 0, 0,  1, 0,  70,  4,   0, 0}, 61},
+    {{61, 0, 0,  1, 0,  70,  4,   0, 0}, 61},
+    {{0, 59, 0,  1, 0,  70,  4,   0, 0}, 3540},
+    {{0,  0, 23, 1, 0,  70,  4,   0, 0}, 82800},
+    {{0,  0, 0, 31, 0,  70,  6,  30, 0}, 2592000},
+    {{0,  0, 0,  1, 11, 70,  2, 334, 0}, 28857600},
+    {{0,  0, 0, 13, 0,  70,  2,  12, 0}, 1036800},
+    {{0,  0, 0,  1, 0, 137,  4,   0, 0}, 2114380800LL},
+    {{0,  0, 0,  1, 0, 150,  4,   0, 0}, 2524608000LL}
 };
 
 /** SHA256 test vector, input, RC4.55 from:
@@ -2273,10 +2276,53 @@ U_PORT_TEST_FUNCTION("[port]", "portMktime64")
 
     U_TEST_PRINT_LINE("testing mktime64()...");
 
-    for (size_t x = 0; x < sizeof(gMktime64TestData) /
-         sizeof(gMktime64TestData[0]); x++) {
-        U_PORT_TEST_ASSERT(mktime64(&gMktime64TestData[x].timeStruct) ==
-                           gMktime64TestData[x].time);
+    for (size_t x = 0; x < sizeof(timeTestData) /
+         sizeof(timeTestData[0]); x++) {
+        U_PORT_TEST_ASSERT(mktime64(&timeTestData[x].timeStruct) ==
+                           timeTestData[x].time);
+    }
+
+    uPortDeinit();
+
+    // Check for memory leaks
+    heapUsed -= uPortGetHeapFree();
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
+    // heapUsed < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT(heapUsed <= 0);
+}
+
+/** Test: localtime_r().
+ */
+U_PORT_TEST_FUNCTION("[port]", "portLocaltime_r")
+{
+    int32_t heapUsed;
+    struct tm timeStruct;
+
+    // Whatever called us likely initialised the
+    // port so deinitialise it here to obtain the
+    // correct initial heap size
+    uPortDeinit();
+    heapUsed = uPortGetHeapFree();
+    U_PORT_TEST_ASSERT(uPortInit() == 0);
+
+    U_TEST_PRINT_LINE("testing localtime_r()...");
+
+    for (size_t x = 0; x < sizeof(timeTestData) / sizeof(timeTestData[0]); x++) {
+        if (timeTestData[x].time <= INT_MAX) {
+            memset(&timeStruct, 0xFF, sizeof(timeStruct));
+            U_PORT_TEST_ASSERT(localtime_r((time_t *) & (timeTestData[x].time), &timeStruct) == &timeStruct);
+            U_PORT_TEST_ASSERT(timeStruct.tm_sec == timeTestData[x].timeStruct.tm_sec % 60);
+            U_PORT_TEST_ASSERT(timeStruct.tm_min == timeTestData[x].timeStruct.tm_min +
+                               (timeTestData[x].timeStruct.tm_sec / 60));
+            U_PORT_TEST_ASSERT(timeStruct.tm_hour == timeTestData[x].timeStruct.tm_hour);
+            U_PORT_TEST_ASSERT(timeStruct.tm_mday == timeTestData[x].timeStruct.tm_mday);
+            U_PORT_TEST_ASSERT(timeStruct.tm_mon == timeTestData[x].timeStruct.tm_mon);
+            U_PORT_TEST_ASSERT(timeStruct.tm_year == timeTestData[x].timeStruct.tm_year);
+            U_PORT_TEST_ASSERT(timeStruct.tm_wday == timeTestData[x].timeStruct.tm_wday);
+            U_PORT_TEST_ASSERT(timeStruct.tm_yday == timeTestData[x].timeStruct.tm_yday);
+            U_PORT_TEST_ASSERT(timeStruct.tm_isdst == 0);
+        }
     }
 
     uPortDeinit();

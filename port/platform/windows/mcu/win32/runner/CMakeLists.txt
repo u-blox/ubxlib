@@ -84,7 +84,8 @@ if(${UBXLIB_PLATFORM} STREQUAL "windows")
         ${UBXLIB_BASE}/port/platform/${UBXLIB_PLATFORM}/src/u_port_crypto.c
         ${UBXLIB_BASE}/port/platform/${UBXLIB_PLATFORM}/src/u_port_private.c
         ${UBXLIB_BASE}/port/clib/u_port_clib_mktime64.c
-        ${UBXLIB_BASE}/port/clib/u_port_clib_strtok_r.c)
+        ${UBXLIB_BASE}/port/clib/u_port_clib_strtok_r.c
+        ${UBXLIB_BASE}/port/clib/u_port_clib_localtime_r.c)
     set(UBXLIB_TEST_SRC_PORT
         ${UBXLIB_BASE}/port/platform/common/runner/u_runner.c)
     set(UBXLIB_PRIVATE_TEST_INC_PORT

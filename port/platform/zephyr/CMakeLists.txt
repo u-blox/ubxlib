@@ -98,6 +98,7 @@ if (CONFIG_MINIMAL_LIBC)
     target_sources(app PRIVATE
         ${UBXLIB_BASE}/port/clib/u_port_clib_isblank.c
         ${UBXLIB_BASE}/port/clib/u_port_clib_mktime.c
+        ${UBXLIB_BASE}/port/clib/u_port_clib_localtime_r.c
         ${UBXLIB_BASE}/port/clib/u_port_setjmp.S
         src/u_port_clib.c
     )
