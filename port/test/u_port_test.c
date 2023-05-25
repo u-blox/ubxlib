@@ -44,7 +44,7 @@
 #include "u_cfg_app_platform_specific.h"
 #include "u_cfg_test_platform_specific.h"
 
-#include "u_port_clib_platform_specific.h" /* strtok_r(), mktime(), localtime_r() and
+#include "u_port_clib_platform_specific.h" /* strtok_r(), mktime(), gmtime_r() and
                                               integer stdio, must be included
                                               before the other port files if
                                               any print or scan function
@@ -301,7 +301,7 @@ typedef enum {
 
 #endif
 
-/** Struct for mktime64() and localtime_r() testing.
+/** Struct for mktime64() and gmtime_r() testing.
  */
 typedef struct {
     struct tm timeStruct;
@@ -410,7 +410,7 @@ static char *gpI2cBuffer = NULL;
 static int32_t gSpiHandle = -1;
 #endif
 
-/** Data for mktime64() and localtime_r() testing.
+/** Data for mktime64() and gmtime_r() testing.
  */
 static uPortTestTimeData_t timeTestData[] = {
     {{0,  0, 0,  1, 0,  70,  4,   0, 0}, 0},
@@ -2292,9 +2292,9 @@ U_PORT_TEST_FUNCTION("[port]", "portMktime64")
     U_PORT_TEST_ASSERT(heapUsed <= 0);
 }
 
-/** Test: localtime_r().
+/** Test: gmtime_r().
  */
-U_PORT_TEST_FUNCTION("[port]", "portLocaltime_r")
+U_PORT_TEST_FUNCTION("[port]", "portGmtime_r")
 {
     int32_t heapUsed;
     struct tm timeStruct;
@@ -2306,12 +2306,12 @@ U_PORT_TEST_FUNCTION("[port]", "portLocaltime_r")
     heapUsed = uPortGetHeapFree();
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
-    U_TEST_PRINT_LINE("testing localtime_r()...");
+    U_TEST_PRINT_LINE("testing gmtime_r()...");
 
     for (size_t x = 0; x < sizeof(timeTestData) / sizeof(timeTestData[0]); x++) {
         if (timeTestData[x].time <= INT_MAX) {
             memset(&timeStruct, 0xFF, sizeof(timeStruct));
-            U_PORT_TEST_ASSERT(localtime_r((time_t *) & (timeTestData[x].time), &timeStruct) == &timeStruct);
+            U_PORT_TEST_ASSERT(gmtime_r((time_t *) & (timeTestData[x].time), &timeStruct) == &timeStruct);
             U_PORT_TEST_ASSERT(timeStruct.tm_sec == timeTestData[x].timeStruct.tm_sec % 60);
             U_PORT_TEST_ASSERT(timeStruct.tm_min == timeTestData[x].timeStruct.tm_min +
                                (timeTestData[x].timeStruct.tm_sec / 60));

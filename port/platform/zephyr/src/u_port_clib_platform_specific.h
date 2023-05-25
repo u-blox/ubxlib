@@ -60,10 +60,6 @@ int isblank(int character);
  */
 time_t mktime(struct tm *pTm);
 
-/** localtime_r().
- */
-struct tm *localtime_r(const time_t *pTime, struct tm *pBuf);
-
 #ifdef __cplusplus
 }
 #endif

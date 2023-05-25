@@ -15,7 +15,7 @@
  */
 
 /** @file
- * @brief An implementation of the C library function localtime_r().
+ * @brief An implementation of the C library function gmtime_r().
  */
 
 #include "stddef.h"    // NULL, size_t etc.
@@ -27,14 +27,14 @@
 #include "u_time.h"
 #include "u_port_clib_platform_specific.h"
 
-/** localtime_r(): converts a Unix time_t into a struct tm.
+/** gmtime_r(): converts a Unix time_t into a struct tm.
  * This function is thread-safe.
  *
  * @param pTime  pointer to a time_t; cannot be NULL.
  * @param pBuf   pointer to a struct tm; cannot be NULL.
  * @return       the pointer to struct tm or NULL on error.
  */
-struct tm *localtime_r(const time_t *pTime, struct tm *pBuf)
+struct tm *gmtime_r(const time_t *pTime, struct tm *pBuf)
 {
     struct tm *pTm = NULL;
     int64_t time;

@@ -42,9 +42,9 @@ extern "C" {
  */
 char *strtok_r(char *pStr, const char *pDelimiters, char **ppSave);
 
-/** localtime_r().
+/** gmtime_r().
  */
-struct tm *localtime_r(const time_t *pTime, struct tm *pBuf);
+struct tm *gmtime_r(const time_t *pTime, struct tm *pBuf);
 
 #ifdef __cplusplus
 }
