@@ -25,8 +25,11 @@
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 #include "limits.h"    // INT_MAX
+#include "time.h"
 
 #include "windows.h"
+
+#include "u_port_clib_platform_specific.h" // mktime() in some cases
 
 #include "u_cfg_sw.h"
 #include "u_compiler.h" // For U_INLINE
@@ -171,6 +174,26 @@ int32_t uPortEnterCritical()
 void uPortExitCritical()
 {
     U_ASSERT(uPortPrivateExitCritical() == 0);
+}
+
+// Get the timezone offset.
+int32_t uPortGetTimezoneOffsetSeconds()
+{
+    struct tm utcTm;
+    time_t utc;
+    time_t mktimeSays;
+
+    utc = time(NULL);
+    utcTm = *gmtime(&utc);
+    // Setting daylight saving flag to -1 causes mktime()
+    // to decide whether DST is in effect
+    utcTm.tm_isdst = -1;
+    mktimeSays = mktime(&utcTm);
+    // mktime will have subtracted the timezone from what it was
+    // given in order to return local time, hence the timezone
+    // offset is the difference
+
+    return (int32_t) (utc - mktimeSays);
 }
 
 // End of file

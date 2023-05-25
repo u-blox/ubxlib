@@ -92,6 +92,7 @@ SRC_FILES += \
   $(UBXLIB_SRC) \
   $(UBXLIB_TEST_SRC) \
   $(UBXLIB_PATH)/port/clib/u_port_clib_mktime64.c \
+  $(UBXLIB_PATH)/port/u_port_timezone.c \
   $(UBXLIB_PATH)/port/platform/common/heap_check/u_heap_check.c \
   $(UBXLIB_BASE)/port/platform/common/mbedtls/u_port_crypto.c \
   $(NRF5_PORT_PATH)/src/u_port.c \

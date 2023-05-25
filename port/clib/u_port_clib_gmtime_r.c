@@ -69,8 +69,8 @@ struct tm *gmtime_r(const time_t *pTime, struct tm *pBuf)
         time -= pBuf->tm_min * 60;
         // Seconds (0 to 59ish)
         pBuf->tm_sec = (int32_t) time;
-        // Since this function returns local time the
-        // Daylight Saving Time flag is left at zero.
+        // Since this function returns UTC, the
+        // Daylight Saving Time flag is left unset.
         pTm = pBuf;
     }
 

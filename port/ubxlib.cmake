@@ -139,6 +139,9 @@ list(APPEND UBXLIB_PRIVATE_INC ${UBXLIB_BASE}/common/device/src)
 # Default malloc()/free() implementation
 list(APPEND UBXLIB_SRC ${UBXLIB_BASE}/port/u_port_heap.c)
 
+# Default uPortGetTimezoneOffsetSeconds() implementation
+list(APPEND UBXLIB_SRC ${UBXLIB_BASE}/port/u_port_timezone.c)
+
 # Optional features
 
 # short range

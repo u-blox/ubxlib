@@ -2335,6 +2335,67 @@ U_PORT_TEST_FUNCTION("[port]", "portGmtime_r")
     U_PORT_TEST_ASSERT(heapUsed <= 0);
 }
 
+// Can't do this test on Zephyr with the minimal clib as
+// it doesn't have a gmtime(), or a concept of timezone
+// for that matter
+# if !defined(__ZEPHYR__) && !defined(CONFIG_MINIMAL_LIBC)
+/** Test: uPortGetTimezoneOffsetSeconds().
+ */
+U_PORT_TEST_FUNCTION("[port]", "portGetTimezoneOffsetSeconds")
+{
+    int32_t heapUsed;
+    struct tm utcTm;
+    time_t utc = 0;
+    time_t wrong;
+
+    // Whatever called us likely initialised the
+    // port so deinitialise it here to obtain the
+    // correct initial heap size
+    uPortDeinit();
+    heapUsed = uPortGetHeapFree();
+    U_PORT_TEST_ASSERT(uPortInit() == 0);
+
+    U_TEST_PRINT_LINE("testing uPortGetTimezoneOffsetSeconds()...");
+
+#if defined(WIN32) || defined (__linux__)
+    // On systems that have proper time we must use proper time
+    // as otherwise Daylight Saving Time can't be taken into account
+    utc = time(NULL);
+#endif
+
+    // gmtime() gets us the UTC time in a struct tm *** STILL AS UTC ***
+#ifdef WIN32
+    // Windows doesn't have gmtime_r()
+    struct tm *pUtcTm = gmtime(&utc);
+    U_PORT_TEST_ASSERT(pUtcTm != NULL);
+    utcTm = *pUtcTm;
+#else
+    U_PORT_TEST_ASSERT(gmtime_r(&utc, &utcTm) == &utcTm);
+#endif
+    // Setting daylight saving flag to -1 should cause mktime()
+    // to decide whether DST is in effect by itself
+    utcTm.tm_isdst = -1;
+    // mktime assumes it is being given a *** LOCAL *** time and,
+    // to return UTC, subtracts the timezone offset
+    wrong = mktime(&utcTm);
+    U_TEST_PRINT_LINE("UTC time %d and, given that, mktime() returns %d,"
+                      " therefore timezone offset %d second(s),"
+                      " uPortGetTimezoneOffsetSeconds() %d second(s).",
+                      (int32_t) utc, (int32_t) wrong, (int32_t) (utc - wrong),
+                      uPortGetTimezoneOffsetSeconds());
+    U_PORT_TEST_ASSERT(uPortGetTimezoneOffsetSeconds() == utc - wrong);
+
+    uPortDeinit();
+
+    // Check for memory leaks
+    heapUsed -= uPortGetHeapFree();
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
+    // heapUsed < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT(heapUsed <= 0);
+}
+#endif // __ZEPHYR__
+
 #if (U_CFG_TEST_PIN_A >= 0) && (U_CFG_TEST_PIN_B >= 0) && \
     (U_CFG_TEST_PIN_C >= 0)
 /** Test GPIOs.

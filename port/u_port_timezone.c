@@ -15,17 +15,15 @@
  */
 
 /** @file
- * @brief an implementation of mktime().
+ * @brief Default implementation of uPortGetTimezoneOffsetSeconds().
  */
 
 #ifdef U_CFG_OVERRIDE
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
 
-#include "stdint.h"    // int32_t etc.
-#include "time.h"      // struct tm
-
-#include "u_port_clib_mktime64.h"
+#include "stdint.h"     // int32_t etc.
+#include "u_compiler.h" // WEAK
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -47,20 +45,10 @@
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-// mktime().
-//
-// IMPORTANT: according to the standard mktime() should consider
-// pTm to be _local_ time and return a value in _UTC_, i.e. with the
-// known timezone offset (which newlib sets in the system's
-// environment with the function tzset()) subtracted from it.
-// The implementation below does NOT do that, i.e. pTm is assumed
-// to also be UTC, or with a timezone offset of zero.
-//
-//lint -esym(818, pTm) Suppress could be pointer to
-// const, need to follow function signature.
-time_t mktime(struct tm *pTm)
+// Default implementation of get timezone offset.
+U_WEAK int32_t uPortGetTimezoneOffsetSeconds()
 {
-    return (time_t) mktime64(pTm);
+    return 0;
 }
 
 // End of file

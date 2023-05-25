@@ -73,9 +73,8 @@ int64_t mktime64(struct tm *pTm)
     answer += ((int64_t) pTm->tm_min) * 60;
     // Seconds (0 to 59ish)
     answer += pTm->tm_sec;
-    // Since this function returns local time
-    // the Daylight Saving Time flag has no
-    // effect on the answer.
+    // Since this function returns UTC, the
+    // Daylight Saving Time flag is ignored.
 
     return answer;
 }
