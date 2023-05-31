@@ -31,6 +31,12 @@
 #include "u_debug_utils.h"
 #include "u_debug_utils_internal.h"
 
+#include "FreeRTOS.h" // For xPortGetFreeHeapSize()
+#include "task.h"     // For xTaskGetSchedulerState()
+
+/* FreeRTOS tick timer interrupt handler prototype */
+extern void xPortSysTickHandler(void);
+
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
@@ -237,7 +243,14 @@ void DebugMon_Handler(void)
 void SysTick_Handler(void)
 {
     gTickTimerRtosCount++;
+#ifdef CMSIS_V2
+    if (xTaskGetSchedulerState() != taskSCHEDULER_NOT_STARTED) {
+        /* Call tick handler */
+        xPortSysTickHandler();
+    }
+#else
     osSystickHandler();
+#endif
 }
 
 // End of file

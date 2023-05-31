@@ -59,12 +59,13 @@
 
 #ifndef U_CFG_OS_PRIORITY_MAX
 /** The maximum task priority, should be less than or
- * equal to configMAX_PRIORITIES defined in FreeRTOSConfig.h,
- * which is set to 15. cmsis-os defines osPriorityISR
- * as 56 but when this is mapped to FreeRTOS, as it is on
- * this platform, the range gets squished.
+ * equal to configMAX_PRIORITIES defined in FreeRTOSConfig.h.
  */
-# define U_CFG_OS_PRIORITY_MAX 15
+# ifdef CMSIS_V2
+#  define U_CFG_OS_PRIORITY_MAX 56
+# else
+#  define U_CFG_OS_PRIORITY_MAX 15
+# endif
 #endif
 
 #ifndef U_CFG_OS_YIELD_MS

@@ -73,6 +73,15 @@
 #include "u_port_os.h"
 
 #include "cmsis_os.h"
+#ifdef CMSIS_V2
+# include "cmsis_os2.h"
+#endif
+
+#include "FreeRTOS.h"
+#include "task.h"
+#include "semphr.h"
+#include "queue.h"
+#include "timers.h"
 
 #include "stm32f4xx_hal.h"
 #include "stm32f4xx_hal_gpio.h"
@@ -108,12 +117,24 @@ int32_t uPortTaskCreate(void (*pFunction)(void *),
                         uPortTaskHandle_t *pTaskHandle)
 {
     uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+#ifdef CMSIS_V2
+    osThreadAttr_t attr = {0};
+#else
     osThreadDef_t threadDef = {0};
+#endif
 
     if ((pFunction != NULL) && (pTaskHandle != NULL) &&
         (priority >= U_CFG_OS_PRIORITY_MIN) &&
         (priority <= U_CFG_OS_PRIORITY_MAX)) {
-
+#ifdef CMSIS_V2
+        attr.name = pName;
+        attr.priority = priority;
+        // For the CMSIS V2 port atop FreeRTOS the stack size is in bytes
+        attr.stack_size = stackSizeBytes;
+        *pTaskHandle = (uPortTaskHandle_t *) osThreadNew(pFunction,
+                                                         pParameter,
+                                                         &attr);
+#else
         threadDef.name = (char *) pName;
         threadDef.pthread = (void (*) (void const *)) pFunction;
         threadDef.tpriority = priority;
@@ -123,6 +144,7 @@ int32_t uPortTaskCreate(void (*pFunction)(void *),
 
         *pTaskHandle = (uPortTaskHandle_t *) osThreadCreate(&threadDef,
                                                             pParameter);
+#endif
         if (*pTaskHandle != NULL) {
             errorCode = U_ERROR_COMMON_SUCCESS;
         }
@@ -135,6 +157,12 @@ int32_t uPortTaskCreate(void (*pFunction)(void *),
 int32_t uPortTaskDelete(const uPortTaskHandle_t taskHandle)
 {
     uErrorCode_t errorCode = U_ERROR_COMMON_PLATFORM;
+    osThreadId threadId = (osThreadId) taskHandle;
+
+    if (threadId == NULL) {
+        // In the CMSIS V2 port atop FreeRTOS we have to pass a valid task ID, NULL won't work
+        threadId = osThreadGetId();
+    }
 
     // Below is a workaround for a memory leak when using newlib built with _LITE_EXIT enabled.
     // When _LITE_EXIT is enabled the stdio streams stdout, stdin and stderr are not closed
@@ -155,7 +183,7 @@ int32_t uPortTaskDelete(const uPortTaskHandle_t taskHandle)
         }
     }
 #endif
-    if (osThreadTerminate((osThreadId) taskHandle) == osOK) {
+    if (osThreadTerminate(threadId) == osOK) {
         errorCode = U_ERROR_COMMON_SUCCESS;
     }
 
@@ -173,7 +201,11 @@ void uPortTaskBlock(int32_t delayMs)
 {
     // Make sure the scheduler has been started
     // or this may fly off into space
+#ifdef CMSIS_V2
+    U_ASSERT(osKernelGetState() == osKernelRunning);
+#else
     U_ASSERT(osKernelRunning());
+#endif
     osDelay(delayMs);
 }
 
@@ -398,12 +430,18 @@ int32_t uPortQueueGetFree(const uPortQueueHandle_t queueHandle)
 int32_t MTX_FN(uPortMutexCreate(uPortMutexHandle_t *pMutexHandle))
 {
     uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+#ifndef CMSIS_V2
     osMutexDef_t mutexDef = {0}; /* Required but with no meaningful
                                   * content in this case */
+#endif
 
     if (pMutexHandle != NULL) {
         errorCode = U_ERROR_COMMON_PLATFORM;
+#ifdef CMSIS_V2
+        *pMutexHandle = (uPortMutexHandle_t) osMutexNew (NULL);
+#else
         *pMutexHandle = (uPortMutexHandle_t) osMutexCreate(&mutexDef);
+#endif
         if (*pMutexHandle != NULL) {
             errorCode = U_ERROR_COMMON_SUCCESS;
         }

@@ -42,7 +42,11 @@
 #include "task.h"     // For taskENTER_CRITICAL()/taskEXIT_CRITICAL()
 #include "stm32f437xx.h"
 #include "stm32f4xx_hal.h"
+#ifdef CMSIS_V2
+# include "cmsis_os2.h"
+#else
 #include "cmsis_os.h"
+#endif
 
 #include "stdio.h"
 
@@ -123,7 +127,13 @@ int32_t uPortPlatformStart(void (*pEntryPoint)(void *),
                            int32_t priority)
 {
     uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+#ifdef CMSIS_V2
+    osThreadId_t threadId;
+    osThreadAttr_t attr = {0};
+#else
     osThreadId threadId;
+    osThreadDef_t threadDef = {0};
+#endif
 
     if (pEntryPoint != NULL) {
         errorCode = U_ERROR_COMMON_PLATFORM;
@@ -141,9 +151,23 @@ int32_t uPortPlatformStart(void (*pEntryPoint)(void *),
 
         // Create the task, noting that the stack
         // size is in words not bytes
-        osThreadDef(EntryPoint, (os_pthread) pEntryPoint,
-                    priority, 0, stackSizeBytes >> 2);
-        threadId = osThreadCreate(osThread(EntryPoint), pParameter);
+#ifdef CMSIS_V2
+        osKernelInitialize();
+
+        attr.name = "EntryPoint";
+        attr.priority = priority;
+        // For the CMSIS V2 port atop FreeRTOS the stack size is in bytes
+        attr.stack_size = stackSizeBytes;
+        threadId = osThreadNew(pEntryPoint, pParameter, &attr);
+#else
+        threadDef.name = "EntryPoint";
+        threadDef.pthread = (void (*) (void const *)) pEntryPoint;
+        threadDef.tpriority = priority;
+        threadDef.instances = 0;
+        // Stack size is in words here, not bytes
+        threadDef.stacksize = stackSizeBytes >> 2;
+        threadId = osThreadCreate(&threadDef, pParameter);
+#endif
 
         if (threadId != NULL) {
             // Start the scheduler.
