@@ -69,7 +69,7 @@
 // for the module is likely different that from the MCU: check
 // the data sheet for the module to determine the mapping.
 
-#if defined(U_CFG_TEST_CELL_MODULE_TYPE) && defined(U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN)
+#if defined(U_CFG_TEST_CELL_MODULE_TYPE) && defined(U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN) && defined(U_CFG_TEST_CELL_LOCATE)
 // DEVICE i.e. module/chip configuration: in this case a cellular
 // module connected via UART
 static const uDeviceCfg_t gDeviceCfg = {
@@ -250,7 +250,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocCellLocate")
 
     uPortLog("Done.\n");
 
-#if defined(U_CFG_TEST_CELL_MODULE_TYPE) && defined (U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN)
+#if defined(U_CFG_TEST_CELL_MODULE_TYPE) && defined(U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN) && defined(U_CFG_TEST_CELL_LOCATE)
     // For u-blox internal testing only
     EXAMPLE_FINAL_STATE(location.timeUtc > 0);
 #endif

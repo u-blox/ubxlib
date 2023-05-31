@@ -76,7 +76,7 @@
  */
 static const uLocationTestCfgList_t gCfgListNone = {0};
 
-#ifdef U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN
+#if defined(U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN) && defined(U_CFG_TEST_CELL_LOCATE)
 /** Location assist for Cell locate.
  */
 static uLocationAssist_t gLocationAssistCellLocate = {500000, // desiredAccuracyMillimetres
@@ -133,10 +133,10 @@ static const uLocationTestCfg_t gCfgCloudLocate = {U_LOCATION_TYPE_CLOUD_CLOUD_L
 
 /** Location configuration list for a cellular network.
  */
-#if defined (U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN) && defined (U_CFG_TEST_CLOUD_LOCATE) && defined (U_CFG_APP_CLOUD_LOCATE_MQTT_CLIENT_ID)
+#if defined (U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN) && defined(U_CFG_TEST_CELL_LOCATE) && defined (U_CFG_TEST_CLOUD_LOCATE) && defined (U_CFG_APP_CLOUD_LOCATE_MQTT_CLIENT_ID)
 //lint -e{785} Suppress too few initialisers
 static const uLocationTestCfgList_t gCfgListCell = {2, {&gCfgCellLocate, &gCfgCloudLocate}};
-#elif defined (U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN)
+#elif defined (U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN) && defined(U_CFG_TEST_CELL_LOCATE)
 //lint -e{785} Suppress too few initialisers
 static const uLocationTestCfgList_t gCfgListCell = {1, {&gCfgCellLocate}};
 #elif defined (U_CFG_TEST_CLOUD_LOCATE) && defined (U_CFG_APP_CLOUD_LOCATE_MQTT_CLIENT_ID)
