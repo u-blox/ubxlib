@@ -763,7 +763,7 @@ U_PORT_TEST_FUNCTION("[httpClient]", "httpClient")
                 }
             } // for (HTTP/HTTPS instance)
 
-            U_TEST_PRINT_LINE("closing HTTP instances...", pathBuffer);
+            U_TEST_PRINT_LINE("closing HTTP instances...");
             for (size_t y = 0; y < httpClientMaxNumConn; y++) {
                 uHttpClientClose(gpHttpContext[y]);
             }
