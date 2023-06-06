@@ -24,7 +24,7 @@
 #include <Arduino.h>
 #include <string.h>
 #include <stdio.h>
-#include <driver/uart.h>
+#include <driver/uart.h> //For using UART_NUM_1, UART_NUM_2 and UART_NUM_*
 
 #include "ubxlib.h"
 
