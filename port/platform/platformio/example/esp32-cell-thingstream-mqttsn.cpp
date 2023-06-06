@@ -17,7 +17,7 @@
 /*
  *
  * A simple demo application showing how to set up
- * a mqtt-sn connection to thingstream using the ubxlib.
+ * a MQTT-SN connection to thingstream using the ubxlib.
  * By: Jan-Ole Giebel
  *
 */
@@ -131,7 +131,7 @@ void loop()
                     if (uMqttClientSnSubscribeNormalTopic(pContext, topic,
                                              U_MQTT_QOS_EXACTLY_ONCE, &topicName)) {
                         uPortLog("----------------------------------------------\n");
-                        uPortLog("To view the mqtt messages from this device use:\n");
+                        uPortLog("To view the mqtt messages from this device use (Do not forget to add your thinstream MQTT-Client credentials!):\n");
                         uPortLog("mosquitto_sub -h %s -t %s -v\n", BROKER_NAME, topic);
                         uPortLog("To send mqtt messages to this device use:\n");
                         uPortLog("mosquitto_pub -h %s -t %s -m message\n", BROKER_NAME, topic);
