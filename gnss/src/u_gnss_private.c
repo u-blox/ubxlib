@@ -2212,7 +2212,29 @@ int32_t uGnssPrivateStreamPeekRingBuffer(uGnssPrivateInstance_t *pInstance,
                                    offset, maxTimeMs, false);
 }
 
-// Send a UBX format message over UART or I2C or virtual serial.
+// Send raw bytes over UART or I2C or SPI or virtual serial.
+int32_t uGnssPrivateSendOnlyStreamRaw(uGnssPrivateInstance_t *pInstance,
+                                      const char *pBuffer, size_t size)
+{
+    int32_t errorCodeOrSentLength = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+
+    if (pInstance != NULL) {
+        if ((uGnssPrivateGetStreamType(pInstance->transportType) >= 0) &&
+            (pBuffer != NULL) && (size > 0)) {
+
+            U_PORT_MUTEX_LOCK(pInstance->transportMutex);
+
+            errorCodeOrSentLength = sendMessageStream(pInstance, pBuffer, size,
+                                                      pInstance->printUbxMessages);
+
+            U_PORT_MUTEX_UNLOCK(pInstance->transportMutex);
+        }
+    }
+
+    return errorCodeOrSentLength;
+}
+
+// Send a UBX format message over UART or I2C or SPI or virtual serial.
 int32_t uGnssPrivateSendOnlyStreamUbxMessage(uGnssPrivateInstance_t *pInstance,
                                              int32_t messageClass,
                                              int32_t messageId,
@@ -2314,7 +2336,7 @@ int32_t uGnssPrivateSendOnlyCheckStreamUbxMessage(uGnssPrivateInstance_t *pInsta
     return errorCodeOrLength;
 }
 
-// Receive an arbitrary message over UART or I2C.
+// Receive an arbitrary message over UART or I2C or SPI or Virtual Serial.
 int32_t uGnssPrivateReceiveStreamMessage(uGnssPrivateInstance_t *pInstance,
                                          uGnssPrivateMessageId_t *pPrivateMessageId,
                                          int32_t readHandle,

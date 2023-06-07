@@ -45,9 +45,9 @@ extern "C" {
  * #U_GNSS_MSG_RECEIVER_MAX_NUM of these running at any one time.
  * Message handlers callbacks are called mostly-recently-added first.
  *
- * IMPORTANT: this currently only works for GNSS chips directly
- * connected to this MCU, it does NOT work for GNSS chips connected
- * via an intermediate [e.g. cellular] module.
+ * IMPORTANT: this does not work for modules connected via an AT
+ * transport, please instead open a Virtual Serial connection for
+ * that case (see uCellMuxAddChannel()).
  *
  * @param[in] pInstance          a pointer to the GNSS instance, cannot
  *                               be NULL.
