@@ -156,6 +156,9 @@ U_INLINE void uPortExitCritical()
 // Get the timezone offset.
 int32_t uPortGetTimezoneOffsetSeconds()
 {
+    int32_t offset = 0;
+
+#ifndef CONFIG_MINIMAL_LIBC
     struct tm utcTm;
     time_t utc;
     time_t mktimeSays;
@@ -169,8 +172,10 @@ int32_t uPortGetTimezoneOffsetSeconds()
     // mktime will have subtracted the timezone from what it was
     // given in order to return local time, hence the timezone
     // offset is the difference
+    offset = (int32_t) (utc - mktimeSays);
+#endif
 
-    return (int32_t) (utc - mktimeSays);
+    return offset;
 }
 
 static int ubxlib_preinit(const struct device *arg)

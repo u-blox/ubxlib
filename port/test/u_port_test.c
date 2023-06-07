@@ -2335,10 +2335,6 @@ U_PORT_TEST_FUNCTION("[port]", "portGmtime_r")
     U_PORT_TEST_ASSERT(heapUsed <= 0);
 }
 
-// Can't do this test on Zephyr with the minimal clib as
-// it doesn't have a gmtime(), or a concept of timezone
-// for that matter
-# if !defined(__ZEPHYR__) && !defined(CONFIG_MINIMAL_LIBC)
 /** Test: uPortGetTimezoneOffsetSeconds().
  */
 U_PORT_TEST_FUNCTION("[port]", "portGetTimezoneOffsetSeconds")
@@ -2394,7 +2390,6 @@ U_PORT_TEST_FUNCTION("[port]", "portGetTimezoneOffsetSeconds")
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
 }
-#endif // __ZEPHYR__
 
 #if (U_CFG_TEST_PIN_A >= 0) && (U_CFG_TEST_PIN_B >= 0) && \
     (U_CFG_TEST_PIN_C >= 0)
