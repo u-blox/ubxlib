@@ -256,39 +256,45 @@ U_PORT_TEST_FUNCTION("[bleNus]", "bleNusClient")
  */
 U_PORT_TEST_FUNCTION("[bleNus]", "bleNusServer")
 {
+    int32_t x;
     preamble(U_BLE_CFG_ROLE_PERIPHERAL);
     U_TEST_PRINT_LINE("init NUS Service");
-    U_PORT_TEST_ASSERT(uBleNusInit(gDeviceHandle, NULL, peerIncoming) == 0);
-    U_TEST_PRINT_LINE("init advertising data");
-    uint8_t manufData[] = {1, 2, 3, 4};
-    uint8_t advData[32];
-    uint8_t respData[32];
-    gAdvCfg.pRespData = respData;
-    gAdvCfg.respDataLength = uBleNusSetAdvData(respData, sizeof(respData));
-    gAdvCfg.pAdvData = advData;
-    gAdvCfg.advDataLength = uBleGapSetAdvData(INT_SERVER_NAME,
-                                              manufData, sizeof(manufData),
-                                              advData, sizeof(advData));
-    U_PORT_TEST_ASSERT(gAdvCfg.respDataLength > 0 && gAdvCfg.advDataLength > 0);
-    U_TEST_PRINT_LINE("start advertising");
-    U_PORT_TEST_ASSERT(uBleGapAdvertiseStart(gDeviceHandle, &gAdvCfg) == 0);
-    U_TEST_PRINT_LINE("waiting for client connection");
-    uint32_t waitCnt = 0;
-    while (!HAS_RESPONSE && waitCnt++ < PEER_WAIT_TIME_S) {
-        uPortTaskBlock(1000);
-    }
-    if (HAS_RESPONSE) {
-        U_TEST_PRINT_LINE("client sent: %s", gPeerResponse);
-        U_TEST_PRINT_LINE("sending response: %s", INT_SERVER_COMMAND);
-        U_PORT_TEST_ASSERT(uBleNusWrite(INT_SERVER_COMMAND,
-                                        (uint8_t)(strlen(INT_SERVER_COMMAND) + 1)) == 0);
-        // Wait for client disconnect
-        uPortTaskBlock(3000);
+    x = uBleNusInit(gDeviceHandle, NULL, peerIncoming);
+    U_PORT_TEST_ASSERT((x == 0) || (x == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED));
+    if (x == 0) {
+        U_TEST_PRINT_LINE("init advertising data");
+        uint8_t manufData[] = {1, 2, 3, 4};
+        uint8_t advData[32];
+        uint8_t respData[32];
+        gAdvCfg.pRespData = respData;
+        gAdvCfg.respDataLength = uBleNusSetAdvData(respData, sizeof(respData));
+        gAdvCfg.pAdvData = advData;
+        gAdvCfg.advDataLength = uBleGapSetAdvData(INT_SERVER_NAME,
+                                                  manufData, sizeof(manufData),
+                                                  advData, sizeof(advData));
+        U_PORT_TEST_ASSERT(gAdvCfg.respDataLength > 0 && gAdvCfg.advDataLength > 0);
+        U_TEST_PRINT_LINE("start advertising");
+        U_PORT_TEST_ASSERT(uBleGapAdvertiseStart(gDeviceHandle, &gAdvCfg) == 0);
+        U_TEST_PRINT_LINE("waiting for client connection");
+        uint32_t waitCnt = 0;
+        while (!HAS_RESPONSE && waitCnt++ < PEER_WAIT_TIME_S) {
+            uPortTaskBlock(1000);
+        }
+        if (HAS_RESPONSE) {
+            U_TEST_PRINT_LINE("client sent: %s", gPeerResponse);
+            U_TEST_PRINT_LINE("sending response: %s", INT_SERVER_COMMAND);
+            U_PORT_TEST_ASSERT(uBleNusWrite(INT_SERVER_COMMAND,
+                                            (uint8_t)(strlen(INT_SERVER_COMMAND) + 1)) == 0);
+            // Wait for client disconnect
+            uPortTaskBlock(3000);
+        } else {
+            U_TEST_PRINT_LINE("No client response before timeout");
+        }
     } else {
-        U_TEST_PRINT_LINE("No client response before timeout");
+        U_TEST_PRINT_LINE("module does not support NUS server, not testing it");
     }
     postamble();
-    U_PORT_TEST_ASSERT(HAS_RESPONSE);
+    U_PORT_TEST_ASSERT((x == (int32_t) (U_ERROR_COMMON_NOT_SUPPORTED)) || HAS_RESPONSE);
 }
 
 #endif

@@ -42,7 +42,10 @@ def question(text):
 
 def download(url, file):
     """Download a file from URL"""
-    response = requests.get(url, stream=True)
+    # We add the licence agreement text since some sites (e.g. Segger)
+    # put up a banner asking you to agree before downloading their tools
+    data = {'stream': 'True', 'accept_license_agreement': 'accepted'}
+    response = requests.get(url, data=data)
     content_length = response.headers.get("content-length")
 
     if content_length:

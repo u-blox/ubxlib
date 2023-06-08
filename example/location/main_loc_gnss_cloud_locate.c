@@ -238,103 +238,108 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocGnssCloudLocate")
     returnCode = uDeviceOpen(&gDeviceCfg, &devHandle);
     uPortLog("Opened cellular device with return code %d.\n", returnCode);
 
-    // You may configure the cellular device as required
-    // here using any of the cell API calls.
+    if (returnCode == 0) {
+        // You may configure the cellular device as required
+        // here using any of the cell API calls.
 
-    // Bring up the cellular network layer
-    uPortLog("Bringing up cellular...\n");
-    if (uNetworkInterfaceUp(devHandle, U_NETWORK_TYPE_CELL,
-                            &gNetworkCfgCell) == 0) {
+        // Bring up the cellular network layer
+        uPortLog("Bringing up cellular...\n");
+        if (uNetworkInterfaceUp(devHandle, U_NETWORK_TYPE_CELL,
+                                &gNetworkCfgCell) == 0) {
 
-        // You may use the cellular network, as normal,
-        // at any time, for example connect and
-        // send data etc.
+            // You may use the cellular network, as normal,
+            // at any time, for example connect and
+            // send data etc.
 
-        // Bring up the GNSS network layer
-        uPortLog("Bringing up GNSS...\n");
-        if (uNetworkInterfaceUp(devHandle, U_NETWORK_TYPE_GNSS,
-                                &gNetworkCfgGnss) == 0) {
+            // Bring up the GNSS network layer
+            uPortLog("Bringing up GNSS...\n");
+            if (uNetworkInterfaceUp(devHandle, U_NETWORK_TYPE_GNSS,
+                                    &gNetworkCfgGnss) == 0) {
 
-            // Here you may use the GNSS API with the device handle
-            // if you wish to configure the GNSS chip etc.
+                // Here you may use the GNSS API with the device handle
+                // if you wish to configure the GNSS chip etc.
 
-            // To use Cloud Locate we need to populate the
-            // locationAssist structure passed to the location
-            // API to tell it what to do.
+                // To use Cloud Locate we need to populate the
+                // locationAssist structure passed to the location
+                // API to tell it what to do.
 
-            // Set the number of satellites that GNSS must be able
-            // to see before it is worth including that measurement
-            // in the estimate
-            locationAssist.svsThreshold = SATELLITES_MIN;
-            // Cloud Locate requires an MQTT Now connection to a thing
-            // in your Thingstream account that is enabled for the
-            // u-blox Cloud Locate service
-            locationAssist.pMqttClientContext = pUMqttClientOpen(devHandle, NULL);
-            if (locationAssist.pMqttClientContext != NULL) {
-                // Populate the MQTT connection structure with the
-                // credentials of your thing
-                mqttConnection.pBrokerNameStr = "mqtt.thingstream.io";
-                mqttConnection.pClientIdStr = gpMyThingstreamClientId;
-                mqttConnection.pUserNameStr = gpMyThingstreamUsername;
-                mqttConnection.pPasswordStr = gpMyThingstreamPassword;
+                // Set the number of satellites that GNSS must be able
+                // to see before it is worth including that measurement
+                // in the estimate
+                locationAssist.svsThreshold = SATELLITES_MIN;
+                // Cloud Locate requires an MQTT Now connection to a thing
+                // in your Thingstream account that is enabled for the
+                // u-blox Cloud Locate service
+                locationAssist.pMqttClientContext = pUMqttClientOpen(devHandle, NULL);
+                if (locationAssist.pMqttClientContext != NULL) {
+                    // Populate the MQTT connection structure with the
+                    // credentials of your thing
+                    mqttConnection.pBrokerNameStr = "mqtt.thingstream.io";
+                    mqttConnection.pClientIdStr = gpMyThingstreamClientId;
+                    mqttConnection.pUserNameStr = gpMyThingstreamUsername;
+                    mqttConnection.pPasswordStr = gpMyThingstreamPassword;
 
-                // Make the MQTT connection to Thingstream
-                uPortLog("Connecting to Thingstream MQTT broker \"%s\"...\n",
-                         mqttConnection.pBrokerNameStr);
-                if (uMqttClientConnect((uMqttClientContext_t *) locationAssist.pMqttClientContext,
-                                       &mqttConnection) == 0) {
-                    // Note: in order to make this a self-contained example we
-                    // read back our location from the Cloud Locate service by
-                    // setting the locationAssist.pClientIdStr field to the client
-                    // ID of your Thingstream account and passing a location structure
-                    // to the uLocationGet() call; normally with Cloud Locate you
-                    // would not bother with this as the point is that the cloud-side
-                    // knows where the device is, the device itself does not care
-                    locationAssist.pClientIdStr = gpMyThingstreamClientId;
+                    // Make the MQTT connection to Thingstream
+                    uPortLog("Connecting to Thingstream MQTT broker \"%s\"...\n",
+                             mqttConnection.pBrokerNameStr);
+                    if (uMqttClientConnect((uMqttClientContext_t *) locationAssist.pMqttClientContext,
+                                           &mqttConnection) == 0) {
+                        // Note: in order to make this a self-contained example we
+                        // read back our location from the Cloud Locate service by
+                        // setting the locationAssist.pClientIdStr field to the client
+                        // ID of your Thingstream account and passing a location structure
+                        // to the uLocationGet() call; normally with Cloud Locate you
+                        // would not bother with this as the point is that the cloud-side
+                        // knows where the device is, the device itself does not care
+                        locationAssist.pClientIdStr = gpMyThingstreamClientId;
 
-                    // Now put the lot together by running the Cloud Locate service,
-                    // giving it the location assist structure
-                    if (uLocationGet(devHandle,
-                                     U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE,
-                                     &locationAssist, NULL,
-                                     &location, NULL) == 0) {
-                        printLocation(location.latitudeX1e7, location.longitudeX1e7);
+                        // Now put the lot together by running the Cloud Locate service,
+                        // giving it the location assist structure
+                        if (uLocationGet(devHandle,
+                                         U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE,
+                                         &locationAssist, NULL,
+                                         &location, NULL) == 0) {
+                            printLocation(location.latitudeX1e7, location.longitudeX1e7);
+                        } else {
+                            uPortLog("Unable to establish location!\n");
+                        }
+
+                        // When finished with the MQTT client
+                        uMqttClientDisconnect((uMqttClientContext_t *) locationAssist.pMqttClientContext);
                     } else {
-                        uPortLog("Unable to establish location!\n");
+                        uPortLog("Unable to connect to the Thingstream MQTT broker!\n");
                     }
 
-                    // When finished with the MQTT client
-                    uMqttClientDisconnect((uMqttClientContext_t *) locationAssist.pMqttClientContext);
+                    // When finished with the MQTT context
+                    uMqttClientClose((uMqttClientContext_t *) locationAssist.pMqttClientContext);
                 } else {
-                    uPortLog("Unable to connect to the Thingstream MQTT broker!\n");
+                    uPortLog("Unable to create an MQTT context!\n");
                 }
 
-                // When finished with the MQTT context
-                uMqttClientClose((uMqttClientContext_t *) locationAssist.pMqttClientContext);
+                // When finished with the GNSS network layer
+                uPortLog("Taking down GNSS...\n");
+                uNetworkInterfaceDown(devHandle, U_NETWORK_TYPE_GNSS);
             } else {
-                uPortLog("Unable to create an MQTT context!\n");
+                uPortLog("Unable to bring up GNSS!\n");
             }
 
-            // When finished with the GNSS network layer
-            uPortLog("Taking down GNSS...\n");
-            uNetworkInterfaceDown(devHandle, U_NETWORK_TYPE_GNSS);
+            // When finished with the cellular network layer
+            uPortLog("Taking down cellular network...\n");
+            uNetworkInterfaceDown(devHandle, U_NETWORK_TYPE_CELL);
+
         } else {
-            uPortLog("Unable to bring up GNSS!\n");
+            uPortLog("Unable to bring up the cellular network!\n");
         }
 
-        // When finished with the cellular network layer
-        uPortLog("Taking down cellular network...\n");
-        uNetworkInterfaceDown(devHandle, U_NETWORK_TYPE_CELL);
+        // Close the device
+        // Note: we don't power the device down here in order
+        // to speed up testing; you may prefer to power it off
+        // by setting the second parameter to true.
+        uDeviceClose(devHandle, false);
 
     } else {
-        uPortLog("Unable to bring up the cellular network!\n");
+        uPortLog("Unable to bring up the cellular device!\n");
     }
-
-    // Close the device
-    // Note: we don't power the device down here in order
-    // to speed up testing; you may prefer to power it off
-    // by setting the second parameter to true.
-    uDeviceClose(devHandle, false);
 
     // Tidy up
     uDeviceDeinit();

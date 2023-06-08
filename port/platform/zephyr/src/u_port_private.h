@@ -66,6 +66,19 @@ void uPortPrivateDeinit(void);
  */
 const struct device *pUPortPrivateGetGpioDevice(int32_t pin);
 
+/** Get the ubxlib pin number of a given GPIO device and pin.
+ *
+ * @param pGpioDevice   a pointer to the Zephyr GPIO device,
+ *                      derived from the device tree using, e.g.
+ *                      as returned by pUPortPrivateGetGpioDevice().
+ * @param pinWithinPort the pin number within the GPIO device,
+ *                      expected to be 0 to #GPIO_MAX_PINS_PER_PORT.
+ * @return              the pin number in ubxlib terms, e.g.
+ *                      as passed to pUPortPrivateGetGpioDevice().
+ */
+int32_t uPortPrivateGetGpioPort(const struct device *pGpioDevice,
+                                int32_t pinWithinPort);
+
 /* ----------------------------------------------------------------
  * FUNCTIONS: TIMERS
  * -------------------------------------------------------------- */

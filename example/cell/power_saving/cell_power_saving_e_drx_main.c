@@ -186,68 +186,73 @@ U_PORT_TEST_FUNCTION("[example]", "exampleCellPowerSavingEDrx")
     returnCode = uDeviceOpen(&gDeviceCfg, &devHandle);
     uPortLog("### Opened device with return code %d.\n", returnCode);
 
-    // Set a callback for when the E-DRX parameters are sent
-    // by the network
-    uCellPwrSetEDrxCallback(devHandle, callback, NULL);
+    if (returnCode == 0) {
+        // Set a callback for when the E-DRX parameters are sent
+        // by the network
+        uCellPwrSetEDrxCallback(devHandle, callback, NULL);
 
-    // Set the primary RAT to MY_RAT
-    if (uCellCfgGetRat(devHandle, 0) != MY_RAT) {
-        if (uCellCfgSetRatRank(devHandle, MY_RAT, 0) != 0) {
-            onMyRat = false;
-        }
-    }
-
-    if (onMyRat) {
-        // Set the requested E-DRX values; note that we don't
-        // ask for a specific paging window value as not all
-        // modules support that
-        uPortLog("## Requesting E-DRX of %d seconds...\n");
-        x = uCellPwrSetRequestedEDrx(devHandle, MY_RAT,
-                                     true, EDRX_SECONDS, -1);
-        if (x == 0) {
-            // Reboot the module, if required, to apply the settings
-            if (uCellPwrRebootIsRequired(devHandle)) {
-                uCellPwrReboot(devHandle, NULL);
+        // Set the primary RAT to MY_RAT
+        if (uCellCfgGetRat(devHandle, 0) != MY_RAT) {
+            if (uCellCfgSetRatRank(devHandle, MY_RAT, 0) != 0) {
+                onMyRat = false;
             }
+        }
 
-            // Bring up the network
-            uPortLog("### Bringing up the network...\n");
-            if (uNetworkInterfaceUp(devHandle, U_NETWORK_TYPE_CELL,
-                                    &gNetworkCfg) == 0) {
-
-                // Here you would normally do useful stuff; for the
-                // purposes of this simple E-DRX example,
-                // we just wait for our requested E-DRX settings
-                // to be agreed by the network.
-                while (!gEDrxSet && (x < 30)) {
-                    uPortTaskBlock(1000);
-                    x++;
+        if (onMyRat) {
+            // Set the requested E-DRX values; note that we don't
+            // ask for a specific paging window value as not all
+            // modules support that
+            uPortLog("## Requesting E-DRX of %d seconds...\n");
+            x = uCellPwrSetRequestedEDrx(devHandle, MY_RAT,
+                                         true, EDRX_SECONDS, -1);
+            if (x == 0) {
+                // Reboot the module, if required, to apply the settings
+                if (uCellPwrRebootIsRequired(devHandle)) {
+                    uCellPwrReboot(devHandle, NULL);
                 }
 
-                if (gEDrxSet) {
-                    uPortLog("### The E-DRX settings have been agreed.\n");
+                // Bring up the network
+                uPortLog("### Bringing up the network...\n");
+                if (uNetworkInterfaceUp(devHandle, U_NETWORK_TYPE_CELL,
+                                        &gNetworkCfg) == 0) {
+
+                    // Here you would normally do useful stuff; for the
+                    // purposes of this simple E-DRX example,
+                    // we just wait for our requested E-DRX settings
+                    // to be agreed by the network.
+                    while (!gEDrxSet && (x < 30)) {
+                        uPortTaskBlock(1000);
+                        x++;
+                    }
+
+                    if (gEDrxSet) {
+                        uPortLog("### The E-DRX settings have been agreed.\n");
+                    } else {
+                        uPortLog("### Unable to switch E-DRX on!\n");
+                    }
+
+                    // When finished with the network layer
+                    uPortLog("### Taking down network...\n");
+                    uNetworkInterfaceDown(devHandle, U_NETWORK_TYPE_CELL);
                 } else {
-                    uPortLog("### Unable to switch E-DRX on!\n");
+                    uPortLog("### Unable to bring up the network!\n");
                 }
-
-                // When finished with the network layer
-                uPortLog("### Taking down network...\n");
-                uNetworkInterfaceDown(devHandle, U_NETWORK_TYPE_CELL);
             } else {
-                uPortLog("### Unable to bring up the network!\n");
+                uPortLog("### E-DRX is not supported!\n");
             }
         } else {
-            uPortLog("### E-DRX is not supported!\n");
+            uPortLog("### Unable to set primary RAT to %d!\n", MY_RAT);
         }
-    } else {
-        uPortLog("### Unable to set primary RAT to %d!\n", MY_RAT);
-    }
 
-    // Close the device
-    // Note: we don't power the device down here in order
-    // to speed up testing; you may prefer to power it off
-    // by setting the second parameter to true.
-    uDeviceClose(devHandle, false);
+        // Close the device
+        // Note: we don't power the device down here in order
+        // to speed up testing; you may prefer to power it off
+        // by setting the second parameter to true.
+        uDeviceClose(devHandle, false);
+
+    } else {
+        uPortLog("### Unable to bring up the device!\n");
+    }
 
     // Tidy up
     uDeviceDeinit();
@@ -265,16 +270,18 @@ U_PORT_TEST_FUNCTION("[example]", "exampleCellPowerSavingEDrx")
         uPortInit();
         uDeviceInit();
         returnCode = uDeviceOpen(&gDeviceCfg, &devHandle);
-        uPortLog("### Added network with return code %d.\n", returnCode);
-        uCellPwrSetRequestedEDrx(devHandle, MY_RAT, false, -1, -1);
-        // Reboot the module, if required, to apply the settings
-        if (uCellPwrRebootIsRequired(devHandle)) {
-            uCellPwrReboot(devHandle, NULL);
+        if (returnCode == 0) {
+            uPortLog("### Added network with return code %d.\n", returnCode);
+            uCellPwrSetRequestedEDrx(devHandle, MY_RAT, false, -1, -1);
+            // Reboot the module, if required, to apply the settings
+            if (uCellPwrRebootIsRequired(devHandle)) {
+                uCellPwrReboot(devHandle, NULL);
+            }
+            // Close the device
+            // Note: we don't power the device down here in order
+            // to speed up testing.
+            uDeviceClose(devHandle, false);
         }
-        // Close the device
-        // Note: we don't power the device down here in order
-        // to speed up testing.
-        uDeviceClose(devHandle, false);
         uDeviceDeinit();
         uPortDeinit();
     }

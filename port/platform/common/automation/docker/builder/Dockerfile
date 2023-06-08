@@ -53,39 +53,42 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
 # Install Nordic command-line tools
 RUN apt-get update && apt-get install -y wget && \
     if [ "$(arch)" != "aarch64" ]; then                                \
-        wget -q -P /tmp https://nsscprodmedia.blob.core.windows.net/prod/software-and-other-downloads/desktop-software/nrf-command-line-tools/sw/versions-10-x-x/10-18-1/nrf-command-line-tools_10.18.1_amd64.deb && \
-        apt-get update && apt-get install --no-install-recommends -y /tmp/nrf-command-line-tools_10.18.1_amd64.deb;                                                                                               \
+        wget -q -P /tmp https://nsscprodmedia.blob.core.windows.net/prod/software-and-other-downloads/desktop-software/nrf-command-line-tools/sw/versions-10-x-x/10-21-0/nrf-command-line-tools_10.21.0_amd64.deb && \
+        apt-get update && apt-get install --no-install-recommends -y /tmp/nrf-command-line-tools_10.21.0_amd64.deb;                                                                                               \
     else                                                                                                                                                                                                          \
-        wget -q -P /tmp https://nsscprodmedia.blob.core.windows.net/prod/software-and-other-downloads/desktop-software/nrf-command-line-tools/sw/versions-10-x-x/10-18-1/nrf-command-line-tools_10.18.1_arm64.deb && \
-        apt-get update && apt-get install --no-install-recommends -y /tmp/nrf-command-line-tools_10.18.1_arm64.deb;                                                                                               \
+        wget -q -P /tmp https://nsscprodmedia.blob.core.windows.net/prod/software-and-other-downloads/desktop-software/nrf-command-line-tools/sw/versions-10-x-x/10-21-0/nrf-command-line-tools_10.21.0_arm64.deb && \
+        apt-get update && apt-get install --no-install-recommends -y /tmp/nrf-command-line-tools_10.21.0_arm64.deb;                                                                                               \
     fi &&                                                                                                                                                                                                         \
 # Cleanup
     apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# Install Segger tools
-# Segger put an "accept our terms and conditions" page
-# in front of the download of their tools; fortunately
-# we can download a ZIP file from Nordic which contains
-# the tools
-RUN apt-get update && apt-get install -y wget unzip tar &&                          \
+# Install Segger tools: this is a bit of a nightmare...
+RUN apt-get update && apt-get install -y wget &&                                    \
 # apt-get needs this to allow it to create temporary files
     chmod 1777 /tmp &&                                                              \
     if [ "$(arch)" != "aarch64" ]; then                                             \
-        wget -q -P /tmp https://nsscprodmedia.blob.core.windows.net/prod/software-and-other-downloads/desktop-software/nrf-command-line-tools/sw/versions-10-x-x/10-18-1/nrf-command-line-tools-10.18.1_linux-amd64.tar.gz &&  \
-        tar -xf /tmp/nrf-command-line-tools-10.18.1_linux-amd64.tar.gz -C /tmp &&   \
-# use dpkg to unpack the .deb file and then switch off post-install steps that will fail 'cos this is Docker and udevadm stuff doesn't really work 
-        dpkg --unpack /tmp/JLink_Linux_V780c_x86_64.deb;                            \
+        wget -q --post-data="accept_license_agreement=accepted" -P /tmp https://www.segger.com/downloads/jlink/JLink_Linux_V788b_x86_64.deb && \
+# use dpkg to unpack the .deb file, but don't configure quite yet
+        dpkg --unpack /tmp/JLink_Linux_V788b_x86_64.deb;                            \
     else                                                                            \
-        wget -q  -P /tmp https://nsscprodmedia.blob.core.windows.net/prod/software-and-other-downloads/desktop-software/nrf-command-line-tools/sw/versions-10-x-x/10-18-1/nrf-command-line-tools-10.18.1_linux-arm64.tar.gz && \
-        tar -xf /tmp/nrf-command-line-tools-10.18.1_linux-arm64.tar.gz  -C /tmp &&  \
-# use dpkg to unpack the .deb file and then switch off post-install steps that will fail 'cos this is Docker and udevadm stuff doesn't really work 
-        dpkg --unpack /tmp/JLink_Linux_V780c_arm64.deb;                             \
+        wget -q --post-data="accept_license_agreement=accepted" -P /tmp https://www.segger.com/downloads/jlink/JLink_Linux_V788b_arm64.deb && \
+# use dpkg to unpack the .deb file, but don't configure quite yet.
+        dpkg --unpack /tmp/JLink_Linux_V788b_arm64.deb;                             \
     fi &&                                                                           \
+# the JLink installer includes a post-install step that will fail 'cos this is Docker
+# and udevadm stuff doesn't really work; we fix that by deleting the post install step
+# before calling dpkg to configure JLink
     rm /var/lib/dpkg/info/jlink.postinst -f &&                                      \
-# true on the end because this will emit an error code (something in the Segger installation file) that we fix in the next line
-    dpkg --configure jlink || true &&                                               \
-# Fix broken depedencies in the Segger installation file
-    apt --fix-broken install -y &&                                                  \
+# the JLink tools end up being dependent on a shed-load of GUI stuff that is utterly
+# unnecessary and not available, hence we call dpkg with --force-all to make it ignore them
+    dpkg --configure --force-all jlink &&                                           \
+# Future installations are now stuck, since apt cannot be made to ignore these
+# dependencies: the only way to fix this is to remove the dependencies from
+# /var/lib/dpkg/status: the very long SED command below creates the edited file,
+# looking for each offending lib dependency by exact name (e.g. "libxcb-render0") in
+# the "Depends" line inside the "jlink" section of the file
+    sed -r '/^Package:.*jlink/,/^Depends:/{/^Depends:/{s/libxcb-render0[^,\n]*[,\n]//};{s/libxcb-render-util0[^,\n]*[,\n]//};{s/libxcb-shape0[^,\n]*[,\n]//};{s/libxcb-randr0[^,\n]*[,\n]//};{s/libxcb-xfixes0[^,\n]*[,\n]//};{s/libxcb-sync1[^,\n]*[,\n]//};{s/libxcb-shm0[^,\n]*[,\n]//};{s/libxcb-icccm4[^,\n]*[,\n]//};{s/libxcb-keysyms1[^,\n]*[,\n]//};{s/libxcb-image0[^,\n]*[,\n]//};{s/libxkbcommon0[^,\n]*[,\n]//};{s/libxkbcommon-x11-0[^,\n]*[,\n]//};{s/libx11-xcb1 [^,\n]*[,\n]//};{s/libsm6 [^,\n]*[,\n]//};{s/libice6 [^,\n]*[,\n]//}}' /var/lib/dpkg/status > dpkg_status_mod && \
+    cp dpkg_status_mod /var/lib/dpkg/status &&                                      \
 # Cleanup
     apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
@@ -107,8 +110,10 @@ WORKDIR /workdir
 # Add missing Python modules and apk packages here
 #***************************************************
 
+# Note: there is a bug in version 2.2.1 of invoke which stops it loading module directories
+# correctly, hence the fixing to version 2.0.0 below, which is known to work
 RUN chmod 1777 /tmp && \
-    pip3 install pyserial pylint psutil pylink-square requests_toolbelt rpyc debugpy invoke coloredlogs verboselogs && \
+    pip3 install pyserial pylint psutil pylink-square requests_toolbelt rpyc debugpy invoke==2.0.0 coloredlogs verboselogs && \
     apt-get update && apt-get install -y --no-install-recommends  \
         usbutils gawk iputils-ping openssh-client socat \
 # Needed for OpenOCD

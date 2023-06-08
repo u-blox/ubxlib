@@ -271,12 +271,46 @@ void uPortPrivateDeinit()
     }
 }
 
+// Get the ubxlib pin number for a GPIO device.
+int32_t uPortPrivateGetGpioPort(const struct device *pGpioDevice,
+                                int32_t pinWithinPort)
+{
+    int32_t errorCodeOrPin = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    int32_t portNumber = -1;
+
+    if (pinWithinPort >= 0) {
+#if KERNEL_VERSION_MAJOR < 3
+        if ((pGpioDevice == device_get_binding("GPIO_0")) ||
+            (pGpioDevice == device_get_binding("PORTA"))) {
+            portNumber = 0;
+        } else if ((pGpioDevice == device_get_binding("GPIO_1")) ||
+                   (pGpioDevice == device_get_binding("PORTB"))) {
+            portNumber = 1;
+        }
+#else
+        if ((pGpioDevice == DEVICE_DT_GET_OR_NULL(DT_NODELABEL(gpio0))) ||
+            (pGpioDevice == DEVICE_DT_GET_OR_NULL(DT_NODELABEL(porta)))) {
+            portNumber = 0;
+        } else if ((pGpioDevice == DEVICE_DT_GET_OR_NULL(DT_NODELABEL(gpio1))) ||
+                   (pGpioDevice == DEVICE_DT_GET_OR_NULL(DT_NODELABEL(portb)))) {
+            portNumber = 1;
+        }
+#endif
+    }
+
+    if (portNumber >= 0) {
+        errorCodeOrPin = (portNumber * GPIO_MAX_PINS_PER_PORT) + pinWithinPort;
+    }
+
+    return errorCodeOrPin;
+}
+
 // Get a GPIO device
 const struct device *pUPortPrivateGetGpioDevice(int32_t pin)
 {
     const struct device *pDev = NULL;
     // Common practice in device trees that one gpio port holds 32 pins
-    int portNo = pin / GPIO_MAX_PINS_PER_PORT;
+    int32_t portNo = pin / GPIO_MAX_PINS_PER_PORT;
     // The actual device tree name of the GPIO port may vary between
     // different boards. Try the known variants.
 #if KERNEL_VERSION_MAJOR < 3

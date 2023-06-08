@@ -49,6 +49,9 @@
 
 #include "u_time.h"
 
+#include "u_ubx_protocol.h"
+
+#include "u_gnss_type.h"
 #include "u_gnss_pos.h"
 
 #include "u_mqtt_common.h"
@@ -326,6 +329,25 @@ static int32_t parseLocation(char *pStr, uLocation_t *pLocation)
     return pStr != NULL ? (int32_t) U_ERROR_COMMON_SUCCESS : (int32_t) U_ERROR_COMMON_UNKNOWN;
 }
 
+// Get the RRLP mode from the RRLP data length.
+static uGnssRrlpMode_t rrlpMode(int32_t rrlpDataLengthBytes)
+{
+    uGnssRrlpMode_t rrlpMode = U_GNSS_RRLP_MODE_MEASX;
+
+    switch (rrlpDataLengthBytes) {
+        case 50:
+            rrlpMode = U_GNSS_RRLP_MODE_MEAS50;
+            break;
+        case 20:
+            rrlpMode = U_GNSS_RRLP_MODE_MEAS20;
+            break;
+        default:
+            break;
+    }
+
+    return rrlpMode;
+}
+
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -338,12 +360,15 @@ int32_t uLocationPrivateCloudLocate(uDeviceHandle_t devHandle,
                                     int32_t cNoThreshold,
                                     int32_t multipathIndexLimit,
                                     int32_t pseudorangeRmsErrorIndexLimit,
+                                    int32_t rrlpDataLengthBytes,
                                     const char *pClientIdStr,
                                     uLocation_t *pLocation,
                                     bool (*pKeepGoingCallback) (uDeviceHandle_t))
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
     char *pBuffer;
+    char *pTmp;
+    size_t bufferLength = U_LOCATION_PRIVATE_CLOUD_LOCATE_BUFFER_LENGTH_BYTES;
     char topicBuffer[U_LOCATION_PRIVATE_CLOUD_LOCATE_SUBSCRIBE_TOPIC_LENGTH_BYTES];
     char *pTopicBufferRead;
     char *pMessageRead;
@@ -352,10 +377,17 @@ int32_t uLocationPrivateCloudLocate(uDeviceHandle_t devHandle,
     size_t z;
 
     if ((gnssDevHandle != NULL) && (pMqttClientContext != NULL) &&
-        ((pLocation == NULL) || (pClientIdStr != NULL))) {
+        ((pLocation == NULL) || (pClientIdStr != NULL)) &&
+        ((rrlpDataLengthBytes == 20) || (rrlpDataLengthBytes == 50) ||
+         (rrlpDataLengthBytes == INT_MAX))) {
         errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
+        if (rrlpDataLengthBytes < INT_MAX) {
+            // If we're not using MEASX mode we can allocate a much smaller
+            // and specific buffer length
+            bufferLength = rrlpDataLengthBytes + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES;
+        }
         // Allocate memory to store the RRLP information
-        pBuffer = (char *) pUPortMalloc(U_LOCATION_PRIVATE_CLOUD_LOCATE_BUFFER_LENGTH_BYTES);
+        pBuffer = (char *) pUPortMalloc(bufferLength);
         if (pBuffer != NULL) {
             errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
             if ((pClientIdStr != NULL) && (pLocation != NULL)) {
@@ -372,18 +404,29 @@ int32_t uLocationPrivateCloudLocate(uDeviceHandle_t devHandle,
             }
 
             if (errorCode >= 0) { // >= 0 since uMqttClientSubscribe() returns QoS
-                // Get the RRLP data from the GNSS chip
-                errorCode = uGnssPosGetRrlp(gnssDevHandle, pBuffer,
-                                            U_LOCATION_PRIVATE_CLOUD_LOCATE_BUFFER_LENGTH_BYTES,
-                                            svsThreshold, cNoThreshold, multipathIndexLimit,
-                                            pseudorangeRmsErrorIndexLimit,
-                                            pKeepGoingCallback);
-                if (errorCode >= 0) {
-                    // Send the RRLP data to the Cloud Locate service using MQTT
-                    errorCode = uMqttClientPublish(pMqttClientContext,
-                                                   U_LOCATION_PRIVATE_CLOUD_LOCATE_MQTT_PUBLISH_TOPIC,
-                                                   pBuffer, errorCode,
-                                                   U_MQTT_QOS_EXACTLY_ONCE, false);
+                // Set the RRLP mode
+                errorCode = uGnssPosSetRrlpMode(gnssDevHandle,
+                                                rrlpMode(rrlpDataLengthBytes));
+                if (errorCode == 0) {
+                    // Get the RRLP data from the GNSS chip
+                    errorCode = uGnssPosGetRrlp(gnssDevHandle, pBuffer, bufferLength,
+                                                svsThreshold, cNoThreshold, multipathIndexLimit,
+                                                pseudorangeRmsErrorIndexLimit,
+                                                pKeepGoingCallback);
+                    if (errorCode >= U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES) {
+                        pTmp = pBuffer;
+                        if (rrlpDataLengthBytes < INT_MAX) {
+                            // If we're using one of the compact RRLP modes, the UBX
+                            // protocol header and CRC must be stripped off
+                            pTmp += U_UBX_PROTOCOL_HEADER_LENGTH_BYTES;
+                            errorCode -= U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES;
+                        }
+                        // Send the RRLP data to the Cloud Locate service using MQTT
+                        errorCode = uMqttClientPublish(pMqttClientContext,
+                                                       U_LOCATION_PRIVATE_CLOUD_LOCATE_MQTT_PUBLISH_TOPIC,
+                                                       pTmp, errorCode,
+                                                       U_MQTT_QOS_EXACTLY_ONCE, false);
+                    }
                 }
             }
 

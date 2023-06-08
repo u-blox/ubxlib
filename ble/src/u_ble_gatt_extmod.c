@@ -262,17 +262,24 @@ int32_t uBleGattSetWriteCallback(uDeviceHandle_t devHandle,
     int32_t errorCode = (int32_t)U_ERROR_COMMON_NOT_INITIALISED;
     uShortRangePrivateInstance_t *pInstance;
     if (uShortRangeLock() == (int32_t)U_ERROR_COMMON_SUCCESS) {
+        errorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
         pInstance = pUShortRangePrivateGetInstance(devHandle);
-        uAtClientHandle_t atHandle = pInstance->atHandle;
-        uAtClientLock(atHandle);
-        const char *pMatch = "+UUBTGRW:";
-        // Remove possible existing callback
-        uAtClientRemoveUrcHandler(atHandle, pMatch);
-        if (cb) {
-            errorCode = uAtClientSetUrcHandler(atHandle, pMatch,
-                                               writeUrc, cb);
+        if (pInstance != NULL) {
+            errorCode = (int32_t)U_ERROR_COMMON_NOT_SUPPORTED;
+            if (U_SHORT_RANGE_PRIVATE_HAS(pInstance->pModule,
+                                          U_SHORT_RANGE_PRIVATE_FEATURE_GATT_SERVER)) {
+                uAtClientHandle_t atHandle = pInstance->atHandle;
+                uAtClientLock(atHandle);
+                const char *pMatch = "+UUBTGRW:";
+                // Remove possible existing callback
+                uAtClientRemoveUrcHandler(atHandle, pMatch);
+                if (cb) {
+                    errorCode = uAtClientSetUrcHandler(atHandle, pMatch,
+                                                       writeUrc, cb);
+                }
+                uAtClientUnlock(atHandle);
+            }
         }
-        uAtClientUnlock(atHandle);
         uShortRangeUnlock();
     }
     return errorCode;
@@ -318,7 +325,30 @@ int32_t uBleGattWriteNotifyValue(uDeviceHandle_t devHandle,
                                  int32_t connHandle, uint16_t valueHandle,
                                  const void *pValue, uint8_t valueLength)
 {
-    return writeValue(devHandle, "AT+UBTGSN=", connHandle, valueHandle, pValue, valueLength);
+    int32_t errorCode = (int32_t)U_ERROR_COMMON_NOT_INITIALISED;
+    uShortRangePrivateInstance_t *pInstance;
+    if (uShortRangeLock() == (int32_t)U_ERROR_COMMON_SUCCESS) {
+        errorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
+        pInstance = pUShortRangePrivateGetInstance(devHandle);
+        if (pInstance != NULL) {
+            errorCode = (int32_t)U_ERROR_COMMON_NOT_SUPPORTED;
+            if (U_SHORT_RANGE_PRIVATE_HAS(pInstance->pModule,
+                                          U_SHORT_RANGE_PRIVATE_FEATURE_GATT_SERVER)) {
+                uAtClientHandle_t atHandle = pInstance->atHandle;
+                uAtClientLock(atHandle);
+                uAtClientCommandStart(atHandle, "AT+UBTGSN=");
+                uAtClientWriteInt(atHandle, connHandle);
+                uAtClientWriteInt(atHandle, valueHandle);
+                uAtClientWriteHexData(atHandle, pValue, valueLength);
+                uAtClientCommandStopReadResponse(atHandle);
+                errorCode = uAtClientErrorGet(atHandle);
+                uAtClientUnlock(atHandle);
+            }
+        }
+        uShortRangeUnlock();
+    }
+
+    return errorCode;
 }
 
 int32_t uBleGattAddService(uDeviceHandle_t devHandle,
@@ -327,14 +357,21 @@ int32_t uBleGattAddService(uDeviceHandle_t devHandle,
     int32_t errorCode = (int32_t)U_ERROR_COMMON_NOT_INITIALISED;
     uShortRangePrivateInstance_t *pInstance;
     if (uShortRangeLock() == (int32_t)U_ERROR_COMMON_SUCCESS) {
+        errorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
         pInstance = pUShortRangePrivateGetInstance(devHandle);
-        uAtClientHandle_t atHandle = pInstance->atHandle;
-        uAtClientLock(atHandle);
-        uAtClientCommandStart(atHandle, "AT+UBTGSER=");
-        uAtClientWriteString(atHandle, pUuid, false);
-        uAtClientCommandStopReadResponse(atHandle);
-        errorCode = uAtClientErrorGet(atHandle);
-        uAtClientUnlock(atHandle);
+        if (pInstance != NULL) {
+            errorCode = (int32_t)U_ERROR_COMMON_NOT_SUPPORTED;
+            if (U_SHORT_RANGE_PRIVATE_HAS(pInstance->pModule,
+                                          U_SHORT_RANGE_PRIVATE_FEATURE_GATT_SERVER)) {
+                uAtClientHandle_t atHandle = pInstance->atHandle;
+                uAtClientLock(atHandle);
+                uAtClientCommandStart(atHandle, "AT+UBTGSER=");
+                uAtClientWriteString(atHandle, pUuid, false);
+                uAtClientCommandStopReadResponse(atHandle);
+                errorCode = uAtClientErrorGet(atHandle);
+                uAtClientUnlock(atHandle);
+            }
+        }
         uShortRangeUnlock();
     }
     return errorCode;
@@ -347,22 +384,29 @@ int32_t uBleGattAddCharacteristic(uDeviceHandle_t devHandle,
     int32_t errorCode = (int32_t)U_ERROR_COMMON_NOT_INITIALISED;
     uShortRangePrivateInstance_t *pInstance;
     if (uShortRangeLock() == (int32_t)U_ERROR_COMMON_SUCCESS) {
+        errorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
         pInstance = pUShortRangePrivateGetInstance(devHandle);
-        uAtClientHandle_t atHandle = pInstance->atHandle;
-        uAtClientLock(atHandle);
-        uAtClientCommandStart(atHandle, "AT+UBTGCHA=");
-        uAtClientWriteString(atHandle, pUuid, false);
-        uAtClientWriteHexData(atHandle, &properties, 1);
-        uAtClientWriteInt(atHandle, 1);
-        uAtClientWriteInt(atHandle, 1);
-        uAtClientCommandStop(atHandle);
-        errorCode = uAtClientResponseStart(atHandle, "+UBTGCHA:");
-        if (errorCode == (int32_t)U_ERROR_COMMON_SUCCESS) {
-            *pValueHandle = uAtClientReadInt(atHandle);
-            uAtClientReadInt(atHandle);
+        if (pInstance != NULL) {
+            errorCode = (int32_t)U_ERROR_COMMON_NOT_SUPPORTED;
+            if (U_SHORT_RANGE_PRIVATE_HAS(pInstance->pModule,
+                                          U_SHORT_RANGE_PRIVATE_FEATURE_GATT_SERVER)) {
+                uAtClientHandle_t atHandle = pInstance->atHandle;
+                uAtClientLock(atHandle);
+                uAtClientCommandStart(atHandle, "AT+UBTGCHA=");
+                uAtClientWriteString(atHandle, pUuid, false);
+                uAtClientWriteHexData(atHandle, &properties, 1);
+                uAtClientWriteInt(atHandle, 1);
+                uAtClientWriteInt(atHandle, 1);
+                uAtClientCommandStop(atHandle);
+                errorCode = uAtClientResponseStart(atHandle, "+UBTGCHA:");
+                if (errorCode == (int32_t)U_ERROR_COMMON_SUCCESS) {
+                    *pValueHandle = uAtClientReadInt(atHandle);
+                    uAtClientReadInt(atHandle);
+                }
+                uAtClientResponseStop(atHandle);
+                uAtClientUnlock(atHandle);
+            }
         }
-        uAtClientResponseStop(atHandle);
-        uAtClientUnlock(atHandle);
         uShortRangeUnlock();
     }
     return errorCode;

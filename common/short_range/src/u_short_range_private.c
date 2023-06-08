@@ -60,37 +60,48 @@ uShortRangePrivateInstance_t *gpUShortRangePrivateInstanceList = NULL;
 
 const uShortRangePrivateModule_t gUShortRangePrivateModuleList[] = {
     {
-        U_SHORT_RANGE_MODULE_TYPE_NINA_B1, 5 /* Boot wait */, 5 /* Min awake */,
+        U_SHORT_RANGE_MODULE_TYPE_ANNA_B1,
+        (1UL << (int32_t) U_SHORT_RANGE_PRIVATE_FEATURE_GATT_SERVER) /* features */,
+        5 /* Boot wait */, 5 /* Min awake */,
         5 /* Pwr down wait */, 5 /* Reboot wait */, 10 /* AT timeout */,
     },
     {
-        U_SHORT_RANGE_MODULE_TYPE_ANNA_B1, 5 /* Boot wait */, 5 /* Min awake */,
+        U_SHORT_RANGE_MODULE_TYPE_NINA_B1,
+        (1UL << (int32_t) U_SHORT_RANGE_PRIVATE_FEATURE_GATT_SERVER) /* features */,
+        5 /* Boot wait */, 5 /* Min awake */,
         5 /* Pwr down wait */, 5 /* Reboot wait */, 10 /* AT timeout */,
     },
     {
-        U_SHORT_RANGE_MODULE_TYPE_NINA_B3, 5 /* Boot wait */, 5 /* Min awake */,
+        U_SHORT_RANGE_MODULE_TYPE_NINA_B2,
+        (1UL << (int32_t) U_SHORT_RANGE_PRIVATE_FEATURE_GATT_SERVER) /* features */,
+        5 /* Boot wait */, 5 /* Min awake */,
         5 /* Pwr down wait */, 5 /* Reboot wait */, 10 /* AT timeout */,
     },
     {
-        U_SHORT_RANGE_MODULE_TYPE_NINA_B2, 5 /* Boot wait */, 5 /* Min awake */,
+        U_SHORT_RANGE_MODULE_TYPE_NINA_B3,
+        (1UL << (int32_t) U_SHORT_RANGE_PRIVATE_FEATURE_GATT_SERVER) /* features */,
+        5 /* Boot wait */, 5 /* Min awake */,
         5 /* Pwr down wait */, 5 /* Reboot wait */, 10 /* AT timeout */,
     },
     {
-        U_SHORT_RANGE_MODULE_TYPE_NINA_W13, 5 /* Boot wait */, 5 /* Min awake */,
+        U_SHORT_RANGE_MODULE_TYPE_NINA_W13,
+        ((1UL << (int32_t) U_SHORT_RANGE_PRIVATE_FEATURE_GATT_SERVER) |
+         (1UL << (int32_t) U_SHORT_RANGE_PRIVATE_FEATURE_HTTP_CLIENT)) /* features */,
+        5 /* Boot wait */, 5 /* Min awake */,
         5 /* Pwr down wait */, 5 /* Reboot wait */, 10 /* AT timeout */,
     },
     {
-        U_SHORT_RANGE_MODULE_TYPE_NINA_W15, 5 /* Boot wait */, 5 /* Min awake */,
+        U_SHORT_RANGE_MODULE_TYPE_NINA_W15,
+        (1UL << (int32_t) U_SHORT_RANGE_PRIVATE_FEATURE_HTTP_CLIENT) /* features */,
+        5 /* Boot wait */, 5 /* Min awake */,
         5 /* Pwr down wait */, 5 /* Reboot wait */, 10 /* AT timeout */,
     },
     {
-        U_SHORT_RANGE_MODULE_TYPE_ODIN_W2, 5 /* Boot wait */, 5 /* Min awake */,
+        U_SHORT_RANGE_MODULE_TYPE_ODIN_W2,
+        0  /* features */,
+        5 /* Boot wait */, 5 /* Min awake */,
         5 /* Pwr down wait */, 5 /* Reboot wait */, 10 /* AT timeout */,
-    },
-    {
-        U_SHORT_RANGE_MODULE_TYPE_NINA_B1, 5 /* Boot wait */, 5 /* Min awake */,
-        5 /* Pwr down wait */, 5 /* Reboot wait */, 10 /* AT timeout */,
-    },
+    }
 };
 
 /** Mutex to protect the linked list.

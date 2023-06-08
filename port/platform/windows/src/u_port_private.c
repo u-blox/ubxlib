@@ -740,8 +740,8 @@ int32_t uPortPrivateTaskPriorityConvert(int32_t priority)
     if (priority < 0) {
         priority = 0;
     }
-    if (priority > sizeof(localToWinPriority) - 1) {
-        priority = sizeof(localToWinPriority) - 1;
+    if (priority > (sizeof(localToWinPriority) / sizeof(localToWinPriority[0])) - 1) {
+        priority = (sizeof(localToWinPriority) / sizeof(localToWinPriority[0])) - 1;
     }
 
     return localToWinPriority[priority];

@@ -45,6 +45,16 @@ extern "C" {
 
 #define U_SHORT_RANGE_MAX_CONNECTIONS 9
 
+/** Determine if the given feature is supported or not
+ * by the pointed-to module.
+ */
+//lint --emacro((774), U_SHORT_RANGE_PRIVATE_HAS) Suppress left side always
+// evaluates to True
+//lint -esym(755, U_SHORT_RANGE_PRIVATE_HAS) Suppress macro not
+// referenced it may be conditionally compiled-out.
+#define U_SHORT_RANGE_PRIVATE_HAS(pModule, feature) \
+    ((pModule != NULL) && ((pModule->featuresBitmap) & (1UL << (int32_t) (feature))))
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -52,6 +62,16 @@ extern "C" {
 typedef enum {
     U_SHORT_RANGE_MODE_EDM = 0
 } uShortRangeModes_t;
+
+/** Features of a module that require different compile-time
+ * behaviours in this implementation.
+ */
+//lint -esym(756, uShortRangePrivateFeature_t) Suppress not referenced,
+// Lint can't seem to find it inside macros.
+typedef enum {
+    U_SHORT_RANGE_PRIVATE_FEATURE_GATT_SERVER,
+    U_SHORT_RANGE_PRIVATE_FEATURE_HTTP_CLIENT
+} uShortRangePrivateFeature_t;
 
 /** The characteristics that may differ between short range modules.
  */
@@ -62,6 +82,10 @@ typedef enum {
 // may not be referenced as references may be conditionally compiled-out.
 typedef struct {
     uShortRangeModuleType_t moduleType; /**< the module type. */
+//lint -esym(768, uShortRangePrivateModule_t::featuresBitmap) Suppress not referenced,
+// this is for the future.
+    uint32_t featuresBitmap; /**< a bit-map of the uShortRangePrivateFeature_t
+                                  characteristics of this module. */
     int32_t bootWaitSeconds; /**< how long to wait before the module is
                                   ready after boot. */
     int32_t rebootCommandWaitSeconds; /**< how long to wait before the module is

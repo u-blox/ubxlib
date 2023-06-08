@@ -177,9 +177,9 @@ int32_t uPortI2cCloseRecoverBus(int32_t handle);
  */
 int32_t uPortI2cSetClock(int32_t handle, int32_t clockHertz);
 
-/** Get the I2C clock frequency.
- * Note that if the I2C interface was adopted rather than
- * opened this will return #U_ERROR_COMMON_NOT_SUPPORTED.
+/** Get the I2C clock frequency. Note that if the I2C interface
+ * was adopted rather than opened this will return
+ * #U_ERROR_COMMON_NOT_SUPPORTED.
  *
  * @param handle     the handle of the I2C instance.
  * @return           the clock frequency in Hertz, else negative
@@ -189,12 +189,15 @@ int32_t uPortI2cGetClock(int32_t handle);
 
 /** Set the timeout for an I2C instance; this timeout is PER BYTE,
  * i.e. it is very short.  Not all platforms support setting the
- * I2C timeout through an API (e.g. Zephyr doesn't), or at all
- * (ESP32S3 doesn't).  Where setting of a timeout in this way is
- * supported, and this function is not called,
- * #U_PORT_I2C_TIMEOUT_MILLISECONDS will be used.  It is best to
- * call this once after opening the I2C instance since setting the
- * timeout may reset the I2C HW.
+ * I2C timeout through an API (e.g. Zephyr doesn't).  If this
+ * function is not called, #U_PORT_I2C_TIMEOUT_MILLISECONDS will
+ * be used.  It is best to call this once after opening the I2C
+ * instance since setting the timeout may reset the I2C HW.
+ *
+ * Note: on some platforms (e.g. ESP32X3 series) the timeout ends
+ * up being a power of two of the I2C clock source; in these cases
+ * the closest value that is greater than or equal to the
+ * requested value will be set.
  *
  * Note that on some platforms, if the I2C interface was adopted
  * rather than opened, this will return #U_ERROR_COMMON_NOT_SUPPORTED.
@@ -206,8 +209,7 @@ int32_t uPortI2cGetClock(int32_t handle);
 int32_t uPortI2cSetTimeout(int32_t handle, int32_t timeoutMs);
 
 /** Get the timeout for an I2C instance.  Not all platforms support
- * getting the I2C timeout through an API (e.g. Zephyr and ESP32S3
- * don't).
+ * getting the I2C timeout through an API (e.g. Zephyr doesn't).
  *
  * Note that on some platforms, if the I2C interface was adopted
  * rather than opened, this will return #U_ERROR_COMMON_NOT_SUPPORTED.

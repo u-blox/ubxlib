@@ -372,6 +372,7 @@ int32_t uLocationGet(uDeviceHandle_t devHandle, uLocationType_t type,
                                                             pLocationAssist->cNoThreshold,
                                                             pLocationAssist->multipathIndexLimit,
                                                             pLocationAssist->pseudorangeRmsErrorIndexLimit,
+                                                            pLocationAssist->rrlpDataLengthBytes,
                                                             pLocationAssist->pClientIdStr,
                                                             &location, pKeepGoingCallback);
                     if (pLocation != NULL) {

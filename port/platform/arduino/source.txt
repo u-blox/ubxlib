@@ -109,6 +109,7 @@ port/u_port_heap.c
 port/platform/common/event_queue/u_port_event_queue.c
 port/platform/common/mbedtls/u_port_crypto.c
 port/clib/u_port_clib_mktime64.c
+port/u_port_timezone.c
 port/platform/esp-idf/src/u_port.c
 port/platform/esp-idf/src/u_port_debug.c
 port/platform/esp-idf/src/u_port_os.c

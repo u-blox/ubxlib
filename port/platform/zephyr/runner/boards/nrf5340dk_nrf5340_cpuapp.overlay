@@ -58,11 +58,14 @@
     hw-flow-control;
 };
 
-/* Can't use the default SPI pins as they overlap with the flow control pins we use for the UART. */
+/* Can't use the default SPI pins as they overlap with the flow control pins we use for the UART.
+   Note that we set gpio1 15 below as well as the real gpio1 14 simply to test the CS selection
+   logic */
 &spi2 {
     compatible = "nordic,nrf-spim";
     status = "okay";
-    cs-gpios = <&gpio1 14 GPIO_ACTIVE_LOW>;
+    cs-gpios = <&gpio1 15 GPIO_ACTIVE_LOW>,
+               <&gpio1 14 GPIO_ACTIVE_LOW>;
     pinctrl-0 = <&spi2_default>;
     pinctrl-1 = <&spi2_sleep>;
     pinctrl-names = "default", "sleep";

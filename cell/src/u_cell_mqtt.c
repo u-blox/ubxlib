@@ -1898,7 +1898,7 @@ static int32_t readMessage(const uCellPrivateInstance_t *pInstance,
     int32_t startTimeMs;
     uCellMqttQos_t qos;
     int32_t topicNameType = -1;
-    int32_t topicNameBytesRead;
+    int32_t topicNameBytesRead = -1;
     int32_t messageBytesAvailable;
     int32_t messageBytesRead = 0;
     int32_t topicBytesAvailable;
@@ -3446,6 +3446,7 @@ int32_t uCellMqttSnSubscribeNormalTopic(uDeviceHandle_t cellHandle,
     int32_t errorCodeOrQos = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance = NULL;
     volatile uCellMqttContext_t *pContext;
+    uint16_t *pTopicId = NULL;
 
     U_CELL_MQTT_ENTRY_FUNCTION(cellHandle, &pInstance, &errorCodeOrQos, true);
 
@@ -3455,9 +3456,12 @@ int32_t uCellMqttSnSubscribeNormalTopic(uDeviceHandle_t cellHandle,
         if (U_CELL_PRIVATE_HAS(pInstance->pModule,
                                U_CELL_PRIVATE_FEATURE_MQTTSN) &&
             pContext->mqttSn) {
+            if (pTopicName != NULL) {
+                pTopicId = &(pTopicName->name.id);
+            }
             errorCodeOrQos = subscribe(pInstance, pTopicFilterStr, -1,
-                                       maxQos, &(pTopicName->name.id));
-            if (errorCodeOrQos >= 0) {
+                                       maxQos, pTopicId);
+            if ((errorCodeOrQos >= 0) && (pTopicName != NULL)) {
                 pTopicName->type = U_CELL_MQTT_SN_TOPIC_NAME_TYPE_ID_NORMAL;
             }
         }

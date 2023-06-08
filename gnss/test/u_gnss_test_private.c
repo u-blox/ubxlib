@@ -384,8 +384,13 @@ int32_t uGnssTestPrivatePreamble(uGnssModuleType_t moduleType,
 {
     int32_t errorCode;
     uGnssTransportHandle_t transportHandle;
+#ifdef U_CFG_TEST_GNSS_SPI_SELECT_INDEX
+    uCommonSpiControllerDevice_t spiDevice = U_COMMON_SPI_CONTROLLER_DEVICE_INDEX_DEFAULTS(
+                                                 U_CFG_TEST_GNSS_SPI_SELECT_INDEX);
+#else
     uCommonSpiControllerDevice_t spiDevice = U_COMMON_SPI_CONTROLLER_DEVICE_DEFAULTS(
                                                  U_CFG_APP_PIN_GNSS_SPI_SELECT);
+#endif
 
     // Set some defaults
     pParameters->transportType = transportType;

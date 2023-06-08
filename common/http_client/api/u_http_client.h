@@ -111,7 +111,9 @@ typedef struct {
                                                            be a domain name or an IP
                                                            address and may include a
                                                            port number, for example
-                                                           "u-blox.net:83". */
+                                                           "u-blox.net:83".  Note:
+                                                           there should be no prefix
+                                                           (i.e. NOT http://u-blox.net:83). */
     const char *pUserName;                            /**< the null-terminated user name
                                                            if required by the HTTP server. */
     const char *pPassword;                            /**< the null-terminated password

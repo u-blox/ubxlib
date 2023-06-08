@@ -21,6 +21,8 @@
 #include <zephyr/types.h>
 #include <kernel.h>
 #include <drivers/spi.h>
+#include <drivers/gpio.h>
+#include <devicetree/spi.h>
 
 #include <device.h>
 #include <soc.h>
@@ -28,6 +30,7 @@
 #include "stddef.h"
 #include "stdint.h"
 #include "stdbool.h"
+#include "string.h"
 
 #include "u_error_common.h"
 
@@ -50,6 +53,24 @@
 # define U_PORT_SPI_MAX_NUM 5
 #endif
 
+/** Macro to populate the variable "spec" with the chip select GPIO
+ * at index "idx" of the SPI controller "spi".
+ */
+#define U_PORT_SPI_GET_CS_GPIO_SPEC_BY_IDX(spec, spi, idx)                  \
+    spec = (struct gpio_dt_spec) GPIO_DT_SPEC_GET_BY_IDX(DT_NODELABEL(spi), \
+                                                         cs_gpios, idx)
+
+/** Macro to check if the port/pin of "spec" matches the given "pPort"
+ * and "pin", or otherwise if "index" matches "idx", setting "errorCode"
+ * to 0 if either of these is the case.
+ */
+#define U_PORT_SPI_CS_IS_WANTED(spec, pPort, pin, errorCode, index, idx) \
+     if ((pPort == spec.port) && (pin == spec.pin)) {                    \
+         errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;                   \
+     } else if (index == idx) {                                          \
+         errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;                   \
+     }
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -60,8 +81,6 @@ typedef struct {
     const struct device *pDevice;  // NULL if not in use
     struct spi_config spiConfig;
     struct spi_cs_control spiCsControl;
-    int32_t pinSelect; // Gotta keep this also as the one under
-    // spiCsControl gets modulo'd by port number
 } uPortSpiCfg_t;
 
 /* ----------------------------------------------------------------
@@ -80,13 +99,198 @@ static uPortSpiCfg_t gSpiCfg[U_PORT_SPI_MAX_NUM];
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
+#if KERNEL_VERSION_MAJOR >= 3
+// Get the cs-gpio of an SPI controller from the device tree,
+// found either by pin number or by an index into the array of
+// cs-gpios (use -1 to indicate "unused" for these parameters).
+// If pin is => 0 then the cs-gpio entry for that pin is returned
+// or if that pin does not exist in the cs-gpio entries then
+// U_ERROR_COMMON_NOT_FOUND will be returned. If index is >= 0
+// then the cs-gpio at that index of the SPI controller will be
+// returned or if index is out of range then U_ERROR_COMMON_NOT_FOUND
+// will be returned.  In both cases up to three cs-gpio entries are
+// searched. The delay value in pSpiCsControl will be left at zero
+// in all cases.
+static int32_t getSpiCsControl(int32_t spi, int32_t pin, int32_t index,
+                               struct spi_cs_control *pSpiCsControl)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    const struct device *pPort = NULL;
+    struct gpio_dt_spec spec = {0};
+
+    memset(pSpiCsControl, 0, sizeof(*pSpiCsControl));
+
+    // We're looking to read the cs-gpios field, example below.
+    //
+    // &spi2 {
+    // ...
+    //    cs-gpios = <&gpio1 14 GPIO_ACTIVE_LOW>,
+    //               <&gpio0 5 GPIO_ACTIVE_HIGH>;
+    // ...
+    //};
+    //
+    // The field is an array of phandles to another node, a GPIO node.
+    // Using the above device tree entry as an example:
+    //
+    // The size of the array has a special DT macro,
+    // DT_SPI_NUM_CS_GPIOS(DT_NODELABEL(spi2)), which returns zero if
+    // spi2 has no cs-gpios entry, then the device tree spec for the
+    // first entry can be returned with
+    // GPIO_DT_SPEC_GET_BY_IDX(DT_NODELABEL(spi2), cs_gpios, 0), noting
+    // that cs-gpios becomes cs_gpios, so:
+    //
+    // const struct gpio_dt_spec spec = GPIO_DT_SPEC_GET_BY_IDX(DT_NODELABEL(spi2),
+    //                                                          cs_gpios, 0);
+    // Initializes "spec" to:
+    // {
+    //     .port = DEVICE_DT_GET(DT_NODELABEL(gpio1)),
+    //     .pin = 14,
+    //     .dt_flags = GPIO_ACTIVE_LOW
+    // }
+    //
+    // And of course, all of this is compile time, hence the macro
+    // monstrosity below.
+
+    if (pin >= 0) {
+        // Remove any inversion indication
+        pin &= ~U_COMMON_SPI_PIN_SELECT_INVERTED;
+        // Convert the pin into a port and a pin
+        pPort = pUPortPrivateGetGpioDevice(pin);
+        pin = pin % GPIO_MAX_PINS_PER_PORT;
+    }
+
+    if (((pin < 0) || (pPort != NULL)) &&
+        (index <= U_COMMON_SPI_CONTROLLER_MAX_SELECT_INDEX)) {
+        errorCode = (int32_t) U_ERROR_COMMON_NOT_FOUND;
+        if ((pin >= 0) || (index >= 0)) {
+            switch (spi) {
+                case 0:
+#if DT_NODE_EXISTS(DT_NODELABEL(spi0))
+# if DT_SPI_NUM_CS_GPIOS(DT_NODELABEL(spi0)) > 0
+                    U_PORT_SPI_GET_CS_GPIO_SPEC_BY_IDX(spec, spi0, 0);
+                    U_PORT_SPI_CS_IS_WANTED(spec, pPort, pin, errorCode, index, 0);
+# endif
+# if DT_SPI_NUM_CS_GPIOS(DT_NODELABEL(spi0)) > 1
+                    if (errorCode != (int32_t) U_ERROR_COMMON_SUCCESS) {
+                        U_PORT_SPI_GET_CS_GPIO_SPEC_BY_IDX(spec, spi0, 1);
+                        U_PORT_SPI_CS_IS_WANTED(spec, pPort, pin, errorCode, index, 1);
+                    }
+# endif
+# if DT_SPI_NUM_CS_GPIOS(DT_NODELABEL(spi0)) > 2
+                    if (errorCode != (int32_t) U_ERROR_COMMON_SUCCESS) {
+                        U_PORT_SPI_GET_CS_GPIO_SPEC_BY_IDX(spec, spi0, 2);
+                        U_PORT_SPI_CS_IS_WANTED(spec, pPort, pin, errorCode, index, 2);
+                    }
+# endif
+#endif
+                    break;
+                case 1:
+#if DT_NODE_EXISTS(DT_NODELABEL(spi1))
+# if DT_SPI_NUM_CS_GPIOS(DT_NODELABEL(spi1)) > 0
+                    U_PORT_SPI_GET_CS_GPIO_SPEC_BY_IDX(spec, spi1, 0);
+                    U_PORT_SPI_CS_IS_WANTED(spec, pPort, pin, errorCode, index, 0);
+# endif
+# if DT_SPI_NUM_CS_GPIOS(DT_NODELABEL(spi1)) > 1
+                    if (errorCode != (int32_t) U_ERROR_COMMON_SUCCESS) {
+                        U_PORT_SPI_GET_CS_GPIO_SPEC_BY_IDX(spec, spi1, 1);
+                        U_PORT_SPI_CS_IS_WANTED(spec, pPort, pin, errorCode, index, 1);
+                    }
+# endif
+# if DT_SPI_NUM_CS_GPIOS(DT_NODELABEL(spi1)) > 2
+                    if (errorCode != (int32_t) U_ERROR_COMMON_SUCCESS) {
+                        U_PORT_SPI_GET_CS_GPIO_SPEC_BY_IDX(spec, spi1, 2);
+                        U_PORT_SPI_CS_IS_WANTED(spec, pPort, pin, errorCode, index, 2);
+                    }
+# endif
+#endif
+                    break;
+                case 2:
+#if DT_NODE_EXISTS(DT_NODELABEL(spi2))
+# if DT_SPI_NUM_CS_GPIOS(DT_NODELABEL(spi2)) > 0
+                    U_PORT_SPI_GET_CS_GPIO_SPEC_BY_IDX(spec, spi2, 0);
+                    U_PORT_SPI_CS_IS_WANTED(spec, pPort, pin, errorCode, index, 0);
+# endif
+# if DT_SPI_NUM_CS_GPIOS(DT_NODELABEL(spi2)) > 1
+                    if (errorCode != (int32_t) U_ERROR_COMMON_SUCCESS) {
+                        U_PORT_SPI_GET_CS_GPIO_SPEC_BY_IDX(spec, spi2, 1);
+                        U_PORT_SPI_CS_IS_WANTED(spec, pPort, pin, errorCode, index, 1);
+                    }
+# endif
+# if DT_SPI_NUM_CS_GPIOS(DT_NODELABEL(spi2)) > 2
+                    if (errorCode != (int32_t) U_ERROR_COMMON_SUCCESS) {
+                        U_PORT_SPI_GET_CS_GPIO_SPEC_BY_IDX(spec, spi2, 2);
+                        U_PORT_SPI_CS_IS_WANTED(spec, pPort, pin, errorCode, index, 2);
+                    }
+# endif
+#endif
+                    break;
+                case 3:
+#if DT_NODE_EXISTS(DT_NODELABEL(spi3))
+# if DT_SPI_NUM_CS_GPIOS(DT_NODELABEL(spi3)) > 0
+                    U_PORT_SPI_GET_CS_GPIO_SPEC_BY_IDX(spec, spi3, 0);
+                    U_PORT_SPI_CS_IS_WANTED(spec, pPort, pin, errorCode, index, 0);
+# endif
+# if DT_SPI_NUM_CS_GPIOS(DT_NODELABEL(spi3)) > 1
+                    if (errorCode != (int32_t) U_ERROR_COMMON_SUCCESS) {
+                        U_PORT_SPI_GET_CS_GPIO_SPEC_BY_IDX(spec, spi3, 1);
+                        U_PORT_SPI_CS_IS_WANTED(spec, pPort, pin, errorCode, index, 1);
+                    }
+# endif
+# if DT_SPI_NUM_CS_GPIOS(DT_NODELABEL(spi3)) > 2
+                    if (errorCode != (int32_t) U_ERROR_COMMON_SUCCESS) {
+                        U_PORT_SPI_GET_CS_GPIO_SPEC_BY_IDX(spec, spi3, 2);
+                        U_PORT_SPI_CS_IS_WANTED(spec, pPort, pin, errorCode, index, 2);
+                    }
+# endif
+#endif
+                    break;
+                case 4:
+#if DT_NODE_EXISTS(DT_NODELABEL(spi4))
+# if DT_SPI_NUM_CS_GPIOS(DT_NODELABEL(spi4)) > 0
+                    U_PORT_SPI_GET_CS_GPIO_SPEC_BY_IDX(spec, spi4, 0);
+                    U_PORT_SPI_CS_IS_WANTED(spec, pPort, pin, errorCode, index, 0);
+# endif
+# if DT_SPI_NUM_CS_GPIOS(DT_NODELABEL(spi4)) > 1
+                    if (errorCode != (int32_t) U_ERROR_COMMON_SUCCESS) {
+                        U_PORT_SPI_GET_CS_GPIO_SPEC_BY_IDX(spec, spi4, 1);
+                        U_PORT_SPI_CS_IS_WANTED(spec, pPort, pin, errorCode, index, 1);
+                    }
+# endif
+# if DT_SPI_NUM_CS_GPIOS(DT_NODELABEL(spi4)) > 2
+                    if (errorCode != (int32_t) U_ERROR_COMMON_SUCCESS) {
+                        U_PORT_SPI_GET_CS_GPIO_SPEC_BY_IDX(spec, spi4, 2);
+                        U_PORT_SPI_CS_IS_WANTED(spec, pPort, pin, errorCode, index, 2);
+                    }
+# endif
+#endif
+                    break;
+                default:
+                    break;
+            }
+        }
+    }
+
+    if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
+        // Got something, copy it into the structure we were given
+        pSpiCsControl->gpio = spec;
+    }
+
+    return errorCode;
+}
+
+#endif // #if KERNEL_VERSION_MAJOR >= 3
+
 // Set the SPI configuration in the given SPI instance
-static int32_t setSpiConfig(uPortSpiCfg_t *pSpiCfg,
+static int32_t setSpiConfig(int32_t spi, uPortSpiCfg_t *pSpiCfg,
                             const uCommonSpiControllerDevice_t *pDevice)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
     int32_t offsetDuration;
     uint16_t operation = SPI_OP_MODE_MASTER;
+#if KERNEL_VERSION_MAJOR >= 3
+    const struct device *pGpioPort = NULL;
+    gpio_flags_t gpioFlags = GPIO_OUTPUT;
+#endif
     int32_t pinSelect;
     bool pinSelectInverted = ((pDevice->pinSelect & U_COMMON_SPI_PIN_SELECT_INVERTED) ==
                               U_COMMON_SPI_PIN_SELECT_INVERTED);
@@ -108,15 +312,7 @@ static int32_t setSpiConfig(uPortSpiCfg_t *pSpiCfg,
     pSpiCfg->spiConfig.frequency = pDevice->frequencyHertz;
 
     pSpiCfg->spiConfig.cs = NULL;
-#if KERNEL_VERSION_MAJOR < 3
-    pSpiCfg->spiCsControl.gpio_dev = NULL;
-#else
-    pSpiCfg->spiCsControl.gpio.port = NULL;
-#endif
-    pSpiCfg->pinSelect = pDevice->pinSelect;
-    if (pSpiCfg->pinSelect >= 0) {
-        pinSelect = pSpiCfg->pinSelect & ~U_COMMON_SPI_PIN_SELECT_INVERTED;
-        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    if ((pDevice->pinSelect >= 0) || (pDevice->indexSelect >= 0)) {
 #if KERNEL_VERSION_MAJOR < 3
         pSpiCfg->spiCsControl.gpio_dev = pUPortPrivateGetGpioDevice(pinSelect);
         if (pSpiCfg->spiCsControl.gpio_dev != NULL) {
@@ -128,12 +324,33 @@ static int32_t setSpiConfig(uPortSpiCfg_t *pSpiCfg,
             pSpiCfg->spiConfig.cs = &pSpiCfg->spiCsControl;
         }
 #else
-        pSpiCfg->spiCsControl.gpio.port = pUPortPrivateGetGpioDevice(pinSelect);
-        if (pSpiCfg->spiCsControl.gpio.port != NULL) {
-            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-            pSpiCfg->spiCsControl.gpio.pin = pinSelect % GPIO_MAX_PINS_PER_PORT;
-            if (!pinSelectInverted) {
-                pSpiCfg->spiCsControl.gpio.dt_flags = GPIO_ACTIVE_LOW;
+        // Try to set the CS pin based on what the SPI controller
+        // has set for CS pins
+        errorCode = getSpiCsControl(spi, pDevice->pinSelect,
+                                    pDevice->indexSelect,
+                                    &pSpiCfg->spiCsControl);
+        if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
+            // pinSelect/index matched a CS pin for this SPI controller
+            pSpiCfg->spiConfig.cs = &pSpiCfg->spiCsControl;
+        } else if ((errorCode == (int32_t) U_ERROR_COMMON_NOT_FOUND) &&
+                   (pDevice->pinSelect >= 0)) {
+            errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
+            // That didn't work but there is a pinSelect and we can just
+            // hook-in any-old GPIO if we initialise it
+            pinSelect = pDevice->pinSelect & ~U_COMMON_SPI_PIN_SELECT_INVERTED;
+            pGpioPort = pUPortPrivateGetGpioDevice(pinSelect);
+            if (pGpioPort != NULL) {
+                pinSelect = pinSelect % GPIO_MAX_PINS_PER_PORT;
+                if (!pinSelectInverted) {
+                    gpioFlags |= GPIO_ACTIVE_LOW;
+                }
+                if (gpio_pin_configure(pGpioPort, pinSelect, gpioFlags) == 0) {
+                    pSpiCfg->spiCsControl.gpio.port = pGpioPort;
+                    pSpiCfg->spiCsControl.gpio.pin = pinSelect;
+                    pSpiCfg->spiCsControl.gpio.dt_flags = gpioFlags;
+                    pSpiCfg->spiConfig.cs = &pSpiCfg->spiCsControl;
+                    errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                }
             }
         }
 #endif
@@ -145,7 +362,6 @@ static int32_t setSpiConfig(uPortSpiCfg_t *pSpiCfg,
                 offsetDuration = pDevice->stopOffsetNanoseconds;
             }
             pSpiCfg->spiCsControl.delay = offsetDuration / 1000;
-            pSpiCfg->spiConfig.cs = &pSpiCfg->spiCsControl;
         }
     }
 
@@ -243,7 +459,7 @@ int32_t uPortSpiOpen(int32_t spi, int32_t pinMosi, int32_t pinMiso,
             }
 
             if (pDevice != NULL) {
-                handleOrErrorCode = setSpiConfig(&(gSpiCfg[spi]), &device);
+                handleOrErrorCode = setSpiConfig(spi, &(gSpiCfg[spi]), &device);
                 if (handleOrErrorCode == 0) {
                     // Hook the device data structure into the entry
                     // to flag that it is in use
@@ -290,7 +506,7 @@ int32_t uPortSpiControllerSetDevice(int32_t handle,
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if ((handle >= 0) && (handle < sizeof(gSpiCfg) / sizeof(gSpiCfg[0])) &&
             (gSpiCfg[handle].pDevice != NULL) && (pDevice != NULL)) {
-            errorCode = setSpiConfig(&(gSpiCfg[handle]), pDevice);
+            errorCode = setSpiConfig(handle, &(gSpiCfg[handle]), pDevice);
         }
 
         U_PORT_MUTEX_UNLOCK(gMutex);
@@ -315,20 +531,17 @@ int32_t uPortSpiControllerGetDevice(int32_t handle,
         if ((handle >= 0) && (handle < sizeof(gSpiCfg) / sizeof(gSpiCfg[0])) &&
             (gSpiCfg[handle].pDevice != NULL) && (pDevice != NULL)) {
             pSpiCfg = &(gSpiCfg[handle]);
+            // Note: we don't return the index, it is not worth the macro madness,
+            // and the amount of code that would generate, we just return pinSelect
+            pDevice->indexSelect = -1;
             pDevice->pinSelect = -1;
             pDevice->startOffsetNanoseconds = 0;
-#if KERNEL_VERSION_MAJOR < 3
-            if (pSpiCfg->spiCsControl.gpio_dev != NULL) {
-                pDevice->pinSelect = pSpiCfg->pinSelect;
-                if ((pSpiCfg->spiCsControl.gpio_dt_flags & GPIO_ACTIVE_LOW) != GPIO_ACTIVE_LOW) {
-                    pDevice->pinSelect |= U_COMMON_SPI_PIN_SELECT_INVERTED;
-                }
-                pDevice->startOffsetNanoseconds = pSpiCfg->spiCsControl.delay * 1000;
-            }
-#else
-            if (pSpiCfg->spiCsControl.gpio.port != NULL) {
-                pDevice->pinSelect = pSpiCfg->pinSelect;
-                if ((pSpiCfg->spiCsControl.gpio.dt_flags & GPIO_ACTIVE_LOW) != GPIO_ACTIVE_LOW) {
+#if KERNEL_VERSION_MAJOR >= 3
+            if (pSpiCfg->spiConfig.cs != NULL) {
+                // Have a chip select pin, work out what it is
+                pDevice->pinSelect = uPortPrivateGetGpioPort(pSpiCfg->spiCsControl.gpio.port,
+                                                             pSpiCfg->spiCsControl.gpio.pin);
+                if (!(pSpiCfg->spiCsControl.gpio.dt_flags & GPIO_ACTIVE_LOW)) {
                     pDevice->pinSelect |= U_COMMON_SPI_PIN_SELECT_INVERTED;
                 }
                 pDevice->startOffsetNanoseconds = pSpiCfg->spiCsControl.delay * 1000;

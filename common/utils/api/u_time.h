@@ -72,6 +72,16 @@ bool uTimeIsLeapYear(int32_t year);
  */
 int64_t uTimeMonthsToSecondsUtc(int32_t monthsUtc);
 
+/** Return the number of months that have elapsed in the given
+ * number of seconds since 1970, taking into account leap years.
+ * Useful when converting a time_t into a struct tm.
+ *
+ * @param secondsUtc the number of seconds since 1970.
+ * @return           the number of months, counting from zero,
+ *                   taking into account leap years.
+ */
+int32_t uTimeSecondsToMonthsUtc(int64_t secondsUtc);
+
 #ifdef __cplusplus
 }
 #endif

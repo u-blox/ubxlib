@@ -115,9 +115,11 @@ extern "C" {
 #define U_PORT_EVENT_QUEUE_CONTROL_OR_SIZE_LENGTH_BYTES 4
 
 #ifndef U_PORT_EVENT_QUEUE_MIN_TASK_STACK_SIZE_BYTES
-/** The minimum stack size for an event queue task.
+/** The minimum stack size for an event queue task; the governing
+ * factor here is ESP32S3, which requires ~256 bytes more stack
+ * than ESP32 (which is the next limit).
  */
-# define U_PORT_EVENT_QUEUE_MIN_TASK_STACK_SIZE_BYTES  768 +                 \
+# define U_PORT_EVENT_QUEUE_MIN_TASK_STACK_SIZE_BYTES  1024 +                \
                            U_PORT_EVENT_QUEUE_CONTROL_OR_SIZE_LENGTH_BYTES + \
                            U_PORT_EVENT_QUEUE_MAX_PARAM_LENGTH_BYTES
 #endif

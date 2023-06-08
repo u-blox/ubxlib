@@ -242,12 +242,12 @@ static void UFOTASTAT_urc(uAtClientHandle_t atHandle,
                 }
                 break;
             case 3: // FOTA update (or install) status
-                if (param1 >= 0) { // Deliberately don't range check the top, better to let it through
-                    status.type = U_CELL_FOTA_STATUS_TYPE_INSTALL;
-                    // param1 is our enum exactly, param2 tells us nothing of interest
-                    status.value.install = (uCellFotaStatusInstall_t) param1;
-                    urcIsGood = true;
-                }
+                status.type = U_CELL_FOTA_STATUS_TYPE_INSTALL;
+                // param1 is our enum exactly, param2 tells us nothing of interest
+                // Note that we deliberately don't range check the upper bound of
+                // param1, better to let it through for forwards-compatibility
+                status.value.install = (uCellFotaStatusInstall_t) param1;
+                urcIsGood = true;
                 break;
         }
 

@@ -168,9 +168,20 @@ def log(ctx, debugger_serial="", port=40404,
         'init',
         f'stm32f4x.tpiu configure -output :{port}',
         'stm32f4x.tpiu configure -protocol uart',
-        'stm32f4x.tpiu configure -formatter 0',
-        'stm32f4x.tpiu configure -traceclk \$_TARGET_SYSTEM_FREQUENCY',
-        'stm32f4x.tpiu configure -pin-freq \$_TARGET_SWO_FREQUENCY',
+        'stm32f4x.tpiu configure -formatter 0'
+    ]
+    # On Linux, the dollar that indicates to OpenOCD
+    # "get this from the .cfg file" must be escaped,
+    # while on Windows it must not
+    if u_utils.is_linux():
+        cmds += ['stm32f4x.tpiu configure -traceclk \$_TARGET_SYSTEM_FREQUENCY']
+    else:
+        cmds += ['stm32f4x.tpiu configure -traceclk $_TARGET_SYSTEM_FREQUENCY']
+    if u_utils.is_linux():
+        cmds += ['stm32f4x.tpiu configure -pin-freq \$_TARGET_SWO_FREQUENCY']
+    else:
+        cmds += ['stm32f4x.tpiu configure -pin-freq $_TARGET_SWO_FREQUENCY']
+    cmds += [
         'stm32f4x.tpiu enable',
         'itm port 0 on',
         'reset init',
@@ -202,7 +213,7 @@ def log(ctx, debugger_serial="", port=40404,
                     line = lines[-1]
 
     finally:
-        if u_utils.is_linux:
+        if u_utils.is_linux():
             promise.runner.kill()
         else:
             promise.runner.send_interrupt(KeyboardInterrupt())

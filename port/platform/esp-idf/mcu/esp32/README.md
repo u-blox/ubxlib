@@ -6,7 +6,7 @@ Follow the instructions to build for the ESP-IDF platform:
 
 https://docs.espressif.com/projects/esp-idf/en/latest/get-started/index.html#get-started-step-by-step
 
-The builds here are tested with the v4.3.2 release of ESP-IDF from [Github](https://github.com/espressif/esp-idf/releases/tag/v4.3.2).
+The builds here are tested with the v5.0.1 release of ESP-IDF from [Github](https://github.com/espressif/esp-idf/releases/tag/v5.0.1) though, since `ubxlib` uses very little of ESP-IDF, versions 4.3 and 4.4 likely continue to work.
 
 # SDK Usage
 You may override or provide conditional compilation flags to ESP-IDF without modifying the build file.  Do this by setting an environment variable `U_FLAGS`, e.g.:

@@ -14,6 +14,9 @@ In the porting layer for this platform the `SysTick_Handler()` of the STM32F4 (s
 # Trace Output
 In order to conserve HW resources the trace output from this platform is sent over SWD using an ITM channel. There are many ways to read out the ITM trace output:
 
+# CMSIS Version
+By default CMSIS V1 is used: if you wish to use CMSIS V2 then pass the build flag `CMSIS_V2` into your build and, from the STM32F4 SDK, build `Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os2.c` instead of `Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS/cmsis_os.c` and include in your header search paths `Middlewares/Third_Party/FreeRTOS/Include/CMSIS_RTOS_V2` instead of `Middlewares/Third_Party/FreeRTOS/Include/CMSIS_RTOS`.
+
 ## STM32Cube IDE
 If you want to use the STM3Cube IDE you can import our [runner](runner) build as a Makefile project and debug it with [OpenOCD](https://github.com/xpack-dev-tools/openocd-xpack), configuring the STM32Cube IDE as below:
 

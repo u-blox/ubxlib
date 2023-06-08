@@ -64,6 +64,7 @@ include $(UBXLIB_BASE)/port/ubxlib.mk
 SRCS += \
    $(UBXLIB_SRC) \
    $(UBXLIB_BASE)/port/clib/u_port_clib_mktime64.c \
+   $(UBXLIB_BASE)/port/u_port_timezone.c \
    stubs/u_port_stub.c \
    stubs/u_lib_stub.c \
    stubs/u_main_stub.c

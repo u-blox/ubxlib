@@ -69,7 +69,10 @@ extern "C" {
  *                                      multipath index and psuedorange
  *                                      RMS error for an RRLP data
  *                                      block to be considered usable;
- *                                      use -1 for "don't care".
+ *                                      use -1 for "don't care". Ignored
+ *                                      if rrlpDataBytes is not INT_MAX since
+ *                                      in those cases the thresholding is
+ *                                      performed in the GNSS module.
  * @param cNoThreshold                  the minimum carrier to noise
  *                                      value that must be met for any
  *                                      single satellite's RRLP information
@@ -80,20 +83,36 @@ extern "C" {
  *                                      clear sky and a good antenna,
  *                                      hence the recommended value is
  *                                      30; lower threshold values may
- *                                      work, just less reliably.
+ *                                      work, just less reliably. Ignored
+ *                                      if rrlpDataBytes is not INT_MAX
+ *                                      since in those cases the thresholding
+ *                                      is performed in the GNSS module.
  * @param multipathIndexLimit           the maximum multipath index that
  *                                      must be met for any single
  *                                      satellite's RRLP information to
  *                                      be considered valid, 1 = low,
  *                                      2 = medium, 3 = high; specify
  *                                      -1 for "don't care".  The
- *                                      recommended value is 1.
+ *                                      recommended value is 1. Ignored
+ *                                      if rrlpDataBytes is not INT_MAX since
+ *                                      in those cases the thresholding is
+ *                                      performed in the GNSS module.
  * @param pseudorangeRmsErrorIndexLimit the maximum pseudorange RMS error
  *                                      index that must be met for any
  *                                      single satellite's RRLP information
  *                                      to be considered valid, specify -1
  *                                      for "don't care".  The recommended
- *                                      value is 3.
+ *                                      value is 3. Ignored if rrlpDataBytes
+ *                                      is not INT_MAX since in those cases
+ *                                      the thresholding is performed in the
+ *                                      GNSS module.
+ * @param rrlpDataLengthBytes           the amount of RRLP data to request
+ *                                      from the GNSS module.  Use INT_MAX
+ *                                      for unlimited, which is supported by
+ *                                      all modules, or 50 for MEAS50 mode,
+ *                                      20 for MEAS20 mode; these latter are
+ *                                      only supported by M10 modules and
+ *                                      above.
  * @param pClientIdStr                  the Thingstream device ID, obtained
  *                                      from the Thingstream portal, for
  *                                      this device; must be provided if
@@ -129,6 +148,7 @@ int32_t uLocationPrivateCloudLocate(uDeviceHandle_t devHandle,
                                     int32_t cNoThreshold,
                                     int32_t multipathIndexLimit,
                                     int32_t pseudorangeRmsErrorIndexLimit,
+                                    int32_t rrlpDataLengthBytes,
                                     const char *pClientIdStr,
                                     uLocation_t *pLocation,
                                     bool (*pKeepGoingCallback) (uDeviceHandle_t));

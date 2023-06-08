@@ -69,7 +69,7 @@
 // for the module is likely different that from the MCU: check
 // the data sheet for the module to determine the mapping.
 
-#if defined(U_CFG_TEST_CELL_MODULE_TYPE) && defined(U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN)
+#if defined(U_CFG_TEST_CELL_MODULE_TYPE) && defined(U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN) && defined(U_CFG_TEST_CELL_LOCATE)
 // DEVICE i.e. module/chip configuration: in this case a cellular
 // module connected via UART
 static const uDeviceCfg_t gDeviceCfg = {
@@ -193,51 +193,56 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocCellLocate")
     returnCode = uDeviceOpen(&gDeviceCfg, &devHandle);
     uPortLog("Opened device with return code %d.\n", returnCode);
 
-    // Bring up the network interface
-    uPortLog("Bringing up the network...\n");
-    if (uNetworkInterfaceUp(devHandle, U_NETWORK_TYPE_CELL,
-                            &gNetworkCfg) == 0) {
+    if (returnCode == 0) {
+        // Bring up the network interface
+        uPortLog("Bringing up the network...\n");
+        if (uNetworkInterfaceUp(devHandle, U_NETWORK_TYPE_CELL,
+                                &gNetworkCfg) == 0) {
 
-        // You may use the network, as normal,
-        // at any time, for example connect and
-        // send data etc.
+            // You may use the network, as normal,
+            // at any time, for example connect and
+            // send data etc.
 
-        // If you happen to have a GNSS chip inside your cellular
-        // module (e.g. you have a SARA-R510M8S or SARA-R422M8S)
-        // then Cell Locate will make use of GNSS if it can.
+            // If you happen to have a GNSS chip inside your cellular
+            // module (e.g. you have a SARA-R510M8S or SARA-R422M8S)
+            // then Cell Locate will make use of GNSS if it can.
 
-        // If you have a separate GNSS chip attached to your
-        // cellular module then you may need to call the
-        // uCellLocSetPinGnssPwr() and uCellLocSetPinGnssDataReady()
-        // functions here to tell the cellular module which pins
-        // of the cellular module the GNSS chip is attached on.
+            // If you have a separate GNSS chip attached to your
+            // cellular module then you may need to call the
+            // uCellLocSetPinGnssPwr() and uCellLocSetPinGnssDataReady()
+            // functions here to tell the cellular module which pins
+            // of the cellular module the GNSS chip is attached on.
 
-        // Of course, there is no need to have a GNSS chip attached
-        // to your cellular module, Cell Locate will work without it,
-        // such a chip simply affords a more precise location fix
-        // (metres versus hundreds of metres).
+            // Of course, there is no need to have a GNSS chip attached
+            // to your cellular module, Cell Locate will work without it,
+            // such a chip simply affords a more precise location fix
+            // (metres versus hundreds of metres).
 
-        // Now get location using Cell Locate
-        if (uLocationGet(devHandle, U_LOCATION_TYPE_CLOUD_CELL_LOCATE,
-                         NULL, U_PORT_STRINGIFY_QUOTED(U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN),
-                         &location, NULL) == 0) {
-            printLocation(location.latitudeX1e7, location.longitudeX1e7);
+            // Now get location using Cell Locate
+            if (uLocationGet(devHandle, U_LOCATION_TYPE_CLOUD_CELL_LOCATE,
+                             NULL, U_PORT_STRINGIFY_QUOTED(U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN),
+                             &location, NULL) == 0) {
+                printLocation(location.latitudeX1e7, location.longitudeX1e7);
+            } else {
+                uPortLog("Unable to get a location fix!\n");
+            }
+
+            // When finished with the network layer
+            uPortLog("Taking down network...\n");
+            uNetworkInterfaceDown(devHandle, U_NETWORK_TYPE_CELL);
         } else {
-            uPortLog("Unable to get a location fix!\n");
+            uPortLog("Unable to bring up the network!\n");
         }
 
-        // When finished with the network layer
-        uPortLog("Taking down network...\n");
-        uNetworkInterfaceDown(devHandle, U_NETWORK_TYPE_CELL);
-    } else {
-        uPortLog("Unable to bring up the network!\n");
-    }
+        // Close the device
+        // Note: we don't power the device down here in order
+        // to speed up testing; you may prefer to power it off
+        // by setting the second parameter to true.
+        uDeviceClose(devHandle, false);
 
-    // Close the device
-    // Note: we don't power the device down here in order
-    // to speed up testing; you may prefer to power it off
-    // by setting the second parameter to true.
-    uDeviceClose(devHandle, false);
+    } else {
+        uPortLog("Unable to bring up the device!\n");
+    }
 
     // Tidy up
     uDeviceDeinit();
@@ -245,7 +250,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocCellLocate")
 
     uPortLog("Done.\n");
 
-#if defined(U_CFG_TEST_CELL_MODULE_TYPE) && defined (U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN)
+#if defined(U_CFG_TEST_CELL_MODULE_TYPE) && defined(U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN) && defined(U_CFG_TEST_CELL_LOCATE)
     // For u-blox internal testing only
     EXAMPLE_FINAL_STATE(location.timeUtc > 0);
 #endif

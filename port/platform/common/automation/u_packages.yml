@@ -1,4 +1,3 @@
-
 unity:
     type: git
     url: https://github.com/ThrowTheSwitch/Unity
@@ -38,35 +37,38 @@ nrf5sdk:
     skip_first_subdir: True
 
 nrf_cli:
-    version: 10.18.1
+    version: 10.21.0
     check_command: nrfjprog -v
     windows:
         type: executable
-        url: https://nsscprodmedia.blob.core.windows.net/prod/software-and-other-downloads/desktop-software/nrf-command-line-tools/sw/versions-10-x-x/10-18-1/nrf-command-line-tools-10.18.1-x64.exe
-        package_name: nrf-command-line-tools-10.18.1-x64.exe
+        url: https://nsscprodmedia.blob.core.windows.net/prod/software-and-other-downloads/desktop-software/nrf-command-line-tools/sw/versions-10-x-x/10-21-0/nrf-command-line-tools-10.21.0-x64.exe
+        package_name: nrf-command-line-tools-10.21.0-x64.exe
         run_with_switches: /passive /quiet
-        add_to_path: "%homedrive%Program Files\Nordic Semiconductor\nrf-command-line-tools\bin"
+        add_to_path: "%homedrive%\\Program Files\\Nordic Semiconductor\\nrf-command-line-tools\\bin"
     linux:
         type: apt
-        url: https://nsscprodmedia.blob.core.windows.net/prod/software-and-other-downloads/desktop-software/nrf-command-line-tools/sw/versions-10-x-x/10-18-1/nrf-command-line-tools_10.18.1_amd64.deb
-        package_name: nrf-command-line-tools_10.18.1_amd64.deb
+        url: https://nsscprodmedia.blob.core.windows.net/prod/software-and-other-downloads/desktop-software/nrf-command-line-tools/sw/versions-10-x-x/10-21-0/nrf-command-line-tools_10.21.0_amd64.deb
+        package_name: nrf-command-line-tools_10.21.0_amd64.deb
     linux_arm:
         type: apt
-        url: https://nsscprodmedia.blob.core.windows.net/prod/software-and-other-downloads/desktop-software/nrf-command-line-tools/sw/versions-10-x-x/10-18-1/nrf-command-line-tools_10.18.1_arm64.deb
-        package_name: nrf-command-line-tools_10.18.1_arm64.deb
+        url: https://nsscprodmedia.blob.core.windows.net/prod/software-and-other-downloads/desktop-software/nrf-command-line-tools/sw/versions-10-x-x/10-21-0/nrf-command-line-tools_10.21.0_arm64.deb
+        package_name: nrf-command-line-tools_10.21.0_arm64.deb
 
 segger_jlink:
     type: segger_jlink
     windows:
-        check_command: where jlink /Q
+        url: https://www.segger.com/downloads/jlink/JLink_Windows_V788b_x86_64.exe
+        package_name: JLink_Windows_V788b_x86_64.exe
+        add_to_path: "%homedrive%\\Program Files\\SEGGER\\JLink"
+        check_command: cmd /c "if exist %homedrive%\\Program Files\\SEGGER\\JLink\\JLink.exe else where jlink /Q"
     linux:
-        url: https://nsscprodmedia.blob.core.windows.net/prod/software-and-other-downloads/desktop-software/nrf-command-line-tools/sw/versions-10-x-x/10-18-1/nrf-command-line-tools-10.18.1_linux-amd64.tar.gz
-        package_name: JLink_Linux_V780c_x86_64.deb
-        check_command: whereis JLinkExe
+        url: https://www.segger.com/downloads/jlink/JLink_Linux_V788b_x86_64.deb
+        package_name: JLink_Linux_V788b_x86_64.deb
+        check_command: which JLinkExe
     linux_arm:
-        url: https://nsscprodmedia.blob.core.windows.net/prod/software-and-other-downloads/desktop-software/nrf-command-line-tools/sw/versions-10-x-x/10-18-1/nrf-command-line-tools-10.18.1_linux-arm64.tar.gz
-        package_name: JLink_Linux_V780c_arm64.deb
-        check_command: whereis JLinkExe
+        url: https://www.segger.com/downloads/jlink/JLink_Linux_V788b_arm64.deb
+        package_name: JLink_Linux_V788b_arm64.deb
+        check_command: which JLinkExe
 
 stm32cubef4:
     type: git
@@ -76,13 +78,13 @@ stm32cubef4:
 esp_idf:
     type: esp_idf
     windows:
-        version: v4.3.2
+        version: v5.0.1
         url: https://github.com/espressif/esp-idf
     linux:
-        version: v4.3.2
+        version: v5.0.1
         url: https://github.com/espressif/esp-idf
     linux_arm:
-        version: v4.4
+        version: v5.0.1
         url: https://github.com/espressif/esp-idf
 
 make:
@@ -100,6 +102,52 @@ make:
         type: apt
         package_name: make
         check_command: command -v make
+
+ninja:
+    windows:
+        type: archive
+        version: v1.11.1
+        url: https://github.com/ninja-build/ninja/releases/download/v1.11.1/ninja-win.zip
+        add_to_path: .\
+    linux:
+        type: apt
+        package_name: ninja-build
+        check_command: command -v ninja
+    linux_arm:
+        type: apt
+        package_name: ninja-build
+        check_command: command -v ninja
+
+cmake:
+    windows:
+        type: archive
+        version: v3.26.3
+        url: https://github.com/Kitware/CMake/releases/download/v3.26.3/cmake-3.26.3-windows-x86_64.zip
+        skip_first_subdir: True
+        add_to_path: bin
+    linux:
+        type: apt
+        package_name: cmake
+        check_command: command -v cmake
+    linux_arm:
+        type: apt
+        package_name: cmake
+        check_command: command -v cmake
+
+gperf:
+    windows:
+        type: archive
+        version: v3.0.1
+        url: https://sourceforge.net/projects/gnuwin32/files/gperf/3.0.1/gperf-3.0.1-bin.zip
+        add_to_path: bin
+    linux:
+        type: apt
+        package_name: gperf
+        check_command: command -v gperf
+    linux_arm:
+        type: apt
+        package_name: gperf
+        check_command: command -v gperf
 
 arduino-cli:
     linux:

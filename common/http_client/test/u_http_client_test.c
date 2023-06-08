@@ -279,7 +279,7 @@ static void httpCallback(uDeviceHandle_t devHandle,
         pCallbackData->devHandle = devHandle;
         pCallbackData->statusCodeOrError = statusCodeOrError;
         pCallbackData->responseSize = responseSize;
-        U_TEST_PRINT_LINE("HTTP Callback - respons size %d.\n", responseSize);
+        U_TEST_PRINT_LINE("HTTP Callback - response size %d.\n", responseSize);
     }
 }
 
@@ -613,146 +613,153 @@ U_PORT_TEST_FUNCTION("[httpClient]", "httpClient")
                         heapXxxSecurityInitLoss -= uPortGetHeapFree();
                     }
                 }
-                U_PORT_TEST_ASSERT(gpHttpContext[y] != NULL);
-                U_PORT_TEST_ASSERT(uHttpClientOpenResetLastError() == 0);
+                if (gpHttpContext[y] == NULL) {
+                    U_PORT_TEST_ASSERT(uHttpClientOpenResetLastError() == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED);
+                } else {
+                    U_PORT_TEST_ASSERT(uHttpClientOpenResetLastError() == 0);
+                }
 
-                // Create a path
-                snprintf(pathBuffer, sizeof(pathBuffer), "/%.16s_%d_%d.html", serialNumber, x, y);
+                if (gpHttpContext[y] != NULL) {
+                    // Create a path
+                    snprintf(pathBuffer, sizeof(pathBuffer), "/%.16s_%d_%d.html", serialNumber, x, y);
 
-                // For every request operation...
-                busyCount = 0;
-                moduleErrorCount = 0;
-                for (int32_t requestOperation = 0;
-                     requestOperation < (int32_t) U_HTTP_CLIENT_TEST_OPERATION_MAX_NUM;
-                     requestOperation++) {
-                    tries = 0;
-                    checkBinary = true;
-                    do {
-                        switch (requestOperation) {
-                            case U_HTTP_CLIENT_TEST_OPERATION_PUT:
-                                // Fill the data buffer with data to PUT and PUT it
-                                bufferFill(gpDataBufferOut, uHttpClientTestDataSizeBytes);
-                                U_TEST_PRINT_LINE("PUT %d byte(s) to %s...",
-                                                  uHttpClientTestDataSizeBytes, pathBuffer);
-                                errorOrStatusCode = uHttpClientPutRequest(gpHttpContext[y],
-                                                                          pathBuffer, gpDataBufferOut,
-                                                                          uHttpClientTestDataSizeBytes,
-                                                                          U_HTTP_CLIENT_TEST_CONTENT_TYPE);
-                                break;
-                            case U_HTTP_CLIENT_TEST_OPERATION_GET_PUT:
-                                // Fill the data buffer and the content-type buffer
-                                // with rubbish and GET the file again
-                                memset(gpDataBufferIn, 0xFF, uHttpClientTestDataSizeBytes);
-                                memset(gpContentTypeBuffer, 0xFF, U_HTTP_CLIENT_CONTENT_TYPE_LENGTH_BYTES);
-                                gSizeDataBufferIn = uHttpClientTestDataSizeBytes;
-                                U_TEST_PRINT_LINE("GET of %s...", pathBuffer);
-                                errorOrStatusCode = uHttpClientGetRequest(gpHttpContext[y],
-                                                                          pathBuffer, gpDataBufferIn,
-                                                                          &gSizeDataBufferIn,
-                                                                          gpContentTypeBuffer);
-                                break;
-                            case U_HTTP_CLIENT_TEST_OPERATION_DELETE_PUT:
-                                // DELETE it
-                                U_TEST_PRINT_LINE("DELETE %s...", pathBuffer);
-                                errorOrStatusCode = uHttpClientDeleteRequest(gpHttpContext[y], pathBuffer);
-                                break;
-                            case U_HTTP_CLIENT_TEST_OPERATION_GET_DELETED:
-                                // Try to GET the deleted file
-                                memset(gpDataBufferIn, 0xFF, uHttpClientTestDataSizeBytes);
-                                memset(gpContentTypeBuffer, 0xFF, U_HTTP_CLIENT_CONTENT_TYPE_LENGTH_BYTES);
-                                gSizeDataBufferIn = uHttpClientTestDataSizeBytes;
-                                U_TEST_PRINT_LINE("GET of deleted file %s...", pathBuffer);
-                                errorOrStatusCode = uHttpClientGetRequest(gpHttpContext[y],
-                                                                          pathBuffer, gpDataBufferIn,
-                                                                          &gSizeDataBufferIn,
-                                                                          gpContentTypeBuffer);
-                                break;
-                            case U_HTTP_CLIENT_TEST_OPERATION_POST:
-                                // Fill the data buffer with data to POST and POST it
-                                if ((deviceType == U_DEVICE_TYPE_SHORT_RANGE_OPEN_CPU) ||
-                                    (deviceType == U_DEVICE_TYPE_SHORT_RANGE)) {
-                                    bufferFillASCII(gpDataBufferOut, uHttpClientTestDataSizeBytes);
-                                    checkBinary = false; // only printable ASCII supported for uconnectX POST
-                                } else {
+                    // For every request operation...
+                    busyCount = 0;
+                    moduleErrorCount = 0;
+                    for (int32_t requestOperation = 0;
+                         requestOperation < (int32_t) U_HTTP_CLIENT_TEST_OPERATION_MAX_NUM;
+                         requestOperation++) {
+                        tries = 0;
+                        checkBinary = true;
+                        do {
+                            switch (requestOperation) {
+                                case U_HTTP_CLIENT_TEST_OPERATION_PUT:
+                                    // Fill the data buffer with data to PUT and PUT it
                                     bufferFill(gpDataBufferOut, uHttpClientTestDataSizeBytes);
-                                }
-                                memset(gpDataBufferIn, 0xFF, uHttpClientTestDataSizeBytes);
-                                memset(gpContentTypeBuffer, 0xFF, U_HTTP_CLIENT_CONTENT_TYPE_LENGTH_BYTES);
-                                gSizeDataBufferIn = uHttpClientTestDataSizeBytes;
-                                U_TEST_PRINT_LINE("POST %d byte(s) to %s...",
-                                                  uHttpClientTestDataSizeBytes, pathBuffer);
-                                errorOrStatusCode = uHttpClientPostRequest(gpHttpContext[y],
-                                                                           pathBuffer, gpDataBufferOut,
-                                                                           uHttpClientTestDataSizeBytes,
-                                                                           U_HTTP_CLIENT_TEST_CONTENT_TYPE,
-                                                                           gpDataBufferIn,
-                                                                           &gSizeDataBufferIn,
-                                                                           gpContentTypeBuffer);
-                                break;
-                            case U_HTTP_CLIENT_TEST_OPERATION_HEAD:
-                                // Fill the data buffer with rubbish and get HEAD
-                                memset(gpDataBufferIn, 0xFF, uHttpClientTestDataSizeBytes);
-                                gSizeDataBufferIn = uHttpClientTestDataSizeBytes;
-                                U_TEST_PRINT_LINE("HEAD of %s...", pathBuffer);
-                                errorOrStatusCode = uHttpClientHeadRequest(gpHttpContext[y],
-                                                                           pathBuffer, gpDataBufferIn,
-                                                                           &gSizeDataBufferIn);
-                                break;
-                            case U_HTTP_CLIENT_TEST_OPERATION_GET_POST:
-                                // Fill the data buffer and the content-type buffer
-                                // with rubbish and GET the whole file
-                                if ((deviceType == U_DEVICE_TYPE_SHORT_RANGE_OPEN_CPU) ||
-                                    (deviceType == U_DEVICE_TYPE_SHORT_RANGE)) {
-                                    checkBinary = false;
-                                }
-                                memset(gpDataBufferIn, 0xFF, uHttpClientTestDataSizeBytes);
-                                memset(gpContentTypeBuffer, 0xFF, U_HTTP_CLIENT_CONTENT_TYPE_LENGTH_BYTES);
-                                gSizeDataBufferIn = uHttpClientTestDataSizeBytes;
-                                U_TEST_PRINT_LINE("GET of %s...", pathBuffer);
-                                errorOrStatusCode = uHttpClientGetRequest(gpHttpContext[y],
-                                                                          pathBuffer, gpDataBufferIn,
-                                                                          &gSizeDataBufferIn,
-                                                                          gpContentTypeBuffer);
-                                break;
-                            case U_HTTP_CLIENT_TEST_OPERATION_DELETE_POST:
-                                // Finally DELETE the file again
-                                U_TEST_PRINT_LINE("DELETE of %s...", pathBuffer);
-                                errorOrStatusCode = uHttpClientDeleteRequest(gpHttpContext[y], pathBuffer);
-                                break;
-                            default:
-                                break;
-                        }
-                        U_TEST_PRINT_LINE("Result %d\n", errorOrStatusCode);
-                        // Check whether it worked or not
-                        outcome = checkResponse((uHttpClientTestOperation_t) requestOperation,
-                                                errorOrStatusCode, &connection,
-                                                gpDataBufferIn, uHttpClientTestDataSizeBytes,
-                                                gSizeDataBufferIn, gpContentTypeBuffer,
-                                                (volatile uHttpClientTestCallback_t *) &callbackData,
-                                                checkBinary);
-                        if ((outcome == (int32_t) U_ERROR_COMMON_UNKNOWN) ||
-                            (outcome == (int32_t) U_ERROR_COMMON_DEVICE_ERROR)) {
-                            // U_ERROR_COMMON_UNKNOWN or U_ERROR_COMMON_DEVICE_ERROR is reported
-                            // when the module indicates that the HTTP request has failed
-                            // for some reason
-                            moduleErrorCount++;
-                        } else if (outcome == (int32_t) U_ERROR_COMMON_BUSY) {
-                            // U_ERROR_COMMON_BUSY is what we get when error-on-busy
-                            // is used and so we just need to retry
-                            busyCount++;
-                        }
-                        tries++;
-                        // Give the module a rest betweeen tries
-                        uPortTaskBlock(1000);
-                    } while ((outcome < 0) &&
-                             (moduleErrorCount < HTTP_CLIENT_TEST_MAX_TRIES_UNKNOWN) &&
-                             (busyCount < HTTP_CLIENT_TEST_MAX_TRIES_ON_BUSY) &&
-                             (tries < HTTP_CLIENT_TEST_OVERALL_TRIES_COUNT));
-                    U_PORT_TEST_ASSERT(outcome == 0);
-                }  // for (request operation)
+                                    U_TEST_PRINT_LINE("PUT %d byte(s) to %s...",
+                                                      uHttpClientTestDataSizeBytes, pathBuffer);
+                                    errorOrStatusCode = uHttpClientPutRequest(gpHttpContext[y],
+                                                                              pathBuffer, gpDataBufferOut,
+                                                                              uHttpClientTestDataSizeBytes,
+                                                                              U_HTTP_CLIENT_TEST_CONTENT_TYPE);
+                                    break;
+                                case U_HTTP_CLIENT_TEST_OPERATION_GET_PUT:
+                                    // Fill the data buffer and the content-type buffer
+                                    // with rubbish and GET the file again
+                                    memset(gpDataBufferIn, 0xFF, uHttpClientTestDataSizeBytes);
+                                    memset(gpContentTypeBuffer, 0xFF, U_HTTP_CLIENT_CONTENT_TYPE_LENGTH_BYTES);
+                                    gSizeDataBufferIn = uHttpClientTestDataSizeBytes;
+                                    U_TEST_PRINT_LINE("GET of %s...", pathBuffer);
+                                    errorOrStatusCode = uHttpClientGetRequest(gpHttpContext[y],
+                                                                              pathBuffer, gpDataBufferIn,
+                                                                              &gSizeDataBufferIn,
+                                                                              gpContentTypeBuffer);
+                                    break;
+                                case U_HTTP_CLIENT_TEST_OPERATION_DELETE_PUT:
+                                    // DELETE it
+                                    U_TEST_PRINT_LINE("DELETE %s...", pathBuffer);
+                                    errorOrStatusCode = uHttpClientDeleteRequest(gpHttpContext[y], pathBuffer);
+                                    break;
+                                case U_HTTP_CLIENT_TEST_OPERATION_GET_DELETED:
+                                    // Try to GET the deleted file
+                                    memset(gpDataBufferIn, 0xFF, uHttpClientTestDataSizeBytes);
+                                    memset(gpContentTypeBuffer, 0xFF, U_HTTP_CLIENT_CONTENT_TYPE_LENGTH_BYTES);
+                                    gSizeDataBufferIn = uHttpClientTestDataSizeBytes;
+                                    U_TEST_PRINT_LINE("GET of deleted file %s...", pathBuffer);
+                                    errorOrStatusCode = uHttpClientGetRequest(gpHttpContext[y],
+                                                                              pathBuffer, gpDataBufferIn,
+                                                                              &gSizeDataBufferIn,
+                                                                              gpContentTypeBuffer);
+                                    break;
+                                case U_HTTP_CLIENT_TEST_OPERATION_POST:
+                                    // Fill the data buffer with data to POST and POST it
+                                    if ((deviceType == U_DEVICE_TYPE_SHORT_RANGE_OPEN_CPU) ||
+                                        (deviceType == U_DEVICE_TYPE_SHORT_RANGE)) {
+                                        bufferFillASCII(gpDataBufferOut, uHttpClientTestDataSizeBytes);
+                                        checkBinary = false; // only printable ASCII supported for uconnectX POST
+                                    } else {
+                                        bufferFill(gpDataBufferOut, uHttpClientTestDataSizeBytes);
+                                    }
+                                    memset(gpDataBufferIn, 0xFF, uHttpClientTestDataSizeBytes);
+                                    memset(gpContentTypeBuffer, 0xFF, U_HTTP_CLIENT_CONTENT_TYPE_LENGTH_BYTES);
+                                    gSizeDataBufferIn = uHttpClientTestDataSizeBytes;
+                                    U_TEST_PRINT_LINE("POST %d byte(s) to %s...",
+                                                      uHttpClientTestDataSizeBytes, pathBuffer);
+                                    errorOrStatusCode = uHttpClientPostRequest(gpHttpContext[y],
+                                                                               pathBuffer, gpDataBufferOut,
+                                                                               uHttpClientTestDataSizeBytes,
+                                                                               U_HTTP_CLIENT_TEST_CONTENT_TYPE,
+                                                                               gpDataBufferIn,
+                                                                               &gSizeDataBufferIn,
+                                                                               gpContentTypeBuffer);
+                                    break;
+                                case U_HTTP_CLIENT_TEST_OPERATION_HEAD:
+                                    // Fill the data buffer with rubbish and get HEAD
+                                    memset(gpDataBufferIn, 0xFF, uHttpClientTestDataSizeBytes);
+                                    gSizeDataBufferIn = uHttpClientTestDataSizeBytes;
+                                    U_TEST_PRINT_LINE("HEAD of %s...", pathBuffer);
+                                    errorOrStatusCode = uHttpClientHeadRequest(gpHttpContext[y],
+                                                                               pathBuffer, gpDataBufferIn,
+                                                                               &gSizeDataBufferIn);
+                                    break;
+                                case U_HTTP_CLIENT_TEST_OPERATION_GET_POST:
+                                    // Fill the data buffer and the content-type buffer
+                                    // with rubbish and GET the whole file
+                                    if ((deviceType == U_DEVICE_TYPE_SHORT_RANGE_OPEN_CPU) ||
+                                        (deviceType == U_DEVICE_TYPE_SHORT_RANGE)) {
+                                        checkBinary = false;
+                                    }
+                                    memset(gpDataBufferIn, 0xFF, uHttpClientTestDataSizeBytes);
+                                    memset(gpContentTypeBuffer, 0xFF, U_HTTP_CLIENT_CONTENT_TYPE_LENGTH_BYTES);
+                                    gSizeDataBufferIn = uHttpClientTestDataSizeBytes;
+                                    U_TEST_PRINT_LINE("GET of %s...", pathBuffer);
+                                    errorOrStatusCode = uHttpClientGetRequest(gpHttpContext[y],
+                                                                              pathBuffer, gpDataBufferIn,
+                                                                              &gSizeDataBufferIn,
+                                                                              gpContentTypeBuffer);
+                                    break;
+                                case U_HTTP_CLIENT_TEST_OPERATION_DELETE_POST:
+                                    // Finally DELETE the file again
+                                    U_TEST_PRINT_LINE("DELETE of %s...", pathBuffer);
+                                    errorOrStatusCode = uHttpClientDeleteRequest(gpHttpContext[y], pathBuffer);
+                                    break;
+                                default:
+                                    break;
+                            }
+                            U_TEST_PRINT_LINE("Result %d\n", errorOrStatusCode);
+                            // Check whether it worked or not
+                            outcome = checkResponse((uHttpClientTestOperation_t) requestOperation,
+                                                    errorOrStatusCode, &connection,
+                                                    gpDataBufferIn, uHttpClientTestDataSizeBytes,
+                                                    gSizeDataBufferIn, gpContentTypeBuffer,
+                                                    (volatile uHttpClientTestCallback_t *) &callbackData,
+                                                    checkBinary);
+                            if ((outcome == (int32_t) U_ERROR_COMMON_UNKNOWN) ||
+                                (outcome == (int32_t) U_ERROR_COMMON_DEVICE_ERROR)) {
+                                // U_ERROR_COMMON_UNKNOWN or U_ERROR_COMMON_DEVICE_ERROR is reported
+                                // when the module indicates that the HTTP request has failed
+                                // for some reason
+                                moduleErrorCount++;
+                            } else if (outcome == (int32_t) U_ERROR_COMMON_BUSY) {
+                                // U_ERROR_COMMON_BUSY is what we get when error-on-busy
+                                // is used and so we just need to retry
+                                busyCount++;
+                            }
+                            tries++;
+                            // Give the module a rest betweeen tries
+                            uPortTaskBlock(1000);
+                        } while ((outcome < 0) &&
+                                 (moduleErrorCount < HTTP_CLIENT_TEST_MAX_TRIES_UNKNOWN) &&
+                                 (busyCount < HTTP_CLIENT_TEST_MAX_TRIES_ON_BUSY) &&
+                                 (tries < HTTP_CLIENT_TEST_OVERALL_TRIES_COUNT));
+                        U_PORT_TEST_ASSERT(outcome == 0);
+                    }  // for (request operation)
+                } else { // if (gpHttpContext[y] != NULL)
+                    U_TEST_PRINT_LINE("device does not support HTTP%sclient, not testing it.", x == 0 ? " " : "S ");
+                }
             } // for (HTTP/HTTPS instance)
 
-            U_TEST_PRINT_LINE("closing HTTP instances...", pathBuffer);
+            U_TEST_PRINT_LINE("closing HTTP instances...");
             for (size_t y = 0; y < httpClientMaxNumConn; y++) {
                 uHttpClientClose(gpHttpContext[y]);
             }

@@ -218,149 +218,154 @@ U_PORT_TEST_FUNCTION("[example]", "exampleMqttClient")
     returnCode = uDeviceOpen(&gDeviceCfg, &devHandle);
     uPortLog("Opened device with return code %d.\n", returnCode);
 
-    // Bring up the network interface
-    uPortLog("Bringing up the network...\n");
-    if (uNetworkInterfaceUp(devHandle, gNetType,
-                            &gNetworkCfg) == 0) {
+    if (returnCode == 0) {
+        // Bring up the network interface
+        uPortLog("Bringing up the network...\n");
+        if (uNetworkInterfaceUp(devHandle, gNetType,
+                                &gNetworkCfg) == 0) {
 
-        // Do things using the network, for
-        // example connect to an MQTT broker
-        // and publish/subscribe to topics
-        // as follows
+            // Do things using the network, for
+            // example connect to an MQTT broker
+            // and publish/subscribe to topics
+            // as follows
 
-        // Create an MQTT instance.  Here we
-        // are using a non-secure MQTT connection
-        // and hence the [D]TLS parameter is NULL.
-        // If you have edited MY_BROKER_NAME above
-        // to connect on the ":8883" secure port
-        // then you must change the [D]TLS parameter
-        // to be &tlsSettings, which will apply the
-        // default [D]TLS security settings. You may
-        // change the [D]TLS security settings
-        // structure to, for instance, add certificate
-        // checking: see the sockets TLS example for
-        // how to do that.
-        pContext = pUMqttClientOpen(devHandle, NULL);
-        if (pContext != NULL) {
-            // Set the URL for the connection; everything
-            // else can be left at defaults for the
-            // public ubxlib.redirectme.net broker
-            connection.pBrokerNameStr = MY_BROKER_NAME;
+            // Create an MQTT instance.  Here we
+            // are using a non-secure MQTT connection
+            // and hence the [D]TLS parameter is NULL.
+            // If you have edited MY_BROKER_NAME above
+            // to connect on the ":8883" secure port
+            // then you must change the [D]TLS parameter
+            // to be &tlsSettings, which will apply the
+            // default [D]TLS security settings. You may
+            // change the [D]TLS security settings
+            // structure to, for instance, add certificate
+            // checking: see the sockets TLS example for
+            // how to do that.
+            pContext = pUMqttClientOpen(devHandle, NULL);
+            if (pContext != NULL) {
+                // Set the URL for the connection; everything
+                // else can be left at defaults for the
+                // public ubxlib.redirectme.net broker
+                connection.pBrokerNameStr = MY_BROKER_NAME;
 
-            // If you wish to use MQTT-SN instead of MQTT,
-            // and your broker supports it, you would set:
-            // connection.mqttSn = true;
+                // If you wish to use MQTT-SN instead of MQTT,
+                // and your broker supports it, you would set:
+                // connection.mqttSn = true;
 
-            // If you wish to use the Thingstream
-            // MQTT service, you would set the following
-            // values in the uMqttClientConnection_t
-            // structure instead:
-            //
-            // pBrokerNameStr to "mqtt.thingstream.io"
-            // pClientIdStr to the Thingstream Client ID of your thing, something like "device:521b5a33-2374-4547-8edc-50743c144509"
-            // pUserNameStr to the Thingstream username of your thing, something like "WF592TTWUQ18512KLU6L"
-            // pPasswordStr to the Thingstream password of your thing, something like "nsd8hsK/NSDFdgdblfmbQVXbx7jeZ/8vnsiltgty"
+                // If you wish to use the Thingstream
+                // MQTT service, you would set the following
+                // values in the uMqttClientConnection_t
+                // structure instead:
+                //
+                // pBrokerNameStr to "mqtt.thingstream.io"
+                // pClientIdStr to the Thingstream Client ID of your thing, something like "device:521b5a33-2374-4547-8edc-50743c144509"
+                // pUserNameStr to the Thingstream username of your thing, something like "WF592TTWUQ18512KLU6L"
+                // pPasswordStr to the Thingstream password of your thing, something like "nsd8hsK/NSDFdgdblfmbQVXbx7jeZ/8vnsiltgty"
 
-            // Connect to the MQTT broker
-            uPortLog("Connecting to MQTT broker \"%s\"...\n", MY_BROKER_NAME);
-            if (uMqttClientConnect(pContext, &connection) == 0) {
+                // Connect to the MQTT broker
+                uPortLog("Connecting to MQTT broker \"%s\"...\n", MY_BROKER_NAME);
+                if (uMqttClientConnect(pContext, &connection) == 0) {
 
-                // Set up a callback to be called when the broker
-                // says there are new messages available
-                uMqttClientSetMessageCallback(pContext,
-                                              messageIndicationCallback,
-                                              (void *) &messagesAvailable);
+                    // Set up a callback to be called when the broker
+                    // says there are new messages available
+                    uMqttClientSetMessageCallback(pContext,
+                                                  messageIndicationCallback,
+                                                  (void *) &messagesAvailable);
 
-                // In order to create a unique topic name on the
-                // public server that we can publish and subscribe
-                // to in this example code, we make the topic name
-                // the serial number of the module
-                uSecurityGetSerialNumber(devHandle, topic);
+                    // In order to create a unique topic name on the
+                    // public server that we can publish and subscribe
+                    // to in this example code, we make the topic name
+                    // the serial number of the module
+                    uSecurityGetSerialNumber(devHandle, topic);
 
-                // Subscribe to our topic on the broker
-                uPortLog("Subscribing to topic \"%s\"...\n", topic);
-                // If you were using MQTT-SN, you would call
-                // uMqttClientSnSubscribeNormalTopic() instead and
-                // capture the returned MQTT-SN topic name for use with
-                // uMqttClientSnPublish() a few lines below
-                if (uMqttClientSubscribe(pContext, topic,
-                                         U_MQTT_QOS_EXACTLY_ONCE)) {
-
-                    // Publish our message to our topic on the
-                    // MQTT broker
-                    uPortLog("Publishing \"%s\" to topic \"%s\"...\n",
-                             message, topic);
-                    startTimeMs = uPortGetTickTimeMs();
+                    // Subscribe to our topic on the broker
+                    uPortLog("Subscribing to topic \"%s\"...\n", topic);
                     // If you were using MQTT-SN, you would call
-                    // uMqttClientSnPublish() instead and pass it
-                    // the MQTT-SN topic name returned by
-                    // uMqttClientSnSubscribeNormalTopic()
-                    if (uMqttClientPublish(pContext, topic, message,
-                                           sizeof(message) - 1,
-                                           U_MQTT_QOS_EXACTLY_ONCE,
-                                           false) == 0) {
+                    // uMqttClientSnSubscribeNormalTopic() instead and
+                    // capture the returned MQTT-SN topic name for use with
+                    // uMqttClientSnPublish() a few lines below
+                    if (uMqttClientSubscribe(pContext, topic,
+                                             U_MQTT_QOS_EXACTLY_ONCE)) {
 
-                        // Wait for us to be notified that our new
-                        // message is available on the broker
-                        while (!messagesAvailable &&
-                               (uPortGetTickTimeMs() - startTimeMs < 10000)) {
-                            uPortTaskBlock(1000);
-                        }
+                        // Publish our message to our topic on the
+                        // MQTT broker
+                        uPortLog("Publishing \"%s\" to topic \"%s\"...\n",
+                                 message, topic);
+                        startTimeMs = uPortGetTickTimeMs();
+                        // If you were using MQTT-SN, you would call
+                        // uMqttClientSnPublish() instead and pass it
+                        // the MQTT-SN topic name returned by
+                        // uMqttClientSnSubscribeNormalTopic()
+                        if (uMqttClientPublish(pContext, topic, message,
+                                               sizeof(message) - 1,
+                                               U_MQTT_QOS_EXACTLY_ONCE,
+                                               false) == 0) {
 
-                        // Read the new message from the broker
-                        while (uMqttClientGetUnread(pContext) > 0) {
-                            bufferSize = sizeof(buffer);
-                            // If you were using MQTT-SN, you would call
-                            // uMqttClientSnMessageRead() instead and, rather
-                            // than passing it the buffer "topic", you
-                            // would pass it a pointer to a variable of
-                            // type uMqttSnTopicName_t
-                            if (uMqttClientMessageRead(pContext, topic,
-                                                       sizeof(topic),
-                                                       buffer, &bufferSize,
-                                                       NULL) == 0) {
-                                uPortLog("New message in topic \"%s\" is %d"
-                                         " character(s): \"%.*s\".\n", topic,
-                                         bufferSize, bufferSize, buffer);
+                            // Wait for us to be notified that our new
+                            // message is available on the broker
+                            while (!messagesAvailable &&
+                                   (uPortGetTickTimeMs() - startTimeMs < 10000)) {
+                                uPortTaskBlock(1000);
                             }
+
+                            // Read the new message from the broker
+                            while (uMqttClientGetUnread(pContext) > 0) {
+                                bufferSize = sizeof(buffer);
+                                // If you were using MQTT-SN, you would call
+                                // uMqttClientSnMessageRead() instead and, rather
+                                // than passing it the buffer "topic", you
+                                // would pass it a pointer to a variable of
+                                // type uMqttSnTopicName_t
+                                if (uMqttClientMessageRead(pContext, topic,
+                                                           sizeof(topic),
+                                                           buffer, &bufferSize,
+                                                           NULL) == 0) {
+                                    uPortLog("New message in topic \"%s\" is %d"
+                                             " character(s): \"%.*s\".\n", topic,
+                                             bufferSize, bufferSize, buffer);
+                                }
+                            }
+                        } else {
+                            uPortLog("Unable to publish our message \"%s\"!\n",
+                                     message);
                         }
                     } else {
-                        uPortLog("Unable to publish our message \"%s\"!\n",
-                                 message);
+                        uPortLog("Unable to subscribe to topic \"%s\"!\n", topic);
                     }
+
+                    // Disconnect from the MQTT broker
+                    uMqttClientDisconnect(pContext);
+
                 } else {
-                    uPortLog("Unable to subscribe to topic \"%s\"!\n", topic);
+                    uPortLog("Unable to connect to MQTT broker \"%s\"!\n", MY_BROKER_NAME);
                 }
-
-                // Disconnect from the MQTT broker
-                uMqttClientDisconnect(pContext);
-
             } else {
-                uPortLog("Unable to connect to MQTT broker \"%s\"!\n", MY_BROKER_NAME);
+                uPortLog("Unable to create MQTT instance!\n");
             }
+
+            // Note: since devHandle is a cellular
+            // or wifi handle, any of the `cell` or `wifi`
+            // API calls could be made here using it.
+
+            // Shut down MQTT
+            uMqttClientClose(pContext);
+
+            // When finished with the network layer
+            uPortLog("Taking down network...\n");
+            uNetworkInterfaceDown(devHandle, gNetType);
         } else {
-            uPortLog("Unable to create MQTT instance!\n");
+            uPortLog("Unable to bring up the network!\n");
         }
 
-        // Note: since devHandle is a cellular
-        // or wifi handle, any of the `cell` or `wifi`
-        // API calls could be made here using it.
+        // Close the device
+        // Note: we don't power the device down here in order
+        // to speed up testing; you may prefer to power it off
+        // by setting the second parameter to true.
+        uDeviceClose(devHandle, false);
 
-        // Shut down MQTT
-        uMqttClientClose(pContext);
-
-        // When finished with the network layer
-        uPortLog("Taking down network...\n");
-        uNetworkInterfaceDown(devHandle, gNetType);
     } else {
-        uPortLog("Unable to bring up the network!\n");
+        uPortLog("Unable to bring up the device!\n");
     }
-
-    // Close the device
-    // Note: we don't power the device down here in order
-    // to speed up testing; you may prefer to power it off
-    // by setting the second parameter to true.
-    uDeviceClose(devHandle, false);
 
     // Tidy up
     uDeviceDeinit();

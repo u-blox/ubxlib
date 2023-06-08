@@ -64,9 +64,7 @@ bool uTimeIsLeapYear(int32_t year)
 {
     bool isLeapYear = false;
 
-    if (year % 400 == 0) {
-        isLeapYear = true;
-    } else if (year % 4 == 0) {
+    if (((year % 4 == 0) && (year % 100 != 0)) || (year % 400 == 0)) {
         isLeapYear = true;
     }
 
@@ -86,6 +84,33 @@ int64_t uTimeMonthsToSecondsUtc(int32_t monthsUtc)
     }
 
     return secondsUtc;
+}
+
+int32_t uTimeSecondsToMonthsUtc(int64_t secondsUtc)
+{
+    int32_t monthsUtc = 0;
+    int32_t year = 0;
+    int32_t month = 0;
+    int32_t x;
+
+    while (secondsUtc > 0) {
+        if (uTimeIsLeapYear(year + 1970)) {
+            x = gDaysInMonthLeapYear[month] * 3600 * 24;
+        } else {
+            x = gDaysInMonth[month] * 3600 * 24;
+        }
+        if (secondsUtc >= x) {
+            monthsUtc++;
+            month++;
+        }
+        secondsUtc -= x;
+        if (month == 12) {
+            month = 0;
+            year++;
+        }
+    }
+
+    return monthsUtc;
 }
 
 // End of file

@@ -298,6 +298,20 @@ typedef enum {
     U_GNSS_TIME_SYSTEM_NAVIC = 5
 } uGnssTimeSystem_t;
 
+
+/** The possible modes for RRLP capture; modes beyond
+ * U_GNSS_RRLP_MODE_MEASX are only supported on M10 modules or later.
+ * For guidance on how these modes may be used, see:
+ * https://developer.thingstream.io/guides/location-services/cloudlocate-getting-started
+ */
+typedef enum {
+    U_GNSS_RRLP_MODE_MEASX   = 0,
+    U_GNSS_RRLP_MODE_MEAS50  = 1,
+    U_GNSS_RRLP_MODE_MEAS20  = 2,
+    U_GNSS_RRLP_MODE_MEASC12 = 3,
+    U_GNSS_RRLP_MODE_MEASD12 = 4
+} uGnssRrlpMode_t;
+
 /** @}*/
 
 #endif // _U_GNSS_TYPE_H_

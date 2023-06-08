@@ -63,6 +63,9 @@ UBXLIB_PRIVATE_INC += ${UBXLIB_BASE}/common/device/src
 # Default malloc()/free() implementation
 UBXLIB_SRC += ${UBXLIB_BASE}/port/u_port_heap.c
 
+# Default uPortGetTimezoneOffsetSeconds() implementation
+UBXLIB_SRC += ${UBXLIB_BASE}/port/u_port_timezone.c
+
 # Optional short range related files and directories
 ifneq ($(filter short_range,$(UBXLIB_FEATURES)),)
 UBXLIB_MODULE_DIRS += \
