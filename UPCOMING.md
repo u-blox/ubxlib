@@ -27,8 +27,8 @@ Support will be provided for AssistNow: online, offline and autonomous, enabling
 Support will be added for positioning using the Google Maps, Skyhook or Here cloud services, which base their position on knowledge of local Wifi access points, a subscription to one or more of these services will be required.
 This feature is supported only by u-blox Wifi/BLE modules NINA-W13 and NINA-W15 (with u-connectXpress version 5.0.0 or later).
 
-## Cellular LENA-R8 Module Type
-Support will be added for the [LENA-R8](https://www.u-blox.com/en/product/lena-r8-series) cellular module.
+## SLIPPED TO 1.4: Cellular LENA-R8 Module Type
+Support  for the [LENA-R8](https://www.u-blox.com/en/product/lena-r8-series) cellular module will now be added in release **1.4**, not release 1.3.
 
 ## Cellular CloudLocate Compact
 Support will be added for version 2 [CloudLocate](https://www.u-blox.com/en/product/cloudlocate), using the new compact RRLP message formats available in u-blox M10 GNSS modules and later, which give a significant improvement in transmission speed/cost.
