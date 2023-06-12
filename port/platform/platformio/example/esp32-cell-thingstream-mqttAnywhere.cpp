@@ -17,7 +17,7 @@
 /*
  *
  * A simple demo application showing how to set up
- * a MQTT-SN connection to thingstream using the ubxlib.
+ * a connection to the Thingstream MQTT-Anywhere service (MQTT-SN) using the ubxlib.
  * By: Jan-Ole Giebel
  *
 */
@@ -28,13 +28,13 @@
 
 #include "ubxlib.h"
 
-#define BROKER_NAME "10.7.0.55:2442" // The thingstream MQTT-SN-Broker IP and port.
+#define BROKER_NAME "10.7.0.55:2442" // The Thingstream MQTT-Anywhere service (MQTT-SN gateway) IP address and port.
 
 // Change all -1 values below to appropriate pin and settings values
 // appropriate for your module connection.
 static const uNetworkCfgCell_t gNetworkCfg = {
     .type = U_NETWORK_TYPE_CELL,
-    .pApn = "tsudp",       // For the thingstream SIM use "tsiot", though for me [Jan-Ole Giebel, based in Germany] this APN worked just fine. Use NULL for default.
+    .pApn = "tsudp",       // Thingstream SIM: For the Thingstream MQTT-Anywhere service (MQTT-SN gateway) the APN must be set to "TSUDP". When using the Thingstream SIM for other 'internet' services, APN must be set to "TSIOT".
     .timeoutSeconds = 240  // Connection timeout in seconds
 };
 
