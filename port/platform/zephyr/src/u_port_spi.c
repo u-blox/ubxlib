@@ -291,9 +291,9 @@ static int32_t setSpiConfig(int32_t spi, uPortSpiCfg_t *pSpiCfg,
     const struct device *pGpioPort = NULL;
     gpio_flags_t gpioFlags = GPIO_OUTPUT;
 #endif
-    int32_t pinSelect;
     bool pinSelectInverted = ((pDevice->pinSelect & U_COMMON_SPI_PIN_SELECT_INVERTED) ==
                               U_COMMON_SPI_PIN_SELECT_INVERTED);
+    int32_t pinSelect = pDevice->pinSelect & ~U_COMMON_SPI_PIN_SELECT_INVERTED;
 
     if ((pDevice->mode & U_COMMON_SPI_MODE_CPOL_BIT_MASK) == U_COMMON_SPI_MODE_CPOL_BIT_MASK) {
         operation |= SPI_MODE_CPOL;
@@ -337,7 +337,6 @@ static int32_t setSpiConfig(int32_t spi, uPortSpiCfg_t *pSpiCfg,
             errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
             // That didn't work but there is a pinSelect and we can just
             // hook-in any-old GPIO if we initialise it
-            pinSelect = pDevice->pinSelect & ~U_COMMON_SPI_PIN_SELECT_INVERTED;
             pGpioPort = pUPortPrivateGetGpioDevice(pinSelect);
             if (pGpioPort != NULL) {
                 pinSelect = pinSelect % GPIO_MAX_PINS_PER_PORT;
