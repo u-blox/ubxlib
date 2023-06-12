@@ -34,7 +34,7 @@
 // appropriate for your module connection.
 static const uNetworkCfgCell_t gNetworkCfg = {
     .type = U_NETWORK_TYPE_CELL,
-    .pApn = "tsudp.mnc050.mcc234.gprs",       // For the thingstream SIM use "tsiot", though for me [Jan-Ole Giebel, based in Germany] this APN worked just fine. Use NULL for default.
+    .pApn = "tsudp",       // For the thingstream SIM use "tsiot", though for me [Jan-Ole Giebel, based in Germany] this APN worked just fine. Use NULL for default.
     .timeoutSeconds = 240  // Connection timeout in seconds
 };
 
