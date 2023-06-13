@@ -94,6 +94,11 @@ typedef struct {
     int32_t pinRx;
     int32_t pinCts;
     int32_t pinRts;
+    // These only so that we can re-use the uPortUartEventCallback via
+    // trampoline()
+    struct uDeviceSerial_t *pDeviceSerial;
+    void (*pEventCallback)(struct uDeviceSerial_t *pDeviceSerial, uint32_t eventBitMap, void *pParam);
+    void *pEventCallbackParam;
 } uDeviceTestSerialContext_t;
 
 /** Type to hold the stuff that the UART test task needs to know about.
@@ -138,6 +143,23 @@ static char gSerialBuffer[U_CFG_TEST_UART_BUFFER_LENGTH_BYTES];
  * -------------------------------------------------------------- */
 
 #if (U_CFG_TEST_UART_A >= 0) && (U_CFG_TEST_UART_B < 0)
+
+// Trampoline so that the function signature that uPortUartEventCallbackSet()
+// uses (int32_t handle, uint32_t eventBitMap, void *pParam) can be employed
+// with that which serialEventCallbackSet() uses (struct uDeviceSerial_t *pHandle,
+// uint32 eventBitMap, void *pParam).
+static void trampoline(int32_t handle, uint32_t eventBitMap, void *pParam)
+{
+    uDeviceTestSerialContext_t *pContext = (uDeviceTestSerialContext_t *) pParam;
+
+    (void) handle;
+
+    if ((pContext != NULL) && (pContext->pEventCallback != NULL) &&
+        (pContext->pDeviceSerial != NULL)) {
+        pContext->pEventCallback(pContext->pDeviceSerial, eventBitMap,
+                                 pContext->pEventCallbackParam);
+    }
+}
 
 // Callback that is called when data arrives at the virtual serial device,
 // code taken largely from uartReceivedDataCallback() over in u_port_test.c.
@@ -270,16 +292,22 @@ static int32_t serialEventCallbackSet(struct uDeviceSerial_t *pDeviceSerial,
                                       size_t stackSizeBytes,
                                       int32_t priority)
 {
+    int32_t errorCode;
     uDeviceTestSerialContext_t *pContext = (uDeviceTestSerialContext_t *)
                                            pUInterfaceContext(pDeviceSerial);
-    // Purely for the purpose of testing, we cast our uDeviceSerial_t * in the
-    // callback function into an int32_t so that we can make use of the existing
-    // UART event callback
-    U_ASSERT(sizeof(uDeviceSerial_t *) == sizeof(int32_t));
-    return uPortUartEventCallbackSet(pContext->uartHandle, filter,
-                                     (void (*)(int32_t, uint32_t, void *)) pFunction,
-                                     pParam, stackSizeBytes,
-                                     priority);
+
+    pContext->pEventCallback = pFunction;
+    pContext->pEventCallbackParam = pParam;
+    errorCode = uPortUartEventCallbackSet(pContext->uartHandle, filter,
+                                          trampoline, pContext, stackSizeBytes,
+                                          priority);
+    if (errorCode != 0) {
+        // Tidy up on error
+        pContext->pEventCallback = NULL;
+        pContext->pEventCallbackParam = NULL;
+    }
+
+    return errorCode;
 }
 
 // Remove a serial event callback.
@@ -288,6 +316,8 @@ static void serialEventCallbackRemove(struct uDeviceSerial_t *pDeviceSerial)
     uDeviceTestSerialContext_t *pContext = (uDeviceTestSerialContext_t *)
                                            pUInterfaceContext(pDeviceSerial);
     uPortUartEventCallbackRemove(pContext->uartHandle);
+    pContext->pEventCallback = NULL;
+    pContext->pEventCallbackParam = NULL;
 }
 
 // Change the serial event callback filter bit-mask.
@@ -321,6 +351,9 @@ static void interfaceSerialInit(struct uDeviceSerial_t *pDeviceSerial)
     pContext->pinRx = U_CFG_TEST_PIN_UART_A_RXD;
     pContext->pinCts = U_CFG_TEST_PIN_UART_A_CTS;
     pContext->pinRts = U_CFG_TEST_PIN_UART_A_RTS;
+    pContext->pDeviceSerial = pDeviceSerial;
+    pContext->pEventCallback = NULL;
+    pContext->pEventCallbackParam = NULL;
 }
 
 #endif
