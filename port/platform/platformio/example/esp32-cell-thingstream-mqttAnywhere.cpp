@@ -79,9 +79,10 @@ static void messageIndicationCallback(int32_t numUnread, void *pParam)
     *pMessagesAvailable = true;
 }
 
-void setup() {
-  //Start the serial communication, for the Debug-Output.
-  Serial.begin(115200);
+void setup()
+{
+    //Start the serial communication, for the Debug-Output.
+    Serial.begin(115200);
 }
 
 void loop()
@@ -112,7 +113,8 @@ void loop()
 
                 connection.pBrokerNameStr = BROKER_NAME;
                 connection.mqttSn = true;
-                connection.pClientIdStr = "your_device-identity"; //The device identity shown in the thingsteam dashboard.
+                connection.pClientIdStr =
+                    "your_device-identity"; //The device identity shown in the thingsteam dashboard.
                 uPortLog("Connecting to MQTT broker \"%s\"...\n", BROKER_NAME);
                 if (uMqttClientConnect(pContext, &connection) == 0) {
                     uMqttClientSetMessageCallback(pContext,
@@ -128,7 +130,7 @@ void loop()
                     }
                     uPortLog("Subscribing to topic \"%s\"...\n", topic);
                     if (uMqttClientSnSubscribeNormalTopic(pContext, topic,
-                                             U_MQTT_QOS_EXACTLY_ONCE, &topicName)) {
+                                                          U_MQTT_QOS_EXACTLY_ONCE, &topicName)) {
                         uPortLog("----------------------------------------------\n");
                         uPortLog("To view the mqtt messages from this device use (Do not forget to add your thinstream MQTT-Client credentials!):\n");
                         uPortLog("mosquitto_sub -h %s -t %s -v\n", BROKER_NAME, topic);
@@ -137,29 +139,29 @@ void loop()
                         uPortLog("Send message \"exit\" to disconnect\n");
 
                         uMqttClientSnRegisterNormalTopic(pContext, topic, &topicName);
-                        
+
                         while (!done) {
                             char buffer[50];
                             if (messagesAvailable) {
                                 char buffer[50];
-                                
+
                                 while (uMqttClientGetUnread(pContext) > 0) {
                                     size_t cnt = sizeof(buffer) - 1;
                                     if (uMqttClientSnMessageRead(pContext, &topicName,
-                                                               buffer, &cnt,
-                                                               NULL) == 0) {
+                                                                 buffer, &cnt,
+                                                                 NULL) == 0) {
                                         buffer[cnt] = 0;
                                         uPortLog("Received message: %s\n", buffer);
                                         done = strstr(buffer, "exit");
                                     }
                                 }
                                 messagesAvailable = false;
-                            } else {                               
+                            } else {
                                 snprintf(buffer, sizeof(buffer), "Hello #%d", ++i);
                                 uMqttClientSnPublish(pContext, &topicName, buffer,
-                                                   strlen(buffer),
-                                                   U_MQTT_QOS_EXACTLY_ONCE,
-                                                   false);
+                                                     strlen(buffer),
+                                                     U_MQTT_QOS_EXACTLY_ONCE,
+                                                     false);
                                 uPortLog("Publishing \"%s\" to topic 0x%04x...\n", buffer, topicName.name.id);
                             }
                             uPortTaskBlock(5000);
