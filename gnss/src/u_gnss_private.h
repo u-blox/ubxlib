@@ -212,6 +212,16 @@ typedef struct {
     int32_t messageRate;         /**< set to -1 of nothing to restore. */
 } uGnssPrivateStreamedPosition_t;
 
+/** Parameters for AssistNow.
+ */
+typedef struct {
+    bool (*pProgressCallback)(uDeviceHandle_t, int32_t, size_t, size_t, void *);
+    void *pProgressCallbackParam;
+    volatile bool transferInProgress;
+    size_t blocksTotal;
+    int32_t errorCode;
+} uGnssPrivateMga_t;
+
 /** Definition of a GNSS instance.
  * Note: a pointer to this structure is passed to the asynchronous
  * "get position" function (posGetTask()) which does NOT lock the
@@ -255,6 +265,7 @@ typedef struct uGnssPrivateInstance_t {
     uGnssPrivateStreamedPosition_t *pStreamedPosition; /**< context data for streamed position, hooked
                                                             here so that we can free it */
     uGnssRrlpMode_t rrlpMode; /**< The type of MEASX to use with RRLP capture. */
+    uGnssPrivateMga_t *pMga; /**< Storage for AssistNow. */
     struct uGnssPrivateInstance_t *pNext;
 } uGnssPrivateInstance_t;
 // *INDENT-ON*

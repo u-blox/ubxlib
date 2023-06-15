@@ -312,6 +312,26 @@ typedef enum {
     U_GNSS_RRLP_MODE_MEASD12 = 4
 } uGnssRrlpMode_t;
 
+/** The possible GNSS systems; not all GNSS systems are supported by all modules.
+ */
+typedef enum {
+    U_GNSS_SYSTEM_NONE = -1,
+    U_GNSS_SYSTEM_GPS = 0,
+    U_GNSS_SYSTEM_SBAS = 1,
+    U_GNSS_SYSTEM_GALILEO = 2,
+    U_GNSS_SYSTEM_BEIDOU = 3,
+    U_GNSS_SYSTEM_IMES = 4,
+    U_GNSS_SYSTEM_QZSS = 5,
+    U_GNSS_SYSTEM_GLONASS = 6
+} uGnssSystem_t;
+
+/** A GNSS space vehicle ID.
+ */
+typedef struct {
+    uGnssSystem_t system;
+    int32_t svId;
+} uGnssSvId_t;
+
 /** @}*/
 
 #endif // _U_GNSS_TYPE_H_

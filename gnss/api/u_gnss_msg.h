@@ -376,7 +376,7 @@ int32_t uGnssMsgReceiveStart(uDeviceHandle_t gnssHandle,
  * @param[out] pBuffer a place to put the message; cannot be NULL.
  * @param size         the amount of storage at pBuffer, should be
  *                     the size of the message, as indicated by the
- *                     pCallback "size" parameter.
+ *                     pCallback "errorCodeOrLength" parameter.
  * @return             on success the number of bytes read,
  *                     else negative error code.
  */

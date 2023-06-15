@@ -47,5 +47,6 @@ cell/api
 cell/src
 gnss/api
 gnss/src
+gnss/src/lib_mga
 wifi/api
 wifi/src

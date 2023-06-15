@@ -14,5 +14,8 @@ port/platform/nrf5sdk/src/heap_useNewlib.c
 port/platform/stm32cube/src/heap_useNewlib.c
 port/platform/zephyr/src/u_port_clib.c
 
+# Includes some sample code in a comment which uses malloc()/free()
+gnss/api/u_gnss_mga.h
+
 # Unity stuff used in automated testing
 port/platform/common/automation/Unity

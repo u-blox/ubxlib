@@ -37,8 +37,10 @@ gnss/src/u_gnss_cfg.c
 gnss/src/u_gnss_info.c
 gnss/src/u_gnss_pos.c
 gnss/src/u_gnss_msg.c
+gnss/src/u_gnss_mga.c
 gnss/src/u_gnss_util.c
 gnss/src/u_gnss_private.c
+gnss/src/lib_mga/u_lib_mga.c
 wifi/src/u_wifi.c
 wifi/src/u_wifi_cfg.c
 wifi/src/u_wifi_sock.c

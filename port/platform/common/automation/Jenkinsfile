@@ -270,8 +270,9 @@ def buildAndTestPipeline(instance_str, json_entry, filter) {
         // for the Windows bat command
         withCredentials([string(credentialsId: 'ubxlib_wifi_passkey', variable: 'WIFI_PASSKEY'),
                          string(credentialsId: 'ubxlib_cloud_locate_mqtt_password', variable: 'CLOUD_LOCATE_MQTT_PASSWORD'),
-                         string(credentialsId: 'ubxlib_cell_locate_authentication_token', variable: 'CELL_LOCATE_AUTHENTICATION_TOKEN')]) {
-            def value = "${env.UBXLIB_EXTRA_DEFINES};U_WIFI_TEST_CFG_WPA2_PASSPHRASE=${WIFI_PASSKEY};U_CFG_APP_CLOUD_LOCATE_MQTT_PASSWORD=${CLOUD_LOCATE_MQTT_PASSWORD};U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN=${CELL_LOCATE_AUTHENTICATION_TOKEN}"
+                         string(credentialsId: 'ubxlib_cell_locate_authentication_token', variable: 'CELL_LOCATE_AUTHENTICATION_TOKEN'),
+                         string(credentialsId: 'ubxlib_assist_now_authentication_token', variable: 'ASSIST_NOW_AUTHENTICATION_TOKEN')]) {
+            def value = "${env.UBXLIB_EXTRA_DEFINES};U_WIFI_TEST_CFG_WPA2_PASSPHRASE=${WIFI_PASSKEY};U_CFG_APP_CLOUD_LOCATE_MQTT_PASSWORD=${CLOUD_LOCATE_MQTT_PASSWORD};U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN=${CELL_LOCATE_AUTHENTICATION_TOKEN};U_CFG_APP_GNSS_ASSIST_NOW_AUTHENTICATION_TOKEN=${ASSIST_NOW_AUTHENTICATION_TOKEN}"
             extra_env.add("U_UBXLIB_DEFINES=\"${value}\"")
             env.U_UBXLIB_DEFINES = value
         }

@@ -69,6 +69,8 @@ common/device/api
 # Ideally these would be private
 common/network/src
 common/device/src
+# Ideally this  would be private
+gnss/src/lib_mga
 
 # Source files (ones which aren't in a module)
 [SOURCE]
@@ -79,6 +81,7 @@ port/clib/u_port_clib_mktime64.c
 port/u_port_timezone.c
 port/u_port_heap.c
 port/platform/common/mutex_debug/u_mutex_debug.c
+gnss/src/lib_mga/u_lib_mga.c
 common/network/src/u_network.c
 common/network/src/u_network_shared.c
 common/network/src/u_network_private_ble_extmod_stub.c

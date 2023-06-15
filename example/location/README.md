@@ -45,6 +45,8 @@ For this example the settings of the GNSS Cellular Example above must be followe
 
 `U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN`: must be set to a valid authentication token for the u-blox Cell Locate service, obtainable from your [Thingstream portal](https://portal.thingstream.io/app/location-services), noting that NO quotation marks should be included.
 
+`U_CFG_TEST_CELL_LOCATE` must be defined to include the body of the [main_loc_cell_locate.c](main_loc_cell_locate.c) in your build.
+
 You will need a SIM in your board, a cellular antenna connected and you may need to know the APN associated with the SIM (though accepting the network default often works).
 
 ## The GNSS Cloud Locate Example `main_loc_gnss_cloud_locate.c`

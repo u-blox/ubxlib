@@ -118,7 +118,8 @@ ifneq ($(filter gnss,$(UBXLIB_FEATURES)),)
 UBXLIB_MODULE_DIRS += ${UBXLIB_BASE}/gnss
 UBXLIB_SRC += \
 	${UBXLIB_BASE}/common/network/src/u_network_private_gnss.c \
-	${UBXLIB_BASE}/common/device/src/u_device_private_gnss.c
+	${UBXLIB_BASE}/common/device/src/u_device_private_gnss.c \
+	${UBXLIB_BASE}/gnss/src/lib_mga/u_lib_mga.c
 else
 # Make the linker happy
 UBXLIB_SRC += \
@@ -130,6 +131,9 @@ UBXLIB_INC += \
 UBXLIB_PRIVATE_INC += \
 	${UBXLIB_BASE}/gnss/src
 endif
+# The lib_mga subdirectory won't be added by the UBXLIB_MODULE_DIRS, so add it explicitly here for all cases
+UBXLIB_PRIVATE_INC += \
+	${UBXLIB_BASE}/gnss/src/lib_mga
 
 # lib_common
 ifneq ($(filter u_lib,$(UBXLIB_FEATURES)),)
