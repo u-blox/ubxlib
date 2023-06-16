@@ -30,16 +30,22 @@
 
 /** @file
  * @brief This header file defines the API into the Cell Locate
- * service.  These functions are thread-safe with the following
- * exceptions:
+ * and the Assist Now services.  The Cell Locate service is
+ * used to establish location anywhere (either using cell
+ * towers or using a GNSS chip that is inside or connected-via the
+ * cellular module), while the AssistNow service is used to
+ * reduce the time to first fix for a GNSS chip that is inside
+ * or is connected-via the cellular module.
+ *
+ * These functions are thread-safe with the following exceptions:
  *
  * - uCellLocCleanUp() should not be called while location
  *   establishment is running.
  * - a cellular instance should not be deinitialised while location
  *   establishment is running.
  *
- * To use the Cell Locate service you will need to obtain an
- * authentication token from the Location Services
+ * To use the Cell Locate or Assist Now services you will need to
+ * obtain an authentication token from the Location Services
  * section of your Thingstream portal
  * (https://portal.thingstream.io/app/location-services) and
  * call uCellLocSetServer() to supply that authentication
@@ -130,6 +136,20 @@ extern "C" {
 # define U_CELL_LOC_MODULE_HAS_CELL_LOCATE 1
 #endif
 
+#ifndef U_CELL_LOC_GNSS_AIDING_TYPES
+/** The aiding types to request when switching-on a GNSS
+ * chip attached to a cellular module (all of them).
+ */
+# define U_CELL_LOC_GNSS_AIDING_TYPES 15
+#endif
+
+#ifndef U_CELL_LOC_GNSS_SYSTEM_TYPES
+/** The system types to request when switching-on a GNSS
+ * chip attached to a cellular module (all of them).
+ */
+# define U_CELL_LOC_GNSS_SYSTEM_TYPES 0x7f
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -162,60 +182,6 @@ void uCellLocCleanUp(uDeviceHandle_t cellHandle);
 /* ----------------------------------------------------------------
  * FUNCTIONS: CONFIGURATION
  * -------------------------------------------------------------- */
-
-/** Set the desired location accuracy.  If this is not called
- * then the default #U_CELL_LOC_DESIRED_ACCURACY_DEFAULT_MILLIMETRES
- * is used.
- *
- * @param cellHandle          the handle of the cellular instance.
- * @param accuracyMillimetres the desired accuracy in millimetres.
- */
-void uCellLocSetDesiredAccuracy(uDeviceHandle_t cellHandle,
-                                int32_t accuracyMillimetres);
-
-/** Get the desired location accuracy.
- *
- * @param cellHandle  the handle of the cellular instance.
- * @return            the desired accuracy in millimetres.
- */
-int32_t uCellLocGetDesiredAccuracy(uDeviceHandle_t cellHandle);
-
-/** Set the desired location fix time-out.  If this is not called
- * then the default #U_CELL_LOC_DESIRED_FIX_TIMEOUT_DEFAULT_SECONDS
- * is used.
- *
- * @param cellHandle        the handle of the cellular instance.
- * @param fixTimeoutSeconds the desired fix timeout in seconds.
- */
-void uCellLocSetDesiredFixTimeout(uDeviceHandle_t cellHandle,
-                                  int32_t fixTimeoutSeconds);
-
-/** Get the desired location fix time-out.
- *
- * @param cellHandle  the handle of the cellular instance.
- * @return            the desrired timeout in seconds.
- */
-int32_t uCellLocGetDesiredFixTimeout(uDeviceHandle_t cellHandle);
-
-/** Set whether a GNSS chip attached to the cellular module
- * should be used in the location fix or not.  If this is not
- * called then the default #U_CELL_LOC_GNSS_ENABLE_DEFAULT
- * is used.  Call this with false if you have a GNSS chip
- * attached via the cellular module but you intend to use
- * the GNSS API to manage it directly rather than letting
- * Cell Locate use it via this API.
- *
- * @param cellHandle  the handle of the cellular instance.
- * @param onNotOff    true if GNSS should be used, else false.
- */
-void uCellLocSetGnssEnable(uDeviceHandle_t cellHandle, bool onNotOff);
-
-/** Get whether GNSS is employed in the location fix or not.
- *
- * @param cellHandle  the handle of the cellular instance.
- * @return            true if GNSS is used else false.
- */
-bool uCellLocGetGnssEnable(uDeviceHandle_t cellHandle);
 
 /** Set the cellular module pin which enables power to the
  * GNSS chip.  This is the pin number of the cellular module so,
@@ -253,9 +219,9 @@ int32_t uCellLocSetPinGnssPwr(uDeviceHandle_t cellHandle, int32_t pin);
  */
 int32_t uCellLocSetPinGnssDataReady(uDeviceHandle_t cellHandle, int32_t pin);
 
-/** Configure the Cell Locate server parameters, in particular the
- * authentication token that is required to use the Cell Locate
- * service.  This may be obtained from the Location Services
+/** Configure the Cell Locate/Assist Now server parameters, in particular
+ * the authentication token that is required to use the Cell Locate
+ * or Assist Now services.  This may be obtained from the Location Services
  * section of your Thingstream portal
  * (https://portal.thingstream.io/app/location-services).
  * The cellular module must be powered-on for this to work.
@@ -265,8 +231,8 @@ int32_t uCellLocSetPinGnssDataReady(uDeviceHandle_t cellHandle, int32_t pin);
  * @param cellHandle                  the handle of the cellular instance.
  * @param[in] pAuthenticationTokenStr a pointer to the null-terminated
  *                                    authentication token for the Cell
- *                                    Locate server. May be NULL, in which
- *                                    case pPrimaryServerStr and
+ *                                    Locate/Assist Now server. May be NULL,
+ *                                    in which case pPrimaryServerStr and
  *                                    pSecondaryServerStr are ignored.
  * @param[in] pPrimaryServerStr       a pointer to the null-terminated
  *                                    primary server string, for example
@@ -285,6 +251,32 @@ int32_t uCellLocSetServer(uDeviceHandle_t cellHandle,
                           const char *pPrimaryServerStr,
                           const char *pSecondaryServerStr);
 
+/** Set the GNSS systems that a GNSS chip inside or connected-via a
+ * cellular module will employ.  Not all GNSS chips support all system types.
+ * If this is not called #U_CELL_LOC_GNSS_SYSTEM_TYPES will be used.
+ *
+ * @param cellHandle            the handle of the cellular instance.
+ * @param gnssSystemTypesBitMap a bit-map of the GNSS systems that should be used,
+ *                              chosen from #uGnssSystem_t (see u_gnss_type.h),
+ *                              where each system is represented by its bit-position
+ *                              (for example set bit 0 to one for GPS).  Not all
+ *                              systems are supported by all modules.
+ * @return                      zero on success or negative error code.
+ */
+int32_t uCellLocSetSystem(uDeviceHandle_t cellHandle, uint32_t gnssSystemTypesBitMap);
+
+/** Get the GNSS systems that a GNSS chip inside or connected-via a
+ * cellular module will employ.
+ *
+ * @param cellHandle                  the handle of the cellular instance.
+ * @param[out] pGnssSystemTypesBitMap a pointer to a place to put the bit-map of the
+ *                                    GNSS systems, see #uGnssSystem_t (u_gnss_type.h),
+ *                                    where each system is represented by its
+ *                                    bit-position (for example bit 0 represents GPS).
+ * @return                            zero on success or negative error code.
+ */
+int32_t uCellLocGetSystem(uDeviceHandle_t cellHandle, uint32_t *pGnssSystemTypesBitMap);
+
 /** Check whether a GNSS chip is present or not.  Note that this may
  * fail if the cellular module controls power to the GNSS chip and
  * the correct cellular module GPIO pin for that has not been set
@@ -302,6 +294,249 @@ bool uCellLocIsGnssPresent(uDeviceHandle_t cellHandle);
  *                    module, else false.
  */
 bool uCellLocGnssInsideCell(uDeviceHandle_t cellHandle);
+
+/* ----------------------------------------------------------------
+ * FUNCTIONS: CONFIGURATION OF CELL LOCATE
+ * -------------------------------------------------------------- */
+
+/** Set the desired location accuracy.  If this is not called
+ * then the default #U_CELL_LOC_DESIRED_ACCURACY_DEFAULT_MILLIMETRES
+ * is used.
+ *
+ * @param cellHandle          the handle of the cellular instance.
+ * @param accuracyMillimetres the desired accuracy in millimetres.
+ */
+void uCellLocSetDesiredAccuracy(uDeviceHandle_t cellHandle,
+                                int32_t accuracyMillimetres);
+
+/** Get the desired location accuracy.
+ *
+ * @param cellHandle  the handle of the cellular instance.
+ * @return            the desired accuracy in millimetres.
+ */
+int32_t uCellLocGetDesiredAccuracy(uDeviceHandle_t cellHandle);
+
+/** Set the desired location fix time-out.  If this is not called
+ * then the default #U_CELL_LOC_DESIRED_FIX_TIMEOUT_DEFAULT_SECONDS
+ * is used.
+ *
+ * @param cellHandle        the handle of the cellular instance.
+ * @param fixTimeoutSeconds the desired fix timeout in seconds.
+ */
+void uCellLocSetDesiredFixTimeout(uDeviceHandle_t cellHandle,
+                                  int32_t fixTimeoutSeconds);
+
+/** Get the desired location fix time-out.
+ *
+ * @param cellHandle  the handle of the cellular instance.
+ * @return            the desired timeout in seconds.
+ */
+int32_t uCellLocGetDesiredFixTimeout(uDeviceHandle_t cellHandle);
+
+/** Set whether a GNSS chip attached to the cellular module
+ * should be used in the location fix or not.  If this is not
+ * called then the default #U_CELL_LOC_GNSS_ENABLE_DEFAULT
+ * is used.  Call this with false if you have a GNSS chip
+ * attached via the cellular module but you intend to use
+ * the GNSS API to manage it directly rather than letting
+ * Cell Locate use it via this API.
+ *
+ * @param cellHandle  the handle of the cellular instance.
+ * @param onNotOff    true if GNSS should be used, else false.
+ */
+void uCellLocSetGnssEnable(uDeviceHandle_t cellHandle, bool onNotOff);
+
+/** Get whether GNSS is employed in the location fix or not.
+ *
+ * @param cellHandle  the handle of the cellular instance.
+ * @return            true if GNSS is used else false.
+ */
+bool uCellLocGetGnssEnable(uDeviceHandle_t cellHandle);
+
+/* ----------------------------------------------------------------
+ * FUNCTIONS: CONFIGURATION OF ASSIST NOW
+ * -------------------------------------------------------------- */
+
+/** Set the data types used by AssistNow Online to reduce the time to
+ * first fix when a GNSS chip that is inside or is connected-via a
+ * cellular module is first powered-up.  For AssistNow Online to work
+ * a valid authentication token must have been supplied with
+ * uCellLocSetServer() and the cellular module must have been
+ * connected to the network (e.g. by calling uCellNetConnect()) before
+ * the GNSS chip is powered-up.
+ *
+ * If dataTypeBitMap is zero then AssistNow Online will not be used,
+ * though note that, if the GNSS chip is on when this function is called,
+ * it will be power-cycled for the switch-off to take effect.
+ *
+ * If this is not called AssistNow Online will be used (provided
+ * a valid token has been provided via uCellLocSetServer()) and all
+ * data types will be requested.
+ *
+ * @param cellHandle      the handle of the cellular instance.
+ * @param dataTypeBitMap  a bit-map of the data types that are to be
+ *                        requested, chosen from #uGnssMgaDataType_t
+ *                        (see u_gnss_mga.h), where each data type is
+ *                        represented by its bit position; for example
+ *                        set bit 0 to one for ephemeris data.  NOTE:
+ *                        this is NOT the same as the bit-map given
+ *                        for the AT+UGSRV command in the AT manual:
+ *                        instead here it is made common with the GNSS
+ *                        one, look at #uGnssMgaDataType_t.
+ * @return                zero on success else negative error code.
+ */
+int32_t uCellLocSetAssistNowOnline(uDeviceHandle_t cellHandle,
+                                   uint32_t dataTypeBitMap);
+
+/** Get which data types from the AssistNow Online service are being
+ * used to speed-up the time to first fix of a GNSS chip that is
+ * inside or connected-via a cellular module.
+ *
+ * If *pDataTypeBitMap is zero then AssistNow Online is not being used.
+ *
+ * @param cellHandle            the handle of the cellular instance.
+ * @param[out] pDataTypeBitMap  a pointer to a place to store the bit-map
+ *                              of data types from the AssistNow Online
+ *                              service that are being requested, see
+ *                              #uGnssMgaDataType_t (u_gnss_mga.h), where
+ *                              each data type is represented by its bit
+ *                              position; for example bit 0 represents
+ *                              ephemeris data.  NOTE: this is NOT the same
+ *                              as the bit-map given for the AT+UGSRV command
+ *                              in the AT manual: instead here it is made
+ *                              common with the GNSS one, look at
+ *                              #uGnssMgaDataType_t.
+ * @return                      zero on success else negative error code.
+ */
+int32_t uCellLocGetAssistNowOnline(uDeviceHandle_t cellHandle,
+                                   uint32_t *pDataTypeBitMap);
+
+/** Configure AssistNow Offline, used by the cellular module to
+ * reduce the time to first fix when a GNSS chip that is inside or
+ * is connected-via a cellular module is first powered-up.  AssistNow
+ * Offline is useful if the cellular module is not going to be
+ * connected to the network on a regular basis at the time when the
+ * GNSS chip is being first powered-up.  For AssistNow Offline to
+ * work a valid authentication token must have been supplied using
+ * uCellLocSetServer().
+ *
+ * If either of the parameters gnssSystemTypesBitMap or periodDays is zero
+ * then AssistNow Offline will not be used.
+ *
+ * If the GNSS chip is on when this function is called, it will be
+ * power-cycled for the change to take effect.
+ *
+ * @param cellHandle            the handle of the cellular instance.
+ * @param gnssSystemTypesBitMap a bit-map of the GNSS systems that should
+ *                              be requested, chosen from #uGnssSystem_t
+ *                              (see u_gnss_type.h), where each system is
+ *                              represented by its bit-position (for
+ *                              example set bit 0 to one for GPS).  Not
+ *                              all systems are supported (see the latest
+ *                              u-blox AssistNow service description for
+ *                              which are supported).  Use zero to switch
+ *                              off AssistNow Offline, ignored if periodDays
+ *                              is zero.
+ * @param periodDays            the number of days for which data is required;
+ *                              note that the size of the response returned
+ *                              by the server may increase by between 5 and
+ *                              10 kbytes per day requested. Use zero to
+ *                              switch off AssistNow Offline; ignored if
+ *                              gnssSystemTypesBitMap is zero.  Note that,
+ *                              depending on the GNSS device and the
+ *                              cellular module in use, the period may be
+ *                              rounded up into a whole number of weeks.
+ * @param daysBetweenItems      the number of days between items: 1 for
+ *                              every day, 2 for one every two days or 3 for
+ *                              one every 3 days; ignored if either of
+ *                              gnssSystemTypesBitMap or periodDays is zero.
+ * @return                      zero on success else negative error code.
+ */
+int32_t uCellLocSetAssistNowOffline(uDeviceHandle_t cellHandle,
+                                    uint32_t gnssSystemTypesBitMap,
+                                    int32_t periodDays,
+                                    int32_t daysBetweenItems);
+
+/** Get the configuration of AssistNow Offline used by the cellular
+ * module to reduce the time to first fix when a GNSS chip that is
+ * inside or connected-via a cellular module is first powered-up.
+ *
+ * AssistNow Offline is not being used if *pSystemBitMap or *pPeriodDays
+ * is zero.
+ *
+ * @param cellHandle                   the handle of the cellular instance.
+ * @param[out] pGnssSystemTypesBitMap  a pointer to a place to put the bit-map
+ *                                     of GNSS systems that are being used,
+ *                                     see #uGnssSystem_t (in u_gnss_type.h),
+ *                                     where each system is represented by
+ *                                     its bit-position (for example bit 0
+ *                                     represents GPS); if all bits are zero
+ *                                     then AssistNow Offline is not being
+ *                                     used.  May be NULL.
+ * @param[out] pPeriodDays             a pointer to a place to put the number
+ *                                     of days for which AssistNow Offline data
+ *                                     is requested; zero means AssistNow Offline
+ *                                     is not being used.  May be NULL.
+ * @param[out] pDaysBetweenItems       a pointer to a place to put the number of
+ *                                     days between items; may be NULL.
+ * @return                             zero on success else negative error code.
+ */
+int32_t uCellLocGetAssistNowOffline(uDeviceHandle_t cellHandle,
+                                    uint32_t *pGnssSystemTypesBitMap,
+                                    int32_t *pPeriodDays,
+                                    int32_t *pDaysBetweenItems);
+
+/** Set whether AssistNow Autonomous, for a GNSS chip inside or
+ * connected-via a cellular module, is on or off; if this
+ * is not called AssistNow Autonomous will be on.
+ *
+ * @param cellHandle  the handle of the cellular instance.
+ * @param onNotOff    true if AssistNow Autonomous should be on,
+ *                    false if it is to be off.
+ * @return            zero on success else negative error code.
+ */
+int32_t uCellLocSetAssistNowAutonomous(uDeviceHandle_t cellHandle,
+                                       bool onNotOff);
+
+/** Get whether AssistNow Autonomous, where a GNSS chip that is
+ * inside or connected-via a cellular module can figure out future
+ * satellite movements and use this to reduce the time to first fix,
+ * is on or off.
+ *
+ * @param cellHandle  the handle of the cellular instance.
+ * @return            true if AssistNow Autonomous operation is
+ *                    on, else false.
+ */
+bool uCellLocAssistNowAutonomousIsOn(uDeviceHandle_t cellHandle);
+
+/** Set whether the GNSS assistance database of a GNSS chip that is
+ * inside or connected-via a cellular module is automatically saved by
+ * the cellular module before power-off and restored again after power-on,
+ * to reduce the time to first fix.  This is equivalent to calling
+ * uGnssMgaGetDatabase() and uGnssMgaSetDatabase() for a GNSS chip
+ * directly connected to this MCU but is performed automatically, as
+ * required, by the cellular module.  If this is not called AssistNow
+ * database saving will be on.
+ *
+ * @param cellHandle  the handle of the cellular instance.
+ * @param onNotOff    true to enable automatic saving of the assistance
+ *                    database, false to disable it.
+ * @return            true if GNSS assistance database saving is on,
+ *                    else false.
+ */
+int32_t uCellLocSetAssistNowDatabaseSave(uDeviceHandle_t cellHandle,
+                                         bool onNotOff);
+
+/** Check whether the GNSS assistance database of a GNSS chip that is
+ * inside or connected-via a cellular module is automatically saved by
+ * the cellular module before power-off and restored again after power-on,
+ * to reduce the time to first fix.
+ *
+ * @param cellHandle  the handle of the cellular instance.
+ * @return            true if GNSS assistance database saving is on,
+ *                    else false.
+ */
+bool uCellLocAssistNowDatabaseSaveIsOn(uDeviceHandle_t cellHandle);
 
 /* ----------------------------------------------------------------
  * FUNCTIONS: LOCATION ESTABLISHMENT

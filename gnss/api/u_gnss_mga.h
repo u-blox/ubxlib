@@ -182,7 +182,8 @@ typedef enum {
     U_GNSS_MGA_DATA_TYPE_EPHEMERIS = 0,
     U_GNSS_MGA_DATA_TYPE_ALMANAC = 1,
     U_GNSS_MGA_DATA_TYPE_AUX = 2,
-    U_GNSS_MGA_DATA_TYPE_POS = 3
+    U_GNSS_MGA_DATA_TYPE_POS = 3,
+    U_GNSS_MGA_DATA_TYPE_MAX_NUM
 } uGnssMgaDataType_t;
 
 /** The reference signal to use for time-initialisation of a GNSS
@@ -633,6 +634,8 @@ int32_t uGnssMgaErase(uDeviceHandle_t gnssHandle);
 /** Get whether AssistNow Autonomous operation is on or off.
  * Note that for M9 modules and later this can also be read
  * using the configuration key ID #U_GNSS_CFG_VAL_KEY_ID_ANA_USE_ANA_L.
+ * If the GNSS chip is inside or is connected via a cellular module
+ * then use uCellLocAssistNowAutonomousIsOn() instead (see u_cell_loc.h)
  *
  * @param gnssHandle  the handle of the GNSS instance.
  * @return            true if AssistNow Autonomous operation is
@@ -644,7 +647,9 @@ bool uGnssMgaAutonomousIsOn(uDeviceHandle_t gnssHandle);
  * modules and later this can also be set/get using the configuration
  * key ID #U_GNSS_CFG_VAL_KEY_ID_ANA_USE_ANA_L.  Switching
  * AssistNow Automomous to ON is only supported on standard precision
- * GNSS devices.
+ * GNSS devices.  If the GNSS chip is inside or is connected via a
+ * cellular module then use uCellLocSetAssistNowAutonomous() instead
+ * (see u_cell_loc.h).
  *
  * @param gnssHandle  the handle of the GNSS instance.
  * @param onNotOff    true if AssistNow Autonomous should be on,
@@ -691,9 +696,7 @@ int32_t uGnssMgaSetAutonomous(uDeviceHandle_t gnssHandle, bool onNotOff);
  * U_GNSS_MGA_DISABLE_NMEA_MESSAGE_DISABLE.
  *
  * Note: not supported if the GNSS device is connected via an intermediate
- * e.g. cellular module; the intermediate module is very unlikely to be
- * able to cope with the flood of messages containing database contents
- * returned by the GNSS chip.
+ * e.g. cellular module; instead please use uCellLocSetAssistNowDatabaseSave().
  *
  * @param gnssHandle         the handle of the GNSS instance.
  * @param[in] pCallback      a callback function that receives
@@ -735,7 +738,7 @@ int32_t uGnssMgaGetDatabase(uDeviceHandle_t gnssHandle,
  * compilation flag U_GNSS_MGA_DISABLE_NMEA_MESSAGE_DISABLE.
  *
  * Note: not supported if the GNSS device is connected via an intermediate
- * e.g. cellular module; see the note under uGnssMgaGetDatabase() for why.
+ * e.g. cellular module; instead please use uCellLocSetAssistNowDatabaseSave().
  *
  * @param gnssHandle              the handle of the GNSS instance.
  * @param flowControl             the type of flow control to use.

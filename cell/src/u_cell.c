@@ -296,6 +296,8 @@ int32_t uCellAdd(uCellModuleType_t moduleType,
                     pInstance->pModule = &(gUCellPrivateModuleList[moduleType]);
                     pInstance->sockNextLocalPort = -1;
                     pInstance->deepSleepBlockedBy = -1;
+                    pInstance->gnssAidMode = U_CELL_LOC_GNSS_AIDING_TYPES;
+                    pInstance->gnssSystemTypesBitMap = U_CELL_LOC_GNSS_SYSTEM_TYPES;
 
                     // Now set up the pins
                     uPortLog("U_CELL: initialising with enable power pin ");
