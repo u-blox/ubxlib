@@ -38,13 +38,17 @@ All APIs are documented with Doxygen compatible comments: simply download the la
 # Supported `ubxlib` host platforms and APIs
 Hosts run `ubxlib` and interact with an attached periperal. A host platform contains an MCU, toolchain and RTOS/SDK as listed in the table below. Hosts are typically u-blox open CPU (standalone) modules or other MCUs. To use a host you need a development board or an EVK. Currently `ubxlib` supports and tests the following purchasable boards out-of-the box.
 
+- [u-blox XPLR-IOT-1](https://www.u-blox.com/en/product/xplr-iot-1)
+- [u-blox XPLR-HPG-1](https://www.u-blox.com/en/product/xplr-hpg-1)
+- [u-blox XPLR-HPG-2](https://www.u-blox.com/en/product/xplr-hpg-2)
 - [u-blox C030-U201 board](https://www.u-blox.com/en/product/c030-application-board)
+- [u-blox NINA-W1 EVK](https://www.u-blox.com/en/product/evk-nina-w10)
 - [Nordic nRF52840 DK board](https://www.nordicsemi.com/Products/Development-hardware/nrf52840-dk)
 - [Nordic nRF5340 DK board](https://www.nordicsemi.com/Products/Development-hardware/nRF5340-DK)
 - [STM32F4 Discovery board](https://www.st.com/en/evaluation-tools/stm32f4discovery.html)
 - [ESP32-DevKitC](https://www.espressif.com/en/products/devkits/esp32-devkitc/overview)
-- [u-blox NINA-W1 EVK](https://www.u-blox.com/en/product/evk-nina-w10)
-- [u-blox XPLR-IOT-1](https://www.u-blox.com/en/product/xplr-iot-1)
+
+
 
 If your MCU is on the list but your board is not:
 - just set the HW pins in the source file of the example to match how your MCU is wired to the u-blox peripheral.
@@ -184,6 +188,23 @@ You may use the code from any of these examples as a basis for your work as foll
 - Build and flash your adapted example using your IDE of choice or command-line make/cmake.
 
 General information about how to integrate `ubxlib` into a build system is available in the [port directory](/port) and platform specific information is available in the [platform specific port directory](/port/platform) for your chosen MCU.
+
+
+
+# Where is `ubxlib` used?
+
+The following table showcases repositories which build applications and use `ubxlib`.
+
+| Description | Code repository | Radio Technology | Modules used | Boards used |
+|-------------|--------------------|------------------|------------|-------|
+| **BLE examples** such as: scanning, Serial Port Service (SPS), beacon, angle-of-arrival (AoA). | [https://github.com/u-blox/ubxlib_examples_xplr_iot](https://github.com/u-blox/ubxlib_examples_xplr_iot) | BLE | NORA-B1 | [XPLR-IOT-1](https://www.u-blox.com/en/product/XPLR-IOT-1) |
+| **Cellular tracker** which publishes cellular signal strength parameters and location to an MQTT broker. | [https://github.com/u-blox/ubxlib_cellular_applications_xplr_iot](https://github.com/u-blox/ubxlib_cellular_applications_xplr_iot/tree/development) | LTE Cat-M1, GNSS | SARA-R5, MAX-M10 | [XPLR-IOT-1](https://www.u-blox.com/en/product/XPLR-IOT-1) |
+| **Location example** to get location using both [CellLocate](https://www.u-blox.com/en/product/celllocate) and [CloudLocate](https://www.u-blox.com/en/product/cloudlocate). Calculates location based on cellular, Wi-Fi or GNSS information. | [https://github.com/u-blox/XPLR-IOT-1-location-example](https://github.com/u-blox/XPLR-IOT-1-location-example) | LTE Cat-M1, WiFi, BLE | NINA-W1, SARA-R5, MAX-M10 | [XPLR-IOT-1](https://www.u-blox.com/en/product/XPLR-IOT-1) |
+| **High precision GNSS (HPG)** solution for evaluation and prototyping with the [PointPerfect](https://www.u-blox.com/en/product/pointperfect) GNSS augmentation service. | [https://github.com/u-blox/XPLR-HPG-software](https://github.com/u-blox/XPLR-HPG-software) | GNSS, WiFi, LTE Cat-1 |ZED-F9, NEO-D9, NINA-W1, NORA-W1, LARA-R6 | [XPLR-HPG-1](https://www.u-blox.com/en/product/xplr-hpg-1), [XPLR-HPG-2](https://www.u-blox.com/en/product/xplr-hpg-2) |
+| **Sensor aggregation**. Collect data from sensors and send it to the Thingstream platform using either Wi-Fi or Cellular Network connections. | [https://github.com/u-blox/XPLR-IOT-1-software](https://github.com/u-blox/XPLR-IOT-1-software) | WiFi, LTE Cat-M1 | NINA-W1, SARA-R5 | [XPLR-IOT-1](https://www.u-blox.com/en/product/XPLR-IOT-1) |
+| **Air Quality Monitor** with Sensirion Sensor showing how sensor data be sent to the [Thingstream](https://www.u-blox.com/en/product/thingstream) platform via MQTT, and then visualized in a Node-RED dashboard. | [https://github.com/u-blox/XPLR-IOT-1-Air-Quality-Monitor-Example](https://github.com/u-blox/XPLR-IOT-1-Air-Quality-Monitor-Example) | BLE | NORA-B1 | [XPLR-IOT-1](https://www.u-blox.com/en/product/XPLR-IOT-1), [MikroE HVAC](https://www.mikroe.com/hvac-click) |
+
+
 
 # Feature Request and Roadmap
 New features can be requested and up-voted [here](https://github.com/u-blox/ubxlib/issues/12). The comments of this issue also contains an outlook about features of upcoming releases. Also it is the right place to discuss features and their priority.

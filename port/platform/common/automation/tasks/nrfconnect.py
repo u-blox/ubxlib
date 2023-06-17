@@ -67,14 +67,16 @@ def check_installation(ctx):
     ctx.zephyr_pre_command = ""
 
     # Load required packages
-    pkgs = u_package.load(ctx, ["arm_embedded_gcc", "nrfconnectsdk", "ninja", "cmake", "gperf", "nrf_cli", "segger_jlink"])
+    pkgs = u_package.load(ctx, ["arm_embedded_gcc", "nrfconnectsdk", "ninja", "cmake", "gperf", "nrf_cli", "segger_jlink", "unity"])
     ncs_pkg = pkgs["nrfconnectsdk"]
     ae_gcc_pkg = pkgs["arm_embedded_gcc"]
+    unity_pkg = pkgs["unity"]
 
     ctx.config.run.env["ZEPHYR_BASE"] = f'{ncs_pkg.get_install_path()}/zephyr'
     ctx.config.run.env["ZEPHYR_TOOLCHAIN_VARIANT"] = 'gnuarmemb'
     ctx.config.run.env["GNUARMEMB_TOOLCHAIN_PATH"] = ae_gcc_pkg.get_install_path()
     ctx.arm_toolchain_path = ae_gcc_pkg.get_install_path() + "/bin"
+    ctx.config.run.env["UNITY_PATH"] = f'{unity_pkg.get_install_path()}'
 
 @task(
     pre=[check_installation],

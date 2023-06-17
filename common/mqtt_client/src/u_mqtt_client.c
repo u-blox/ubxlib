@@ -86,10 +86,10 @@ static uErrorCode_t gLastOpenError = U_ERROR_COMMON_SUCCESS;
 /** Start an MQTT connection using cellular.
  * The mutex for this session must be locked before this is called.
  */
-int32_t cellConnect(uDeviceHandle_t devHandle,
-                    const uMqttClientConnection_t *pConnection,
-                    const uSecurityTlsContext_t *pSecurityContext,
-                    bool doNotConnect)
+static int32_t cellConnect(uDeviceHandle_t devHandle,
+                           const uMqttClientConnection_t *pConnection,
+                           const uSecurityTlsContext_t *pSecurityContext,
+                           bool doNotConnect)
 {
     int32_t errorCode;
     const uMqttWill_t *pWill = pConnection->pWill;

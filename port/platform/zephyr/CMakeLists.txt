@@ -78,18 +78,30 @@ if (CONFIG_UBXLIB_TEST)
         ${UBXLIB_TEST_INC}
     )
 
-# If we are building outside of Platform IO then we
-# bring in unity from the NRF Connect SDK in which
-# Zephyr is contained.  However, under Platform IO that
-# doesn't exist, you get it from Platform IO
-# instead, hence make this a "weak" inclusion
+# If the environment variable UNITY_PATH is defined then we get
+# unity from there, else it might be in the nRF SDK, otherwise
+# the platform itself must build it and include the head file
+# (which is the case for Platform IO)
+if (DEFINED ENV{UNITY_PATH})
+    message("Unity from $ENV{UNITY_PATH} will be used")
+    target_sources(app PRIVATE
+        $ENV{UNITY_PATH}/src/unity.c
+    )
+    zephyr_include_directories(
+        $ENV{UNITY_PATH}/src
+    )
+else()
 if (EXISTS "${ZEPHYR_BASE}/../test/cmock/vendor/unity/src/unity.c")
+    message("Unity from ${ZEPHYR_BASE}/../test/cmock/vendor/unity will be used")
     target_sources(app PRIVATE
         ${ZEPHYR_BASE}/../test/cmock/vendor/unity/src/unity.c
     )
     zephyr_include_directories(
         ${ZEPHYR_BASE}/../test/cmock/vendor/unity/src
     )
+else()
+    message("Assuming that the platform will bring in Unity")
+endif()
 endif()
 
 endif()
