@@ -397,9 +397,17 @@ with portalocker.Lock(__SETTINGS_FILE_DIRECTORY + os.sep + "settings.lock",
             else:
                 __LISTS_DIFFER = True
                 __local_write_settings[__key] = __WRITE_SETTINGS[__key]
-                if __key_root != __key:
-                    print(f"u_settings: *** WARNING agent specific setting {__key_root}"    \
-                          " not found in settings file.")
+                #if __key_root != __key:
+                #    We used to print out a warning here if an agent-specific setting
+                #    was missing, however with the new test system multi-Pi architecture
+                #    having missing settings is fine, since a single settings file is
+                #    used but each agent machine only needs to have its own settings
+                #    correct, it cares not a jot about settings that are only relevant
+                #    to other test agents.
+                #    Hence this warning is commented out: it can be restored if need
+                #    be for debugging in the future
+                #    print(f"u_settings: *** WARNING agent specific setting {__key_root}"    \
+                #          " not found in settings file.")
         __WRITE_SETTINGS = __local_write_settings
 
         # Don't want to lose the user's stuff, so add anything that
