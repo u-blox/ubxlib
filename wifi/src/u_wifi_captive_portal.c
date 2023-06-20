@@ -65,7 +65,7 @@
  * COMPILE-TIME MACROS
  * ------------------------------------------------------------- */
 
-#define LOG_PREFIX "CAPTIVE PORTAL: "
+#define LOG_PREFIX "U_WIFI_CAPTIVE_PORTAL: "
 
 /* ----------------------------------------------------------------
  * STATIC VARIABLES
@@ -163,7 +163,7 @@ static const char gIndexPage[] =
 // The list of available network SSIDs
 static char gSsidList[1024];
 static uDeviceHandle_t gDevHandle;
-static bool gExitPortal = false;
+static bool gKeepGoing = false;
 // Selected credentials
 static char gSsid[U_WIFI_SSID_SIZE];
 static char gPw[100] = {0};
@@ -249,7 +249,7 @@ static void updateWifi(int32_t sock, const char *params)
     getVal(params, "ssid", gSsid, sizeof(gSsid));
     getVal(params, "pw", gPw, sizeof(gPw));
     sendHeader(sock, "200 OK", "text/html", 0);
-    gExitPortal = true;
+    gKeepGoing = false;
 }
 
 // Handle incoming web server requests
@@ -300,17 +300,17 @@ static void handleRequest(const char *request, int32_t sock)
     }
 }
 
-// Callback for terminating the the DNS server
-static bool dnsExit(uDeviceHandle_t deviceHandle)
+// Callback controlling whether the DNS server should continue or not
+static bool dnsKeepGoingCallback(uDeviceHandle_t deviceHandle)
 {
     (void)deviceHandle;
-    return gExitPortal;
+    return gKeepGoing;
 }
 
 // The DNS server
 static void dnsServerTask(void *pParameters)
 {
-    uDnsServer(gDevHandle, (const char *)pParameters, dnsExit);
+    uDnsServer(gDevHandle, (const char *)pParameters, dnsKeepGoingCallback);
     uPortTaskDelete(NULL);
 }
 
@@ -325,7 +325,7 @@ extern int32_t gUWifiSocketAcceptTimeoutS;
 int32_t uWifiCaptivePortal(uDeviceHandle_t deviceHandle,
                            const char *pSsid,
                            const char *pPassword,
-                           uWifiCaptivePortalExitCallback_t cb)
+                           uWifiCaptivePortalKeepGoingCallback_t cb)
 {
     // Wifi access point configuration
     uNetworkCfgWifi_t networkCfg = {
@@ -339,7 +339,7 @@ int32_t uWifiCaptivePortal(uDeviceHandle_t deviceHandle,
     };
     int32_t errorCode = 0;
     gDevHandle = deviceHandle;
-    gExitPortal = false;
+    gKeepGoing = true;
     gSsid[0] = 0;
     gPw[0] = 0;
     if (pSsid != NULL) {
@@ -353,10 +353,11 @@ int32_t uWifiCaptivePortal(uDeviceHandle_t deviceHandle,
         uPortTaskHandle_t dnsServer;
         uPortTaskCreate(dnsServerTask,
                         "dns",
-                        2048,
+                        U_WIFI_CAPTIVE_PORTAL_DNS_TASK_STACK_SIZE_BYTES,
                         (void *)networkCfg.pApIpAddress,
-                        5,
+                        U_WIFI_CAPTIVE_PORTAL_DNS_TASK_PRIORITY,
                         &dnsServer);
+
         // Start the web server
         int32_t sock = uSockCreate(gDevHandle,
                                    U_SOCK_TYPE_STREAM,
@@ -370,7 +371,7 @@ int32_t uWifiCaptivePortal(uDeviceHandle_t deviceHandle,
             uSockListen(sock, 1);
             gUWifiSocketAcceptTimeoutS = 2;
             uPortLog(LOG_PREFIX "\"%s\" started\n", pSsid ? pSsid : "Servers only");
-            while (!gExitPortal) {
+            while (gKeepGoing) {
                 static char request[1024];
                 // Wait for connection
                 int32_t clientSock = uSockAccept(sock, &remoteAddr);
@@ -387,9 +388,9 @@ int32_t uWifiCaptivePortal(uDeviceHandle_t deviceHandle,
                     uSockClose(clientSock);
                 } else if (clientSock != U_ERROR_COMMON_TIMEOUT) {
                     uPortLog(LOG_PREFIX "ERROR Accept failed: %d\n", clientSock);
-                    gExitPortal = true;
+                    gKeepGoing = false;
                 } else if (cb) {
-                    gExitPortal = cb(gDevHandle);
+                    gKeepGoing = cb(gDevHandle);
                 }
             }
             uSockClose(sock);
@@ -413,6 +414,7 @@ int32_t uWifiCaptivePortal(uDeviceHandle_t deviceHandle,
             }
         } else {
             uPortLog(LOG_PREFIX "ERROR Failed to create server socket: %d\n", sock);
+            uNetworkInterfaceDown(gDevHandle, U_NETWORK_TYPE_WIFI);
             errorCode = sock;
         }
     } else {

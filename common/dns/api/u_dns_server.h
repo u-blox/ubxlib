@@ -17,17 +17,44 @@
 #ifndef _U_DNS_SERVER_H_
 #define _U_DNS_SERVER_H_
 
+/* Only header files representing a direct and unavoidable
+ * dependency between the API of this module and the API
+ * of another module should be included here; otherwise
+ * please keep #includes to your .c files. */
+
+/** \addtogroup __dns __DNS
+ *  @{
+ */
+
 /** @file
  * @brief This header file defines the API for a DNS server
  * intended to be used for a captive portal, i.e. all lookup
  * requests will return the same ip address.
  */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* ----------------------------------------------------------------
+ * COMPILE-TIME MACROS
+ * -------------------------------------------------------------- */
+
+/* ----------------------------------------------------------------
+ * TYPES
+ * -------------------------------------------------------------- */
+
 /** DNS server callback.
+ *
  * @param deviceHandle the handle of the network device instance.
- * @return             when returning true the DNS server will stop and exit.
+ * @return             true if the DNS server should keep going, false
+ *                     to cause the DNS server to exit.
  */
-typedef bool (*uDnsExitCallback_t)(uDeviceHandle_t devHandle);
+typedef bool (*uDnsKeepGoingCallback_t)(uDeviceHandle_t deviceHandle);
+
+/* ----------------------------------------------------------------
+ * FUNCTIONS
+ * -------------------------------------------------------------- */
 
 /** Create a DNS server on the supplied device. All requests
  * will then be directed to the specified ipv4 address.
@@ -35,12 +62,21 @@ typedef bool (*uDnsExitCallback_t)(uDeviceHandle_t devHandle);
  *
  * @param deviceHandle the handle of the network device instance.
  * @param[in] pIpAddr  the address for all lookups
- * @param cb           exit callback Can be set to NULL
+ * @param cb           callback that may be used to control when
+ *                     the DNS server exits; NULL to continue forever.
  * @return             possible negative errors occurring during
  *                     the creation of the server.
  */
 int32_t uDnsServer(uDeviceHandle_t deviceHandle,
                    const char *pIpAddr,
-                   uDnsExitCallback_t cb);
+                   uDnsKeepGoingCallback_t cb);
 
+#ifdef __cplusplus
+}
 #endif
+
+/** @}*/
+
+#endif // _U_DNS_SERVER_H_
+
+// End of file

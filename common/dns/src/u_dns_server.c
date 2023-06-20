@@ -135,7 +135,7 @@ static uint32_t htonl(uint32_t x)
 
 int32_t uDnsServer(uDeviceHandle_t deviceHandle,
                    const char *pIpAddr,
-                   uDnsExitCallback_t cb)
+                   uDnsKeepGoingCallback_t cb)
 {
     uSockAddress_t lookupAddr;
     uSockStringToAddress(pIpAddr, &lookupAddr);
@@ -251,7 +251,7 @@ int32_t uDnsServer(uDeviceHandle_t deviceHandle,
             }
         }
         uPortTaskBlock(100);
-        if (cb != NULL && cb(deviceHandle)) {
+        if (cb != NULL && !cb(deviceHandle)) {
             break;
         }
     }

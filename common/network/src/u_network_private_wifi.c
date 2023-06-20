@@ -315,7 +315,8 @@ static inline int32_t statusQueueWaitForNetworkUp(const uPortQueueHandle_t queue
         // If one of the network protocol is up we
         // return without failure since this could
         // be only a missconfiguration
-        uPortLog("Warning: A network protocol failed");
+        uPortLog(LOG_TAG "Warning, a network protocol failed (0x%02x v 0x%02x)\n",
+                 lastNetStatusMask, desiredNetStatusMask);
         return (int32_t) U_ERROR_COMMON_SUCCESS;
     }
 
