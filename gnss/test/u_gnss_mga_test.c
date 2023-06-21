@@ -208,17 +208,17 @@ static const uGnssMgaPos_t gMgaPosFilter = U_GNSS_MGA_TEST_MY_LOCATION;
  */
 static const char *gpFlowControlNameList[] = {"no", "ack/nack", "smart"};
 
-# if defined(U_CFG_APP_GNSS_ASSIST_NOW_AUTHENTICATION_TOKEN) && defined(U_CFG_TEST_GNSS_ASSIST_NOW) && \
-     (defined(U_CFG_TEST_CELL_MODULE_TYPE) || defined(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE))
-
 /** The types of flow control to use with the GNSS chip while downloading;
  * must have the same number of members as gpFlowControlNameList and match
  * the order.
 */
-static uGnssMgaFlowControl_t gFlowControlList[] = {U_GNSS_MGA_FLOW_CONTROL_WAIT,
-                                                   U_GNSS_MGA_FLOW_CONTROL_SIMPLE,
-                                                   U_GNSS_MGA_FLOW_CONTROL_SMART
-                                                  };
+static const uGnssMgaFlowControl_t gFlowControlList[] = {U_GNSS_MGA_FLOW_CONTROL_WAIT,
+                                                         U_GNSS_MGA_FLOW_CONTROL_SIMPLE,
+                                                         U_GNSS_MGA_FLOW_CONTROL_SMART
+                                                        };
+
+# if defined(U_CFG_APP_GNSS_ASSIST_NOW_AUTHENTICATION_TOKEN) && defined(U_CFG_TEST_GNSS_ASSIST_NOW) && \
+     (defined(U_CFG_TEST_CELL_MODULE_TYPE) || defined(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE))
 
 /** Array of requests to test: note that the figures in here are all
  * quite small as there is potentially a lot of data to download and
@@ -643,7 +643,7 @@ U_PORT_TEST_FUNCTION("[gnssMga]", "gnssMgaBasic")
                     U_TEST_PRINT_LINE_X("writing database to GNSS device using %s flow control.",
                                         x + 1, gpFlowControlNameList[x]);
                     callbackParameter = 0;
-                    y = uGnssMgaSetDatabase(gnssDevHandle, (uGnssMgaFlowControl_t) x,
+                    y = uGnssMgaSetDatabase(gnssDevHandle, gFlowControlList[x],
                                             gpDatabase, z, progressCallback, &callbackParameter);
                     if (callbackParameter >= 0) {
                         U_TEST_PRINT_LINE_X("progress callback was called %d time(s).",

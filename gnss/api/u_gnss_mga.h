@@ -151,13 +151,18 @@ extern "C" {
 # define U_GNSS_MGA_RX_BUFFER_SIZE_BYTES 1000
 #endif
 
-/** The maximum length of the payload of a UBX-MGA-DBD message,
- * M10 being the limiting factor; for the avoidance of doubt,
- * this does NOT include the two length indicator bytes that
- * precede it, i.e. the maximum length passed to
- * uGnssMgaDatabaseCallback_t is two more than this.
+/** The maximum length of the payload of a UBX-MGA-DBD message; for
+ * the avoidance of doubt, this does NOT include the two length
+ * indicator bytes that precede it, i.e. the maximum length passed
+ * to uGnssMgaDatabaseCallback_t is two more than this.
+ *
+ * Note: the GNSS interface manual says that this value will not be
+ * greater than 164 bytes but, by experiment, the last value returned
+ * by the GNSS device is sometimes larger: 184 and 248 bytes have
+ * both been observed, for M10 and M9 respectively, hence we set the
+ * larger limit here for safety sake.
  */
-#define U_GNSS_MGA_DBD_MESSAGE_PAYLOAD_LENGTH_MAX_BYTES 184
+#define U_GNSS_MGA_DBD_MESSAGE_PAYLOAD_LENGTH_MAX_BYTES 248
 
 #ifndef U_GNSS_MGA_ONLINE_REQUEST_DEFAULTS
 /** Default values for #uGnssMgaOnlineRequest_t.
@@ -197,7 +202,8 @@ typedef enum {
 } uGnssMgaExtInt_t;
 
 /** The possible flow control types, used by uGnssMgaResponseSend() and
- * uGnssMgaSetDatabase().
+ * uGnssMgaSetDatabase().  Developer note: these values are used internally
+ * to index into an array.
  */
 typedef enum {
     U_GNSS_MGA_FLOW_CONTROL_SIMPLE = 0,  /**< wait for an ACK for each message; reliable but slow. */
