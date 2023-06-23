@@ -6,8 +6,7 @@
 example/sockets/main.c
 example/sockets/main_tls.c
 example/sockets/credentials_tls.c
-example/security/e2e/e2e_main.c
-example/security/psk/psk_main.c
+example/security/psk_main.c
 example/mqtt_client/mqtt_main.c
 example/http_client/http_main.c
 example/location/main_loc_gnss.c
@@ -29,7 +28,6 @@ cell/test/u_cell_cfg_test.c
 cell/test/u_cell_info_test.c
 cell/test/u_cell_net_test.c
 cell/test/u_cell_sock_test.c
-cell/test/u_cell_sec_c2c_test.c
 cell/test/u_cell_sec_tls_test.c
 cell/test/u_cell_mqtt_test.c
 cell/test/u_cell_http_test.c

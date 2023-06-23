@@ -87,10 +87,6 @@ void uCellMuxPrivateLink(void);
  * uCellAtClientHandleGet(); uCellAtClientHandleGet() will always
  * return the AT handle currently in use.
  *
- * Multiplexer mode cannot be enabled while chip-to-chip security
- * is active, however chip-to-chip security can be enabled _after_
- * multiplexer mode has been enabled.
- *
  * Whether multiplexer mode is supported or not depends on the cellular
  * module and the interface in use: for instance a USB interface to
  * a module does not support multiplexer mode.

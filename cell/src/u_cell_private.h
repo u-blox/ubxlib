@@ -200,7 +200,6 @@ typedef enum {
     U_CELL_PRIVATE_FEATURE_CSCON,
     U_CELL_PRIVATE_FEATURE_ROOT_OF_TRUST,
     U_CELL_PRIVATE_FEATURE_ASYNC_SOCK_CLOSE,
-    U_CELL_PRIVATE_FEATURE_SECURITY_C2C,
     U_CELL_PRIVATE_FEATURE_DATA_COUNTERS,
     U_CELL_PRIVATE_FEATURE_SECURITY_TLS_IANA_NUMBERING,
     U_CELL_PRIVATE_FEATURE_SECURITY_TLS_SERVER_NAME_INDICATION,
@@ -435,7 +434,6 @@ typedef struct uCellPrivateInstance_t {
     void *pGreetingCallbackParameter;
     uCellPrivateNet_t *pScanResults;    /**< Anchor for list of network scan results. */
     int32_t sockNextLocalPort;
-    void *pSecurityC2cContext;  /**< Hook for a chip to chip security context. */
     volatile void *pMqttContext; /**< Hook for MQTT context, volatile as it
                                       can be populared by a URC in a different thread. */
     uCellPrivateLocContext_t *pLocContext; /**< Hook for a location context. **/
@@ -624,14 +622,6 @@ void uCellPrivateScanFree(uCellPrivateNet_t **ppScanResults);
 //lint -esym(759, pUCellPrivateGetModule) etc. since use of this function
 //lint -esym(765, pUCellPrivateGetModule) may be compiled-out in various ways
 const uCellPrivateModule_t *pUCellPrivateGetModule(uDeviceHandle_t cellHandle);
-
-/** Remove the chip to chip security context for the given instance.
- *
- * Note: gUCellPrivateMutex should be locked before this is called.
- *
- * @param pInstance   a pointer to the cellular instance.
- */
-void uCellPrivateC2cRemoveContext(uCellPrivateInstance_t *pInstance);
 
 /** Remove the location context for the given instance.
  *

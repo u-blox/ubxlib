@@ -57,7 +57,6 @@
 #include "u_cell_net.h"     // important here
 #include "u_cell_private.h" // don't change it
 #include "u_cell_pwr.h"
-#include "u_cell_sec_c2c.h"
 #include "u_cell_cfg.h"
 #include "u_cell_http.h"
 #include "u_cell_http_private.h"
@@ -206,7 +205,6 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
         ((1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE)                         |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CSCON)                               |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_ROOT_OF_TRUST)                       |
-         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_C2C)                        |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_DATA_COUNTERS)                       |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_IANA_NUMBERING)         |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_CIPHER_LIST)            |
@@ -893,33 +891,6 @@ const uCellPrivateModule_t *pUCellPrivateGetModule(uDeviceHandle_t cellHandle)
     }
 
     return pModule;
-}
-
-// Remove a chip-to-chip security context.
-void uCellPrivateC2cRemoveContext(uCellPrivateInstance_t *pInstance)
-{
-    uCellSecC2cContext_t *pContext = (uCellSecC2cContext_t *) pInstance->pSecurityC2cContext;
-
-    if (pContext != NULL) {
-        if (pContext->pTx != NULL) {
-            uAtClientStreamInterceptTx(pInstance->atHandle,
-                                       NULL, NULL);
-            // For safety
-            memset(pContext->pTx, 0, sizeof(*(pContext->pTx)));
-            uPortFree(pContext->pTx);
-        }
-        if (pContext->pRx != NULL) {
-            uAtClientStreamInterceptRx(pInstance->atHandle,
-                                       NULL, NULL);
-            // For safety
-            memset(pContext->pRx, 0, sizeof(*(pContext->pRx)));
-            uPortFree(pContext->pRx);
-        }
-        // For safety
-        memset(pContext, 0, sizeof(*pContext));
-        uPortFree(pContext);
-        pInstance->pSecurityC2cContext = NULL;
-    }
 }
 
 // Remove a location context.

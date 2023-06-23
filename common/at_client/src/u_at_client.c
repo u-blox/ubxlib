@@ -1327,14 +1327,14 @@ static bool bufferFill(uAtClientInstance_t *pClient,
     // received from the UART, readIndex is how far into that has
     // been read off by the AT parsing code.  Normally "length" and
     // "lengthBuffered" are the same, they only differ if there is
-    // an active intercept function, e.g. for C2C security; stuff
-    // between "length" and lengthBuffered has not yet been
-    // processed by the intercept function (e.g. it's just new or
-    // there's not enough of it to form some sort of frame structure
-    // that the intercept function needs).  The intercept function
-    // reads the stuff between "length" and lengthBuffered at which
-    // point it may make it available as normal stuff which this
-    // function then copies down into the unread part of "length".
+    // an active intercept function; stuff between "length" and
+    // lengthBuffered has not yet been processed by the intercept
+    // function (e.g. it's just new or there's not enough of it to
+    // form some sort of frame structure that the intercept function
+    // needs).  The intercept function reads the stuff between
+    // "length" and lengthBuffered at which point it may make it
+    // available as normal stuff which this function then copies
+    // down into the unread part of "length".
 
     LOG_BUFFER_FILL(1);
 
