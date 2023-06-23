@@ -152,9 +152,7 @@ UBXLIB_TEST_DIRS += \
 # Examples are compiled as tests
 UBXLIB_TEST_DIRS += \
 	${UBXLIB_BASE}/example/sockets \
-	${UBXLIB_BASE}/example/security/e2e \
-	${UBXLIB_BASE}/example/security/psk \
-	${UBXLIB_BASE}/example/security/c2c \
+	${UBXLIB_BASE}/example/security \
 	${UBXLIB_BASE}/example/mqtt_client \
 	${UBXLIB_BASE}/example/http_client \
 	${UBXLIB_BASE}/example/location \

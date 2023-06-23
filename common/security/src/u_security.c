@@ -56,24 +56,6 @@
  * int32_t uXxxSecGetRootOfTrustUid(int32_t handle,
  *                                  char *pRootOfTrustUid);
  *
- * Pair with a module for chip to chip security (optional):
- *
- * int32_t uXxxSecC2cPair(int32_t handle, const char * pTESecret,
- *                        char * pKey, char * pHMac);
- *
- * Open a chip to chip secure session (mandatory if
- * uXxxSecC2cPair() is implemented):
- *
- * int32_t uXxxSecC2cOpen(int32_t handle,
- *                        const char *pTESecret,
- *                        const char *pKey,
- *                        const char *pHMac);
- *
- * Close a chip to chip secure session (mandatory if
- * uXxxSecC2cPair() is implemented):
- *
- * int32_t uXxxSecC2cClose(int32_t handle);
- *
  * Security seal a module (mandatory):
  *
  * int32_t uXxxSecSealSet(int32_t handle,
@@ -104,21 +86,6 @@
  *                                             size_t dataSizeBytes);
  *
  * Perform end to end encryption on a block of data (optional):
- *
- * int32_t uXxxSecE2eEncrypt(int32_t handle,
- *                           const void *pDataIn,
- *                           void *pDataOut,
- *                           size_t dataSizeBytes);
- *
- * Set the end to end encryption version in use (optional):
- *
- * int32_t uXxxSecE2eSetVersion(int32_t handle,
- *                              int32_t version);
- *
- * Get the end to end encryption version in use (mandatory
- * if uXxxSecE2eSetVersion() is supported):
- *
- * int32_t uXxxSecE2eGetVersion(int32_t handle);
  *
  * Trigger a security heartbeat (optional):
  *
@@ -231,59 +198,6 @@ int32_t uSecurityGetRootOfTrustUid(uDeviceHandle_t devHandle,
 }
 
 /* ----------------------------------------------------------------
- * PUBLIC FUNCTIONS: CHIP TO CHIP SECURITY
- * -------------------------------------------------------------- */
-
-// Pair a module's AT interface for chip to chip security.
-int32_t uSecurityC2cPair(uDeviceHandle_t devHandle,
-                         const char *pTESecret,
-                         char *pKey, char *pHMac)
-{
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-
-    if ((pTESecret != NULL) && (pKey != NULL) && (pHMac != NULL)) {
-        errorCode = (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
-        if (U_DEVICE_IS_TYPE(devHandle, U_DEVICE_TYPE_CELL)) {
-            errorCode = uCellSecC2cPair(devHandle,
-                                        pTESecret, pKey, pHMac);
-        }
-    }
-
-    return errorCode;
-}
-
-// Open a secure AT session.
-int32_t uSecurityC2cOpen(uDeviceHandle_t devHandle,
-                         const char *pTESecret,
-                         const char *pKey,
-                         const char *pHMac)
-{
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-
-    if ((pTESecret != NULL) && (pKey != NULL) && (pHMac != NULL)) {
-        errorCode = (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
-        if (U_DEVICE_IS_TYPE(devHandle, U_DEVICE_TYPE_CELL)) {
-            errorCode = uCellSecC2cOpen(devHandle,
-                                        pTESecret, pKey, pHMac);
-        }
-    }
-
-    return errorCode;
-}
-
-// Close a secure AT session.
-int32_t uSecurityC2cClose(uDeviceHandle_t devHandle)
-{
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
-
-    if (U_DEVICE_IS_TYPE(devHandle, U_DEVICE_TYPE_CELL)) {
-        errorCode = uCellSecC2cClose(devHandle);
-    }
-
-    return errorCode;
-}
-
-/* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS: SEAL
  * -------------------------------------------------------------- */
 
@@ -371,57 +285,6 @@ int32_t uSecurityZtpGetCertificateAuthorities(uDeviceHandle_t devHandle,
     }
 
     return errorCodeOrSize;
-}
-
-/* ----------------------------------------------------------------
- * PUBLIC FUNCTIONS: END TO END ENCRYPTION
- * -------------------------------------------------------------- */
-
-// Set the E2E encryption version to be used.
-int32_t uSecurityE2eSetVersion(uDeviceHandle_t devHandle, int32_t version)
-{
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
-
-    if (U_DEVICE_IS_TYPE(devHandle, U_DEVICE_TYPE_CELL)) {
-        errorCode = uCellSecE2eSetVersion(devHandle,
-                                          version);
-    }
-
-    return errorCode;
-}
-
-// Get the E2E encryption version.
-int32_t uSecurityE2eGetVersion(uDeviceHandle_t devHandle)
-{
-    int32_t errorCodeOrVersion = (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
-
-    if (U_DEVICE_IS_TYPE(devHandle, U_DEVICE_TYPE_CELL)) {
-        errorCodeOrVersion = uCellSecE2eGetVersion(devHandle);
-    }
-
-    return errorCodeOrVersion;
-}
-
-// Ask a module to encrypt a block of data.
-int32_t uSecurityE2eEncrypt(uDeviceHandle_t devHandle,
-                            const void *pDataIn,
-                            void *pDataOut, size_t dataSizeBytes)
-{
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-
-    if (pDataIn != NULL) {
-        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-        if ((pDataOut != NULL) && (dataSizeBytes > 0)) {
-            errorCode = (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
-            if (U_DEVICE_IS_TYPE(devHandle, U_DEVICE_TYPE_CELL)) {
-                errorCode = uCellSecE2eEncrypt(devHandle,
-                                               pDataIn, pDataOut,
-                                               dataSizeBytes);
-            }
-        }
-    }
-
-    return errorCode;
 }
 
 /* ----------------------------------------------------------------

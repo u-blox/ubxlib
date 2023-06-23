@@ -19,7 +19,6 @@ cell/src/u_cell_info.c
 cell/src/u_cell_net.c
 cell/src/u_cell_sock.c
 cell/src/u_cell_sec.c
-cell/src/u_cell_sec_c2c.c
 cell/src/u_cell_sec_tls.c
 cell/src/u_cell_mqtt.c
 cell/src/u_cell_http.c

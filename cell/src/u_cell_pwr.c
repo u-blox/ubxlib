@@ -1226,10 +1226,6 @@ static int32_t powerOff(uCellPrivateInstance_t *pInstance,
                      (int32_t) !U_CELL_PRIVATE_PWR_ON_PIN_TOGGLE_TO_STATE(pInstance->pinStates));
     }
 
-    // Remove any security context as these disappear
-    // at power off
-    uCellPrivateC2cRemoveContext(pInstance);
-
     return errorCode;
 }
 
@@ -1257,9 +1253,6 @@ static void quickPowerOff(uCellPrivateInstance_t *pInstance,
             uPortGpioSet(pInstance->pinEnablePower,
                          (int32_t) !U_CELL_PRIVATE_ENABLE_POWER_PIN_ON_STATE(pInstance->pinStates));
         }
-        // Remove any security context as these disappear
-        // at power off
-        uCellPrivateC2cRemoveContext(pInstance);
     }
 }
 
@@ -1834,9 +1827,6 @@ int32_t uCellPwrOffHard(uDeviceHandle_t cellHandle, bool trulyHard,
                              (int32_t) !U_CELL_PRIVATE_ENABLE_POWER_PIN_ON_STATE(pInstance->pinStates));
                 // Need to disable mux mode
                 uCellMuxPrivateDisable(pInstance);
-                // Remove any security context as these disappear
-                // at power off
-                uCellPrivateC2cRemoveContext(pInstance);
                 errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
             } else {
                 if (pInstance->pinPwrOn >= 0) {
@@ -1870,9 +1860,6 @@ int32_t uCellPwrOffHard(uDeviceHandle_t cellHandle, bool trulyHard,
                         uPortGpioSet(pInstance->pinEnablePower,
                                      (int32_t) !U_CELL_PRIVATE_ENABLE_POWER_PIN_ON_STATE(pInstance->pinStates));
                     }
-                    // Remove any security context as these disappear
-                    // at power off
-                    uCellPrivateC2cRemoveContext(pInstance);
                     errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
                 }
             }
@@ -1949,8 +1936,6 @@ int32_t uCellPwrReboot(uDeviceHandle_t cellHandle,
             uAtClientCommandStopReadResponse(atHandle);
             errorCode = uAtClientUnlock(atHandle);
             if (errorCode == 0) {
-                // Remove any security context as these disappear at reboot
-                uCellPrivateC2cRemoveContext(pInstance);
                 // We have rebooted
                 pInstance->rebootIsRequired = false;
                 // Wait for the module to boot
@@ -2089,8 +2074,6 @@ int32_t uCellPwrResetHard(uDeviceHandle_t cellHandle, int32_t pinReset)
                 gpioConfig.direction = U_PORT_GPIO_DIRECTION_OUTPUT;
                 platformError = uPortGpioConfig(&gpioConfig);
                 if (platformError == 0) {
-                    // Remove any security context as these disappear at reboot
-                    uCellPrivateC2cRemoveContext(pInstance);
                     // We have rebooted
                     pInstance->rebootIsRequired = false;
                     startTime = uPortGetTickTimeMs();

@@ -130,8 +130,6 @@ static void removeCellInstance(uCellPrivateInstance_t *pInstance)
             uAtClientSetWakeUpHandler(pInstance->atHandle, NULL, NULL, 0);
             // Free any scan results
             uCellPrivateScanFree(&(pInstance->pScanResults));
-            // Free any chip to chip security context
-            uCellPrivateC2cRemoveContext(pInstance);
             // Free any location context and associated URC
             uCellPrivateLocRemoveContext(pInstance);
             // Free any sleep context

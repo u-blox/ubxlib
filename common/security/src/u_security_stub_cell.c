@@ -73,35 +73,6 @@ U_WEAK int32_t uCellSecGetRootOfTrustUid(uDeviceHandle_t cellHandle,
     return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
 }
 
-U_WEAK int32_t uCellSecC2cPair(uDeviceHandle_t cellHandle,
-                               const char *pTESecret,
-                               char *pKey, char *pHMac)
-{
-    (void) cellHandle;
-    (void) pTESecret;
-    (void) pKey;
-    (void) pHMac;
-    return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
-}
-
-U_WEAK int32_t uCellSecC2cOpen(uDeviceHandle_t cellHandle,
-                               const char *pTESecret,
-                               const char *pKey,
-                               const char *pHMacKey)
-{
-    (void) cellHandle;
-    (void) pTESecret;
-    (void) pKey;
-    (void) pHMacKey;
-    return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
-}
-
-U_WEAK int32_t uCellSecC2cClose(uDeviceHandle_t cellHandle)
-{
-    (void) cellHandle;
-    return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
-}
-
 U_WEAK int32_t uCellSecSealSet(uDeviceHandle_t cellHandle,
                                const char *pDeviceProfileUid,
                                const char *pDeviceSerialNumberStr,
@@ -146,31 +117,6 @@ U_WEAK int32_t uCellSecZtpGetCertificateAuthorities(uDeviceHandle_t cellHandle,
 {
     (void) cellHandle;
     (void) pData;
-    (void) dataSizeBytes;
-    return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
-}
-
-U_WEAK int32_t uCellSecE2eSetVersion(uDeviceHandle_t cellHandle, int32_t version)
-{
-    (void) cellHandle;
-    (void) version;
-    return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
-}
-
-U_WEAK int32_t uCellSecE2eGetVersion(uDeviceHandle_t cellHandle)
-{
-    (void) cellHandle;
-    return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
-}
-
-U_WEAK int32_t uCellSecE2eEncrypt(uDeviceHandle_t cellHandle,
-                                  const void *pDataIn,
-                                  void *pDataOut,
-                                  size_t dataSizeBytes)
-{
-    (void) cellHandle;
-    (void) pDataIn;
-    (void) pDataOut;
     (void) dataSizeBytes;
     return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
 }

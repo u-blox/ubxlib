@@ -1561,159 +1561,156 @@ int32_t uCellMuxEnable(uDeviceHandle_t cellHandle)
         if (pInstance != NULL) {
             errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
             if (U_CELL_PRIVATE_HAS(pInstance->pModule, U_CELL_PRIVATE_FEATURE_CMUX)) {
-                errorCode = (int32_t) U_CELL_ERROR_TEMPORARY_FAILURE;
-                if (pInstance->pSecurityC2cContext == NULL) {
-                    errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-                    if (pInstance->pMuxContext == NULL) {
-                        errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
-                        // Allocate memory for our CMUX context; this will be
-                        // deallocated only when the cellular instance is removed
-                        pInstance->pMuxContext = pUPortMalloc(sizeof(uCellMuxPrivateContext_t));
-                        if (pInstance->pMuxContext != NULL) {
-                            pContext = (uCellMuxPrivateContext_t *) pInstance->pMuxContext;
-                            memset(pContext, 0, sizeof(*pContext));
-                            // To save memory, we use a single event queue for all callbacks
-                            // from the CMUX channels, re-using the AT client sizes
-                            pContext->eventQueueHandle = uPortEventQueueOpen(eventHandler,
-                                                                             "cmuxCallbacks",
-                                                                             sizeof(uCellMuxEvenTrampoline_t),
-                                                                             U_CELL_MUX_CALLBACK_TASK_STACK_SIZE_BYTES,
-                                                                             U_CELL_MUX_CALLBACK_TASK_PRIORITY,
-                                                                             U_CELL_MUX_CALLBACK_QUEUE_LENGTH);
-                            if (pContext->eventQueueHandle >= 0) {
-                                if (uRingBufferCreateWithReadHandle(&(pContext->ringBuffer),
-                                                                    pContext->linearBuffer,
-                                                                    sizeof(pContext->linearBuffer), 1) == 0) {
-                                    uRingBufferSetReadRequiresHandle(&(pContext->ringBuffer), true);
-                                    pContext->readHandle = uRingBufferTakeReadHandle(&(pContext->ringBuffer));
-                                } else {
-                                    // Clean up on error
-                                    uPortEventQueueClose(pContext->eventQueueHandle);
-                                    uPortFree(pInstance->pMuxContext);
-                                    pInstance->pMuxContext = NULL;
-                                }
+                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                if (pInstance->pMuxContext == NULL) {
+                    errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
+                    // Allocate memory for our CMUX context; this will be
+                    // deallocated only when the cellular instance is removed
+                    pInstance->pMuxContext = pUPortMalloc(sizeof(uCellMuxPrivateContext_t));
+                    if (pInstance->pMuxContext != NULL) {
+                        pContext = (uCellMuxPrivateContext_t *) pInstance->pMuxContext;
+                        memset(pContext, 0, sizeof(*pContext));
+                        // To save memory, we use a single event queue for all callbacks
+                        // from the CMUX channels, re-using the AT client sizes
+                        pContext->eventQueueHandle = uPortEventQueueOpen(eventHandler,
+                                                                         "cmuxCallbacks",
+                                                                         sizeof(uCellMuxEvenTrampoline_t),
+                                                                         U_CELL_MUX_CALLBACK_TASK_STACK_SIZE_BYTES,
+                                                                         U_CELL_MUX_CALLBACK_TASK_PRIORITY,
+                                                                         U_CELL_MUX_CALLBACK_QUEUE_LENGTH);
+                        if (pContext->eventQueueHandle >= 0) {
+                            if (uRingBufferCreateWithReadHandle(&(pContext->ringBuffer),
+                                                                pContext->linearBuffer,
+                                                                sizeof(pContext->linearBuffer), 1) == 0) {
+                                uRingBufferSetReadRequiresHandle(&(pContext->ringBuffer), true);
+                                pContext->readHandle = uRingBufferTakeReadHandle(&(pContext->ringBuffer));
                             } else {
                                 // Clean up on error
+                                uPortEventQueueClose(pContext->eventQueueHandle);
                                 uPortFree(pInstance->pMuxContext);
                                 pInstance->pMuxContext = NULL;
                             }
+                        } else {
+                            // Clean up on error
+                            uPortFree(pInstance->pMuxContext);
+                            pInstance->pMuxContext = NULL;
                         }
                     }
-                    if (pInstance->pMuxContext != NULL) {
-                        pContext = (uCellMuxPrivateContext_t *) pInstance->pMuxContext;
-                        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-                        if (pContext->savedAtHandle == NULL) {
-                            // Initialise the other parts of [an existing] context
-                            pContext->pInstance = pInstance;
-                            pContext->channelGnss = getChannelGnss(pInstance);
-                            pContext->holdingBufferIndex = 0;
-                            // Initiate CMUX
-                            atHandle = pInstance->atHandle;
-                            uAtClientLock(atHandle);
-                            streamHandle = uAtClientStreamGet(atHandle, &streamType);
-                            uRingBufferFlushHandle(&(pContext->ringBuffer), pContext->readHandle);
-                            pContext->underlyingStreamHandle = streamHandle;
-                            uAtClientCommandStart(atHandle, "AT+CMUX=");
-                            // Only basic mode and only UIH frames are supported by any
-                            // of the cellular modules we support
-                            uAtClientWriteInt(atHandle, 0);
-                            uAtClientWriteInt(atHandle, 0);
-                            // As advised in the u-blox multiplexer document, port
-                            // speed is left empty for max compatibility
-                            uAtClientWriteString(atHandle, "", false);
-                            // Set the information field length
-                            uAtClientWriteInt(atHandle,
-                                              U_CELL_MUX_PRIVATE_INFORMATION_LENGTH_MAX_BYTES);
-                            // Everything else is left at defaults for max compatibility
-                            uAtClientCommandStopReadResponse(atHandle);
-                            // Not unlocking here, just check for errors
-                            errorCode = uAtClientErrorGet(atHandle);
+                }
+                if (pInstance->pMuxContext != NULL) {
+                    pContext = (uCellMuxPrivateContext_t *) pInstance->pMuxContext;
+                    errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                    if (pContext->savedAtHandle == NULL) {
+                        // Initialise the other parts of [an existing] context
+                        pContext->pInstance = pInstance;
+                        pContext->channelGnss = getChannelGnss(pInstance);
+                        pContext->holdingBufferIndex = 0;
+                        // Initiate CMUX
+                        atHandle = pInstance->atHandle;
+                        uAtClientLock(atHandle);
+                        streamHandle = uAtClientStreamGet(atHandle, &streamType);
+                        uRingBufferFlushHandle(&(pContext->ringBuffer), pContext->readHandle);
+                        pContext->underlyingStreamHandle = streamHandle;
+                        uAtClientCommandStart(atHandle, "AT+CMUX=");
+                        // Only basic mode and only UIH frames are supported by any
+                        // of the cellular modules we support
+                        uAtClientWriteInt(atHandle, 0);
+                        uAtClientWriteInt(atHandle, 0);
+                        // As advised in the u-blox multiplexer document, port
+                        // speed is left empty for max compatibility
+                        uAtClientWriteString(atHandle, "", false);
+                        // Set the information field length
+                        uAtClientWriteInt(atHandle,
+                                          U_CELL_MUX_PRIVATE_INFORMATION_LENGTH_MAX_BYTES);
+                        // Everything else is left at defaults for max compatibility
+                        uAtClientCommandStopReadResponse(atHandle);
+                        // Not unlocking here, just check for errors
+                        errorCode = uAtClientErrorGet(atHandle);
+                        if (errorCode == 0) {
+                            // Leave the AT client locked to stop it reacting to stuff coming
+                            // back over the UART, which will shortly become the MUX
+                            // control channel and not an AT interface at all.
+                            // Replace the URC handler of the existing AT client
+                            // with our own so that we get the received data
+                            // and can decode it
+                            uAtClientUrcHandlerHijack(atHandle, cmuxReceiveCallback, pContext);
+                            // Give the module a moment for the MUX switcheroo
+                            uPortTaskBlock(U_CELL_MUX_PRIVATE_ENABLE_DISABLE_DELAY_MS);
+                            // Open the control channel, channel 0; for this we need no
+                            // data buffer, since it does not carry user data
+                            pContext->savedAtHandle = atHandle;
+                            errorCode = openChannel(pContext, U_CELL_MUX_PRIVATE_CHANNEL_ID_CONTROL, 0);
                             if (errorCode == 0) {
-                                // Leave the AT client locked to stop it reacting to stuff coming
-                                // back over the UART, which will shortly become the MUX
-                                // control channel and not an AT interface at all.
-                                // Replace the URC handler of the existing AT client
-                                // with our own so that we get the received data
-                                // and can decode it
-                                uAtClientUrcHandlerHijack(atHandle, cmuxReceiveCallback, pContext);
-                                // Give the module a moment for the MUX switcheroo
-                                uPortTaskBlock(U_CELL_MUX_PRIVATE_ENABLE_DISABLE_DELAY_MS);
-                                // Open the control channel, channel 0; for this we need no
-                                // data buffer, since it does not carry user data
-                                pContext->savedAtHandle = atHandle;
-                                errorCode = openChannel(pContext, U_CELL_MUX_PRIVATE_CHANNEL_ID_CONTROL, 0);
+#ifdef U_CELL_MUX_ENABLE_DEBUG
+                                uPortLog("U_CELL_CMUX_0: control channel open.\n");
+#endif
+                                // Channel 0 is up, now we need channel 1, on which
+                                // we will need a data buffer for the information field carrying the
+                                // user data (i.e. AT commands)
+                                errorCode = openChannel(pContext, U_CELL_MUX_PRIVATE_CHANNEL_ID_AT,
+                                                        U_CELL_MUX_PRIVATE_VIRTUAL_SERIAL_BUFFER_LENGTH_BYTES);
                                 if (errorCode == 0) {
 #ifdef U_CELL_MUX_ENABLE_DEBUG
-                                    uPortLog("U_CELL_CMUX_0: control channel open.\n");
+                                    uPortLog("U_CELL_CMUX_1: AT channel open, flushing stored URCs...\n");
 #endif
-                                    // Channel 0 is up, now we need channel 1, on which
-                                    // we will need a data buffer for the information field carrying the
-                                    // user data (i.e. AT commands)
-                                    errorCode = openChannel(pContext, U_CELL_MUX_PRIVATE_CHANNEL_ID_AT,
-                                                            U_CELL_MUX_PRIVATE_VIRTUAL_SERIAL_BUFFER_LENGTH_BYTES);
-                                    if (errorCode == 0) {
+                                    pDeviceSerial = pUCellMuxPrivateGetDeviceSerial(pContext, U_CELL_MUX_PRIVATE_CHANNEL_ID_AT);
+                                    // Some modules (e.g. SARA-R422) can have stored up loads of URCs
+                                    // which they like to emit over the new mux channel; flush these
+                                    // out here
+                                    uPortTaskBlock(500);
+                                    do {
+                                        uPortTaskBlock(10);
+                                    } while (pDeviceSerial->read(pDeviceSerial, tempBuffer, sizeof(tempBuffer)) > 0);
+                                    // Create a copy of the current AT client on this serial port
+                                    atHandle = uAtClientAdd((int32_t) pDeviceSerial,
+                                                            U_AT_CLIENT_STREAM_TYPE_VIRTUAL_SERIAL,
+                                                            NULL, U_CELL_AT_BUFFER_LENGTH_BYTES);
+                                    if (atHandle != NULL) {
 #ifdef U_CELL_MUX_ENABLE_DEBUG
-                                        uPortLog("U_CELL_CMUX_1: AT channel open, flushing stored URCs...\n");
+                                        uPortLog("U_CELL_CMUX: AT client added.\n");
 #endif
-                                        pDeviceSerial = pUCellMuxPrivateGetDeviceSerial(pContext, U_CELL_MUX_PRIVATE_CHANNEL_ID_AT);
-                                        // Some modules (e.g. SARA-R422) can have stored up loads of URCs
-                                        // which they like to emit over the new mux channel; flush these
-                                        // out here
-                                        uPortTaskBlock(500);
-                                        do {
-                                            uPortTaskBlock(10);
-                                        } while (pDeviceSerial->read(pDeviceSerial, tempBuffer, sizeof(tempBuffer)) > 0);
-                                        // Create a copy of the current AT client on this serial port
-                                        atHandle = uAtClientAdd((int32_t) pDeviceSerial,
-                                                                U_AT_CLIENT_STREAM_TYPE_VIRTUAL_SERIAL,
-                                                                NULL, U_CELL_AT_BUFFER_LENGTH_BYTES);
-                                        if (atHandle != NULL) {
+                                        errorCode = uCellMuxPrivateCopyAtClient(pContext->savedAtHandle,
+                                                                                atHandle);
+                                        if (errorCode == 0) {
 #ifdef U_CELL_MUX_ENABLE_DEBUG
-                                            uPortLog("U_CELL_CMUX: AT client added.\n");
+                                            uPortLog("U_CELL_CMUX: existing AT client copied, CMUX is running.\n");
 #endif
-                                            errorCode = uCellMuxPrivateCopyAtClient(pContext->savedAtHandle,
-                                                                                    atHandle);
-                                            if (errorCode == 0) {
-#ifdef U_CELL_MUX_ENABLE_DEBUG
-                                                uPortLog("U_CELL_CMUX: existing AT client copied, CMUX is running.\n");
-#endif
-                                                // Now that we have everything, we set the AT handle
-                                                // of our instance to the new AT handle, leaving the
-                                                // old AT handle locked
-                                                pInstance->atHandle = atHandle;
-                                                // The setting of echo-off and AT+CMEE is port-specific,
-                                                // so we need to set those here for the new port
+                                            // Now that we have everything, we set the AT handle
+                                            // of our instance to the new AT handle, leaving the
+                                            // old AT handle locked
+                                            pInstance->atHandle = atHandle;
+                                            // The setting of echo-off and AT+CMEE is port-specific,
+                                            // so we need to set those here for the new port
 #ifdef U_CFG_CELL_ENABLE_NUMERIC_ERROR
-                                                cmeeMode = 1;
+                                            cmeeMode = 1;
 #endif
-                                                uAtClientLock(atHandle);
-                                                uAtClientCommandStart(atHandle, "ATE0");
-                                                uAtClientCommandStopReadResponse(atHandle);
-                                                uAtClientCommandStart(atHandle, "AT+CMEE=");
-                                                uAtClientWriteInt(atHandle, cmeeMode);
-                                                uAtClientCommandStopReadResponse(atHandle);
-                                                errorCode = uAtClientUnlock(atHandle);
-                                            } else {
-                                                // Recover on error
-                                                uAtClientRemove(atHandle);
-                                                atHandle = pContext->savedAtHandle;
-                                            }
+                                            uAtClientLock(atHandle);
+                                            uAtClientCommandStart(atHandle, "ATE0");
+                                            uAtClientCommandStopReadResponse(atHandle);
+                                            uAtClientCommandStart(atHandle, "AT+CMEE=");
+                                            uAtClientWriteInt(atHandle, cmeeMode);
+                                            uAtClientCommandStopReadResponse(atHandle);
+                                            errorCode = uAtClientUnlock(atHandle);
                                         } else {
                                             // Recover on error
+                                            uAtClientRemove(atHandle);
                                             atHandle = pContext->savedAtHandle;
                                         }
+                                    } else {
+                                        // Recover on error
+                                        atHandle = pContext->savedAtHandle;
                                     }
                                 }
                             }
-                            if (errorCode < 0) {
-                                // Clean up and unlock the AT client on error
-                                uCellMuxPrivateCloseChannel(pContext, U_CELL_MUX_PRIVATE_CHANNEL_ID_AT);
-                                // Closing the control channel will take us out of CMUX mode
-                                uCellMuxPrivateCloseChannel(pContext, U_CELL_MUX_PRIVATE_CHANNEL_ID_CONTROL);
-                                uAtClientUrcHandlerHijack(atHandle, NULL, NULL);
-                                pContext->savedAtHandle = NULL;
-                                uAtClientUnlock(atHandle);
-                            }
+                        }
+                        if (errorCode < 0) {
+                            // Clean up and unlock the AT client on error
+                            uCellMuxPrivateCloseChannel(pContext, U_CELL_MUX_PRIVATE_CHANNEL_ID_AT);
+                            // Closing the control channel will take us out of CMUX mode
+                            uCellMuxPrivateCloseChannel(pContext, U_CELL_MUX_PRIVATE_CHANNEL_ID_CONTROL);
+                            uAtClientUrcHandlerHijack(atHandle, NULL, NULL);
+                            pContext->savedAtHandle = NULL;
+                            uAtClientUnlock(atHandle);
                         }
                     }
                 }
