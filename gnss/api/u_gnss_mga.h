@@ -388,9 +388,9 @@ typedef bool (uGnssMgaProgressCallback_t)(uDeviceHandle_t devHandle,
  * @return                        true to continue with the transfer,
  *                                false to terminate it.
  */
-typedef bool (uGnssMgaDatabaseCallback) (uDeviceHandle_t devHandle,
-                                         const char *pBuffer, size_t size,
-                                         void *pCallbackParam);
+typedef bool (uGnssMgaDatabaseCallback_t) (uDeviceHandle_t devHandle,
+                                           const char *pBuffer, size_t size,
+                                           void *pCallbackParam);
 
 /* ----------------------------------------------------------------
  * FUNCTIONS
@@ -410,6 +410,7 @@ typedef bool (uGnssMgaDatabaseCallback) (uDeviceHandle_t devHandle,
  * strlen(pBuffer).  If you call this function with NULL for pBuffer
  * and then allocate a buffer, you must add one, e.g.:
  *
+ * ```
  * char *pBuffer;
  * int32_t x = uGnssMgaOnlineRequestEncode(pRequest, NULL, 0);
  * if (x >= 0) {
@@ -421,6 +422,7 @@ typedef bool (uGnssMgaDatabaseCallback) (uDeviceHandle_t devHandle,
  *         free(pBuffer);
  *     }
  * }
+ * ```
  *
  * When you have sent this encoded HTTP GET request to the u-blox
  * assistance server #U_GNSS_MGA_HTTP_SERVER_ONLINE, e.g. using the
@@ -467,6 +469,7 @@ int32_t uGnssMgaOnlineRequestEncode(const uGnssMgaOnlineRequest_t *pRequest,
  * strlen(pBuffer).  If you call this function with NULL for pBuffer
  * and then allocate a buffer, you must add one, e.g.:
  *
+ * ```
  * char *pBuffer;
  * int32_t x = uGnssMgaOfflineRequestEncode(pRequest, NULL, 0);
  * if (x >= 0) {
@@ -478,6 +481,7 @@ int32_t uGnssMgaOnlineRequestEncode(const uGnssMgaOnlineRequest_t *pRequest,
  *         free(pBuffer);
  *     }
  * }
+ * ```
  *
  * TLS: when you send the HTTP request, the AssistNow Offline server
  * REQUIRES that the Server Name Indication (pSni) field is set [to the
@@ -556,7 +560,7 @@ int32_t uGnssMgaIniPosSend(uDeviceHandle_t gnssHandle,
                            const uGnssMgaPos_t *pMgaPos);
 
 /** Send the body of an HTTP GET response received from a u-blox
- * assistance server (i.e. as a result of an AssistNow Online or an
+ * assistance server (as a result of an AssistNow Online or an
  * AssistNow Offline request) to a GNSS module.  The complete
  * HTTP GET response body must be sent; truncated responses will
  * likely be rejected.
@@ -730,7 +734,7 @@ int32_t uGnssMgaSetAutonomous(uDeviceHandle_t gnssHandle, bool onNotOff);
  *                           be discarded.
  */
 int32_t uGnssMgaGetDatabase(uDeviceHandle_t gnssHandle,
-                            uGnssMgaDatabaseCallback *pCallback,
+                            uGnssMgaDatabaseCallback_t *pCallback,
                             void *pCallbackParam);
 
 /** Set (restore) the assistance database to a GNSS device.  Use this

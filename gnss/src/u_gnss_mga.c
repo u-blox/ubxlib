@@ -97,7 +97,7 @@ typedef struct {
     int32_t totalMessages;
     int32_t totalLength;
     bool keepGoing;
-    uGnssMgaDatabaseCallback *pCallback;
+    uGnssMgaDatabaseCallback_t *pCallback;
     void *pCallbackParam;
 } uGnssMgaReadDeviceDatabase_t;
 
@@ -1049,7 +1049,7 @@ int32_t uGnssMgaSetAutonomous(uDeviceHandle_t gnssHandle, bool onNotOff)
 
 // Get the assistance database from a GNSS device.
 int32_t uGnssMgaGetDatabase(uDeviceHandle_t gnssHandle,
-                            uGnssMgaDatabaseCallback *pCallback,
+                            uGnssMgaDatabaseCallback_t *pCallback,
                             void *pCallbackParam)
 {
     int32_t errorCodeOrLength = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
