@@ -157,6 +157,13 @@
 # define U_GNSS_MGA_TEST_MY_LOCATION {522227359, /* lat */ 748165, /* long */ 83123, /* altitude */ 20000, /* radius */}
 #endif
 
+#ifndef U_GNSS_MGA_TEST_HTTP_GET_RETRIES
+/** How many times to retry a HTTP GET request on failure,
+ * which might be because we're crowding-out the server.
+ */
+# define U_GNSS_MGA_TEST_HTTP_GET_RETRIES 3
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -193,15 +200,14 @@ static char *gpHttpBufferOut = NULL;
  */
 static char *gpHttpBufferIn = NULL;
 
+/** Position to use when filtering AssistNow Online.
+ */
+static const uGnssMgaPos_t gMgaPosFilter = U_GNSS_MGA_TEST_MY_LOCATION;
+
 # ifndef U_GNSS_MGA_TEST_DISABLE_DATABASE
 /** A count of how many times databaseCallback() has been called.
  */
 static size_t gDatabaseCalledCount = 0;
-#endif
-
-/** Position to use when filtering AssistNow Online.
- */
-static const uGnssMgaPos_t gMgaPosFilter = U_GNSS_MGA_TEST_MY_LOCATION;
 
 /** The names of the flow control types; must have the same number of
  * members as gFlowControlList and match the order.
@@ -216,6 +222,7 @@ static const uGnssMgaFlowControl_t gFlowControlList[] = {U_GNSS_MGA_FLOW_CONTROL
                                                          U_GNSS_MGA_FLOW_CONTROL_SIMPLE,
                                                          U_GNSS_MGA_FLOW_CONTROL_SMART
                                                         };
+# endif
 
 # if defined(U_CFG_APP_GNSS_ASSIST_NOW_AUTHENTICATION_TOKEN) && defined(U_CFG_TEST_GNSS_ASSIST_NOW) && \
      (defined(U_CFG_TEST_CELL_MODULE_TYPE) || defined(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE))
@@ -449,6 +456,7 @@ static bool progressCallback(uDeviceHandle_t devHandle,
     return true;
 }
 
+# ifndef U_GNSS_MGA_TEST_DISABLE_DATABASE
 // Callback for database reads.
 static bool databaseCallback(uDeviceHandle_t devHandle,
                              const char *pBuffer, size_t size,
@@ -483,6 +491,7 @@ static bool databaseCallback(uDeviceHandle_t devHandle,
 
     return keepGoing;
 }
+# endif // ifndef U_GNSS_MGA_TEST_DISABLE_DATABASE
 
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
@@ -837,59 +846,73 @@ U_PORT_TEST_FUNCTION("[gnssMga]", "gnssMgaServer")
             }
             if (encodeResult >= 0) {
                 U_TEST_PRINT_LINE_X("\"%s\".", x + 1, gpHttpBufferOut);
-                U_TEST_PRINT_LINE_X("sending GET request...", x + 1);
-                gHttpBufferInSize = U_GNSS_MGA_TEST_HTTP_BUFFER_IN_LENGTH_BYTES;
-                httpStatusCode = uHttpClientGetRequest(pHttpContext,
-                                                       gpHttpBufferOut, gpHttpBufferIn,
-                                                       &gHttpBufferInSize,
-                                                       NULL);
-                if (httpStatusCode == 200) {
-                    U_TEST_PRINT_LINE_X("%d byte(s) were returned:", x + 1,
-                                        gHttpBufferInSize);
-                    uPortLog(U_TEST_PREFIX_X, x + 1);
-                    printHex(gpHttpBufferIn, gHttpBufferInSize);
-                    uPortLog("\n");
-                    offlineOperation = pRequest->offlineOperation;
+                httpStatusCode = 0;
+                for (size_t z = 0; (z < U_GNSS_MGA_TEST_HTTP_GET_RETRIES) && (httpStatusCode != 200); z++) {
+                    U_TEST_PRINT_LINE_X("sending GET request, try %d...", x + 1, z + 1);
+                    gHttpBufferInSize = U_GNSS_MGA_TEST_HTTP_BUFFER_IN_LENGTH_BYTES;
+                    httpStatusCode = uHttpClientGetRequest(pHttpContext,
+                                                           gpHttpBufferOut, gpHttpBufferIn,
+                                                           &gHttpBufferInSize,
+                                                           NULL);
+                    if ((httpStatusCode == 200) && (gHttpBufferInSize > 0)) {
+                        U_TEST_PRINT_LINE_X("%d byte(s) were returned:", x + 1,
+                                            gHttpBufferInSize);
+                        uPortLog(U_TEST_PREFIX_X, x + 1);
+                        printHex(gpHttpBufferIn, gHttpBufferInSize);
+                        uPortLog("\n");
+                        offlineOperation = pRequest->offlineOperation;
 # ifndef U_GNSS_MGA_TEST_HAS_FLASH
-                    if (offlineOperation == U_GNSS_MGA_SEND_OFFLINE_FLASH) {
-                        offlineOperation = U_GNSS_MGA_SEND_OFFLINE_ALL;
-                    }
+                        if (offlineOperation == U_GNSS_MGA_SEND_OFFLINE_FLASH) {
+                            offlineOperation = U_GNSS_MGA_SEND_OFFLINE_ALL;
+                        }
 # endif
-                    U_TEST_PRINT_LINE_X("sending %s data to GNSS with %s flow control,"
-                                        " offline operation \"%s\"...", x + 1,
-                                        pRequest->isOnlineNotOffline ? "online" : "offline",
-                                        gpFlowControlNameList[flowControlIndex],
-                                        gpOfflineOperation[offlineOperation]);
-                    // Now send the data to the GNSS device, cycling
-                    // around all of the flow control methods and storing
-                    // in flash every other time
-                    callbackParameter = 0;
-                    y = uGnssMgaResponseSend(gnssDevHandle, timeUtcMilliseconds, 60000,
-                                             offlineOperation,
-                                             gFlowControlList[flowControlIndex],
-                                             gpHttpBufferIn, gHttpBufferInSize,
-                                             progressCallback,
-                                             &callbackParameter);
-                    flowControlIndex++;
-                    if (flowControlIndex >= sizeof(gFlowControlList) / sizeof(gFlowControlList[0])) {
-                        flowControlIndex = 0;
-                    }
-                    if (callbackParameter >= 0) {
-                        U_TEST_PRINT_LINE_X("progress callback was called %d time(s).",
-                                            x + 1, callbackParameter);
-                    } else {
-                        U_TEST_PRINT_LINE_X("progress callback returned error %d.",
-                                            x + 1, callbackParameter);
-                    }
-                    U_TEST_PRINT_LINE_X("final result was %d.", x + 1, y);
-                    U_PORT_TEST_ASSERT(callbackParameter >= 0);
-                    U_PORT_TEST_ASSERT(y == 0);
+                        U_TEST_PRINT_LINE_X("sending %s data to GNSS with %s flow control,"
+                                            " offline operation \"%s\"...", x + 1,
+                                            pRequest->isOnlineNotOffline ? "online" : "offline",
+                                            gpFlowControlNameList[flowControlIndex],
+                                            gpOfflineOperation[offlineOperation]);
+                        // Now send the data to the GNSS device, cycling
+                        // around all of the flow control methods and storing
+                        // in flash every other time
+                        callbackParameter = 0;
+                        y = uGnssMgaResponseSend(gnssDevHandle, timeUtcMilliseconds, 60000,
+                                                 offlineOperation,
+                                                 gFlowControlList[flowControlIndex],
+                                                 gpHttpBufferIn, gHttpBufferInSize,
+                                                 progressCallback,
+                                                 &callbackParameter);
+                        flowControlIndex++;
+                        if (flowControlIndex >= sizeof(gFlowControlList) / sizeof(gFlowControlList[0])) {
+                            flowControlIndex = 0;
+                        }
+                        if (callbackParameter >= 0) {
+                            U_TEST_PRINT_LINE_X("progress callback was called %d time(s).",
+                                                x + 1, callbackParameter);
+                        } else {
+                            U_TEST_PRINT_LINE_X("progress callback returned error %d.",
+                                                x + 1, callbackParameter);
+                        }
+                        U_TEST_PRINT_LINE_X("final result was %d.", x + 1, y);
+                        U_PORT_TEST_ASSERT(callbackParameter >= 0);
+                        U_PORT_TEST_ASSERT(y == 0);
 
-                } else {
-                    U_TEST_PRINT_LINE_X("HTTP status code was %d.", x + 1,
-                                        httpStatusCode);
-                    U_PORT_TEST_ASSERT(false);
+                    } else {
+                        U_TEST_PRINT_LINE_X("HTTP status code was %d.", x + 1,
+                                            httpStatusCode);
+                        if (httpStatusCode == 200) {
+                            U_TEST_PRINT_LINE_X("%d byte(s) returned.", x + 1,
+                                                gHttpBufferInSize);
+                            // Retry
+                            httpStatusCode = 0;
+                        }
+                        if (z < U_GNSS_MGA_TEST_HTTP_GET_RETRIES - 1) {
+                            // We might be being told to back off, so wait quite a bit
+                            U_TEST_PRINT_LINE_X("server doesn't like us, pausing for a while.", x + 1);
+                            uPortTaskBlock(30000);
+                        }
+                    }
                 }
+                U_PORT_TEST_ASSERT((httpStatusCode == 200) && (gHttpBufferInSize > 0));
                 // Wait between server requests to stop us being banned
                 U_TEST_PRINT_LINE_X("pausing for a few seconds.", x + 1);
                 uPortTaskBlock(5000);
