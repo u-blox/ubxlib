@@ -847,8 +847,12 @@ U_PORT_TEST_FUNCTION("[cellLoc]", "cellLocLoc")
 # endif
 #endif
 
-    // Do the standard postamble
-    uCellTestPrivatePostamble(&gHandles, false);
+    // Do the standard postamble, and this time switch the module
+    // off as I've seen some modules end up in a funny state after
+    // this test, where they look fine and dandy until, in the
+    // following test, the code sends AT+CFUN=4: after which they
+    // (SARA-R5) can become unresponsive.
+    uCellTestPrivatePostamble(&gHandles, true);
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();

@@ -66,10 +66,8 @@
 #define configMAX_PRIORITIES                                                      ( 15 )
 #define configMINIMAL_STACK_SIZE                                                  ( 60 )
 // If you modify this value then make sure that the value of
-// HEAP_SIZE in the Makefile for a GCC build and the value
-// of arm_linker_heap_size in the .emProject file for the
-// SES build are modified to match.
-#define configTOTAL_HEAP_SIZE                                                     ( 52 * 1024 )
+// HEAP_SIZE in the Makefile for a GCC build is modified to match.
+#define configTOTAL_HEAP_SIZE                                                     ( 53 * 1024 )
 #define configMAX_TASK_NAME_LEN                                                   ( 16 )
 #define configUSE_16_BIT_TICKS                                                    0
 #define configIDLE_SHOULD_YIELD                                                   1
