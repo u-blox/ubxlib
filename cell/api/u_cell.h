@@ -46,15 +46,19 @@ extern "C" {
  * large enough to run AT sockets using the IP stack on the
  * cellular module (where the maximum packet length is 1024 bytes)
  * without flow control.
+ *
+ * The limiting factor here is being able to run in multiplexer mode,
+ * which for smooth operation (i.e. not flow-controllling-off a
+ * lot) benefits from allowing more room.
  */
-# define U_CELL_UART_BUFFER_LENGTH_BYTES 1024
+# define U_CELL_UART_BUFFER_LENGTH_BYTES (1024 * 2)
 #endif
 
 #ifndef U_CELL_AT_BUFFER_LENGTH_BYTES
 /** The AT client buffer length required in the AT client by the
  * cellular driver.
  */
-# define U_CELL_AT_BUFFER_LENGTH_BYTES (U_AT_CLIENT_BUFFER_LENGTH_BYTES + U_CELL_UART_BUFFER_LENGTH_BYTES)
+# define U_CELL_AT_BUFFER_LENGTH_BYTES (U_AT_CLIENT_BUFFER_OVERHEAD_BYTES + U_CELL_UART_BUFFER_LENGTH_BYTES)
 #endif
 
 #ifndef U_CELL_UART_BAUD_RATE
