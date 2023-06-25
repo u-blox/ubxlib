@@ -854,7 +854,7 @@ U_PORT_TEST_FUNCTION("[gnssMga]", "gnssMgaServer")
                                                            gpHttpBufferOut, gpHttpBufferIn,
                                                            &gHttpBufferInSize,
                                                            NULL);
-                    if ((httpStatusCode == 200) && (gHttpBufferInSize > 0)) {
+                    if (httpStatusCode == 200) {
                         U_TEST_PRINT_LINE_X("%d byte(s) were returned:", x + 1,
                                             gHttpBufferInSize);
                         uPortLog(U_TEST_PREFIX_X, x + 1);
@@ -899,12 +899,6 @@ U_PORT_TEST_FUNCTION("[gnssMga]", "gnssMgaServer")
                     } else {
                         U_TEST_PRINT_LINE_X("HTTP status code was %d.", x + 1,
                                             httpStatusCode);
-                        if (httpStatusCode == 200) {
-                            U_TEST_PRINT_LINE_X("%d byte(s) returned.", x + 1,
-                                                gHttpBufferInSize);
-                            // Retry
-                            httpStatusCode = 0;
-                        }
                         if (z < U_GNSS_MGA_TEST_HTTP_GET_RETRIES - 1) {
                             // We might be being told to back off, so wait quite a bit
                             U_TEST_PRINT_LINE_X("server doesn't like us, pausing for a while.", x + 1);
