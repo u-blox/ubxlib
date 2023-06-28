@@ -71,7 +71,7 @@
  */
 #define U_AT_CLIENT_TEST_PREFIX "+PREFIX:"
 
-/** The number of characters in U_AT_CLIENT_TEST_PREFIX.
+/** The number of characters in #U_AT_CLIENT_TEST_PREFIX.
  */
 #define U_AT_CLIENT_TEST_PREFIX_LENGTH 8
 
@@ -82,7 +82,7 @@
 #define U_AT_CLIENT_TEST_ECHO_SKIP "\r\n" U_AT_CLIENT_TEST_PREFIX " string1,\"string2\","  \
                                    "18446744073709551615,2147483647,\x00\x7f\xff\r\nOK\r\n"
 
-/** The number of characters in U_AT_CLIENT_TEST_ECHO_SKIP.
+/** The number of characters in #U_AT_CLIENT_TEST_ECHO_SKIP.
  */
 #define U_AT_CLIENT_TEST_ECHO_SKIP_LENGTH (U_AT_CLIENT_TEST_PREFIX_LENGTH + 62)
 
@@ -91,7 +91,7 @@
  */
 #define U_AT_CLIENT_TEST_ECHO_WAIT "@" U_AT_CLIENT_TEST_PREFIX " \"string2\"\r\nOK\r\n"
 
-/** The number of characters in U_AT_CLIENT_TEST_ECHO_WAIT.
+/** The number of characters in #U_AT_CLIENT_TEST_ECHO_WAIT.
  */
 #define U_AT_CLIENT_TEST_ECHO_WAIT_LENGTH (U_AT_CLIENT_TEST_PREFIX_LENGTH + 17)
 
@@ -99,7 +99,7 @@
  */
 #define U_AT_CLIENT_TEST_STRING_THREE "string3"
 
-/** Number of characters in U_AT_CLIENT_TEST_STRING_THREE.
+/** Number of characters in #U_AT_CLIENT_TEST_STRING_THREE.
  */
 #define U_AT_CLIENT_TEST_STRING_THREE_LENGTH 7
 
@@ -107,7 +107,7 @@
  */
 #define U_AT_CLIENT_TEST_BYTES_TWO "\x01\x8f\x1f"
 
-/** Number of bytes in U_AT_CLIENT_TEST_BYTES_TWO.
+/** Number of bytes in #U_AT_CLIENT_TEST_BYTES_TWO.
  */
 #define U_AT_CLIENT_TEST_BYTES_TWO_LENGTH 3
 
@@ -514,7 +514,7 @@ static const uAtClientTestEchoEarlyStop_t gAtClientTestEchoEarlyStop4 = {U_AT_CL
  * Wait for the '@' character at the start, the point
  * being to check that the URC which should arrive at the
  * same time is handled correctly; this is intended to work
- * with the string U_AT_CLIENT_TEST_ECHO_WAIT.
+ * with the string #U_AT_CLIENT_TEST_ECHO_WAIT.
  */
 //lint -e{785} Suppress too few initialisers
 //lint -e{708} Suppress union initialisation
@@ -530,18 +530,18 @@ static const uAtClientTestEchoWaitForChar_t gAtClientTestEchoWaitForChar0 = {U_A
 /** Parameters for error test where no timeout is expected,
  * to be referenced in gAtClientTestSet2.
  */
-static const uAtClientTestEchoError_t gAtClientTestEchoNoTimeout = {1000, 0, 1500};
+static const uAtClientTestEchoError_t gAtClientTestEchoNoTimeout = {1000, 0, 2000}; // Last parameter used to be 1500, enlarged for RPi
 
 /** Parameters for error test where a timeout is expected,
  * to be referenced in gAtClientTestSet2.  Make sure that the timeout
- * number here is different to (smaller than) U_AT_CLIENT_TEST_TIMEOUT_MS.
+ * number here is different to (smaller than) #U_AT_CLIENT_TEST_AT_TIMEOUT_MS.
  */
 static const uAtClientTestEchoError_t gAtClientTestEchoTimeout = {1000,
                                                                   1000 - U_AT_CLIENT_TEST_TIMEOUT_TOLERANCE_MS,
-                                                                  1500
+                                                                  2000 // Used to be 1500, enlarged for running on RPi
                                                                  };
 
-/** Parameters for misc test, matches U_AT_CLIENT_TEST_ECHO_SKIP
+/** Parameters for misc test, matches #U_AT_CLIENT_TEST_ECHO_SKIP
  * and gAtClientUrc5, to be referenced in gAtClientTestSet2.
  */
 //lint -e{785} Suppress too few initialisers
@@ -591,7 +591,7 @@ static int32_t handleSkipParams(uAtClientHandle_t atClientHandle,
     const uAtClientTestEchoSkipParams_t *pSkipParams;
     char buffer[5]; // Enough characters for a 3 digit index as a string
 
-    snprintf(buffer, sizeof(buffer), "_%d", index + 1);
+    snprintf(buffer, sizeof(buffer), "_%d", (int)index + 1);
     pSkipParams = (const uAtClientTestEchoSkipParams_t *) pParameter;
 
     U_TEST_PRINT_LINE_X("checking that uAtClientSkipParameters()"
@@ -638,7 +638,7 @@ static int32_t handleSkipBytes(uAtClientHandle_t atClientHandle,
     const uAtClientTestEchoSkipBytes_t *pSkipBytes;
     char buffer[5]; // Enough characters for a 3 digit index as a string
 
-    snprintf(buffer, sizeof(buffer), "_%d", index + 1);
+    snprintf(buffer, sizeof(buffer), "_%d", (int)index + 1);
     pSkipBytes = (const uAtClientTestEchoSkipBytes_t *) pParameter;
 
     U_TEST_PRINT_LINE_X("checking that uAtClientSkipBytes() works on"
@@ -690,7 +690,7 @@ static int32_t handleEarlyStop(uAtClientHandle_t atClientHandle,
     const uAtClientTestEchoEarlyStop_t *pEarlyStop;
     char buffer[5]; // Enough characters for a 3 digit index as a string
 
-    snprintf(buffer, sizeof(buffer), "_%d", index + 1);
+    snprintf(buffer, sizeof(buffer), "_%d", (int)index + 1);
     pEarlyStop = (const uAtClientTestEchoEarlyStop_t *) pParameter;
 
     U_TEST_PRINT_LINE_X("checking that uAtClientResponseStop() can be called"
@@ -724,7 +724,7 @@ static int32_t handleWaitForChar(uAtClientHandle_t atClientHandle,
     const uAtClientTestEchoWaitForChar_t *pWaitForChar;
     char buffer[5]; // Enough characters for a 3 digit index as a string
 
-    snprintf(buffer, sizeof(buffer), "_%d", index + 1);
+    snprintf(buffer, sizeof(buffer), "_%d", (int)index + 1);
     pWaitForChar = (const uAtClientTestEchoWaitForChar_t *) pParameter;
 
     uPortLog(U_TEST_PREFIX_X "checking that we can wait for character"
@@ -1010,7 +1010,7 @@ static int32_t handleMiscUseLast(uAtClientHandle_t atClientHandle,
     uAtClientTestCheckUrc_t checkUrc;
     char buffer[5]; // Enough characters for a 3 digit index as a string
 
-    snprintf(buffer, sizeof(buffer), "_%d", index + 1);
+    snprintf(buffer, sizeof(buffer), "_%d", (int)index + 1);
     pEcho = (const uAtClientTestEchoMisc_t *) pParameter;
 
     memset(&checkUrc, 0, sizeof(checkUrc));

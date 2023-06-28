@@ -201,6 +201,7 @@ int32_t uCellTestPrivatePreamble(uCellModuleType_t moduleType,
     uint64_t bandMask2;
     bool onNotOff = false;
     char imsi[U_CELL_INFO_IMSI_SIZE];
+    uAtClientStreamHandle_t stream;
 
     // Set some defaults
     pParameters->uartHandle = -1;
@@ -212,6 +213,9 @@ int32_t uCellTestPrivatePreamble(uCellModuleType_t moduleType,
     // Initialise the porting layer
     if (uPortInit() == 0) {
         U_TEST_PRINT_LINE("opening UART %d...", U_CFG_APP_CELL_UART);
+#ifdef U_CFG_APP_UART_PREFIX
+        U_PORT_TEST_ASSERT(uPortUartPrefix(U_PORT_STRINGIFY_QUOTED(U_CFG_APP_UART_PREFIX)) == 0);
+#endif
         // Open a UART with the standard parameters
         pParameters->uartHandle = uPortUartOpen(U_CFG_APP_CELL_UART,
                                                 U_CELL_UART_BAUD_RATE, NULL,
@@ -225,10 +229,10 @@ int32_t uCellTestPrivatePreamble(uCellModuleType_t moduleType,
     if (pParameters->uartHandle >= 0) {
         if (uAtClientInit() == 0) {
             U_TEST_PRINT_LINE("adding an AT client on UART %d...", U_CFG_APP_CELL_UART);
-            pParameters->atClientHandle = uAtClientAdd(pParameters->uartHandle,
-                                                       U_AT_CLIENT_STREAM_TYPE_UART,
-                                                       NULL,
-                                                       U_CELL_AT_BUFFER_LENGTH_BYTES);
+            stream.handle.int32 = pParameters->uartHandle;
+            stream.type = U_AT_CLIENT_STREAM_TYPE_UART;
+            pParameters->atClientHandle = uAtClientAddExt(&stream, NULL,
+                                                          U_CELL_AT_BUFFER_LENGTH_BYTES);
         }
     }
 

@@ -199,7 +199,7 @@ static void sendHeader(int32_t sock, const char *code,
              "Content-Length: %d\r\n"
              "Cache-Control: no-store, no-cache, must-revalidate\r\n"
              "\r\n",
-             code, type, length);
+             code, type, (int)length);
     uSockWrite(sock, header, strlen(header));
 }
 

@@ -621,7 +621,8 @@ U_PORT_TEST_FUNCTION("[httpClient]", "httpClient")
 
                 if (gpHttpContext[y] != NULL) {
                     // Create a path
-                    snprintf(pathBuffer, sizeof(pathBuffer), "/%.16s_%d_%d.html", serialNumber, x, y);
+                    snprintf(pathBuffer, sizeof(pathBuffer), "/%.16s_%d_%d.html", serialNumber,
+                             (int)x, (int)y);
 
                     // For every request operation...
                     busyCount = 0;

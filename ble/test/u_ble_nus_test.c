@@ -121,6 +121,7 @@ static uDeviceCfg_t gDeviceCfg = {
             .pinRxd = U_CFG_APP_PIN_SHORT_RANGE_RXD,
             .pinCts = U_CFG_APP_PIN_SHORT_RANGE_CTS,
             .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS,
+            .pPrefix = NULL // Relevant for Linux only
         }
     }
 };

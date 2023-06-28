@@ -117,7 +117,7 @@ U_PORT_TEST_FUNCTION("[ubxProtocol]", "ubxProtocolBackToBack")
         classIn = x % 0xFF;
         idIn = (x + 16) % 0xFF;
         U_PORT_TEST_ASSERT(uUbxProtocolEncode(classIn, idIn, pBodyIn, x,
-                                              pBuffer) == x + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES);
+                                              pBuffer) == (int32_t)x + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES);
         //lint -e(650) Suppress constant out of range; it isn't
         U_PORT_TEST_ASSERT(*pBuffer == (char) 0xb5);
         U_PORT_TEST_ASSERT(*(pBuffer + 1) == 0x62);
@@ -129,7 +129,7 @@ U_PORT_TEST_FUNCTION("[ubxProtocol]", "ubxProtocolBackToBack")
         memset(pBodyOut, 0xff, U_UBX_PROTOCOL_TEST_MAX_BODY_SIZE);
         U_PORT_TEST_ASSERT(uUbxProtocolDecode(pBuffer, x + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES,
                                               &classOut, &idOut, pBodyOut,
-                                              U_UBX_PROTOCOL_TEST_MAX_BODY_SIZE, &pTmp) == x);
+                                              U_UBX_PROTOCOL_TEST_MAX_BODY_SIZE, &pTmp) == (int32_t)x);
         U_PORT_TEST_ASSERT(classOut == classIn);
         U_PORT_TEST_ASSERT(idOut == idIn);
         U_PORT_TEST_ASSERT(pTmp == pBuffer + x + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES);

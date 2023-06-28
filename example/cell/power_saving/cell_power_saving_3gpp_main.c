@@ -117,7 +117,8 @@ static const uDeviceCfg_t gDeviceCfg = {
             .pinTxd = U_CFG_APP_PIN_CELL_TXD,
             .pinRxd = U_CFG_APP_PIN_CELL_RXD,
             .pinCts = U_CFG_APP_PIN_CELL_CTS,
-            .pinRts = U_CFG_APP_PIN_CELL_RTS
+            .pinRts = U_CFG_APP_PIN_CELL_RTS,
+            .pPrefix = NULL // Relevant for Linux only
         },
     },
 };

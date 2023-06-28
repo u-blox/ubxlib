@@ -135,7 +135,8 @@ U_PORT_TEST_FUNCTION("[bleSps]", "bleSps")
                                      .pinTx = U_CFG_APP_PIN_SHORT_RANGE_TXD,
                                      .pinRx = U_CFG_APP_PIN_SHORT_RANGE_RXD,
                                      .pinCts = U_CFG_APP_PIN_SHORT_RANGE_CTS,
-                                     .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS
+                                     .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS,
+                                     .pPrefix = NULL // Relevant for Linux only
                                    };
     U_PORT_TEST_ASSERT(uBleTestPrivatePreamble((uBleModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
                                                &uart,

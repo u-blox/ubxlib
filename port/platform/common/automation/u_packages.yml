@@ -173,3 +173,13 @@ platformio:
         check_command: ~/.platformio/penv/bin/pio system info
     windows:
         check_command: ~/.platformio/penv/Scripts/pio system info
+
+libssl-dev:
+    linux:
+        type: apt
+        package_name: libssl-dev
+        check_command: test -e /usr/include/openssl/sha.h
+    linux_arm:
+        type: apt
+        package_name: libssl-dev
+        check_command: test -e /usr/include/openssl/sha.h

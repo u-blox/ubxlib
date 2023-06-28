@@ -327,7 +327,7 @@ void uRunnerPrintAll(const char *pPrefix)
 
     while (pFunction != NULL) {
         UnityPrint(pPrefix);
-        snprintf(buffer, sizeof(buffer), "%3.d: ", count + 1);
+        snprintf(buffer, sizeof(buffer), "%3.d: ", (int)(count + 1));
         UnityPrint(buffer);
         UnityPrint(pFunction->pName);
         UnityPrint(pFunction->pGroup);

@@ -54,7 +54,7 @@ def isCodeChecker(json_entry) {
 
 def isFirmware(json_entry) {
     def m = json_entry.mcu.toLowerCase()
-    return !isCodeChecker(json_entry) && m != "win32" && m != "linux32" && m != ""
+    return !isCodeChecker(json_entry) && m != "win32" && m != "linux32" && m != "linux64" && m != ""
 }
 
 def isWindows(json_entry) {
@@ -66,7 +66,7 @@ def isWindows(json_entry) {
 // test machine so that the architectures match
 def buildOnTest(json_entry) {
     def m = json_entry.mcu.toLowerCase()
-    return m == "win32" || m == "linux32"
+    return m == "win32" || m == "linux32" || m == "linux64"
 }
 
 // Read a string representing a single integer value from a file and return

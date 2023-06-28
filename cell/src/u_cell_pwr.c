@@ -925,9 +925,8 @@ static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance,
     int32_t errorCode = (int32_t) U_CELL_ERROR_NOT_CONFIGURED;
     bool success = true;
     uAtClientHandle_t atHandle = pInstance->atHandle;
-    int32_t atStreamHandle;
+    uAtClientStreamHandle_t stream = U_AT_CLIENT_STREAM_HANDLE_DEFAULTS;
     uCellPwrPsvMode_t uartPowerSavingMode = U_CELL_PWR_PSV_MODE_DISABLED; // Assume no UART power saving
-    uAtClientStream_t atStreamType;
     char buffer[20]; // Enough room for AT+UPSV=2,1300
     char *pServerNameGnss;
     int32_t y;
@@ -954,14 +953,14 @@ static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance,
         }
     }
 
-    atStreamHandle = uAtClientStreamGet(atHandle, &atStreamType);
-    if (success && (atStreamType == U_AT_CLIENT_STREAM_TYPE_UART)) {
+    uAtClientStreamGetExt(atHandle, &stream);
+    if (success && (stream.type == U_AT_CLIENT_STREAM_TYPE_UART)) {
         // Get the UART stream handle and set the flow
         // control and power saving mode correctly for it
         // TODO: check if AT&K3 requires both directions
         // of flow control to be on or just one of them
-        if (uPortUartIsRtsFlowControlEnabled(atStreamHandle) &&
-            uPortUartIsCtsFlowControlEnabled(atStreamHandle)) {
+        if (uPortUartIsRtsFlowControlEnabled(stream.handle.int32) &&
+            uPortUartIsCtsFlowControlEnabled(stream.handle.int32)) {
             success = moduleConfigureOne(atHandle, "AT&K3",
                                          U_CELL_PWR_CONFIGURATION_COMMAND_TRIES);
             if (uAtClientWakeUpHandlerIsSet(atHandle)) {
@@ -978,10 +977,10 @@ static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance,
                 // temporary basis
                 if (U_CELL_PRIVATE_HAS(pInstance->pModule,
                                        U_CELL_PRIVATE_FEATURE_UART_POWER_SAVING) &&
-                    (uPortUartCtsSuspend(atStreamHandle) == 0)) {
+                    (uPortUartCtsSuspend(stream.handle.int32) == 0)) {
                     // It does: resume CTS and we can use the wake-up on
                     // TX line feature for power saving
-                    uPortUartCtsResume(atStreamHandle);
+                    uPortUartCtsResume(stream.handle.int32);
                     uartPowerSavingMode = U_CELL_PWR_PSV_MODE_DATA;
                 }
             }

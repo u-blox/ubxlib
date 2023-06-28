@@ -172,7 +172,11 @@ int32_t uPortGetHeapFree();
  *
  * It is NOT a requirement that this API is implemented:
  * where it is not implemented #U_ERROR_COMMON_NOT_IMPLEMENTED
- * should be returned.
+ * should be returned.  However, note that some features
+ * (e.g. cellular power saving, which uses
+ * uAtClientSetWakeUpHandler(), which uses this critical section
+ * function) will not work if uPortEnterCritical() is not
+ * implemented.
  *
  * @return zero on success else negative error code.
  */

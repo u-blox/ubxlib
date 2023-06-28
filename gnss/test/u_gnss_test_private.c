@@ -236,12 +236,16 @@ int32_t uGnssTestPrivateCellularOff()
     int32_t errorCode;
     int32_t uartHandle = -1;
     uAtClientHandle_t atClientHandle = NULL;
+    uAtClientStreamHandle_t stream;
     uDeviceHandle_t cellHandle = NULL;
 
     U_TEST_PRINT_LINE("making sure cellular is off...");
 
     U_TEST_PRINT_LINE("opening UART %d...", U_CFG_APP_CELL_UART);
     // Open a UART with the standard parameters
+#ifdef U_CFG_APP_UART_PREFIX
+    U_PORT_TEST_ASSERT(uPortUartPrefix(U_PORT_STRINGIFY_QUOTED(U_CFG_APP_UART_PREFIX)) == 0);
+#endif
     errorCode = uPortUartOpen(U_CFG_APP_CELL_UART,
                               115200, NULL,
                               U_CELL_UART_BUFFER_LENGTH_BYTES,
@@ -255,12 +259,12 @@ int32_t uGnssTestPrivateCellularOff()
         errorCode = uAtClientInit();
         if (errorCode == 0) {
             errorCode = (int32_t) U_ERROR_COMMON_UNKNOWN;
+            stream.handle.int32 = uartHandle;
+            stream.type = U_AT_CLIENT_STREAM_TYPE_UART;
             U_TEST_PRINT_LINE("adding an AT client on UART %d...",
                               U_CFG_APP_CELL_UART);
-            atClientHandle = uAtClientAdd(uartHandle,
-                                          U_AT_CLIENT_STREAM_TYPE_UART,
-                                          NULL,
-                                          U_CELL_AT_BUFFER_LENGTH_BYTES);
+            atClientHandle = uAtClientAddExt(&stream, NULL,
+                                             U_CELL_AT_BUFFER_LENGTH_BYTES);
         }
     }
 
@@ -409,6 +413,9 @@ int32_t uGnssTestPrivatePreamble(uGnssModuleType_t moduleType,
         switch (transportType) {
             case U_GNSS_TRANSPORT_UART:
                 U_TEST_PRINT_LINE("opening GNSS UART %d...", U_CFG_APP_GNSS_UART);
+#ifdef U_CFG_APP_UART_PREFIX
+                uPortUartPrefix(U_PORT_STRINGIFY_QUOTED(U_CFG_APP_UART_PREFIX));
+#endif
                 // Open a UART with the standard parameters
                 errorCode = uPortUartOpen(U_CFG_APP_GNSS_UART,
                                           U_GNSS_UART_BAUD_RATE, NULL,

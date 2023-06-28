@@ -844,7 +844,7 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssPrivateUbx")
         pMessage = gpBuffer + (rand() % U_GNSS_PRIVATE_TEST_RUBBISH_ROOM_BYTES);
         U_PORT_TEST_ASSERT(uUbxProtocolEncode(messageClass, messageId,
                                               (const char *) gpBody, bodySize,
-                                              pMessage) == bodySize + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES);
+                                              pMessage) == (int32_t)bodySize + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES);
         // Decode it with a wild-card ID first
         U_PORT_TEST_ASSERT(checkDecodeUbx(&gRingBuffer, readHandle, gpBuffer, bufferSize,
                                           U_GNSS_UBX_MESSAGE_CLASS_ALL, U_GNSS_UBX_MESSAGE_ID_ALL,

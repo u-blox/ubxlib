@@ -137,7 +137,8 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeOpenUart")
                                      .pinTx = U_CFG_APP_PIN_SHORT_RANGE_TXD,
                                      .pinRx = U_CFG_APP_PIN_SHORT_RANGE_RXD,
                                      .pinCts = U_CFG_APP_PIN_SHORT_RANGE_CTS,
-                                     .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS
+                                     .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS,
+                                     .pPrefix = NULL // Relevant for Linux only
                                    };
     uPortDeinit();
 
@@ -209,7 +210,8 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeUartSetBaudrate")
                                      .pinTx = U_CFG_APP_PIN_SHORT_RANGE_TXD,
                                      .pinRx = U_CFG_APP_PIN_SHORT_RANGE_RXD,
                                      .pinCts = U_CFG_APP_PIN_SHORT_RANGE_CTS,
-                                     .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS
+                                     .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS,
+                                     .pPrefix = NULL
                                    };
 
     int32_t testBaudrates[] = { 19200,
@@ -257,7 +259,8 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeMemFullRecovery")
                                      .pinTx = U_CFG_APP_PIN_SHORT_RANGE_TXD,
                                      .pinRx = U_CFG_APP_PIN_SHORT_RANGE_RXD,
                                      .pinCts = U_CFG_APP_PIN_SHORT_RANGE_CTS,
-                                     .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS
+                                     .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS,
+                                     .pPrefix = NULL
                                    };
     int32_t errCode;
     uShortRangePbufList_t *pPbufList;
@@ -321,7 +324,8 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeResetToDefaultSettings")
                                      .pinTx = U_CFG_APP_PIN_SHORT_RANGE_TXD,
                                      .pinRx = U_CFG_APP_PIN_SHORT_RANGE_RXD,
                                      .pinCts = U_CFG_APP_PIN_SHORT_RANGE_CTS,
-                                     .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS
+                                     .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS,
+                                     .pPrefix = NULL
                                    };
     uPortDeinit();
 

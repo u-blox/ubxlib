@@ -316,6 +316,13 @@ int32_t uPortUartInit()
 void uPortUartDeinit()
 {
 }
+
+int32_t uPortUartPrefix(const char *pPrefix)
+{
+    (void)pPrefix;
+    return 0;
+}
+
 int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
                       void *pReceiveBuffer,
                       size_t receiveBufferSizeBytes,

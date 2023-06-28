@@ -61,7 +61,8 @@ int main(void)
                 .pinTxd = -1,
                 .pinRxd = -1,
                 .pinCts = -1,
-                .pinRts = -1
+                .pinRts = -1,
+                .pPrefix = NULL // Relevant for Linux only
             }
         }
     };

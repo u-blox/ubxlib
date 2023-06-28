@@ -228,6 +228,9 @@ int32_t uDevicePrivateGnssAdd(const uDeviceCfg_t *pDevCfg,
             switch (pDevCfg->transportType) {
                 case U_DEVICE_TRANSPORT_TYPE_UART:
                     pCfgUart = &(pDevCfg->transportCfg.cfgUart);
+                    if (pCfgUart->pPrefix != NULL) {
+                        uPortUartPrefix(pCfgUart->pPrefix);
+                    }
                     // Open a UART with the recommended buffer length
                     // and default baud rate.
                     errorCode = uPortUartOpen(pCfgUart->uart,

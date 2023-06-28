@@ -210,6 +210,7 @@ typedef struct {
     int32_t pinRx;
     int32_t pinCts;
     int32_t pinRts;
+    const char *pPrefix;
 } uShortRangeUartConfig_t;
 
 /* ----------------------------------------------------------------

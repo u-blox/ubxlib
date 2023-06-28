@@ -6,7 +6,7 @@
     "configurations": [
         {
             "name": "nrf5340dk runner [Zephyr]: Run APP",
-            "cwd": "${workspaceFolder}/.vscode/_build/nrfconnect/runner_nrf5340dk_nrf5340_cpuapp",
+            "cwd": "${input:getBuildDir}/nrfconnect/runner_nrf5340dk_nrf5340_cpuapp",
             "executable": "./zephyr/zephyr.hex",
             "request": "launch",
             "type": "cortex-debug",
@@ -22,7 +22,7 @@
         },
         {
             "name": "evkninab3 runner [nRF5 SDK]: Attach",
-            "cwd": "${workspaceFolder}/.vscode/_build/nrf5/runner_ubx_evkninab3_nrf52840/",
+            "cwd": "${input:getBuildDir}/nrf5/runner_ubx_evkninab3_nrf52840/",
             "executable": "nrf52840_xxaa.out",
             "request": "attach",
             "type": "cortex-debug",
@@ -34,7 +34,7 @@
         },
         {
             "name": "evkninab3 runner [nRF5 SDK]: Run",
-            "cwd": "${workspaceFolder}/.vscode/_build/nrf5/runner_ubx_evkninab3_nrf52840/",
+            "cwd": "${input:getBuildDir}/nrf5/runner_ubx_evkninab3_nrf52840/",
             "executable": "nrf52840_xxaa.out",
             "request": "launch",
             "type": "cortex-debug",
@@ -47,7 +47,7 @@
         },
         {
             "name": "evkninab3 runner [Zephyr]: Run",
-            "cwd": "${workspaceFolder}/.vscode/_build/nrfconnect/runner_ubx_evkninab3_nrf52840/",
+            "cwd": "${input:getBuildDir}/nrfconnect/runner_ubx_evkninab3_nrf52840/",
             "executable": "./zephyr/zephyr.elf",
             "request": "launch",
             "type": "cortex-debug",
@@ -62,17 +62,30 @@
             "name": "windows runner [win32]: Run",
             "type": "cppvsdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/.vscode/_build/windows/ubxlib.exe",
+            "program": "${input:getBuildDir}/windows/ubxlib.exe",
             "args": [],
             "stopAtEntry": true,
             "cwd": "${fileDirname}",
             "environment": [{
                 "name": "ASAN_SAVE_DUMPS",
-                "value": "${workspaceFolder}/.vscode/_build/windows/ubxlib.dmp"
+                "value": "${input:getBuildDir}/windows/ubxlib.dmp"
             }],
             "console": "externalTerminal",
             "requireExactSource": false,
             "preLaunchTask": "Build windows runner [win32]"
+        },
+        {
+            "name": "Linux runner: Run",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${input:getBuildDir}/runner_linux/ubxlib_test_main",
+            "args": [],
+            "stopAtEntry": true,
+            "cwd": "${fileDirname}",
+            "console": "externalTerminal",
+            "requireExactSource": false,
+            "preLaunchTask": "Build Linux runner",
+            "setupCommands": [{"text": "handle SIGUSR1 nostop"}]
         },
         {
             "name": "Python: Current File",
@@ -109,6 +122,16 @@
             "args": {
                 "useFirstResult": "skip",
                 "command": "python -m scripts.u_get_arm_toolchain",
+                "cwd": "${workspaceFolder}/port/platform/common/automation",
+            }
+        },
+        {
+            "id": "getBuildDir",
+            "type": "command",
+            "command": "shellCommand.execute",
+            "args": {
+                "useFirstResult": "skip",
+                "command": "python -m scripts.u_get_build_dir",
                 "cwd": "${workspaceFolder}/port/platform/common/automation",
             }
         }

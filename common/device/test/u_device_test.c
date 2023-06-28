@@ -94,6 +94,7 @@ typedef struct {
     int32_t pinRx;
     int32_t pinCts;
     int32_t pinRts;
+    const char *pPrefix;
     // These only so that we can re-use the uPortUartEventCallback via
     // trampoline()
     struct uDeviceSerial_t *pDeviceSerial;
@@ -236,6 +237,9 @@ static int32_t serialOpen(struct uDeviceSerial_t *pDeviceSerial,
     uDeviceTestSerialContext_t *pContext = (uDeviceTestSerialContext_t *)
                                            pUInterfaceContext(pDeviceSerial);
 
+    if (pContext->pPrefix != NULL) {
+        uPortUartPrefix(pContext->pPrefix);
+    }
     pContext->uartHandle = uPortUartOpen(pContext->uart, pContext->baudRate,
                                          pReceiveBuffer, receiveBufferSizeBytes,
                                          pContext->pinTx, pContext->pinRx,
@@ -351,6 +355,10 @@ static void interfaceSerialInit(struct uDeviceSerial_t *pDeviceSerial)
     pContext->pinRx = U_CFG_TEST_PIN_UART_A_RXD;
     pContext->pinCts = U_CFG_TEST_PIN_UART_A_CTS;
     pContext->pinRts = U_CFG_TEST_PIN_UART_A_RTS;
+    pContext->pPrefix = NULL;
+#ifdef U_CFG_APP_UART_PREFIX
+    pContext->pPrefix = U_PORT_STRINGIFY_QUOTED(U_CFG_APP_UART_PREFIX);
+#endif
     pContext->pDeviceSerial = pDeviceSerial;
     pContext->pEventCallback = NULL;
     pContext->pEventCallbackParam = NULL;

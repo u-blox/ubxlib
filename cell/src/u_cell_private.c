@@ -972,14 +972,14 @@ int32_t uCellPrivateWakeUpCallback(uAtClientHandle_t atHandle, void *pInstance)
     int32_t errorCode = (int32_t) U_CELL_ERROR_AT;
     uCellPrivateInstance_t *_pInstance = (uCellPrivateInstance_t *) pInstance;
     uAtClientDeviceError_t deviceError;
-    int32_t atStreamHandle;
-    uAtClientStream_t atStreamType = U_AT_CLIENT_STREAM_TYPE_MAX;
+    uAtClientStreamHandle_t stream = U_AT_CLIENT_STREAM_HANDLE_DEFAULTS;
 
     _pInstance->inWakeUpCallback = true;
-    atStreamHandle = uAtClientStreamGet(atHandle, &atStreamType);
-    if (atStreamType == U_AT_CLIENT_STREAM_TYPE_UART) {
+
+    uAtClientStreamGetExt(atHandle, &stream);
+    if (stream.type == U_AT_CLIENT_STREAM_TYPE_UART) {
         // Disable CTS, in case it gets in our way
-        uPortUartCtsSuspend(atStreamHandle);
+        uPortUartCtsSuspend(stream.handle.int32);
     }
 
     if (uCellPrivateIsDeepSleepActive(_pInstance)) {
@@ -1014,9 +1014,9 @@ int32_t uCellPrivateWakeUpCallback(uAtClientHandle_t atHandle, void *pInstance)
         }
     }
 
-    if (atStreamType == U_AT_CLIENT_STREAM_TYPE_UART) {
+    if (stream.type == U_AT_CLIENT_STREAM_TYPE_UART) {
         // We can listen to CTS again
-        uPortUartCtsResume(atStreamHandle);
+        uPortUartCtsResume(stream.handle.int32);
     }
 
     _pInstance->inWakeUpCallback = false;

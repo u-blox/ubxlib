@@ -138,7 +138,8 @@ static const uDeviceCfg_t gDeviceCfgCell = {
             .pinTxd = U_CFG_APP_PIN_CELL_TXD,
             .pinRxd = U_CFG_APP_PIN_CELL_RXD,
             .pinCts = U_CFG_APP_PIN_CELL_CTS,
-            .pinRts = U_CFG_APP_PIN_CELL_RTS
+            .pinRts = U_CFG_APP_PIN_CELL_RTS,
+            .pPrefix = NULL // Relevant for Linux only
         }
     }
 #else
@@ -182,7 +183,8 @@ static const uDeviceCfg_t gDeviceCfgShortRange = {
             .pinTxd = U_CFG_APP_PIN_SHORT_RANGE_TXD,
             .pinRxd = U_CFG_APP_PIN_SHORT_RANGE_RXD,
             .pinCts = U_CFG_APP_PIN_SHORT_RANGE_CTS,
-            .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS
+            .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS,
+            .pPrefix = NULL // Relevant for Linux only
         }
     }
 #else
@@ -259,7 +261,8 @@ static const uDeviceCfg_t gDeviceCfgGnss = {
             .pinTxd = U_CFG_APP_PIN_GNSS_TXD,
             .pinRxd = U_CFG_APP_PIN_GNSS_RXD,
             .pinCts = U_CFG_APP_PIN_GNSS_CTS,
-            .pinRts = U_CFG_APP_PIN_GNSS_RTS
+            .pinRts = U_CFG_APP_PIN_GNSS_RTS,
+            .pPrefix = NULL // Relevant for Linux only
         }
     }
 # endif

@@ -38,6 +38,7 @@
 #include "string.h"    // strlen() and strcmp()
 #include "stdio.h"     // snprintf()
 #include "time.h"      // time_t and struct tm
+#include "u_compiler.h"
 
 #include "u_cfg_sw.h"
 #include "u_cfg_os_platform_specific.h"  // For #define U_CFG_OS_CLIB_LEAKS
@@ -706,7 +707,7 @@ static void osTestTask(void *pParameters)
 
     uPortLog("U_PORT_TEST_OS_TASK: task with handle 0x%08x started,"
              " received parameter pointer 0x%08x containing string"
-             " \"%s\".\n", (int) gTaskHandle, pParameters,
+             " \"%s\".\n", U_PTR_TO_INT32(gTaskHandle), pParameters,
              (const char *) pParameters);
     U_PORT_TEST_ASSERT(strcmp((const char *) pParameters, gTaskParameter) == 0);
 
@@ -1079,6 +1080,10 @@ static void runUartTest(int32_t size, int32_t speed,
                       " bits/s with flow control %s.", size, speed,
                       pFlowControl);
 
+#ifdef U_CFG_TEST_UART_PREFIX
+    U_PORT_TEST_ASSERT(uPortUartPrefix(U_PORT_STRINGIFY_QUOTED(U_CFG_TEST_UART_PREFIX)) == 0);
+#endif
+
     U_TEST_PRINT_LINE("add a UART instance...");
     uartHandle = uPortUartOpen(U_CFG_TEST_UART_A,
                                speed, NULL,
@@ -1242,7 +1247,7 @@ static bool fillWordSame(uint16_t wordA, uint16_t wordB, size_t lengthBytes)
 static void timerCallback(const uPortTimerHandle_t timerHandle, void *pParameter)
 {
     //lint -e(507) Suppress size incompatibility, we know what we're doing
-    int32_t parameter = (int32_t) pParameter;
+    int32_t parameter = U_PTR_TO_INT32(pParameter);
 
     (void) timerHandle;
 
@@ -1674,7 +1679,7 @@ static void osTestTaskSemaphoreGive(void *pParameters)
     uPortTaskDelete(NULL);
 }
 
-#ifndef _WIN32
+#if (!defined(_WIN32) && !defined(__linux__)) || defined(CONFIG_IRQ_OFFLOAD)
 static void osTestTaskSemaphoreGiveFromIsr(const void *pParameters)
 {
     (void) pParameters;
@@ -1822,10 +1827,11 @@ U_PORT_TEST_FUNCTION("[port]", "portOsSemaphore")
 #ifdef CONFIG_IRQ_OFFLOAD // Only really tested for zephyr for now
     irq_offload(osTestTaskSemaphoreGiveFromIsr, NULL);
 #else
-# ifndef _WIN32
+# if !defined(_WIN32) && !defined(__linux__)
     osTestTaskSemaphoreGiveFromIsr(NULL);
 # else
-    // ISR not supported on Windows, do the non-ISR version to keep the test going
+    // ISR not supported on Windows or native Linux, do the non-ISR version
+    // to keep the test going
     U_PORT_TEST_ASSERT(uPortSemaphoreGive(gSemaphoreHandle) == 0);
 # endif
 #endif
@@ -1906,6 +1912,9 @@ U_PORT_TEST_FUNCTION("[port]", "portOsExtended")
     timeNowMs = uPortGetTickTimeMs();
     U_TEST_PRINT_LINE("tick time now is %d.", (int32_t) timeNowMs);
     U_TEST_PRINT_LINE("add a UART instance...");
+#ifdef U_CFG_TEST_UART_PREFIX
+    U_PORT_TEST_ASSERT(uPortUartPrefix(U_PORT_STRINGIFY_QUOTED(U_CFG_TEST_UART_PREFIX)) == 0);
+#endif
     uartHandle = uPortUartOpen(U_CFG_TEST_UART_A,
                                U_CFG_TEST_BAUD_RATE,
                                NULL,
@@ -2102,7 +2111,7 @@ U_PORT_TEST_FUNCTION("[port]", "portEventQueue")
             }
             U_PORT_TEST_ASSERT(y == 0);
         }
-#ifdef CONFIG_ARCH_POSIX
+#if defined(CONFIG_ARCH_POSIX) || defined(__linux__)
         // Delay needed here since Zephyr 3. Reason unknown.
         uPortTaskBlock(1);
 #endif
@@ -2113,7 +2122,7 @@ U_PORT_TEST_FUNCTION("[port]", "portEventQueue")
                                            NULL, 0) == 0);
     U_PORT_TEST_ASSERT(uPortEventQueueSend(gEventQueueMinHandle,
                                            NULL, 0) == 0);
-#ifdef CONFIG_ARCH_POSIX
+#if defined(CONFIG_ARCH_POSIX) || defined(__linux__)
     // Delay needed here since Zephyr 3. Reason unknown.
     uPortTaskBlock(1);
 #endif

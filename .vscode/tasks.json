@@ -11,10 +11,10 @@
             "label": "Clean all builds",
             "type": "shell",
             "linux": {
-                "command": "rm -rf ${workspaceFolder}/.vscode/_build",
+                "command": "rm -rf ${input:getBuildRoot}",
             },
             "windows": {
-                "command": "rd -r ${workspaceFolder}/.vscode/_build",
+                "command": "rd -r ${input:getBuildRoot}",
             },
             "group": {"kind": "build", "isDefault": true},
             "problemMatcher": []
@@ -60,7 +60,7 @@
         {
             "label": "Build nrf5340dk runner [Zephyr]",
             "type": "shell",
-            "options": { "cwd": "${workspaceFolder}/.vscode" },
+            "options": { "cwd": "${input:getBuildRoot}" },
             "command": "inv -r ${workspaceFolder}/port/platform/common/automation nrfconnect.build --board-name=nrf5340dk_nrf5340_cpuapp --output-name=runner_nrf5340dk_nrf5340_cpuapp",
             "group": { "kind": "build", "isDefault": true },
             "presentation": { "group": "ubxlib" },
@@ -99,7 +99,7 @@
         {
             "label": "Build evkninab3 runner [nRF5 SDK]",
             "type": "shell",
-            "options": {"cwd": "${workspaceFolder}/.vscode"},
+            "options": {"cwd": "${input:getBuildRoot}"},
             "command": "inv -r ${workspaceFolder}/port/platform/common/automation nrf5.build",
             "group": { "kind": "build", "isDefault": true },
             "presentation": { "group": "ubxlib" },
@@ -114,9 +114,17 @@
             "problemMatcher": { "base": "$msCompile", "fileLocation": "absolute" }
         },
         {
+            "label": "Build Linux runner",
+            "type": "shell",
+            "command": "inv -r ${workspaceFolder}/port/platform/common/automation linux.build",
+            "group": { "kind": "build", "isDefault": true },
+            "presentation": { "group": "ubxlib" },
+            "problemMatcher": { "base": "$gcc", "fileLocation": "absolute" }
+        },
+        {
             "label": "Build Linux runner [Zephyr]",
             "type": "shell",
-            "options": { "cwd": "${workspaceFolder}/.vscode" },
+            "options": { "cwd": "${input:getBuildRoot}" },
             "command": "inv -r ${workspaceFolder}/port/platform/common/automation nrfconnect.build --board-name=native_posix --output-name=runner_linux",
             "group": { "kind": "build", "isDefault": true },
             "presentation": { "group": "ubxlib" },
@@ -140,7 +148,7 @@
         {
             "label": "Build evkninab3 runner [Zephyr]",
             "type": "shell",
-            "options": { "cwd": "${workspaceFolder}/.vscode" },
+            "options": { "cwd": "${input:getBuildRoot}" },
             "command": "inv -r ${workspaceFolder}/port/platform/common/automation nrfconnect.build --board-name=ubx_evkninab3_nrf52840 --output-name=runner_ubx_evkninab3_nrf52840",
             "group": { "kind": "build", "isDefault": true },
             "presentation": { "group": "ubxlib" },
@@ -149,7 +157,7 @@
         {
             "label": "Build stm32f4 runner [STM32CubeF4]",
             "type": "shell",
-            "options": { "cwd": "${workspaceFolder}/.vscode" },
+            "options": { "cwd": "${input:getBuildRoot}" },
             "command": "inv -r ${workspaceFolder}/port/platform/common/automation stm32cubef4.build",
             "group": { "kind": "build", "isDefault": true },
             "problemMatcher": { "base": "$gcc", "fileLocation": "absolute" }
@@ -157,7 +165,7 @@
         {
             "label": "Build esp32 runner [ESP-IDF]",
             "type": "shell",
-            "options": { "cwd": "${workspaceFolder}/.vscode" },
+            "options": { "cwd": "${input:getBuildRoot}" },
             "command": "inv -r ${workspaceFolder}/port/platform/common/automation esp-idf.build",
             "group": { "kind": "build", "isDefault": true },
             "problemMatcher": { "base": "$gcc", "fileLocation": "absolute" }
@@ -165,7 +173,7 @@
         {
             "label": "Build arduino runner",
             "type": "shell",
-            "options": {"cwd": "${workspaceFolder}/.vscode"},
+            "options": {"cwd": "${input:getBuildRoot}"},
             "command": "inv -r ${workspaceFolder}/port/platform/common/automation arduino.build",
             "group": { "kind": "build", "isDefault": true },
             "presentation": { "group": "ubxlib" },
@@ -218,21 +226,21 @@
         {
             "label": "automation.build",
             "type": "shell",
-            "options": { "cwd": "${workspaceFolder}/.vscode" },
+            "options": { "cwd": "${input:getBuildRoot}" },
             "command": "inv -r ${workspaceFolder}/port/platform/common/automation automation.build ${input:instance}",
             "problemMatcher": []
         },
         {
             "label": "automation.flash",
             "type": "shell",
-            "options": { "cwd": "${workspaceFolder}/.vscode" },
+            "options": { "cwd": "${input:getBuildRoot}" },
             "command": "inv -r ${workspaceFolder}/port/platform/common/automation automation.flash ${input:instance}",
             "problemMatcher": []
         },
         {
             "label": "automation.test",
             "type": "shell",
-            "options": { "cwd": "${workspaceFolder}/.vscode" },
+            "options": { "cwd": "${input:getBuildRoot}" },
             "command": "inv -r ${workspaceFolder}/port/platform/common/automation automation.test ${input:instance}",
             "problemMatcher": []
         },
@@ -262,6 +270,16 @@
             ],
             "default": "component"
         },
+        {
+            "id": "getBuildRoot",
+            "type": "command",
+            "command": "shellCommand.execute",
+            "args": {
+                "useFirstResult": "skip",
+                "command": "python -m scripts.u_get_build_dir root",
+                "cwd": "${workspaceFolder}/port/platform/common/automation",
+            }
+        }
     ]
 
 }

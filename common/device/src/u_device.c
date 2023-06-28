@@ -194,6 +194,7 @@ int32_t uDeviceGetDefaults(uDeviceType_t deviceType,
                 pDeviceCfg->transportCfg.cfgUart.pinRts = U_CFG_APP_PIN_CELL_RTS;
                 pDeviceCfg->transportCfg.cfgUart.pinRxd = U_CFG_APP_PIN_CELL_RXD;
                 pDeviceCfg->transportCfg.cfgUart.pinTxd = U_CFG_APP_PIN_CELL_TXD;
+                pDeviceCfg->transportCfg.cfgUart.pPrefix = NULL; // Relevant for Linux only
                 break;
 
             case U_DEVICE_TYPE_SHORT_RANGE:
@@ -209,6 +210,7 @@ int32_t uDeviceGetDefaults(uDeviceType_t deviceType,
                 pDeviceCfg->transportCfg.cfgUart.pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS;
                 pDeviceCfg->transportCfg.cfgUart.pinRxd = U_CFG_APP_PIN_SHORT_RANGE_RXD;
                 pDeviceCfg->transportCfg.cfgUart.pinTxd = U_CFG_APP_PIN_SHORT_RANGE_TXD;
+                pDeviceCfg->transportCfg.cfgUart.pPrefix = NULL; // Relevant for Linux only
                 break;
 
             case U_DEVICE_TYPE_GNSS:
@@ -237,6 +239,7 @@ int32_t uDeviceGetDefaults(uDeviceType_t deviceType,
                 pDeviceCfg->transportCfg.cfgUart.pinRts = U_CFG_APP_PIN_GNSS_RTS;
                 pDeviceCfg->transportCfg.cfgUart.pinRxd = U_CFG_APP_PIN_GNSS_RXD;
                 pDeviceCfg->transportCfg.cfgUart.pinTxd = U_CFG_APP_PIN_GNSS_TXD;
+                pDeviceCfg->transportCfg.cfgUart.pPrefix = NULL; // Relevant for Linux only
                 break;
 
             default:

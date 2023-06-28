@@ -50,7 +50,7 @@ extern "C" {
 typedef struct {
     uGnssTransportType_t transportType;
     int32_t streamHandle; /**< The handle returned by uPortUartOpen()/uPortI2cOpen(). */
-    void *pAtClientHandle; /**< The handle returned by uAtClientAdd(). */
+    void *pAtClientHandle; /**< The handle returned by uAtClientAddExt(). */
     uDeviceHandle_t cellHandle;  /**< The handle returned by uCellAdd(). */
     uDeviceHandle_t gnssHandle;  /**< The handle returned by uGnssAdd(). */
 } uGnssTestPrivate_t;

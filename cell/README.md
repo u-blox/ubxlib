@@ -40,7 +40,7 @@ Throughout the `cell` API, in functions which can take more than a few seconds t
 // clocks must have been started and the RTOS must be running;
 // we are in task space.
 int app_start() {
-    int32_t uartHandle;
+    uAtClientStreamHandle_t stream;
     uAtClientHandle_t atHandle;
     uDeviceHandle_t cellHandle = NULL;
     char buffer[U_CELL_NET_IP_ADDRESS_SIZE];
@@ -59,20 +59,19 @@ int app_start() {
     // for your hardware, either set the #defines
     // appropriately or replace them with the right
     // numbers, using -1 for a pin that is not connected.
-    uartHandle = uPortUartOpen(U_CFG_APP_CELL_UART,
-                               115200, NULL,
-                               U_CELL_UART_BUFFER_LENGTH_BYTES,
-                               U_CFG_APP_PIN_CELL_TXD,
-                               U_CFG_APP_PIN_CELL_RXD,
-                               U_CFG_APP_PIN_CELL_CTS,
-                               U_CFG_APP_PIN_CELL_RTS);
+    stream.type = U_AT_CLIENT_STREAM_TYPE_UART;
+    stream.uartHandle = uPortUartOpen(U_CFG_APP_CELL_UART,
+                                      115200, NULL,
+                                      U_CELL_UART_BUFFER_LENGTH_BYTES,
+                                      U_CFG_APP_PIN_CELL_TXD,
+                                      U_CFG_APP_PIN_CELL_RXD,
+                                      U_CFG_APP_PIN_CELL_CTS,
+                                      U_CFG_APP_PIN_CELL_RTS);
 
     // Add an AT client on the UART with the recommended
     // default buffer size.
-    atHandle = uAtClientAdd(uartHandle,
-                            U_AT_CLIENT_STREAM_TYPE_UART,
-                            NULL,
-                            U_CELL_AT_BUFFER_LENGTH_BYTES);
+    atHandle = uAtClientAddExt(&stream, NULL,
+                               U_CELL_AT_BUFFER_LENGTH_BYTES);
 
     // Set printing of AT commands by the cellular driver,
     // which can be useful while debugging.

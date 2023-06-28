@@ -37,7 +37,8 @@ int app_start() {
                 .pinTxd = U_CFG_APP_PIN_GNSS_TXD,
                 .pinRxd = U_CFG_APP_PIN_GNSS_RXD,
                 .pinCts = U_CFG_APP_PIN_GNSS_CTS,
-                .pinRts = U_CFG_APP_PIN_GNSS_RTS
+                .pinRts = U_CFG_APP_PIN_GNSS_RTS;
+                .pPrefix = NULL // Relevant for Linux only
             },
         },
     };

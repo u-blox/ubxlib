@@ -903,7 +903,7 @@ static int32_t storeNextScanItem(uCellPrivateInstance_t *pInstance,
                 if (x > 1) {
                     // > 1 since "" is the minimum we can have
                     snprintf(pNet->name, sizeof(pNet->name), "%.*s",
-                             x - 2, pStr + 1);
+                             (int)(x - 2), pStr + 1);
                     success = true;
                 }
             }

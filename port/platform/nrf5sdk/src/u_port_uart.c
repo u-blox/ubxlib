@@ -566,6 +566,12 @@ void uPortUartDeinit()
     }
 }
 
+int32_t uPortUartPrefix(const char *pPrefix)
+{
+    (void)pPrefix;
+    return U_ERROR_COMMON_NOT_IMPLEMENTED;
+}
+
 // Open a UART instance.
 int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
                       void *pReceiveBuffer,
