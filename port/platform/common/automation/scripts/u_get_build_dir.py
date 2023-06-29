@@ -1,6 +1,7 @@
 '''This script is used by vscode to get the default build directory.'''
 
-import os, sys
+import os
+import sys
 
 DEFAULT_BUILD_DIR = os.getenv("UBXLIB_BUILD_DIR") or os.path.join(
     os.path.abspath(os.path.realpath(os.path.dirname(__file__)) + "/../../../../.."), ".vscode")
