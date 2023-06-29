@@ -45,7 +45,7 @@ extern "C" {
  * To set the key #U_GNSS_CFG_VAL_KEY_ID_MSGOUT_UBX_NAV_PVT_I2C_U1
  * to 55 in RAM and BBRAM you would write:
  *
- * U_GNSS_CFG_SET_VAL(gnssHandle, MSGOUT_UBX_NAV_PVT_I2C_U1, 55, U_GNSS_CFG_VAL_LAYER_RAM | U_GNSS_CFG_VAL_LAYER_BBRAM)
+ * `U_GNSS_CFG_SET_VAL(gnssHandle, MSGOUT_UBX_NAV_PVT_I2C_U1, 55, U_GNSS_CFG_VAL_LAYER_RAM | U_GNSS_CFG_VAL_LAYER_BBRAM)`
  *
  * i.e. you can leave the U_GNSS_CFG_VAL_KEY_ID_ prefix off the key ID.
  */
@@ -63,7 +63,7 @@ extern "C" {
  * to set the key #U_GNSS_CFG_VAL_KEY_ID_MSGOUT_UBX_NAV_PVT_I2C_U1
  * to 55 in RAM you would write:
  *
- * U_GNSS_CFG_SET_VAL_RAM(gnssHandle, MSGOUT_UBX_NAV_PVT_I2C_U1, 55)
+ * `U_GNSS_CFG_SET_VAL_RAM(gnssHandle, MSGOUT_UBX_NAV_PVT_I2C_U1, 55)`
  */
 #define U_GNSS_CFG_SET_VAL_RAM(gnssHandle, keyIdStripped, value)  \
         U_GNSS_CFG_SET_VAL_RAM_(gnssHandle, keyIdStripped, value)
@@ -80,7 +80,7 @@ extern "C" {
  * for example to set the key #U_GNSS_CFG_VAL_KEY_ID_MSGOUT_UBX_NAV_PVT_I2C_U1
  * to 55 in RAM and BBRAM you would write:
  *
- * U_GNSS_CFG_SET_VAL_BBRAM(gnssHandle, MSGOUT_UBX_NAV_PVT_I2C_U1, 55)
+ * `U_GNSS_CFG_SET_VAL_BBRAM(gnssHandle, MSGOUT_UBX_NAV_PVT_I2C_U1, 55)`
  */
 #define U_GNSS_CFG_SET_VAL_BBRAM(gnssHandle, keyIdStripped, value)  \
         U_GNSS_CFG_SET_VAL_BBRAM_(gnssHandle, keyIdStripped, value)
@@ -97,7 +97,7 @@ extern "C" {
  * for example to set the key #U_GNSS_CFG_VAL_KEY_ID_MSGOUT_UBX_NAV_PVT_I2C_U1
  * to 55 in RAM, BBRM and flash you would write:
  *
- * U_GNSS_CFG_SET_VAL_ALL(gnssHandle, MSGOUT_UBX_NAV_PVT_I2C_U1, 55)
+ * `U_GNSS_CFG_SET_VAL_ALL(gnssHandle, MSGOUT_UBX_NAV_PVT_I2C_U1, 55)`
  */
 #define U_GNSS_CFG_SET_VAL_ALL(gnssHandle, keyIdStripped, value)  \
         U_GNSS_CFG_SET_VAL_ALL_(gnssHandle, keyIdStripped, value)
@@ -270,7 +270,7 @@ int32_t uGnssCfgGetMsgRate(uDeviceHandle_t gnssHandle,
  * from U_GNSS_CFG_VAL_KEY_ID_MSGOUT_* in u_gnss_cfg_val_key.h
  * and set the value of that item, for example:
  *
- * U_GNSS_CFG_SET_VAL_RAM(devHandle, MSGOUT_UBX_NAV_PVT_I2C_U1, 1);
+ * `U_GNSS_CFG_SET_VAL_RAM(devHandle, MSGOUT_UBX_NAV_PVT_I2C_U1, 1)`
  *
  * @param gnssHandle      the handle of the GNSS instance.
  * @param[in] pMessageId  a pointer to the message ID; cannot

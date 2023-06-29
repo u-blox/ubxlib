@@ -233,13 +233,13 @@ typedef enum {
                                           with reference to the timeUtcMilliseconds parameter
                                           passed to uGnssMgaResponseSend().  This is useful
                                           if you have downloaded many days of offline data
-                                          and stored it in the MCU (e.g. if your GNSS device
+                                          and stored it in the MCU (for example if your GNSS device
                                           has no available flash storage) and you want to just
                                           provide the GNSS chip with the minimum necessary data.
                                           Note that the almanac data is ALSO sent, there is
                                           no need to do #U_GNSS_MGA_SEND_OFFLINE_ALMANAC
                                           as well. */
-    U_GNSS_MGA_SEND_OFFLINE_ALMANAC, /**< send just almanac data to the GNSS device, i.e.
+    U_GNSS_MGA_SEND_OFFLINE_ALMANAC, /**< send just almanac data to the GNSS device, for example
                                           filter the data; useful for a similar reason to
                                           #U_GNSS_MGA_SEND_OFFLINE_TODAYS. */
     U_GNSS_MGA_SEND_OFFLINE_MAX_NUM,
@@ -427,7 +427,7 @@ typedef bool (uGnssMgaDatabaseCallback_t) (uDeviceHandle_t devHandle,
  * When you have sent this encoded HTTP GET request to the u-blox
  * assistance server #U_GNSS_MGA_HTTP_SERVER_ONLINE, e.g. using the
  * uHttpClient API, and received the response, you may forward the
- * response to the GNSS module by calling uGnssMgaResponseSend().
+ * response body to the GNSS module by calling uGnssMgaResponseSend().
  *
  * Tip: if the service returns an HTTP error code you might look at the
  * returned string anyway as it may contain an explanation of what the
@@ -490,7 +490,7 @@ int32_t uGnssMgaOnlineRequestEncode(const uGnssMgaOnlineRequest_t *pRequest,
  * When you have sent this encoded HTTP GET request to the u-blox
  * assistance server #U_GNSS_MGA_HTTP_SERVER_OFFLINE, e.g. using the
  * uHttpClient API, and received the response, you may forward the
- * response to the GNSS module by calling uGnssMgaResponseSend().
+ * response body to the GNSS module by calling uGnssMgaResponseSend().
  *
  * Tip: if the service returns an HTTP error code you might look at the
  * returned string anyway as it may contain an explanation of what the
@@ -561,9 +561,9 @@ int32_t uGnssMgaIniPosSend(uDeviceHandle_t gnssHandle,
 
 /** Send the body of an HTTP GET response received from a u-blox
  * assistance server (as a result of an AssistNow Online or an
- * AssistNow Offline request) to a GNSS module.  The complete
+ * AssistNow Offline request) to a GNSS device.  The complete
  * HTTP GET response body must be sent; truncated responses will
- * likely be rejected.
+ * likely be rejected by the GNSS device.
  *
  * Note: this uses one of the #U_GNSS_MSG_RECEIVER_MAX_NUM message
  * handles from the uGnssMsg API.
@@ -610,15 +610,15 @@ int32_t uGnssMgaIniPosSend(uDeviceHandle_t gnssHandle,
  * @param size                           the amount of data at pBuffer; must be greater
  *                                       than zero.
  * @param[in] pCallback                  a function which will be called at regular
- *                                       intervals while sending the response to
- *                                       track progress and must return true for the
+ *                                       intervals while sending the response, to
+ *                                       track progress, and must return true for the
  *                                       transfer to continue; if false is returned
  *                                       then the transfer will be cancelled.  May
  *                                       be NULL.  Do NOT call into the GNSS API from
  *                                       this callback as the API will already be
  *                                       locked and you will get stuck.
- * @param[in,out] pCallbackParam         parameter that will be passed to
- *                                       pCallback as its last parameter.
+ * @param[in,out] pCallbackParam         parameter that will be passed to pCallback as
+ *                                       its last parameter.
  * @return                               zero on success else negative error code.
  */
 int32_t uGnssMgaResponseSend(uDeviceHandle_t gnssHandle,
@@ -760,16 +760,16 @@ int32_t uGnssMgaGetDatabase(uDeviceHandle_t gnssHandle,
  * @param size                    the amount of data at pBuffer; must
  *                                be greater than zero.
  * @param[in] pCallback           a function which will be called at regular
- *                                intervals while sending the response to
- *                                track progress and must return true for
+ *                                intervals while sending the response, to
+ *                                track progress, and must return true for
  *                                the transfer to continue; if false is
  *                                returned then the transfer will be
  *                                cancelled.  May be NULL.  Do NOT call
  *                                into the GNSS API from this callback as the
  *                                API will already be locked and you will get
  *                                stuck.
- * @param[in,out] pCallbackParam  parameter that will be passed to
- *                                pCallback as its last parameter.
+ * @param[in,out] pCallbackParam  parameter that will be passed to pCallback
+ *                                as its last parameter.
  * @return                        zero on success else negative error code.
  */
 int32_t uGnssMgaSetDatabase(uDeviceHandle_t gnssHandle,

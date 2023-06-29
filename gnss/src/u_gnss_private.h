@@ -124,11 +124,7 @@ typedef enum {
  * Note: order is important since this is statically initialised.
  */
 typedef struct {
-//lint -esym(768, uGnssPrivateModule_t::moduleType) Suppress not referenced,
-// this is for the future.
     uGnssModuleType_t moduleType; /**< the module type. */
-//lint -esym(768, uGnssPrivateModule_t::featuresBitmap) Suppress not referenced,
-// this is for the future.
     uint32_t featuresBitmap; /**< a bit-map of the uGnssPrivateFeature_t
                                   characteristics of this module. */
 } uGnssPrivateModule_t;
@@ -248,6 +244,7 @@ typedef struct uGnssPrivateInstance_t {
     int32_t timeoutMs; /**< the timeout for responses from the GNSS chip in milliseconds. */
     int32_t spiFillThreshold; /**< the number of 0xFF fill bytes which constitute "no data" on SPI. */
     bool printUbxMessages; /**< whether debug printing of UBX messages is on or off. */
+    int32_t retriesOnNoResponse; /**< number of times to retry message transmission if there is no response. */
     int32_t pinGnssEnablePower; /**< the pin of the MCU that enables power to the GNSS module. */
     int32_t pinGnssEnablePowerOnState; /**< the value to set pinGnssEnablePower to for "on". */
     int32_t atModulePinPwr; /**< the pin of the AT module that enables power to the GNSS chip (only relevant for transport type AT). */

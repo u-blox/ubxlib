@@ -770,4 +770,44 @@ void uGnssSetUbxMessagePrint(uDeviceHandle_t gnssHandle, bool onNotOff)
     }
 }
 
+// Set the number of message transmission retries.
+void uGnssSetRetries(uDeviceHandle_t gnssHandle, int32_t retries)
+{
+    uGnssPrivateInstance_t *pInstance;
+
+    if (gUGnssPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
+
+        pInstance = pUGnssPrivateGetInstance(gnssHandle);
+        if (pInstance != NULL) {
+            pInstance->retriesOnNoResponse = retries;
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
+    }
+}
+
+// Get the number of message transmission retries.
+int32_t uGnssGetRetries(uDeviceHandle_t gnssHandle)
+{
+    int32_t errorCodeOrRetries = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uGnssPrivateInstance_t *pInstance;
+
+    if (gUGnssPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
+
+        errorCodeOrRetries = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        pInstance = pUGnssPrivateGetInstance(gnssHandle);
+        if (pInstance != NULL) {
+            errorCodeOrRetries = pInstance->retriesOnNoResponse;
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
+    }
+
+    return errorCodeOrRetries;
+}
+
 // End of file

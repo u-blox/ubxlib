@@ -647,6 +647,7 @@ static int32_t sendReceiveUbxMessage(uGnssPrivateInstance_t *pInstance,
     int32_t privateStreamTypeOrError;
     int32_t bytesToSend = 0;
     char *pBuffer;
+    bool keepTrying = true;
 
     if ((pInstance != NULL) &&
         (((pMessageBody == NULL) && (messageBodyLengthBytes == 0)) ||
@@ -670,7 +671,7 @@ static int32_t sendReceiveUbxMessage(uGnssPrivateInstance_t *pInstance,
                     // For a streaming transport, if we're going to wait for
                     // a response, make sure that any historical data is
                     // cleared from our handle in the ring buffer so that
-                    // we don't pick it up instead and lock our read
+                    // we don't pick it up instead, and lock our read
                     // pointer before we do the send so that we are sure
                     // we won't lose the response
                     uGnssPrivateStreamFillRingBuffer(pInstance,
@@ -682,22 +683,30 @@ static int32_t sendReceiveUbxMessage(uGnssPrivateInstance_t *pInstance,
                                            pInstance->ringBufferReadHandlePrivate);
                 }
 
-                if (privateStreamTypeOrError >= 0) {
-                    errorCodeOrResponseLength = sendMessageStream(pInstance, pBuffer, bytesToSend,
-                                                                  pInstance->printUbxMessages);
-                    if (errorCodeOrResponseLength >= 0) {
-                        errorCodeOrResponseLength = receiveUbxMessageStream(pInstance, pResponse,
-                                                                            pInstance->timeoutMs,
+                for (int32_t x = 0; (x <= pInstance->retriesOnNoResponse) && keepTrying; x++) {
+                    if (privateStreamTypeOrError >= 0) {
+                        errorCodeOrResponseLength = sendMessageStream(pInstance, pBuffer, bytesToSend,
+                                                                      pInstance->printUbxMessages);
+                        if (errorCodeOrResponseLength >= 0) {
+                            errorCodeOrResponseLength = receiveUbxMessageStream(pInstance, pResponse,
+                                                                                pInstance->timeoutMs,
+                                                                                pInstance->printUbxMessages);
+                        }
+                    } else {
+                        // Not a stream, we're on AT
+                        //lint -e{1773} Suppress attempt to cast away const: I'm not!
+                        errorCodeOrResponseLength = sendReceiveUbxMessageAt((const uAtClientHandle_t)
+                                                                            pInstance->transportHandle.pAt,
+                                                                            pBuffer, bytesToSend,
+                                                                            pResponse, pInstance->timeoutMs,
                                                                             pInstance->printUbxMessages);
                     }
-                } else {
-                    // Not a stream, we're on AT
-                    //lint -e{1773} Suppress attempt to cast away const: I'm not!
-                    errorCodeOrResponseLength = sendReceiveUbxMessageAt((const uAtClientHandle_t)
-                                                                        pInstance->transportHandle.pAt,
-                                                                        pBuffer, bytesToSend,
-                                                                        pResponse, pInstance->timeoutMs,
-                                                                        pInstance->printUbxMessages);
+                    if ((errorCodeOrResponseLength >= 0) ||
+                        (errorCodeOrResponseLength == (int32_t) U_GNSS_ERROR_NACK)) {
+                        keepTrying = false;
+                    } else if (pInstance->retriesOnNoResponse > 0) {
+                        uPortTaskBlock(U_GNSS_RETRY_ON_NO_RESPONSE_DELAY_MS);
+                    }
                 }
 
                 // Make sure the read handle is always unlocked afterwards

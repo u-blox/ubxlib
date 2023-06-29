@@ -46,6 +46,15 @@ extern "C" {
 # define U_GNSS_I2C_ADDRESS 0x42
 #endif
 
+#ifndef U_GNSS_RETRY_ON_NO_RESPONSE_DELAY_MS
+/** How long to wait between retries of a message exchange
+ * with a GNSS device if there is no response, in milliseconds.
+ * 500 ms should be long enough for the device to wake up if
+ * it was asleep.
+ */
+# define U_GNSS_RETRY_ON_NO_RESPONSE_DELAY_MS 500
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -283,6 +292,26 @@ bool uGnssGetUbxMessagePrint(uDeviceHandle_t gnssHandle);
  *                     switch printing off.
  */
 void uGnssSetUbxMessagePrint(uDeviceHandle_t gnssHandle, bool onNotOff);
+
+/** If the GNSS device does not respond to a message because
+ * it is inactive due to power-saving (see uGnssPwrSetMode())
+ * then retry sending the message this many times, with a gap
+ * of #U_GNSS_RETRY_ON_NO_RESPONSE_DELAY_MS.  If this is not
+ * called no retries are attempted.
+ *
+ * @param gnssHandle  the handle of the GNSS instance.
+ * @param retries     the number of retries.
+ */
+void uGnssSetRetries(uDeviceHandle_t gnssHandle, int32_t retries);
+
+/** Get the number of retries when there is no response from
+ * the GNSS device to a message.
+ *
+ * @param gnssHandle  the handle of the GNSS instance.
+ * @return            on success the number of retries, else negative
+ *                    error code.
+ */
+int32_t uGnssGetRetries(uDeviceHandle_t gnssHandle);
 
 #ifdef __cplusplus
 }

@@ -170,7 +170,7 @@ typedef enum {
     U_GNSS_TRANSPORT_I2C,       /**< the transport handle should be an I2C handle. */
     U_GNSS_TRANSPORT_SPI,       /**< the transport handle should be an SPI handle. */
     U_GNSS_TRANSPORT_VIRTUAL_SERIAL, /**< the transport handle should be a virtual serial,
-                                          port handle, e.g. as returned by
+                                          port handle, for example as returned by
                                           uCellMuxAddChannel() if you are talking to
                                           a GNSS device either inside or connected
                                           via a cellular module. */
