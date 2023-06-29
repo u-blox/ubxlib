@@ -163,7 +163,9 @@ int32_t uNetworkPrivateChangeStateGnss(uDeviceHandle_t devHandle,
     uDeviceInstance_t *pDevInstance;
     int32_t errorCode = uDeviceGetInstance(devHandle, &pDevInstance);
     uDeviceType_t deviceType;
+#ifndef U_NETWORK_GNSS_CFG_CELL_USE_AT_ONLY
     uDeviceSerial_t *pDeviceSerial = NULL;
+#endif
     uGnssTransportHandle_t gnssTransportHandle = {0};
     uGnssTransportType_t gnssTransportType = U_GNSS_TRANSPORT_NONE;
     uNetworkPrivateGnssContext_t *pNetworkContext = NULL;
