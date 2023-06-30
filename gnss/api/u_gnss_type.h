@@ -76,7 +76,7 @@
 
 #ifndef U_GNSS_DEFAULT_SPI_FILL_THRESHOLD
 /** The default number of 0xFF bytes which, if received on an
- * SPI transport, constitue fill rather than valid data.
+ * SPI transport, constitute fill rather than valid data.
  */
 # define U_GNSS_DEFAULT_SPI_FILL_THRESHOLD 48
 #endif

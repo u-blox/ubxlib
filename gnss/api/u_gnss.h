@@ -254,7 +254,7 @@ void uGnssSetTimeout(uDeviceHandle_t gnssHandle, int32_t timeoutMs);
  * byte, but how many?  Use this function to get the current setting.
  *
  * @param gnssHandle  the handle of the GNSS instance.
- * @return            the number of 0xFF bytes which constitue fill.
+ * @return            the number of 0xFF bytes which constitute fill.
  */
 int32_t uGnssGetSpiFillThreshold(uDeviceHandle_t gnssHandle);
 

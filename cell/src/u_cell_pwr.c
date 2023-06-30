@@ -609,7 +609,7 @@ int32_t readCedrxsOrCedrxrdp(const uCellPrivateInstance_t *pInstance, bool rdpNo
         uAtClientResponseStop(atHandle);
         uAtClientUnlock(atHandle);
         if (eDrxSecondsRequested >= 0) {
-            // Having decoded a requested E-DRX value constitues success
+            // Having decoded a requested E-DRX value constitutes success
             errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
             if (pEDrxSecondsRequested != NULL) {
                 *pEDrxSecondsRequested = eDrxSecondsRequested;

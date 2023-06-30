@@ -100,7 +100,7 @@ extern "C" {
  */
 #define U_GNSS_POS_TASK_FLAG_CONTINUOUS 0x04
 
-/** The value that constitues "no data" on SPI.
+/** The value that constitutes "no data" on SPI.
  */
 #define U_GNSS_PRIVATE_SPI_FILL 0xFF
 
