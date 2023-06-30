@@ -2,8 +2,10 @@
 # Automatically generated file. DO NOT EDIT.
 # Espressif IoT Development Framework (ESP-IDF) Project Configuration
 #
-CONFIG_IDF_TARGET_ESP32=y
-CONFIG_IDF_TARGET="esp32"
+
+# Note: the IDF_TARGET is not specified here: it will default to esp32
+# and can be overridden by setting the environment variable IDF_TARGET
+
 CONFIG_IDF_FIRMWARE_CHIP_ID=0x0000
 
 #

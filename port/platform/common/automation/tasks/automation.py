@@ -157,6 +157,8 @@ def instance_command(ctx, instance_str, cmd):
 
     elif platform == "esp-idf":
         esp_idf.check_installation(ctx)
+        # Set the target chip using the environment variable IDF_TARGET
+        environ["IDF_TARGET"]=mcu.lower()
         if cmd == Command.BUILD:
             esp_idf.build(ctx, output_name="", build_dir=ctx.build_dir, u_flags=defines)
         elif cmd == Command.FLASH:

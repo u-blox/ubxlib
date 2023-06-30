@@ -800,7 +800,7 @@ U_PORT_TEST_FUNCTION("[cellMux]", "cellMuxMqtt")
 
         U_PORT_TEST_ASSERT(uCellNetDisconnect(cellHandle, NULL) == 0);
 
-        // Finally Deinitialise MQTT
+        // Finally deinitialise MQTT
         uCellMqttDeinit(cellHandle);
 
         U_TEST_PRINT_LINE("disabling CMUX...\n");

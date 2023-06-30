@@ -126,6 +126,17 @@ static const uDeviceCfg_t gDeviceCfg = {
             .pinMosi = U_CFG_APP_PIN_GNSS_SPI_MOSI,
             .pinMiso = U_CFG_APP_PIN_GNSS_SPI_MISO,
             .pinClk = U_CFG_APP_PIN_GNSS_SPI_CLK,
+            // Note: Zephyr users may find it more natural to use
+            // .device = U_COMMON_SPI_CONTROLLER_DEVICE_INDEX_DEFAULTS(x)
+            // instead of the below, where x is the index of a `cs-gpios`
+            // entry that has already been defined for this SPI block in
+            // their Zephyr device tree.  For instance, if this SPI block
+            // in the device tree contained:
+            //     cs-gpios = <&gpio0 2 GPIO_ACTIVE_LOW>,
+            //                <&gpio1 14 GPIO_ACTIVE_LOW>;
+            // then:
+            // .device = U_COMMON_SPI_CONTROLLER_DEVICE_INDEX_DEFAULTS(1)
+            // would use pin 14 of port GPIO 1 as the chip select.
             .device = U_COMMON_SPI_CONTROLLER_DEVICE_DEFAULTS(U_CFG_APP_PIN_GNSS_SPI_SELECT)
         },
     },
@@ -236,42 +247,47 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocGnssContinuous")
     returnCode = uDeviceOpen(&gDeviceCfg, &devHandle);
     uPortLog("Opened device with return code %d.\n", returnCode);
 
-    // You may configure GNSS as required here
-    // here using any of the GNSS API calls.
+    if (returnCode == 0) {
+        // You may configure GNSS as required here
+        // here using any of the GNSS API calls.
 
-    // Bring up the GNSS network interface
-    uPortLog("Bringing up the network...\n");
-    if (uNetworkInterfaceUp(devHandle, U_NETWORK_TYPE_GNSS,
-                            &gNetworkCfg) == 0) {
+        // Bring up the GNSS network interface
+        uPortLog("Bringing up the network...\n");
+        if (uNetworkInterfaceUp(devHandle, U_NETWORK_TYPE_GNSS,
+                                &gNetworkCfg) == 0) {
 
-        // Start to get location
-        uPortLog("Starting continuous location.\n");
-        uLocationGetContinuousStart(devHandle,
-                                    U_GNSS_POS_STREAMED_PERIOD_DEFAULT_MS,
-                                    U_LOCATION_TYPE_GNSS,
-                                    NULL, NULL, callback);
+            // Start to get location
+            uPortLog("Starting continuous location.\n");
+            uLocationGetContinuousStart(devHandle,
+                                        U_GNSS_POS_STREAMED_PERIOD_DEFAULT_MS,
+                                        U_LOCATION_TYPE_GNSS,
+                                        NULL, NULL, callback);
 
-        uPortLog("Waiting up to 60 seconds for 5 location fixes.\n");
-        while ((gLocationCount < 5) && (guardCount < 60)) {
-            uPortTaskBlock(1000);
-            guardCount++;
+            uPortLog("Waiting up to 60 seconds for 5 location fixes.\n");
+            while ((gLocationCount < 5) && (guardCount < 60)) {
+                uPortTaskBlock(1000);
+                guardCount++;
+            }
+
+            // Stop getting location
+            uLocationGetStop(devHandle);
+
+            // When finished with the GNSS network layer
+            uPortLog("Taking down GNSS...\n");
+            uNetworkInterfaceDown(devHandle, U_NETWORK_TYPE_GNSS);
+        } else {
+            uPortLog("Unable to bring up GNSS!\n");
         }
 
-        // Stop getting location
-        uLocationGetStop(devHandle);
+        // Close the device
+        // Note: we don't power the device down here in order
+        // to speed up testing; you may prefer to power it off
+        // by setting the second parameter to true.
+        uDeviceClose(devHandle, false);
 
-        // When finished with the GNSS network layer
-        uPortLog("Taking down GNSS...\n");
-        uNetworkInterfaceDown(devHandle, U_NETWORK_TYPE_GNSS);
     } else {
-        uPortLog("Unable to bring up GNSS!\n");
+        uPortLog("Unable to bring up the device!\n");
     }
-
-    // Close the device
-    // Note: we don't power the device down here in order
-    // to speed up testing; you may prefer to power it off
-    // by setting the second parameter to true.
-    uDeviceClose(devHandle, false);
 
     // Tidy up
     uDeviceDeinit();

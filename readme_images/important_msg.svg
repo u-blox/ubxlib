@@ -1,0 +1,33 @@
+<svg fill="none" viewBox="0 0 800 100" width="800" height="100" xmlns="http://www.w3.org/2000/svg">
+    <foreignObject width="100%" height="100%">
+        <div xmlns="http://www.w3.org/1999/xhtml">
+            <style>
+                .notification {
+                    font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji";
+                    background-color: #40eb34;
+                    border: 1px solid #0303fc;
+                    border-radius: 10px;
+                    padding: 10px 10px 10px 36px;
+                }
+                .header {
+                    font-weight:bold;
+                    font-size: 20px;
+                }
+                .icon {
+                    font-size: 20px;
+                }
+                .message {
+                    padding: 10px 0px 0px 0px;
+                }
+            </style>
+            <div class="notification">
+                <div>
+                    <span class="icon">⚠️ </span><span class="header">Upcoming:</span>
+                </div>
+                <div class="message">
+                    See UPCOMING.md for changes coming in release 1.3 (due end July 2023).
+                </div>
+            </div>
+        </div>
+    </foreignObject>
+</svg>

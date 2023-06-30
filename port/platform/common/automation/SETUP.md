@@ -8,8 +8,8 @@ Here we describe how to set up a complete `ubxlib` test system, including Jenkin
 - Jenkins, [NGINX](https://www.nginx.com/) (for secured access) and the SMEE Client (which allows Github to trigger test runs behind a firewall) are installed in separate Docker containers on a single Linux PC.
 - Desktop-type "beefy" Linux PCs are used for building/checking `ubxlib` and running the `Jenkinsfile` which distributes work around the system.
 - Raspberry Pi 4's are used to download those built images of `ubxlib` to MCUs with u-blox modules attached and then monitor the tests as they run; there is a Raspberry Pi for each MCU/module HW configuration defined by [DATABASE.md](DATABASE.md).
-- The third-party MCU vendor tools are built into an [Ubuntu] Docker container which runs on both the Linux desktop PCs and the Raspberry Pis, isolating those tools nicely.
-- This Docker container accesses the `ubxlib` source code and automation scripts, all fetched from Github, natively on the Linux machines through mapped volumes.
+- The scripts that drive the test system all execute inside an [Ubuntu] Docker container, hosted on both the Linux desktop PCs and the Raspberry Pis, providing a uniform/controlled environment.
+- This Docker container accesses the `ubxlib` source code and the third party vendor tools, all fetched from Github, natively on the Linux machines, through mapped volumes.
 - A single Windows PC runs the one required MSVC build/test instance.
 
 This way we get fastest build/check plus expandability of download/test (since any number of Pis can be attached).
@@ -17,9 +17,9 @@ This way we get fastest build/check plus expandability of download/test (since a
 From the perspective of Jenkins, everything is driven through \[multiple\] node labels:
 - all agents are labelled `ubxlib`,
 - Linux agents are labelled `linux`, Windows agents are labelled `windows`,
-- the agent(s) that distributes build/test jobs to all of the other agents is labelled `distributor` (this can be any one of the beefy Linux PCs, don't want to block a HW test instance of which there may be only one),
+- agent(s) that distributes build/test jobs to all of the other agents are labelled `distributor` (this can be any one of the beefy Linux PCs, don't want to block a HW test instance of which there may be only one),
 - a beefy agent with no testing HW attached, good for building \[so not a Raspberry Pi\], or performing checks that require no HW (i.e. one of the instances from [DATABASE.md](DATABASE.md) numbered less than 10), is labelled `build`,
-- a Raspberry Pi with a single set of physical HW attached (i.e. an MCU board plus, probably, a Wi-Fi/BLE/GNSS/cellular module) is labelled `test` and `instance_x`, where `x` is the major number of the test instance from [DATABASE.md](DATABASE.md) \[10 or above\] that it supports, reflecting the HW that is attached: e.g. `instance_11` has an ESP-IDF MCU board attached plus a GNSS module and supports 11.0 and 11.1; note that beefy machines may also have the `test` and `instance_x` labels where the tests instances are `windowa` or `linux`.
+- a Raspberry Pi with a single set of physical HW attached (i.e. an MCU board plus, probably, a Wi-Fi/BLE/GNSS/cellular module) is labelled `test` and `instance_x`, where `x` is the major number of the test instance from [DATABASE.md](DATABASE.md) \[10 or above\] that it supports, reflecting the HW that is attached: e.g. `instance_11` has an ESP-IDF MCU board attached plus a GNSS module and supports 11.0 and 11.1; note that beefy machines may also have the `test` and `instance_x` labels where the tests instances are `windows` or `linux`.
 - for admin purposes, PCs are labelled `x86_64`, Raspberry Pis are labelled `aarch64` and things that need a Docker image of 3rd party tools built on them are labelled `docker`.
 
 Hence [Jenkinsfile](Jenkinsfile) is able to find at least one of everything it needs.
@@ -601,7 +601,7 @@ sudo udevadm control --reload
 sudo udevadm trigger
 ```
 
-- To debug issues with your `udev` rules, `sudo udevadm control --log-priority=debug` then `sudo udevadm trigger` followed by `sudo journalctl -n 1000` and scroll down to the end of the log to check for `53-dut.rules` being read and then look for lines where its rules are being triggered.
+- To debug issues with your `udev` rules, `sudo udevadm control --log-priority=debug` then `sudo udevadm trigger` followed by `sudo journalctl -n 10000` and scroll down to the end of the log to check for `53-dut.rules` being read and then look for lines where its rules are being triggered.
 
 - Note: if you edit a `.rules` file, don't forget to reload them all with `sudo udevadm control --reload` before testing.
 
@@ -644,3 +644,28 @@ docker run --rm ubxlib_builder nrfjprog --ids
 - Instance 18 includes a test of Cloud Locate for which client ID, username and password parameters need to be entered as environment variables and a secret in Jenkins:
   - `Manage Jenkins` -> `Configure System` scroll down to `Global properties`, tick `Environment variables` and add the client ID and username on the end of the existing `UBXLIB_EXTRA_DEFINES` environment variable, separated with semicolons, e.g. `U_CFG_APP_CLOUD_LOCATE_MQTT_CLIENT_ID=device:521b5a33-2374-4547-8edc-50743c144509;U_CFG_APP_CLOUD_LOCATE_MQTT_USERNAME=WF592TTWUQ18512KLU6L`, being sure to leave **no** spaces,
   - `Manage Jenkins` -> `Manage Credentials`, create a credential of type `Secret text`, paste the password for the Thingstream account, something like `nsd8hsK/NSDFdgdblfmbQVXbx7jeZ/8vnsiltgty` into the `Secret` field, give it the `ID` `ubxlib_cloud_locate_mqtt_password` and a sensible `Description`, e.g. "Password for the Thingstream account with Cloud Locate", then press `Save`; [Jenkinsfile](Jenkinsfile) will parse this out and into a conditional compilation flag value for the builds.
+- Some test instances will test Cell Locate, for which a token must be entered as an environment variable and a secret in Jenkins: `Manage Jenkins` -> `Manage Credentials`, create a credential of type `Secret text`, paste the token for the Location thing from the Thingstream account, something like `tLLgF0pwRq-nx19wZXBYFg` into the `Secret` field, give it the `ID` `ubxlib_cell_locate_authentication_token` and a sensible `Description`, e.g. "Authentication token for Cell Locate from Thingstream account", then press `Save`; [Jenkinsfile](Jenkinsfile) will parse this out and into a conditional compilation flag value for the builds.  The same token will be used for AssistNow (Online and Offline) testing.
+
+## Adding a New Test Instance With Physical HW
+Not strictly part of the setup process but, should you need to add an instance that has physical HW attached to the test system afterwards, the generic parts  i.e. after you have, for instance, attached the HW to a new Raspberry Pi and added the new Raspberry Pi to the Jenkins (see above), are as follows:
+
+- Edit [u_settings.py](scripts/u_settings.py) to add the new entry on the end of the `__DEFAULT_SETTINGS["CONNECTION_INSTANCE_...` set; copy an existing one that is close (e.g. copy an NRF one for a new NRF board etc.), e.g.
+
+```
+  __DEFAULT_SETTINGS["CONNECTION_INSTANCE_26" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = \
+  {"serial_port": "/dev/segger_jlink_nrf52840", "debugger":"000685174508"}
+```
+
+...noting that some items don't have a `debugger` (e.g. ESP-IDF doesn't, since on that platform the serial port does everything).
+
+- Edit [u_connection.py](scripts/u_connection.py) to add the new connection on the end.
+- SSH into the Raspberry Pi where the device is attached and edit the file `.ubx_automation/settings_v2_agent_specific.json` to add the new instance, matching what you put in [u_settings.py](scripts/u_settings.py), e.g.:
+
+```
+  "CONNECTION_INSTANCE_26": {
+    "serial_port": "/dev/segger_jlink_nrf52840",
+    "debugger": "000685174508"
+  },
+```
+
+...noting that if, you have run the system with the new [u_settings.py](scripts/u_settings.py) already, there will already be an item there with `_FIX_ME` on the end, in which case edit that entry as appropriate and remove the `_FIX_ME` off the end.

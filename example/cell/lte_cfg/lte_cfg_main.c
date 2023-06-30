@@ -296,140 +296,145 @@ U_PORT_TEST_FUNCTION("[example]", "exampleCellLteCfg")
     x = uDeviceOpen(&gDeviceCfg, &devHandle);
     uPortLog("## Opened device with return code %d.\n", x);
 
-    //---------------- CONFIGURATION BEGINS -----------------
+    if (x == 0) {
+        //---------------- CONFIGURATION BEGINS -----------------
 
-    // Before we bring up the network,
-    // configure it just how we want it to be.
+        // Before we bring up the network,
+        // configure it just how we want it to be.
 
-    //--------------------- MNO profile ---------------------
-    // Configure the MNO profile, do this first as it can alter
-    // the RF band settings which we may want to change
-    // ourselves later
-    x = uCellCfgGetMnoProfile(devHandle);
-    if (x >= 0) {
-        if (x != MY_MNO_PROFILE) {
-            if (uCellCfgSetMnoProfile(devHandle,
-                                      MY_MNO_PROFILE) == 0) {
-                uPortLog("### MNO profile has been changed from %d to %d.\n",
-                         x, MY_MNO_PROFILE);
+        //--------------------- MNO profile ---------------------
+        // Configure the MNO profile, do this first as it can alter
+        // the RF band settings which we may want to change
+        // ourselves later
+        x = uCellCfgGetMnoProfile(devHandle);
+        if (x >= 0) {
+            if (x != MY_MNO_PROFILE) {
+                if (uCellCfgSetMnoProfile(devHandle,
+                                          MY_MNO_PROFILE) == 0) {
+                    uPortLog("### MNO profile has been changed from %d to %d.\n",
+                             x, MY_MNO_PROFILE);
+                }
+            } else {
+                uPortLog("### The MNO profile is already set to %d.\n", x);
             }
         } else {
-            uPortLog("### The MNO profile is already set to %d.\n", x);
+            uPortLog("### This module does not support setting an MNO profile.\n");
         }
-    } else {
-        uPortLog("### This module does not support setting an MNO profile.\n");
-    }
-    // Reboot the module if required
-    if (uCellPwrRebootIsRequired(devHandle)) {
-        uPortLog("### Re-booting the module to apply MNO profile change...\n");
-        uCellPwrReboot(devHandle, NULL);
-    }
+        // Reboot the module if required
+        if (uCellPwrRebootIsRequired(devHandle)) {
+            uPortLog("### Re-booting the module to apply MNO profile change...\n");
+            uCellPwrReboot(devHandle, NULL);
+        }
 
-    //------------------------- RAT -------------------------
-    // Read out the existing RAT list and set the new ones
-    for (x = 0; x < 3; x++) {
-        // Get the RAT at rank x
-        rat[x] = uCellCfgGetRat(devHandle, x);
-        if (rat[x] >= 0) {
-            uPortLog("### RAT[%d] is %s.\n", x, gpRatStr[rat[x]]);
-            // The effect of this code is to set MY_RAT0
-            // if it is specified and then to set MY_RAT1 and
-            // MY_RAT2 in all cases; hence if MY_RAT1 and MY_RAT2 are
-            // left at U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED they will be
-            // removed, leaving just MY_RAT0 as the sole RAT.
-            if (((gMyRatList[x] > U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED) || (x > 0)) &&
-                (gMyRatList[x] != rat[x])) {
-                // The RAT at this rank is not what we wanted,
-                // so set it
-                uPortLog("### Setting RAT[%d] to %s...\n", x,
-                         gpRatStr[gMyRatList[x]]);
-                if (uCellCfgSetRatRank(devHandle, gMyRatList[x], x) != 0) {
-                    uPortLog("### Unable to set RAT[%d] to %s.\n", x,
+        //------------------------- RAT -------------------------
+        // Read out the existing RAT list and set the new ones
+        for (x = 0; x < 3; x++) {
+            // Get the RAT at rank x
+            rat[x] = uCellCfgGetRat(devHandle, x);
+            if (rat[x] >= 0) {
+                uPortLog("### RAT[%d] is %s.\n", x, gpRatStr[rat[x]]);
+                // The effect of this code is to set MY_RAT0
+                // if it is specified and then to set MY_RAT1 and
+                // MY_RAT2 in all cases; hence if MY_RAT1 and MY_RAT2 are
+                // left at U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED they will be
+                // removed, leaving just MY_RAT0 as the sole RAT.
+                if (((gMyRatList[x] > U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED) || (x > 0)) &&
+                    (gMyRatList[x] != rat[x])) {
+                    // The RAT at this rank is not what we wanted,
+                    // so set it
+                    uPortLog("### Setting RAT[%d] to %s...\n", x,
                              gpRatStr[gMyRatList[x]]);
+                    if (uCellCfgSetRatRank(devHandle, gMyRatList[x], x) != 0) {
+                        uPortLog("### Unable to set RAT[%d] to %s.\n", x,
+                                 gpRatStr[gMyRatList[x]]);
+                    }
                 }
             }
         }
-    }
-    // Reboot the module if required
-    if (uCellPwrRebootIsRequired(devHandle)) {
-        uPortLog("### Re-booting the module to apply RAT changes...\n");
-        uCellPwrReboot(devHandle, NULL);
-    }
-
-    //----------------------- RF BANDS ----------------------
-    // If any of our chosen RATs are cat-M1 or NB1, set the
-    // RF bands as required
-    for (x = 0; x < 3; x++) {
-        if (gMyRatList[x] == U_CELL_NET_RAT_CATM1) {
-            readAndSetBand(devHandle, gMyRatList[x],
-                           MY_CATM1_BANDMASK1, MY_CATM1_BANDMASK2);
-        } else if (gMyRatList[x] == U_CELL_NET_RAT_NB1) {
-            readAndSetBand(devHandle, gMyRatList[x],
-                           MY_NB1_BANDMASK1, MY_NB1_BANDMASK2);
+        // Reboot the module if required
+        if (uCellPwrRebootIsRequired(devHandle)) {
+            uPortLog("### Re-booting the module to apply RAT changes...\n");
+            uCellPwrReboot(devHandle, NULL);
         }
-    }
-    // Reboot the module if required
-    if (uCellPwrRebootIsRequired(devHandle)) {
-        uPortLog("### Re-booting the module to apply RF band changes...\n");
-        uCellPwrReboot(devHandle, NULL);
-    }
 
-    //------------------ CONFIGURATION ENDS -----------------
+        //----------------------- RF BANDS ----------------------
+        // If any of our chosen RATs are cat-M1 or NB1, set the
+        // RF bands as required
+        for (x = 0; x < 3; x++) {
+            if (gMyRatList[x] == U_CELL_NET_RAT_CATM1) {
+                readAndSetBand(devHandle, gMyRatList[x],
+                               MY_CATM1_BANDMASK1, MY_CATM1_BANDMASK2);
+            } else if (gMyRatList[x] == U_CELL_NET_RAT_NB1) {
+                readAndSetBand(devHandle, gMyRatList[x],
+                               MY_NB1_BANDMASK1, MY_NB1_BANDMASK2);
+            }
+        }
+        // Reboot the module if required
+        if (uCellPwrRebootIsRequired(devHandle)) {
+            uPortLog("### Re-booting the module to apply RF band changes...\n");
+            uCellPwrReboot(devHandle, NULL);
+        }
 
-    uint64_t readBandMask1;
-    uint64_t readBandMask2;
-    if (uCellCfgGetBandMask(devHandle, U_CELL_NET_RAT_CATM1,
-                            &readBandMask1, &readBandMask2) == 0) {
-        uPortLog("### Band mask for RAT %s is 0x%08x%08x %08x%08x.\n",
-                 gpRatStr[U_CELL_NET_RAT_CATM1],
-                 (uint32_t) (readBandMask2 >> 32), (uint32_t) readBandMask2,
-                 (uint32_t) (readBandMask1 >> 32), (uint32_t) readBandMask1);
-    } else {
-        uPortLog("### unable to read bandmask!\n");
-    }
-    for (x = uCellNetScanGetFirst(devHandle, NULL, 0,
-                                  buffer, NULL, NULL);
-         x >= 0;
-         x = uCellNetScanGetNext(devHandle, NULL, 0, buffer, NULL)) {
-        uPortLog("### %d: network: %s\n", x, buffer);
-    }
+        //------------------ CONFIGURATION ENDS -----------------
 
-    // Now that the module is configured, bring up the network
-    if (uNetworkInterfaceUp(devHandle, U_NETWORK_TYPE_CELL,
-                            &gNetworkCfg) == 0) {
-
-        // Read the APN we have ended up with
-        x = uCellNetGetApnStr(devHandle, buffer, sizeof(buffer));
-        if (x >= 0) {
-            uPortLog("### The APN is \"%.*s\".\n", x, buffer);
+        uint64_t readBandMask1;
+        uint64_t readBandMask2;
+        if (uCellCfgGetBandMask(devHandle, U_CELL_NET_RAT_CATM1,
+                                &readBandMask1, &readBandMask2) == 0) {
+            uPortLog("### Band mask for RAT %s is 0x%08x%08x %08x%08x.\n",
+                     gpRatStr[U_CELL_NET_RAT_CATM1],
+                     (uint32_t) (readBandMask2 >> 32), (uint32_t) readBandMask2,
+                     (uint32_t) (readBandMask1 >> 32), (uint32_t) readBandMask1);
         } else {
-            uPortLog("### Unable to read the APN!\n");
+            uPortLog("### unable to read bandmask!\n");
+        }
+        for (x = uCellNetScanGetFirst(devHandle, NULL, 0,
+                                      buffer, NULL, NULL);
+             x >= 0;
+             x = uCellNetScanGetNext(devHandle, NULL, 0, buffer, NULL)) {
+            uPortLog("### %d: network: %s\n", x, buffer);
         }
 
-        // Prove that we have a data connection
-        // by performing a DNS look-up
-        uPortLog("### Looking up server address...\n");
-        if (uSockGetHostByName(devHandle, "www.google.com",
-                               &(address.ipAddress)) == 0) {
-            uPortLog("### www.google.com is: ");
-            printAddress(&address, false);
-            uPortLog("\n");
+        // Now that the module is configured, bring up the network
+        if (uNetworkInterfaceUp(devHandle, U_NETWORK_TYPE_CELL,
+                                &gNetworkCfg) == 0) {
+
+            // Read the APN we have ended up with
+            x = uCellNetGetApnStr(devHandle, buffer, sizeof(buffer));
+            if (x >= 0) {
+                uPortLog("### The APN is \"%.*s\".\n", x, buffer);
+            } else {
+                uPortLog("### Unable to read the APN!\n");
+            }
+
+            // Prove that we have a data connection
+            // by performing a DNS look-up
+            uPortLog("### Looking up server address...\n");
+            if (uSockGetHostByName(devHandle, "www.google.com",
+                                   &(address.ipAddress)) == 0) {
+                uPortLog("### www.google.com is: ");
+                printAddress(&address, false);
+                uPortLog("\n");
+            } else {
+                uPortLog("### Unable to perform DNS lookup!\n");
+            }
+
+            // When finished with the network layer
+            uPortLog("### Taking down network...\n");
+            uNetworkInterfaceDown(devHandle, U_NETWORK_TYPE_CELL);
         } else {
-            uPortLog("### Unable to perform DNS lookup!\n");
+            uPortLog("### Unable to bring up the network!\n");
         }
 
-        // When finished with the network layer
-        uPortLog("### Taking down network...\n");
-        uNetworkInterfaceDown(devHandle, U_NETWORK_TYPE_CELL);
-    } else {
-        uPortLog("### Unable to bring up the network!\n");
-    }
+        // Close the device
+        // Note: we don't power the device down here in order
+        // to speed up testing; you may prefer to power it off
+        // by setting the second parameter to true.
+        uDeviceClose(devHandle, false);
 
-    // Close the device
-    // Note: we don't power the device down here in order
-    // to speed up testing; you may prefer to power it off
-    // by setting the second parameter to true.
-    uDeviceClose(devHandle, false);
+    } else {
+        uPortLog("### Unable to bring up the device!\n");
+    }
 
     // Tidy up
     uDeviceDeinit();

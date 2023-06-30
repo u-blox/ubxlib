@@ -267,34 +267,81 @@ int32_t uGnssPosGetStreamedStart(uDeviceHandle_t gnssHandle,
  */
 void uGnssPosGetStreamedStop(uDeviceHandle_t gnssHandle);
 
-/** Get the binary RRLP information directly from the GNSS chip,
- * as returned by the UBX-RXM-MEASX command of the UBX protocol.  This
- * is more efficient, both in terms of power and time, than asking
- * for position: the RRLP information may be sent to the u-blox
+/** Set the mode for uGnssPosGetRrlp(); M10 modules or later only.
+ * If this is not called U_GNSS_RRLP_MODE_MEASX will apply.  Setting
+ * modes #U_GNSS_RRLP_MODE_MEAS50, #U_GNSS_RRLP_MODE_MEAS20,
+ * #U_GNSS_RRLP_MODE_MEASC12 / #U_GNSS_RRLP_MODE_MEASD12 etc. reduces
+ * the volume of data required with some loss of accuracy (e.g.
+ * 10 metres for UBX-RXM-MEASX/UBX-RXM-MEAS50 versus 20-30 metres
+ * for UBX-RXM-MEAS20, 30-40 metres for UBX-RXM-MEASC12/UBX-RXM-MEASD12
+ * etc.).
+ *
+ * @param gnssHandle  the handle of the GNSS instance.
+ * @param mode        the RRLP mode.
+ * @return            zero on success else negative error code.
+ */
+int32_t uGnssPosSetRrlpMode(uDeviceHandle_t gnssHandle, uGnssRrlpMode_t mode);
+
+/** Get the mode for uGnssPosGetRrlp().
+ *
+ * @param gnssHandle  the handle of the GNSS instance.
+ * @return            on success the RRLP mode, else negative error code.
+ */
+int32_t uGnssPosGetRrlpMode(uDeviceHandle_t gnssHandle);
+
+/** Get the binary RRLP information directly from the GNSS chip.  By default
+ * this will obtain the RRLP information using the UBX-RXM-MEASX command of
+ * the UBX protocol; if you have an M10 device or later you may use
+ * uGnssPosSetRrlpMode() to select instead the UBX-RXM-MEAS50, UBX-RXM-MEAS20
+ * or UBX-RXM-MEASC12/UBX-RXM-MEASD12 commands for reduced payload sizes
+ * versus position accuracy (10 metres for UBX-RXM-MEASX/UBX-RXM-MEAS50,
+ * 20-30 metres for UBX-RXM-MEAS20, 30-40 metres for UBX-RXM-MEASC12/
+ * UBX-RXM-MEASD12 etc.).
+ *
+ * Using RRLP information is more efficient, both in terms of power and time,
+ * than asking for position: the RRLP information may be sent to the u-blox
  * Cloud Locate service where the exact position of the device can
  * be determined and made available, e.g. for trackers.
  *
  * @param gnssHandle                    the handle of the GNSS instance to use.
  * @param pBuffer                       a place to store the binary RRLP
  *                                      information; cannot be NULL.  The
- *                                      storage required for each RRLP data set
- *                                      is: 8 + 44 + 24 * [number of satellites]
+ *                                      storage required is the UBX protocol
+ *                                      overhead (8 bytes) plus an amount that
+ *                                      depends upon the RRLP mode.  For
+ *                                      #U_GNSS_RRLP_MODE_MEASX this is
+ *                                      44 + 24 * [number of satellites]
  *                                      so for, e.g. 32 satellites, 820 bytes
- *                                      would be sufficient.  Note that what
- *                                      is written to pBuffer includes the six
- *                                      bytes of message header of the UBX
- *                                      protocol, i.e. 0xB5 62 02 14 AA BB, where
+ *                                      would be sufficient.  For the other
+ *                                      modes the number of bytes is indicated
+ *                                      by the mode, so for #U_GNSS_RRLP_MODE_MEAS50
+ *                                      8 + 50 bytes would be required, for
+ *                                      #U_GNSS_RRLP_MODE_MEAS20 8 + 20 bytes and
+ *                                      for #U_GNSS_RRLP_MODE_MEASC12 /
+ *                                      #U_GNSS_RRLP_MODE_MEASD12 8 + 12 bytes.
+ *                                      If you intend to send the RRLP information
+ *                                      to the Cloud Locate service then, for
+ *                                      #U_GNSS_RRLP_MODE_MEASX you MUST include
+ *                                      the six bytes of message header of the UBX
+ *                                      protocol, i.e. 0xB5 62 02 14 AA BB (where
  *                                      0xAA BB is the [little-endian coded] 16-bit
- *                                      length of the RRLP data that follows;
- *                                      the two CRC bytes from the UBX protocol are
- *                                      ALSO written to pBuffer because Cloud Locate
- *                                      not only expects them it requires them AND it
- *                                      checks them.
+ *                                      length of the RRLP data that follows) AND
+ *                                      the two CRC bytes on the end, as the Cloud
+ *                                      Locate service expects these and checks
+ *                                      them.  However, when using the other formats
+ *                                      the header and CRC bytes must NOT be sent to
+ *                                      the Cloud Locate service, hence you should
+ *                                      offset your read from pBuffer by six
+ *                                      bytes to skip the header and take eight from
+ *                                      the length to also remove the two CRC bytes.
  * @param sizeBytes                     the number of bytes of storage at pBuffer.
  * @param svsThreshold                  the minimum number of satellites that must
  *                                      be visible to return the RRLP information;
  *                                      specify -1 for "don't care"; the recommended
  *                                      value to use for the Cloud Locate service is 5.
+ *                                      Ignored if the RRLP mode is not
+ *                                      #U_GNSS_RRLP_MODE_MEASX, since in those cases
+ *                                      the thresholding is performed in the GNSS module.
  * @param cNoThreshold                  the minimum carrier to noise value that must
  *                                      be met to return the RRLP information, range
  *                                      0 to 63; specify -1 for "don't care".  The
@@ -302,16 +349,24 @@ void uGnssPosGetStreamedStop(uDeviceHandle_t gnssHandle);
  *                                      is 35 but that requires clear sky and a good
  *                                      antenna, hence the recommended value is 30;
  *                                      lower threshold values may work, just less
- *                                      reliably.
+ *                                      reliably. Ignored if the RRLP mode is not
+ *                                      #U_GNSS_RRLP_MODE_MEASX, since in those cases
+ *                                      the thresholding is performed in the GNSS module.
  * @param multipathIndexLimit           the maximum multipath index that must be
  *                                      met to return the RRLP information, 1 = low,
  *                                      2 = medium, 3 = high; specify -1 for "don't
  *                                      care".  The recommended value for the Cloud
- *                                      Locate service is 1.
+ *                                      Locate service is 1. Ignored if the RRLP mode
+ *                                      is not #U_GNSS_RRLP_MODE_MEASX, since in those
+ *                                      cases the thresholding is performed in the GNSS
+ *                                      module.
  * @param pseudorangeRmsErrorIndexLimit the maximum pseudorange RMS error index that
  *                                      must be met to return the RRLP information;
  *                                      specify -1 for "don't care".  The recommended
  *                                      value for the Cloud Locate service is 3.
+ *                                      Ignored if the RRLP mode is not
+ *                                      #U_GNSS_RRLP_MODE_MEASX, since in those cases
+ *                                      the thresholding is performed in the GNSS module.
  * @param[in] pKeepGoingCallback        a callback function that governs the wait. This
  *                                      This function is called while waiting for RRLP
  *                                      data that meets the criteria; the API will

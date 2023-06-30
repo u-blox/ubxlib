@@ -172,7 +172,8 @@ const uGnssPrivateModule_t gUGnssPrivateModuleList[] = {
     },
     {
         U_GNSS_MODULE_TYPE_M10,
-        ((1UL << (int32_t) U_GNSS_PRIVATE_FEATURE_CFGVALXXX) /* features */
+        ((1UL << (int32_t) U_GNSS_PRIVATE_FEATURE_CFGVALXXX) |
+         (1UL << (int32_t) U_GNSS_PRIVATE_FEATURE_RXM_MEAS_50_20_C12_D12)  /* features */
         )
     }
 };
@@ -1879,10 +1880,6 @@ bool uGnssPrivateMessageIdIsWanted(uGnssPrivateMessageId_t *pMessageId,
     if ((pMessageIdWanted->type == U_GNSS_PROTOCOL_ANY) ||
         (pMessageIdWanted->type == U_GNSS_PROTOCOL_ALL)) {
         isWanted = true;
-    } else if (((pMessageIdWanted->type == U_GNSS_PROTOCOL_ANY) ||
-                (pMessageIdWanted->type == U_GNSS_PROTOCOL_ALL)) &&
-               (pMessageId->type != U_GNSS_PROTOCOL_UNKNOWN)) {
-        isWanted = true;
     } else if ((pMessageIdWanted->type == U_GNSS_PROTOCOL_UNKNOWN) &&
                (pMessageId->type == U_GNSS_PROTOCOL_UNKNOWN)) {
         isWanted = true;
@@ -2215,7 +2212,29 @@ int32_t uGnssPrivateStreamPeekRingBuffer(uGnssPrivateInstance_t *pInstance,
                                    offset, maxTimeMs, false);
 }
 
-// Send a UBX format message over UART or I2C or virtual serial.
+// Send raw bytes over UART or I2C or SPI or virtual serial.
+int32_t uGnssPrivateSendOnlyStreamRaw(uGnssPrivateInstance_t *pInstance,
+                                      const char *pBuffer, size_t size)
+{
+    int32_t errorCodeOrSentLength = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+
+    if (pInstance != NULL) {
+        if ((uGnssPrivateGetStreamType(pInstance->transportType) >= 0) &&
+            (pBuffer != NULL) && (size > 0)) {
+
+            U_PORT_MUTEX_LOCK(pInstance->transportMutex);
+
+            errorCodeOrSentLength = sendMessageStream(pInstance, pBuffer, size,
+                                                      pInstance->printUbxMessages);
+
+            U_PORT_MUTEX_UNLOCK(pInstance->transportMutex);
+        }
+    }
+
+    return errorCodeOrSentLength;
+}
+
+// Send a UBX format message over UART or I2C or SPI or virtual serial.
 int32_t uGnssPrivateSendOnlyStreamUbxMessage(uGnssPrivateInstance_t *pInstance,
                                              int32_t messageClass,
                                              int32_t messageId,
@@ -2317,7 +2336,7 @@ int32_t uGnssPrivateSendOnlyCheckStreamUbxMessage(uGnssPrivateInstance_t *pInsta
     return errorCodeOrLength;
 }
 
-// Receive an arbitrary message over UART or I2C.
+// Receive an arbitrary message over UART or I2C or SPI or Virtual Serial.
 int32_t uGnssPrivateReceiveStreamMessage(uGnssPrivateInstance_t *pInstance,
                                          uGnssPrivateMessageId_t *pPrivateMessageId,
                                          int32_t readHandle,
@@ -2425,7 +2444,9 @@ int32_t uGnssPrivateSpiAddReceivedData(uGnssPrivateInstance_t *pInstance,
         (pBuffer != NULL) && (size > 0)) {
         if ((pInstance->spiFillThreshold > 0) && (size >= (size_t) pInstance->spiFillThreshold)) {
             // Check if all we have is fill and chuck stuff away if so
-            for (size_t x = 0; (x < size) && (*pTmp == U_GNSS_PRIVATE_SPI_FILL); x++) {
+            // Note: do the comparison as a uint8_t pointer to avoid
+            // issues with char being signed
+            for (size_t x = 0; (x < size) && ((*(const uint8_t *) pTmp) == U_GNSS_PRIVATE_SPI_FILL); x++) {
                 pTmp++;
             }
             y = pTmp - pBuffer;

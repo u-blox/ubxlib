@@ -24,11 +24,14 @@
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
+#include "time.h"
 
 #include "u_cfg_sw.h"
 #include "u_compiler.h" // For U_INLINE
 #include "u_cfg_hw_platform_specific.h"
 #include "u_error_common.h"
+
+#include "u_port_clib_platform_specific.h" // mktime() in some cases
 
 #include "u_port_debug.h"
 #include "u_port.h"
@@ -148,6 +151,31 @@ U_INLINE int32_t uPortEnterCritical()
 U_INLINE void uPortExitCritical()
 {
     irq_unlock(gIrqLockKey);
+}
+
+// Get the timezone offset.
+int32_t uPortGetTimezoneOffsetSeconds()
+{
+    int32_t offset = 0;
+
+#ifndef CONFIG_MINIMAL_LIBC
+    struct tm utcTm;
+    time_t utc;
+    time_t mktimeSays;
+
+    utc = time(NULL);
+    gmtime_r(&utc, &utcTm);
+    // Setting daylight saving flag to -1 causes mktime()
+    // to decide whether DST is in effect or not
+    utcTm.tm_isdst = -1;
+    mktimeSays = mktime(&utcTm);
+    // mktime will have subtracted the timezone from what it was
+    // given in order to return local time, hence the timezone
+    // offset is the difference
+    offset = (int32_t) (utc - mktimeSays);
+#endif
+
+    return offset;
 }
 
 static int ubxlib_preinit(const struct device *arg)

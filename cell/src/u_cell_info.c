@@ -1061,6 +1061,7 @@ int64_t uCellInfoGetTimeUtc(uDeviceHandle_t cellHandle)
     uCellPrivateInstance_t *pInstance;
     uAtClientHandle_t atHandle;
     int64_t timeUtc;
+    char timezoneSign = 0;
     char buffer[32];
     struct tm timeInfo;
     int32_t bytesRead;
@@ -1087,7 +1088,6 @@ int64_t uCellInfoGetTimeUtc(uDeviceHandle_t cellHandle)
                 uPortLog("U_CELL_INFO: time is %s.\n", buffer);
                 // The format of the returned string is
                 // "yy/MM/dd,hh:mm:ss+TZ" but the +TZ may be omitted
-
                 // Two-digit year converted to years since 1900
                 offset = 0;
                 buffer[offset + 2] = 0;
@@ -1109,17 +1109,25 @@ int64_t uCellInfoGetTimeUtc(uDeviceHandle_t cellHandle)
                 buffer[offset + 2] = 0;
                 timeInfo.tm_min = atoi(&(buffer[offset]));
                 // Seconds after the hour
+                // ...but, if there is timezone information,
+                // save it before we obliterate the sign
+                if (bytesRead >= 20) {
+                    timezoneSign = buffer[17];
+                }
                 offset = 15;
                 buffer[offset + 2] = 0;
                 timeInfo.tm_sec = atoi(&(buffer[offset]));
                 // Get the time in seconds from this
                 timeUtc = mktime64(&timeInfo);
-                if ((timeUtc >= 0) && (bytesRead >= 20)) {
+                offset = 17;
+                if ((timeUtc >= 0) && (bytesRead >= 20) &&
+                    ((timezoneSign == '+') || (timezoneSign == '-'))) {
                     // There's a timezone, expressed in 15 minute intervals,
                     // subtract it to get UTC
-                    offset = 17;
+                    // Put the timezone sign back so that atoi() can handle it
+                    buffer[offset] = timezoneSign;
                     buffer[offset + 3] = 0;
-                    timeUtc -= ((int64_t) atoi(&(buffer[offset]))) * 15 * 60;
+                    timeUtc -= atoi(&(buffer[offset])) * 15 * 60;
                 }
 
                 if (timeUtc >= 0) {

@@ -23,6 +23,10 @@
 
 #include "u_debug_utils_internal.h"
 
+#if ESP_IDF_VERSION_MAJOR >= 5
+# include "esp_cpu_utils.h"
+#endif
+
 #include "esp_debug_helpers.h"
 
 /* ----------------------------------------------------------------

@@ -14,17 +14,16 @@
  * limitations under the License.
  */
 
-#ifndef _U_PORT_CLIB_PLATFORM_SPECIFIC_H_
-#define _U_PORT_CLIB_PLATFORM_SPECIFIC_H_
-
 /** @file
- * @brief Implementations of C library functions not available on this
- * platform.
+ * @brief Default implementation of uPortGetTimezoneOffsetSeconds().
  */
 
-#ifdef __cplusplus
-extern "C" {
+#ifdef U_CFG_OVERRIDE
+# include "u_cfg_override.h" // For a customer's configuration override
 #endif
+
+#include "stdint.h"     // int32_t etc.
+#include "u_compiler.h" // WEAK
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -35,21 +34,21 @@ extern "C" {
  * -------------------------------------------------------------- */
 
 /* ----------------------------------------------------------------
- * FUNCTIONS
+ * VARIABLES
  * -------------------------------------------------------------- */
 
-/** strtok_r().
- */
-char *strtok_r(char *pStr, const char *pDelimiters, char **ppSave);
+/* ----------------------------------------------------------------
+ * STATIC FUNCTIONS
+ * -------------------------------------------------------------- */
 
-/** gmtime_r().
- */
-struct tm *gmtime_r(const time_t *pTime, struct tm *pBuf);
+/* ----------------------------------------------------------------
+ * PUBLIC FUNCTIONS
+ * -------------------------------------------------------------- */
 
-#ifdef __cplusplus
+// Default implementation of get timezone offset.
+U_WEAK int32_t uPortGetTimezoneOffsetSeconds()
+{
+    return 0;
 }
-#endif
-
-#endif // _U_PORT_CLIB_PLATFORM_SPECIFIC_H_
 
 // End of file

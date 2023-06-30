@@ -44,7 +44,7 @@
 #include "u_cfg_app_platform_specific.h"
 #include "u_cfg_test_platform_specific.h"
 
-#include "u_port_clib_platform_specific.h" /* strtok_r() and mktime() and
+#include "u_port_clib_platform_specific.h" /* strtok_r(), mktime(), gmtime_r() and
                                               integer stdio, must be included
                                               before the other port files if
                                               any print or scan function
@@ -158,6 +158,25 @@
  * default I2C address of a u-blox GNSS device.
  */
 #  define U_PORT_TEST_I2C_ADDRESS 0x42
+# endif
+
+/** The size of the fixed part of a UBX-MON_VER message.
+ */
+# define U_PORT_TEST_I2C_UBX_MON_VER_FIXED_LENGTH 40
+
+# ifndef U_PORT_TEST_I2C_UBX_MON_VER_MAX_SEGMENTS
+/** The maximum number of optional segments we can
+ * receive in a UBX-MON_VER message.
+ */
+#  define U_PORT_TEST_I2C_UBX_MON_VER_MAX_SEGMENTS 10
+# endif
+
+# ifndef U_PORT_TEST_I2C_BUFFER_LENGTH_BYTES
+/** Buffer length for an I2C message, which is enough for
+ * the fixed part of a UBX-MON-VER message plus
+ * U_PORT_TEST_I2C_UBX_MON_VER_MAX_SEGMENTS segments
+ */
+#  define U_PORT_TEST_I2C_BUFFER_LENGTH_BYTES (U_PORT_TEST_I2C_UBX_MON_VER_FIXED_LENGTH + (30 * U_PORT_TEST_I2C_UBX_MON_VER_MAX_SEGMENTS) + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES)
 # endif
 
 # ifndef U_PORT_TEST_I2C_RETRIES
@@ -282,12 +301,12 @@ typedef enum {
 
 #endif
 
-/** Struct for mktime64() testing.
+/** Struct for mktime64() and gmtime_r() testing.
  */
 typedef struct {
     struct tm timeStruct;
     int64_t time;
-} mktime64TestData_t;
+} uPortTestTimeData_t;
 
 /* ----------------------------------------------------------------
  * VARIABLES
@@ -379,6 +398,10 @@ static char gUartBuffer[(U_CFG_TEST_UART_BUFFER_LENGTH_BYTES / 2) +
  * I2C buses can easily get stuck, it would seem.
  */
 static int32_t gI2cHandle = -1;
+
+/** Buffer for a message read over I2C.
+ */
+static char *gpI2cBuffer = NULL;
 #endif
 
 #if (U_CFG_APP_GNSS_SPI >= 0)
@@ -387,25 +410,28 @@ static int32_t gI2cHandle = -1;
 static int32_t gSpiHandle = -1;
 #endif
 
-/** Data for mktime64() testing.
+/** Data for mktime64() and gmtime_r() testing.
  */
-static mktime64TestData_t gMktime64TestData[] = {
-    {{0,  0, 0,  1, 0,  70,  0, 0, 0}, 0},
-    {{1,  0, 0,  1, 0,  70,  0, 0, 0}, 1},
-    {{1,  1, 0,  1, 0,  70,  0, 0, 0}, 61},
-    {{1,  1, 1,  1, 0,  70,  0, 0, 0}, 3661},
-    {{1,  1, 1,  1, 1,  70,  0, 0, 0}, 2682061},
-    {{1,  1, 1,  1, 1,  70,  0, 0, 0}, 2682061},
-    {{1,  1, 1,  1, 1,  70,  1, 0, 0}, 2682061},
-    {{1,  1, 1,  1, 1,  70,  1, 1, 0}, 2682061},
-    {{1,  1, 1,  1, 1,  70,  1, 1, 1}, 2682061},
-    {{61, 0, 0,  1, 0,  70,  0, 0, 0}, 61},
-    {{0, 59, 0,  1, 0,  70,  0, 0, 0}, 3540},
-    {{0,  0, 23, 1, 0,  70,  0, 0, 0}, 82800},
-    {{0,  0, 0, 31, 0,  70,  0, 0, 0}, 2592000},
-    {{0,  0, 0,  1, 12, 70,  0, 0, 0}, 31536000},
-    {{0,  0, 0,  1, 0, 137,  0, 0, 0}, 2114380800LL},
-    {{0,  0, 0,  1, 0, 150,  0, 0, 0}, 2524608000LL}
+static uPortTestTimeData_t timeTestData[] = {
+    {{0,  0, 0,  1, 0,  70,  4,   0, 0}, 0},
+    {{1,  0, 0,  1, 0,  70,  4,   0, 0}, 1},
+    {{1,  1, 0,  1, 0,  70,  4,   0, 0}, 61},
+    {{1,  1, 1,  1, 0,  70,  4,   0, 0}, 3661},
+    {{1,  1, 1,  1, 1,  70,  0,  31, 0}, 2682061},
+    {{1,  1, 1,  1, 1,  70,  0,  31, 0}, 2682061},
+    {{1,  1, 1,  1, 1,  70,  0,  31, 0}, 2682061},
+    {{1,  1, 1,  1, 1,  70,  0,  31, 0}, 2682061},
+    {{1,  1, 1,  1, 1,  70,  0,  31, 1}, 2682061},
+    {{61, 0, 0,  1, 0,  72,  6,   0, 0}, 63072061},  // Leap year
+    {{61, 0, 0,  1, 0,  70,  4,   0, 0}, 61},
+    {{61, 0, 0,  1, 0,  70,  4,   0, 0}, 61},
+    {{0, 59, 0,  1, 0,  70,  4,   0, 0}, 3540},
+    {{0,  0, 23, 1, 0,  70,  4,   0, 0}, 82800},
+    {{0,  0, 0, 31, 0,  70,  6,  30, 0}, 2592000},
+    {{0,  0, 0,  1, 11, 70,  2, 334, 0}, 28857600},
+    {{0,  0, 0, 13, 0,  70,  2,  12, 0}, 1036800},
+    {{0,  0, 0,  1, 0, 137,  4,   0, 0}, 2114380800LL},
+    {{0,  0, 0,  1, 0, 150,  4,   0, 0}, 2524608000LL}
 };
 
 /** SHA256 test vector, input, RC4.55 from:
@@ -2250,11 +2276,110 @@ U_PORT_TEST_FUNCTION("[port]", "portMktime64")
 
     U_TEST_PRINT_LINE("testing mktime64()...");
 
-    for (size_t x = 0; x < sizeof(gMktime64TestData) /
-         sizeof(gMktime64TestData[0]); x++) {
-        U_PORT_TEST_ASSERT(mktime64(&gMktime64TestData[x].timeStruct) ==
-                           gMktime64TestData[x].time);
+    for (size_t x = 0; x < sizeof(timeTestData) /
+         sizeof(timeTestData[0]); x++) {
+        U_PORT_TEST_ASSERT(mktime64(&timeTestData[x].timeStruct) ==
+                           timeTestData[x].time);
     }
+
+    uPortDeinit();
+
+    // Check for memory leaks
+    heapUsed -= uPortGetHeapFree();
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
+    // heapUsed < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT(heapUsed <= 0);
+}
+
+/** Test: gmtime_r().
+ */
+U_PORT_TEST_FUNCTION("[port]", "portGmtime_r")
+{
+    int32_t heapUsed;
+    struct tm timeStruct;
+
+    // Whatever called us likely initialised the
+    // port so deinitialise it here to obtain the
+    // correct initial heap size
+    uPortDeinit();
+    heapUsed = uPortGetHeapFree();
+    U_PORT_TEST_ASSERT(uPortInit() == 0);
+
+    U_TEST_PRINT_LINE("testing gmtime_r()...");
+
+    for (size_t x = 0; x < sizeof(timeTestData) / sizeof(timeTestData[0]); x++) {
+        if (timeTestData[x].time <= INT_MAX) {
+            memset(&timeStruct, 0xFF, sizeof(timeStruct));
+            U_PORT_TEST_ASSERT(gmtime_r((time_t *) & (timeTestData[x].time), &timeStruct) == &timeStruct);
+            U_PORT_TEST_ASSERT(timeStruct.tm_sec == timeTestData[x].timeStruct.tm_sec % 60);
+            U_PORT_TEST_ASSERT(timeStruct.tm_min == timeTestData[x].timeStruct.tm_min +
+                               (timeTestData[x].timeStruct.tm_sec / 60));
+            U_PORT_TEST_ASSERT(timeStruct.tm_hour == timeTestData[x].timeStruct.tm_hour);
+            U_PORT_TEST_ASSERT(timeStruct.tm_mday == timeTestData[x].timeStruct.tm_mday);
+            U_PORT_TEST_ASSERT(timeStruct.tm_mon == timeTestData[x].timeStruct.tm_mon);
+            U_PORT_TEST_ASSERT(timeStruct.tm_year == timeTestData[x].timeStruct.tm_year);
+            U_PORT_TEST_ASSERT(timeStruct.tm_wday == timeTestData[x].timeStruct.tm_wday);
+            U_PORT_TEST_ASSERT(timeStruct.tm_yday == timeTestData[x].timeStruct.tm_yday);
+            U_PORT_TEST_ASSERT(timeStruct.tm_isdst == 0);
+        }
+    }
+
+    uPortDeinit();
+
+    // Check for memory leaks
+    heapUsed -= uPortGetHeapFree();
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
+    // heapUsed < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT(heapUsed <= 0);
+}
+
+/** Test: uPortGetTimezoneOffsetSeconds().
+ */
+U_PORT_TEST_FUNCTION("[port]", "portGetTimezoneOffsetSeconds")
+{
+    int32_t heapUsed;
+    struct tm utcTm;
+    time_t utc = 0;
+    time_t wrong;
+
+    // Whatever called us likely initialised the
+    // port so deinitialise it here to obtain the
+    // correct initial heap size
+    uPortDeinit();
+    heapUsed = uPortGetHeapFree();
+    U_PORT_TEST_ASSERT(uPortInit() == 0);
+
+    U_TEST_PRINT_LINE("testing uPortGetTimezoneOffsetSeconds()...");
+
+#if defined(WIN32) || defined (__linux__)
+    // On systems that have proper time we must use proper time
+    // as otherwise Daylight Saving Time can't be taken into account
+    utc = time(NULL);
+#endif
+
+    // gmtime() gets us the UTC time in a struct tm *** STILL AS UTC ***
+#ifdef WIN32
+    // Windows doesn't have gmtime_r()
+    struct tm *pUtcTm = gmtime(&utc);
+    U_PORT_TEST_ASSERT(pUtcTm != NULL);
+    utcTm = *pUtcTm;
+#else
+    U_PORT_TEST_ASSERT(gmtime_r(&utc, &utcTm) == &utcTm);
+#endif
+    // Setting daylight saving flag to -1 should cause mktime()
+    // to decide whether DST is in effect by itself
+    utcTm.tm_isdst = -1;
+    // mktime assumes it is being given a *** LOCAL *** time and,
+    // to return UTC, subtracts the timezone offset
+    wrong = mktime(&utcTm);
+    U_TEST_PRINT_LINE("UTC time %d and, given that, mktime() returns %d,"
+                      " therefore timezone offset %d second(s),"
+                      " uPortGetTimezoneOffsetSeconds() %d second(s).",
+                      (int32_t) utc, (int32_t) wrong, (int32_t) (utc - wrong),
+                      uPortGetTimezoneOffsetSeconds());
+    U_PORT_TEST_ASSERT(uPortGetTimezoneOffsetSeconds() == utc - wrong);
 
     uPortDeinit();
 
@@ -2468,12 +2593,12 @@ U_PORT_TEST_FUNCTION("[port]", "portUartRequiresSpecificWiring")
 U_PORT_TEST_FUNCTION("[port]", "portI2cRequiresSpecificWiring")
 {
     int32_t y;
+    int32_t z;
     int32_t messageClass = -1;
     int32_t messageId = -1;
     int32_t heapUsed;
     int32_t heapClibLossOffset = (int32_t) gSystemHeapLost;
-    // Enough room for the UBX-MON-BATCH message
-    char buffer[12 + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES];
+    char *gpI2cBuffer;
     bool success = false;
 
     // Whatever called us likely initialised the
@@ -2483,6 +2608,10 @@ U_PORT_TEST_FUNCTION("[port]", "portI2cRequiresSpecificWiring")
     heapUsed = uPortGetHeapFree();
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
+    // Enough room for the fixed part of a UBX-MON-VER message
+    // plus 10 segments
+    gpI2cBuffer = pUPortMalloc(U_PORT_TEST_I2C_BUFFER_LENGTH_BYTES);
+    U_PORT_TEST_ASSERT(gpI2cBuffer != NULL);
     // I2C can suffer issues due to pull-ups, speed, the responsiveness
     // of the device at the far end, etc., hence we allow retries of
     // this test if we do not read back the expected number of waiting
@@ -2548,14 +2677,38 @@ U_PORT_TEST_FUNCTION("[port]", "portI2cRequiresSpecificWiring")
             // Test getting and setting the timeout
             y = uPortI2cGetTimeout(gI2cHandle);
             if (y > 0) {
+                U_TEST_PRINT_LINE("I2C timeout is %d ms.", y);
+#if defined(__XTENSA__) && !defined(CONFIG_IDF_TARGET_ESP32)
+                // Need to use >= as the underlying timeout is the nearest power of 2
+                U_PORT_TEST_ASSERT(y >= U_PORT_I2C_TIMEOUT_MILLISECONDS);
+                // Need to multiply-up for a valid test since, for the ESP32x3 cases,
+                // the timeout can only be a power of two of the underlying clock
+                U_TEST_PRINT_LINE("setting I2C timeout to at least %d ms.", U_PORT_I2C_TIMEOUT_MILLISECONDS * 2);
+                U_PORT_TEST_ASSERT(uPortI2cSetTimeout(gI2cHandle, U_PORT_I2C_TIMEOUT_MILLISECONDS * 2) == 0);
+                y = uPortI2cGetTimeout(gI2cHandle);
+                U_TEST_PRINT_LINE("I2C timeout is now %d ms.", y);
+                U_PORT_TEST_ASSERT(y >= U_PORT_I2C_TIMEOUT_MILLISECONDS * 2);
+#else
+                // In all other cases, should be able to get an exact match
+                // and just add one to see a difference
                 U_PORT_TEST_ASSERT(y == U_PORT_I2C_TIMEOUT_MILLISECONDS);
+                U_TEST_PRINT_LINE("setting I2C timeout to %d ms.", U_PORT_I2C_TIMEOUT_MILLISECONDS + 1);
                 U_PORT_TEST_ASSERT(uPortI2cSetTimeout(gI2cHandle, U_PORT_I2C_TIMEOUT_MILLISECONDS + 1) == 0);
-                U_PORT_TEST_ASSERT(uPortI2cGetTimeout(gI2cHandle) == U_PORT_I2C_TIMEOUT_MILLISECONDS + 1);
+                y = uPortI2cGetTimeout(gI2cHandle);
+                U_TEST_PRINT_LINE("I2C timeout is now %d ms.", y);
+                U_PORT_TEST_ASSERT(y == U_PORT_I2C_TIMEOUT_MILLISECONDS + 1);
+#endif
                 // Close, re-open and check that we're back at the default timeout
                 uPortI2cClose(gI2cHandle);
                 gI2cHandle = uPortI2cOpen(U_CFG_APP_GNSS_I2C, U_CFG_APP_PIN_GNSS_SDA, U_CFG_APP_PIN_GNSS_SCL, true);
                 U_PORT_TEST_ASSERT(gI2cHandle >= 0);
-                U_PORT_TEST_ASSERT(uPortI2cGetTimeout(gI2cHandle) == U_PORT_I2C_TIMEOUT_MILLISECONDS);
+                y = uPortI2cGetTimeout(gI2cHandle);
+                U_TEST_PRINT_LINE("I2C timeout is now back to %d ms.", y);
+#if defined (__XTENSA__) && !defined(CONFIG_IDF_TARGET_ESP32)
+                U_PORT_TEST_ASSERT(y < U_PORT_I2C_TIMEOUT_MILLISECONDS * 2);
+#else
+                U_PORT_TEST_ASSERT(y == U_PORT_I2C_TIMEOUT_MILLISECONDS);
+#endif
             } else {
                 U_PORT_TEST_ASSERT((y == U_ERROR_COMMON_NOT_SUPPORTED) || (y == U_ERROR_COMMON_NOT_IMPLEMENTED));
                 U_TEST_PRINT_LINE("get of I2C timeout not supported/implemented, not testing I2C timeout.");
@@ -2573,15 +2726,15 @@ U_PORT_TEST_FUNCTION("[port]", "portI2cRequiresSpecificWiring")
 # endif
 
             U_TEST_PRINT_LINE("talking to GNSS chip over I2C...");
-            // Set buffer up to contain the REGSTREAM address, which is valid for all u-blox GNSS devices
+            // Set gpI2cBuffer up to contain the REGSTREAM address, which is valid for all u-blox GNSS devices
             // and means that any I2C read from the GNSS chip will get the next byte it wants to stream at us
-            buffer[0] = 0xFF;
+            *gpI2cBuffer = 0xFF;
             // First talk to an I2C address that is not present
             U_TEST_PRINT_LINE("deliberately using an invalid address (0x%02x).", U_PORT_TEST_I2C_ADDRESS - 1);
             U_PORT_TEST_ASSERT(uPortI2cControllerSend(gI2cHandle, U_PORT_TEST_I2C_ADDRESS - 1, NULL, 0,
                                                       false) < 0);
             U_PORT_TEST_ASSERT(uPortI2cControllerSendReceive(gI2cHandle, U_PORT_TEST_I2C_ADDRESS - 1,
-                                                             buffer, 1, NULL, 0) < 0);
+                                                             gpI2cBuffer, 1, NULL, 0) < 0);
 
             // The following should do nothing and return success
             U_PORT_TEST_ASSERT(uPortI2cControllerSendReceive(gI2cHandle, U_PORT_TEST_I2C_ADDRESS - 1,
@@ -2596,39 +2749,51 @@ U_PORT_TEST_FUNCTION("[port]", "portI2cRequiresSpecificWiring")
 # endif
 
             // Write to the REGSTREAM address on the GNSS device
-            U_PORT_TEST_ASSERT(uPortI2cControllerSend(gI2cHandle, U_PORT_TEST_I2C_ADDRESS, buffer, 1,
+            U_PORT_TEST_ASSERT(uPortI2cControllerSend(gI2cHandle, U_PORT_TEST_I2C_ADDRESS, gpI2cBuffer, 1,
                                                       false) == 0);
-            // Write a longer thing; UBX-MON-BATCH polls the GNSS device for a
-            // 20 byte UBX-MON-BATCH response containing a 12 byte body (see section 32.16
-            // of the u-blox M8 receiver manual); message class 0x0a, message ID 0x32.
-            memset(buffer, 0xFF, sizeof(buffer));
-            y = uUbxProtocolEncode(0x0a, 0x32, NULL, 0, buffer);
+            // Write a longer thing; UBX-MON-VER polls the GNSS device for a
+            // 40 + n·* 30 byte UBX-MON-VER response containing a 40 byte fixed part, which
+            // is all we captue here; message class 0x0a, message ID 0x04.
+            memset(gpI2cBuffer, 0xFF, U_PORT_TEST_I2C_BUFFER_LENGTH_BYTES);
+            y = uUbxProtocolEncode(0x0a, 0x04, NULL, 0, gpI2cBuffer);
             // Send
-            U_PORT_TEST_ASSERT(uPortI2cControllerSend(gI2cHandle, U_PORT_TEST_I2C_ADDRESS, buffer, y,
+            U_PORT_TEST_ASSERT(uPortI2cControllerSend(gI2cHandle, U_PORT_TEST_I2C_ADDRESS, gpI2cBuffer, y,
                                                       false) == 0);
-            // There should now be a 20 byte UBX-MON-BATCH message waiting for us.  The number of
+            // Wait for the GNSS chip to sort itself out
+            uPortTaskBlock(100);
+            // There should now be a 40 + n * 30 byte UBX-MON-VER message waiting for us.  The number of
             // bytes waiting for us is available by a read of register addresses 0xFD and 0xFE in
             // the GNSS chip.  The register address in the GNSS chip auto-increments, so sending
             // 0xFD, with no stop bit, and then a read request for two bytes should get us the
             // [big-endian] length
-            buffer[0] = 0xFD;
-            U_PORT_TEST_ASSERT(uPortI2cControllerSend(gI2cHandle, U_PORT_TEST_I2C_ADDRESS, buffer, 1,
+            *gpI2cBuffer = 0xFD;
+            U_PORT_TEST_ASSERT(uPortI2cControllerSend(gI2cHandle, U_PORT_TEST_I2C_ADDRESS, gpI2cBuffer, 1,
                                                       true) == 0);
             U_PORT_TEST_ASSERT(uPortI2cControllerSendReceive(gI2cHandle, U_PORT_TEST_I2C_ADDRESS, NULL, 0,
-                                                             buffer, 2) == 2);
-            y = (int32_t) ((((uint32_t) buffer[0]) << 8) + (uint32_t) buffer[1]);
-            U_TEST_PRINT_LINE("read of number of bytes waiting returned 0x%02x%02x (%d).", buffer[0],
-                              buffer[1], y);
-            if (y == sizeof(buffer)) {
+                                                             gpI2cBuffer, 2) == 2);
+            y = (int32_t) ((((uint32_t) * gpI2cBuffer) << 8) + (uint32_t) * (gpI2cBuffer + 1));
+            U_TEST_PRINT_LINE("read of number of bytes waiting returned 0x%02x%02x (%d).", *gpI2cBuffer,
+                              *(gpI2cBuffer + 1), y);
+            if (y >= U_PORT_TEST_I2C_UBX_MON_VER_FIXED_LENGTH + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES) {
                 // With the register address auto-incremented to 0xFF we can now just read out the
-                // UBX-MON-BATCH response
-                memset(buffer, 0xFF, sizeof(buffer));
-                U_PORT_TEST_ASSERT(uPortI2cControllerSendReceive(gI2cHandle, U_PORT_TEST_I2C_ADDRESS, NULL, 0,
-                                                                 buffer, y) == y);
-                y = uUbxProtocolDecode(buffer, y, &messageClass, &messageId, buffer, sizeof(buffer), NULL);
+                // UBX-MON-VER response
+                if (y > U_PORT_TEST_I2C_BUFFER_LENGTH_BYTES) {
+                    y = U_PORT_TEST_I2C_BUFFER_LENGTH_BYTES;
+                }
+                memset(gpI2cBuffer, 0xFF, U_PORT_TEST_I2C_BUFFER_LENGTH_BYTES);
+                z = uPortI2cControllerSendReceive(gI2cHandle, U_PORT_TEST_I2C_ADDRESS, NULL, 0,
+                                                  gpI2cBuffer, y);
+                U_TEST_PRINT_LINE("%d byte(s) retrieved.", z);
+                U_PORT_TEST_ASSERT(z >= y);
+                y = uUbxProtocolDecode(gpI2cBuffer, z, &messageClass, &messageId,
+                                       gpI2cBuffer, U_PORT_TEST_I2C_BUFFER_LENGTH_BYTES, NULL);
+                U_TEST_PRINT_LINE("%d byte(s) of message decoded (class 0x%02x, ID 0x%02x).", y, messageClass,
+                                  messageId);
+                // Can't be sure that the decoded length is the whole thing since other
+                // message _could_ have landed after it
+                U_PORT_TEST_ASSERT(y >= U_PORT_TEST_I2C_UBX_MON_VER_FIXED_LENGTH);
                 U_PORT_TEST_ASSERT(messageClass == 0x0a);
-                U_PORT_TEST_ASSERT(messageId == 0x32);
-                U_PORT_TEST_ASSERT(y == 12);
+                U_PORT_TEST_ASSERT(messageId == 0x04);
 
                 // Deinit I2C without closing the open instance; should tidy itself up
                 uPortI2cDeinit();
@@ -2652,6 +2817,9 @@ U_PORT_TEST_FUNCTION("[port]", "portI2cRequiresSpecificWiring")
             success = true;
         }
     }
+
+    uPortFree(gpI2cBuffer);
+    gpI2cBuffer = NULL;
 
     U_PORT_TEST_ASSERT(success);
 
@@ -2677,9 +2845,12 @@ U_PORT_TEST_FUNCTION("[port]", "portI2cRequiresSpecificWiring")
  */
 U_PORT_TEST_FUNCTION("[port]", "portSpiRequiresSpecificWiring")
 {
-
     // *INDENT-OFF* (otherwise AStyle makes a mess of this)
+#ifdef U_CFG_TEST_GNSS_SPI_SELECT_INDEX
+    uCommonSpiControllerDevice_t device = U_COMMON_SPI_CONTROLLER_DEVICE_INDEX_DEFAULTS(U_CFG_TEST_GNSS_SPI_SELECT_INDEX);
+#else
     uCommonSpiControllerDevice_t device = U_COMMON_SPI_CONTROLLER_DEVICE_DEFAULTS(U_CFG_APP_PIN_GNSS_SPI_SELECT);
+#endif
     // *INDENT-ON*
     uCommonSpiControllerDevice_t tmp = {0};
     int32_t y = 0;
@@ -2742,13 +2913,14 @@ U_PORT_TEST_FUNCTION("[port]", "portSpiRequiresSpecificWiring")
 
     // Configure SPI for the M8/M9/M10 GNSS chip we will test against
     // Settings should all be left at defaults apart from chip select pin
-    U_TEST_PRINT_LINE("chip select is on pin %d (0x%02x).", device.pinSelect, device.pinSelect);
+    U_TEST_PRINT_LINE("chip select index is %d.", device.indexSelect);
+    U_TEST_PRINT_LINE("chip select pin is %d (0x%02x).", device.pinSelect, device.pinSelect);
     U_PORT_TEST_ASSERT(uPortSpiControllerSetDevice(gSpiHandle, &device) == 0);
     // Get the settings back and check that they are all as expected; the
     // defaults are chosen to match the settings of platforms that do not
     // support one or more parameters
     U_PORT_TEST_ASSERT(uPortSpiControllerGetDevice(gSpiHandle, &tmp) == 0);
-    U_PORT_TEST_ASSERT(tmp.pinSelect == device.pinSelect);
+    U_PORT_TEST_ASSERT(tmp.pinSelect == U_CFG_APP_PIN_GNSS_SPI_SELECT);
     U_PORT_TEST_ASSERT(tmp.frequencyHertz <= device.frequencyHertz);
     U_PORT_TEST_ASSERT(tmp.mode == device.mode);
     U_PORT_TEST_ASSERT(tmp.wordSizeBytes == device.wordSizeBytes);
@@ -3207,6 +3379,7 @@ U_PORT_TEST_FUNCTION("[port]", "portCleanUp")
         uPortI2cCloseRecoverBus(gI2cHandle);
     }
     uPortI2cDeinit();
+    uPortFree(gpI2cBuffer);
 #endif
 
 #if (U_CFG_APP_GNSS_SPI >= 0)

@@ -15,9 +15,11 @@ project(ubxlib)
 set(ZEPHYR_PORT_BASE ..)
 
 # lib-common
-target_include_directories(app PRIVATE ${UBXLIB_BASE}/common/lib_common/test)
-include(./lib_common_test.cmake)
-target_sources(app PRIVATE ${UBXLIB_BASE}/common/lib_common/test/u_lib_common_test.c)
+# This is no longer used, hence no longer tested, though the code
+# remains should it need to be revived in the future
+#target_include_directories(app PRIVATE ${UBXLIB_BASE}/common/lib_common/test)
+#include(./lib_common_test.cmake)
+#target_sources(app PRIVATE ${UBXLIB_BASE}/common/lib_common/test/u_lib_common_test.c)
 
 # test runner application
 target_sources(app PRIVATE

@@ -62,7 +62,7 @@ If the WAN-side of the router inside the `ubxlib` test system is behind a firewa
 
 - Log-in to the place that provides the DNS record for `ubxlib-test-system.redirectme.net` and be ready to add a new TXT record.
 
-- Obtain a private key fpr `ubxlib-test-system.redirectme.net` and get that signed by a CA (Let's Encrypt) by running Certbot in a Docker container as follows:
+- Obtain a private key for `ubxlib-test-system.redirectme.net` and get that signed by a CA (Let's Encrypt) by running Certbot in a Docker container as follows:
 
 ```
 sudo docker run -it --rm --name certbot -v /etc/letsencrypt:/etc/letsencrypt -v /var/lib/letsencrypt:/var/lib/letsencrypt certbot/certbot certonly --manual --debug-challenges --preferred-challenges dns -d ubxlib-test-system.redirectme.net

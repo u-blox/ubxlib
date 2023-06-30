@@ -82,6 +82,15 @@ extern "C" {
 # define U_LOCATION_CLOUD_LOCATE_PSEUDORANGE_RMS_ERROR_INDEX_LIMIT 3
 #endif
 
+#ifndef U_LOCATION_CLOUD_LOCATE_RRLP_DATA_LENGTH_BYTES
+/** The Cloud Locate service is driven from RRLP data emitted
+ * by a GNSS module, which can be of different lengths; default
+ * is unlimited (INT_MAX), since only that mode is supported by
+ * all GNSS modules.
+ */
+# define U_LOCATION_CLOUD_LOCATE_RRLP_DATA_LENGTH_BYTES 0x7FFFFFFF
+#endif
+
 #ifndef U_LOCATION_ASSIST_DEFAULTS
 /** Default values for #uLocationAssist_t.
  */
@@ -90,7 +99,8 @@ extern "C" {
                                      U_LOCATION_CLOUD_LOCATE_C_NO_THRESHOLD,                    \
                                      U_LOCATION_CLOUD_LOCATE_MULTIPATH_INDEX_LIMIT,             \
                                      U_LOCATION_CLOUD_LOCATE_PSEUDORANGE_RMS_ERROR_INDEX_LIMIT, \
-                                     NULL, NULL}
+                                     NULL, NULL,                                                \
+                                     U_LOCATION_CLOUD_LOCATE_RRLP_DATA_LENGTH_BYTES}
 #endif
 
 /* ----------------------------------------------------------------
@@ -152,7 +162,10 @@ typedef struct {
     int32_t svsThreshold; /**< the number of space vehicles (AKA satellites)
                                that must be visible, only currently used by
                                #U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE; use -1
-                               for "don't care".  The recommended value is 5. */
+                               for "don't care".  The recommended value is 5.
+                               Ignored if rrlpDataLengthBytes is not INT_MAX,
+                               since in those cases the thresholding is
+                               performed in the GNSS module. */
     int32_t cNoThreshold; /**< the minimum carrier to noise for a given
                                satellite, only currently used by
                                #U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE, range
@@ -160,21 +173,31 @@ typedef struct {
                                ideal value to use is 35 but that requires
                                clear sky and a good antenna, hence the
                                recommended value is 30; lower threshold
-                               values may work, just less reliably. */
+                               values may work, just less reliably.  Ignored
+                               if rrlpDataLengthBytes is not INT_MAX, since in
+                               those cases the thresholding is performed in
+                               the GNSS module. */
     int32_t multipathIndexLimit; /**< the maximum multipath index that
                                       must be met for a given satellite,
                                       only currently used by
                                       #U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE,
                                       1 = low, 2 = medium, 3 = high; specify
                                       -1 for "don't care".  The recommended
-                                      value is 1. */
+                                      value is 1.  Ignored if rrlpDataLengthBytes
+                                      is not INT_MAX, since in those cases
+                                      the thresholding is performed in
+                                      the GNSS module. */
     int32_t pseudorangeRmsErrorIndexLimit; /**< the maximum pseudorange RMS
                                                 error index that must be met
                                                 for a given satellite, only
                                                 currently used by
                                                 #U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE;
                                                 specify -1 for "don't care".
-                                                The recommended value is 3. */
+                                                The recommended value is 3.
+                                                Ignored if rrlpDataLengthBytes
+                                                is not INT_MAX, since in those
+                                                cases the thresholding is
+                                                performed in the GNSS module.  */
     const char *pClientIdStr; /**< the Client ID of your device, obtained from your
                                    Thingstream portal, ONLY required if you are
                                    using the Cloud Locate service and want to
@@ -190,6 +213,12 @@ typedef struct {
                                    with the u-blox Cloud Locate service; the
                                    MQTT client MUST have been logged-in to the
                                    Cloud Locate service BEFORE calling this API. */
+    int32_t rrlpDataLengthBytes; /**< the number of bytes of RRLP data to ask for, only
+                                      currently used by Cloud Locate.  Use INT_MAX for
+                                      unlimited (in which case the MEASX mode will be
+                                      used), 50 for MEAS50 and 20 for MEAS20.  Only
+                                      GNSS modules M10 or higher support the
+                                      MEAS50/MEAS20 modes. */
 } uLocationAssist_t;
 
 /** Definition of a location.

@@ -146,8 +146,7 @@ int32_t uNetworkInterfaceUp(uDeviceHandle_t devHandle,
     // Basically any file that might end up containing only functions
     // that also have WEAK linked counterparts will be lost, so we need
     // to add a dummy function in those files and call it from somewhere
-    // that will always be present in the build, which for cellular we
-    // choose to be here
+    // that will always be present in the build, which we choose to be here
     uNetworkPrivateBleLink();
     uNetworkPrivateCellLink();
     uNetworkPrivateGnssLink();

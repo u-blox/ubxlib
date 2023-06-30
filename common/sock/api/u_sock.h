@@ -383,6 +383,9 @@ int32_t uSockCreate(uDeviceHandle_t devHandle, uSockType_t type,
 
 /** Make an outgoing connection on the given socket.
  *
+ * IMPORTANT: where the underlying transport is cellular this function
+ * may not return for up to #U_CELL_SOCK_DNS_LOOKUP_TIME_SECONDS.
+ *
  * @param descriptor     the descriptor of the socket.
  * @param pRemoteAddress the address of the remote host to connect
  *                       to.
@@ -744,6 +747,9 @@ int32_t uSockGetTotalBytesSent(uSockDescriptor_t descriptor);
 
 /** Get the address of the remote host connected to a given socket.
  *
+ * IMPORTANT: where the underlying transport is cellular this function
+ * may not return for up to #U_CELL_SOCK_DNS_LOOKUP_TIME_SECONDS.
+ *
  * @param descriptor     the descriptor of the socket.
  * @param pRemoteAddress a pointer to a place to put the address
  *                       of the remote end of the socket.
@@ -753,6 +759,7 @@ int32_t uSockGetRemoteAddress(uSockDescriptor_t descriptor,
                               uSockAddress_t *pRemoteAddress);
 
 /** Get the local address of the given socket.
+ *
  * IMPORTANT: the port number will be zero unless this is a TCP
  * server, i.e. it will be zero for any client connection.
  *
@@ -852,6 +859,7 @@ int32_t uSockDomainGetPort(char *pDomainString);
 /** Turn a domain name string into just the name part,
  * by removing the port off the end if it is present.
  * This is done by modifying pDomainString in place.
+ *
  * IMPORTANT: if the string that is passed in is an
  * IPV6 address with a port number then it will be of
  * the form "[0:1:2:3:4:a:b:c]:x".  In order to return

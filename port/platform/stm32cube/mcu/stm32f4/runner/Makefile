@@ -2,6 +2,8 @@ TARGET = runner.elf
 
 OUTPUT_DIRECTORY ?= output
 
+CMSIS_DEVICE_HEADER ?= stm32f437xx.h
+
 ifeq ($(OS),Windows_NT)
 # Force Windows as otherise, if sh.exe is in the path, make
 # will use it and mess up on slashes/brackets in file paths 
@@ -53,8 +55,9 @@ ifndef UNITY_PATH
 $(error $(USAGE_MESSAGE))
 endif
 
-$(info STM32CUBE_FW_PATH: $(STM32CUBE_FW_PATH))
-$(info UNITY_PATH:        $(UNITY_PATH))
+$(info STM32CUBE_FW_PATH:   $(STM32CUBE_FW_PATH))
+$(info UNITY_PATH:          $(UNITY_PATH))
+$(info CMSIS_DEVICE_HEADER: $(CMSIS_DEVICE_HEADER))
 
 OBJ_DIR = $(OUTPUT_DIRECTORY)/obj
 PLATFORM_PATH = $(realpath ../../..)
@@ -68,7 +71,8 @@ DEFINES += \
 	-DUSE_FULL_LL_DRIVER \
 	-DSTM32F437xx \
 	-DDEBUG \
-	-DMBEDTLS_USER_CONFIG_FILE=\"user_mbedtls_config.h\"
+	-DMBEDTLS_USER_CONFIG_FILE=\"user_mbedtls_config.h\" \
+	-DCMSIS_device_header=\"${CMSIS_DEVICE_HEADER}\"
 
 override CFLAGS += \
 	$(DEFINES) -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -std=gnu11 -g3 -O0 -Wall \
@@ -117,13 +121,24 @@ STM32CUBE_FW_SRC += \
 	$(FREERTOS_PATH)/Source/queue.c \
 	$(FREERTOS_PATH)/Source/tasks.c \
 	$(FREERTOS_PATH)/Source/timers.c \
-	$(FREERTOS_PATH)/Source/CMSIS_RTOS/cmsis_os.c \
 	$(FREERTOS_PATH)/Source/portable/GCC/ARM_CM4F/port.c
 
 STM32CUBE_FW_INC += \
 	$(FREERTOS_PATH)/Source/include \
-	$(FREERTOS_PATH)/Source/portable/GCC/ARM_CM4F \
+	$(FREERTOS_PATH)/Source/portable/GCC/ARM_CM4F
+
+ifneq ($(filter -DCMSIS_V2,$(CFLAGS)),)
+$(info Using CMSIS V2)
+STM32CUBE_FW_SRC += \
+	$(FREERTOS_PATH)/Source/CMSIS_RTOS_V2/cmsis_os2.c
+STM32CUBE_FW_INC += \
+	$(FREERTOS_PATH)/Source/CMSIS_RTOS_V2
+else
+STM32CUBE_FW_SRC += \
+	$(FREERTOS_PATH)/Source/CMSIS_RTOS/cmsis_os.c
+STM32CUBE_FW_INC += \
 	$(FREERTOS_PATH)/Source/CMSIS_RTOS
+endif
 
 # mbedTLS
 STM32CUBE_FW_SRC += \

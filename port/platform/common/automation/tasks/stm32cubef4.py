@@ -87,9 +87,13 @@ def build(ctx, makefile_dir=DEFAULT_MAKEFILE_DIR, output_name=DEFAULT_OUTPUT_NAM
         # OUTPUT_DIRECTORY is very picky in Windows.
         # Seems it must be a relative path and `\` directory separators must NOT be used.
         build_dir = os.path.relpath(ctx.build_dir, makefile_dir).replace("\\", "/")
-        build_cmd = f'make -j{jobs} UBXLIB_PATH={ctx.config.root_dir} OUTPUT_DIRECTORY={build_dir} '\
-                    f'CFLAGS=\'{cflags}\' {" ".join(ctx.stm32cubef4_env)}'
         if is_static_analyze:
+            # We do build_cmd differently for static analysis (single quotes
+            # around the cflags rather than double); the double quotes are
+            # the only ones that work with make on Windows, the single ones
+            # are the only ones that work with the static analyzer on Linux.
+            build_cmd = f'make -j{jobs} UBXLIB_PATH={ctx.config.root_dir} OUTPUT_DIRECTORY={build_dir} '\
+                        f'CFLAGS=\'{cflags}\' {" ".join(ctx.stm32cubef4_env)}'
             ctx.analyze_dir = f"{ctx.build_dir}/analyze"
             check_proc = ctx.run(f'CodeChecker check -b "{build_cmd}" -o {ctx.analyze_dir} ' \
                                  f'--config {u_utils.CODECHECKER_CFG_FILE} -i {u_utils.CODECHECKER_IGNORE_FILE}', warn=True)
@@ -98,6 +102,8 @@ def build(ctx, makefile_dir=DEFAULT_MAKEFILE_DIR, output_name=DEFAULT_OUTPUT_NAM
             elif check_proc.exited >= 128:
                 raise Exit("CodeChecker fatal error")
         else:
+            build_cmd = f'make -j{jobs} UBXLIB_PATH={ctx.config.root_dir} OUTPUT_DIRECTORY={build_dir} '\
+                        f'CFLAGS=\"{cflags}\" {" ".join(ctx.stm32cubef4_env)}'
             ctx.run(build_cmd)
 
 @task(
@@ -128,7 +134,7 @@ def flash(ctx, file=DEFAULT_FLASH_FILE, debugger_serial="",
     build_dir = Path(build_dir, output_name).absolute().as_posix()
     cmds = OPENOCD_DISABLE_PORTS_CMDS
     if debugger_serial != "":
-        cmds.append(f'hla_serial {debugger_serial}')
+        cmds.append(f'adapter serial {debugger_serial}')
     cmds += [
         f'program {build_dir}/{file} reset',
         'exit'
@@ -157,17 +163,33 @@ def log(ctx, debugger_serial="", port=40404,
 
     cmds = OPENOCD_DISABLE_PORTS_CMDS
     if debugger_serial != "":
-        cmds.append(f'hla_serial {debugger_serial}')
+        cmds.append(f'adapter serial {debugger_serial}')
     cmds += [
         'init',
-        f'tpiu config internal :{port} uart off \$_TARGET_SYSTEM_FREQUENCY \$_TARGET_SWO_FREQUENCY',
+        f'stm32f4x.tpiu configure -output :{port}',
+        'stm32f4x.tpiu configure -protocol uart',
+        'stm32f4x.tpiu configure -formatter 0'
+    ]
+    # On Linux, the dollar that indicates to OpenOCD
+    # "get this from the .cfg file" must be escaped,
+    # while on Windows it must not
+    if u_utils.is_linux():
+        cmds += ['stm32f4x.tpiu configure -traceclk \$_TARGET_SYSTEM_FREQUENCY']
+    else:
+        cmds += ['stm32f4x.tpiu configure -traceclk $_TARGET_SYSTEM_FREQUENCY']
+    if u_utils.is_linux():
+        cmds += ['stm32f4x.tpiu configure -pin-freq \$_TARGET_SWO_FREQUENCY']
+    else:
+        cmds += ['stm32f4x.tpiu configure -pin-freq $_TARGET_SWO_FREQUENCY']
+    cmds += [
+        'stm32f4x.tpiu enable',
         'itm port 0 on',
         'reset init',
         'resume'
     ]
     args = _to_openocd_args(cmds)
     promise = ctx.run(f'openocd -f {u_utils.OPENOCD_CFG_DIR}/stm32f4.cfg {args}', asynchronous=True)
-    # Let OpenOCD startup first
+    # Let OpenOCD start up first
     time.sleep(5)
     try:
         line = ""
@@ -191,7 +213,7 @@ def log(ctx, debugger_serial="", port=40404,
                     line = lines[-1]
 
     finally:
-        if u_utils.is_linux:
+        if u_utils.is_linux():
             promise.runner.kill()
         else:
             promise.runner.send_interrupt(KeyboardInterrupt())

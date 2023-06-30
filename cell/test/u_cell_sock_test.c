@@ -83,6 +83,15 @@
  */
 #define U_TEST_PRINT_LINE(format, ...) uPortLog(U_TEST_PREFIX format "\n", ##__VA_ARGS__)
 
+#ifndef U_CELL_TEST_SOCK_CLOSE_YIELD_MS
+/** How long to leave before checking that a socket closed callback
+ * has been called: if _another_ URC happens to land at the same
+ * time this can be longer than U_CFG_OS_YIELD_MS, need to leave it
+ * a bit longer to be sure.
+ */
+# define U_CELL_TEST_SOCK_CLOSE_YIELD_MS (U_CFG_OS_YIELD_MS * 4)
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -845,8 +854,10 @@ U_PORT_TEST_FUNCTION("[cellSock]", "cellSockBasic")
     // Close the UDP socket
     U_PORT_TEST_ASSERT(uCellSockClose(cellHandle, gSockHandleUdp,
                                       NULL) == 0);
-    // Allow a task switch to let the close callback be called
-    uPortTaskBlock(U_CFG_OS_YIELD_MS);
+    // Leave it a while before checking: if a URC happens
+    // to land here and needs to be processed it can take
+    // a while for the closed callback to be called
+    uPortTaskBlock(U_CELL_TEST_SOCK_CLOSE_YIELD_MS);
     U_PORT_TEST_ASSERT(gClosedCallbackCalledUdp);
     U_TEST_PRINT_LINE("waiting up to %d second(s) for TCP socket to close...",
                       U_SOCK_TEST_TCP_CLOSE_SECONDS);
@@ -1041,7 +1052,10 @@ U_PORT_TEST_FUNCTION("[cellSock]", "cellSockOptionSetGet")
     U_PORT_TEST_ASSERT(uCellSockClose(cellHandle,
                                       gSockHandleTcp,
                                       NULL) == 0);
-    uPortTaskBlock(U_CFG_OS_YIELD_MS);
+    // Leave it a while before checking: if a URC happens
+    // to land here and needs to be processed it can take
+    // a while for the closed callback to be called
+    uPortTaskBlock(U_CELL_TEST_SOCK_CLOSE_YIELD_MS);
     U_PORT_TEST_ASSERT(gClosedCallbackCalledTcp);
     U_PORT_TEST_ASSERT(gCallbackErrorNum == 0);
 

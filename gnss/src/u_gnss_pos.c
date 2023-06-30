@@ -116,6 +116,17 @@ typedef struct {
  * STATIC VARIABLES
  * -------------------------------------------------------------- */
 
+/** Table to convert U_GNSS_RRLP_MODE_MEASxxx into a message class
+ * of UBX-RXM-MEASxxx.
+ */
+int32_t gRrlpModeToUbxRxmMessageClass[] = {
+    0x14, // UBX-RXM-MEASX
+    0x86, // UBX_RXM_MEAS50
+    0x84, // UBX_RXM_MEAS20
+    0x82, // UBX_RXM_MEASC12
+    0x80  // UBX_RXM_MEASD12
+};
+
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -730,6 +741,57 @@ void uGnssPosGetStreamedStop(uDeviceHandle_t gnssHandle)
     }
 }
 
+// Set the mode for uGnssPosGetRrlp().
+int32_t uGnssPosSetRrlpMode(uDeviceHandle_t gnssHandle, uGnssRrlpMode_t mode)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uGnssPrivateInstance_t *pInstance;
+
+    if (gUGnssPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
+
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        pInstance = pUGnssPrivateGetInstance(gnssHandle);
+        if ((pInstance != NULL) &&
+            (mode < sizeof(gRrlpModeToUbxRxmMessageClass) / sizeof(gRrlpModeToUbxRxmMessageClass[0]))) {
+            errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+            if ((mode == U_GNSS_RRLP_MODE_MEASX) ||
+                U_GNSS_PRIVATE_HAS(pInstance->pModule,
+                                   U_GNSS_PRIVATE_FEATURE_RXM_MEAS_50_20_C12_D12)) {
+                pInstance->rrlpMode = mode;
+                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
+    }
+
+    return errorCode;
+}
+
+// Get the mode for uGnssPosGetRrlp().
+int32_t uGnssPosGetRrlpMode(uDeviceHandle_t gnssHandle)
+{
+    int32_t errorCodeOrRrlpMode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uGnssPrivateInstance_t *pInstance;
+
+    if (gUGnssPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
+
+        errorCodeOrRrlpMode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        pInstance = pUGnssPrivateGetInstance(gnssHandle);
+        if (pInstance != NULL) {
+            errorCodeOrRrlpMode = (int32_t) pInstance->rrlpMode;
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
+    }
+
+    return errorCodeOrRrlpMode;
+}
+
 // Get RRLP information from the GNSS chip.
 int32_t uGnssPosGetRrlp(uDeviceHandle_t gnssHandle, char *pBuffer,
                         size_t sizeBytes, int32_t svsThreshold,
@@ -740,6 +802,7 @@ int32_t uGnssPosGetRrlp(uDeviceHandle_t gnssHandle, char *pBuffer,
 {
     int32_t errorCodeOrLength = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uGnssPrivateInstance_t *pInstance;
+    int32_t messageClass;
     int64_t startTime;
     int32_t svs;
     int32_t numBytes;
@@ -782,7 +845,7 @@ int32_t uGnssPosGetRrlp(uDeviceHandle_t gnssHandle, char *pBuffer,
                                            (const char *) message, 4);
             }
 #endif
-
+            messageClass = gRrlpModeToUbxRxmMessageClass[pInstance->rrlpMode];
             startTime = uPortGetTickTimeMs();
             errorCodeOrLength = (int32_t) U_ERROR_COMMON_TIMEOUT;
             while ((errorCodeOrLength == (int32_t) U_ERROR_COMMON_TIMEOUT) &&
@@ -791,11 +854,11 @@ int32_t uGnssPosGetRrlp(uDeviceHandle_t gnssHandle, char *pBuffer,
                     ((pKeepGoingCallback != NULL) && pKeepGoingCallback(gnssHandle)))) {
 
                 numBytes = uGnssPrivateSendReceiveUbxMessage(pInstance,
-                                                             0x02, 0x14, NULL, 0,
+                                                             0x02, messageClass, NULL, 0,
                                                              pBuffer + U_GNSS_POS_RRLP_HEADER_SIZE_BYTES,
                                                              sizeBytes - U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES);
-                if (numBytes > 0) {
-                    // Got something, is it good enough?
+                if ((numBytes > 0) && (pInstance->rrlpMode == U_GNSS_RRLP_MODE_MEASX)) {
+                    // Got something; when using MEASX we need to check if it is good enough.
                     // 34 since that's the furthest we need to read to check on the number of satellites
                     if ((((svsThreshold >= 0) || (cNoThreshold >= 0) ||
                           (multipathIndexLimit >= 0) || (pseudorangeRmsErrorIndexLimit >= 0)) && (numBytes >= 34))) {
@@ -859,7 +922,7 @@ int32_t uGnssPosGetRrlp(uDeviceHandle_t gnssHandle, char *pBuffer,
                     *pBufferUint8 = 0xb5;
                     *(pBufferUint8 + 1) = 0x62;
                     *(pBufferUint8 + 2) = 0x02;
-                    *(pBufferUint8 + 3) = 0x14;
+                    *(pBufferUint8 + 3) = messageClass;
                     // Little-endian length of the body
                     *(pBufferUint8 + 4) = (uint8_t) numBytes;
                     *(pBufferUint8 + 5) = (uint8_t) ((uint32_t) numBytes >> 8);

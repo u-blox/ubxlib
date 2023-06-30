@@ -47,9 +47,11 @@ extern "C" {
 
 #ifndef U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS
 /** The maximum amount of time to wait for a response from the
- * MQTT broker in seconds.
+ * MQTT broker in seconds; note that, despite the name, this only
+ * applies for a cellular connection; the timeout for Wifi is fixed
+ * at 5 seconds.
  */
-# define U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS 30
+# define U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS 120
 #endif
 
 /** The defaults for an MQTT connection, see #uMqttClientConnection_t.
@@ -89,7 +91,11 @@ typedef struct {
                                             the IP address of the broker
                                             and hence you should ensure
                                             that the module is
-                                            connected beforehand. */
+                                            connected beforehand. Note:
+                                            this should be just the domain
+                                            name, e.g. myserver.com or
+                                            myserver.com:1883, no prefix
+                                            (i.e. NOT mqtt://myserver.com). */
     const char *pUserNameStr;          /**< the null-terminated user name
                                             required by the MQTT broker;
                                             ignored for MQTT-SN. */

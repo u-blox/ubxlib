@@ -173,101 +173,106 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSecC2c")
     x = uDeviceOpen(&gDeviceCfg, &devHandle);
     uPortLog("Opened device with return code %d.\n", x);
 
-    // Remember: at this point the module must NEVER have
-    // been able to contact the u-blox security servers,
-    // must never have been connected to cellular, hence
-    // no "uNetworkInterfaceUp()" here.
+    if (x == 0) {
+        // Remember: at this point the module must NEVER have
+        // been able to contact the u-blox security servers,
+        // must never have been connected to cellular, hence
+        // no "uNetworkInterfaceUp()" here.
 
-    if (uSecurityIsSupported(devHandle)) {
+        if (uSecurityIsSupported(devHandle)) {
 
-        // This simply a mechanism to ensure
-        // that the module has had time to
-        // wake-up the u-blox security features
-        // completely, since there's no point in
-        // wasting time checking for device status
-        uSecurityGetRootOfTrustUid(devHandle, rotUid);
+            // This simply a mechanism to ensure
+            // that the module has had time to
+            // wake-up the u-blox security features
+            // completely, since there's no point in
+            // wasting time checking for device status
+            uSecurityGetRootOfTrustUid(devHandle, rotUid);
 
-        // Your MCU or factory test system would have
-        // generated the 16-byte U_CFG_TEST_SECURITY_C2C_TE_SECRET
-        uPortLog("Performing C2c pairing...\n");
-        if (uSecurityC2cPair(devHandle,
-                             U_PORT_STRINGIFY_QUOTED(U_CFG_TEST_SECURITY_C2C_TE_SECRET),
-                             key, hmac) == 0) {
-            uPortLog("Pairing completed, the values:");
-            uPortLog("\nC2C TE secret: ");
-            printHex(U_PORT_STRINGIFY_QUOTED(U_CFG_TEST_SECURITY_C2C_TE_SECRET),
-                     sizeof(U_PORT_STRINGIFY_QUOTED(U_CFG_TEST_SECURITY_C2C_TE_SECRET)) - 1);
-            uPortLog("\nC2C key:       ");
-            printHex(key, sizeof(key));
-            uPortLog("\nC2C HMAC:      ");
-            printHex(hmac, sizeof(hmac));
-            uPortLog("\n...should be stored securely by your MCU"
-                     " as they are required to switch on C2C"
-                     " protection when you need it.\n");
-            uPortLog("Note: HMAC will be zero for v1 C2C but"
-                     " must still be provided to uSecurityC2cOpen().\n");
-
-            // The pairing process above is now NEVER EVER
-            // run again: C2C sessions are simply opened
-            // and closed using the stored keys.
-
-            uPortLog("A C2C session is not yet open, the following"
-                     " AT transaction will be in plain text.\n");
-            x = uSecurityGetSerialNumber(devHandle, serialNumber1);
-            uPortLog("Module returned serial number %.*s.\n",
-                     x, serialNumber1);
-
-            uPortLog("Opening a secure session using the stored"
-                     " keys...\n");
-            if (uSecurityC2cOpen(devHandle,
+            // Your MCU or factory test system would have
+            // generated the 16-byte U_CFG_TEST_SECURITY_C2C_TE_SECRET
+            uPortLog("Performing C2c pairing...\n");
+            if (uSecurityC2cPair(devHandle,
                                  U_PORT_STRINGIFY_QUOTED(U_CFG_TEST_SECURITY_C2C_TE_SECRET),
                                  key, hmac) == 0) {
-                uPortLog("With a C2C session open AT comms are"
-                         " now scrambled; please connect a logic"
-                         " probe to the serial lines between"
-                         " the MCU and the module to see the"
-                         " effect.\n");
-                y = uSecurityGetSerialNumber(devHandle, serialNumber2);
+                uPortLog("Pairing completed, the values:");
+                uPortLog("\nC2C TE secret: ");
+                printHex(U_PORT_STRINGIFY_QUOTED(U_CFG_TEST_SECURITY_C2C_TE_SECRET),
+                         sizeof(U_PORT_STRINGIFY_QUOTED(U_CFG_TEST_SECURITY_C2C_TE_SECRET)) - 1);
+                uPortLog("\nC2C key:       ");
+                printHex(key, sizeof(key));
+                uPortLog("\nC2C HMAC:      ");
+                printHex(hmac, sizeof(hmac));
+                uPortLog("\n...should be stored securely by your MCU"
+                         " as they are required to switch on C2C"
+                         " protection when you need it.\n");
+                uPortLog("Note: HMAC will be zero for v1 C2C but"
+                         " must still be provided to uSecurityC2cOpen().\n");
+
+                // The pairing process above is now NEVER EVER
+                // run again: C2C sessions are simply opened
+                // and closed using the stored keys.
+
+                uPortLog("A C2C session is not yet open, the following"
+                         " AT transaction will be in plain text.\n");
+                x = uSecurityGetSerialNumber(devHandle, serialNumber1);
                 uPortLog("Module returned serial number %.*s.\n",
-                         y, serialNumber2);
-                same = memcmp(serialNumber1, serialNumber2, x) == 0;
-                if (!same) {
-                    uPortLog("There's a problem- those should have"
-                             " been the same!\n");
-                }
+                         x, serialNumber1);
 
-                // Perform any other operations you wish with
-                // C2C enabled.
-
-                uPortLog("Closing the C2C session...\n");
-                if (uSecurityC2cClose(devHandle) == 0) {
-                    uPortLog("With the C2C session closed AT"
-                             " communications are in plain text"
-                             " once more.\n");
+                uPortLog("Opening a secure session using the stored"
+                         " keys...\n");
+                if (uSecurityC2cOpen(devHandle,
+                                     U_PORT_STRINGIFY_QUOTED(U_CFG_TEST_SECURITY_C2C_TE_SECRET),
+                                     key, hmac) == 0) {
+                    uPortLog("With a C2C session open AT comms are"
+                             " now scrambled; please connect a logic"
+                             " probe to the serial lines between"
+                             " the MCU and the module to see the"
+                             " effect.\n");
                     y = uSecurityGetSerialNumber(devHandle, serialNumber2);
                     uPortLog("Module returned serial number %.*s.\n",
                              y, serialNumber2);
+                    same = memcmp(serialNumber1, serialNumber2, x) == 0;
+                    if (!same) {
+                        uPortLog("There's a problem- those should have"
+                                 " been the same!\n");
+                    }
+
+                    // Perform any other operations you wish with
+                    // C2C enabled.
+
+                    uPortLog("Closing the C2C session...\n");
+                    if (uSecurityC2cClose(devHandle) == 0) {
+                        uPortLog("With the C2C session closed AT"
+                                 " communications are in plain text"
+                                 " once more.\n");
+                        y = uSecurityGetSerialNumber(devHandle, serialNumber2);
+                        uPortLog("Module returned serial number %.*s.\n",
+                                 y, serialNumber2);
+                    } else {
+                        uPortLog("Unable to close the C2C security session!\n");
+                    }
                 } else {
-                    uPortLog("Unable to close the C2C security session!\n");
+                    uPortLog("Unable to open a C2C security session!\n");
                 }
             } else {
-                uPortLog("Unable to open a C2C security session!\n");
+                uPortLog("Unable to perform C2C pairing!\n");
             }
         } else {
-            uPortLog("Unable to perform C2C pairing!\n");
+            uPortLog("This device does not support u-blox security.\n");
         }
+
+        // For u-blox internal testing only
+        EXAMPLE_FINAL_STATE((same) || !uSecurityIsSupported(devHandle));
+
+        // Close the device
+        // Note: we don't power the device down here in order
+        // to speed up testing; you may prefer to power it off
+        // by setting the second parameter to true.
+        uDeviceClose(devHandle, false);
+
     } else {
-        uPortLog("This device does not support u-blox security.\n");
+        uPortLog("Unable to bring up the device!\n");
     }
-
-    // For u-blox internal testing only
-    EXAMPLE_FINAL_STATE((same) || !uSecurityIsSupported(devHandle));
-
-    // Close the device
-    // Note: we don't power the device down here in order
-    // to speed up testing; you may prefer to power it off
-    // by setting the second parameter to true.
-    uDeviceClose(devHandle, false);
 
     // Tidy up
     uDeviceDeinit();

@@ -397,6 +397,7 @@ U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoTime")
 
     // Disconnect
     U_PORT_TEST_ASSERT(uCellNetDisconnect(cellHandle, NULL) == 0);
+    uPortTaskBlock(1000);
 
     // Do the standard postamble, leaving the module on for the next
     // test to speed things up

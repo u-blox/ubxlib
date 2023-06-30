@@ -102,8 +102,17 @@
 # define U_COMMON_SPI_FILL_WORD 0xFFFFFFFF
 #endif
 
+/** The maximum value of indexSelect in the
+ * #uCommonSpiControllerDevice_t structure.
+ */
+#define U_COMMON_SPI_CONTROLLER_MAX_SELECT_INDEX 2
+
 /** The default configuration for an SPI device as seen by
- * a controller.
+ * a controller, see also
+ * #U_COMMON_SPI_CONTROLLER_DEVICE_INDEX_DEFAULTS for systems
+ * where pinSelect is replaced by an index (for example you
+ * may wish to use that form on Zephyr, though this form
+ * will also work).
  */
 #define U_COMMON_SPI_CONTROLLER_DEVICE_DEFAULTS(pinSelect) {pinSelect,                                \
                                                             U_COMMON_SPI_CLOCK_FREQUENCY_HERTZ,       \
@@ -113,7 +122,27 @@
                                                             U_COMMON_SPI_START_OFFSET_NANOSECONDS,    \
                                                             U_COMMON_SPI_STOP_OFFSET_NANOSECONDS,     \
                                                             U_COMMON_SPI_SAMPLE_DELAY_NANOSECONDS,    \
-                                                            U_COMMON_SPI_FILL_WORD}
+                                                            U_COMMON_SPI_FILL_WORD,                   \
+                                                            -1}
+
+/** The default configuration for an SPI device as seen by
+ * a controller.  Use this instead of
+ * #U_COMMON_SPI_CONTROLLER_DEVICE_DEFAULTS if you want to
+ * use indexSelect as an index into a device/platform specific
+ * structure which defines an array of chip select pins, rather
+ * than specifying the select pin directly; for example, this
+ * may be used with Zephyr.
+ */
+#define U_COMMON_SPI_CONTROLLER_DEVICE_INDEX_DEFAULTS(indexSelect) {-1,                                       \
+                                                                    U_COMMON_SPI_CLOCK_FREQUENCY_HERTZ,       \
+                                                                    U_COMMON_SPI_MODE,                        \
+                                                                    U_COMMON_SPI_WORD_SIZE_BYTES,             \
+                                                                    U_COMMON_SPI_LSB_FIRST,                   \
+                                                                    U_COMMON_SPI_START_OFFSET_NANOSECONDS,    \
+                                                                    U_COMMON_SPI_STOP_OFFSET_NANOSECONDS,     \
+                                                                    U_COMMON_SPI_SAMPLE_DELAY_NANOSECONDS,    \
+                                                                    U_COMMON_SPI_FILL_WORD,                   \
+                                                                    indexSelect}
 
 /* ----------------------------------------------------------------
  * TYPES
@@ -142,7 +171,8 @@ typedef enum {
  * no offsets/delays and 0xFF fill.
  *
  * Note: if this is ever updated don't forget to update
- * #U_COMMON_SPI_CONTROLLER_DEVICE_DEFAULTS to match.
+ * #U_COMMON_SPI_CONTROLLER_DEVICE_DEFAULTS and
+ * #U_COMMON_SPI_CONTROLLER_DEVICE_INDEX_DEFAULTS to match.
  */
 typedef struct {
     int32_t pinSelect;              /**< the pin that should be toggled to select
@@ -150,20 +180,19 @@ typedef struct {
                                          unless #U_COMMON_SPI_PIN_SELECT_INVERTED is
                                          ORed with this value, in which case the
                                          pin is assumed to be active high.
-                                         Use -1 if there is no select pin.  On
-                                         platforms where pin choices are made at
-                                         compile time (e.g. Zephyr) you may still
-                                         provide a GPIO pin number here, rather than
-                                         in the compile-time configuration of the
-                                         platform, and it will be operated as a GPIO;
-                                         you may also set it in the platform's
-                                         compile-time settings, assuming there's a
-                                         way to do that, and then pass -1 in here,
-                                         just don't do both. Note also that
-                                         platforms may restrict the choice of select
-                                         pin, depending on the SPI HW block in use
-                                         (for instance STM32F4 does, see the data sheet
-                                         for your STM32F4 device for more details). */
+                                         Use -1 here and in indexSelect if there is
+                                         no select pin.  On platforms where pin choices
+                                         are made at compile time (e.g. Zephyr) you may
+                                         prefer to set this to -1 and instead use
+                                         indexSelect to choose which of the chip select
+                                         pins predefined for the SPI controller is to be
+                                         used but you _can_ just set the pin here, whether
+                                         or not it is listed as a chip select pin for
+                                         you SPI controller. Note that platforms may
+                                         restrict the choice of select pin, depending
+                                         on the SPI HW block in use (for instance STM32F4
+                                         does, see the data sheet for your STM32F4
+                                         device for more details). */
     int32_t frequencyHertz;         /**< the clock frequency in Hertz.  Note that the
                                          frequency you end up with is the nearest the
                                          MCU can achieve, bearing in mind multiples of
@@ -204,6 +233,22 @@ typedef struct {
                                          will be used), use uPortSpiControllerGetDevice()
                                          with the SPI transport handle to determine what
                                          setting has taken effect. */
+    int32_t indexSelect;            /**< the index of the chip select pin from the set
+                                         of chip select pins defined for the SPI
+                                         controller to use for this device.  Only takes
+                                         effect if pinSelect is -1.  Use this on platforms
+                                         where the chip select pins are predefined at
+                                         compile time for the SPI controller (e.g.
+                                         Zephyr) and you wish to chose which entry from
+                                         the array is used with this device (e.g. 0 for
+                                         the first, maybe only, entry).  Use -1 here
+                                         (and in pinSelect) to not use a select pin.
+                                         Indexes up to
+                                         #U_COMMON_SPI_CONTROLLER_MAX_SELECT_INDEX are
+                                         supported.  Note that, where this structure is
+                                         returned by a "getter", indexSelect may not
+                                         be populated, pinSelect may be populated
+                                         instead. */
 } uCommonSpiControllerDevice_t;
 
 /** @}*/

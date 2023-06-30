@@ -1,5 +1,5 @@
 #`ubxlib_builder` Docker Container
-The `ubxlib_builder` container is used by all the Linux machines used in the test automation for `ubxlib`. The image is based on Ubuntu 20.04 and contains all the dependencies that are required for `ubxlib` automation except the things that are handled by [u_packages](../../u_packages.yml).
+The `ubxlib_builder` container is used by all the Linux machines in the test automation for `ubxlib`.  The image is based on Ubuntu 20.04 and contains all the dependencies for `ubxlib` automation that require installation; it is not possible for Jenkins to enter an administrative password on an agent (that's just a limitation of the way non-interactive SSH terminals work), hence `sudo`ing is not possible.  The larger things (e.g. SDKs), which would also be used on an individual's development machine and do NOT require installation (in the `sudo` sense), are handled by [u_packages](../../u_packages.yml), placed on the machine that is hosting the Docker container, and are then shared with the Docker container.
 
 
 # Building `ubxlib_builder` Locally

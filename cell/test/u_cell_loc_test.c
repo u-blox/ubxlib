@@ -123,7 +123,7 @@
  */
 static uCellTestPrivate_t gHandles = U_CELL_TEST_PRIVATE_DEFAULTS;
 
-#ifdef U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN
+#if defined(U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN) && defined(U_CFG_TEST_CELL_LOCATE)
 
 /** Used for keepGoingCallback() timeout.
  */
@@ -165,13 +165,13 @@ static int32_t gSvs = INT_MIN;
  */
 static int64_t gTimeUtc = LONG_MIN;
 
-#endif //U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN
+#endif //U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN && U_CFG_TEST_CELL_LOCATE
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-#ifdef U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN
+#if defined(U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN) && defined(U_CFG_TEST_CELL_LOCATE)
 // Callback function for the cellular connection process
 static bool keepGoingCallback(uDeviceHandle_t param)
 {
@@ -239,7 +239,7 @@ static char latLongToBits(int32_t thingX1e7,
     return prefix;
 }
 
-#endif //U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN
+#endif //U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN && U_CFG_TEST_CELL_LOCATE
 
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
@@ -326,7 +326,7 @@ U_PORT_TEST_FUNCTION("[cellLoc]", "cellLocCfg")
     U_PORT_TEST_ASSERT(uCellLocIsGnssPresent(cellHandle));
 #endif
 
-#ifdef U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN
+#if defined(U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN) && defined(U_CFG_TEST_CELL_LOCATE)
     y = uCellLocSetServer(cellHandle,
                           U_PORT_STRINGIFY_QUOTED(U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN),
 # ifdef U_CFG_APP_CELL_LOC_PRIMARY_SERVER
@@ -358,7 +358,7 @@ U_PORT_TEST_FUNCTION("[cellLoc]", "cellLocCfg")
  */
 U_PORT_TEST_FUNCTION("[cellLoc]", "cellLocLoc")
 {
-#ifdef U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN
+#if defined(U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN) && defined(U_CFG_TEST_CELL_LOCATE)
     uDeviceHandle_t cellHandle;
     int32_t heapUsed;
     int64_t startTime;

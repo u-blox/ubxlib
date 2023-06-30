@@ -248,85 +248,90 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSockets")
     returnCode = uDeviceOpen(&gDeviceCfg, &devHandle);
     uPortLog("Opened device with return code %d.\n", returnCode);
 
-    // Bring up the network interface
-    uPortLog("Bringing up the network...\n");
-    if (uNetworkInterfaceUp(devHandle, gNetType,
-                            &gNetworkCfg) == 0) {
+    if (returnCode == 0) {
+        // Bring up the network interface
+        uPortLog("Bringing up the network...\n");
+        if (uNetworkInterfaceUp(devHandle, gNetType,
+                                &gNetworkCfg) == 0) {
 
-        // Do things using the network, for
-        // example connect and send data to
-        // an echo server over a TCP socket
-        // as follows
+            // Do things using the network, for
+            // example connect and send data to
+            // an echo server over a TCP socket
+            // as follows
 
-        // Get the server's IP address using
-        // the network's DNS resolution facility
-        uPortLog("Looking up server address...\n");
-        uSockGetHostByName(devHandle, MY_SERVER_NAME,
-                           &(address.ipAddress));
-        uPortLog("Address is: ");
-        printAddress(&address, false);
-        address.port = MY_SERVER_PORT;
-        uPortLog("\n");
+            // Get the server's IP address using
+            // the network's DNS resolution facility
+            uPortLog("Looking up server address...\n");
+            uSockGetHostByName(devHandle, MY_SERVER_NAME,
+                               &(address.ipAddress));
+            uPortLog("Address is: ");
+            printAddress(&address, false);
+            address.port = MY_SERVER_PORT;
+            uPortLog("\n");
 
-        // Create the socket on the network
-        uPortLog("Creating socket...\n");
-        sock = uSockCreate(devHandle,
-                           U_SOCK_TYPE_STREAM,
-                           U_SOCK_PROTOCOL_TCP);
+            // Create the socket on the network
+            uPortLog("Creating socket...\n");
+            sock = uSockCreate(devHandle,
+                               U_SOCK_TYPE_STREAM,
+                               U_SOCK_PROTOCOL_TCP);
 
-        // Make a TCP connection to the server using
-        // the socket
-        if (uSockConnect(sock, &address) == 0) {
-            // Send the data over the socket
-            // and print the echo that comes back
-            uPortLog("Sending data...\n");
-            while ((x >= 0) && (txSize > 0)) {
-                x = uSockWrite(sock, message, txSize);
-                if (x > 0) {
-                    txSize -= x;
+            // Make a TCP connection to the server using
+            // the socket
+            if (uSockConnect(sock, &address) == 0) {
+                // Send the data over the socket
+                // and print the echo that comes back
+                uPortLog("Sending data...\n");
+                while ((x >= 0) && (txSize > 0)) {
+                    x = uSockWrite(sock, message, txSize);
+                    if (x > 0) {
+                        txSize -= x;
+                    }
                 }
-            }
-            uPortLog("Sent %d byte(s) to echo server.\n", sizeof(message) - txSize);
-            while ((x >= 0) && (rxSize < sizeof(message))) {
-                x = uSockRead(sock, buffer + rxSize, sizeof(buffer) - rxSize);
-                if (x > 0) {
-                    rxSize += x;
+                uPortLog("Sent %d byte(s) to echo server.\n", sizeof(message) - txSize);
+                while ((x >= 0) && (rxSize < sizeof(message))) {
+                    x = uSockRead(sock, buffer + rxSize, sizeof(buffer) - rxSize);
+                    if (x > 0) {
+                        rxSize += x;
+                    }
                 }
-            }
-            if (rxSize > 0) {
-                uPortLog("\nReceived echo back (%d byte(s)): %s\n", rxSize, buffer);
+                if (rxSize > 0) {
+                    uPortLog("\nReceived echo back (%d byte(s)): %s\n", rxSize, buffer);
+                } else {
+                    uPortLog("\nNo reply received!\n");
+                }
             } else {
-                uPortLog("\nNo reply received!\n");
+                uPortLog("Unable to connect to server!\n");
             }
+
+            // Note: if devHandle is a cellular
+            // handle any of the `cell` API calls
+            // could be made here using it.
+            // If the configuration used were Wifi
+            // then the `wifi` API calls could be
+            // used
+
+            // Close the socket
+            uPortLog("Closing socket...\n");
+            uSockShutdown(sock, U_SOCK_SHUTDOWN_READ_WRITE);
+            uSockClose(sock);
+            uSockCleanUp();
+
+            // When finished with the network layer
+            uPortLog("Taking down network...\n");
+            uNetworkInterfaceDown(devHandle, gNetType);
         } else {
-            uPortLog("Unable to connect to server!\n");
+            uPortLog("Unable to bring up the network!\n");
         }
 
-        // Note: if devHandle is a cellular
-        // handle any of the `cell` API calls
-        // could be made here using it.
-        // If the configuration used were Wifi
-        // then the `wifi` API calls could be
-        // used
+        // Close the device
+        // Note: we don't power the device down here in order
+        // to speed up testing; you may prefer to power it off
+        // by setting the second parameter to true.
+        uDeviceClose(devHandle, false);
 
-        // Close the socket
-        uPortLog("Closing socket...\n");
-        uSockShutdown(sock, U_SOCK_SHUTDOWN_READ_WRITE);
-        uSockClose(sock);
-        uSockCleanUp();
-
-        // When finished with the network layer
-        uPortLog("Taking down network...\n");
-        uNetworkInterfaceDown(devHandle, gNetType);
     } else {
-        uPortLog("Unable to bring up the network!\n");
+        uPortLog("Unable to bring up the device!\n");
     }
-
-    // Close the device
-    // Note: we don't power the device down here in order
-    // to speed up testing; you may prefer to power it off
-    // by setting the second parameter to true.
-    uDeviceClose(devHandle, false);
 
     // Tidy up
     uDeviceDeinit();

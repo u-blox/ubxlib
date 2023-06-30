@@ -475,7 +475,7 @@ static inline uCellNetStatus_t CXREG_urc(uCellPrivateInstance_t *pInstance,
         // of CEREG type 4 (so not for CREG or CGREG) and on SARA-R4xx-02B in
         // all cases and on LARA-R6 JUST in the "response to AT+CEREG" case (the
         // URC is different), an additional parameter is inserted (not added on
-        // the end, inserted)/ which has to be skipped before the RAT can be read.
+        // the end, inserted), which has to be skipped before the RAT can be read.
         if ((gRegTypes[2 /* CEREG */].type == 4) &&
             (((pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R410M_02B) ||
               (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R412M_02B)) ||
@@ -1216,7 +1216,7 @@ static int32_t registerNetwork(uCellPrivateInstance_t *pInstance,
 }
 
 // Make sure we are attached to the cellular network.
-static int32_t attachNetwork(const uCellPrivateInstance_t *pInstance)
+static int32_t waitAttach(const uCellPrivateInstance_t *pInstance)
 {
     int32_t errorCode = (int32_t) U_CELL_ERROR_ATTACH_FAILURE;
     uAtClientHandle_t atHandle = pInstance->atHandle;
@@ -2159,7 +2159,7 @@ int32_t uCellNetConnect(uDeviceHandle_t cellHandle,
                             // with AT+CGACT or using AT+UPSD (even for EUTRAN).
                             // Since this sequence works for both RANs, it is
                             // best to be consistent.
-                            errorCode = attachNetwork(pInstance);
+                            errorCode = waitAttach(pInstance);
                         }
                         if (errorCode == 0) {
                             // Activate the context
@@ -2272,7 +2272,7 @@ int32_t uCellNetRegister(uDeviceHandle_t cellHandle,
                     // This step _shouldn't_ be necessary.  However,
                     // for reasons I don't understand, SARA-R4 can
                     // be registered but not attached.
-                    errorCode = attachNetwork(pInstance);
+                    errorCode = waitAttach(pInstance);
                 }
 
                 if (errorCode == 0) {
@@ -2394,7 +2394,7 @@ int32_t uCellNetActivate(uDeviceHandle_t cellHandle,
                                         // This step _shouldn't_ be necessary.  However,
                                         // for reasons I don't understand, SARA-R4 can
                                         // be registered but not attached.
-                                        errorCode = attachNetwork(pInstance);
+                                        errorCode = waitAttach(pInstance);
                                     }
                                     if (errorCode != 0) {
                                         // Switch radio off after failure

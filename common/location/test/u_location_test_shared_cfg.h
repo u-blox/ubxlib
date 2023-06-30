@@ -117,6 +117,13 @@ extern "C" {
                                                           (U_LOCATION_TEST_CFG_TIMEOUT_SECONDS / 2))
 #endif
 
+#ifndef U_LOCATION_TEST_CLOUD_LOCATE_RRLP_DATA_LENGTH_BYTES
+/** The RRLP data length to use when testing: needs to be unlimited,
+ * i.e. MEASX, as that's the only format supported by all GNSS modules.
+ */
+# define U_LOCATION_TEST_CLOUD_LOCATE_RRLP_DATA_LENGTH_BYTES 0x7FFFFFFF
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */

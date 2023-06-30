@@ -65,6 +65,8 @@ void main()
     uPortLogOff();
     // Initiate ubxlib
     uPortInit();
+    uPortI2cInit(); // Need this only if an I2C interface is used
+    uPortSpiInit(); // Need this only if an SPI interface is used
     uDeviceInit();
     // And the U-blox GNSS module
     int32_t errorCode;

@@ -104,7 +104,7 @@ extern "C" {
  * This sets the amount of time to wait at each attempt.
  * Should not be less than 30 seconds.
  */
-# define U_CELL_NET_UPSD_CONTEXT_ACTIVATION_TIME_SECONDS 30
+# define U_CELL_NET_UPSD_CONTEXT_ACTIVATION_TIME_SECONDS (60 * 3)
 #endif
 
 #ifndef U_CELL_NET_SCAN_RETRIES
@@ -119,8 +119,10 @@ extern "C" {
  * the scan time but the uCellNetScanGetFirst() function
  * may retry up to #U_CELL_NET_SCAN_RETRIES times if the module
  * offers no response at all within this time.
+ *
+ * This is the worst case wait-time when an NB1 RAT is included.
  */
-# define U_CELL_NET_SCAN_TIME_SECONDS (60 * 3)
+# define U_CELL_NET_SCAN_TIME_SECONDS 1580
 #endif
 
 /** Determine if a given cellular network status value means that
@@ -454,11 +456,12 @@ int32_t uCellNetDisconnect(uDeviceHandle_t cellHandle,
  * @param[out] pRat              pointer to a place to put the radio
  *                               access technology of the network;
  *                               may be NULL.
- * @param[in] pKeepGoingCallback network scanning can take some time,
- *                               this call-back is called once a second
- *                               during the scan, allowing a watch-dog
- *                               function to be called if required; may
- *                               be NULL.  The function should return
+ * @param[in] pKeepGoingCallback network scanning can take some time, up
+ *                               to #U_CELL_NET_SCAN_TIME_SECONDS if an NB1
+ *                               RAT is included. This call-back is called
+ *                               once a second during the scan, allowing a
+ *                               watch-dog function to be called if required;
+ *                               may be NULL.  The function should return
  *                               true; if it returns false the network
  *                               scan will be aborted.  The single
  *                               int32_t parameter is the cell handle.

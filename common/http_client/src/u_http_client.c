@@ -331,7 +331,7 @@ static void cellCallback(uDeviceHandle_t cellHandle, int32_t httpHandle,
                                 do {
                                     thisSize = U_HTTP_CLIENT_CELL_FILE_CHUNK_LENGTH;
                                     if (thisSize > ((int32_t) *pContext->pResponseSize) - totalSize) {
-                                        thisSize = ((int32_t) * pContext->pResponseSize);
+                                        thisSize = ((int32_t) * pContext->pResponseSize) - totalSize;
                                     }
                                     if (thisSize > 0) {
                                         thisSize = uCellFileBlockRead(cellHandle,

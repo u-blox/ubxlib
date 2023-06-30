@@ -42,6 +42,7 @@ To add it to your west.yml, add the u-blox remote to your remotes section and th
       remote: u-blox
       path: ubxlib
       revision: v1.2.0
+      import: true
       clone-depth: 1
 ```
 
@@ -52,6 +53,8 @@ CONFIG_UBXLIB=y
 ```
 
 `ubxlib` also requires some Zephyr config to be enabled: check [default.conf](default.conf) for the basics or, for details to do with BLE configuration or including I2C/SPI etc., check [runner/prj.conf](runner/prj.conf)/[runner_linux/prj.conf](runner_linux/prj.conf).
+
+If you wish to build the default `runner` build and associated tests _without_ nRF Connect SDK then you will need to bring in a copy of Unity from somewhere, identifying the Unity directory by defining the environment variable `UNITY_PATH`, e.g. `UNITY_PATH=/home/ubxlib/unity`.
 
 # SDK Usage
 

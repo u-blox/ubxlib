@@ -78,16 +78,35 @@ if (CONFIG_UBXLIB_TEST)
         ${UBXLIB_TEST_INC}
     )
 
-# west clones unity for us, but it's posible that west update hasn't been run yet
-if (EXISTS "${ZEPHYR_BASE}/../modules/test/cmock/vendor/unity")
-    target_sources(app PRIVATE
-        ${ZEPHYR_BASE}/../modules/test/cmock/vendor/unity/src/unity.c
-    )
-    zephyr_include_directories(
-        ${ZEPHYR_BASE}/../modules/test/cmock/vendor/unity/src
-    )
-endif()
+    # we need to build https://github.com/ThrowTheSwitch/unity
+    # Path resolution order:
+    # 1. environment variable UNITY_PATH
+    # 2. if ubxlib is imported by zephyr west, it will be at
+    #    ${ZEPHYR_BASE}/../modules/test/cmock/vendor/unity
+    # 3. if the nRF Connect SDK is inside our workspace, it will be at
+    #    ${ZEPHYR_BASE}/../test/cmock/vendor/unity
+    # 4. otherwise the platform itself must build and include it
+    if (DEFINED ENV{UNITY_PATH})
+        set(UNITY_PATH ENV{UNITY_PATH})
+    elseif (EXISTS "${ZEPHYR_BASE}/../modules/test/cmock/vendor/unity")
+        # this is the location if west fetched unity for us
+        set(UNITY_PATH "${ZEPHYR_BASE}/../modules/test/cmock/vendor/unity")
+    elseif (EXISTS "${ZEPHYR_BASE}/../test/cmock/vendor/unity")
+        #this is where the nRF Connect SDK puts unity
+        set(UNITY_PATH "${ZEPHYR_BASE}/../test/cmock/vendor/unity")
+    endif()
 
+    if (DEFINED UNITY_PATH)
+        message("Unity from ${UNITY_PATH} will be used")
+        target_sources(app PRIVATE
+            ${UNITY_PATH}/src/unity.c
+        )
+        zephyr_include_directories(
+            ${UNITY_PATH}/src
+        )
+    else()
+        message("Assuming that the platform will bring in Unity")
+    endif()
 endif()
 
 if (CONFIG_MINIMAL_LIBC)

@@ -187,6 +187,25 @@ int32_t uPortEnterCritical();
  */
 void uPortExitCritical();
 
+/** Get the current timezone offset (including daylight saving
+ * time, where relevant).
+ *
+ * Note: the primary use of this function is to compensate for the
+ * fact that mktime() assumes its input is in local time, not UTC,
+ * and ends up subtracting a timezone offset from the result. If you
+ * are calling mktime() with a UTC time then you can add the return
+ * value of this function to that returned by mktime() to get back to
+ * UTC.
+ *
+ * It is ONLY a requirement that this API is implemented if the
+ * underlying system allows a non-zero timezone to be set: where it is
+ * not implemented zero will be returned by a weakly-linked default
+ * function.
+ *
+ * @return the current timezone offset in seconds.
+ */
+int32_t uPortGetTimezoneOffsetSeconds();
+
 #ifdef __cplusplus
 }
 #endif

@@ -205,83 +205,88 @@ U_PORT_TEST_FUNCTION("[example]", "exampleHttpClient")
     returnCode = uDeviceOpen(&gDeviceCfg, &devHandle);
     uPortLog("Opened device with return code %d.\n", returnCode);
 
-    // Bring up the network interface
-    uPortLog("Bringing up the network...\n");
-    if (uNetworkInterfaceUp(devHandle, gNetType,
-                            &gNetworkCfg) == 0) {
+    if (returnCode == 0) {
+        // Bring up the network interface
+        uPortLog("Bringing up the network...\n");
+        if (uNetworkInterfaceUp(devHandle, gNetType,
+                                &gNetworkCfg) == 0) {
 
-        // Note: since devHandle is a cellular
-        // handle, any of the `cell` API calls could
-        // be made here using it.
+            // Note: since devHandle is a cellular
+            // handle, any of the `cell` API calls could
+            // be made here using it.
 
-        // In order to create a unique path on the public
-        // server which won't collide with anyone else,
-        // we make the path the serial number of the
-        // module
-        uSecurityGetSerialNumber(devHandle, serialNumber);
-        snprintf(path, sizeof(path), "/%s.html", serialNumber);
+            // In order to create a unique path on the public
+            // server which won't collide with anyone else,
+            // we make the path the serial number of the
+            // module
+            uSecurityGetSerialNumber(devHandle, serialNumber);
+            snprintf(path, sizeof(path), "/%s.html", serialNumber);
 
-        // Set the URL of the server; each instance
-        // is associated with a single server -
-        // you may create more than one insance,
-        // for different servers, or close and
-        // open instances to access more than one
-        // server.  There are other settings in
-        // uHttpClientConnection_t, but for the
-        // purposes of this example they can be
-        // left at defaults
-        connection.pServerName = MY_SERVER_NAME;
+            // Set the URL of the server; each instance
+            // is associated with a single server -
+            // you may create more than one insance,
+            // for different servers, or close and
+            // open instances to access more than one
+            // server.  There are other settings in
+            // uHttpClientConnection_t, but for the
+            // purposes of this example they can be
+            // left at defaults
+            connection.pServerName = MY_SERVER_NAME;
 
-        // Create an HTTPS instance for the server; to
-        // create an HTTP instance instead you would
-        // replace &tlsSettings with NULL (and of
-        // course use port 8080 on the test HTTP server).
-        pContext = pUHttpClientOpen(devHandle, &connection, &tlsSettings);
-        if (pContext != NULL) {
+            // Create an HTTPS instance for the server; to
+            // create an HTTP instance instead you would
+            // replace &tlsSettings with NULL (and of
+            // course use port 8080 on the test HTTP server).
+            pContext = pUHttpClientOpen(devHandle, &connection, &tlsSettings);
+            if (pContext != NULL) {
 
-            // POST some data to the server; doesn't have to be text,
-            // can be anything, including binary data, though obviously
-            // you must give the appropriate content-type
-            statusCode = uHttpClientPostRequest(pContext, path, gpMyData, strlen(gpMyData),
-                                                "text/plain", NULL, NULL, NULL);
-            if (statusCode == 200) {
-
-                uPortLog("POST some data to the file \"%s\" on %s.\n", path, MY_SERVER_NAME);
-
-                // GET it back again
-                statusCode = uHttpClientGetRequest(pContext, path, buffer, &size, NULL);
+                // POST some data to the server; doesn't have to be text,
+                // can be anything, including binary data, though obviously
+                // you must give the appropriate content-type
+                statusCode = uHttpClientPostRequest(pContext, path, gpMyData, strlen(gpMyData),
+                                                    "text/plain", NULL, NULL, NULL);
                 if (statusCode == 200) {
 
-                    uPortLog("GET the data: it was \"%s\" (%d byte(s)).\n", buffer, size);
+                    uPortLog("POST some data to the file \"%s\" on %s.\n", path, MY_SERVER_NAME);
 
+                    // GET it back again
+                    statusCode = uHttpClientGetRequest(pContext, path, buffer, &size, NULL);
+                    if (statusCode == 200) {
+
+                        uPortLog("GET the data: it was \"%s\" (%d byte(s)).\n", buffer, size);
+
+                    } else {
+                        uPortLog("Unable to GET file \"%s\" from %s; status code was %d!\n",
+                                 path, MY_SERVER_NAME, statusCode);
+                    }
                 } else {
-                    uPortLog("Unable to GET file \"%s\" from %s; status code was %d!\n",
+                    uPortLog("Unable to POST file \"%s\" to %s; status code was %d!\n",
                              path, MY_SERVER_NAME, statusCode);
                 }
+
+                // Close the HTTP instance again
+                uHttpClientClose(pContext);
+
             } else {
-                uPortLog("Unable to POST file \"%s\" to %s; status code was %d!\n",
-                         path, MY_SERVER_NAME, statusCode);
+                uPortLog("Unable to create HTTP instance!\n");
             }
 
-            // Close the HTTP instance again
-            uHttpClientClose(pContext);
-
+            // When finished with the network layer
+            uPortLog("Taking down network...\n");
+            uNetworkInterfaceDown(devHandle, gNetType);
         } else {
-            uPortLog("Unable to create HTTP instance!\n");
+            uPortLog("Unable to bring up the network!\n");
         }
 
-        // When finished with the network layer
-        uPortLog("Taking down network...\n");
-        uNetworkInterfaceDown(devHandle, gNetType);
-    } else {
-        uPortLog("Unable to bring up the network!\n");
-    }
+        // Close the device
+        // Note: we don't power the device down here in order
+        // to speed up testing; you may prefer to power it off
+        // by setting the second parameter to true.
+        uDeviceClose(devHandle, false);
 
-    // Close the device
-    // Note: we don't power the device down here in order
-    // to speed up testing; you may prefer to power it off
-    // by setting the second parameter to true.
-    uDeviceClose(devHandle, false);
+    } else {
+        uPortLog("Unable to bring up the device!\n");
+    }
 
     // Tidy up
     uDeviceDeinit();

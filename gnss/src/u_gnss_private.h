@@ -116,7 +116,8 @@ extern "C" {
 typedef enum {
     U_GNSS_PRIVATE_FEATURE_CFGVALXXX,
     U_GNSS_PRIVATE_FEATURE_GEOFENCE,
-    U_GNSS_PRIVATE_FEATURE_OLD_CFG_API
+    U_GNSS_PRIVATE_FEATURE_OLD_CFG_API,
+    U_GNSS_PRIVATE_FEATURE_RXM_MEAS_50_20_C12_D12
 } uGnssPrivateFeature_t;
 
 /** The characteristics that may differ between GNSS modules.
@@ -253,6 +254,7 @@ typedef struct uGnssPrivateInstance_t {
                                                 message receive utility functions. */
     uGnssPrivateStreamedPosition_t *pStreamedPosition; /**< context data for streamed position, hooked
                                                             here so that we can free it */
+    uGnssRrlpMode_t rrlpMode; /**< The type of MEASX to use with RRLP capture. */
     struct uGnssPrivateInstance_t *pNext;
 } uGnssPrivateInstance_t;
 // *INDENT-ON*
@@ -701,8 +703,22 @@ int32_t uGnssPrivateStreamPeekRingBuffer(uGnssPrivateInstance_t *pInstance,
                                          size_t offset,
                                          int32_t maxTimeMs);
 
-/** Send a UBX format message over UART or I2C or virtual serial (do not
- * wait for the response).
+/** Send raw bytes over UART or I2C or SPI or virtual serial; this is
+ * exposed specifically for code brough into ubxlib that already
+ * encodes full messages (e.g. libMga).
+ *
+ * Note: gUGnssPrivateMutex should be locked before this is called.
+ *
+ * @param[in] pInstance a pointer to the GNSS instance, cannot be NULL.
+ * @param[in] pBuffer   pointer to the data to write.
+ * @param size          the amount of data at pBuffer.
+ * @return              the number of bytes sent, else negative error code.
+ */
+int32_t uGnssPrivateSendOnlyStreamRaw(uGnssPrivateInstance_t *pInstance,
+                                      const char *pBuffer, size_t size);
+
+/** Send a UBX format message over UART or I2C or SPI or virtual serial
+ * (do not wait for the response).
  *
  * Note: gUGnssPrivateMutex should be locked before this is called.
  *

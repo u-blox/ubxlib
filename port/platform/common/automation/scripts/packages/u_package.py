@@ -97,7 +97,7 @@ def load(ctx: Context, packages: List[str]) -> Dict[str,UBasePackage]:
                 # Check if the package is installed
                 # if not we will try to install it in next stage
                 if pkg.check_installed(ctx):
-                    print(f"Found {pkg.name} {pkg.version}")
+                    print(f"Found {pkg.name}")
                 else:
                     needs_install.append(pkg)
 

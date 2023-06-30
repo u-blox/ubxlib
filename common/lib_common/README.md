@@ -1,5 +1,7 @@
 # `ubxlib` libraries
 
+NOTE: this code is no longer in active use; it is retained here in case it is of use in the future but is NO LONGER TESTED.
+
 ## General
 
 Libraries in `ubxlib` sense simply consists of a header and some code. The header contains some metainfo on the library as such, like name, version, etc. It also contains a function table describing the functions and where they are placed. This latter part is the actual dynamic link information.
