@@ -1,0 +1,9 @@
+manifest:
+  remotes:
+    - name: ThrowTheSwitch
+      url-base: https://github.com/ThrowTheSwitch
+  projects:
+    - name: Unity
+      remote: ThrowTheSwitch
+      revision: v2.5.0
+      path: modules/test/unity
