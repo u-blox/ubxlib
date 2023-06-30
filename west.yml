@@ -6,4 +6,4 @@ manifest:
     - name: Unity
       remote: ThrowTheSwitch
       revision: v2.5.0
-      path: modules/test/cmock/vendor/unity
+      path: modules/test/unity

@@ -86,11 +86,11 @@ if (CONFIG_UBXLIB_TEST)
     # 3. if the nRF Connect SDK is inside our workspace, it will be at
     #    ${ZEPHYR_BASE}/../test/cmock/vendor/unity
     # 4. otherwise the platform itself must build and include it
-    if (DEFINED ENV{UNITY_PATH})
-        set(UNITY_PATH ENV{UNITY_PATH})
-    elseif (EXISTS "${ZEPHYR_BASE}/../modules/test/cmock/vendor/unity")
+    if (DEFINED $ENV{UNITY_PATH})
+        set(UNITY_PATH $ENV{UNITY_PATH})
+    elseif (EXISTS "${ZEPHYR_BASE}/../modules/test/unity")
         # this is the location if west fetched unity for us
-        set(UNITY_PATH "${ZEPHYR_BASE}/../modules/test/cmock/vendor/unity")
+        set(UNITY_PATH "${ZEPHYR_BASE}/../modules/test/unity")
     elseif (EXISTS "${ZEPHYR_BASE}/../test/cmock/vendor/unity")
         #this is where the nRF Connect SDK puts unity
         set(UNITY_PATH "${ZEPHYR_BASE}/../test/cmock/vendor/unity")
