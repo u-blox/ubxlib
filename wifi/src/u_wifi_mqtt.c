@@ -65,8 +65,17 @@
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * ------------------------------------------------------------- */
-#define U_WIFI_MQTT_DATA_EVENT_STACK_SIZE 1536
-#define U_WIFI_MQTT_DATA_EVENT_PRIORITY (U_CFG_OS_PRIORITY_MAX - 5)
+
+#ifndef U_WIFI_MQTT_DATA_EVENT_STACK_SIZE
+/* The stack size for the event queue task, limiting factor being
+ * ESP32 when it has been pre-built for use with PlatformIO.
+ */
+# define U_WIFI_MQTT_DATA_EVENT_STACK_SIZE 1600
+#endif
+
+#ifndef U_WIFI_MQTT_DATA_EVENT_PRIORITY
+# define U_WIFI_MQTT_DATA_EVENT_PRIORITY (U_CFG_OS_PRIORITY_MAX - 5)
+#endif
 
 typedef struct uWifiMqttTopic_t {
     char *pTopicStr;

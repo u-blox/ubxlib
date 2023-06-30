@@ -27,10 +27,23 @@ If you intend to use Zephyr on Linux/posix then you must also follow the instruc
 https://docs.zephyrproject.org/latest/boards/posix/native_posix/doc/index.html
 
 # Integration
-`ubxlib` is a [Zephyr module](https://docs.zephyrproject.org/latest/guides/modules.html).  To add `ubxlib` to your Zephyr application you can make use of [ZEPHYR_EXTRA_MODULES](https://docs.zephyrproject.org/latest/guides/modules.html#integrate-modules-in-zephyr-build-system). By adding the following line **to the top** of your existing CMakeLists.txt, Zephyr should pickup `ubxlib`:
+`ubxlib` is a [Zephyr module](https://docs.zephyrproject.org/latest/guides/modules.html).
 
-```cmake
-list(APPEND ZEPHYR_EXTRA_MODULES <PATH_TO_UBXLIB_DIRECTORY>)
+To add `ubxlib` to your Zephyr application you can either add it to your west.yml, or make use of [ZEPHYR_EXTRA_MODULES](https://docs.zephyrproject.org/latest/guides/modules.html#integrate-modules-in-zephyr-build-system).
+
+To add it to your west.yml, add the u-blox remote to your remotes section and the ubxlib module to the projects section:
+```yml
+  remotes:
+    - name: u-blox
+      url-base: git@github.com:u-blox
+
+  projects:
+    - name: ubxlib
+      remote: u-blox
+      path: ubxlib
+      revision: v1.2.0
+      import: true
+      clone-depth: 1
 ```
 
 You must then also enable `UBXLIB` either via [menuconfig](https://docs.zephyrproject.org/latest/guides/build/kconfig/menuconfig.html#menuconfig) or by adding the following line to your `prj.conf`:

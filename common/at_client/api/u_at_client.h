@@ -377,9 +377,9 @@ extern "C" {
  * work for all platforms, the governing factor being ESP32,
  * which seems to require around twice the stack of NRF52
  * or STM32F4 and more again in the version pre-built for
- * Arduino.
+ * Arduino/PlatformIO.
  */
-# define U_AT_CLIENT_CALLBACK_TASK_STACK_SIZE_BYTES 2048
+# define U_AT_CLIENT_CALLBACK_TASK_STACK_SIZE_BYTES 2100
 #endif
 
 #ifndef U_AT_CLIENT_CALLBACK_TASK_PRIORITY
