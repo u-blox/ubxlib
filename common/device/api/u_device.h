@@ -72,7 +72,14 @@ typedef enum {
     U_DEVICE_TRANSPORT_TYPE_I2C,
     U_DEVICE_TRANSPORT_TYPE_SPI,
     U_DEVICE_TRANSPORT_TYPE_VIRTUAL_SERIAL,
-    U_DEVICE_TRANSPORT_TYPE_MAX_NUM
+    U_DEVICE_TRANSPORT_TYPE_UART_2,   /**< ONLY for use where you are connected
+                                           to a GNSS device that has two UART
+                                           ports and you are connected to the
+                                           second one, otherwise please just use
+                                           #U_DEVICE_TRANSPORT_TYPE_UART (or
+                                           #U_DEVICE_TRANSPORT_TYPE_UART_1). */
+    U_DEVICE_TRANSPORT_TYPE_MAX_NUM,
+    U_DEVICE_TRANSPORT_TYPE_UART_1 = U_DEVICE_TRANSPORT_TYPE_UART
 } uDeviceTransportType_t;
 
 /** A version number for the device configuration structure. In

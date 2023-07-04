@@ -215,6 +215,10 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssAddStream")
             U_PORT_TEST_ASSERT(transportType == U_GNSS_TRANSPORT_UART);
             U_PORT_TEST_ASSERT(transportHandle.uart == transportHandleA.uart);
             break;
+        case U_GNSS_TRANSPORT_UART_2:
+            U_PORT_TEST_ASSERT(transportType == U_GNSS_TRANSPORT_UART_2);
+            U_PORT_TEST_ASSERT(transportHandle.uart == transportHandleA.uart);
+            break;
         case U_GNSS_TRANSPORT_I2C:
             U_PORT_TEST_ASSERT(transportType == U_GNSS_TRANSPORT_I2C);
             U_PORT_TEST_ASSERT(transportHandle.i2c == transportHandleA.i2c);
@@ -239,10 +243,27 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssAddStream")
 # if (U_CFG_APP_GNSS_I2C < 0) && (U_CFG_APP_GNSS_SPI < 0)
     U_TEST_PRINT_LINE("adding another instance on the same UART"
                       " port, should fail...");
+    // This time we use U_GNSS_TRANSPORT_UART_2, just for variety;
+    // it should make no difference which one we use, both should
+    // fail since transportHandleA is the same.
     U_PORT_TEST_ASSERT(uGnssAdd(U_GNSS_MODULE_TYPE_M8,
-                                U_GNSS_TRANSPORT_UART,
+                                U_GNSS_TRANSPORT_UART_2,
                                 transportHandleA,
                                 -1, false, &dummyHandle) < 0);
+    // Close it and re-open using U_GNSS_TRANSPORT_UART_2:
+    // this should work
+    uGnssRemove(gnssHandleA);
+    errorCode = uGnssAdd(U_GNSS_MODULE_TYPE_M8,
+                         U_GNSS_TRANSPORT_UART_2, transportHandleA,
+                         -1, false, &gnssHandleA);
+    U_PORT_TEST_ASSERT_EQUAL((int32_t) U_ERROR_COMMON_SUCCESS, errorCode);
+    transportHandle.uart = -1;
+    transportHandle.i2c = -1;
+    U_PORT_TEST_ASSERT(uGnssGetTransportHandle(gnssHandleA,
+                                               &transportType,
+                                               &transportHandle) == 0);
+    U_PORT_TEST_ASSERT(transportType == U_GNSS_TRANSPORT_UART_2);
+    U_PORT_TEST_ASSERT(transportHandle.uart == transportHandleA.uart);
 # endif
 
 # if (U_CFG_TEST_UART_B >= 0)
@@ -306,6 +327,10 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssAddStream")
             U_PORT_TEST_ASSERT(transportType == U_GNSS_TRANSPORT_UART);
             U_PORT_TEST_ASSERT(transportHandle.uart == transportHandleA.uart);
             break;
+        case U_GNSS_TRANSPORT_UART_2:
+            U_PORT_TEST_ASSERT(transportType == U_GNSS_TRANSPORT_UART_2);
+            U_PORT_TEST_ASSERT(transportHandle.uart == transportHandleA.uart);
+            break;
         case U_GNSS_TRANSPORT_I2C:
             U_PORT_TEST_ASSERT(transportType == U_GNSS_TRANSPORT_I2C);
             U_PORT_TEST_ASSERT(transportHandle.i2c == transportHandleA.i2c);
@@ -325,6 +350,9 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssAddStream")
     U_TEST_PRINT_LINE("removing stream...");
     switch (gTransportTypeA) {
         case U_GNSS_TRANSPORT_UART:
+            uPortUartClose(gStreamAHandle);
+            break;
+        case U_GNSS_TRANSPORT_UART_2:
             uPortUartClose(gStreamAHandle);
             break;
         case U_GNSS_TRANSPORT_I2C:

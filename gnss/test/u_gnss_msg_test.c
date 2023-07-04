@@ -367,6 +367,7 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveBlocking")
     for (size_t w = 0; w < iterations; w++) {
         // Only do this for non-message-filtered transport since that is the worst case
         if ((transportTypes[w] == U_GNSS_TRANSPORT_UART) ||
+            (transportTypes[w] == U_GNSS_TRANSPORT_UART_2) ||
             (transportTypes[w] == U_GNSS_TRANSPORT_I2C)) {
             // Do the standard preamble
             U_TEST_PRINT_LINE("testing on transport %s...",
@@ -503,6 +504,7 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveNonBlocking")
         // Only do this for non-message-filtered transport since we need all
         // protocol types for a stress test
         if ((transportTypes[w] == U_GNSS_TRANSPORT_UART) ||
+            (transportTypes[w] == U_GNSS_TRANSPORT_UART_2) ||
             (transportTypes[w] == U_GNSS_TRANSPORT_I2C)) {
             // Do the standard preamble
             U_TEST_PRINT_LINE("testing on transport %s...",

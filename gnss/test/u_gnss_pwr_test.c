@@ -139,6 +139,8 @@ U_PORT_TEST_FUNCTION("[gnssPwr]", "gnssPwrBasic")
         switch (transportTypes[x]) {
             case U_GNSS_TRANSPORT_UART:
             //lint -fallthrough
+            case U_GNSS_TRANSPORT_UART_2:
+            //lint -fallthrough
             case U_GNSS_TRANSPORT_SPI:
                 // If we are communicating via UART or SPI we can
                 // also test the power-off-to-back-up version

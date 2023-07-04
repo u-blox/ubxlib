@@ -75,10 +75,11 @@
  */
 const uGnssTransportType_t gDeviceToGnssTransportType[] = {
     U_GNSS_TRANSPORT_NONE, // U_DEVICE_TRANSPORT_TYPE_NONE,
-    U_GNSS_TRANSPORT_UART, // U_DEVICE_TRANSPORT_TYPE_UART,
+    U_GNSS_TRANSPORT_UART, // U_DEVICE_TRANSPORT_TYPE_UART or U_DEVICE_TRANSPORT_TYPE_UART_1,
     U_GNSS_TRANSPORT_I2C,  // U_DEVICE_TRANSPORT_TYPE_I2C,
     U_GNSS_TRANSPORT_SPI,  // U_DEVICE_TRANSPORT_TYPE_SPI,
-    U_GNSS_TRANSPORT_VIRTUAL_SERIAL // U_DEVICE_TRANSPORT_TYPE_VIRTUAL_SERIAL
+    U_GNSS_TRANSPORT_VIRTUAL_SERIAL, // U_DEVICE_TRANSPORT_TYPE_VIRTUAL_SERIAL
+    U_GNSS_TRANSPORT_UART_2 // U_DEVICE_TRANSPORT_TYPE_UART_2,
 };
 
 /* ----------------------------------------------------------------
@@ -92,6 +93,8 @@ static void populateContext(uDeviceGnssInstance_t *pContext,
 {
     switch (deviceTransportType) {
         case U_DEVICE_TRANSPORT_TYPE_UART:
+        // fall-through
+        case U_DEVICE_TRANSPORT_TYPE_UART_2:
             pContext->transportHandle.int32Handle = gnssTransportHandle.uart;
             break;
         case U_DEVICE_TRANSPORT_TYPE_I2C:
@@ -227,6 +230,8 @@ int32_t uDevicePrivateGnssAdd(const uDeviceCfg_t *pDevCfg,
         if (pCfgGnss->version == 0) {
             switch (pDevCfg->transportType) {
                 case U_DEVICE_TRANSPORT_TYPE_UART:
+                // fall-through
+                case U_DEVICE_TRANSPORT_TYPE_UART_2:
                     pCfgUart = &(pDevCfg->transportCfg.cfgUart);
                     // Open a UART with the recommended buffer length
                     // and default baud rate.
@@ -333,6 +338,8 @@ int32_t uDevicePrivateGnssRemove(uDeviceHandle_t devHandle,
             // Having removed the device, close the transport
             switch (pContext->deviceTransportType) {
                 case U_DEVICE_TRANSPORT_TYPE_UART:
+                // fall-through
+                case U_DEVICE_TRANSPORT_TYPE_UART_2:
                     uPortUartClose(pContext->transportHandle.int32Handle);
                     break;
                 case U_DEVICE_TRANSPORT_TYPE_I2C:
