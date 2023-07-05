@@ -56,6 +56,8 @@
 
 // Ignore warning of: expected ‘unsigned char *’ but argument is of type ‘char *’
 #pragma GCC diagnostic ignored "-Wpointer-sign"
+// Ignore warning of (for now): is deprecated: Since OpenSSL 3.0
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
 // Perform a SHA256 calculation on a block of data.
 int32_t uPortCryptoSha256(const char *pInput,

@@ -31,6 +31,12 @@ class UGitPackage(UBasePackage):
         if not os.path.exists(self.package_dir):
             return False
         with ctx.prefix(u_pkg_utils.change_dir_prefix(self.package_dir)):
+            # First we remove Git's ownership protection stuff as we want
+            # to be able to get at the installed repos from any user
+            # Note: remove any existing safe.directory '*' lines first or they
+            # will build up
+            ctx.run("git config --global --fixed-value --unset-all safe.directory '*'", hide=False, warn=True)
+            ctx.run("git config --global --add safe.directory '*'", hide=False, warn=True)
             result = ctx.run("git tag --points-at HEAD", hide=True, warn=True)
             if not result.ok:
                 print("Failed to get git tags - git repo probably not initialized")

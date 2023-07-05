@@ -2,7 +2,7 @@
 This directory contains a build which compiles and runs any or all of the examples and tests for Linux.
 
 # Usage
-The only additional requirement on a standard Debian distro is `cmake` and `libssl-dev`.
+The only additional requirement on a standard Debian distro is `cmake`, `libssl-dev` and `libgpiod-dev`.
 
 You will also need a copy of Unity, the unit test framework, which can be Git cloned from here:
 

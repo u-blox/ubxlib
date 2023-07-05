@@ -23,7 +23,7 @@ DEFAULT_BUILD_DIR = u_get_build_dir.DEFAULT_BUILD_DIR
 def check_installation(ctx):
     """Check Linux installation"""
     # Load required packages
-    pkgs = u_package.load(ctx, ["cmake", "libssl-dev", "unity"])
+    pkgs = u_package.load(ctx, ["cmake", "libssl-dev", "libgpiod-dev", "unity"])
     unity_pkg = pkgs["unity"]
 
     ctx.config.run.env["UNITY_PATH"] = unity_pkg.get_install_path()

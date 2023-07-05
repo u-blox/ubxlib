@@ -21,7 +21,7 @@ message("UBXLIB_FEATURES will be \"${UBXLIB_FEATURES}\"")
 # Build for debug by default
 set(CMAKE_BUILD_TYPE Debug)
 # The Posix implementations require these libraries
-set(UBXLIB_REQUIRED_LINK_LIBS -lssl -lcrypto -lpthread -lrt)
+set(UBXLIB_REQUIRED_LINK_LIBS -lssl -lcrypto -lpthread -lrt -lgpiod)
 # Warnings are errors
 add_compile_options(-Wall -Werror -funsigned-char)
 

@@ -47,6 +47,8 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
         libffi-dev libssl-dev dfu-util libusb-1.0-0 && \
 # Install ubxlib automation stuff
     apt-get install -y --no-install-recommends  astyle doxygen unzip && \
+# Install GPIO API library for Linux; gpiod not strictly necessary but useful for debugging
+   apt-get install -y --no-install-recommends libgpiod-dev gpiod && \
 # Cleanup
     apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
@@ -103,6 +105,12 @@ RUN                                                                             
         tar --strip-components=1 -xf /tmp/cmake-3.24.1-linux-aarch64.tar.gz -C /usr/local && \
         rm -rf /tmp/*;                                                                       \
     fi
+
+# We need to be able to remove Git's ownership protection stuff: this is
+# required if this container is to be run as anything other than the ubxlib user.
+# Unfortunately this only works on Git version 2.36 and later while Ubuntu 20 comes
+# with Git version 2.25, hence we need to install Git from the PPA for this
+RUN add-apt-repository ppa:git-core/ppa  && apt update && apt install -y git
 
 WORKDIR /workdir
 

@@ -183,3 +183,13 @@ libssl-dev:
         type: apt
         package_name: libssl-dev
         check_command: test -e /usr/include/openssl/sha.h
+
+libgpiod-dev:
+    linux:
+        type: apt
+        package_name: libgpiod-dev
+        check_command: test -e /usr/include/gpiod.h
+    linux_arm:
+        type: apt
+        package_name: libgpiod-dev
+        check_command: test -e /usr/include/gpiod.h
