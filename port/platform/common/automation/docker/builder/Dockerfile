@@ -106,11 +106,11 @@ RUN                                                                             
         rm -rf /tmp/*;                                                                       \
     fi
 
-# We need to be able to remove Git's ownership protection stuff: this is
-# required if this container is to be run as anything other than the ubxlib user.
-# Unfortunately this only works on Git version 2.36 and later while Ubuntu 20 comes
-# with Git version 2.25, hence we need to install Git from the PPA for this
-RUN add-apt-repository ppa:git-core/ppa  && apt update && apt install -y git
+# To gain access to the GPIOs we need the user we create at the end to be part of
+# the gpio group in the underlying system, so we need to create exactly that
+# group, with the same group ID as Raspbian uses, in a udev rule
+RUN groupadd -g 997 gpio &&                                                                   \
+    echo SUBSYSTEM=="gpio", GROUP="gpio", MODE="0660" >> /etc/udev/rules.d/99-com.rules
 
 WORKDIR /workdir
 
@@ -129,7 +129,6 @@ RUN chmod 1777 /tmp && \
 # Cleanup
     apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-
 #***************************************************
 # Setup environmental variables
 #***************************************************
@@ -141,6 +140,6 @@ RUN chmod 1777 /tmp && \
 # Add and switch to "ubxlib" user
 ARG USER="ubxlib"
 RUN groupadd -f -g 1000 -o $USER && \
-    useradd -ms /bin/bash -u 1000 -g 1000 $USER && \
+    useradd -ms /bin/bash -u 1000 -g 1000 -G gpio $USER && \
     chown ubxlib:ubxlib /workdir
 USER ubxlib
