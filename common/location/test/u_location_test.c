@@ -324,6 +324,7 @@ static void testOneShot(uDeviceHandle_t devHandle,
                 if ((gErrorCode != 0) && (x >= 1)) {
                     U_TEST_PRINT_LINE("failed to get an answer, will retry in 30 seconds...");
                     uPortTaskBlock(30000);
+                    gErrorCode = 0;
                 }
                 uLocationGetStop(devHandle);
             } else {
