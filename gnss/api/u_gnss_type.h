@@ -158,7 +158,9 @@
 //  Suppress not used within defaulted switch
 typedef enum {
     U_GNSS_TRANSPORT_NONE,
-    U_GNSS_TRANSPORT_UART,      /**< the transport handle should be a UART handle. */
+    U_GNSS_TRANSPORT_UART,      /**< the transport handle should be a UART handle;
+                                     see also #U_GNSS_TRANSPORT_UART_1 and
+                                     #U_GNSS_TRANSPORT_UART_2. */
     U_GNSS_TRANSPORT_AT,        /**< the transport handle should be an AT client
                                      handle; currently only UBX-format messages may
                                      be received when this transport type is in use.
@@ -174,7 +176,18 @@ typedef enum {
                                           uCellMuxAddChannel() if you are talking to
                                           a GNSS device either inside or connected
                                           via a cellular module. */
-    U_GNSS_TRANSPORT_MAX_NUM
+    U_GNSS_TRANSPORT_UART_2, /**< the transport handle should be a UART handle;
+                                  use this if your GNSS chip has two UART ports
+                                  and you are connected to the second one. */
+    U_GNSS_TRANSPORT_MAX_NUM,
+    U_GNSS_TRANSPORT_UART_1 = U_GNSS_TRANSPORT_UART  /**< the transport handle should
+                                                          be a UART handle; equivalent
+                                                          to #U_GNSS_TRANSPORT_UART
+                                                          but you may wish to use this
+                                                          value if your GNSS chip has
+                                                          two UART ports and you want
+                                                          to distinguish between the
+                                                          two in your code. */
 } uGnssTransportType_t;
 
 /** The handle for the transport with types implied by
@@ -182,7 +195,7 @@ typedef enum {
  */
 typedef union {
     void *pAt;      /**< for transport type #U_GNSS_TRANSPORT_AT. */
-    int32_t uart;   /**< for transport type #U_GNSS_TRANSPORT_UART. */
+    int32_t uart;   /**< for transport types #U_GNSS_TRANSPORT_UART, #U_GNSS_TRANSPORT_UART_1 and  #U_GNSS_TRANSPORT_UART_2). */
     int32_t i2c;    /**< for transport type #U_GNSS_TRANSPORT_I2C. */
     int32_t spi;    /**< for transport type #U_GNSS_TRANSPORT_SPI. */
     void *pDeviceSerial; /**< for transport type #U_GNSS_TRANSPORT_VIRTUAL_SERIAL. */

@@ -49,28 +49,29 @@ type Argument struct {
 	ServerPort string `json:"server-port"`
 	ServerCert string `json:"server-certificate-location"`
 	ServerKey  string `json:"server-key-location"`
+	CACert     string `json:"ca-certificate-location"`
 }
 
-func secureEcho(certPath string, keyPath string, port string, verbose bool) {
+func secureEcho(serverCertPath string, serverKeyPath string, caCertPath string, port string, verbose bool) {
 
 	// load certificates
-	serverCert, err := tls.LoadX509KeyPair(certPath, keyPath)
+	serverCert, err := tls.LoadX509KeyPair(serverCertPath, serverKeyPath)
 	if err != nil {
 		log.Fatalf("Error %s while loading server certificates", err)
 	}
 
-	serverCA, err := ioutil.ReadFile(certPath)
+	ca, err := ioutil.ReadFile(caCertPath)
 	if err != nil {
-		log.Fatalf("Error %s while reading server certificates", err)
+		log.Fatalf("Error %s while reading CA certificates", err)
 	}
 
-	serverCAPool := x509.NewCertPool()
-	serverCAPool.AppendCertsFromPEM(serverCA)
+	caPool := x509.NewCertPool()
+	caPool.AppendCertsFromPEM(ca)
 
 	//Configure TLS
 	tlsConfig := tls.Config{
 		Certificates: []tls.Certificate{serverCert},
-		RootCAs:    serverCAPool,
+		RootCAs:      caPool,
 	}
 
 	tlsConfig.Rand = rand.Reader
@@ -138,7 +139,7 @@ func readWrite(connection net.Conn, verbose bool) {
 func startup(config Argument) {
 	log.Println("Starting TCP Echo application...")
 	if config.Secure {
-		secureEcho(config.ServerCert, config.ServerKey, config.ServerPort, config.Verbose)
+		secureEcho(config.ServerCert, config.ServerKey, config.CACert, config.ServerPort, config.Verbose)
 	}
 	echoServerThread(config.ServerPort, nil, config.Verbose)
 }

@@ -15,7 +15,7 @@
  */
 
 /** @brief This example demonstrates bringing up a network
- * and performing socket operations over a secured TLS
+ * and performing socket operations over a secured UDP (i.e. DTLS)
  * connection with a u-blox module.
  *
  * The choice of module and the choice of platform on which this
@@ -47,7 +47,7 @@
 
 // Echo server URL and port number
 #define MY_SERVER_NAME "ubxlib.redirectme.net"
-#define MY_SERVER_PORT 5065
+#define MY_SERVER_PORT 5070
 
 // For u-blox internal testing only
 #ifdef U_PORT_TEST_ASSERT
@@ -100,8 +100,7 @@ static const uDeviceCfg_t gDeviceCfg = {
             .pinTxd = U_CFG_APP_PIN_CELL_TXD,
             .pinRxd = U_CFG_APP_PIN_CELL_RXD,
             .pinCts = U_CFG_APP_PIN_CELL_CTS,
-            .pinRts = U_CFG_APP_PIN_CELL_RTS,
-            .pPrefix = NULL // Relevant for Linux only
+            .pinRts = U_CFG_APP_PIN_CELL_RTS
         },
     },
 };
@@ -257,7 +256,7 @@ static void checkCredentials(uDeviceHandle_t devHandle,
 // The entry point, main(): before this is called the system
 // clocks must have been started and the RTOS must be running;
 // we are in task space.
-U_PORT_TEST_FUNCTION("[example]", "exampleSocketsTls")
+U_PORT_TEST_FUNCTION("[example]", "exampleSocketsDtls")
 {
     uDeviceHandle_t devHandle = NULL;
     int32_t sock;
@@ -309,8 +308,8 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSocketsTls")
             // Create the socket on the network
             uPortLog("Creating socket...\n");
             sock = uSockCreate(devHandle,
-                               U_SOCK_TYPE_STREAM,
-                               U_SOCK_PROTOCOL_TCP);
+                               U_SOCK_TYPE_DGRAM,
+                               U_SOCK_PROTOCOL_UDP);
 
             // Secure the socket.  Before calling this
             // you would make any changes to settings
@@ -322,8 +321,8 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSocketsTls")
             // (e.g. SARA-R5) will also by default confirm
             // the server's authenticity
             if (uSockSecurity(sock, &settings) == 0) {
-                // Make a TCP connection to the server
-                // over TLS
+                // For DTLS the socket must be connected,
+                // even though we are using UDP
                 if (uSockConnect(sock, &address) == 0) {
                     // Send the data over the socket
                     // and print the echo that comes back

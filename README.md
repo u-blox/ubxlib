@@ -162,6 +162,7 @@ A number of examples are provided with this repo:
 | Cellular     | The [sockets](/example/sockets "socket example") example brings up a TCP/UDP socket by using the [device](/common/device "device API"), [network](/common/network "network API") and [sock](/common/sock "sock API") APIs.  |
 | Cellular     | The [PSK generation](/example/security/psk "PSK example") example using the [security](/common/security "security API") API. |
 | Cellular     | A [TLS-secured version](/example/sockets "TLS sockets example") of the sockets example. |
+| Cellular     | A [DTLS-secured version](/example/sockets "DTLS sockets example") of the sockets example. |
 | Cellular     | An [MQTT/MQTT-SN client](/example/mqtt_client "MQTT/MQTT-SN example") using the [MQTT/MQTT-SN client](/common/mqtt_client "MQTT/MQTT-SN client API") API.|
 | Cellular     | An [HTTP client](/example/http_client "HTTP example") using the [HTTP client](/common/http_client "HTTP client API") API.|
 | Cellular     | [CellLocate](/example/location "CellLocate example") example.|

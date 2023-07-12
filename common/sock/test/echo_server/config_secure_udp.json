@@ -2,7 +2,7 @@
     "verbose": true,
     "logging": false,
     "secure-connection": true,
-    "server-port": "5065",
+    "server-port": "5070",
     "server-certificate-location": "./certs/server_cert.pem",
     "server-key-location": "./certs/server_key.pem",
     "ca-certificate-location": "./certs/ca_cert.pem"

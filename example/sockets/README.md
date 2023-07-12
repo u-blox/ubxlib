@@ -2,7 +2,7 @@
 These examples demonstrates how to bring up a network connection using a u-blox module and make a TCP or UDP sockets connection, optionally over a TLS-secured link, to a server on the public internet.
 
 # A Note On TLS Security
-TLS security can be applied in at least three different ways, all of which can be performed using the `main_tls.c` example by tweaking the [settings structure](/common/security/api/u_security_tls.h#L283):
+TLS security can be applied in at least three different ways, all of which can be performed using the `main_tls.c` and `main_dtls.c` examples by tweaking the [settings structure](/common/security/api/u_security_tls.h#L283):
 
 - encrypted traffic only: no checking that the server is authentic and no checking by the server that you are who you say you are.  This is the simplest form of security and requires no security credentials to operate.
 - encrypted traffic plus server authentication: for this the necessary credentials must be loaded onto the module to check the server's authenticity.  For the purposes of this example the certificate of the `ubxlib` echo server is used, since the `ubxlib` echo server does not form a part of any chain of trust; in the real world with true trusted servers you would not need to do this, you load a root certificate onto the module instead and check the authenticity of the server's certificate using that.
@@ -15,7 +15,7 @@ To build and run these examples on a supported platform you need to travel down 
 
 `U_CFG_APP_FILTER`: set this to `exampleSockets` (noting that NO quotation marks should be included) to run *just* these example, as opposed to all the examples and unit tests.
 
-For the remainder of the \#defines (see "Using A xxx Module" below) you may either override their values in the same way or, if you are only running these examples, you may edit the values directly in [main.c](main.c) and [main_tls.c](main_tls.c) before compiling.
+For the remainder of the \#defines (see "Using A xxx Module" below) you may either override their values in the same way or, if you are only running these examples, you may edit the values directly in [main.c](main.c), [main_tls.c](main_tls.c) and [main_dtls.c](main_dtls.c) before compiling.
 
 # Usage (Arduino Example)
 Follow the instructions in the [port/platform/arduino](/port/platform/arduino) directory to create the Arduino library version of `ubxlib`, which will include the example here.

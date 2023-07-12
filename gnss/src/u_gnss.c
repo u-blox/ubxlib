@@ -74,11 +74,12 @@
 //lint -esym(752, gpTransportTypeText) Suppress not referenced, which
 // it won't be if diagnostic prints are compiled out
 static const char *const gpTransportTypeText[] = {"None",       // U_GNSS_TRANSPORT_NONE
-                                                  "UART",       // U_GNSS_TRANSPORT_UART
+                                                  "UART",       // U_GNSS_TRANSPORT_UART or U_GNSS_TRANSPORT_UART_1
                                                   "AT",         // U_GNSS_TRANSPORT_AT
                                                   "I2C",        // U_GNSS_TRANSPORT_I2C
                                                   "SPI",        // U_GNSS_TRANSPORT_SPI
-                                                  "Virtual Serial" // U_GNSS_TRANSPORT_VIRTUAL_SERIAL
+                                                  "Virtual Serial", // U_GNSS_TRANSPORT_VIRTUAL_SERIAL
+                                                  "UART 2"      // U_GNSS_TRANSPORT_UART_2
                                                  };
 #endif
 
@@ -97,6 +98,10 @@ static uGnssPrivateInstance_t *pGetGnssInstanceTransportHandle(uGnssTransportTyp
     bool match = false;
 
     while ((pInstance != NULL) && !match) {
+        // Either UART transport type (on the GNSS-side) should be treated the same way
+        if (transportType == U_GNSS_TRANSPORT_UART_2) {
+            transportType = U_GNSS_TRANSPORT_UART;
+        }
         if (pInstance->transportType == transportType) {
             switch (transportType) {
                 case U_GNSS_TRANSPORT_UART:
@@ -314,6 +319,8 @@ int32_t uGnssAdd(uGnssModuleType_t moduleType,
                         pInstance->portNumber = U_GNSS_PORT_I2C;
                         if (transportType == U_GNSS_TRANSPORT_UART) {
                             pInstance->portNumber = U_GNSS_PORT_UART;
+                        } else if (transportType == U_GNSS_TRANSPORT_UART_2) {
+                            pInstance->portNumber = U_GNSS_PORT_UART2;
                         } else if (transportType == U_GNSS_TRANSPORT_SPI) {
                             pInstance->portNumber = U_GNSS_PORT_SPI;
                         }

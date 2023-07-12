@@ -26,6 +26,8 @@
 package main
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"flag"
 	"io"
@@ -33,50 +35,172 @@ import (
 	"log"
 	"net"
 	"os"
+	"time"
+	"context"
+	"github.com/pion/dtls/v2"
+	"github.com/pion/dtls/v2/pkg/protocol"
+	"github.com/pion/dtls/v2/pkg/protocol/recordlayer"
+	"github.com/pion/transport/v2/udp"
 )
 
 // Argument struct for JSON configuration
 type Argument struct {
 	Verbose    bool   `json:"verbose"`
 	Logging    bool   `json:"logging"`
+	Secure     bool   `json:"secure-connection"`
 	ServerPort string `json:"server-port"`
+	ServerCert string `json:"server-certificate-location"`
+	ServerKey  string `json:"server-key-location"`
+	CACert     string `json:"ca-certificate-location"`
 }
 
-func echoServerThread(port string, verbose bool) {
-	var err error
-	log.Println("Opening UDP server listening to port " + port)
+// A DTLS or plain UDP listener
+type listener struct {
+	secure bool
+	config dtls.Config
+	parent net.Listener
+}
 
+// Create a DTLS listener
+func LocalListen(network string, laddr *net.UDPAddr, dtlsConfig *dtls.Config) (*listener, error) {
+	var l listener
+	lc := udp.ListenConfig{}
+	if dtlsConfig != nil {
+		l.secure = true
+		l.config = *dtlsConfig
+		lc.AcceptFilter = func(packet []byte) bool {
+			pkts, err := recordlayer.UnpackDatagram(packet)
+			if err != nil || len(pkts) < 1 {
+				return false
+			}
+			h := &recordlayer.Header{}
+			if err := h.Unmarshal(pkts[0]); err != nil {
+				return false
+			}
+			return h.ContentType == protocol.ContentTypeHandshake
+		}
+	}
+	parent, err := lc.Listen(network, laddr)
+	if err == nil {
+		l.parent = parent
+	} else {
+		return nil, err
+	}
+	return &l, nil
+}
+
+// Wait for and return the next connection to the listener
+func (l *listener) LocalAccept() (net.Conn, error) {
+	c, err := l.parent.Accept()
+	if err != nil {
+		return nil, err
+	}
+	if !l.secure {
+		return c, nil
+	}
+	return dtls.Server(c, &l.config)
+}
+
+// Close the listener.
+func (l *listener) LocalClose() error {
+	return l.parent.Close()
+}
+
+// Return the listener's network address.
+func (l *listener) LocalAddr() net.Addr {
+	return l.parent.Addr()
+}
+
+// Configure security
+func secureEcho(serverCertPath string, serverKeyPath string, caCertPath string, port string, verbose bool) (*dtls.Config) {
+	// load certificates
+	serverCert, err := tls.LoadX509KeyPair(serverCertPath, serverKeyPath)
+	if err != nil {
+		log.Fatalf("Error %s while loading server certificates", err)
+	}
+
+	ca, err := ioutil.ReadFile(caCertPath)
+	if err != nil {
+		log.Fatalf("Error %s while reading server certificates", err)
+	}
+
+	caPool := x509.NewCertPool()
+	caPool.AppendCertsFromPEM(ca)
+
+	// Return the DTLS configuration
+	return &dtls.Config {
+		Certificates:         []tls.Certificate{serverCert},
+		// Two cipher suites that our modules support with elliptic curve since
+		// pion only supports elliptic curve ciphers for certificate-based authentication
+		CipherSuites:         []dtls.CipherSuiteID{dtls.TLS_ECDHE_ECDSA_WITH_AES_128_CCM, dtls.TLS_ECDHE_ECDSA_WITH_AES_128_CCM_8},
+		ClientAuth:           dtls.RequireAnyClientCert,
+		RootCAs:              caPool,
+		ClientCAs:            caPool,
+	}
+}
+
+// Echo received packets on a connection
+func echoPackets(connection net.Conn, verbose bool) {
+	defer connection.Close()
+	buffer := make([]byte, 4096)
+	for {
+		readBytes, err := connection.Read(buffer)
+		if err != nil {
+			if err != io.EOF {
+				log.Printf("Error \"%s\" while reading data. Expected an EOF to signal end of connection", err)
+			}
+			break
+		} else {
+			log.Printf("Read %d bytes.", readBytes)
+			if verbose {
+				log.Printf("Message:\n %s\n from %s", buffer, connection.RemoteAddr())
+			}
+		}
+		writeBytes, err := connection.Write(buffer[:readBytes])
+		if err != nil {
+			log.Printf("Failed to send data with error: \"%s\" ", err)
+			break
+		}
+
+		if writeBytes != 0 {
+			log.Printf("Succesfully echoed back %d bytes.", writeBytes)
+		}
+	}
+}
+
+// The echo server thread which accepts connections
+func echoServerThread(port string, dtlsConfig *dtls.Config, verbose bool) {
+	log.Println("Opening UDP server listening to port " + port)
 	serverAddr, err := net.ResolveUDPAddr("udp", ":" + port)
 	if err != nil {
 		log.Fatalf("While trying to resolve the port an error occurred %s.", err)
 	} else {
-		connection, err := net.ListenUDP("udp", serverAddr)
+		localListener, err := LocalListen("udp", serverAddr, dtlsConfig)
 		if err != nil {
-			log.Fatalf("While trying to listen for a connection an error occurred %s.", err)
+			log.Fatalf("Unable to listen on port %s (%s).", port, err)
 		} else {
-			defer connection.Close()
-			buffer := make([]byte, 4096)
+			if dtlsConfig != nil {
+				// Create parent context to cleanup handshaking connections on exit.
+				ctx, cancel := context.WithCancel(context.Background())
+				defer cancel()
+				// Create timeout context for accepted connection.
+				dtlsConfig.ConnectContextMaker =  func() (context.Context, func()) {
+					return context.WithTimeout(ctx, 30*time.Second)
+				}
+				localListener.config = *dtlsConfig
+				localListener.secure = true
+			}
+			defer localListener.LocalClose()
 			for {
-				readBytes, addr, err := connection.ReadFromUDP(buffer)
-				if err != nil {
-					if err != io.EOF {
-						log.Printf("Error %s while reading data. Expected an EOF to signal end of connection", err)
-					}
-					break
+				// Wait for a connection.
+				connection, err := localListener.LocalAccept()
+				if err == nil {
+					// Handle the connection in a new goroutine.
+					// The loop then returns to accepting, so that
+					// multiple connections may be served concurrently.
+					go echoPackets(connection, verbose)
 				} else {
-					log.Printf("Read %d bytes.", readBytes)
-					if verbose {
-						log.Printf("Message:\n %s\n from %s", buffer, addr)
-					}
-				}
-				writeBytes, err := connection.WriteTo(buffer[:readBytes], addr)
-				if err != nil {
-					log.Printf("Failed to send data with error: %s ", err)
-					break
-				}
-
-				if writeBytes != 0 {
-					log.Printf("Succesfully echoed back %d bytes.", writeBytes)
+					log.Printf("Error %s when accepting connection.", err)
 				}
 			}
 		}
@@ -85,7 +209,13 @@ func echoServerThread(port string, verbose bool) {
 
 func startup(config Argument) {
 	log.Println("Starting UDP Echo application...")
-	echoServerThread(config.ServerPort, config.Verbose)
+	if config.Secure {
+		log.Println("Security will be used.")
+		dtlsConfig := secureEcho(config.ServerCert, config.ServerKey, config.CACert, config.ServerPort, config.Verbose)
+		echoServerThread(config.ServerPort, dtlsConfig, config.Verbose)
+	} else {
+		echoServerThread(config.ServerPort, nil, config.Verbose)
+	}
 }
 
 func logSetup() {
@@ -100,7 +230,6 @@ func logSetup() {
 }
 
 func main() {
-
 	configLocation := flag.String("config", "./config.json", "Path to a JSON configuration.")
 	flag.Parse()
 	jsonFile, err := os.Open(*configLocation)
