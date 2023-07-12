@@ -5,6 +5,7 @@
 
 example/sockets/main.c
 example/sockets/main_tls.c
+example/sockets/main_dtls.c
 example/sockets/credentials_tls.c
 example/security/psk_main.c
 example/mqtt_client/mqtt_main.c

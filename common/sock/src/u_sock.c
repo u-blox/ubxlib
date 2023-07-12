@@ -1079,8 +1079,9 @@ static int32_t receive(const uSockContainer_t *pContainer,
     // Run around the loop until a packet of data turns up
     // or we time out or just once if we're non-blocking.
     do {
-        if (pContainer->socket.protocol == U_SOCK_PROTOCOL_UDP) {
-            // UDP style
+        if ((pContainer->socket.protocol == U_SOCK_PROTOCOL_UDP) &&
+            (pContainer->socket.pSecurityContext == NULL)) {
+            // UDP (non-secure) style
             if (devType == (int32_t) U_DEVICE_TYPE_CELL) {
                 negErrnoOrSize = uCellSockReceiveFrom(devHandle,
                                                       sockHandle,
@@ -1095,7 +1096,7 @@ static int32_t receive(const uSockContainer_t *pContainer,
                                                       dataSizeBytes);
             }
         } else {
-            // TCP style
+            // TCP or DTLS style
             if (devType == (int32_t) U_DEVICE_TYPE_CELL) {
                 negErrnoOrSize = uCellSockRead(devHandle,
                                                sockHandle,

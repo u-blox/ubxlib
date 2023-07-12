@@ -153,6 +153,12 @@ typedef struct {
  * an X.509 certificate; consult the security section of your u-blox
  * module AT manual, command AT+USECMNG, for further information.
  *
+ * Note: elliptic curve keys must begin with "-----BEGIN EC PRIVATE KEY-----",
+ * the "-----BEGIN EC PARAMETERS-----" field should not be present, for
+ * example generate the key with:
+ *
+ * openssl ecparam -name  prime192v1 -genkey -noout -out key.pem
+ *
  * Note: there is an issue with cellular SARA-R422 modules before the 02B
  * version where a "fresh" module, one which you have not yet written any
  * certificates to, may return an error; a workaround for this is to call

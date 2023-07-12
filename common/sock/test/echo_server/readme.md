@@ -10,8 +10,9 @@ The running echo servers can be found at the following addresses:
 - UDP:        `ubxlib.redirectme.net:5050`
 - TCP:        `ubxlib.redirectme.net:5055`
 - Secure TCP: `ubxlib.redirectme.net:5065`
+- Secure UDP: `ubxlib.redirectme.net:5070`
 
-Note: used to use port 5060 for secure TCP but that port is commonly used by non-secure SIP and hence can be blocked by firewalls which want to exclude SIP, so port 5065 is now used instead.
+Note: we used to use port 5060 for secure TCP but that port is commonly used by non-secure SIP and hence can be blocked by firewalls which want to exclude SIP, so port 5065 is now used instead.
 
 # Installation
 The [README.md](https://github.com/aws/amazon-freertos/tree/main/tools/echo_server#readme) at the above link was used to install TCP and secure TCP versions of the echo server.  The certificates generated for the secure TCP echo server can be found in the [certs](certs) directory.  Then [echo-server.go](echo-server.go) was copied and adapted to form [echo-server-udp.go](echo-server-udp.go).
@@ -23,7 +24,7 @@ The [README.md](https://github.com/aws/amazon-freertos/tree/main/tools/echo_serv
 go build echo_server.go
 go build echo_server_udp.go
 ```
-- To just run all three echo servers manually, execute `sh ./echo_server.sh` (see note below if you get strange errors).
+- To just run all four echo servers manually, execute `sh ./echo_server.sh` (see note below if you get strange errors).
 - To start the echo servers as a service at boot, kill the processes that started running as a result of the above line (`ps aux` and `kill xxx` where `xxx` is the `PID`), modify the paths in the file [echo_server.service](echo_server.service) appropriately, copy [echo_server.service](echo_server.service) to `/etc/systemd/system` and then:
 ```
 sudo chmod u+x echo_server.sh
@@ -32,5 +33,9 @@ sudo systemctl start echo_server
 sudo systemctl enable echo_server
 ```
 - To test that it is working (or at least the TCP flavour is), open PuTTY or similar and connect a RAW socket to the server on port 5055 (for the TCP echo server): what you type in the PuTTY terminal should be echo'ed back to you (on a line-buffered basis).
+- You may use an application such as [Packet Sender](https://packetsender.com/) to check that UDP on port 5050 and SSL on port 5065 are working.
+- Haven't found a way to check that DTLS on port 5070 is working, but since it uses the same certificates as SSL on port 5065 there is less chance of failure.
 
 Note: if you have FTP'ed `echo_server.sh` or `echo_server.service` across to your echo server from Windows they may well have the wrong line endings and strange things may happen; to give them the correct line endings, open the file in `nano`, press `CTRL-O` to write the file and then, before actually writing it, press `ALT-D` to switch to native Linux format and press \<enter\> to save the file.
+
+Note: if you are debugging your setup by running `tshark` (the command-line version of Wireshark) on your server and you want to write the captured packets to file for later viewing in Wireshark, i.e. using a command-line something like `sudo tshark -i eth0 -f "port 5070" -w wireshark.log` then you may find that you get back a permission denied error; this can be fixed with something like `touch wireshark.log` followed by `chmod o=rw wireshark.log`.

@@ -49,6 +49,24 @@
 # define U_SOCK_TEST_ECHO_UDP_SERVER_PORT  5050
 #endif
 
+#ifndef U_SOCK_TEST_ECHO_SECURE_UDP_SERVER_DOMAIN_NAME
+/** Echo server to use for secure (DTLS) UDP sockets testing as a domain name.
+ */
+# define U_SOCK_TEST_ECHO_SECURE_UDP_SERVER_DOMAIN_NAME  "ubxlib.redirectme.net"
+#endif
+
+#ifndef U_SOCK_TEST_ECHO_SECURE_UDP_SERVER_IP_ADDRESS
+/** Echo server to use for secure (DTLS) UDP sockets testing as an IP address.
+ */
+# define U_SOCK_TEST_ECHO_SECURE_UDP_SERVER_IP_ADDRESS  "159.65.52.65"
+#endif
+
+#ifndef U_SOCK_TEST_ECHO_SECURE_UDP_SERVER_PORT
+/** Port number on the echo server to use for secure (DTLS) UDP testing.
+ */
+# define U_SOCK_TEST_ECHO_SECURE_UDP_SERVER_PORT  5070
+#endif
+
 #ifndef U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME
 /** Echo server to use for TCP sockets testing as a domain name.
  */

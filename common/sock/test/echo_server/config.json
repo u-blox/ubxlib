@@ -4,5 +4,6 @@
     "secure-connection": false,
     "server-port": "5055",
     "server-certificate-location": "./certs/server_cert.pem",
-    "server-key-location": "./certs/server_key.pem"
+    "server-key-location": "./certs/server_key.pem",
+    "ca-certificate-location": "./certs/ca_cert.pem"
 }
