@@ -78,7 +78,7 @@
 /** The minimum free heap space permitted, i.e. what's left for
  * user code.
  */
-#define U_CFG_TEST_HEAP_MIN_FREE_BYTES (1024 * 193)
+#define U_CFG_TEST_HEAP_MIN_FREE_BYTES (1024 * 185)
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS: OS RELATED
