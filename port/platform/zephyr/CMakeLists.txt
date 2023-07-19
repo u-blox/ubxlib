@@ -1,10 +1,12 @@
 # This CMake file will select the ubxlib source and include directories
 # to include in the Zephyr application based on Kconfig. Use menuconfig
 # to view the available options.
-#
-# TODO: Instead of compiling the files directly with the app this cmake
-#       file should create an ubxlib library instead.
 if(CONFIG_UBXLIB)
+
+zephyr_library_named(ubxlib)
+
+# we need to be able to include generated header files
+zephyr_include_directories()
 
 get_filename_component(UBXLIB_BASE ../../../ ABSOLUTE)
 set(ENV{UBXLIB_BASE} ${UBXLIB_BASE})
@@ -12,7 +14,7 @@ set(ENV{UBXLIB_BASE} ${UBXLIB_BASE})
 # Add environment variables passed-in via U_FLAGS
 if (DEFINED ENV{U_FLAGS})
     separate_arguments(U_FLAGS NATIVE_COMMAND "$ENV{U_FLAGS}")
-    target_compile_options(app PRIVATE ${U_FLAGS})
+    target_compile_options(ubxlib PRIVATE ${U_FLAGS})
     message("ubxlib: added ${U_FLAGS} due to environment variable U_FLAGS.")
 endif()
 
@@ -37,7 +39,7 @@ endif()
 include(${UBXLIB_BASE}/port/ubxlib.cmake)
 
 # Set ubxlib source files
-target_sources(app PRIVATE
+target_sources(ubxlib PRIVATE
     ${UBXLIB_SRC}
     src/u_port.c
     src/u_port_debug.c
@@ -52,7 +54,7 @@ target_sources(app PRIVATE
 )
 
 if (CONFIG_UBXLIB_OPEN_CPU_BLE)
-    target_sources(app PRIVATE src/u_port_gatt.c)
+    target_sources(ubxlib PRIVATE src/u_port_gatt.c)
 endif()
 
 # Set the include directories
@@ -67,9 +69,9 @@ zephyr_include_directories(
 
 # Add test source & include dirs if selected
 if (CONFIG_UBXLIB_TEST)
-    target_compile_definitions(app PRIVATE UNITY_INCLUDE_CONFIG_H)
+    target_compile_definitions(ubxlib PRIVATE UNITY_INCLUDE_CONFIG_H)
 
-    target_sources(app PRIVATE
+    target_sources(ubxlib PRIVATE
         ${UBXLIB_TEST_SRC}
     )
 
@@ -98,7 +100,7 @@ if (CONFIG_UBXLIB_TEST)
 
     if (DEFINED UNITY_PATH)
         message("Unity from ${UNITY_PATH} will be used")
-        target_sources(app PRIVATE
+        target_sources(ubxlib PRIVATE
             ${UNITY_PATH}/src/unity.c
         )
         zephyr_include_directories(
@@ -110,7 +112,7 @@ if (CONFIG_UBXLIB_TEST)
 endif()
 
 if (CONFIG_MINIMAL_LIBC)
-    target_sources(app PRIVATE
+    target_sources(ubxlib PRIVATE
         ${UBXLIB_BASE}/port/clib/u_port_clib_isblank.c
         ${UBXLIB_BASE}/port/clib/u_port_clib_mktime.c
         ${UBXLIB_BASE}/port/clib/u_port_setjmp.S
@@ -119,15 +121,15 @@ if (CONFIG_MINIMAL_LIBC)
 endif()
 
 if (CONFIG_UBXLIB_EDM_STREAM_DEBUG)
-    target_compile_definitions(app PRIVATE U_CFG_SHORT_RANGE_EDM_STREAM_DEBUG)
+    target_compile_definitions(ubxlib PRIVATE U_CFG_SHORT_RANGE_EDM_STREAM_DEBUG)
 endif()
 
 if (CONFIG_UBXLIB_EDM_STREAM_DEBUG_COLOR)
-    target_compile_definitions(app PRIVATE U_CFG_SHORT_RANGE_EDM_STREAM_DEBUG_COLOR)
+    target_compile_definitions(ubxlib PRIVATE U_CFG_SHORT_RANGE_EDM_STREAM_DEBUG_COLOR)
 endif()
 
 if (CONFIG_UBXLIB_EDM_STREAM_DEBUG_DUMP_DATA)
-    target_compile_definitions(app PRIVATE U_CFG_SHORT_RANGE_EDM_STREAM_DEBUG_DUMP_DATA)
+    target_compile_definitions(ubxlib PRIVATE U_CFG_SHORT_RANGE_EDM_STREAM_DEBUG_DUMP_DATA)
 endif()
 
 endif() #CONFIG_UBXLIB
