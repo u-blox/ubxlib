@@ -80,7 +80,9 @@
 typedef struct {
     const struct device *pDevice;  // NULL if not in use
     struct spi_config spiConfig;
+#if !(KERNEL_VERSION_MAJOR >= 3 && KERNEL_VERSION_MINOR >= 4)
     struct spi_cs_control spiCsControl;
+#endif
 } uPortSpiCfg_t;
 
 /* ----------------------------------------------------------------
@@ -311,7 +313,11 @@ static int32_t setSpiConfig(int32_t spi, uPortSpiCfg_t *pSpiCfg,
     pSpiCfg->spiConfig.operation = operation;
     pSpiCfg->spiConfig.frequency = pDevice->frequencyHertz;
 
+#if KERNEL_VERSION_MAJOR >= 3 && KERNEL_VERSION_MINOR >= 4
+    pSpiCfg->spiConfig.cs.gpio.port = NULL;
+#else
     pSpiCfg->spiConfig.cs = NULL;
+#endif
     if ((pDevice->pinSelect >= 0) || (pDevice->indexSelect >= 0)) {
 #if KERNEL_VERSION_MAJOR < 3
         pSpiCfg->spiCsControl.gpio_dev = pUPortPrivateGetGpioDevice(pinSelect);
@@ -323,7 +329,7 @@ static int32_t setSpiConfig(int32_t spi, uPortSpiCfg_t *pSpiCfg,
             }
             pSpiCfg->spiConfig.cs = &pSpiCfg->spiCsControl;
         }
-#else
+#elif KERNEL_VERSION_MINOR < 4
         // Try to set the CS pin based on what the SPI controller
         // has set for CS pins
         errorCode = getSpiCsControl(spi, pDevice->pinSelect,
@@ -352,6 +358,31 @@ static int32_t setSpiConfig(int32_t spi, uPortSpiCfg_t *pSpiCfg,
                 }
             }
         }
+#else
+        // Try to set the CS pin based on what the SPI controller
+        // has set for CS pins
+        errorCode = getSpiCsControl(spi, pDevice->pinSelect,
+                                    pDevice->indexSelect,
+                                    &pSpiCfg->spiConfig.cs);
+        if ((errorCode == (int32_t) U_ERROR_COMMON_NOT_FOUND) &&
+                   (pDevice->pinSelect >= 0)) {
+            errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
+            // That didn't work but there is a pinSelect and we can just
+            // hook-in any-old GPIO if we initialise it
+            pGpioPort = pUPortPrivateGetGpioDevice(pinSelect);
+            if (pGpioPort != NULL) {
+                pinSelect = pinSelect % GPIO_MAX_PINS_PER_PORT;
+                if (!pinSelectInverted) {
+                    gpioFlags |= GPIO_ACTIVE_LOW;
+                }
+                if (gpio_pin_configure(pGpioPort, pinSelect, gpioFlags) == 0) {
+                    pSpiCfg->spiConfig.cs.gpio.port = pGpioPort;
+                    pSpiCfg->spiConfig.cs.gpio.pin = pinSelect;
+                    pSpiCfg->spiConfig.cs.gpio.dt_flags = gpioFlags;
+                    errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                }
+            }
+        }
 #endif
         if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
             // Separate stop and start offsets are not supported, just a single
@@ -360,7 +391,11 @@ static int32_t setSpiConfig(int32_t spi, uPortSpiCfg_t *pSpiCfg,
             if (pDevice->stopOffsetNanoseconds > offsetDuration) {
                 offsetDuration = pDevice->stopOffsetNanoseconds;
             }
+#if KERNEL_VERSION_MAJOR >= 3 && KERNEL_VERSION_MINOR >= 4
+            pSpiCfg->spiConfig.cs.delay = offsetDuration / 1000;
+#else
             pSpiCfg->spiCsControl.delay = offsetDuration / 1000;
+#endif
         }
     }
 
@@ -536,6 +571,18 @@ int32_t uPortSpiControllerGetDevice(int32_t handle,
             pDevice->pinSelect = -1;
             pDevice->startOffsetNanoseconds = 0;
 #if KERNEL_VERSION_MAJOR >= 3
+
+#if KERNEL_VERSION_MINOR >= 4
+            if (pSpiCfg->spiConfig.cs.gpio.port != NULL) {
+                // Have a chip select pin, work out what it is
+                pDevice->pinSelect = uPortPrivateGetGpioPort(pSpiCfg->spiConfig.cs.gpio.port,
+                                                             pSpiCfg->spiConfig.cs.gpio.pin);
+                if (!(pSpiCfg->spiConfig.cs.gpio.dt_flags & GPIO_ACTIVE_LOW)) {
+                    pDevice->pinSelect |= U_COMMON_SPI_PIN_SELECT_INVERTED;
+                }
+                pDevice->startOffsetNanoseconds = pSpiCfg->spiConfig.cs.delay * 1000;
+            }
+#else
             if (pSpiCfg->spiConfig.cs != NULL) {
                 // Have a chip select pin, work out what it is
                 pDevice->pinSelect = uPortPrivateGetGpioPort(pSpiCfg->spiCsControl.gpio.port,
@@ -545,6 +592,7 @@ int32_t uPortSpiControllerGetDevice(int32_t handle,
                 }
                 pDevice->startOffsetNanoseconds = pSpiCfg->spiCsControl.delay * 1000;
             }
+#endif
 #endif
             pDevice->stopOffsetNanoseconds = pDevice->startOffsetNanoseconds;
             pDevice->sampleDelayNanoseconds = 0; // Not an option in Zephyr
