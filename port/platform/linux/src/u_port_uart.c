@@ -34,15 +34,12 @@
 #include "sys/select.h"
 #include "pthread.h"  // threadId
 
-#include "u_cfg_sw.h"
-
 #include "u_error_common.h"
 
 #include "u_cfg_os_platform_specific.h"
 #include "u_port_clib_platform_specific.h" /* Integer stdio, must be included
                                               before the other port files if
                                               any print or scan function is used. */
-#include "u_port_debug.h"
 #include "u_port.h"
 #include "u_port_heap.h"
 #include "u_port_os.h"
@@ -70,6 +67,7 @@ typedef struct uPortUartData_t {
     size_t writePos;
     bool bufferFull;
     bool hwHandshake;
+    bool handshakeSuspended;
     int32_t eventQueueHandle;
     uint32_t eventFilter;
     void (*pEventCallback)(int32_t, uint32_t, void *);
@@ -216,27 +214,41 @@ static void disposeUartData(uPortUartData_t *p)
     }
 }
 
-static uint32_t setUartHwHandshake(int32_t handle, bool enable)
+static uint32_t suspendResumeUartHwHandshake(int32_t handle, bool suspendNotResume)
 {
     uErrorCode_t errorCode = U_ERROR_COMMON_NOT_INITIALISED;
+    bool enabled = false;
     if (gMutex != NULL) {
         U_PORT_MUTEX_LOCK(gMutex);
         errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
         uPortUartData_t *pUartData = findUart(handle);
         if ((pUartData != NULL) && !pUartData->markedForDeletion) {
+            errorCode = U_ERROR_COMMON_SUCCESS;
             struct termios options;
             tcgetattr(pUartData->uartFd, &options);
             cfmakeraw(&options);
-            pUartData->hwHandshake = enable;
-            if (pUartData->hwHandshake) {
-                options.c_cflag |= CRTSCTS;
+            enabled = (options.c_cflag & CRTSCTS) == CRTSCTS;
+            if (enabled) {
+                if (suspendNotResume) {
+                    // HW handshake was enabled and we want to suspend it
+                    options.c_cflag &= ~CRTSCTS;
+                    if (tcsetattr(pUartData->uartFd, TCSANOW, &options) == 0) {
+                        pUartData->handshakeSuspended = true;
+                    } else {
+                        errorCode = U_ERROR_COMMON_PLATFORM;
+                    }
+                }
             } else {
-                options.c_cflag &= ~CRTSCTS;
-            }
-            if (tcsetattr(pUartData->uartFd, TCSANOW, &options) == 0) {
-                errorCode = U_ERROR_COMMON_SUCCESS;
-            } else {
-                errorCode = U_ERROR_COMMON_PLATFORM;
+                if (pUartData->handshakeSuspended && !suspendNotResume) {
+                    // HW handshake isn't enabled, has been suspended,
+                    // and the caller would like to resume it
+                    options.c_cflag |= CRTSCTS;
+                    if (tcsetattr(pUartData->uartFd, TCSANOW, &options) == 0) {
+                        pUartData->handshakeSuspended = false;
+                    } else {
+                        errorCode = U_ERROR_COMMON_PLATFORM;
+                    }
+                }
             }
         }
         U_PORT_MUTEX_UNLOCK(gMutex);
@@ -332,8 +344,6 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
 {
     (void)pinTx;
     (void)pinRx;
-    (void)pinCts;
-    (void)pinRts;
 
     if (gMutex == NULL) {
         return U_ERROR_COMMON_NOT_INITIALISED;
@@ -733,7 +743,7 @@ bool uPortUartIsRtsFlowControlEnabled(int32_t handle)
         U_PORT_MUTEX_LOCK(gMutex);
         uPortUartData_t *pUartData = findUart(handle);
         if ((pUartData != NULL) && !pUartData->markedForDeletion) {
-            rtsFlowControlIsEnabled = pUartData->hwHandshake;
+            rtsFlowControlIsEnabled = pUartData->hwHandshake || pUartData->handshakeSuspended;
         }
         U_PORT_MUTEX_UNLOCK(gMutex);
     }
@@ -749,13 +759,13 @@ bool uPortUartIsCtsFlowControlEnabled(int32_t handle)
 // Suspend CTS flow control.
 int32_t uPortUartCtsSuspend(int32_t handle)
 {
-    return setUartHwHandshake(handle, false);
+    return suspendResumeUartHwHandshake(handle, false);
 }
 
 // Resume CTS flow control.
 void uPortUartCtsResume(int32_t handle)
 {
-    setUartHwHandshake(handle, true);
+    suspendResumeUartHwHandshake(handle, true);
 }
 
 // End of file
