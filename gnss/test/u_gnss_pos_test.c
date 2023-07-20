@@ -696,9 +696,9 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosStreamed")
             U_PORT_TEST_ASSERT(uGnssPosGetStreamedStart(gnssHandle,
                                                         U_GNSS_POS_TEST_STREAMED_RATE_MS,
                                                         posCallback) == 0);
-            U_TEST_PRINT_LINE("waiting up to %d second(s) for first result from streamed API...",
+            U_TEST_PRINT_LINE("waiting up to %d second(s) for first valid result from streamed API...",
                               U_GNSS_POS_TEST_TIMEOUT_SECONDS);
-            while ((gErrorCode == 0xFFFFFFFF) && (uPortGetTickTimeMs() < gStopTimeMs)) {
+            while ((gErrorCode != 0) && (uPortGetTickTimeMs() < gStopTimeMs)) {
                 uPortTaskBlock(1000);
             }
 

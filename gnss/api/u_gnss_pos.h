@@ -244,6 +244,16 @@ void uGnssPosGetStop(uDeviceHandle_t gnssHandle);
  *                         described in uGnssPosGetStart().
  *                         Note: don't call back into this API from your
  *                         pCallback, it could lead to recursion.
+ *                         IMPORTANT: you should check the value of
+ *                         errorCode before treating rhe parameters:
+ *                         a value of zero means that a position fix
+ *                         has been achieved but a value of
+ *                         #U_ERROR_COMMON_TIMEOUT may be used to
+ *                         indicate that a message has arrived from the
+ *                         GNSS device giving no position fix or a
+ *                         time-only fix.  Where no fix is achieved the
+ *                         variables will be populated with out of range
+ *                         values (i.e. INT_MIN or -1 as appopriate).
  * @return                 zero on success or negative error code on
  *                         failure.
  */

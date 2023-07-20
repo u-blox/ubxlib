@@ -328,13 +328,13 @@ static void messageCallback(uDeviceHandle_t gnssHandle,
 {
     uGnssPrivateInstance_t *pInstance = (uGnssPrivateInstance_t *) pCallbackParam;
     char message[92 + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES] = {0};
-    int32_t latitudeX1e7;
-    int32_t longitudeX1e7;
-    int32_t altitudeMillimetres;
-    int32_t radiusMillimetres;
-    int32_t speedMillimetresPerSecond;
-    int32_t svs;
-    int64_t timeUtc;
+    int32_t latitudeX1e7 = INT_MIN;
+    int32_t longitudeX1e7 = INT_MIN;
+    int32_t altitudeMillimetres = INT_MIN;
+    int32_t radiusMillimetres = -1;
+    int32_t speedMillimetresPerSecond = INT_MIN;
+    int32_t svs = -1;
+    int64_t timeUtc = -1;
 
     (void) pMessageId;
 
@@ -353,21 +353,19 @@ static void messageCallback(uDeviceHandle_t gnssHandle,
                                       &radiusMillimetres,
                                       &speedMillimetresPerSecond,
                                       &svs, &timeUtc, false);
-        if (errorCodeOrLength == 0) {
-            // Call the callback
-            // Note: thee can be two handles involved here, e.g. if
-            // GNSS is inside a cellular device, hence we make sure
-            // we pass back the one that came in
-            pInstance->pStreamedPosition->pCallback(pInstance->pStreamedPosition->gnssHandle,
-                                                    errorCodeOrLength,
-                                                    latitudeX1e7,
-                                                    longitudeX1e7,
-                                                    altitudeMillimetres,
-                                                    radiusMillimetres,
-                                                    speedMillimetresPerSecond,
-                                                    svs,
-                                                    timeUtc);
-        }
+        // Call the callback
+        // Note: there can be two handles involved here, e.g. if
+        // GNSS is inside a cellular device, hence we make sure
+        // we pass back the one that came in
+        pInstance->pStreamedPosition->pCallback(pInstance->pStreamedPosition->gnssHandle,
+                                                errorCodeOrLength,
+                                                latitudeX1e7,
+                                                longitudeX1e7,
+                                                altitudeMillimetres,
+                                                radiusMillimetres,
+                                                speedMillimetresPerSecond,
+                                                svs,
+                                                timeUtc);
     }
 }
 
