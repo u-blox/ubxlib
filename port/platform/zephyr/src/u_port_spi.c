@@ -365,7 +365,7 @@ static int32_t setSpiConfig(int32_t spi, uPortSpiCfg_t *pSpiCfg,
                                     pDevice->indexSelect,
                                     &pSpiCfg->spiConfig.cs);
         if ((errorCode == (int32_t) U_ERROR_COMMON_NOT_FOUND) &&
-                   (pDevice->pinSelect >= 0)) {
+            (pDevice->pinSelect >= 0)) {
             errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
             // That didn't work but there is a pinSelect and we can just
             // hook-in any-old GPIO if we initialise it
