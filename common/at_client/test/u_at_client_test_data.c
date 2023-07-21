@@ -1862,176 +1862,211 @@ const size_t gAtClientTestSetSize1 = sizeof(gAtClientTestSet1) / sizeof(gAtClien
 //lint -e{786} Suppress string concatenation within initializer
 const uAtClientTestEcho_t gAtClientTestSet2[] = {
     {
+        // 1
         U_AT_CLIENT_TEST_ECHO_SKIP, U_AT_CLIENT_TEST_ECHO_SKIP_LENGTH, NULL,
         handleSkipParams, (const void *) &gAtClientTestEchoSkipParams0,
         (int32_t) U_ERROR_COMMON_SUCCESS
     },
     {
+        // 2
         U_AT_CLIENT_TEST_ECHO_SKIP, U_AT_CLIENT_TEST_ECHO_SKIP_LENGTH, &gAtClientUrc5,
         handleSkipParams, (const void *) &gAtClientTestEchoSkipParams0,
         (int32_t) U_ERROR_COMMON_SUCCESS
     },
     {
+        // 3
         U_AT_CLIENT_TEST_ECHO_SKIP, U_AT_CLIENT_TEST_ECHO_SKIP_LENGTH, NULL,
         handleSkipParams, (const void *) &gAtClientTestEchoSkipParams1,
         (int32_t) U_ERROR_COMMON_SUCCESS
     },
     {
+        // 4
         U_AT_CLIENT_TEST_ECHO_SKIP, U_AT_CLIENT_TEST_ECHO_SKIP_LENGTH, &gAtClientUrc5,
         handleSkipParams, (const void *) &gAtClientTestEchoSkipParams1,
         (int32_t) U_ERROR_COMMON_SUCCESS
     },
     {
+        // 5
         U_AT_CLIENT_TEST_ECHO_SKIP, U_AT_CLIENT_TEST_ECHO_SKIP_LENGTH, NULL,
         handleSkipParams, (const void *) &gAtClientTestEchoSkipParams2,
         (int32_t) U_ERROR_COMMON_SUCCESS
     },
     {
+        // 6
         U_AT_CLIENT_TEST_ECHO_SKIP, U_AT_CLIENT_TEST_ECHO_SKIP_LENGTH, &gAtClientUrc5,
         handleSkipParams, (const void *) &gAtClientTestEchoSkipParams2,
         (int32_t) U_ERROR_COMMON_SUCCESS
     },
     {
+        // 7
         U_AT_CLIENT_TEST_ECHO_SKIP, U_AT_CLIENT_TEST_ECHO_SKIP_LENGTH, NULL,
         handleSkipParams, (const void *) &gAtClientTestEchoSkipParams3,
         (int32_t) U_ERROR_COMMON_SUCCESS
     },
     {
+        // 8
         U_AT_CLIENT_TEST_ECHO_SKIP, U_AT_CLIENT_TEST_ECHO_SKIP_LENGTH, &gAtClientUrc5,
         handleSkipParams, (const void *) &gAtClientTestEchoSkipParams3,
         (int32_t) U_ERROR_COMMON_SUCCESS
     },
     {
+        // 9
         U_AT_CLIENT_TEST_ECHO_SKIP, U_AT_CLIENT_TEST_ECHO_SKIP_LENGTH, NULL,
         handleSkipParams, (const void *) &gAtClientTestEchoSkipParams4,
         (int32_t) U_ERROR_COMMON_SUCCESS
     },
     {
+        // 10
         U_AT_CLIENT_TEST_ECHO_SKIP, U_AT_CLIENT_TEST_ECHO_SKIP_LENGTH, &gAtClientUrc5,
         handleSkipParams, (const void *) &gAtClientTestEchoSkipParams4,
         (int32_t) U_ERROR_COMMON_SUCCESS
     },
     {
+        // 11
         U_AT_CLIENT_TEST_ECHO_SKIP, U_AT_CLIENT_TEST_ECHO_SKIP_LENGTH, NULL,
         handleSkipBytes, (const void *) &gAtClientTestEchoSkipBytes0,
         (int32_t) U_ERROR_COMMON_SUCCESS
     },
     {
+        // 12
         U_AT_CLIENT_TEST_ECHO_SKIP, U_AT_CLIENT_TEST_ECHO_SKIP_LENGTH, &gAtClientUrc5,
         handleSkipBytes, (const void *) &gAtClientTestEchoSkipBytes0,
         (int32_t) U_ERROR_COMMON_SUCCESS
     },
     {
+        // 13
         U_AT_CLIENT_TEST_ECHO_SKIP, U_AT_CLIENT_TEST_ECHO_SKIP_LENGTH, NULL,
         handleSkipBytes, (const void *) &gAtClientTestEchoSkipBytes1,
         (int32_t) U_ERROR_COMMON_SUCCESS
     },
     {
+        // 14
         U_AT_CLIENT_TEST_ECHO_SKIP, U_AT_CLIENT_TEST_ECHO_SKIP_LENGTH, &gAtClientUrc5,
         handleSkipBytes, (const void *) &gAtClientTestEchoSkipBytes1,
         (int32_t) U_ERROR_COMMON_SUCCESS
     },
     {
+        // 15
         U_AT_CLIENT_TEST_ECHO_SKIP, U_AT_CLIENT_TEST_ECHO_SKIP_LENGTH, NULL,
         handleSkipBytes, (const void *) &gAtClientTestEchoSkipBytes2,
         (int32_t) U_ERROR_COMMON_SUCCESS
     },
     {
+        // 16
         U_AT_CLIENT_TEST_ECHO_SKIP, U_AT_CLIENT_TEST_ECHO_SKIP_LENGTH, &gAtClientUrc5,
         handleSkipBytes, (const void *) &gAtClientTestEchoSkipBytes2,
         (int32_t) U_ERROR_COMMON_SUCCESS
     },
     {
+        // 17
         U_AT_CLIENT_TEST_ECHO_SKIP, U_AT_CLIENT_TEST_ECHO_SKIP_LENGTH, NULL,
         handleSkipBytes, (const void *) &gAtClientTestEchoSkipBytes3,
         (int32_t) U_ERROR_COMMON_SUCCESS
     },
     {
+        // 18
         U_AT_CLIENT_TEST_ECHO_SKIP, U_AT_CLIENT_TEST_ECHO_SKIP_LENGTH, &gAtClientUrc5,
         handleSkipBytes, (const void *) &gAtClientTestEchoSkipBytes3,
         (int32_t) U_ERROR_COMMON_SUCCESS
     },
     {
+        // 19
         U_AT_CLIENT_TEST_ECHO_SKIP, U_AT_CLIENT_TEST_ECHO_SKIP_LENGTH, NULL,
         handleSkipBytes, (const void *) &gAtClientTestEchoSkipBytes4,
         (int32_t) U_ERROR_COMMON_SUCCESS
     },
     {
+        // 20
         U_AT_CLIENT_TEST_ECHO_SKIP, U_AT_CLIENT_TEST_ECHO_SKIP_LENGTH, &gAtClientUrc5,
         handleSkipBytes, (const void *) &gAtClientTestEchoSkipBytes4,
         (int32_t) U_ERROR_COMMON_SUCCESS
     },
     {
+        // 21
         U_AT_CLIENT_TEST_ECHO_SKIP, U_AT_CLIENT_TEST_ECHO_SKIP_LENGTH, NULL,
         handleSkipBytes, (const void *) &gAtClientTestEchoSkipBytes5,
         (int32_t) U_ERROR_COMMON_SUCCESS
     },
     {
+        // 22
         U_AT_CLIENT_TEST_ECHO_SKIP, U_AT_CLIENT_TEST_ECHO_SKIP_LENGTH, &gAtClientUrc5,
         handleSkipBytes, (const void *) &gAtClientTestEchoSkipBytes5,
         (int32_t) U_ERROR_COMMON_SUCCESS
     },
     {
+        // 23
         U_AT_CLIENT_TEST_ECHO_SKIP, U_AT_CLIENT_TEST_ECHO_SKIP_LENGTH, NULL,
         handleEarlyStop, (const void *) &gAtClientTestEchoEarlyStop0,
         (int32_t) U_ERROR_COMMON_SUCCESS
     },
     {
+        // 24
         U_AT_CLIENT_TEST_ECHO_SKIP, U_AT_CLIENT_TEST_ECHO_SKIP_LENGTH, &gAtClientUrc5,
         handleEarlyStop, (const void *) &gAtClientTestEchoEarlyStop0,
         (int32_t) U_ERROR_COMMON_SUCCESS
     },
     {
+        // 25
         U_AT_CLIENT_TEST_ECHO_SKIP, U_AT_CLIENT_TEST_ECHO_SKIP_LENGTH, NULL,
         handleEarlyStop, (const void *) &gAtClientTestEchoEarlyStop1,
         (int32_t) U_ERROR_COMMON_SUCCESS
     },
     {
+        // 26
         U_AT_CLIENT_TEST_ECHO_SKIP, U_AT_CLIENT_TEST_ECHO_SKIP_LENGTH, &gAtClientUrc5,
         handleEarlyStop, (const void *) &gAtClientTestEchoEarlyStop1,
         (int32_t) U_ERROR_COMMON_SUCCESS
     },
     {
+        // 27
         U_AT_CLIENT_TEST_ECHO_SKIP, U_AT_CLIENT_TEST_ECHO_SKIP_LENGTH, NULL,
         handleEarlyStop, (const void *) &gAtClientTestEchoEarlyStop2,
         (int32_t) U_ERROR_COMMON_SUCCESS
     },
     {
+        // 28
         U_AT_CLIENT_TEST_ECHO_SKIP, U_AT_CLIENT_TEST_ECHO_SKIP_LENGTH, &gAtClientUrc5,
         handleEarlyStop, (const void *) &gAtClientTestEchoEarlyStop2,
         (int32_t) U_ERROR_COMMON_SUCCESS
     },
     {
+        // 29
         U_AT_CLIENT_TEST_ECHO_SKIP, U_AT_CLIENT_TEST_ECHO_SKIP_LENGTH, NULL,
         handleEarlyStop, (const void *) &gAtClientTestEchoEarlyStop3,
         (int32_t) U_ERROR_COMMON_SUCCESS
     },
     {
+        // 30
         U_AT_CLIENT_TEST_ECHO_SKIP, U_AT_CLIENT_TEST_ECHO_SKIP_LENGTH, &gAtClientUrc5,
         handleEarlyStop, (const void *) &gAtClientTestEchoEarlyStop3,
         (int32_t) U_ERROR_COMMON_SUCCESS
     },
     {
+        // 31
         U_AT_CLIENT_TEST_ECHO_SKIP, U_AT_CLIENT_TEST_ECHO_SKIP_LENGTH, NULL,
         handleEarlyStop, (const void *) &gAtClientTestEchoEarlyStop4,
         (int32_t) U_ERROR_COMMON_SUCCESS
     },
     {
+        // 32
         U_AT_CLIENT_TEST_ECHO_SKIP, U_AT_CLIENT_TEST_ECHO_SKIP_LENGTH, &gAtClientUrc5,
         handleEarlyStop, (const void *) &gAtClientTestEchoEarlyStop4,
         (int32_t) U_ERROR_COMMON_SUCCESS
     },
     {
+        // 33
         U_AT_CLIENT_TEST_ECHO_WAIT, U_AT_CLIENT_TEST_ECHO_WAIT_LENGTH, &gAtClientUrc5,
         handleWaitForChar, (const void *) &gAtClientTestEchoWaitForChar0,
         (int32_t) U_ERROR_COMMON_SUCCESS
     },
     {
+        // 34
         U_AT_CLIENT_TEST_ECHO_WAIT, U_AT_CLIENT_TEST_ECHO_WAIT_LENGTH, &gAtClientUrc5,
         handleWaitForChar, (const void *) &gAtClientTestEchoWaitForChar0,
         (int32_t) U_ERROR_COMMON_SUCCESS
     },
     {
+        // 35
         // If you change the string below you must change handleNullBuffer() to match
         "\r\n" U_AT_CLIENT_TEST_PREFIX " string1,\"string2\",\"" U_AT_CLIENT_TEST_STRING_THREE
         "\",\x00\x7f\xff," U_AT_CLIENT_TEST_BYTES_TWO "\r\nOK\r\n",
@@ -2040,30 +2075,36 @@ const uAtClientTestEcho_t gAtClientTestSet2[] = {
         NULL, handleNullBuffer, NULL, (int32_t) U_ERROR_COMMON_SUCCESS
     },
     {
+        // 36
         "\r\n" U_AT_CLIENT_TEST_ERROR "\r\n", U_AT_CLIENT_TEST_ERROR_LENGTH + 4, NULL,
         handleReadOnError, (const void *) &gAtClientTestEchoNoTimeout,
         (int32_t) U_ERROR_COMMON_DEVICE_ERROR
     },
     {
+        // 37
         "\r\n" U_AT_CLIENT_TEST_CME_ERROR "0\r\n", U_AT_CLIENT_TEST_CMX_ERROR_LENGTH + 5, NULL,
         handleReadOnError, (const void *) &gAtClientTestEchoNoTimeout,
         (int32_t) U_ERROR_COMMON_DEVICE_ERROR
     },
     {
+        // 38
         "\r\n" U_AT_CLIENT_TEST_CMS_ERROR "0\r\n", U_AT_CLIENT_TEST_CMX_ERROR_LENGTH + 5, NULL,
         handleReadOnError, (const void *) &gAtClientTestEchoNoTimeout,
         (int32_t) U_ERROR_COMMON_DEVICE_ERROR
     },
     {
+        // 39
         "\r\n" U_AT_CLIENT_TEST_ABORTED "\r\n", U_AT_CLIENT_TEST_ABORTED_LENGTH + 4, NULL,
         handleReadOnError, (const void *) &gAtClientTestEchoNoTimeout,
         (int32_t) U_ERROR_COMMON_DEVICE_ERROR
     },
     {
+        // 40
         "", 0, NULL, handleReadOnError, (const void *) &gAtClientTestEchoTimeout,
         (int32_t) U_ERROR_COMMON_DEVICE_ERROR
     },
     {
+        // 41
         U_AT_CLIENT_TEST_ECHO_SKIP, U_AT_CLIENT_TEST_ECHO_SKIP_LENGTH, &gAtClientUrc5,
         handleMiscUseLast, (const void *) &gAtClientTestEchoMisc,
         (int32_t) U_ERROR_COMMON_SUCCESS

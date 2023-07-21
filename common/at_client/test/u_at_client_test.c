@@ -935,25 +935,25 @@ int32_t uAtClientTestCheckParam(uAtClientHandle_t atClientHandle,
         switch (pParameter->type) {
             case U_AT_CLIENT_TEST_PARAMETER_INT32:
                 int32 = uAtClientReadInt(atClientHandle);
-                U_TEST_PRINT_LINE("read int32_t parameter %d (expected %d).",
-                                  pPostfix, int32, pParameter->parameter.int32);
+                U_TEST_PRINT_LINE_STR("read int32_t parameter %d (expected %d).",
+                                      pPostfix, int32, pParameter->parameter.int32);
                 if (int32 != pParameter->parameter.int32) {
                     lastError = 1;
                 }
                 break;
             case U_AT_CLIENT_TEST_PARAMETER_UINT64:
                 if (uAtClientReadUint64(atClientHandle, &uint64) == 0) {
-                    U_TEST_PRINT_LINE("read uint64_t parameter %u (expected"
-                                      " %u, noting that this may not print"
-                                      " properly where 64-bit printf() is"
-                                      " not supported).", pPostfix,
-                                      (uint32_t) uint64,
-                                      (uint32_t) pParameter->parameter.uint64);
+                    U_TEST_PRINT_LINE_STR("read uint64_t parameter %u (expected"
+                                          " %u, noting that this may not print"
+                                          " properly where 64-bit printf() is"
+                                          " not supported).", pPostfix,
+                                          (uint32_t) uint64,
+                                          (uint32_t) pParameter->parameter.uint64);
                     if (uint64 != pParameter->parameter.uint64) {
                         lastError = 2;
                     }
                 } else {
-                    U_TEST_PRINT_LINE("error reading uint64_t.", pPostfix);
+                    U_TEST_PRINT_LINE_STR("error reading uint64_t.", pPostfix);
                     lastError = 3;
                 }
                 break;
@@ -1715,7 +1715,7 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientCommandSet2")
         }
     }
 
-    U_TEST_PRINT_LINE("%d out of %d, tests passed and, of %d URCs"
+    U_TEST_PRINT_LINE("%d out of %d, tests executed and, of %d URCs"
                       " (%d expected) %d arrived correctly.", x,
                       gAtClientTestSetSize2, checkUrc.count,
                       U_AT_CLIENT_TEST_NUM_URCS_SET_2,
