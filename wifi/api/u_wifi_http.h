@@ -110,11 +110,15 @@ typedef void (uWifiHttpCallback_t) (uDeviceHandle_t wifiHandle,
                                     void *pCallbackParam);
 
 /** Private context structures for HTTP, WiFi-flavour.
+ * The contents of this structure may be changed without
+ * notice at any time; it is only placed here so that the
+ * uHttpClient code may use it.
  */
 typedef struct {
     int32_t httpHandle;
     int32_t replyOffset;
     bool binary;
+    bool atPrintWasOn;
 } uHttpClientContextWifi_t;
 
 /* ----------------------------------------------------------------
