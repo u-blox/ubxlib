@@ -68,6 +68,14 @@
 #include "u_http_client.h"
 #include "u_device_shared.h"
 
+// For uCellPwrReboot()
+#include "u_at_client.h"
+#include "u_cell_module_type.h"
+#include "u_cell.h"
+#include "u_cell_file.h"
+#include "u_cell_net.h"
+#include "u_cell_pwr.h"
+
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
@@ -219,6 +227,25 @@ static void printBuffer(const char *pBuffer, size_t length)
     }
 }
 
+// Callback in case we lose the network.
+static void networkStatusCallback(uDeviceHandle_t devHandle,
+                                  uNetworkType_t netType,
+                                  bool isUp,
+                                  uNetworkStatus_t *pStatus,
+                                  void *pParameter)
+{
+    uNetworkTestList_t *pNetworkTestList = (uNetworkTestList_t *) pParameter;
+
+    (void) devHandle;
+    (void) netType;
+    (void) pStatus;
+
+    if ((pNetworkTestList != NULL) && !pNetworkTestList->lossOfConnection && !isUp) {
+        // Just flag a loss so that the main body of the test can retry
+        pNetworkTestList->lossOfConnection = true;
+    }
+}
+
 // Do this before every test to ensure there is a usable network.
 static uNetworkTestList_t *pStdPreamble()
 {
@@ -250,6 +277,10 @@ static uNetworkTestList_t *pStdPreamble()
         U_PORT_TEST_ASSERT(uNetworkInterfaceUp(*pTmp->pDevHandle,
                                                pTmp->networkType,
                                                pTmp->pNetworkCfg) == 0);
+        // Some modules can, occasionally, lose service, briefly,
+        // during the test; capture this so that the test can recover
+        U_PORT_TEST_ASSERT(uNetworkSetStatusCallback(*pTmp->pDevHandle, pTmp->networkType,
+                                                     networkStatusCallback, pTmp) == 0);
     }
 
     // It is possible for HTTP client closure in an
@@ -749,6 +780,31 @@ U_PORT_TEST_FUNCTION("[httpClient]", "httpClient")
                             tries++;
                             // Give the module a rest betweeen tries
                             uPortTaskBlock(1000);
+                            if (pTmp->lossOfConnection ||
+                                ((outcome == (int32_t) U_ERROR_COMMON_UNKNOWN) ||
+                                 (outcome == (int32_t) U_ERROR_COMMON_DEVICE_ERROR))) {
+                                // If we lost the connection, or otherwise the device didn't
+                                // behave, get it back
+                                U_TEST_PRINT_LINE("device error, recovering.");
+                                if (deviceType == U_DEVICE_TYPE_CELL) {
+                                    // In the cellular case, experience suggests that
+                                    // a reboot is required to make the module happy again
+                                    uNetworkInterfaceDown(devHandle, pTmp->networkType);
+                                    uCellPwrReboot(devHandle, NULL);
+                                    U_PORT_TEST_ASSERT(uNetworkInterfaceUp(devHandle,
+                                                                           pTmp->networkType,
+                                                                           pTmp->pNetworkCfg) == 0);
+                                    U_PORT_TEST_ASSERT(uNetworkSetStatusCallback(devHandle, pTmp->networkType,
+                                                                                 networkStatusCallback, pTmp) == 0);
+                                }
+                                uHttpClientClose(gpHttpContext[y]);
+                                if (x == 0) {
+                                    gpHttpContext[y] = pUHttpClientOpen(devHandle, &connection, NULL);
+                                } else {
+                                    gpHttpContext[y] = pUHttpClientOpen(devHandle, &connection, &tlsSettings);
+                                }
+                                pTmp->lossOfConnection = false;
+                            }
                         } while ((outcome < 0) &&
                                  (moduleErrorCount < HTTP_CLIENT_TEST_MAX_TRIES_UNKNOWN) &&
                                  (busyCount < HTTP_CLIENT_TEST_MAX_TRIES_ON_BUSY) &&

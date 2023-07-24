@@ -61,6 +61,7 @@ typedef struct uNetworkList_t {
     const uDeviceCfg_t *pDeviceCfg; /**< a pointer to the device configuration. */
     uNetworkType_t networkType; /**< the network type. */
     const void *pNetworkCfg; /**< a pointer to the network configuration. */
+    bool lossOfConnection; /**< flag to indicate that the network lost connectivity. */
     struct uNetworkList_t *pNext; /**< the next entry in the list. */
 } uNetworkTestList_t;
 
