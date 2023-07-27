@@ -139,7 +139,7 @@ extern "C" {
  *                                      establishment will stop when
  *                                      #U_LOCATION_TIMEOUT_SECONDS have
  *                                      elapsed.  The single int32_t
- *                                      parameter is the network handle.
+ *                                      parameter is the device handle.
  */
 int32_t uLocationPrivateCloudLocate(uDeviceHandle_t devHandle,
                                     uDeviceHandle_t gnssDevHandle,

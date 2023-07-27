@@ -566,6 +566,11 @@ Next `master` will fail because it cannot find the credential with ID `ubxlib_wi
 
 In Jenkins, go to `Manage Jenkins` -> `Manage Credentials`, create a credential of type `Secret text`, paste the passkey for the Wi-Fi network into the `Secret` field, give it the `ID` `ubxlib_wifi_passkey` and a sensible `Description`, e.g. "WiFi passkey for network U_WIFI_TEST_CFG_SSID", then press `Save`.
 
+## Create Wi-Fi Cloud Location Service API Keys In Jenkins
+`master` will also fail because it cannot find the API Keys for the three cloud locations services (Google Maps, Skyhook and Here) that the uWifiLoc test uses.  For these services we use the same API keys as the SHO test team uses; the API key strings can be obtained from them.
+
+In Jenkins, go to `Manage Jenkins` -> `Manage Credentials`, and for each one create a credential of type `Secret text`, paste the API key into the `Secret` field, give them the `ID`s `ubxlib_google_maps_api_key`, `ubxlib_skyhook_api_key` and `ubxlib_here_api_key` respectively, and a sensible `Description`, e.g. "API key for \[insert name here\]", then press `Save` for each one.
+
 ## Wait For Platform-Specific Tools To Be Installed On The Agents
 Trigger the `master` branch again and be patient; the various instances will install platform-specific tools onto the agents, which can take some time; restart the run if it times out.
 

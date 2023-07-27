@@ -294,8 +294,12 @@ static uNetworkTestDevice_t gUNetworkTest[] = {
         .pCfg = &gDeviceCfgShortRange,
         .network =
         {
-            {.type = U_NETWORK_TYPE_BLE, .pCfg = (const void *) &gNetworkCfgBle},
-            {.type = U_NETWORK_TYPE_WIFI, .pCfg = (const void *) &gNetworkCfgWifi}
+            // These are added to the linked list in reverse order and
+            // BLE resets the module when it is started, hence it is
+            // important that Wifi gets started last or any network
+            // connection will be lost
+            {.type = U_NETWORK_TYPE_WIFI, .pCfg = (const void *) &gNetworkCfgWifi},
+            {.type = U_NETWORK_TYPE_BLE, .pCfg = (const void *) &gNetworkCfgBle}
         }
     },
     {

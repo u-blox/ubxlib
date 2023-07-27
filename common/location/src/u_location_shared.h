@@ -41,12 +41,31 @@ extern "C" {
  * TYPES
  * -------------------------------------------------------------- */
 
+/** The FIFOs to push/pop to/from for asynchronous requests.
+ */
+typedef enum {
+    U_LOCATION_SHARED_FIFO_NONE,
+    U_LOCATION_SHARED_FIFO_GNSS,
+    U_LOCATION_SHARED_FIFO_CELL_LOCATE,
+    U_LOCATION_SHARED_FIFO_WIFI
+} uLocationSharedFifo_t;
+
+/** Structure of the things we need to remember for Wifi location,
+ * required since that needs to be freshly configured each time.
+ */
+typedef struct {
+    const char *pApiKey;
+    int32_t accessPointsFilter;
+    int32_t rssiDbmFilter;
+} uLocationSharedWifiSettings_t;
+
 /** FIFO entry to keep track of asynchronous location requests.
  */
 typedef struct uLocationSharedFifoEntry_t {
     uDeviceHandle_t devHandle;
     int32_t desiredRateMs;
     uLocationType_t type;
+    const uLocationSharedWifiSettings_t *pWifiSettings;
     void (*pCallback) (uDeviceHandle_t devHandle,
                        int32_t errorCode,
                        const uLocation_t *pLocation);
@@ -85,31 +104,38 @@ void uLocationSharedDeinit();
  * IMPORTANT: gULocationMutex should be locked before this
  * is called.
  *
- * @param devHandle     the handle of the device making the request.
- * @param desiredRateMs the desired location rate, for continuous
- *                      measurements only; use 0 for one-shot.
- *                      pushed when the current one has been called.
- * @param type          the request type.
- * @param pCallback     the callback associated with the request.
- * @return              zero on success or negative error code.
+ * @param devHandle         the handle of the device making the request.
+ * @param fifo              the FIFO (GNSS, CellLocate or Wifi).
+ * @param type              the request type.
+ * @param desiredRateMs     the desired location rate, for continuous
+ *                          measurements only; use 0 for one-shot.
+ *                          pushed when the current one has been called.
+ * @param[in] pWifiSettings WiFi has to be set up for each attempt and
+ *                          hence the settings required can be kept
+ *                          here; use NULL if the FIFO type is not
+ *                          #U_LOCATION_SHARED_FIFO_WIFI.
+ * @param[in] pCallback     the callback associated with the request.
+ * @return                  zero on success or negative error code.
  */
 int32_t uLocationSharedRequestPush(uDeviceHandle_t devHandle,
-                                   int32_t desiredRateMs,
+                                   uLocationSharedFifo_t fifo,
                                    uLocationType_t type,
+                                   int32_t desiredRateMs,
+                                   const uLocationSharedWifiSettings_t *pWifiSettings,
                                    void (*pCallback) (uDeviceHandle_t devHandle,
                                                       int32_t errorCode,
                                                       const uLocation_t *pLocation));
 
-/** Pop the oldest location request of the given type from the FIFO.
+/** Pop the oldest location request of the given FIFO.
  * IMPORTANT: gULocationMutex should be locked before this
  * is called.
  *
- * @param type the request type.
+ * @param fifo the FIFO to pop from.
  * @return     the entry pointer: it is removed from the list and
  *             hence it is up to the calling task to free the pointer
  *             when done; NULL is returned if the FIFO is empty.
  */
-uLocationSharedFifoEntry_t *pULocationSharedRequestPop(uLocationType_t type);
+uLocationSharedFifoEntry_t *pULocationSharedRequestPop(uLocationSharedFifo_t fifo);
 
 #ifdef __cplusplus
 }

@@ -70,6 +70,10 @@ static uLocationSharedFifoEntry_t *gpLocationGnssFifo = NULL;
  */
 static uLocationSharedFifoEntry_t *gpLocationCellLocateFifo = NULL;
 
+/** Hook for a FIFO of Wifi-based location requests.
+ */
+static uLocationSharedFifoEntry_t *gpLocationWifiFifo = NULL;
+
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -101,7 +105,8 @@ void uLocationSharedDeinit()
         for (int32_t x = (int32_t) U_LOCATION_TYPE_GNSS;
              x < (int32_t) U_LOCATION_TYPE_MAX_NUM;
              x++) {
-            while ((pEntry = pULocationSharedRequestPop((uLocationType_t) x)) != NULL) {
+            while ((pEntry = pULocationSharedRequestPop((uLocationSharedFifo_t) x)) != NULL) {
+                uPortFree((void *) pEntry->pWifiSettings);
                 uPortFree(pEntry);
             }
         }
@@ -113,8 +118,10 @@ void uLocationSharedDeinit()
 
 // Add a new location request to the FIFO.
 int32_t uLocationSharedRequestPush(uDeviceHandle_t devHandle,
-                                   int32_t desiredRateMs,
+                                   uLocationSharedFifo_t fifo,
                                    uLocationType_t type,
+                                   int32_t desiredRateMs,
+                                   const uLocationSharedWifiSettings_t *pWifiSettings,
                                    void (*pCallback) (uDeviceHandle_t devHandle,
                                                       int32_t errorCode,
                                                       const uLocation_t *pLocation))
@@ -123,22 +130,20 @@ int32_t uLocationSharedRequestPush(uDeviceHandle_t devHandle,
     uLocationSharedFifoEntry_t **ppThis = NULL;
     uLocationSharedFifoEntry_t *pSaved = NULL;
 
-    switch (type) {
-        case U_LOCATION_TYPE_GNSS:
+    switch (fifo) {
+        case U_LOCATION_SHARED_FIFO_GNSS:
             ppThis = &gpLocationGnssFifo;
             pSaved = gpLocationGnssFifo;
             break;
-        case U_LOCATION_TYPE_CLOUD_CELL_LOCATE:
+        case U_LOCATION_SHARED_FIFO_CELL_LOCATE:
             ppThis = &gpLocationCellLocateFifo;
             pSaved = gpLocationCellLocateFifo;
             break;
-        case U_LOCATION_TYPE_CLOUD_GOOGLE:
-        //lint -fallthrough
-        case U_LOCATION_TYPE_CLOUD_SKYHOOK:
-        //lint -fallthrough
-        case U_LOCATION_TYPE_CLOUD_HERE:
-        //lint -fallthrough
-        case U_LOCATION_TYPE_NONE:
+        case U_LOCATION_SHARED_FIFO_WIFI:
+            ppThis = &gpLocationWifiFifo;
+            pSaved = gpLocationWifiFifo;
+            break;
+        case U_LOCATION_SHARED_FIFO_NONE:
         //lint -fallthrough
         default:
             break;
@@ -151,6 +156,8 @@ int32_t uLocationSharedRequestPush(uDeviceHandle_t devHandle,
         if (*ppThis != NULL) {
             (*ppThis)->devHandle = devHandle;
             (*ppThis)->desiredRateMs = desiredRateMs;
+            (*ppThis)->type = type;
+            (*ppThis)->pWifiSettings = pWifiSettings;
             (*ppThis)->pCallback = pCallback;
             (*ppThis)->pNext = pSaved;
             errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
@@ -161,27 +168,25 @@ int32_t uLocationSharedRequestPush(uDeviceHandle_t devHandle,
 }
 
 // Get the oldest location request from the given FIFO.
-uLocationSharedFifoEntry_t *pULocationSharedRequestPop(uLocationType_t type)
+uLocationSharedFifoEntry_t *pULocationSharedRequestPop(uLocationSharedFifo_t fifo)
 {
     uLocationSharedFifoEntry_t **ppThis = NULL;
     uLocationSharedFifoEntry_t *pSaved = NULL;
     uLocationSharedFifoEntry_t *pPrevious = NULL;
+    size_t x = 0;
 
-    switch (type) {
-        case U_LOCATION_TYPE_GNSS:
+    switch (fifo) {
+        case U_LOCATION_SHARED_FIFO_GNSS:
             ppThis = &gpLocationGnssFifo;
             break;
-        case U_LOCATION_TYPE_CLOUD_CELL_LOCATE:
+        case U_LOCATION_SHARED_FIFO_CELL_LOCATE:
             ppThis = &gpLocationCellLocateFifo;
             break;
-        case U_LOCATION_TYPE_CLOUD_GOOGLE:
-        //lint -fallthrough
-        case U_LOCATION_TYPE_CLOUD_SKYHOOK:
-        //lint -fallthrough
-        case U_LOCATION_TYPE_CLOUD_HERE:
-        //lint -fallthrough
-        case U_LOCATION_TYPE_NONE:
-        //lint -fallthrough
+        case U_LOCATION_SHARED_FIFO_WIFI:
+            ppThis = &gpLocationWifiFifo;
+            break;
+        case U_LOCATION_SHARED_FIFO_NONE:
+        // fall-through
         default:
             break;
     }
@@ -189,6 +194,7 @@ uLocationSharedFifoEntry_t *pULocationSharedRequestPop(uLocationType_t type)
     if (ppThis != NULL) {
         // Find the end of the list
         while (*ppThis != NULL) {
+            x++;
             pPrevious = pSaved;
             pSaved = *ppThis;
             *ppThis = (*ppThis)->pNext;

@@ -143,6 +143,7 @@
 #include <u_wifi_sock.h>
 #include <u_wifi_http.h>
 #include <u_wifi_captive_portal.h>
+#include <u_wifi_loc.h>
 
 /** @}*/
 

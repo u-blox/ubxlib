@@ -36,7 +36,7 @@
 #include "ctype.h"     // isprint()
 
 #include "u_cfg_sw.h"
-#include "u_cfg_os_platform_specific.h"  // For U_CFG_OS_APP_TASK_PRIORITY
+#include "u_cfg_os_platform_specific.h"  // For U_CFG_OS_APP_TASK_PRIORITY and U_CFG_OS_CLIB_LEAKS
 
 #include "u_error_common.h"
 
@@ -59,13 +59,14 @@
 #include "u_wifi.h"         // Order is important
 
 #include "u_wifi_http.h"
+#include "u_wifi_http_private.h"
+#include "u_wifi_private.h"
 
 #include "u_http_client.h"
 #include "u_short_range.h"
 #include "u_short_range_private.h"
 #include "u_hex_bin_convert.h"
 
-#include "u_port_debug.h"
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
@@ -106,6 +107,12 @@
 # define U_WIFI_HTTP_MAX_AT_PRINT_LENGTH 128
 #endif
 
+#ifndef U_WIFI_HTTP_MAX_NUM
+/** The maximum number of HTTP sessions that can be open at the same time.
+ */
+# define U_WIFI_HTTP_MAX_NUM 2
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -114,12 +121,63 @@
  * VARIABLES
  * -------------------------------------------------------------- */
 
+/** A cache of HTTP handles, used so that we can descriminate between
+ * user-driven HTTP ones and internally-driven location ones.
+ */
+static int32_t gHttpHandleCache[U_WIFI_HTTP_MAX_NUM] = {0};
+
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
+// Determine if the given HTTP handle is in the HTTP handle cache.
+static bool httpHandleIsInCache(int32_t handle)
+{
+    bool found = false;
+
+    for (size_t x = 0; !found && (x < sizeof(gHttpHandleCache) / sizeof(gHttpHandleCache[0])); x++) {
+        if (gHttpHandleCache[x] == handle) {
+            found = true;
+        }
+    }
+
+    return found;
+}
+
+// Store an HTTP handle in the HTTP handle cache.
+static int32_t httpHandleStoreInCache(int32_t handle)
+{
+    // A nice obvious error code, since this shouldn't really happen
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_TEMPORARY_FAILURE;
+
+    if (handle > 0) {
+        errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
+        for (size_t x = 0; (x < sizeof(gHttpHandleCache) / sizeof(gHttpHandleCache[0])) &&
+             (errorCode < 0); x++) {
+            if (gHttpHandleCache[x] == 0) {
+                gHttpHandleCache[x] = handle;
+                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+            }
+        }
+    }
+
+    return errorCode;
+}
+
+// Remove an HTTP handle from the HTTP handle cache.
+static void httpHandleClearFromCache(int32_t handle)
+{
+    if (handle > 0) {
+        for (size_t x = 0; x < sizeof(gHttpHandleCache) / sizeof(gHttpHandleCache[0]); x++) {
+            if (gHttpHandleCache[x] == handle) {
+                gHttpHandleCache[x] = 0;
+            }
+        }
+    }
+}
+
 // Return true if the given string is allowed
-// in a message for an HttpRequest
+// in a message for an HttpRequest.
 static bool isAllowedHttpRequestStr(const char *pStr, size_t maxLength)
 {
     size_t strLength;
@@ -141,142 +199,17 @@ static bool isAllowedHttpRequestStr(const char *pStr, size_t maxLength)
     return isAllowed;
 }
 
-// HTTP URC handler.
-static void UUDHTTP_urc(uAtClientHandle_t atHandle, void *pParameter)
+// Send the AT sequence to close an HTTP session.
+static int32_t atCloseHttp(uAtClientHandle_t atHandle, int32_t httpHandle)
 {
-    int32_t httpHandle;
-    size_t replyLen = 0;
-    size_t readBytes;
-    uShortRangePrivateInstance_t *pWiFiInstance = (uShortRangePrivateInstance_t *) pParameter;
-    uHttpClientContext_t *pHttpContext = pWiFiInstance->pHttpContext;
-    uHttpClientContextWifi_t *pContextWifi = pHttpContext->pPriv;
-    char *pHexBuffer;
-
-    httpHandle = uAtClientReadInt(atHandle);
-    pHttpContext->statusCodeOrError = uAtClientReadInt(
-                                          atHandle); // read HTTP statuscode into httpcontext
-    if (httpHandle) {
-        if (pHttpContext->statusCodeOrError == 200) {
-            replyLen = uAtClientReadInt(atHandle);
-            if (replyLen > 0) {
-                if (pContextWifi->replyOffset) {
-                    uAtClientSkipParameters(atHandle, 1);
-                } else {
-                    if (pHttpContext->pContentType) {
-                        uAtClientReadString(atHandle, pHttpContext->pContentType,
-                                            U_WIFI_HTTP_CONTENT_TYPE_MAX_LENGTH_BYTES,
-                                            true);
-                    } else {
-                        uAtClientSkipParameters(atHandle, 1); // no mem provided for contentType, skip
-                    }
-                }
-                uAtClientIgnoreStopTag(atHandle);
-                if (pHttpContext->pResponse) {
-                    if (pContextWifi->binary) {
-                        readBytes = replyLen * 2; // got reply in hex
-                        pHexBuffer = (char *)pUPortMalloc(readBytes);
-                        if (uAtClientReadBytes(atHandle, pHexBuffer,
-                                               readBytes,
-                                               true) == readBytes) {
-                            uHexToBin(pHexBuffer, readBytes, pHttpContext->pResponse + pContextWifi->replyOffset);
-                        }
-                        uPortFree(pHexBuffer);
-                    } else {
-                        if (uAtClientReadBytes(atHandle, pHttpContext->pResponse + pContextWifi->replyOffset, replyLen,
-                                               true) == replyLen) {
-                        }
-                    }
-                }
-                pContextWifi->replyOffset += replyLen;
-                if (pHttpContext->pResponseSize) {
-                    *pHttpContext->pResponseSize = pContextWifi->replyOffset;
-                }
-            }
-#if !U_CFG_OS_CLIB_LEAKS
-            uPortLog("U_WIFI_HTTP: Total replysize: %d\n", pContextWifi->replyOffset);
-#endif
-            if (pContextWifi->atPrintWasOn) {
-                // AT printing can now be restored
-                uAtClientPrintAtSet(atHandle, true);
-                pContextWifi->atPrintWasOn = false;
-            }
-            // Call the http callback, if required
-            if (pHttpContext->pResponseCallback != NULL) {
-                pHttpContext->pResponseCallback(pWiFiInstance->devHandle,
-                                                pHttpContext->statusCodeOrError,
-                                                (size_t) pContextWifi->replyOffset,
-                                                pHttpContext->pResponseCallbackParam);
-            }
-            // Call the wifi callback, if required
-            if (pWiFiInstance->pWifiHttpCallBack != NULL) {
-                pWiFiInstance->pWifiHttpCallBack(pWiFiInstance->devHandle,
-                                                 httpHandle,
-                                                 pHttpContext->statusCodeOrError,
-                                                 pWiFiInstance->pHttpContext);
-            }
-            pContextWifi->replyOffset = 0;
-            uPortSemaphoreGive((uPortSemaphoreHandle_t) pHttpContext->semaphoreHandle);
-        } else if (pHttpContext->statusCodeOrError == 206) { // fragmented multiple replies
-            replyLen = uAtClientReadInt(atHandle);
-            if (replyLen > 0) {
-                if (pContextWifi->replyOffset == 0) { // firstFragment
-                    if (pHttpContext->pContentType) {
-                        uAtClientReadString(atHandle, pHttpContext->pContentType,
-                                            U_WIFI_HTTP_CONTENT_TYPE_MAX_LENGTH_BYTES,
-                                            true);
-                    } else {
-                        uAtClientSkipParameters(atHandle, 1); // no mem provided for contentType, skip
-                    }
-                } else {
-                    uAtClientSkipParameters(atHandle, 1);
-                }
-                uAtClientIgnoreStopTag(atHandle);
-                if (pHttpContext->pResponse) {
-                    if (pContextWifi->binary) {
-                        readBytes = replyLen * 2; // got reply in hex
-                        pHexBuffer = (char *)pUPortMalloc(readBytes);
-                        if (uAtClientReadBytes(atHandle, pHexBuffer,
-                                               readBytes,
-                                               true) == readBytes) {
-                            uHexToBin(pHexBuffer, readBytes, pHttpContext->pResponse + pContextWifi->replyOffset);
-                            pContextWifi->replyOffset = pContextWifi->replyOffset + replyLen;
-                        }
-                        uPortFree(pHexBuffer);
-                    } else {
-                        if (uAtClientReadBytes(atHandle, pHttpContext->pResponse + pContextWifi->replyOffset,
-                                               replyLen,
-                                               true) == replyLen) {
-                            pContextWifi->replyOffset = pContextWifi->replyOffset + replyLen;
-                        }
-                    }
-                }
-            }
-        } else {
-            if (pContextWifi->atPrintWasOn) {
-                // AT printing can now be restored
-                uAtClientPrintAtSet(atHandle, true);
-                pContextWifi->atPrintWasOn = false;
-            }
-            // Call the http callback, if required
-            if (pHttpContext->pResponseCallback != NULL) {
-                pHttpContext->pResponseCallback(pWiFiInstance->devHandle,
-                                                pHttpContext->statusCodeOrError,
-                                                (size_t) replyLen,
-                                                pHttpContext->pResponseCallbackParam);
-            }
-            // Call the wifi callback, if required
-            if (pWiFiInstance->pWifiHttpCallBack != NULL) {
-                pWiFiInstance->pWifiHttpCallBack(pWiFiInstance->devHandle,
-                                                 httpHandle,
-                                                 pHttpContext->statusCodeOrError,
-                                                 pWiFiInstance->pHttpContext);
-            }
-            pContextWifi->replyOffset = 0;
-            // Set the status code for block() to read if required and
-            // give the semaphore back
-            uPortSemaphoreGive((uPortSemaphoreHandle_t) pHttpContext->semaphoreHandle);
-        }
-    }
+    uPortLog("U_WIFI_HTTP: sending AT+UDCPC\n");
+    uAtClientLock(atHandle);
+    uAtClientCommandStart(atHandle, "AT+UDCPC=");
+    uAtClientWriteInt(atHandle, httpHandle);
+    uAtClientCommandStop(atHandle);
+    uAtClientResponseStart(atHandle, "+UUDPC");
+    uAtClientResponseStop(atHandle);
+    return uAtClientUnlock(atHandle);
 }
 
 /* ----------------------------------------------------------------
@@ -286,6 +219,165 @@ static void UUDHTTP_urc(uAtClientHandle_t atHandle, void *pParameter)
 void uWifiHttpPrivateLink()
 {
     //dummy
+}
+
+/* ----------------------------------------------------------------
+ * PUBLIC FUNCTIONS THAT ARE PRIVATE TO HTTP WIFI
+ * -------------------------------------------------------------- */
+
+// Process a URC containing an HTTP response.
+bool uWifiHttpPrivateUrc(uAtClientHandle_t atHandle, void *pParameter)
+{
+    bool httpHandleInCache = false;
+    int32_t httpHandle;
+    size_t replyLen = 0;
+    size_t readBytes;
+    uShortRangePrivateInstance_t *pWiFiInstance = (uShortRangePrivateInstance_t *) pParameter;
+    uHttpClientContext_t *pHttpContext = pWiFiInstance->pHttpContext;
+    uHttpClientContextWifi_t *pContextWifi;
+    char *pHexBuffer;
+
+    httpHandle = uAtClientReadInt(atHandle);
+    httpHandleInCache = httpHandleIsInCache(httpHandle);
+    if (httpHandleInCache && (pHttpContext != NULL)) {
+        // The HTTP handle was in the cache so it must be a true
+        // HTTP handle resulting from a user HTTP request, rather
+        // than one from a location request
+        pContextWifi = pHttpContext->pPriv;
+        pHttpContext->statusCodeOrError = uAtClientReadInt(
+                                              atHandle); // read HTTP statuscode into httpcontext
+        if (httpHandle) {
+            if (pHttpContext->statusCodeOrError == 200) {
+                replyLen = uAtClientReadInt(atHandle);
+                if (replyLen > 0) {
+                    if (pContextWifi->replyOffset) {
+                        uAtClientSkipParameters(atHandle, 1);
+                    } else {
+                        if (pHttpContext->pContentType) {
+                            uAtClientReadString(atHandle, pHttpContext->pContentType,
+                                                U_WIFI_HTTP_CONTENT_TYPE_MAX_LENGTH_BYTES,
+                                                true);
+                        } else {
+                            uAtClientSkipParameters(atHandle, 1); // no mem provided for contentType, skip
+                        }
+                    }
+                    uAtClientIgnoreStopTag(atHandle);
+                    if (pHttpContext->pResponse) {
+                        if (pContextWifi->binary) {
+                            readBytes = replyLen * 2; // got reply in hex
+                            pHexBuffer = (char *)pUPortMalloc(readBytes);
+                            if (uAtClientReadBytes(atHandle, pHexBuffer,
+                                                   readBytes,
+                                                   true) == readBytes) {
+                                uHexToBin(pHexBuffer, readBytes, pHttpContext->pResponse + pContextWifi->replyOffset);
+                            }
+                            uPortFree(pHexBuffer);
+                        } else {
+                            uAtClientReadBytes(atHandle, pHttpContext->pResponse + pContextWifi->replyOffset,
+                                               replyLen, true);
+                        }
+                    }
+                    // Note: don't restore stop tag here, since we're not in
+                    // a usual response, we're in a URC; as this is the last
+                    // part of the URC the generic AT Client URC handling will
+                    // do the right thing
+                    pContextWifi->replyOffset += replyLen;
+                    if (pHttpContext->pResponseSize) {
+                        *pHttpContext->pResponseSize = pContextWifi->replyOffset;
+                    }
+                }
+#if !U_CFG_OS_CLIB_LEAKS
+                uPortLog("U_WIFI_HTTP: total reply size: %d.\n", pContextWifi->replyOffset);
+#endif
+                if (pContextWifi->atPrintWasOn) {
+                    // AT printing can now be restored
+                    uAtClientPrintAtSet(atHandle, true);
+                    pContextWifi->atPrintWasOn = false;
+                }
+                // Call the http callback, if required
+                if (pHttpContext->pResponseCallback != NULL) {
+                    pHttpContext->pResponseCallback(pWiFiInstance->devHandle,
+                                                    pHttpContext->statusCodeOrError,
+                                                    (size_t) pContextWifi->replyOffset,
+                                                    pHttpContext->pResponseCallbackParam);
+                }
+                // Call the wifi callback, if required
+                if (pWiFiInstance->pWifiHttpCallBack != NULL) {
+                    pWiFiInstance->pWifiHttpCallBack(pWiFiInstance->devHandle,
+                                                     httpHandle,
+                                                     pHttpContext->statusCodeOrError,
+                                                     pWiFiInstance->pHttpContext);
+                }
+                pContextWifi->replyOffset = 0;
+                uPortSemaphoreGive((uPortSemaphoreHandle_t) pHttpContext->semaphoreHandle);
+            } else if (pHttpContext->statusCodeOrError == 206) { // fragmented multiple replies
+                replyLen = uAtClientReadInt(atHandle);
+                if (replyLen > 0) {
+                    if (pContextWifi->replyOffset == 0) { // firstFragment
+                        if (pHttpContext->pContentType) {
+                            uAtClientReadString(atHandle, pHttpContext->pContentType,
+                                                U_WIFI_HTTP_CONTENT_TYPE_MAX_LENGTH_BYTES,
+                                                true);
+                        } else {
+                            uAtClientSkipParameters(atHandle, 1); // no mem provided for contentType, skip
+                        }
+                    } else {
+                        uAtClientSkipParameters(atHandle, 1);
+                    }
+                    uAtClientIgnoreStopTag(atHandle);
+                    if (pHttpContext->pResponse) {
+                        if (pContextWifi->binary) {
+                            readBytes = replyLen * 2; // got reply in hex
+                            pHexBuffer = (char *)pUPortMalloc(readBytes);
+                            if (uAtClientReadBytes(atHandle, pHexBuffer,
+                                                   readBytes,
+                                                   true) == readBytes) {
+                                uHexToBin(pHexBuffer, readBytes, pHttpContext->pResponse + pContextWifi->replyOffset);
+                                pContextWifi->replyOffset = pContextWifi->replyOffset + replyLen;
+                            }
+                            uPortFree(pHexBuffer);
+                        } else {
+                            if (uAtClientReadBytes(atHandle, pHttpContext->pResponse + pContextWifi->replyOffset,
+                                                   replyLen,
+                                                   true) == replyLen) {
+                                pContextWifi->replyOffset = pContextWifi->replyOffset + replyLen;
+                            }
+                        }
+                    }
+                    // Note: don't restore stop tag here, since we're not in
+                    // a usual response, we're in a URC; as this is the last
+                    // part of the URC the generic AT Client URC handling will
+                    // do the right thing
+                }
+            } else {
+                if (pContextWifi->atPrintWasOn) {
+                    // AT printing can now be restored
+                    uAtClientPrintAtSet(atHandle, true);
+                    pContextWifi->atPrintWasOn = false;
+                }
+                // Call the http callback, if required
+                if (pHttpContext->pResponseCallback != NULL) {
+                    pHttpContext->pResponseCallback(pWiFiInstance->devHandle,
+                                                    pHttpContext->statusCodeOrError,
+                                                    (size_t) replyLen,
+                                                    pHttpContext->pResponseCallbackParam);
+                }
+                // Call the wifi callback, if required
+                if (pWiFiInstance->pWifiHttpCallBack != NULL) {
+                    pWiFiInstance->pWifiHttpCallBack(pWiFiInstance->devHandle,
+                                                     httpHandle,
+                                                     pHttpContext->statusCodeOrError,
+                                                     pWiFiInstance->pHttpContext);
+                }
+                pContextWifi->replyOffset = 0;
+                // Set the status code for block() to read if required and
+                // give the semaphore back
+                uPortSemaphoreGive((uPortSemaphoreHandle_t) pHttpContext->semaphoreHandle);
+            }
+        }
+    }
+
+    return httpHandleInCache;
 }
 
 /* ----------------------------------------------------------------
@@ -335,7 +427,7 @@ int32_t uWifiHttpOpen(uDeviceHandle_t wifiHandle, const char *pServerName,
                         strncat(urlBuffer, "&encr=1", sizeof(urlBuffer) - strlen(urlBuffer) - 1);
                     }
                     // Configure the server in the connection
-                    uPortLog("U_WIFI_HTTP: Sending AT+UDCP\n");
+                    uPortLog("U_WIFI_HTTP: sending AT+UDCP\n");
                     uAtClientLock(atHandle);
                     uAtClientCommandStart(atHandle, "AT+UDCP=http-tcp://");
                     uAtClientWriteString(atHandle, urlBuffer, false);
@@ -345,14 +437,24 @@ int32_t uWifiHttpOpen(uDeviceHandle_t wifiHandle, const char *pServerName,
                     peerType = uAtClientReadInt(atHandle);
                     uAtClientResponseStop(atHandle);
                     errorCode = uAtClientUnlock(atHandle);
-                    if (peerType < 2 || peerType > 3) { // check that IPV4/6
-                        errorCode = (int32_t) U_ERROR_COMMON_UNKNOWN;
-                    }
                     if (errorCode == 0) {
-                        // Done: hook in the URC
-                        uAtClientRemoveUrcHandler(atHandle, "+UUDHTTP:"); // remove any existing
-                        errorCode = uAtClientSetUrcHandler(atHandle, "+UUDHTTP:",
-                                                           UUDHTTP_urc, pInstance);
+                        if (peerType < 2 || peerType > 3) { // check that IPV4/6
+                            errorCode = (int32_t) U_ERROR_COMMON_UNKNOWN;
+                        }
+                        if (errorCode == 0) {
+                            // Done: store the handle in the cache and hook in the URC
+                            errorCode = httpHandleStoreInCache(httpHandle);
+                            if (errorCode == 0) {
+                                errorCode = uAtClientSetUrcHandler(atHandle, "+UUDHTTP:",
+                                                                   uWifiPrivateUudhttpUrc,
+                                                                   pInstance);
+                            }
+                        }
+                        if (errorCode < 0) {
+                            // Close the session again on error
+                            atCloseHttp(atHandle, httpHandle);
+                            httpHandleClearFromCache(httpHandle);
+                        }
                     }
                 }
             } else {
@@ -389,15 +491,11 @@ void uWifiHttpClose(uDeviceHandle_t wifiHandle, int32_t httpHandle)
                         uAtClientPrintAtSet(atHandle, true);
                     }
                 }
-                uPortLog("U_WIFI_HTTP: Sending AT+UDCPC\n");
-                uAtClientLock(atHandle);
-                uAtClientCommandStart(atHandle, "AT+UDCPC=");
-                uAtClientWriteInt(atHandle, httpHandle);
-                uAtClientCommandStop(atHandle);
-                uAtClientResponseStart(atHandle, "+UUDPC");
-                uAtClientResponseStop(atHandle);
-                uAtClientRemoveUrcHandler(atHandle, "+UUDHTTP:");
-                uAtClientUnlock(atHandle);
+                // Send the AT sequence to close a HTTP session
+                atCloseHttp(atHandle, httpHandle);
+                httpHandleClearFromCache(httpHandle);
+                pInstance->pWifiHttpCallBack = NULL;
+                pInstance->pHttpContext = NULL;
             }
         }
         U_PORT_MUTEX_UNLOCK(gUShortRangePrivateMutex);
@@ -554,7 +652,7 @@ int32_t uWifiHttpRequestEx(uDeviceHandle_t wifiHandle, int32_t httpHandle,
                                     }
                                     offset += bytesToWrite;
                                 } while ((offset < contentLength) && errorCode == U_ERROR_COMMON_SUCCESS);
-                                uPortLog("\nU_WIFI_HTTP: wrote %d bytes\n", offset);
+                                uPortLog("\nU_WIFI_HTTP: wrote %d byte(s).\n", offset);
                             }
                         }
                     } else {

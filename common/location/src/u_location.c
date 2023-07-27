@@ -33,6 +33,8 @@
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 
+#include "u_cfg_os_platform_specific.h"  // For U_CFG_OS_YIELD_MS
+
 #include "u_error_common.h"
 
 #include "u_device_shared.h"
@@ -56,6 +58,8 @@
 
 #include "u_location.h"
 #include "u_location_shared.h"
+
+#include "u_wifi_loc.h"
 
 #include "u_location_private_cloud_locate.h"
 
@@ -140,7 +144,7 @@ static void gnssPosCallback(uDeviceHandle_t devHandle,
 
         U_PORT_MUTEX_LOCK(gULocationMutex);
 
-        pEntry = pULocationSharedRequestPop(U_LOCATION_TYPE_GNSS);
+        pEntry = pULocationSharedRequestPop(U_LOCATION_SHARED_FIFO_GNSS);
         if (pEntry != NULL) {
             if (pEntry->pCallback != NULL) {
                 location.type = U_LOCATION_TYPE_GNSS;
@@ -165,8 +169,9 @@ static void gnssPosCallback(uDeviceHandle_t devHandle,
                 // streamed position) but we do need to push an entry
                 // into the request queue so that we can grab it the
                 // next time we're called
-                uLocationSharedRequestPush(devHandle, pEntry->desiredRateMs,
+                uLocationSharedRequestPush(devHandle, U_LOCATION_SHARED_FIFO_GNSS,
                                            U_LOCATION_TYPE_GNSS,
+                                           pEntry->desiredRateMs, NULL,
                                            pEntry->pCallback);
             }
         }
@@ -194,7 +199,7 @@ static void cellLocCallback(uDeviceHandle_t devHandle,
 
         U_PORT_MUTEX_LOCK(gULocationMutex);
 
-        pEntry = pULocationSharedRequestPop(U_LOCATION_TYPE_CLOUD_CELL_LOCATE);
+        pEntry = pULocationSharedRequestPop(U_LOCATION_SHARED_FIFO_CELL_LOCATE);
         if (pEntry != NULL) {
             if (pEntry->pCallback != NULL) {
                 if (errorCode == 0) {
@@ -227,6 +232,54 @@ static void cellLocCallback(uDeviceHandle_t devHandle,
     }
 }
 
+// Callback for a non-blocking Wifi position request.
+static void wifiPosCallback(uDeviceHandle_t wifiHandle,
+                            int32_t errorCode,
+                            const uLocation_t *pLocation)
+{
+    uLocationSharedFifoEntry_t *pEntry;
+    uLocationAssist_t locationAssist = U_LOCATION_ASSIST_DEFAULTS;
+    const uLocationSharedWifiSettings_t *pWifiSettings;
+    const char *pApiKey;
+    int32_t x;
+    size_t retryCount = 0;
+
+    if (gULocationMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gULocationMutex);
+
+        pEntry = pULocationSharedRequestPop(U_LOCATION_SHARED_FIFO_WIFI);
+        if (pEntry != NULL) {
+            pWifiSettings = pEntry->pWifiSettings;
+            if (pEntry->pCallback != NULL) {
+                pEntry->pCallback(wifiHandle, errorCode, pLocation);
+            }
+            if ((pEntry->desiredRateMs > 0) && (pWifiSettings != NULL)) {
+                // Must be in continuous mode: start again
+                pApiKey = pWifiSettings->pApiKey;
+                locationAssist.accessPointsFilter = pWifiSettings->accessPointsFilter;
+                locationAssist.rssiDbmFilter = pWifiSettings->rssiDbmFilter;
+                uPortFree((void *) pWifiSettings);
+                // startAsync() might return busy or out of memory temporarily
+                // so give it a few goes and make sure to yield so that OS
+                // things sort themselves out before even trying
+                uPortTaskBlock(U_CFG_OS_YIELD_MS);
+                while ((x = startAsync(wifiHandle, pEntry->desiredRateMs,
+                                       pEntry->type, &locationAssist,
+                                       pApiKey, pEntry->pCallback) < 0) && (retryCount < 10)) {
+                    if (x < 0) {
+                        retryCount++;
+                        uPortTaskBlock(1000);
+                    }
+                }
+            }
+        }
+        uPortFree(pEntry);
+
+        U_PORT_MUTEX_UNLOCK(gULocationMutex);
+    }
+}
+
 // Start an asynchronous GNSS location attempt.
 // gULocationMutex should be locked before this is called.
 static int32_t startAsyncGnss(uDeviceHandle_t devHandle,
@@ -238,8 +291,10 @@ static int32_t startAsyncGnss(uDeviceHandle_t devHandle,
     uGnssTransportType_t transportType = U_GNSS_TRANSPORT_NONE;
     uGnssTransportHandle_t transportHandle;
 
-    int32_t errorCode = uLocationSharedRequestPush(devHandle, desiredRateMs,
+    int32_t errorCode = uLocationSharedRequestPush(devHandle,
+                                                   U_LOCATION_SHARED_FIFO_GNSS,
                                                    U_LOCATION_TYPE_GNSS,
+                                                   desiredRateMs, NULL,
                                                    pCallback);
     if (errorCode == 0) {
         if (desiredRateMs > 0) {
@@ -260,7 +315,7 @@ static int32_t startAsyncGnss(uDeviceHandle_t devHandle,
             errorCode = uGnssPosGetStart(devHandle, gnssPosCallback);
         }
         if (errorCode != 0) {
-            uPortFree(pULocationSharedRequestPop(U_LOCATION_TYPE_GNSS));
+            uPortFree(pULocationSharedRequestPop(U_LOCATION_SHARED_FIFO_GNSS));
         }
     }
 
@@ -279,32 +334,72 @@ int32_t startAsync(uDeviceHandle_t devHandle, int32_t desiredRateMs,
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
     int32_t devType = uDeviceGetDeviceType(devHandle);
+    uLocationSharedWifiSettings_t *pWifiSettings;
 
     if (devType == (int32_t) U_DEVICE_TYPE_SHORT_RANGE) {
         errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
-    } else if (devType == (int32_t) U_DEVICE_TYPE_CELL) {
-        if (type == U_LOCATION_TYPE_CLOUD_CELL_LOCATE) {
-            errorCode = cellLocConfigure(devHandle, desiredRateMs,
-                                         pLocationAssist,
-                                         pAuthenticationTokenStr);
-            if (errorCode == 0) {
-                errorCode = uLocationSharedRequestPush(devHandle,
-                                                       desiredRateMs,
-                                                       type,
-                                                       pCallback);
-                if (errorCode == 0) {
-                    errorCode = uCellLocGetStart(devHandle, cellLocCallback);
-                    if (errorCode != 0) {
-                        uPortFree(pULocationSharedRequestPop(U_LOCATION_TYPE_CLOUD_CELL_LOCATE));
+        switch (type) {
+            case U_LOCATION_TYPE_CLOUD_GOOGLE:
+            // fall-through
+            case U_LOCATION_TYPE_CLOUD_SKYHOOK:
+            // fall-through
+            case U_LOCATION_TYPE_CLOUD_HERE:
+                errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+                if (pLocationAssist != NULL) {
+                    errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
+                    pWifiSettings = (uLocationSharedWifiSettings_t *) pUPortMalloc(sizeof(
+                                                                                       uLocationSharedWifiSettings_t));
+                    if (pWifiSettings != NULL) {
+                        pWifiSettings->pApiKey = pAuthenticationTokenStr;
+                        pWifiSettings->accessPointsFilter = pLocationAssist->accessPointsFilter;
+                        pWifiSettings->rssiDbmFilter = pLocationAssist->rssiDbmFilter;
+                        errorCode = uLocationSharedRequestPush(devHandle,
+                                                               U_LOCATION_SHARED_FIFO_WIFI,
+                                                               type, desiredRateMs,
+                                                               pWifiSettings,
+                                                               pCallback);
+                        if (errorCode == 0) {
+                            errorCode = uWifiLocGetStart(devHandle, type,
+                                                         pWifiSettings->pApiKey,
+                                                         pWifiSettings->accessPointsFilter,
+                                                         pWifiSettings->rssiDbmFilter,
+                                                         wifiPosCallback);
+                            if (errorCode != 0) {
+                                uPortFree(pULocationSharedRequestPop(U_LOCATION_SHARED_FIFO_WIFI));
+                            }
+                        }
                     }
                 }
-            }
-        } else if (type == U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE) {
-            errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
-            // TODO
-        } else if (type == U_LOCATION_TYPE_GNSS) {
-            // A GNSS device inside or connected-via a cellular device
-            errorCode = startAsyncGnss(devHandle, desiredRateMs, pCallback);
+                break;
+            default:
+                break;
+        }
+    } else if (devType == (int32_t) U_DEVICE_TYPE_CELL) {
+        errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+        switch (type) {
+            case U_LOCATION_TYPE_CLOUD_CELL_LOCATE:
+                errorCode = cellLocConfigure(devHandle, desiredRateMs,
+                                             pLocationAssist,
+                                             pAuthenticationTokenStr);
+                if (errorCode == 0) {
+                    errorCode = uLocationSharedRequestPush(devHandle,
+                                                           U_LOCATION_SHARED_FIFO_CELL_LOCATE,
+                                                           type, desiredRateMs,
+                                                           NULL, pCallback);
+                    if (errorCode == 0) {
+                        errorCode = uCellLocGetStart(devHandle, cellLocCallback);
+                        if (errorCode != 0) {
+                            uPortFree(pULocationSharedRequestPop(U_LOCATION_SHARED_FIFO_CELL_LOCATE));
+                        }
+                    }
+                }
+                break;
+            case U_LOCATION_TYPE_GNSS:
+                // A GNSS device inside or connected-via a cellular device
+                errorCode = startAsyncGnss(devHandle, desiredRateMs, pCallback);
+                break;
+            default:
+                break;
         }
     } else if (devType == (int32_t) U_DEVICE_TYPE_GNSS) {
         // type, pLocationAssist and pAuthenticationTokenStr are
@@ -338,15 +433,29 @@ int32_t uLocationGet(uDeviceHandle_t devHandle, uLocationType_t type,
         int32_t devType = uDeviceGetDeviceType(devHandle);
         if (devType == (int32_t) U_DEVICE_TYPE_SHORT_RANGE) {
             errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+            switch (type) {
+                case U_LOCATION_TYPE_CLOUD_GOOGLE:
+                case U_LOCATION_TYPE_CLOUD_SKYHOOK:
+                case U_LOCATION_TYPE_CLOUD_HERE:
+                    errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+                    if (pLocationAssist != NULL) {
+                        errorCode = uWifiLocGet(devHandle, type,
+                                                pAuthenticationTokenStr,
+                                                pLocationAssist->accessPointsFilter,
+                                                pLocationAssist->rssiDbmFilter,
+                                                pLocation, pKeepGoingCallback);
+                    }
+                    break;
+                default:
+                    break;
+            }
         } else if (devType == (int32_t) U_DEVICE_TYPE_CELL) {
             errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
             location.type = type;
-            if (location.type == U_LOCATION_TYPE_CLOUD_CELL_LOCATE) {
-                errorCode = cellLocConfigure(devHandle, 0,
-                                             pLocationAssist,
-                                             pAuthenticationTokenStr);
-                if (errorCode == 0) {
-                    errorCode = uCellLocGet(devHandle,
+            switch (location.type) {
+                case U_LOCATION_TYPE_GNSS:
+                    // A GNSS device inside or connected-via a cellular device
+                    errorCode = uGnssPosGet(devHandle,
                                             &(location.latitudeX1e7),
                                             &(location.longitudeX1e7),
                                             &(location.altitudeMillimetres),
@@ -356,44 +465,52 @@ int32_t uLocationGet(uDeviceHandle_t devHandle, uLocationType_t type,
                                             &(location.timeUtc),
                                             pKeepGoingCallback);
                     if (pLocation != NULL) {
+                        pLocation->type = U_LOCATION_TYPE_GNSS;
                         *pLocation = location;
                     }
-                }
-            } else if (location.type == U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE) {
-                errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-                // For Cloud Locate the GNSS network handle is attached to
-                // the network data associated with the device handle (and
-                // the MQTT client handle is passed in via pLocationAssist)
-                gnssDeviceHandle = uNetworkGetDeviceHandle(devHandle, U_NETWORK_TYPE_GNSS);
-                if ((pLocationAssist != NULL) && (gnssDeviceHandle != NULL)) {
-                    errorCode = uLocationPrivateCloudLocate(devHandle, gnssDeviceHandle,
-                                                            (uMqttClientContext_t *) pLocationAssist->pMqttClientContext,
-                                                            pLocationAssist->svsThreshold,
-                                                            pLocationAssist->cNoThreshold,
-                                                            pLocationAssist->multipathIndexLimit,
-                                                            pLocationAssist->pseudorangeRmsErrorIndexLimit,
-                                                            pLocationAssist->rrlpDataLengthBytes,
-                                                            pLocationAssist->pClientIdStr,
-                                                            &location, pKeepGoingCallback);
-                    if (pLocation != NULL) {
-                        *pLocation = location;
+                    break;
+                case U_LOCATION_TYPE_CLOUD_CELL_LOCATE:
+                    errorCode = cellLocConfigure(devHandle, 0,
+                                                 pLocationAssist,
+                                                 pAuthenticationTokenStr);
+                    if (errorCode == 0) {
+                        errorCode = uCellLocGet(devHandle,
+                                                &(location.latitudeX1e7),
+                                                &(location.longitudeX1e7),
+                                                &(location.altitudeMillimetres),
+                                                &(location.radiusMillimetres),
+                                                &(location.speedMillimetresPerSecond),
+                                                &(location.svs),
+                                                &(location.timeUtc),
+                                                pKeepGoingCallback);
+                        if (pLocation != NULL) {
+                            *pLocation = location;
+                        }
                     }
-                }
-            } else if (location.type == U_LOCATION_TYPE_GNSS) {
-                // A GNSS device inside or connected-via a cellular device
-                errorCode = uGnssPosGet(devHandle,
-                                        &(location.latitudeX1e7),
-                                        &(location.longitudeX1e7),
-                                        &(location.altitudeMillimetres),
-                                        &(location.radiusMillimetres),
-                                        &(location.speedMillimetresPerSecond),
-                                        &(location.svs),
-                                        &(location.timeUtc),
-                                        pKeepGoingCallback);
-                if (pLocation != NULL) {
-                    pLocation->type = U_LOCATION_TYPE_GNSS;
-                    *pLocation = location;
-                }
+                    break;
+                case U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE:
+                    errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+                    // For Cloud Locate the GNSS network handle is attached to
+                    // the network data associated with the device handle (and
+                    // the MQTT client handle is passed in via pLocationAssist)
+                    gnssDeviceHandle = uNetworkGetDeviceHandle(devHandle, U_NETWORK_TYPE_GNSS);
+                    if ((pLocationAssist != NULL) && (gnssDeviceHandle != NULL)) {
+                        errorCode = uLocationPrivateCloudLocate(devHandle, gnssDeviceHandle,
+                                                                (uMqttClientContext_t *) pLocationAssist->pMqttClientContext,
+                                                                pLocationAssist->svsThreshold,
+                                                                pLocationAssist->cNoThreshold,
+                                                                pLocationAssist->multipathIndexLimit,
+                                                                pLocationAssist->pseudorangeRmsErrorIndexLimit,
+                                                                pLocationAssist->rrlpDataLengthBytes,
+                                                                pLocationAssist->pClientIdStr,
+                                                                &location, pKeepGoingCallback);
+                        if (pLocation != NULL) {
+                            *pLocation = location;
+                        }
+                    }
+                    break;
+                default:
+                    break;
             }
         } else if (devType == (int32_t) U_DEVICE_TYPE_GNSS) {
             // type, pLocationAssist and pAuthenticationTokenStr are
@@ -502,14 +619,18 @@ void uLocationGetStop(uDeviceHandle_t devHandle)
 
         int32_t devType = uDeviceGetDeviceType(devHandle);
         if (devType == (int32_t) U_DEVICE_TYPE_SHORT_RANGE) {
-            // Irrelevant
+            uPortFree(pULocationSharedRequestPop(U_LOCATION_SHARED_FIFO_WIFI));
+            uWifiLocGetStop(devHandle);
         } else if (devType == (int32_t) U_DEVICE_TYPE_CELL) {
+            uPortFree(pULocationSharedRequestPop(U_LOCATION_SHARED_FIFO_CELL_LOCATE));
             uCellLocGetStop(devHandle);
             // Also stop these here in case the GNSS device
-            // was being acceed via the cellular device
+            // was being accessed via the cellular device
+            uPortFree(pULocationSharedRequestPop(U_LOCATION_SHARED_FIFO_GNSS));
             uGnssPosGetStop(devHandle);
             uGnssPosGetStreamedStop(devHandle);
         } else if (devType == (int32_t) U_DEVICE_TYPE_GNSS) {
+            uPortFree(pULocationSharedRequestPop(U_LOCATION_SHARED_FIFO_GNSS));
             uGnssPosGetStop(devHandle);
             uGnssPosGetStreamedStop(devHandle);
         }

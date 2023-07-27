@@ -547,7 +547,7 @@ U_PORT_TEST_FUNCTION("[httpClient]", "httpClient")
     size_t busyCount;
     size_t moduleErrorCount;
     size_t tries;
-    int deviceType;
+    int32_t deviceType;
     bool checkBinary;
 
     // In case a previous test failed

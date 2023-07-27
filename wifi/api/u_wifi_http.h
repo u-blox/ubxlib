@@ -112,7 +112,8 @@ typedef void (uWifiHttpCallback_t) (uDeviceHandle_t wifiHandle,
 /** Private context structures for HTTP, WiFi-flavour.
  * The contents of this structure may be changed without
  * notice at any time; it is only placed here so that the
- * uHttpClient code may use it.
+ * uHttpClient code may use it, please do not refer to it
+ * in your application code.
  */
 typedef struct {
     int32_t httpHandle;
@@ -120,18 +121,6 @@ typedef struct {
     bool binary;
     bool atPrintWasOn;
 } uHttpClientContextWifi_t;
-
-/* ----------------------------------------------------------------
- * FUNCTIONS:  WORKAROUND FOR LINKER ISSUE
- * -------------------------------------------------------------- */
-
-/** Workaround for Espressif linker missing out files that
- * only contain functions which also have weak alternatives
- * (see https://www.esp32.com/viewtopic.php?f=13&t=8418&p=35899).
- *
- * You can ignore this function.
- */
-void uWifiHttpPrivateLink(void);
 
 /* ----------------------------------------------------------------
  * FUNCTIONS
@@ -167,7 +156,8 @@ void uWifiHttpPrivateLink(void);
  *                           an error, for example "404 Not Found") or
  *                           an error has occurred.
  * @param[in] pCallbackParam a parameter that will be passed to
- *                           pCallback when it is called; may be NULL.
+ *                           pCallback when it is called; MUST be
+ *                           a valid pointer to #uHttpClientContext_t.
  * @return                   the handle of the HTTP instance on success,
  *                           else negative error code.
  */

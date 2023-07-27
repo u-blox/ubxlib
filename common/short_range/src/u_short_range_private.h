@@ -154,6 +154,8 @@ typedef struct uShortRangePrivateInstance_t {
     void *pBtDataCallbackParameter;
     uHttpClientContext_t *pHttpContext;
     uWifiHttpCallback_t *pWifiHttpCallBack;
+    uPortMutexHandle_t locMutex;
+    volatile void *pLocContext;
     struct uShortRangePrivateInstance_t *pNext;
 } uShortRangePrivateInstance_t;
 
