@@ -302,10 +302,6 @@ U_PORT_TEST_FUNCTION("[wifiLoc]", "wifiLocBasic")
         U_TEST_PRINT_LINE("testing blocking Wifi location with %s.", gLocType[gIteration].pName);
         // It is possible for these cloud services to fail, so give them a few goes
         for (size_t y = 0; (y < U_WIFI_LOC_TEST_TRIES) && (z != 0); y++) {
-
-            // TODO: when we resolve the conflict with HTTP, add an asynchronous
-            // uWifiHttp call here and check that both succeed.
-
             startTimeMs = uPortGetTickTimeMs();
             gStopTimeMs = startTimeMs + U_WIFI_LOC_TEST_TIMEOUT_SECONDS * 1000;
             locationSetDefaults(&location);
@@ -320,15 +316,20 @@ U_PORT_TEST_FUNCTION("[wifiLoc]", "wifiLocBasic")
         // Success or allow error code 206 on HERE since it often isn't able to establish position in our lab
         U_PORT_TEST_ASSERT((z == 0) || ((z == 206) &&
                                         (gLocType[gIteration].type == U_LOCATION_TYPE_CLOUD_HERE)));
-        printLocation(&location);
-        U_PORT_TEST_ASSERT(location.type == gLocType[gIteration].type);
-        U_PORT_TEST_ASSERT(location.latitudeX1e7 > INT_MIN);
-        U_PORT_TEST_ASSERT(location.longitudeX1e7 > INT_MIN);
-        // Can't check altitude; only get 2D position from these services
-        U_PORT_TEST_ASSERT(location.radiusMillimetres >= 0);
-        U_PORT_TEST_ASSERT(location.timeUtc == -1);
-        U_PORT_TEST_ASSERT(location.speedMillimetresPerSecond == INT_MIN);
-        U_PORT_TEST_ASSERT(location.svs == -1);
+        if (z == 0) {
+            printLocation(&location);
+            U_PORT_TEST_ASSERT(location.type == gLocType[gIteration].type);
+            U_PORT_TEST_ASSERT(location.latitudeX1e7 > INT_MIN);
+            U_PORT_TEST_ASSERT(location.longitudeX1e7 > INT_MIN);
+            // Can't check altitude; only get 2D position from these services
+            U_PORT_TEST_ASSERT(location.radiusMillimetres >= 0);
+            U_PORT_TEST_ASSERT(location.timeUtc == -1);
+            U_PORT_TEST_ASSERT(location.speedMillimetresPerSecond == INT_MIN);
+            U_PORT_TEST_ASSERT(location.svs == -1);
+        } else {
+            U_TEST_PRINT_LINE("*** WARNING *** %s cloud service was unable to determine position,"
+                              " HTTP status code %d.", gLocType[gIteration].pName, z);
+        }
 
         // Should do any harm to call this here
         uWifiLocGetStop(gHandles.devHandle);
@@ -337,10 +338,6 @@ U_PORT_TEST_FUNCTION("[wifiLoc]", "wifiLocBasic")
         // It is possible for these cloud services to fail, so give them a few goes
         gCallback = INT_MIN;
         for (size_t y = 0; (y < U_WIFI_LOC_TEST_TRIES) && (gCallback != 0); y++) {
-
-            // TODO: when we resolve the conflict with HTTP, add an asynchronous
-            // uWifiHttp call here and check that both succeed.
-
             startTimeMs = uPortGetTickTimeMs();
             gCallback = INT_MIN;
             locationSetDefaults(&location);
