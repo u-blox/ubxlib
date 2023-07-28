@@ -360,6 +360,13 @@ def buildAndTestPipeline(instance_str, json_entry, filter) {
                                 }
                                 shared_resources_acquired = true
                                 if (hasUhubctl(json_entry)) {
+                                    // This will be running on a Pi; need to remove any existing instance
+                                    // of the Docker container first: it may be a zombie from a CTRL-C'ed
+                                    // Jenkins run that has ownership of things we need
+                                    def dockerContainers = sh(script: "docker container ps -aq -f ancestor=ubxlib_builder", returnStdout: true).replaceAll("\n", " ")
+                                    if (dockerContainers) {
+                                        sh "docker kill ${dockerContainers}"
+                                    }
                                     println "Powering-up DUT on instance_${instance_str}."
                                     // Switch on USB
                                     sh(script: "uhubctl -a 1 -l 1-1")
