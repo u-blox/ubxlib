@@ -478,6 +478,24 @@ int32_t uCellCfgSetGnssProfile(uDeviceHandle_t cellHandle, int32_t profileBitMap
 int32_t uCellCfgGetGnssProfile(uDeviceHandle_t cellHandle, char *pServerName,
                                size_t sizeBytes);
 
+/** Set the time in the cellular module.  You may need to use this if time
+ * is important to you (e.g. for certificate checking) and your cellular
+ * network does not provide time and time-zone information.
+ *
+ * To read the time, use uCellInfoGetTime() or uCellInfoGetTimeUtc(),
+ *
+ * @param cellHandle          the handle of the cellular instance.
+ * @param timeLocal           the local time in seconds since midnight on
+ *                            1st Jan 1970, (i.e. Unix time, but local rather
+ *                            than UTC).
+ * @param timeZoneSeconds     the time-zone offset of timeLocal in seconds; for
+ *                            example, if you are one hour ahead of UTC
+ *                            timeZoneSeconds would be 3600.
+ * @return                    zero on success or negative error code on failure.
+ */
+int64_t uCellCfgSetTime(uDeviceHandle_t cellHandle, int64_t timeLocal,
+                        int32_t timeZoneSeconds);
+
 #ifdef __cplusplus
 }
 #endif

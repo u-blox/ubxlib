@@ -77,10 +77,17 @@
  */
 #define U_TEST_PRINT_LINE(format, ...) uPortLog(U_TEST_PREFIX format "\n", ##__VA_ARGS__)
 
-#ifndef U_CELL_INFO_TEST_MIN_UTC_TIME
-/** A minimum value for UTC time to test against (21 July 2021 13:40:36).
+#ifndef U_CELL_INFO_TEST_MIN_TIME
+/** A minimum value for time to test against (21 July 2021 13:40:36).
  */
-# define U_CELL_INFO_TEST_MIN_UTC_TIME 1626874836
+# define U_CELL_INFO_TEST_MIN_TIME 1626874836
+#endif
+
+#ifndef U_CELL_INFO_TEST_TIME_MARGIN_SECONDS
+/** The permitted margin between reading time several times during
+ * testing, in seconds.
+ */
+# define U_CELL_INFO_TEST_TIME_MARGIN_SECONDS 10
 #endif
 
 /* ----------------------------------------------------------------
@@ -366,6 +373,9 @@ U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoRadioParameters")
 U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoTime")
 {
     uDeviceHandle_t cellHandle;
+    int64_t timeUtc;
+    int64_t timeLocal;
+    int32_t timeZoneOffsetSeconds = 0;
     int64_t x;
     int32_t heapUsed;
     char buffer[32] = {0};
@@ -386,14 +396,29 @@ U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoTime")
                   (U_CELL_TEST_CFG_CONNECT_TIMEOUT_SECONDS * 1000);
     U_PORT_TEST_ASSERT(uCellNetRegister(cellHandle, NULL, keepGoingCallback) == 0);
 
-    U_TEST_PRINT_LINE("fetching the time...");
-    x = uCellInfoGetTimeUtc(cellHandle);
-    U_TEST_PRINT_LINE("UTC time is %d.", (int32_t) x);
-    U_PORT_TEST_ASSERT(x > U_CELL_INFO_TEST_MIN_UTC_TIME);
+    U_TEST_PRINT_LINE("fetching the UTC time...");
+    timeUtc = uCellInfoGetTimeUtc(cellHandle);
+    U_TEST_PRINT_LINE("UTC time is %d.", (int32_t) timeUtc);
+    U_PORT_TEST_ASSERT(timeUtc > U_CELL_INFO_TEST_MIN_TIME);
 
     U_TEST_PRINT_LINE("fetching the time string...");
     U_PORT_TEST_ASSERT(uCellInfoGetTimeUtcStr(cellHandle, buffer, sizeof(buffer)) >= 0);
     U_TEST_PRINT_LINE("UTC time: %s.", buffer);
+
+    U_TEST_PRINT_LINE("fetching the local time without timezone...");
+    x = uCellInfoGetTime(cellHandle, NULL);
+    U_TEST_PRINT_LINE("local time is %d.", (int32_t) x);
+    U_PORT_TEST_ASSERT(x > U_CELL_INFO_TEST_MIN_TIME);
+
+    U_TEST_PRINT_LINE("...and again with timezone.");
+    timeLocal = uCellInfoGetTime(cellHandle, &timeZoneOffsetSeconds);
+    U_TEST_PRINT_LINE("local time is %d, timezone is %d, therefore UTC time is %d.",
+                      (int32_t) timeLocal, timeZoneOffsetSeconds,
+                      (int32_t) (timeLocal - timeZoneOffsetSeconds));
+    U_PORT_TEST_ASSERT(timeLocal - x < U_CELL_INFO_TEST_TIME_MARGIN_SECONDS);
+    U_PORT_TEST_ASSERT(timeLocal - timeZoneOffsetSeconds >= timeUtc);
+    U_PORT_TEST_ASSERT((timeLocal - timeZoneOffsetSeconds) - timeUtc <
+                       U_CELL_INFO_TEST_TIME_MARGIN_SECONDS);
 
     // Disconnect
     U_PORT_TEST_ASSERT(uCellNetDisconnect(cellHandle, NULL) == 0);

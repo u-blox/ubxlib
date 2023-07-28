@@ -31,13 +31,17 @@
 #include "stdlib.h"    // strol(), atoi(), strol(), strtof()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
+#include "stdio.h"     // snprintf()
 #include "stdbool.h"
 #include "string.h"    // memset()
+#include "time.h"      // time_t and struct tm
 
 #include "u_cfg_sw.h"
 
 #include "u_error_common.h"
 
+#include "u_port_clib_platform_specific.h" /* gmtime_r(), snprintf(), must be included
+                                              before the other port files. */
 #include "u_port_debug.h"
 #include "u_port_os.h"
 #include "u_port_heap.h"
@@ -1910,6 +1914,47 @@ int32_t uCellCfgGetGnssProfile(uDeviceHandle_t cellHandle, char *pServerName,
     }
 
     return errorCodeOrBitMap;
+}
+
+// Set the time in the cellular module.
+int64_t uCellCfgSetTime(uDeviceHandle_t cellHandle, int64_t timeLocal,
+                        int32_t timeZoneSeconds)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance;
+    uAtClientHandle_t atHandle;
+    struct tm tmStruct;
+    char buffer[32];
+
+    if (gUCellPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        pInstance = pUCellPrivateGetInstance(cellHandle);
+        // The format is "yy/MM/dd,hh:mm:ss+TZ" where +TZ is
+        // in quarter hours.  First get the time in a struct
+        if ((pInstance != NULL) && gmtime_r((const time_t *) &timeLocal, &tmStruct) != NULL) {
+            snprintf(buffer, sizeof(buffer), "%02d/%02d/%02d,%02d:%02d:%02d%c%02d",
+                     tmStruct.tm_year % 100, tmStruct.tm_mon + 1, tmStruct.tm_mday,
+                     tmStruct.tm_hour, tmStruct.tm_min, tmStruct.tm_sec,
+                     timeZoneSeconds >= 0 ? '+' : '-', // Do this cos %+02d doesn't fill with zeroes as it should
+                     timeZoneSeconds >= 0 ? (int) timeZoneSeconds / (15 * 60) : (int) - timeZoneSeconds / (15 * 60));
+            atHandle = pInstance->atHandle;
+            uAtClientLock(atHandle);
+            uAtClientCommandStart(atHandle, "AT+CCLK=");
+            uAtClientWriteString(atHandle, buffer, true);
+            uAtClientCommandStopReadResponse(atHandle);
+            errorCode = uAtClientUnlock(atHandle);
+            if (errorCode == 0) {
+                uPortLog("U_CELL_CFG: time set to %s.\n", buffer);
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return errorCode;
 }
 
 // End of file

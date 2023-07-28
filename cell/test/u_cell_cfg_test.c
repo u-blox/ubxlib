@@ -63,6 +63,7 @@
 #include "u_cell_private.h" // So that we can get at some innards
 #include "u_cell_pwr.h"
 #include "u_cell_cfg.h"
+#include "u_cell_info.h"    // For uCellInfoTime()
 #ifdef U_CELL_TEST_MUX_ALWAYS
 # include "u_cell_mux.h"
 #endif
@@ -100,6 +101,26 @@
  * with AT+UGPRF.
  */
 # define U_CELL_CFG_TEST_GNSS_IP_STR "myserver:1234"
+#endif
+
+#ifndef U_CELL_CFG_TEST_TIME_OFFSET_SECONDS
+/** How far ahead to adjust the time when testing.
+ */
+# define U_CELL_CFG_TEST_TIME_OFFSET_SECONDS 75
+#endif
+
+#ifndef U_CELL_CFG_TEST_TIME_MARGIN_SECONDS
+/** The permitted margin between reading time several times during
+ * testing, in seconds.
+ */
+# define U_CELL_CFG_TEST_TIME_MARGIN_SECONDS 10
+#endif
+
+#ifndef U_CELL_CFG_TEST_FIXED_TIME
+/** A time value to use if the module doesn't have one: should
+ * be no less than #U_CELL_INFO_TEST_MIN_TIME (i.e. 21 July 2021 13:40:36).
+ */
+# define U_CELL_CFG_TEST_FIXED_TIME 1626874836
 #endif
 
 /* ----------------------------------------------------------------
@@ -1027,6 +1048,88 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgGnssProfile")
     // Free memory
     uPortFree(pServerNameOriginal);
     uPortFree(pServerName);
+
+    // Do the standard postamble, leaving the module on for the next
+    // test to speed things up
+    uCellTestPrivatePostamble(&gHandles, false);
+
+    // Check for memory leaks
+    heapUsed -= uPortGetHeapFree();
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
+    // heapUsed < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT(heapUsed <= 0);
+}
+
+/** Test setting time.
+ */
+U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgTime")
+{
+    uDeviceHandle_t cellHandle;
+    int64_t timeLocal;
+    int32_t timeZoneOffsetOriginalSeconds;
+    int32_t timeZoneOffsetSeconds;
+    int64_t x;
+    int32_t heapUsed;
+
+    // In case a previous test failed
+    uCellTestPrivateCleanup(&gHandles);
+
+    // Obtain the initial heap size
+    heapUsed = uPortGetHeapFree();
+
+    // Do the standard preamble
+    U_PORT_TEST_ASSERT(uCellTestPrivatePreamble(U_CFG_TEST_CELL_MODULE_TYPE,
+                                                &gHandles, true) == 0);
+    cellHandle = gHandles.cellHandle;
+
+#ifndef U_CELL_CFG_TEST_USE_FIXED_TIME_SECONDS
+    // Get the time
+    timeLocal = uCellInfoGetTime(cellHandle, &timeZoneOffsetOriginalSeconds);
+    U_TEST_PRINT_LINE("local time is %d, timezone offset %d seconds.",
+                      (int32_t) timeLocal, timeZoneOffsetOriginalSeconds);
+#else
+    timeLocal = U_CELL_CFG_TEST_FIXED_TIME;
+    timeZoneOffsetOriginalSeconds = 3600;
+    U_TEST_PRINT_LINE("using fixed local time %d, timezone offset %d seconds.",
+                      (int32_t) timeLocal, timeZoneOffsetOriginalSeconds);
+#endif
+    // Set the time forward
+    U_TEST_PRINT_LINE("setting time forward %d second(s)...", U_CELL_CFG_TEST_TIME_OFFSET_SECONDS);
+    U_PORT_TEST_ASSERT(uCellCfgSetTime(cellHandle, timeLocal + U_CELL_CFG_TEST_TIME_OFFSET_SECONDS,
+                                       timeZoneOffsetOriginalSeconds) == 0);
+    x = uCellInfoGetTime(cellHandle, &timeZoneOffsetSeconds);
+    U_TEST_PRINT_LINE("local time is now %d, timezone offset %d seconds.",
+                      (int32_t) x, timeZoneOffsetSeconds);
+    U_PORT_TEST_ASSERT(x - timeLocal >= U_CELL_CFG_TEST_TIME_OFFSET_SECONDS);
+    U_PORT_TEST_ASSERT((x - timeLocal) - U_CELL_CFG_TEST_TIME_OFFSET_SECONDS <
+                       U_CELL_CFG_TEST_TIME_MARGIN_SECONDS);
+    // Set the timezone forward
+    U_TEST_PRINT_LINE("setting timezone forward a quarter of an hour...");
+    U_PORT_TEST_ASSERT(uCellCfgSetTime(cellHandle, x, timeZoneOffsetOriginalSeconds + (15 * 60)) == 0);
+    x = uCellInfoGetTime(cellHandle, &timeZoneOffsetSeconds);
+    U_TEST_PRINT_LINE("local time is now %d, timezone offset is now %d seconds.",
+                      (int32_t) x, timeZoneOffsetSeconds);
+    U_PORT_TEST_ASSERT(timeZoneOffsetSeconds - timeZoneOffsetOriginalSeconds == 15 * 60);
+    U_PORT_TEST_ASSERT(x - timeLocal >= U_CELL_CFG_TEST_TIME_OFFSET_SECONDS);
+    U_PORT_TEST_ASSERT((x - timeLocal) - U_CELL_CFG_TEST_TIME_OFFSET_SECONDS <
+                       U_CELL_CFG_TEST_TIME_MARGIN_SECONDS);
+    // Set the timezone backward
+    U_TEST_PRINT_LINE("setting timezone to minus what it was...");
+    U_PORT_TEST_ASSERT(uCellCfgSetTime(cellHandle, x, -timeZoneOffsetOriginalSeconds) == 0);
+    x = uCellInfoGetTime(cellHandle, &timeZoneOffsetSeconds);
+    U_TEST_PRINT_LINE("local time is now %d, timezone offset is now %d seconds.",
+                      (int32_t) x, timeZoneOffsetSeconds);
+    U_PORT_TEST_ASSERT(timeZoneOffsetSeconds + timeZoneOffsetOriginalSeconds == 0);
+    U_PORT_TEST_ASSERT(x - timeLocal >= U_CELL_CFG_TEST_TIME_OFFSET_SECONDS);
+    U_PORT_TEST_ASSERT((x - timeLocal) - U_CELL_CFG_TEST_TIME_OFFSET_SECONDS <
+                       U_CELL_CFG_TEST_TIME_MARGIN_SECONDS);
+    // Put everything back as it was
+    U_TEST_PRINT_LINE("setting time back %d second(s) again and putting the timezone offset back to %d seconds.",
+                      U_CELL_CFG_TEST_TIME_OFFSET_SECONDS, timeZoneOffsetOriginalSeconds);
+    x = uCellInfoGetTime(cellHandle, &timeZoneOffsetSeconds);
+    U_PORT_TEST_ASSERT(uCellCfgSetTime(cellHandle, x - U_CELL_CFG_TEST_TIME_OFFSET_SECONDS,
+                                       timeZoneOffsetOriginalSeconds) == 0);
 
     // Do the standard postamble, leaving the module on for the next
     // test to speed things up

@@ -556,6 +556,97 @@ static int32_t getRadioParamsUcged5(uAtClientHandle_t atHandle,
     return uAtClientUnlock(atHandle);
 }
 
+// Get the time and time-zone offset.
+static int64_t getTimeAndTimeZone(uAtClientHandle_t atHandle,
+                                  int32_t *pTimeZoneSeconds)
+{
+    int64_t errorCodeOrValue;
+    int64_t timeValue;
+    int32_t timeZoneSeconds = INT_MIN;
+    char timezoneSign = 0;
+    char buffer[32];
+    struct tm timeInfo;
+    int32_t bytesRead;
+    size_t offset = 0;
+
+    uAtClientLock(atHandle);
+    uAtClientCommandStart(atHandle, "AT+CCLK?");
+    uAtClientCommandStop(atHandle);
+    uAtClientResponseStart(atHandle, "+CCLK:");
+    bytesRead = uAtClientReadString(atHandle, buffer,
+                                    sizeof(buffer), false);
+    uAtClientResponseStop(atHandle);
+    errorCodeOrValue = uAtClientUnlock(atHandle);
+    if ((bytesRead >= 17) && (errorCodeOrValue == 0)) {
+        errorCodeOrValue = (int64_t) U_ERROR_COMMON_UNKNOWN;
+        uPortLog("U_CELL_INFO: time is %s.\n", buffer);
+        // The format of the returned string is
+        // "yy/MM/dd,hh:mm:ss+TZ" but the +TZ may be omitted
+        // Two-digit year converted to years since 1900
+        offset = 0;
+        buffer[offset + 2] = 0;
+        timeInfo.tm_year = atoi(&(buffer[offset])) + 2000 - 1900;
+        // Months converted to months since January
+        offset = 3;
+        buffer[offset + 2] = 0;
+        timeInfo.tm_mon = atoi(&(buffer[offset])) - 1;
+        // Day of month
+        offset = 6;
+        buffer[offset + 2] = 0;
+        timeInfo.tm_mday = atoi(&(buffer[offset]));
+        // Hours since midnight
+        offset = 9;
+        buffer[offset + 2] = 0;
+        timeInfo.tm_hour = atoi(&(buffer[offset]));
+        // Minutes after the hour
+        offset = 12;
+        buffer[offset + 2] = 0;
+        timeInfo.tm_min = atoi(&(buffer[offset]));
+        // Seconds after the hour
+        // ...but, if there is timezone information,
+        // save it before we obliterate the sign
+        if (bytesRead >= 20) {
+            timezoneSign = buffer[17];
+        }
+        offset = 15;
+        buffer[offset + 2] = 0;
+        timeInfo.tm_sec = atoi(&(buffer[offset]));
+        // Get the time in seconds from this
+        timeValue = mktime64(&timeInfo);
+        offset = 17;
+        if ((timeValue >= 0) && (bytesRead >= 20) &&
+            ((timezoneSign == '+') || (timezoneSign == '-'))) {
+            // There's a timezone, expressed in 15 minute intervals,
+            // put the timezone sign back so that atoi() can handle it
+            buffer[offset] = timezoneSign;
+            buffer[offset + 3] = 0;
+            timeZoneSeconds = atoi(&(buffer[offset])) * 15 * 60;
+        }
+
+        if (timeValue >= 0) {
+            errorCodeOrValue = timeValue;
+            uPortLog("U_CELL_INFO: local time is %d", (int32_t) errorCodeOrValue);
+            if (timeZoneSeconds > INT_MIN) {
+                uPortLog(", timezone offset %d seconds, hence UTC time is %d.\n", timeZoneSeconds,
+                         (int32_t) (errorCodeOrValue - timeZoneSeconds));
+                if (pTimeZoneSeconds != NULL) {
+                    *pTimeZoneSeconds = timeZoneSeconds;
+                }
+            } else {
+                uPortLog(".\n");
+            }
+        } else {
+            uPortLog("U_CELL_INFO: unable to calculate time.\n");
+        }
+    } else {
+        errorCodeOrValue = (int64_t) U_CELL_ERROR_AT;
+        uPortLog("U_CELL_INFO: unable to read time with AT+CCLK.\n");
+    }
+
+    return errorCodeOrValue;
+}
+
+
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -1057,98 +1148,31 @@ int32_t uCellInfoGetFirmwareVersionStr(uDeviceHandle_t cellHandle,
 // Get the UTC time according to cellular.
 int64_t uCellInfoGetTimeUtc(uDeviceHandle_t cellHandle)
 {
-    int64_t errorCodeOrValue = (int64_t) U_ERROR_COMMON_NOT_INITIALISED;
+    int64_t errorCodeOrUtcTime = (int64_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
-    uAtClientHandle_t atHandle;
-    int64_t timeUtc;
-    char timezoneSign = 0;
-    char buffer[32];
-    struct tm timeInfo;
-    int32_t bytesRead;
-    size_t offset = 0;
+    int32_t timeZoneSeconds = 0;
 
     if (gUCellPrivateMutex != NULL) {
 
         U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
 
         pInstance = pUCellPrivateGetInstance(cellHandle);
-        errorCodeOrValue = (int64_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        errorCodeOrUtcTime = (int64_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if (pInstance != NULL) {
-            atHandle = pInstance->atHandle;
-            uAtClientLock(atHandle);
-            uAtClientCommandStart(atHandle, "AT+CCLK?");
-            uAtClientCommandStop(atHandle);
-            uAtClientResponseStart(atHandle, "+CCLK:");
-            bytesRead = uAtClientReadString(atHandle, buffer,
-                                            sizeof(buffer), false);
-            uAtClientResponseStop(atHandle);
-            errorCodeOrValue = uAtClientUnlock(atHandle);
-            if ((bytesRead >= 17) && (errorCodeOrValue == 0)) {
-                errorCodeOrValue = (int64_t) U_ERROR_COMMON_UNKNOWN;
-                uPortLog("U_CELL_INFO: time is %s.\n", buffer);
-                // The format of the returned string is
-                // "yy/MM/dd,hh:mm:ss+TZ" but the +TZ may be omitted
-                // Two-digit year converted to years since 1900
-                offset = 0;
-                buffer[offset + 2] = 0;
-                timeInfo.tm_year = atoi(&(buffer[offset])) + 2000 - 1900;
-                // Months converted to months since January
-                offset = 3;
-                buffer[offset + 2] = 0;
-                timeInfo.tm_mon = atoi(&(buffer[offset])) - 1;
-                // Day of month
-                offset = 6;
-                buffer[offset + 2] = 0;
-                timeInfo.tm_mday = atoi(&(buffer[offset]));
-                // Hours since midnight
-                offset = 9;
-                buffer[offset + 2] = 0;
-                timeInfo.tm_hour = atoi(&(buffer[offset]));
-                // Minutes after the hour
-                offset = 12;
-                buffer[offset + 2] = 0;
-                timeInfo.tm_min = atoi(&(buffer[offset]));
-                // Seconds after the hour
-                // ...but, if there is timezone information,
-                // save it before we obliterate the sign
-                if (bytesRead >= 20) {
-                    timezoneSign = buffer[17];
-                }
-                offset = 15;
-                buffer[offset + 2] = 0;
-                timeInfo.tm_sec = atoi(&(buffer[offset]));
-                // Get the time in seconds from this
-                timeUtc = mktime64(&timeInfo);
-                offset = 17;
-                if ((timeUtc >= 0) && (bytesRead >= 20) &&
-                    ((timezoneSign == '+') || (timezoneSign == '-'))) {
-                    // There's a timezone, expressed in 15 minute intervals,
-                    // subtract it to get UTC
-                    // Put the timezone sign back so that atoi() can handle it
-                    buffer[offset] = timezoneSign;
-                    buffer[offset + 3] = 0;
-                    timeUtc -= atoi(&(buffer[offset])) * 15 * 60;
-                }
-
-                if (timeUtc >= 0) {
-                    errorCodeOrValue = timeUtc;
-                    uPortLog("U_CELL_INFO: UTC time is %d.\n", (int32_t) errorCodeOrValue);
-                } else {
-                    uPortLog("U_CELL_INFO: unable to calculate UTC time.\n");
-                }
-            } else {
-                errorCodeOrValue = (int64_t) U_CELL_ERROR_AT;
-                uPortLog("U_CELL_INFO: unable to read time with AT+CCLK.\n");
+            errorCodeOrUtcTime = getTimeAndTimeZone(pInstance->atHandle,
+                                                    &timeZoneSeconds);
+            if (errorCodeOrUtcTime >= 0) {
+                errorCodeOrUtcTime -= timeZoneSeconds;
             }
         }
 
         U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
     }
 
-    return errorCodeOrValue;
+    return errorCodeOrUtcTime;
 }
 
-/* Get the UTC time string according to cellular */
+// Get the UTC time string according to cellular.
 int32_t uCellInfoGetTimeUtcStr(uDeviceHandle_t cellHandle, char *pStr, size_t size)
 {
     int32_t sizeOrErrorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
@@ -1192,6 +1216,33 @@ int32_t uCellInfoGetTimeUtcStr(uDeviceHandle_t cellHandle, char *pStr, size_t si
     }
 
     return sizeOrErrorCode;
+}
+
+// Get the local time according to cellular.
+int64_t uCellInfoGetTime(uDeviceHandle_t cellHandle, int32_t *pTimeZoneSeconds)
+{
+    int64_t errorCodeOrTime = (int64_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance;
+    int32_t timeZoneSeconds = 0;
+
+    if (gUCellPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        pInstance = pUCellPrivateGetInstance(cellHandle);
+        errorCodeOrTime = (int64_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        if (pInstance != NULL) {
+            errorCodeOrTime = getTimeAndTimeZone(pInstance->atHandle,
+                                                 &timeZoneSeconds);
+            if ((errorCodeOrTime >= 0) && (pTimeZoneSeconds != NULL)) {
+                *pTimeZoneSeconds = timeZoneSeconds;
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return errorCodeOrTime;
 }
 
 // Determine if RTS flow control is enabled.

@@ -280,7 +280,11 @@ int32_t uCellInfoGetFirmwareVersionStr(uDeviceHandle_t cellHandle,
 
 /** Get the UTC time according to cellular.  This feature requires
  * a connection to have been activated and support for this feature
- * is optional in the cellular network.
+ * is optional in the cellular network.  To get the local time instead
+ * of UTC time, use uCellInfoGetTime().
+ *
+ * Should the cellular network not provide time, you may set it
+ * yourself with uCellCfgSetTime();
  *
  * @param cellHandle  the handle of the cellular instance.
  * @return            on success the Unix UTC time, else negative
@@ -307,6 +311,27 @@ int64_t uCellInfoGetTimeUtc(uDeviceHandle_t cellHandle);
  */
 int32_t uCellInfoGetTimeUtcStr(uDeviceHandle_t cellHandle,
                                char *pStr, size_t size);
+
+/** Get the local time according to cellular, plus optionally the
+ * time-zone offset of that time.  This feature requires a connection
+ * to have been activated and support for this feature is optional
+ * in the cellular network.
+ *
+ * Should the cellular network not provide time, you may set it
+ * yourself with uCellCfgSetTime();
+ *
+ * @param cellHandle             the handle of the cellular
+ *                               instance.
+ * @param[in] pTimeZoneSeconds   a place to put the time-zone
+ *                               offset in seconds; may be NULL.
+ * @return                       on success the local time in
+ *                               seconds since midnight on 1st
+ *                               Jan 1970 (i.e. Unix time but
+ *                               local instead of UTC) else
+ *                               negative error code.
+ */
+int64_t uCellInfoGetTime(uDeviceHandle_t cellHandle,
+                         int32_t *pTimeZoneSeconds);
 
 /** Determine if RTS flow control, the signal from the
  * cellular module to this software that the module is
