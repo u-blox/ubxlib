@@ -28,7 +28,7 @@
 
 /** @file
  * @brief Porting layer for UART access functions.  These functions
- * are thread-safe.
+ * are thread-safe unless otherwise stated.
  */
 
 /* NOTE TO MAINTAINERS: there is a virtualised version of this
@@ -106,7 +106,7 @@ int32_t uPortUartInit();
 void uPortUartDeinit();
 
 /** Set the uart name prefix to be used in the next call to
- * uPortUartOpen().
+ * uPortUartOpen().  This is NOT thread-safe.
  *
  * On some platforms this name will prefix the uart parameter
  * passed to uPortUartOpen(); for example a prefix of "/dev/tty"
@@ -172,14 +172,28 @@ int32_t uPortUartPrefix(const char *pPrefix);
  *                               ready to receive
  *                               data; use -1 for none or if
  *                               the pin choice has already been
- *                               determined at compile time.
+ *                               determined at compile time.  On
+ *                               some platforms where no pin
+ *                               selection can be made at run-time
+ *                               (e.g. Windows and Linux) this is
+ *                               simply treated as a flag
+ *                               where a negative value means
+ *                               no CTS flow control and a
+ *                               non-negative means CTS flow control.
  * @param pinRts                 the RTS (output) flow
  *                               control pin, asserted
  *                               when we are ready to
  *                               receive data from the
  *                               modem; use -1 for none or if
  *                               the pin choice has already been
- *                               determined at compile time.
+ *                               determined at compile time.  On
+ *                               some platforms where no pin
+ *                               selection can be made at run-time
+ *                               (e.g. Windows and Linux) this is
+ *                               simply treated as a flag
+ *                               where a negative value means
+ *                               no RTS flow control and a
+ *                               non-negative means RTS flow control.
  * @return                       a UART handle else negative
  *                               error code.
  */

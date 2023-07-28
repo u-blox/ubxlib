@@ -103,7 +103,11 @@ U_PORT_TEST_FUNCTION("[wifiCfg]", "wifiCfgConfigureModule")
                                      .pinRx = U_CFG_APP_PIN_SHORT_RANGE_RXD,
                                      .pinCts = U_CFG_APP_PIN_SHORT_RANGE_CTS,
                                      .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS,
-                                     .pPrefix = NULL // Relevant for Linux only
+#ifdef U_CFG_APP_UART_PREFIX // Relevant for Linux only
+                                     .pPrefix = U_PORT_STRINGIFY_QUOTED(U_CFG_APP_UART_PREFIX)
+#else
+                                     .pPrefix = NULL
+#endif
                                    };
 
     heapUsed = uPortGetHeapFree();

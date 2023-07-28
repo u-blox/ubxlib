@@ -112,6 +112,16 @@ RUN                                                                             
 RUN groupadd -g 997 gpio &&                                                                   \
     echo SUBSYSTEM=="gpio", GROUP="gpio", MODE="0660" >> /etc/udev/rules.d/99-com.rules
 
+# Similar for i2c
+RUN groupadd -g 998 i2c &&                                                                   \
+    echo SUBSYSTEM=="i2c", GROUP="i2c", MODE="0660" >> /etc/udev/rules.d/99-com.rules
+
+# Similar for spi
+RUN groupadd -g 999 spi &&                                                                   \
+    echo SUBSYSTEM=="spi", GROUP="spi", MODE="0660" >> /etc/udev/rules.d/99-com.rules
+
+# Note: the dialout group is already present (group ID 20) in the container
+
 WORKDIR /workdir
 
 #***************************************************
@@ -137,9 +147,9 @@ RUN chmod 1777 /tmp && \
 # Some last steps
 #***************************************************
 
-# Add and switch to "ubxlib" user
+# Add and switch to "ubxlib" user, making it a member of the right groups
 ARG USER="ubxlib"
 RUN groupadd -f -g 1000 -o $USER && \
-    useradd -ms /bin/bash -u 1000 -g 1000 -G gpio $USER && \
+    useradd -ms /bin/bash -u 1000 -g 1000 -G gpio,i2c,spi,dialout $USER && \
     chown ubxlib:ubxlib /workdir
 USER ubxlib

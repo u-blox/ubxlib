@@ -57,6 +57,14 @@ def isFirmware(json_entry) {
     return !isCodeChecker(json_entry) && m != "win32" && m != "linux32" && m != "linux64" && m != ""
 }
 
+def hasUhubctl(json_entry) {
+    def has = !isWindows(json_entry) && !isCodeChecker(json_entry)
+    if (has && (sh(script: "uhubctl", returnStatus: true) != 0)) {
+        has = false
+    }
+    return has
+}
+
 def isWindows(json_entry) {
     def m = json_entry.mcu.toLowerCase()
     return m == "win32"
@@ -351,7 +359,7 @@ def buildAndTestPipeline(instance_str, json_entry, filter) {
                                     println "Shared resources already powered up."
                                 }
                                 shared_resources_acquired = true
-                                if (isFirmware(json_entry)) {
+                                if (hasUhubctl(json_entry)) {
                                     println "Powering-up DUT on instance_${instance_str}."
                                     // Switch on USB
                                     sh(script: "uhubctl -a 1 -l 1-1")

@@ -104,7 +104,11 @@ static uShortRangeUartConfig_t uart = { .uartPort = U_CFG_APP_SHORT_RANGE_UART,
                                         .pinRx = U_CFG_APP_PIN_SHORT_RANGE_RXD,
                                         .pinCts = U_CFG_APP_PIN_SHORT_RANGE_CTS,
                                         .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS,
-                                        .pPrefix = NULL // Relevant for Linux only
+#ifdef U_CFG_APP_UART_PREFIX // Relevant for Linux only
+                                        .pPrefix = U_PORT_STRINGIFY_QUOTED(U_CFG_APP_UART_PREFIX)
+#else
+                                        .pPrefix = NULL
+#endif
                                       };
 
 /* ----------------------------------------------------------------
@@ -321,7 +325,11 @@ U_PORT_TEST_FUNCTION("[wifi]", "wifiOpenUart")
                                      .pinRx = U_CFG_APP_PIN_SHORT_RANGE_RXD,
                                      .pinCts = U_CFG_APP_PIN_SHORT_RANGE_CTS,
                                      .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS,
-                                     .pPrefix = NULL // Relevant for Linux only
+#ifdef U_CFG_APP_UART_PREFIX // Relevant for Linux only
+                                     .pPrefix = U_PORT_STRINGIFY_QUOTED(U_CFG_APP_UART_PREFIX)
+#else
+                                     .pPrefix = NULL
+#endif
                                    };
     uPortDeinit();
 

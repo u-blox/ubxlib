@@ -68,13 +68,17 @@ static void appTask(void *pParam)
     uDebugUtilsInitInactivityDetector(&gStdoutCounter);
 #endif
 
+    uPortInit();
+
 #ifdef U_CFG_MUTEX_DEBUG
+    // Normally this would be called before uPortInit() but
+    // in the Linux case there is a list of threads maintained
+    // set up by uPortInit() that have to be sorted before
+    // Mutex
     uMutexDebugInit();
     uMutexDebugWatchdog(uMutexDebugPrint, NULL,
                         U_MUTEX_DEBUG_WATCHDOG_TIMEOUT_SECONDS);
 #endif
-
-    uPortInit();
 
     uPortLog("\n\nU_APP: application task started.\n");
 

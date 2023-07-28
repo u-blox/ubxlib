@@ -212,9 +212,12 @@ int32_t uCellTestPrivatePreamble(uCellModuleType_t moduleType,
 
     // Initialise the porting layer
     if (uPortInit() == 0) {
-        U_TEST_PRINT_LINE("opening UART %d...", U_CFG_APP_CELL_UART);
 #ifdef U_CFG_APP_UART_PREFIX
-        U_PORT_TEST_ASSERT(uPortUartPrefix(U_PORT_STRINGIFY_QUOTED(U_CFG_APP_UART_PREFIX)) == 0);
+        uPortUartPrefix(U_PORT_STRINGIFY_QUOTED(U_CFG_APP_UART_PREFIX));
+        U_TEST_PRINT_LINE("opening UART %s%d...", U_PORT_STRINGIFY_QUOTED(U_CFG_APP_UART_PREFIX),
+                          U_CFG_APP_CELL_UART);
+#else
+        U_TEST_PRINT_LINE("opening UART %d...", U_CFG_APP_CELL_UART);
 #endif
         // Open a UART with the standard parameters
         pParameters->uartHandle = uPortUartOpen(U_CFG_APP_CELL_UART,

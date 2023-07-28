@@ -90,12 +90,12 @@ bool uPortPrivateListRemove(uPortPrivateList_t **ppList, void *ptr)
     uPortPrivateList_t *pPrev = pCurr;
     while ((pCurr != NULL)) {
         if (pCurr->ptr == ptr) {
-            pPrev->pNext = pCurr->pNext;
             if (pCurr == *ppList) {
-                *ppList = NULL;
+                *ppList = pCurr->pNext;
+            } else {
+                pPrev->pNext = pCurr->pNext;
             }
             uPortFree(pCurr);
-            pCurr = NULL;
             return true;
         }
         pPrev = pCurr;

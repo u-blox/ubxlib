@@ -99,7 +99,11 @@ static const uDeviceCfg_t gDeviceCfg = {
             .pinRxd = U_CFG_APP_PIN_SHORT_RANGE_RXD,
             .pinCts = U_CFG_APP_PIN_SHORT_RANGE_CTS,
             .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS,
-            .pPrefix = NULL // Relevant for Linux only
+#ifdef U_CFG_APP_UART_PREFIX
+            .pPrefix = U_PORT_STRINGIFY_QUOTED(U_CFG_APP_UART_PREFIX) // Relevant for Linux only
+#else
+            .pPrefix = NULL
+#endif
         },
     },
 };
@@ -146,7 +150,11 @@ static const uDeviceCfg_t gDeviceCfg = {
             .pinRxd = U_CFG_APP_PIN_CELL_RXD,
             .pinCts = U_CFG_APP_PIN_CELL_CTS,
             .pinRts = U_CFG_APP_PIN_CELL_RTS,
-            .pPrefix = NULL // Relevant for Linux only
+#ifdef U_CFG_APP_UART_PREFIX
+            .pPrefix = U_PORT_STRINGIFY_QUOTED(U_CFG_APP_UART_PREFIX) // Relevant for Linux only
+#else
+            .pPrefix = NULL
+#endif
         },
     },
 };

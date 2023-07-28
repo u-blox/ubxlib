@@ -85,7 +85,7 @@
             "console": "externalTerminal",
             "requireExactSource": false,
             "preLaunchTask": "Build Linux runner",
-            "setupCommands": [{"text": "handle SIGUSR1 nostop"}]
+            "setupCommands": [{"text": "handle SIGUSR1 nostop noprint"}]
         },
         {
             "name": "Python: Current File",

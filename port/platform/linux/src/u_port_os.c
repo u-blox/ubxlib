@@ -162,7 +162,11 @@ uPortPrivateList_t *gpTimerList = NULL;
 
 // Posix has no suspend/resume functions for threads and this is needed
 // for the critical section implementation of the port layer. We therefore
-// use a mutex in combination with a signal to achieve this.
+// use a mutex in combination with a Linux signal USR1 to achieve this.
+// ** However this function is now disabled by default due to problems when
+// interrupting things like uart reads.
+// Can be enabled via U_PORT_LINUX_ENABLE_CRITICAL_SECTIONS
+
 uPortMutexHandle_t gMutexCriticalSection = NULL;
 
 /* ----------------------------------------------------------------
@@ -232,7 +236,6 @@ int32_t suspendOrResumeAllTasks(bool suspend)
         MTX_FN(uPortMutexUnlock(gMutexCriticalSection));
     }
     MTX_FN(uPortMutexUnlock(gMutexThread));
-    // Wait a bit for task to be suspended.
     uPortTaskBlock(100);
     return errorCode;
 }
@@ -453,7 +456,7 @@ int32_t uPortQueueCreate(size_t queueLength,
         if (pQueue) {
             uPortMutexHandle_t mutex;
             uPortSemaphoreHandle_t semHandle;
-            if (uPortSemaphoreCreate(&semHandle, 0, 1) != 0) {
+            if (uPortSemaphoreCreate(&semHandle, 0, queueLength) != 0) {
                 uPortFree(pQueue);
             } else if (MTX_FN(uPortMutexCreate(&mutex)) == 0) {
                 // Create a non blocking pipe.
@@ -531,7 +534,7 @@ int32_t uPortQueueReceive(const uPortQueueHandle_t queueHandle,
 {
     uPortQueue_t *pQueue = (uPortQueue_t *)queueHandle;
     uErrorCode_t errorCode = readFromQueue(pQueue, pEventData);
-    if (errorCode != U_ERROR_COMMON_SUCCESS) {
+    while (errorCode == U_ERROR_COMMON_EMPTY) {
         // Not available, blocking wait.
         uPortSemaphoreTake(pQueue->semHandle);
         errorCode = readFromQueue(pQueue, pEventData);
@@ -641,13 +644,24 @@ int32_t MTX_FN(uPortMutexTryLock(const uPortMutexHandle_t mutexHandle,
     uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
     if (mutexHandle != NULL) {
         errorCode = U_ERROR_COMMON_PLATFORM;
-        struct timespec t;
-        msToTimeSpec(delayMs, &t, true);
-        int32_t sta = pthread_mutex_timedlock((pthread_mutex_t *)mutexHandle, &t);
-        if (sta == 0) {
-            errorCode = U_ERROR_COMMON_SUCCESS;
-        } else if (sta == ETIMEDOUT) {
-            errorCode = U_ERROR_COMMON_TIMEOUT;
+        if (delayMs == 0) {
+            int32_t sta = pthread_mutex_trylock((pthread_mutex_t *)mutexHandle);
+            if (sta == 0) {
+                errorCode = U_ERROR_COMMON_SUCCESS;
+            } else if (errno == EAGAIN) {
+                errorCode = U_ERROR_COMMON_TIMEOUT;
+                // Clear errno in this case
+                errno = 0;
+            }
+        } else {
+            struct timespec t;
+            msToTimeSpec(delayMs, &t, true);
+            int32_t sta = pthread_mutex_timedlock((pthread_mutex_t *)mutexHandle, &t);
+            if (sta == 0) {
+                errorCode = U_ERROR_COMMON_SUCCESS;
+            } else if (sta == ETIMEDOUT) {
+                errorCode = U_ERROR_COMMON_TIMEOUT;
+            }
         }
     }
     return (int32_t)errorCode;
@@ -733,13 +747,24 @@ int32_t uPortSemaphoreTryTake(const uPortSemaphoreHandle_t semaphoreHandle,
     if (semaphoreHandle != NULL) {
         errorCode = U_ERROR_COMMON_PLATFORM;
         uPortSemaphore_t *pSemaphore = (uPortSemaphore_t *)semaphoreHandle;
-        struct timespec t;
-        msToTimeSpec(delayMs, &t, true);
-        int32_t sta = sem_timedwait(&pSemaphore->semaphore, &t);
-        if (sta == 0) {
-            errorCode = U_ERROR_COMMON_SUCCESS;
-        } else if (errno == ETIMEDOUT) {
-            errorCode = U_ERROR_COMMON_TIMEOUT;
+        if (delayMs == 0) {
+            int32_t sta = sem_trywait(&pSemaphore->semaphore);
+            if (sta == 0) {
+                errorCode = U_ERROR_COMMON_SUCCESS;
+            } else if (errno == EAGAIN) {
+                errorCode = U_ERROR_COMMON_TIMEOUT;
+                // Clear errno in this case
+                errno = 0;
+            }
+        } else {
+            struct timespec t;
+            msToTimeSpec(delayMs, &t, true);
+            int32_t sta = sem_timedwait(&pSemaphore->semaphore, &t);
+            if (sta == 0) {
+                errorCode = U_ERROR_COMMON_SUCCESS;
+            } else if (errno == ETIMEDOUT) {
+                errorCode = U_ERROR_COMMON_TIMEOUT;
+            }
         }
     }
     return (int32_t)errorCode;
@@ -875,13 +900,19 @@ int32_t uPortTimerChange(const uPortTimerHandle_t timerHandle,
 // Enter a critical section.
 int32_t uPortEnterCritical()
 {
+#ifdef U_PORT_LINUX_ENABLE_CRITICAL_SECTIONS
     return suspendOrResumeAllTasks(true);
+#else
+    return U_ERROR_COMMON_NOT_IMPLEMENTED;
+#endif
 }
 
 // Leave a critical section.
 void uPortExitCritical()
 {
+#ifdef U_PORT_LINUX_ENABLE_CRITICAL_SECTIONS
     suspendOrResumeAllTasks(false);
+#endif
 }
 
 // End of file

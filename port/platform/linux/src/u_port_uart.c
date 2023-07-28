@@ -33,7 +33,8 @@
 #include "unistd.h"
 #include "sys/select.h"
 #include "pthread.h"  // threadId
-
+#include "sys/ioctl.h"
+#include "sys/param.h"
 #include "u_error_common.h"
 
 #include "u_cfg_os_platform_specific.h"
@@ -128,39 +129,63 @@ static void eventHandler(void *pParam, size_t paramLength)
 static void readTask(void *pParam)
 {
     uPortUartData_t *p = (uPortUartData_t *)pParam;
-    // Setup a set for select operation
+    // Initiate a set for select operation.
     fd_set set;
-    FD_ZERO(&set);
-    FD_SET(p->uartFd, &set);
+    // Need a brief pause before calling select after open.
+    uPortTaskBlock(10);
     while (1) {
         FD_ZERO(&set);
         FD_SET(p->uartFd, &set);
         // Wait for input
         int res = select(p->uartFd + 1, &set, NULL, NULL, NULL);
         if (res > 0) {
-            // Input is available
-            size_t cnt = 0;
-            char ch;
-            U_PORT_MUTEX_LOCK(p->mutex);
-            while (read(p->uartFd, &ch, 1) == 1) {
-                if (!p->bufferFull) {
-                    p->pBuffer[p->writePos] = ch;
-                    p->writePos = (p->writePos + 1) % p->bufferSize;
-                    p->bufferFull = p->writePos == p->readPos;
-                    cnt++;
+            // Input is available.
+            int available;
+            do {
+                available = 0;
+                ioctl(p->uartFd, FIONREAD, &available);
+                size_t cnt = 0;
+                size_t tot = 0;
+                U_PORT_MUTEX_LOCK(p->mutex);
+                if (p->writePos >= p->readPos) {
+                    // Write pos ahead of read. Use the remaining area in the
+                    // buffer first.
+                    cnt = MIN(available, p->bufferSize - p->writePos);
+                    cnt = read(p->uartFd, p->pBuffer + p->writePos, cnt);
+                    if (cnt > 0) {
+                        available -= cnt;
+                        p->writePos = (p->writePos + cnt) % p->bufferSize;
+                    }
+                    tot = cnt;
                 }
-            }
-            U_PORT_MUTEX_UNLOCK(p->mutex);
-            if ((cnt > 0) &&
-                (p->eventQueueHandle >= 0)) {
-                // Call the user callback
-                uPortUartEvent_t event;
-                event.uartHandle = p->uartFd;
-                event.eventBitMap = U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED;
-                event.pEventCallback = p->pEventCallback;
-                event.pEventCallbackParam = p->pEventCallbackParam;
-                uPortEventQueueSend(p->eventQueueHandle, &event, sizeof(event));
-            }
+                if ((available > 0) && (p->writePos < p->readPos)) {
+                    // Read pos ahead of write.
+                    cnt = MIN(available, p->readPos - p->writePos);
+                    cnt = read(p->uartFd, p->pBuffer + p->writePos, cnt);
+                    if (cnt > 0) {
+                        available -= cnt;
+                        p->writePos = (p->writePos + cnt) % p->bufferSize;
+                        // We might have filled up the buffer, in which case we must wait below.
+                        p->bufferFull = p->writePos == p->readPos;
+                    }
+                    tot += cnt;
+                }
+                U_PORT_MUTEX_UNLOCK(p->mutex);
+                if ((tot > 0) &&
+                    (p->eventQueueHandle >= 0)) {
+                    // Call the user callback
+                    uPortUartEvent_t event;
+                    event.uartHandle = p->uartFd;
+                    event.eventBitMap = U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED;
+                    event.pEventCallback = p->pEventCallback;
+                    event.pEventCallbackParam = p->pEventCallbackParam;
+                    uPortEventQueueSend(p->eventQueueHandle, &event, sizeof(event));
+                }
+                while (p->bufferFull) {
+                    // Buffer is full, wait for consumption.
+                    uPortTaskBlock(10);
+                }
+            } while (available > 0);
         }
     }
 }
@@ -342,9 +367,6 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
                       int32_t pinTx, int32_t pinRx,
                       int32_t pinCts, int32_t pinRts)
 {
-    (void)pinTx;
-    (void)pinRx;
-
     if (gMutex == NULL) {
         return U_ERROR_COMMON_NOT_INITIALISED;
     }
@@ -355,6 +377,9 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
     memset(pUartData, 0, sizeof(uPortUartData_t));
     pUartData->uartFd = -1;
     pUartData->eventQueueHandle = -1;
+    if ((pinTx >= 0) || (pinRx >= 0)) {
+        FAIL(U_ERROR_COMMON_INVALID_PARAMETER);
+    }
     speed_t speed;
     if (baudRate == 9600) {
         speed = B9600;
@@ -362,6 +387,8 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
         speed = B19200;
     } else if (baudRate == 38400) {
         speed = B38400;
+    } else if (baudRate == 57600) {
+        speed = B57600;
     } else if (baudRate == 115200) {
         speed = B115200;
     } else if (baudRate == 230400) {
@@ -425,6 +452,7 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
     pUartData->bufferSize = bufferSize;
     pUartData->readPos = 0;
     pUartData->writePos = 0;
+    pUartData->bufferFull = false;
     if (uPortMutexCreate(&(pUartData->mutex)) != 0) {
         FAIL(U_ERROR_COMMON_NO_MEMORY);
     }
@@ -470,7 +498,9 @@ int32_t uPortUartGetReceiveSize(int32_t handle)
         U_PORT_MUTEX_LOCK(gMutex);
         uPortUartData_t *pUartData = findUart(handle);
         if ((pUartData != NULL) && !pUartData->markedForDeletion) {
-            if (pUartData->readPos <= pUartData->writePos) {
+            if (pUartData->bufferFull) {
+                sizeOrErrorCode = pUartData->bufferSize;
+            } else if (pUartData->readPos <= pUartData->writePos) {
                 // Read pointer is behind write, bytes
                 // received is simply the difference
                 sizeOrErrorCode = pUartData->writePos - pUartData->readPos;
@@ -498,23 +528,18 @@ int32_t uPortUartRead(int32_t handle, void *pBuffer,
         if ((pBuffer != NULL) && (sizeBytes > 0) &&
             (pUartData != NULL) && !pUartData->markedForDeletion) {
             sizeOrErrorCode = 0;
-            if (pUartData->readPos <= pUartData->writePos) {
+            U_PORT_MUTEX_LOCK(pUartData->mutex);
+            if (pUartData->readPos < pUartData->writePos) {
                 // Read pointer is behind write, just take as much
                 // of the difference as the user allows
-                sizeOrErrorCode = pUartData->writePos - pUartData->readPos;
-                if (sizeOrErrorCode > (int32_t) sizeBytes) {
-                    sizeOrErrorCode = (int32_t)sizeBytes;
-                }
+                sizeOrErrorCode = MIN(pUartData->writePos - pUartData->readPos, (int32_t)sizeBytes);
                 memcpy(pBuffer, pUartData->pBuffer + pUartData->readPos, sizeOrErrorCode);
                 // Move the pointer on
                 pUartData->readPos += sizeOrErrorCode;
-            } else {
-                // Read pointer is ahead of write, first take up to the
+            } else if ((pUartData->readPos > pUartData->writePos) || pUartData->bufferFull) {
+                // Read pointer is ahead of write or buffer is full, first take up to the
                 // end of the buffer as far as the user allows
-                size_t cnt = pUartData->bufferSize - pUartData->readPos;
-                if (cnt > (int32_t)sizeBytes) {
-                    cnt = (int32_t)sizeBytes;
-                }
+                size_t cnt = MIN(pUartData->bufferSize - pUartData->readPos, (int32_t)sizeBytes);
                 memcpy(pBuffer, pUartData->pBuffer + pUartData->readPos, cnt);
                 pBuffer = (char *) pBuffer + cnt;
                 sizeBytes -= cnt;
@@ -524,20 +549,22 @@ int32_t uPortUartRead(int32_t handle, void *pBuffer,
                 // If there is still room in the user buffer then
                 // carry on taking up to the write pointer
                 if (sizeBytes > 0) {
-                    cnt = pUartData->writePos;
-                    if (cnt > sizeBytes) {
-                        cnt = sizeBytes;
-                    }
+                    cnt = MIN(pUartData->writePos, sizeBytes);
                     memcpy(pBuffer, pUartData->pBuffer, cnt);
                     sizeOrErrorCode += cnt;
                     // Move the read pointer on
                     pUartData->readPos += cnt;
                 }
             }
+            if (pUartData->bufferFull && (sizeOrErrorCode > 0)) {
+                // Release possible waiting read task.
+                pUartData->bufferFull = false;
+            }
+            U_PORT_MUTEX_UNLOCK(pUartData->mutex);
         }
         U_PORT_MUTEX_UNLOCK(gMutex);
     }
-    return (int32_t)sizeOrErrorCode;
+    return sizeOrErrorCode;
 }
 
 // Write to the given UART interface.

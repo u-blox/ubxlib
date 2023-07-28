@@ -84,12 +84,14 @@ int32_t uPortPlatformStart(void (*pEntryPoint)(void *),
 int32_t uPortInit()
 {
     uErrorCode_t errorCode;
-    errorCode = uPortEventQueuePrivateInit();
+    // uPortPrivateInit() must be called first for
+    // U_CFG_MUTEX_DEBUG option to work on Linux
+    errorCode = uPortPrivateInit();
     if (errorCode == 0) {
-        errorCode = uPortUartInit();
+        errorCode = uPortEventQueuePrivateInit();
     }
     if (errorCode == 0) {
-        errorCode = uPortPrivateInit();
+        errorCode = uPortUartInit();
     }
     return errorCode;
 }
@@ -97,9 +99,9 @@ int32_t uPortInit()
 // Deinitialise the porting layer.
 void uPortDeinit()
 {
-    uPortPrivateDeinit();
     uPortUartDeinit();
     uPortEventQueuePrivateDeinit();
+    uPortPrivateDeinit();
 }
 
 // Get the current tick converted to a time in milliseconds.

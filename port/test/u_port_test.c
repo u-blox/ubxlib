@@ -192,9 +192,12 @@
 #if (U_CFG_APP_GNSS_SPI >= 0)
 # ifndef U_PORT_TEST_SPI_TRIES
 /** How many attempts we make while waiting for the GNSS
- * chip to respond with an ack.
+ * chip to respond with an ack.  The limiting factor here
+ * is the Linux case where the SPI input gets buffered
+ * from very early on and so there can be a lot more
+ * to process.
  */
-#  define U_PORT_TEST_SPI_TRIES 10
+#  define U_PORT_TEST_SPI_TRIES 100
 # endif
 #endif
 
@@ -2639,7 +2642,7 @@ U_PORT_TEST_FUNCTION("[port]", "portI2cRequiresSpecificWiring")
                                             U_CFG_APP_PIN_GNSS_SCL, true) < 0);
             // Now initialise I2C
             U_PORT_TEST_ASSERT(uPortI2cInit() == 0);
-# ifndef __ZEPHYR__
+# if !defined(__ZEPHYR__) && !defined(__linux__)
             // Try to open an I2C instance without pins, should fail
             U_PORT_TEST_ASSERT(uPortI2cOpen(U_CFG_APP_GNSS_I2C, -1, U_CFG_APP_PIN_GNSS_SCL, true) < 0);
             U_PORT_TEST_ASSERT(uPortI2cOpen(U_CFG_APP_GNSS_I2C, U_CFG_APP_PIN_GNSS_SDA, -1, true) < 0);
@@ -2672,16 +2675,21 @@ U_PORT_TEST_FUNCTION("[port]", "portI2cRequiresSpecificWiring")
 # if U_PORT_I2C_CLOCK_FREQUENCY_HERTZ == 400000
 #  error This test needs updating: U_PORT_I2C_CLOCK_FREQUENCY_HERTZ is now 400,000!
 # endif
-
-            U_PORT_TEST_ASSERT(uPortI2cGetClock(gI2cHandle) == U_PORT_I2C_CLOCK_FREQUENCY_HERTZ);
-            // All platforms support setting at least 400,000
-            U_PORT_TEST_ASSERT(uPortI2cSetClock(gI2cHandle, 400000) == 0);
-            U_PORT_TEST_ASSERT(uPortI2cGetClock(gI2cHandle) == 400000);
-            // Close, re-open and check that we're back at the default clock rate
-            uPortI2cClose(gI2cHandle);
-            gI2cHandle = uPortI2cOpen(U_CFG_APP_GNSS_I2C, U_CFG_APP_PIN_GNSS_SDA, U_CFG_APP_PIN_GNSS_SCL, true);
-            U_PORT_TEST_ASSERT(gI2cHandle >= 0);
-            U_PORT_TEST_ASSERT(uPortI2cGetClock(gI2cHandle) == U_PORT_I2C_CLOCK_FREQUENCY_HERTZ);
+            y = uPortI2cGetClock(gI2cHandle);
+            if (y >= 0) {
+                U_PORT_TEST_ASSERT(uPortI2cGetClock(gI2cHandle) == U_PORT_I2C_CLOCK_FREQUENCY_HERTZ);
+                // All platforms support setting at least 400,000
+                U_PORT_TEST_ASSERT(uPortI2cSetClock(gI2cHandle, 400000) == 0);
+                U_PORT_TEST_ASSERT(uPortI2cGetClock(gI2cHandle) == 400000);
+                // Close, re-open and check that we're back at the default clock rate
+                uPortI2cClose(gI2cHandle);
+                gI2cHandle = uPortI2cOpen(U_CFG_APP_GNSS_I2C, U_CFG_APP_PIN_GNSS_SDA, U_CFG_APP_PIN_GNSS_SCL, true);
+                U_PORT_TEST_ASSERT(gI2cHandle >= 0);
+                U_PORT_TEST_ASSERT(uPortI2cGetClock(gI2cHandle) == U_PORT_I2C_CLOCK_FREQUENCY_HERTZ);
+            } else {
+                U_PORT_TEST_ASSERT((y == U_ERROR_COMMON_NOT_SUPPORTED) || (y == U_ERROR_COMMON_NOT_IMPLEMENTED));
+                U_TEST_PRINT_LINE("get of I2C clock not supported/implemented, not testing I2C clock API.");
+            }
 
             // Test getting and setting the timeout
             y = uPortI2cGetTimeout(gI2cHandle);
@@ -2890,7 +2898,7 @@ U_PORT_TEST_FUNCTION("[port]", "portSpiRequiresSpecificWiring")
 
     // Now initialise SPI
     U_PORT_TEST_ASSERT(uPortSpiInit() == 0);
-# ifndef __ZEPHYR__
+# if !defined(__ZEPHYR__) && !defined(__linux__)
     // Try to open an SPI instance without a valid combination of pins, should fail
     U_PORT_TEST_ASSERT(uPortSpiOpen(U_CFG_APP_GNSS_SPI, -1, -1,
                                     U_CFG_APP_PIN_GNSS_SPI_CLK, true) < 0);
@@ -2984,7 +2992,8 @@ U_PORT_TEST_FUNCTION("[port]", "portSpiRequiresSpecificWiring")
     // definitely be spread across the three function calls.
     uPortTaskBlock(10);
     // We're looking for messageClass 0x0a and message ID 0x32
-    for (size_t x = 0; (messageClass != 0x0a) && (messageId != 0x32) &&
+    y = (int32_t) U_ERROR_COMMON_NOT_FOUND;
+    for (size_t x = 0; ((messageClass != 0x0a) || (messageId != 0x32) || (y < 0)) &&
          (x < U_PORT_TEST_SPI_TRIES); x++) {
         // 4 chosen here because receiving 4 bytes is a special case for ESP32
         y = 4;

@@ -151,7 +151,7 @@
  * this simply serves as a "disable/enable" CTS flow
  * control flag, negative for disable, else enable.
  */
-# define U_CFG_APP_PIN_CELL_CTS               0
+# define U_CFG_APP_PIN_CELL_CTS               -1
 #endif
 
 #ifndef U_CFG_APP_PIN_CELL_RTS
@@ -160,7 +160,7 @@
  * serves as a "disable/enable" RTS flow control flag,
  * negative for disable, else enable.
  */
-# define U_CFG_APP_PIN_CELL_RTS               0
+# define U_CFG_APP_PIN_CELL_RTS               -1
 #endif
 
 /** Macro to return the CTS pin for cellular: on some

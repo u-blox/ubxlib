@@ -182,16 +182,17 @@ typedef struct {
                                          pin is assumed to be active high.
                                          Use -1 here and in indexSelect if there is
                                          no select pin.  On platforms where pin choices
-                                         are made at compile time (e.g. Zephyr) you may
-                                         prefer to set this to -1 and instead use
+                                         are made at compile time (e.g. Zephyr or Linux)
+                                         you may prefer to set this to -1 and instead use
                                          indexSelect to choose which of the chip select
                                          pins predefined for the SPI controller is to be
-                                         used but you _can_ just set the pin here, whether
-                                         or not it is listed as a chip select pin for
-                                         you SPI controller. Note that platforms may
-                                         restrict the choice of select pin, depending
-                                         on the SPI HW block in use (for instance STM32F4
-                                         does, see the data sheet for your STM32F4
+                                         used; for the Zephyr case you _can_ still just
+                                         set the pin here, whether or not it is listed as
+                                         a chip select pin for your SPI controller, while
+                                         for Linux you _must_ use indexSelect.  Note that
+                                         platforms may restrict the choice of select pin,
+                                         depending on the SPI HW block in use (for instance
+                                         STM32F4 does, see the data sheet for your STM32F4
                                          device for more details). */
     int32_t frequencyHertz;         /**< the clock frequency in Hertz.  Note that the
                                          frequency you end up with is the nearest the
@@ -239,8 +240,8 @@ typedef struct {
                                          effect if pinSelect is -1.  Use this on platforms
                                          where the chip select pins are predefined at
                                          compile time for the SPI controller (e.g.
-                                         Zephyr) and you wish to chose which entry from
-                                         the array is used with this device (e.g. 0 for
+                                         Zephyr or Linux) and you wish to chose which entry
+                                         from the array is used with this device (e.g. 0 for
                                          the first, maybe only, entry).  Use -1 here
                                          (and in pinSelect) to not use a select pin.
                                          Indexes up to

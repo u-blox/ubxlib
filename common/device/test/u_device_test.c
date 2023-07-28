@@ -356,9 +356,6 @@ static void interfaceSerialInit(struct uDeviceSerial_t *pDeviceSerial)
     pContext->pinCts = U_CFG_TEST_PIN_UART_A_CTS;
     pContext->pinRts = U_CFG_TEST_PIN_UART_A_RTS;
     pContext->pPrefix = NULL;
-#ifdef U_CFG_APP_UART_PREFIX
-    pContext->pPrefix = U_PORT_STRINGIFY_QUOTED(U_CFG_APP_UART_PREFIX);
-#endif
     pContext->pDeviceSerial = pDeviceSerial;
     pContext->pEventCallback = NULL;
     pContext->pEventCallbackParam = NULL;
