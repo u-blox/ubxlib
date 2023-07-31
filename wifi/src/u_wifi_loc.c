@@ -525,6 +525,7 @@ int32_t uWifiLocGet(uDeviceHandle_t wifiHandle,
                                     ((pKeepGoingCallback != NULL) && pKeepGoingCallback(wifiHandle)))) {
                                 uPortTaskBlock(250);
                             }
+                            errorCode = pContext->errorCode;
                         }
                         pInstance->pLocContext = NULL;
                         // Free memory
