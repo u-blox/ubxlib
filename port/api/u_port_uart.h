@@ -28,7 +28,7 @@
 
 /** @file
  * @brief Porting layer for UART access functions.  These functions
- * are thread-safe.
+ * are thread-safe unless otherwise stated.
  */
 
 /* NOTE TO MAINTAINERS: there is a virtualised version of this
@@ -71,6 +71,20 @@ extern "C" {
  */
 #define U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED 0x01
 
+#ifndef U_PORT_UART_PREFIX
+/** The UART prefix to use, on platforms where such a prefix
+ * is employed (e.g. Linux).
+ */
+# define U_PORT_UART_PREFIX "/dev/ttyUSB"
+#endif
+
+#ifndef U_PORT_UART_MAX_PREFIX_LENGTH
+/** The maximum length of the string passed to uPortUartPrefix(),
+ * not including the null terminator (what strlen() would return).
+ */
+# define U_PORT_UART_MAX_PREFIX_LENGTH 32
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -90,6 +104,27 @@ int32_t uPortUartInit();
  * TO CALL THIS: it is called by uPortDeinit().
  */
 void uPortUartDeinit();
+
+/** Set the uart name prefix to be used in the next call to
+ * uPortUartOpen().  This is NOT thread-safe.
+ *
+ * On some platforms this name will prefix the uart parameter
+ * passed to uPortUartOpen(); for example a prefix of "/dev/tty"
+ * with a uart value of 3 will result in device "/dev/tty3"
+ * being opened as a UART.  If the uart parameter passed to
+ * uPortUartOpen() is < 0 then only the prefix will be used
+ * (e.g. "/dev/tty").
+ *
+ * This is currently only applicable for the Linux port.
+ * The default prefix if this function is not called will be
+ * #U_PORT_UART_PREFIX.
+ *
+ * @param[in] pPrefix  a pointer to a string containing the name
+ *                     prefix, up to #U_PORT_UART_MAX_PREFIX_LENGTH
+ *                     characters long.
+ * @return             zero on success else negative error code.
+ */
+int32_t uPortUartPrefix(const char *pPrefix);
 
 /** Open a UART instance.  If a UART instance has already
  * been opened on the given UART HW block this function returns
@@ -137,14 +172,28 @@ void uPortUartDeinit();
  *                               ready to receive
  *                               data; use -1 for none or if
  *                               the pin choice has already been
- *                               determined at compile time.
+ *                               determined at compile time.  On
+ *                               some platforms where no pin
+ *                               selection can be made at run-time
+ *                               (e.g. Windows and Linux) this is
+ *                               simply treated as a flag
+ *                               where a negative value means
+ *                               no CTS flow control and a
+ *                               non-negative means CTS flow control.
  * @param pinRts                 the RTS (output) flow
  *                               control pin, asserted
  *                               when we are ready to
  *                               receive data from the
  *                               modem; use -1 for none or if
  *                               the pin choice has already been
- *                               determined at compile time.
+ *                               determined at compile time.  On
+ *                               some platforms where no pin
+ *                               selection can be made at run-time
+ *                               (e.g. Windows and Linux) this is
+ *                               simply treated as a flag
+ *                               where a negative value means
+ *                               no RTS flow control and a
+ *                               non-negative means RTS flow control.
  * @return                       a UART handle else negative
  *                               error code.
  */

@@ -1004,40 +1004,55 @@ def merge_filter(defines, filter_string):
 
     return defines_returned
 
-def device_redirect_thread(device_a, device_b, baud_rate, terminateQueue, logger):
-    '''Redirect thread, started by device_redirect_start()'''
-    terminated = False
+def device_redirect_str(device, as_pty, baud_rate):
+    '''Create the device redirect string for use with socat'''
     baud_rate_str = ""
 
     if baud_rate:
         baud_rate_str = ",b" + str(baud_rate)
 
-    call_list = ["socat", device_a + ",echo=0,raw" + baud_rate_str, \
-                 device_b + ",echo=0,raw" + baud_rate_str]
+    if as_pty:
+        # If we're opening as a PTY then the device we have been
+        # given will be a symlink, e.g. /tmp/ttyv0
+        device_str = "pty,link=" + device + ",echo=0,raw" + baud_rate_str
+    else:
+        device_str = device + ",echo=0,raw" + baud_rate_str
+
+    return device_str
+
+def device_redirect_thread(device_a, as_pty_a, device_b, as_pty_b, baud_rate,
+                           terminateQueue, logger):
+    '''Redirect thread, started by device_redirect_start()'''
+    terminated = False
+
+    call_list = ["socat", device_redirect_str(device_a, as_pty_a, baud_rate),
+                 device_redirect_str(device_b, as_pty_b, baud_rate)]
     with ExeRun(call_list, logger) as process:
         while not terminated:
             try:
                 terminateQueue.get(timeout=1)
                 terminated = True
             except queue.Empty:
-                if logger:
-                    line = process.stdout.readline().decode().encode("ascii", errors="replace").decode()
-                    while line:
-                        line = line.rstrip()
-                        logger.error(line)
-                        line = process.stdout.readline().decode().encode("ascii", errors="replace").decode()
+                # Note: used to log the process output in here but a
+                # readline() will block, meaning that termination
+                # doesn't work; rather than faff around with N million
+                # different workarounds for this behaviour off the
+                # internet, we don't log the output of socat (which
+                # shouldn't be of interest anyway)
                 if process.poll():
                     # The process has terminated all by itself
                     terminated = True
 
-def device_redirect_start(device_a, device_b, baud_rate, logger: Logger=DEFAULT_LOGGER):
+def device_redirect_start(device_a, as_pty_a, device_b, as_pty_b, baud_rate,
+                          logger: Logger=DEFAULT_LOGGER):
     '''Start a thread that redirects device_a to device_b, Linux only'''
     terminateQueue = None
 
     if is_linux():
         terminateQueue = queue.Queue()
         handle = threading.Thread(target=device_redirect_thread,
-                                  args=(device_a, device_b, baud_rate, terminateQueue, logger))
+                                  args=(device_a, as_pty_a, device_b, as_pty_b, baud_rate,
+                                        terminateQueue, logger))
         handle.start()
         # Pause to let socat print the opening debug; useful in case
         # it gets "permission denied" or some such back

@@ -138,7 +138,12 @@ static const uDeviceCfg_t gDeviceCfgCell = {
             .pinTxd = U_CFG_APP_PIN_CELL_TXD,
             .pinRxd = U_CFG_APP_PIN_CELL_RXD,
             .pinCts = U_CFG_APP_PIN_CELL_CTS,
-            .pinRts = U_CFG_APP_PIN_CELL_RTS
+            .pinRts = U_CFG_APP_PIN_CELL_RTS,
+#ifdef U_CFG_APP_UART_PREFIX
+            .pPrefix = U_PORT_STRINGIFY_QUOTED(U_CFG_APP_UART_PREFIX) // Relevant for Linux only
+#else
+            .pPrefix = NULL
+#endif
         }
     }
 #else
@@ -182,7 +187,12 @@ static const uDeviceCfg_t gDeviceCfgShortRange = {
             .pinTxd = U_CFG_APP_PIN_SHORT_RANGE_TXD,
             .pinRxd = U_CFG_APP_PIN_SHORT_RANGE_RXD,
             .pinCts = U_CFG_APP_PIN_SHORT_RANGE_CTS,
-            .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS
+            .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS,
+#ifdef U_CFG_APP_UART_PREFIX
+            .pPrefix = U_PORT_STRINGIFY_QUOTED(U_CFG_APP_UART_PREFIX) // Relevant for Linux only
+#else
+            .pPrefix = NULL
+#endif
         }
     }
 #else
@@ -259,7 +269,12 @@ static const uDeviceCfg_t gDeviceCfgGnss = {
             .pinTxd = U_CFG_APP_PIN_GNSS_TXD,
             .pinRxd = U_CFG_APP_PIN_GNSS_RXD,
             .pinCts = U_CFG_APP_PIN_GNSS_CTS,
-            .pinRts = U_CFG_APP_PIN_GNSS_RTS
+            .pinRts = U_CFG_APP_PIN_GNSS_RTS,
+#ifdef U_CFG_APP_UART_PREFIX
+            .pPrefix = U_PORT_STRINGIFY_QUOTED(U_CFG_APP_UART_PREFIX) // Relevant for Linux only
+#else
+            .pPrefix = NULL
+#endif
         }
     }
 # endif
@@ -291,8 +306,12 @@ static uNetworkTestDevice_t gUNetworkTest[] = {
         .pCfg = &gDeviceCfgShortRange,
         .network =
         {
-            {.type = U_NETWORK_TYPE_BLE, .pCfg = (const void *) &gNetworkCfgBle},
-            {.type = U_NETWORK_TYPE_WIFI, .pCfg = (const void *) &gNetworkCfgWifi}
+            // These are added to the linked list in reverse order and
+            // BLE resets the module when it is started, hence it is
+            // important that Wifi gets started last or any network
+            // connection will be lost
+            {.type = U_NETWORK_TYPE_WIFI, .pCfg = (const void *) &gNetworkCfgWifi},
+            {.type = U_NETWORK_TYPE_BLE, .pCfg = (const void *) &gNetworkCfgBle}
         }
     },
     {

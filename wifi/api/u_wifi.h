@@ -93,7 +93,9 @@ typedef enum {
     U_WIFI_ERROR_TEMPORARY_FAILURE = U_ERROR_WIFI_MAX - 4,  /**< -508 if #U_ERROR_BASE is 0. */
     U_WIFI_ERROR_ALREADY_CONNECTED = U_ERROR_WIFI_MAX - 5,  /**< -507 if #U_ERROR_BASE is 0. */
     U_WIFI_ERROR_ALREADY_CONNECTED_TO_SSID = U_ERROR_WIFI_MAX - 6,  /**< -506 if #U_ERROR_BASE is 0. */
-    U_WIFI_ERROR_ALREADY_DISCONNECTED = U_ERROR_WIFI_MAX - 7  /**< -505 if #U_ERROR_BASE is 0. */
+    U_WIFI_ERROR_ALREADY_DISCONNECTED = U_ERROR_WIFI_MAX - 7,  /**< -505 if #U_ERROR_BASE is 0. */
+    U_WIFI_ERROR_AP_ALREADY_STARTED = U_ERROR_WIFI_MAX - 8,  /**< -504 if #U_ERROR_BASE is 0. */
+    U_WIFI_ERROR_AP_NOT_STARTED = U_ERROR_WIFI_MAX - 9  /**< -503 if #U_ERROR_BASE is 0. */
 } uWifiErrorCode_t;
 
 typedef enum {
@@ -177,6 +179,14 @@ int32_t uWifiInit();
  */
 void uWifiDeinit();
 
+/** Set a host name for the wifi station or access point
+ *
+ * @param devHandle        the handle of the wifi instance.
+ * @param[in] pHostName    the name as a string.
+ * @return                 zero on successful, else negative error code.
+ */
+int32_t uWifiSetHostName(uDeviceHandle_t devHandle, const char *pHostName);
+
 /** Connect to a Wifi access point
  *
  * @param devHandle        the handle of the wifi instance.
@@ -200,8 +210,8 @@ int32_t uWifiStationConnect(uDeviceHandle_t devHandle, const char *pSsid,
 int32_t uWifiStationDisconnect(uDeviceHandle_t devHandle);
 
 /** Set a callback for Wifi connection status.
-  *
- * @param devHandle              the handle of the short range instance.
+ *
+ * @param devHandle              the handle of the wifi instance.
  * @param[in] pCallback          callback function.
  * @param[in] pCallbackParameter parameter included with the callback.
  * @return                       zero on success or negative error code
@@ -212,7 +222,7 @@ int32_t uWifiSetConnectionStatusCallback(uDeviceHandle_t devHandle,
                                          void *pCallbackParameter);
 /** Set a callback for network status.
  *
- * @param devHandle              the handle of the short range instance.
+ * @param devHandle              the handle of the wifi instance.
  * @param[in] pCallback          callback function.
  * @param[in] pCallbackParameter parameter included with the callback.
  * @return                       zero on success or negative error code
@@ -222,6 +232,70 @@ int32_t uWifiSetNetworkStatusCallback(uDeviceHandle_t devHandle,
                                       uWifiNetworkStatusCallback_t pCallback,
                                       void *pCallbackParameter);
 
+/** Save the current station network configuration for WPA SSID and password,
+ *  which was specified during previous call to uWifiStationConnect(), in
+ *  persistent memory and thereby enabling use of NULL SSID in later Wifi
+ *  station connections and after restart.
+ *
+ * @param devHandle              the handle of the wifi instance.
+ * @param erase                  set this to true in order to erase the previously
+ *                               stored configuration and enforce the need for
+ *                               supplying ssid and password in next station connect.
+ * @return                       zero on success or negative error code
+ *                               on failure.
+ */
+int32_t uWifiStationStoreConfig(uDeviceHandle_t devHandle, bool erase);
+
+/** Check if a station configuration has been previously stored in persistent memory.
+ *
+ * @param devHandle              the handle of the wifi instance.
+ * @return                       true if stored configuration exists.
+ */
+bool uWifiStationHasStoredConfig(uDeviceHandle_t devHandle);
+
+/** Start a wifi access (AP) point in the device.
+ *
+ * @param devHandle        the handle of the wifi instance.
+ * @param[in] pSsid        the AP Service Set Identifier
+ * @param authentication   the AP authentication type
+ * @param[in] pPassPhrase  the AP passphrase (8-63 ASCII characters as a string) for WPA/WPA2/WPA3
+ * @param[in] pIpAddress   the static ip address of the AP
+ * @return                 zero on successful, else negative error code.
+
+ */
+int32_t uWifiAccessPointStart(uDeviceHandle_t devHandle,
+                              const char *pSsid,
+                              uWifiAuth_t authentication,
+                              const char *pPassPhrase,
+                              const char *pIpAddress);
+
+/** Stop a running wifi access point.
+ *
+ * @param devHandle        the handle of the wifi instance.
+ * @return                 zero on successful, else negative error code.
+
+ */
+int32_t uWifiAccessPointStop(uDeviceHandle_t devHandle);
+
+/** Save the current access point network configuration for WPA SSID and password,
+ *  which was specified during previous call to uWifiAccessPointStart, in
+ *  persistent memory and thereby enabling use of NULL SSID in later restarts.
+ *
+ * @param devHandle              the handle of the wifi instance.
+ * @param erase                  set this to true in order to erase the previously
+ *                               stored configuration and enforce the need for
+ *                               supplying ssid and password in next access point start.
+ * @return                       zero on success or negative error code
+ *                               on failure.
+ */
+int32_t uWifiAccessPointStoreConfig(uDeviceHandle_t devHandle, bool erase);
+
+/** Check if a access point configuration has been previously stored in persistent memory.
+ *
+ * @param devHandle              the handle of the wifi instance.
+ * @return                       true if stored configuration exists.
+ */
+bool uWifiAccessPointHasStoredConfig(uDeviceHandle_t devHandle);
 
 /** Scan for SSIDs
  *

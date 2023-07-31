@@ -43,7 +43,7 @@ extern "C" {
  * -------------------------------------------------------------- */
 
 #ifndef U_EDM_STREAM_EVENT_QUEUE_SIZE
-#define U_EDM_STREAM_EVENT_QUEUE_SIZE 3
+#define U_EDM_STREAM_EVENT_QUEUE_SIZE 20
 #endif
 
 /* ----------------------------------------------------------------

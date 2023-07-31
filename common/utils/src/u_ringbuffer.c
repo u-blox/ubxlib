@@ -362,7 +362,7 @@ void uRingBufferDump(uRingBuffer_t *pRingBuffer)
         printHex(pRingBuffer->pBuffer, pRingBuffer->size);
         for (size_t x = 0; x < pRingBuffer->maxNumReadPointers; x++) {
             if (pRingBuffer->pDataRead[x] != NULL) {
-                snprintf(buffer1, sizeof(buffer1), "%02d", x);
+                snprintf(buffer1, sizeof(buffer1), "%02d", (int)x);
                 snprintf(buffer2, sizeof(buffer2), "read handle %s", buffer1);
                 y = ptrDiff(pRingBuffer->pDataRead[x], pRingBuffer->pDataWrite,
                             pRingBuffer->size);
@@ -815,7 +815,7 @@ size_t uRingBufferStatReadLossHandle(uRingBuffer_t *pRingBuffer,
 size_t uRingBufferParseHandle(uRingBuffer_t *pRingBuffer, int32_t handle,
                               U_RING_BUFFER_PARSER_f *pParserList, void *pUserParam)
 {
-    size_t errorCodeOrLength = U_ERROR_COMMON_INVALID_PARAMETER;
+    int32_t errorCodeOrLength = U_ERROR_COMMON_INVALID_PARAMETER;
 
     if (pRingBuffer->pBuffer != NULL) {
 

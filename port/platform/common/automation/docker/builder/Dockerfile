@@ -47,6 +47,8 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
         libffi-dev libssl-dev dfu-util libusb-1.0-0 && \
 # Install ubxlib automation stuff
     apt-get install -y --no-install-recommends  astyle doxygen unzip && \
+# Install GPIO API library for Linux; gpiod not strictly necessary but useful for debugging
+   apt-get install -y --no-install-recommends libgpiod-dev gpiod && \
 # Cleanup
     apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
@@ -104,6 +106,22 @@ RUN                                                                             
         rm -rf /tmp/*;                                                                       \
     fi
 
+# To gain access to the GPIOs we need the user we create at the end to be part of
+# the gpio group in the underlying system, so we need to create exactly that
+# group, with the same group ID as Raspbian uses, in a udev rule
+RUN groupadd -g 997 gpio &&                                                                   \
+    echo SUBSYSTEM=="gpio", GROUP="gpio", MODE="0660" >> /etc/udev/rules.d/99-com.rules
+
+# Similar for i2c
+RUN groupadd -g 998 i2c &&                                                                   \
+    echo SUBSYSTEM=="i2c", GROUP="i2c", MODE="0660" >> /etc/udev/rules.d/99-com.rules
+
+# Similar for spi
+RUN groupadd -g 999 spi &&                                                                   \
+    echo SUBSYSTEM=="spi", GROUP="spi", MODE="0660" >> /etc/udev/rules.d/99-com.rules
+
+# Note: the dialout group is already present (group ID 20) in the container
+
 WORKDIR /workdir
 
 #***************************************************
@@ -121,7 +139,6 @@ RUN chmod 1777 /tmp && \
 # Cleanup
     apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-
 #***************************************************
 # Setup environmental variables
 #***************************************************
@@ -130,9 +147,9 @@ RUN chmod 1777 /tmp && \
 # Some last steps
 #***************************************************
 
-# Add and switch to "ubxlib" user
+# Add and switch to "ubxlib" user, making it a member of the right groups
 ARG USER="ubxlib"
 RUN groupadd -f -g 1000 -o $USER && \
-    useradd -ms /bin/bash -u 1000 -g 1000 $USER && \
+    useradd -ms /bin/bash -u 1000 -g 1000 -G gpio,i2c,spi,dialout $USER && \
     chown ubxlib:ubxlib /workdir
 USER ubxlib

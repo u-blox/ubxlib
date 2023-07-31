@@ -244,4 +244,34 @@ U_WEAK int32_t uCellSockGetLocalAddress(uDeviceHandle_t cellHandle,
     return -U_SOCK_ENOSYS;
 }
 
+U_WEAK int32_t uCellSockBind(uDeviceHandle_t devHandle,
+                             int32_t sockHandle,
+                             const uSockAddress_t *pLocalAddress)
+{
+    (void)devHandle;
+    (void)sockHandle;
+    (void)pLocalAddress;
+    return -U_SOCK_ENOSYS;
+}
+
+U_WEAK int32_t uCellSockListen(uDeviceHandle_t devHandle,
+                               int32_t sockHandle,
+                               size_t backlog)
+{
+    (void)devHandle;
+    (void)sockHandle;
+    (void)backlog;
+    return U_SOCK_ENONE;
+}
+
+U_WEAK int32_t uCellSockAccept(uDeviceHandle_t devHandle,
+                               int32_t sockHandle,
+                               uSockAddress_t *pRemoteAddress)
+{
+    (void)devHandle;
+    (void)sockHandle;
+    (void)pRemoteAddress;
+    return U_SOCK_ENONE;
+}
+
 // End of file

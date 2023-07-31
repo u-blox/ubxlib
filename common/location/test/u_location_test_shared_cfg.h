@@ -37,9 +37,16 @@ extern "C" {
 
 #ifndef U_LOCATION_TEST_CFG_TIMEOUT_SECONDS
 /** The location establishment timeout to use during testing, in
- * seconds.
+ * seconds, for everything except Wi-FI based location.
  */
 # define U_LOCATION_TEST_CFG_TIMEOUT_SECONDS 240
+#endif
+
+#ifndef U_LOCATION_TEST_CFG_WIFI_TIMEOUT_SECONDS
+/** The location establishment timeout to use during testing of
+ * Wifi-based location, in seconds.
+ */
+# define U_LOCATION_TEST_CFG_WIFI_TIMEOUT_SECONDS 60
 #endif
 
 #ifndef U_LOCATION_TEST_CFG_CONTINUOUS_COUNT
@@ -122,6 +129,18 @@ extern "C" {
  * i.e. MEASX, as that's the only format supported by all GNSS modules.
  */
 # define U_LOCATION_TEST_CLOUD_LOCATE_RRLP_DATA_LENGTH_BYTES 0x7FFFFFFF
+#endif
+
+#ifndef U_LOCATION_TEST_ACCESS_POINTS_FILTER
+/** Value to use for access points filter when testing Wifi location.
+ */
+# define U_LOCATION_TEST_ACCESS_POINTS_FILTER U_LOCATION_ACCESS_POINTS_FILTER_DEFAULT
+#endif
+
+#ifndef U_LOCATION_TEST_RSSI_DBM_FILTER_DEFAULT
+/** Value to use for RSSI filter, in dBm, when testing Wifi location.
+ */
+# define U_LOCATION_TEST_RSSI_DBM_FILTER U_LOCATION_RSSI_DBM_FILTER_DEFAULT
 #endif
 
 /* ----------------------------------------------------------------

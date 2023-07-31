@@ -9,7 +9,7 @@ from scripts import u_run_check_ubxlib_h, u_run_check_malloc, u_run_build_pio_ex
 
 from scripts.packages import u_package
 from scripts.u_logging import ULog
-from . import nrf5, esp_idf, nrfconnect, stm32cubef4, arduino, platformio
+from . import nrf5, esp_idf, nrfconnect, stm32cubef4, arduino, platformio, linux
 from enum import Enum
 import sys
 import json
@@ -215,6 +215,17 @@ def instance_command(ctx, instance_str, cmd):
                                                 None, False, defines,
                                                 ctx.reporter, ctx.test_report,
                                                 None))
+        else:
+            raise Exit(f"'{platform}' only supports 'test' command")
+
+    elif platform == "linux":
+        linux.check_installation(ctx)
+        if cmd == Command.TEST:
+            check_return_code(u_run_linux.run(ctx, instance=instance, platform=platform,
+                                              board_name=board,
+                                              build_dir=f'{DEFAULT_BUILD_LOCATION}/{instance_str}',
+                                              output_name="", defines=defines,
+                                              connection=connection, connection_lock=None))
         else:
             raise Exit(f"'{platform}' only supports 'test' command")
 

@@ -50,8 +50,17 @@
 #include "u_port.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"   // Required by u_cell_private.h
+#ifdef U_CFG_TEST_GNSS_MODULE_TYPE
+# include "u_port_i2c.h"
+# include "u_port_spi.h"
+#endif
 
 #include "u_at_client.h"
+
+#ifdef U_CFG_TEST_GNSS_MODULE_TYPE
+# include "u_network.h"
+# include "u_network_test_shared_cfg.h"
+#endif
 
 #include "u_location.h"
 
@@ -68,6 +77,13 @@
 
 #include "u_cell_test_cfg.h"
 #include "u_cell_test_private.h"
+
+#ifdef U_CFG_TEST_GNSS_MODULE_TYPE
+# include "u_gnss_module_type.h"
+# include "u_gnss_type.h"
+# include "u_gnss.h"         // uGnssSetUbxMessagePrint()
+# include "u_gnss_pwr.h"     // uGnssPwrOn(), uGnssPwrOff()
+#endif
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -115,6 +131,17 @@
  * TYPES
  * -------------------------------------------------------------- */
 
+/** Structure to hold AssistNow Offline configuration test values.
+ */
+typedef struct {
+    uint32_t systemsBitMap;
+    int32_t periodDays;
+    int32_t daysBetweenItems;
+    int32_t expectedSystemsBitMap;
+    int32_t expectedPeriodDays;
+    int32_t expectedDaysBetweenItems;
+} uCellLocTestAssistNowOfflineConfig_t;
+
 /* ----------------------------------------------------------------
  * VARIABLES
  * -------------------------------------------------------------- */
@@ -122,6 +149,47 @@
 /** Handles.
  */
 static uCellTestPrivate_t gHandles = U_CELL_TEST_PRIVATE_DEFAULTS;
+
+#ifdef U_CFG_TEST_GNSS_MODULE_TYPE
+
+/** Test configurations for AssistNow Offline.
+ */
+static uCellLocTestAssistNowOfflineConfig_t gCellLocAssistNowOfflineSettings[] = {
+    {
+        (1UL << U_GNSS_SYSTEM_GPS), 1, 1,
+        (1UL << U_GNSS_SYSTEM_GPS), 7, 1
+    },
+    {
+        (1UL << U_GNSS_SYSTEM_GPS) | (1UL << U_GNSS_SYSTEM_GLONASS), 7, 1,
+        (1UL << U_GNSS_SYSTEM_GPS) | (1UL << U_GNSS_SYSTEM_GLONASS), 7, 1
+    },
+    {
+        // This means "off"
+        (1UL << U_GNSS_SYSTEM_GLONASS), 0, 1,
+        0, 0, 0
+    },
+    {
+        (1UL << U_GNSS_SYSTEM_GLONASS),  8, 3,
+        (1UL << U_GNSS_SYSTEM_GLONASS), 14, 3
+    },
+    {
+        // This also means "off"
+        0, 1, 1,
+        0, 0, 0
+    }
+};
+
+
+/** The names of the AssistNow Online data types; must have U_GNSS_MGA_DATA_TYPE_MAX_NUM
+ * members, matching uGnssMgaDataType_t.
+ */
+static const char *gpAssistNowDataType[] = {"U_GNSS_MGA_DATA_TYPE_EPHEMERIS",
+                                            "U_GNSS_MGA_DATA_TYPE_ALMANAC",
+                                            "U_GNSS_MGA_DATA_TYPE_AUX",
+                                            "U_GNSS_MGA_DATA_TYPE_POS"
+                                           };
+
+#endif
 
 #if defined(U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN) && defined(U_CFG_TEST_CELL_LOCATE)
 
@@ -241,6 +309,222 @@ static char latLongToBits(int32_t thingX1e7,
 
 #endif //U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN && U_CFG_TEST_CELL_LOCATE
 
+
+// The satellite system configuration tests: pulled out separately so that
+// they can be run when GNSS is powered off and when it is powered on.
+static void cellLocSystemConfigTest(uDeviceHandle_t cellHandle)
+{
+    uint32_t bitmap1 = 0;
+    uint32_t bitmap2 = 0;
+    int32_t y;
+    int32_t z;
+
+    // Check system types
+    y = uCellLocGetSystem(cellHandle, &bitmap1);
+    if (y == 0) {
+        U_TEST_PRINT_LINE("system types bit map is 0x%08x.", bitmap1);
+    }
+    U_PORT_TEST_ASSERT(y == 0);
+    U_PORT_TEST_ASSERT(bitmap1 > 0);
+    // Try taking one out
+    z = -1;
+    for (size_t x = 0; (x < (sizeof(bitmap1) * 8)) && (z < 0); x++) {
+        if (bitmap1 & (1UL << x)) {
+            z = x;
+        }
+    }
+    U_PORT_TEST_ASSERT(z >= 0);
+    bitmap1 &= ~(1UL << z);
+    // Must always have one left, hopefully
+    U_PORT_TEST_ASSERT(bitmap1 > 0);
+    U_TEST_PRINT_LINE("changing system types bit map to 0x%08x...", bitmap1);
+    y = uCellLocSetSystem(cellHandle, bitmap1);
+    U_PORT_TEST_ASSERT(y == 0);
+    // For some cellular modules a change of system type can take a
+    // considerable while to propagate
+    uPortTaskBlock(1000);
+    y = uCellLocGetSystem(cellHandle, &bitmap2);
+    if (y == 0) {
+        U_TEST_PRINT_LINE("system types bit map is now 0x%08x.", bitmap2);
+    }
+    U_PORT_TEST_ASSERT(y == 0);
+    U_PORT_TEST_ASSERT(bitmap1 == bitmap2);
+    // Put it back to what it was
+    bitmap1 |= 1UL << z;
+    y = uCellLocSetSystem(cellHandle, bitmap1);
+    U_PORT_TEST_ASSERT(y == 0);
+    U_TEST_PRINT_LINE("system types bit map is now back to 0x%08x.", bitmap1);
+}
+
+#ifdef U_CFG_TEST_GNSS_MODULE_TYPE
+
+// Network-API level bring up, used when addressing the GNSS chip inside a cellular module
+static uNetworkTestList_t *pStdPreamble()
+{
+    uNetworkTestList_t *pList;
+
+    // Add the device for each network configuration
+    // if not already added
+    pList = pUNetworkTestListAlloc(uNetworkTestIsDeviceCell);
+    if (pList == NULL) {
+        U_TEST_PRINT_LINE("*** WARNING *** nothing to do.");
+    }
+    // Open the devices that are not already open
+    for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+        if (*pTmp->pDevHandle == NULL) {
+            U_TEST_PRINT_LINE("adding device %s for network %s...",
+                              gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType],
+                              gpUNetworkTestTypeName[pTmp->networkType]);
+            U_PORT_TEST_ASSERT(uDeviceOpen(pTmp->pDeviceCfg, pTmp->pDevHandle) == 0);
+        }
+    }
+
+    // Bring up each network type
+    for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+        U_TEST_PRINT_LINE("bringing up %s...",
+                          gpUNetworkTestTypeName[pTmp->networkType]);
+        U_PORT_TEST_ASSERT(uNetworkInterfaceUp(*pTmp->pDevHandle,
+                                               pTmp->networkType,
+                                               pTmp->pNetworkCfg) == 0);
+    }
+
+    return pList;
+}
+
+// The AssistNow configuration tests: pulled out separately so that
+// they can be run when GNSS is powered off and when it is powered on.
+static void cellLocAssistNowConfigTest(uDeviceHandle_t cellHandle)
+{
+    int32_t a;
+    int32_t b;
+    uint32_t y;
+    uint32_t z;
+    bool onNotOffAutonomous1;
+    bool onNotOffAutonomous2;
+    bool onNotOffDatabase1;
+    bool onNotOffDatabase2;
+    bool wasOff = false;
+
+    // Simple one first: switch on/off database saving and Automonous operation,
+    // interleaving the two to check for any "cross pollination"
+    onNotOffAutonomous1 =  uCellLocAssistNowAutonomousIsOn(cellHandle);
+    onNotOffDatabase1 = uCellLocAssistNowDatabaseSaveIsOn(cellHandle);
+    U_TEST_PRINT_LINE("AssistNow Autonomous is %s.", onNotOffAutonomous1 ? "on" : "off");
+    U_TEST_PRINT_LINE("AssistNow database saving is %s.", onNotOffDatabase1 ? "on" : "off");
+    U_TEST_PRINT_LINE("switching AssistNow Autonomous %s...", !onNotOffAutonomous1 ? "on" : "off");
+    U_PORT_TEST_ASSERT(uCellLocSetAssistNowAutonomous(cellHandle, !onNotOffAutonomous1) == 0);
+    onNotOffAutonomous2 =  uCellLocAssistNowAutonomousIsOn(cellHandle);
+    onNotOffDatabase2 = uCellLocAssistNowDatabaseSaveIsOn(cellHandle);
+    U_TEST_PRINT_LINE("AssistNow Autonomous is now %s.", onNotOffAutonomous2 ? "on" : "off");
+    U_PORT_TEST_ASSERT(onNotOffAutonomous1 != onNotOffAutonomous2);
+    U_TEST_PRINT_LINE("AssistNow database saving is still %s.", onNotOffDatabase2 ? "on" : "off");
+    U_PORT_TEST_ASSERT(onNotOffDatabase1 == onNotOffDatabase2);
+
+    U_TEST_PRINT_LINE("switching database saving %s...", !onNotOffDatabase1 ? "on" : "off");
+    U_PORT_TEST_ASSERT(uCellLocSetAssistNowDatabaseSave(cellHandle, !onNotOffDatabase1) == 0);
+    onNotOffDatabase2 = uCellLocAssistNowDatabaseSaveIsOn(cellHandle);
+    U_TEST_PRINT_LINE("AssistNow database saving is now %s.", onNotOffDatabase2 ? "on" : "off");
+    U_PORT_TEST_ASSERT(onNotOffDatabase1 != onNotOffDatabase2);
+    onNotOffAutonomous2 =  uCellLocAssistNowAutonomousIsOn(cellHandle);
+    U_TEST_PRINT_LINE("AssistNow Autonomous is still %s.", onNotOffAutonomous2 ? "on" : "off");
+    U_PORT_TEST_ASSERT(onNotOffAutonomous2 != onNotOffAutonomous1);
+
+    U_TEST_PRINT_LINE("switching database saving %s...", onNotOffDatabase1 ? "on" : "off");
+    U_PORT_TEST_ASSERT(uCellLocSetAssistNowDatabaseSave(cellHandle, onNotOffDatabase1) == 0);
+    U_TEST_PRINT_LINE("AssistNow database saving is now %s again.", onNotOffDatabase1 ? "on" : "off");
+    U_PORT_TEST_ASSERT(uCellLocAssistNowDatabaseSaveIsOn(cellHandle) == onNotOffDatabase1);
+    onNotOffAutonomous2 = uCellLocAssistNowAutonomousIsOn(cellHandle);
+    U_TEST_PRINT_LINE("AssistNow Autonomous is still %s.", onNotOffAutonomous2 ? "on" : "off");
+    U_PORT_TEST_ASSERT(onNotOffAutonomous2 != onNotOffAutonomous1);
+
+    U_TEST_PRINT_LINE("switching AssistNow Autonomous %s...", onNotOffAutonomous1 ? "on" : "off");
+    U_PORT_TEST_ASSERT(uCellLocSetAssistNowAutonomous(cellHandle, onNotOffAutonomous1) == 0);
+    U_TEST_PRINT_LINE("AssistNow Autonomous is now %s again.", onNotOffAutonomous1 ? "on" : "off");
+    U_PORT_TEST_ASSERT(uCellLocAssistNowAutonomousIsOn(cellHandle) == onNotOffAutonomous1);
+    onNotOffDatabase2 = uCellLocAssistNowDatabaseSaveIsOn(cellHandle);
+    U_TEST_PRINT_LINE("AssistNow database saving is still %s.", onNotOffDatabase2 ? "on" : "off");
+    U_PORT_TEST_ASSERT(onNotOffDatabase1 == onNotOffDatabase2);
+
+    // Test all of the allowed values of data type for AssistNow Online
+    y = 0;
+    for (size_t x = 0; x < sizeof(gpAssistNowDataType) / sizeof(gpAssistNowDataType[0]); x++) {
+        y |= 1UL << x;
+        U_TEST_PRINT_LINE("adding AssistNow Online data type %s [bit-map now 0x%02x]...",
+                          gpAssistNowDataType[x], y);
+        U_PORT_TEST_ASSERT(uCellLocSetAssistNowOnline(cellHandle, y) == 0);
+        z = 0xFFFFFFFF;
+        U_PORT_TEST_ASSERT(uCellLocGetAssistNowOnline(cellHandle, &z) == 0);
+        U_TEST_PRINT_LINE("AssistNow Online data type bit-map is 0x%02x.", z);
+        U_PORT_TEST_ASSERT(z == y);
+    }
+
+    // Make sure that AssistNow Online can be switched off
+    U_TEST_PRINT_LINE("setting AssistNow Online off...");
+    U_PORT_TEST_ASSERT(uCellLocSetAssistNowOnline(cellHandle, 0) == 0);
+    // Switching an aiding mode off can take a considerable while to
+    // propagate inside the module (e.g. SARA-R422M8S)
+    uPortTaskBlock(1000);
+    z = 0xFFFFFFFF;
+    U_PORT_TEST_ASSERT(uCellLocGetAssistNowOnline(cellHandle, &z) == 0);
+    U_TEST_PRINT_LINE("AssistNow Online data type 0x%02x.", z);
+    U_PORT_TEST_ASSERT(z == 0);
+    onNotOffAutonomous2 = uCellLocAssistNowAutonomousIsOn(cellHandle);
+    U_TEST_PRINT_LINE("AssistNow Autonomous is still %s.", onNotOffAutonomous2 ? "on" : "off");
+    U_PORT_TEST_ASSERT(onNotOffAutonomous2 == onNotOffAutonomous1);
+    onNotOffDatabase2 = uCellLocAssistNowDatabaseSaveIsOn(cellHandle);
+    U_TEST_PRINT_LINE("AssistNow database saving is still %s.", onNotOffDatabase2 ? "on" : "off");
+    U_PORT_TEST_ASSERT(onNotOffDatabase2 == onNotOffDatabase1);
+
+    // Call with NULL parameter
+    U_PORT_TEST_ASSERT(uCellLocGetAssistNowOnline(cellHandle, NULL) == 0);
+
+    // Test a selection of the possible AssistNow Offline settings
+    for (size_t x = 0;
+         x < sizeof(gCellLocAssistNowOfflineSettings) / sizeof(gCellLocAssistNowOfflineSettings[0]); x++) {
+        U_TEST_PRINT_LINE("setting AssistNow Offline GNSS systems bit-map 0x%08x, period %d day(s), days between %d...",
+                          gCellLocAssistNowOfflineSettings[x].systemsBitMap,
+                          gCellLocAssistNowOfflineSettings[x].periodDays,
+                          gCellLocAssistNowOfflineSettings[x].daysBetweenItems);
+        z = 0xFFFFFFFF;
+        a = -1;
+        b = -1;
+        U_PORT_TEST_ASSERT(uCellLocSetAssistNowOffline(cellHandle,
+                                                       gCellLocAssistNowOfflineSettings[x].systemsBitMap,
+                                                       gCellLocAssistNowOfflineSettings[x].periodDays,
+                                                       gCellLocAssistNowOfflineSettings[x].daysBetweenItems) == 0);
+        // Changing aiding parameters can take a while to propagate inside the module,
+        // particularly if it is being switched on or off
+        y = 250;
+        if (wasOff != ((gCellLocAssistNowOfflineSettings[x].systemsBitMap == 0) ||
+                       (gCellLocAssistNowOfflineSettings[x].periodDays == 0))) {
+            y = 1000;
+        }
+        uPortTaskBlock((int32_t) y);
+        U_PORT_TEST_ASSERT(uCellLocGetAssistNowOffline(cellHandle, &z, &a, &b) == 0);
+        U_TEST_PRINT_LINE("AssistNow Offline GNSS systems bit-map 0x%08x, period %d day(s),"
+                          " days between %d.", z, a, b);
+        U_PORT_TEST_ASSERT(z == gCellLocAssistNowOfflineSettings[x].expectedSystemsBitMap);
+        U_PORT_TEST_ASSERT(a == gCellLocAssistNowOfflineSettings[x].expectedPeriodDays);
+        U_PORT_TEST_ASSERT(b == gCellLocAssistNowOfflineSettings[x].expectedDaysBetweenItems);
+        wasOff = false;
+        if ((gCellLocAssistNowOfflineSettings[x].systemsBitMap == 0) ||
+            (gCellLocAssistNowOfflineSettings[x].periodDays == 0)) {
+            wasOff = true;
+        }
+    }
+    onNotOffAutonomous2 = uCellLocAssistNowAutonomousIsOn(cellHandle);
+    U_TEST_PRINT_LINE("AssistNow Autonomous is still %s.", onNotOffAutonomous2 ? "on" : "off");
+    U_PORT_TEST_ASSERT(onNotOffAutonomous2 == onNotOffAutonomous1);
+    onNotOffDatabase2 = uCellLocAssistNowDatabaseSaveIsOn(cellHandle);
+    U_TEST_PRINT_LINE("AssistNow database saving is still %s.", onNotOffDatabase2 ? "on" : "off");
+    U_PORT_TEST_ASSERT(onNotOffDatabase2 == onNotOffDatabase1);
+
+    // Call with NULL parameters
+    U_PORT_TEST_ASSERT(uCellLocGetAssistNowOffline(cellHandle, NULL, NULL, NULL) == 0);
+}
+
+#endif
+
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -268,6 +552,11 @@ U_PORT_TEST_FUNCTION("[cellLoc]", "cellLocCfg")
     U_PORT_TEST_ASSERT(uCellTestPrivatePreamble(U_CFG_TEST_CELL_MODULE_TYPE,
                                                 &gHandles, true) == 0);
     cellHandle = gHandles.cellHandle;
+
+    // Check system types: since this is done with AT+UGPS=0
+    // it's not much of a test (the code just has to remember stuff):
+    // for a better test see cellLocAssistNow()
+    cellLocSystemConfigTest(cellHandle);
 
     // Check desired accuracy
     y = uCellLocGetDesiredAccuracy(cellHandle);
@@ -578,6 +867,118 @@ U_PORT_TEST_FUNCTION("[cellLoc]", "cellLocLoc")
 #endif
 }
 
+#ifdef U_CFG_TEST_GNSS_MODULE_TYPE
+
+/** Test the AssistNow aspects of the Cell Locate API.
+ *
+ * For these tests we are treating the GNSS chip as a perfectly normal GNSS
+ * chip, which just happens to be connecting via an intermediate
+ * cellular module, and hence we use the device and network APIs to bring
+ * it up 'cos those APIs deal with all of the "intermediate" stuff.
+ */
+U_PORT_TEST_FUNCTION("[cellLoc]", "cellLocAssistNow")
+{
+    uNetworkTestList_t *pList;
+    uDeviceHandle_t cellHandle = NULL;
+    uDeviceHandle_t gnssHandle = NULL;
+    int32_t heapUsed;
+
+    // In case a previous test failed
+    uCellTestPrivateCleanup(&gHandles);
+    uNetworkTestCleanUp();
+
+    // Whatever called us likely initialised the
+    // port so deinitialise it here to obtain the
+    // correct initial heap size
+    uPortDeinit();
+    heapUsed = uPortGetHeapFree();
+
+    U_PORT_TEST_ASSERT(uPortInit() == 0);
+    // Don't check these for success as not all platforms support I2C or SPI
+    uPortI2cInit();
+    uPortSpiInit();
+    U_PORT_TEST_ASSERT(uDeviceInit() == 0);
+
+    // Do the preamble to get all the networks up
+    pList = pStdPreamble();
+
+    // Find the cellular device and the GNSS network in the list
+    for (uNetworkTestList_t *pTmp = pList; (pTmp != NULL) && (gnssHandle == NULL); pTmp = pTmp->pNext) {
+        if (pTmp->pDeviceCfg->deviceType == U_DEVICE_TYPE_CELL) {
+            cellHandle = *pTmp->pDevHandle;
+            if (pTmp->networkType == U_NETWORK_TYPE_GNSS) {
+                gnssHandle = *pTmp->pDevHandle;
+                U_TEST_PRINT_LINE("selected GNSS network via cellular device.");
+            }
+        }
+    }
+
+    if (gnssHandle != NULL) {
+        U_PORT_TEST_ASSERT(cellHandle != NULL);
+
+        // So that we can see what we're doing
+        uGnssSetUbxMessagePrint(gnssHandle, true);
+
+        // uNetworkInterfaceUp() will have switched the GNSS chip on;
+        // check system types with the GNSS device powered up
+        U_TEST_PRINT_LINE("testing AssistNow configuration with GNSS device on.");
+        cellLocSystemConfigTest(cellHandle);
+
+        // Test AssistNow configuration
+        cellLocAssistNowConfigTest(cellHandle);
+
+        // Power the GNSS device off and repeat the AssistNow configuration tests
+        U_PORT_TEST_ASSERT(uGnssPwrOff(gnssHandle) == 0);
+
+        U_TEST_PRINT_LINE("testing AssistNow configuration with GNSS device off.");
+        cellLocAssistNowConfigTest(cellHandle);
+
+        // Switch the GNSS device back on, otherwise the uDeviceClose()
+        // function at the end will complain since it is not expecting
+        // the GNSS device to be switched off underneath it
+        U_PORT_TEST_ASSERT(uGnssPwrOn(gnssHandle) == 0);
+    } else {
+        U_TEST_PRINT_LINE("*** WARNING *** not testing AssistNow since no GNSS device is attached via cellular.");
+    }
+
+    // Close the devices once more and free the list
+    for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+        if (*pTmp->pDevHandle != NULL) {
+            U_TEST_PRINT_LINE("taking down %s...",
+                              gpUNetworkTestTypeName[pTmp->networkType]);
+            U_PORT_TEST_ASSERT(uNetworkInterfaceDown(*pTmp->pDevHandle,
+                                                     pTmp->networkType) == 0);
+            U_TEST_PRINT_LINE("closing and powering off device %s...",
+                              gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType]);
+            U_PORT_TEST_ASSERT(uDeviceClose(*pTmp->pDevHandle, true) == 0);
+            *pTmp->pDevHandle = NULL;
+        }
+    }
+    uNetworkTestListFree();
+
+    uDeviceDeinit();
+    uPortSpiDeinit();
+    uPortI2cDeinit();
+    uPortDeinit();
+
+#ifndef __XTENSA__
+    // Check for memory leaks
+    // TODO: this if'defed out for ESP32 (xtensa compiler) at
+    // the moment as there is an issue with ESP32 hanging
+    // on to memory in the UART drivers that can't easily be
+    // accounted for.
+    // Check for memory leaks
+    heapUsed -= uPortGetHeapFree();
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
+    // heapUsed < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT(heapUsed <= 0);
+#else
+    (void) heapUsed;
+#endif
+}
+#endif // #ifdef U_CFG_TEST_GNSS_MODULE_TYPE
+
 /** Clean-up to be run at the end of this round of tests, just
  * in case there were test failures which would have resulted
  * in the deinitialisation being skipped.
@@ -587,6 +988,14 @@ U_PORT_TEST_FUNCTION("[cellLoc]", "cellLocCleanUp")
     int32_t x;
 
     uCellTestPrivateCleanup(&gHandles);
+
+#ifdef U_CFG_TEST_GNSS_MODULE_TYPE
+    // The network test configuration is shared between
+    // the network, sockets, security and location tests
+    // so must reset the handles here in case the
+    // tests of one of the other APIs are coming next.
+    uNetworkTestCleanUp();
+#endif
 
     x = uPortTaskStackMinFree(NULL);
     if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {

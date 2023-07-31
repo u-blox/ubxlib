@@ -17,6 +17,7 @@ example/location/main_loc_gnss_cloud_locate.c
 example/cell/lte_cfg/lte_cfg_main.c
 example/cell/power_saving/cell_power_saving_3gpp_main.c
 example/cell/power_saving/cell_power_saving_e_drx_main.c
+example/gnss/assist_now_main.c
 example/gnss/cfg_val_main.c
 example/gnss/msg_main.c
 ble/test/u_ble_test.c
@@ -46,6 +47,7 @@ gnss/test/u_gnss_cfg_test.c
 gnss/test/u_gnss_info_test.c
 gnss/test/u_gnss_pos_test.c
 gnss/test/u_gnss_msg_test.c
+gnss/test/u_gnss_mga_test.c
 gnss/test/u_gnss_util_test.c
 gnss/test/u_gnss_private_test.c
 gnss/test/u_gnss_test_private.c
@@ -53,6 +55,7 @@ wifi/test/u_wifi_test.c
 wifi/test/u_wifi_cfg_test.c
 wifi/test/u_wifi_sock_test.c
 wifi/test/u_wifi_mqtt_test.c
+wifi/test/u_wifi_loc_test.c
 wifi/test/u_wifi_test_private.c
 common/device/test/u_device_test.c
 common/network/test/u_network_test.c

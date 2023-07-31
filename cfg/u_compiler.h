@@ -105,6 +105,13 @@
 # endif
 #endif
 
+/** Pointer-int32_t conversion. Can be used to to store
+ * int32_t values in a pointer variable. Works also for
+ * 64 bit pointers.
+*/
+#define U_PTR_TO_INT32(p) (int32_t)((uintptr_t)p)
+#define U_INT32_TO_PTR(i) (void *)((uintptr_t)i)
+
 /** @}*/
 
 #endif // _U_COMPILER_H_

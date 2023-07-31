@@ -100,7 +100,7 @@ extern "C" {
  */
 #define U_GNSS_POS_TASK_FLAG_CONTINUOUS 0x04
 
-/** The value that constitues "no data" on SPI.
+/** The value that constitutes "no data" on SPI.
  */
 #define U_GNSS_PRIVATE_SPI_FILL 0xFF
 
@@ -124,11 +124,7 @@ typedef enum {
  * Note: order is important since this is statically initialised.
  */
 typedef struct {
-//lint -esym(768, uGnssPrivateModule_t::moduleType) Suppress not referenced,
-// this is for the future.
     uGnssModuleType_t moduleType; /**< the module type. */
-//lint -esym(768, uGnssPrivateModule_t::featuresBitmap) Suppress not referenced,
-// this is for the future.
     uint32_t featuresBitmap; /**< a bit-map of the uGnssPrivateFeature_t
                                   characteristics of this module. */
 } uGnssPrivateModule_t;
@@ -212,6 +208,16 @@ typedef struct {
     int32_t messageRate;         /**< set to -1 of nothing to restore. */
 } uGnssPrivateStreamedPosition_t;
 
+/** Parameters for AssistNow.
+ */
+typedef struct {
+    bool (*pProgressCallback)(uDeviceHandle_t, int32_t, size_t, size_t, void *);
+    void *pProgressCallbackParam;
+    volatile bool transferInProgress;
+    size_t blocksTotal;
+    int32_t errorCode;
+} uGnssPrivateMga_t;
+
 /** Definition of a GNSS instance.
  * Note: a pointer to this structure is passed to the asynchronous
  * "get position" function (posGetTask()) which does NOT lock the
@@ -238,6 +244,7 @@ typedef struct uGnssPrivateInstance_t {
     int32_t timeoutMs; /**< the timeout for responses from the GNSS chip in milliseconds. */
     int32_t spiFillThreshold; /**< the number of 0xFF fill bytes which constitute "no data" on SPI. */
     bool printUbxMessages; /**< whether debug printing of UBX messages is on or off. */
+    int32_t retriesOnNoResponse; /**< number of times to retry message transmission if there is no response. */
     int32_t pinGnssEnablePower; /**< the pin of the MCU that enables power to the GNSS module. */
     int32_t pinGnssEnablePowerOnState; /**< the value to set pinGnssEnablePower to for "on". */
     int32_t atModulePinPwr; /**< the pin of the AT module that enables power to the GNSS chip (only relevant for transport type AT). */
@@ -255,6 +262,7 @@ typedef struct uGnssPrivateInstance_t {
     uGnssPrivateStreamedPosition_t *pStreamedPosition; /**< context data for streamed position, hooked
                                                             here so that we can free it */
     uGnssRrlpMode_t rrlpMode; /**< The type of MEASX to use with RRLP capture. */
+    uGnssPrivateMga_t *pMga; /**< Storage for AssistNow. */
     struct uGnssPrivateInstance_t *pNext;
 } uGnssPrivateInstance_t;
 // *INDENT-ON*

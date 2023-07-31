@@ -1356,12 +1356,13 @@ typedef enum  {
     U_GNSS_CFG_VAL_KEY_ITEM_PM_LIMITPEAKCURR_L      = 0x10  /**< limit the peak current. */
 } uGnssCfgValKeyItemPm_t;
 
-/** Values for #U_GNSS_CFG_VAL_KEY_ITEM_PM_OPERATEMODE_E1.
+/** Values for #U_GNSS_CFG_VAL_KEY_ITEM_PM_OPERATEMODE_E1; this matches #uGnssPwrSavingMode_t over
+ * in u_gnss_pwr.h.
  */
 typedef enum {
-    U_GNSS_CFG_VAL_KEY_ITEM_VALUE_PM_OPERATEMODE_FULL    = 0, /**< normal operation, no power save mode active. */
-    U_GNSS_CFG_VAL_KEY_ITEM_VALUE_PM_OPERATEMODE_PSMOO   = 1, /**< PSM ON/OFF operation */
-    U_GNSS_CFG_VAL_KEY_ITEM_VALUE_PM_OPERATEMODE_PSMCT   = 2  /**< PSM cyclic tracking operation. */
+    U_GNSS_CFG_VAL_KEY_ITEM_VALUE_PM_OPERATEMODE_FULL    = 0, /**< normal operation, no power save mode active (#U_GNSS_PWR_SAVING_MODE_NONE). */
+    U_GNSS_CFG_VAL_KEY_ITEM_VALUE_PM_OPERATEMODE_PSMOO   = 1, /**< PSM ON/OFF operation (#U_GNSS_PWR_SAVING_MODE_ON_OFF). */
+    U_GNSS_CFG_VAL_KEY_ITEM_VALUE_PM_OPERATEMODE_PSMCT   = 2  /**< PSM cyclic tracking operation (#U_GNSS_PWR_SAVING_MODE_CYCLIC_TRACKING). */
 } uGnssCfgValKeyItemValuePmOperatemode_t;
 
 /** Values for #U_GNSS_CFG_VAL_KEY_ITEM_PM_EXTINTSEL_E1.

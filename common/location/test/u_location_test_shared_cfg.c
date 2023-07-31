@@ -83,7 +83,8 @@ static uLocationAssist_t gLocationAssistCellLocate = {500000, // desiredAccuracy
                                                       60,     // desiredTimeoutSeconds
                                                       true,   // disable GNSS for Cell Locate so that
                                                       // a GNSS network can use it
-                                                      -1, -1, -1, -1, NULL, NULL, -1
+                                                      -1, -1, -1, -1, NULL, NULL, -1,
+                                                      -1, -1 // Wifi parameters are irrelevant
                                                       };
 
 /** Location configuration for Cell Locate.
@@ -109,7 +110,8 @@ static uLocationAssist_t gLocationAssistCloudLocate = {-1,   // desiredAccuracyM
                                                        U_LOCATION_CLOUD_LOCATE_PSEUDORANGE_RMS_ERROR_INDEX_LIMIT,
                                                        U_PORT_STRINGIFY_QUOTED(U_CFG_APP_CLOUD_LOCATE_MQTT_CLIENT_ID),
                                                        NULL,  // mqttClientContext must be filled in later
-                                                       U_LOCATION_TEST_CLOUD_LOCATE_RRLP_DATA_LENGTH_BYTES
+                                                       U_LOCATION_TEST_CLOUD_LOCATE_RRLP_DATA_LENGTH_BYTES,
+                                                       -1, -1 // Wifi parameters are irrelevant
                                                        };
 
 /** Location configuration for Cloud Locate.
@@ -146,6 +148,67 @@ static const uLocationTestCfgList_t gCfgListCell = {1, {&gCfgCloudLocate}};
 static const uLocationTestCfgList_t gCfgListCell = {0};
 #endif
 
+#if defined (U_CFG_APP_GOOGLE_MAPS_API_KEY) && defined (U_CFG_APP_SKYHOOK_API_KEY) && defined (U_CFG_APP_HERE_API_KEY) && !defined(U_LOCATION_TEST_DISABLE_WIFI)
+/** Location assist for Wifi-based location.
+ */
+static uLocationAssist_t gLocationAssistWifi  = {-1,    // desiredAccuracyMillimetres and
+                                                 -1,    // desiredTimeoutSeconds are irrelevant
+                                                 false, // GNSS is irrelevant
+                                                 -1, -1, -1, -1, // Cloud locate only: irrelevant
+                                                 NULL, NULL,    // MQTT is irrelevant
+                                                 -1,
+                                                 U_LOCATION_TEST_ACCESS_POINTS_FILTER,
+                                                 U_LOCATION_TEST_RSSI_DBM_FILTER
+                                                 };
+#endif
+
+#if defined(U_CFG_APP_GOOGLE_MAPS_API_KEY) && !defined(U_LOCATION_TEST_DISABLE_WIFI)
+/** Location configuration for location via Google Maps.
+ */
+static const uLocationTestCfg_t gCfgGoogle = {U_LOCATION_TYPE_CLOUD_GOOGLE,
+                                              &gLocationAssistWifi,
+                                              U_PORT_STRINGIFY_QUOTED(U_CFG_APP_GOOGLE_MAPS_API_KEY),
+                                              NULL, NULL, NULL
+                                             };
+#endif
+
+#if defined(U_CFG_APP_SKYHOOK_API_KEY) && !defined(U_LOCATION_TEST_DISABLE_WIFI)
+/** Location configuration for location via Skyhook.
+ */
+static const uLocationTestCfg_t gCfgSkyhook = {U_LOCATION_TYPE_CLOUD_SKYHOOK,
+                                               &gLocationAssistWifi,
+                                               U_PORT_STRINGIFY_QUOTED(U_CFG_APP_SKYHOOK_API_KEY),
+                                               NULL, NULL, NULL
+                                              };
+#endif
+
+#if defined(U_CFG_APP_HERE_API_KEY) && !defined(U_LOCATION_TEST_DISABLE_WIFI)
+/** Location configuration for location via Here.
+ */
+static const uLocationTestCfg_t gCfgHere = {U_LOCATION_TYPE_CLOUD_HERE,
+                                            &gLocationAssistWifi,
+                                            U_PORT_STRINGIFY_QUOTED(U_CFG_APP_HERE_API_KEY),
+                                            NULL, NULL, NULL
+                                           };
+#endif
+
+/** Location configuration list for a Wifi network.
+ */
+#if defined (U_CFG_APP_GOOGLE_MAPS_API_KEY) && defined (U_CFG_APP_SKYHOOK_API_KEY) && defined (U_CFG_APP_HERE_API_KEY)
+# ifndef U_LOCATION_TEST_DISABLE_WIFI
+//lint -e{785} Suppress too few initialisers
+static const uLocationTestCfgList_t gCfgListWifi = {3, {&gCfgGoogle, &gCfgSkyhook, &gCfgHere}};
+# else
+static const uLocationTestCfgList_t gCfgListWifi = {0};
+# endif
+#else
+# if defined (U_CFG_APP_GOOGLE_MAPS_API_KEY) || defined (U_CFG_APP_SKYHOOK_API_KEY) || defined (U_CFG_APP_HERE_API_KEY)
+#  error Either all of U_CFG_APP_GOOGLE_MAPS_API_KEY, U_CFG_APP_SKYHOOK_API_KEY and U_CFG_APP_HERE_API_KEY must be defined or none of them
+# else
+static const uLocationTestCfgList_t gCfgListWifi = {0};
+# endif
+#endif
+
 /** Location configuration for a GNSS network.
  */
 static const uLocationTestCfg_t gCfgGnss = {U_LOCATION_TYPE_GNSS, NULL, NULL, NULL, NULL, NULL};
@@ -165,7 +228,7 @@ static const uLocationTestCfgList_t gCfgListGnss = {1, {&gCfgGnss}};
 const uLocationTestCfgList_t *gpULocationTestCfg[] = {&gCfgListNone,    // U_NETWORK_TYPE_NONE
                                                       &gCfgListNone,   // U_NETWORK_TYPE_BLE
                                                       &gCfgListCell,   // U_NETWORK_TYPE_CELL
-                                                      &gCfgListNone,   // U_NETWORK_TYPE_WIFI
+                                                      &gCfgListWifi,   // U_NETWORK_TYPE_WIFI
                                                       &gCfgListGnss    // U_NETWORK_TYPE_GNSS
                                                      };
 

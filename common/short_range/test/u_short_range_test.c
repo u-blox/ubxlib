@@ -137,7 +137,12 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeOpenUart")
                                      .pinTx = U_CFG_APP_PIN_SHORT_RANGE_TXD,
                                      .pinRx = U_CFG_APP_PIN_SHORT_RANGE_RXD,
                                      .pinCts = U_CFG_APP_PIN_SHORT_RANGE_CTS,
-                                     .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS
+                                     .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS,
+#ifdef U_CFG_APP_UART_PREFIX // Relevant for Linux only
+                                     .pPrefix = U_PORT_STRINGIFY_QUOTED(U_CFG_APP_UART_PREFIX)
+#else
+                                     .pPrefix = NULL
+#endif
                                    };
     uPortDeinit();
 
@@ -209,7 +214,12 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeUartSetBaudrate")
                                      .pinTx = U_CFG_APP_PIN_SHORT_RANGE_TXD,
                                      .pinRx = U_CFG_APP_PIN_SHORT_RANGE_RXD,
                                      .pinCts = U_CFG_APP_PIN_SHORT_RANGE_CTS,
-                                     .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS
+                                     .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS,
+#ifdef U_CFG_APP_UART_PREFIX // Relevant for Linux only
+                                     .pPrefix = U_PORT_STRINGIFY_QUOTED(U_CFG_APP_UART_PREFIX)
+#else
+                                     .pPrefix = NULL
+#endif
                                    };
 
     int32_t testBaudrates[] = { 19200,
@@ -257,7 +267,13 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeMemFullRecovery")
                                      .pinTx = U_CFG_APP_PIN_SHORT_RANGE_TXD,
                                      .pinRx = U_CFG_APP_PIN_SHORT_RANGE_RXD,
                                      .pinCts = U_CFG_APP_PIN_SHORT_RANGE_CTS,
-                                     .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS
+                                     .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS,
+#ifdef U_CFG_APP_UART_PREFIX // Relevant for Linux only
+                                     .pPrefix = U_PORT_STRINGIFY_QUOTED(U_CFG_APP_UART_PREFIX)
+#else
+                                     .pPrefix = NULL
+#endif
+
                                    };
     int32_t errCode;
     uShortRangePbufList_t *pPbufList;
@@ -321,7 +337,13 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeResetToDefaultSettings")
                                      .pinTx = U_CFG_APP_PIN_SHORT_RANGE_TXD,
                                      .pinRx = U_CFG_APP_PIN_SHORT_RANGE_RXD,
                                      .pinCts = U_CFG_APP_PIN_SHORT_RANGE_CTS,
-                                     .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS
+                                     .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS,
+#ifdef U_CFG_APP_UART_PREFIX // Relevant for Linux only
+                                     .pPrefix = U_PORT_STRINGIFY_QUOTED(U_CFG_APP_UART_PREFIX)
+#else
+                                     .pPrefix = NULL
+#endif
+
                                    };
     uPortDeinit();
 

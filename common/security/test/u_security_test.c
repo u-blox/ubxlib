@@ -441,7 +441,7 @@ U_PORT_TEST_FUNCTION("[security]", "securityZtp")
                     U_PORT_TEST_ASSERT(z == y);
                     // Can't really check the data but can check that it is
                     // of the correct length
-                    U_PORT_TEST_ASSERT(strlen(pData) == z - 1);
+                    U_PORT_TEST_ASSERT((int32_t)strlen(pData) == z - 1);
                     uPortFree(pData);
                 } else {
                     U_TEST_PRINT_LINE("module does not support reading device public certificate.");
@@ -462,7 +462,7 @@ U_PORT_TEST_FUNCTION("[security]", "securityZtp")
                     U_PORT_TEST_ASSERT(z == y);
                     // Can't really check the data but can check that it is
                     // of the correct length
-                    U_PORT_TEST_ASSERT(strlen(pData) == z - 1);
+                    U_PORT_TEST_ASSERT((int32_t)strlen(pData) == z - 1);
                     uPortFree(pData);
                 } else {
                     U_TEST_PRINT_LINE("module does not support reading device private key.");
@@ -483,7 +483,7 @@ U_PORT_TEST_FUNCTION("[security]", "securityZtp")
                     U_PORT_TEST_ASSERT(z == y);
                     // Can't really check the data but can check that it is
                     // of the correct length
-                    U_PORT_TEST_ASSERT(strlen(pData) == z - 1);
+                    U_PORT_TEST_ASSERT((int32_t)strlen(pData) == z - 1);
                     uPortFree(pData);
                 } else {
                     U_TEST_PRINT_LINE("module does not support reading certificate authorities.");

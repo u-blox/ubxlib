@@ -54,7 +54,15 @@ def isCodeChecker(json_entry) {
 
 def isFirmware(json_entry) {
     def m = json_entry.mcu.toLowerCase()
-    return !isCodeChecker(json_entry) && m != "win32" && m != "linux32" && m != ""
+    return !isCodeChecker(json_entry) && m != "win32" && m != "linux32" && m != "linux64" && m != ""
+}
+
+def hasUhubctl(json_entry) {
+    def has = !isWindows(json_entry) && !isCodeChecker(json_entry)
+    if (has && (sh(script: "uhubctl", returnStatus: true) != 0)) {
+        has = false
+    }
+    return has
 }
 
 def isWindows(json_entry) {
@@ -66,7 +74,7 @@ def isWindows(json_entry) {
 // test machine so that the architectures match
 def buildOnTest(json_entry) {
     def m = json_entry.mcu.toLowerCase()
-    return m == "win32" || m == "linux32"
+    return m == "win32" || m == "linux32" || m == "linux64"
 }
 
 // Read a string representing a single integer value from a file and return
@@ -164,11 +172,10 @@ def dockerCommand(cmd, relWorkspaceDir=".", extra_env=[]) {
         "BUILD_URL=${env.BUILD_URL}",
         "WORKSPACE=${env.WORKSPACE}"
     ] + extra_env).collect { "-e $it" }.join(' ')
-    def uid = sh(script: "id -u", returnStdout: true).trim()
-    def gid = sh(script: "id -g", returnStdout: true).trim()
+    def id = sh(script: "id -u -n", returnStdout: true).trim()
     // Needs --privileged to access TTY devices (since there is no dialout group
     // in the docker image) and -v /dev:/dev to map the devices into the docker image
-    sh "docker run -i -u ${uid}:${gid} --rm --privileged -v /dev:/dev -w ${env.WORKSPACE}/$relWorkspaceDir $volume_args $env_args ubxlib_builder /bin/bash -c \"$cmd\""
+    sh "docker run -i -u ${id} --rm --privileged -v /dev:/dev -w ${env.WORKSPACE}/$relWorkspaceDir $volume_args $env_args ubxlib_builder /bin/bash -c \"$cmd\""
 }
 
 // Perform a check-out stage
@@ -270,8 +277,12 @@ def buildAndTestPipeline(instance_str, json_entry, filter) {
         // for the Windows bat command
         withCredentials([string(credentialsId: 'ubxlib_wifi_passkey', variable: 'WIFI_PASSKEY'),
                          string(credentialsId: 'ubxlib_cloud_locate_mqtt_password', variable: 'CLOUD_LOCATE_MQTT_PASSWORD'),
-                         string(credentialsId: 'ubxlib_cell_locate_authentication_token', variable: 'CELL_LOCATE_AUTHENTICATION_TOKEN')]) {
-            def value = "${env.UBXLIB_EXTRA_DEFINES};U_WIFI_TEST_CFG_WPA2_PASSPHRASE=${WIFI_PASSKEY};U_CFG_APP_CLOUD_LOCATE_MQTT_PASSWORD=${CLOUD_LOCATE_MQTT_PASSWORD};U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN=${CELL_LOCATE_AUTHENTICATION_TOKEN}"
+                         string(credentialsId: 'ubxlib_cell_locate_authentication_token', variable: 'CELL_LOCATE_AUTHENTICATION_TOKEN'),
+                         string(credentialsId: 'ubxlib_assist_now_authentication_token', variable: 'ASSIST_NOW_AUTHENTICATION_TOKEN'),
+                         string(credentialsId: 'ubxlib_google_maps_api_key', variable: 'GOOGLE_MAPS_API_KEY'),
+                         string(credentialsId: 'ubxlib_skyhook_api_key', variable: 'SKYHOOK_API_KEY'),
+                         string(credentialsId: 'ubxlib_here_api_key', variable: 'HERE_API_KEY')]) {
+            def value = "${env.UBXLIB_EXTRA_DEFINES};U_WIFI_TEST_CFG_WPA2_PASSPHRASE=${WIFI_PASSKEY};U_CFG_APP_CLOUD_LOCATE_MQTT_PASSWORD=${CLOUD_LOCATE_MQTT_PASSWORD};U_CFG_APP_GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY};U_CFG_APP_SKYHOOK_API_KEY=${SKYHOOK_API_KEY};U_CFG_APP_HERE_API_KEY=${HERE_API_KEY}"
             extra_env.add("U_UBXLIB_DEFINES=\"${value}\"")
             env.U_UBXLIB_DEFINES = value
         }
@@ -348,7 +359,14 @@ def buildAndTestPipeline(instance_str, json_entry, filter) {
                                     println "Shared resources already powered up."
                                 }
                                 shared_resources_acquired = true
-                                if (isFirmware(json_entry)) {
+                                if (hasUhubctl(json_entry)) {
+                                    // This will be running on a Pi; need to remove any existing instance
+                                    // of the Docker container first: it may be a zombie from a CTRL-C'ed
+                                    // Jenkins run that has ownership of things we need
+                                    def dockerContainers = sh(script: "docker container ps -aq -f ancestor=ubxlib_builder", returnStdout: true).replaceAll("\n", " ")
+                                    if (dockerContainers) {
+                                        sh "docker kill ${dockerContainers}"
+                                    }
                                     println "Powering-up DUT on instance_${instance_str}."
                                     // Switch on USB
                                     sh(script: "uhubctl -a 1 -l 1-1")

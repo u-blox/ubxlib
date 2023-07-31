@@ -161,6 +161,9 @@ U_PORT_TEST_FUNCTION("[preamble]", "preambleHeapDefence")
     mktime(&tmStruct);
 
 #if (U_CFG_TEST_UART_A >= 0)
+# ifdef U_CFG_TEST_UART_PREFIX
+    U_PORT_TEST_ASSERT(uPortUartPrefix(U_PORT_STRINGIFY_QUOTED(U_CFG_TEST_UART_PREFIX)) == 0);
+# endif
     handle = uPortUartOpen(U_CFG_TEST_UART_A, 115200,
                            NULL, U_CFG_TEST_UART_BUFFER_LENGTH_BYTES,
                            U_CFG_TEST_PIN_UART_A_TXD,

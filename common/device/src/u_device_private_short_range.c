@@ -127,6 +127,7 @@ int32_t uDevicePrivateShortRangeAdd(const uDeviceCfg_t *pDevCfg,
             uartCfg.pinRx = pCfgUart->pinRxd;
             uartCfg.pinCts = pCfgUart->pinCts;
             uartCfg.pinRts = pCfgUart->pinRts;
+            uartCfg.pPrefix = pCfgUart->pPrefix;
             // Open the short range UART, which creates pDeviceHandle
             errorCode = uShortRangeOpenUart(pCfgSho->moduleType, &uartCfg,
                                             false, pDeviceHandle);

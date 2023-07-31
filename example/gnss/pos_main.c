@@ -150,7 +150,12 @@ static const uDeviceCfg_t gDeviceCfg = {
             .pinTxd = U_CFG_APP_PIN_GNSS_TXD,
             .pinRxd = U_CFG_APP_PIN_GNSS_RXD,
             .pinCts = U_CFG_APP_PIN_GNSS_CTS,
-            .pinRts = U_CFG_APP_PIN_GNSS_RTS
+            .pinRts = U_CFG_APP_PIN_GNSS_RTS,
+#ifdef U_CFG_APP_UART_PREFIX
+            .pPrefix = U_PORT_STRINGIFY_QUOTED(U_CFG_APP_UART_PREFIX) // Relevant for Linux only
+#else
+            .pPrefix = NULL
+#endif
         },
     },
 #  endif

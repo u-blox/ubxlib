@@ -533,7 +533,7 @@ U_PORT_TEST_FUNCTION("[cellFile]", "cellFileListAllReentrant")
     // Write the files we need to list
     for (size_t x = 0; (x < U_CELL_FILE_TEST_REENTRANT_NUM) &&
          (result == U_CELL_FILE_TEST_REENTRANT_STRING_SIZE); x++) {
-        snprintf(buffer, sizeof(buffer), "%s%1d", U_CELL_FILE_TEST_FILE_NAME, x);
+        snprintf(buffer, sizeof(buffer), "%s%1d", U_CELL_FILE_TEST_FILE_NAME, (int) x);
         U_TEST_PRINT_LINE("writing file %s...", buffer);
         result = uCellFileWrite(cellHandle, buffer,
                                 U_CELL_FILE_TEST_REENTRANT_STRING,
@@ -567,7 +567,7 @@ U_PORT_TEST_FUNCTION("[cellFile]", "cellFileListAllReentrant")
 
     // Delete the files again, for tidiness
     for (size_t x = 0; x < U_CELL_FILE_TEST_REENTRANT_NUM; x++) {
-        snprintf(buffer, sizeof(buffer), "%s%1d", U_CELL_FILE_TEST_FILE_NAME, x);
+        snprintf(buffer, sizeof(buffer), "%s%1d", U_CELL_FILE_TEST_FILE_NAME, (int) x);
         U_TEST_PRINT_LINE("deleting file %s...", buffer);
         U_PORT_TEST_ASSERT(uCellFileDelete(cellHandle, buffer) == 0);
     }

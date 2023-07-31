@@ -213,8 +213,7 @@ static int32_t uShortRangeAdd(uShortRangeModuleType_t moduleType,
         // Allocate memory for the instance
         pInstance = (uShortRangePrivateInstance_t *) pUPortMalloc(sizeof(uShortRangePrivateInstance_t));
         if (pInstance != NULL) {
-            int32_t streamHandle;
-            uAtClientStream_t streamType;
+            uAtClientStreamHandle_t stream;
             // Fill the values in
             memset(pInstance, 0, sizeof(*pInstance));
 
@@ -231,9 +230,9 @@ static int32_t uShortRangeAdd(uShortRangeModuleType_t moduleType,
             pInstance->sockNextLocalPort = -1;
             pInstance->uartHandle = uartHandle;
 
-            streamHandle = uAtClientStreamGet(atHandle, &streamType);
-            pInstance->streamHandle = streamHandle;
-            pInstance->streamType = streamType;
+            uAtClientStreamGetExt(atHandle, &stream);
+            pInstance->streamHandle = stream.handle.int32;
+            pInstance->streamType = stream.type;
 
             pInstance->pModule = pModule;
             pInstance->pNext = NULL;
@@ -759,6 +758,7 @@ int32_t uShortRangeOpenUart(uShortRangeModuleType_t moduleType,
     int32_t uartHandle = (int32_t)U_ERROR_COMMON_NOT_INITIALISED;
     int32_t edmStreamHandle = (int32_t)U_ERROR_COMMON_NOT_INITIALISED;
     uAtClientHandle_t atClientHandle = NULL;
+    uAtClientStreamHandle_t stream;
     int32_t handleOrErrorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
 
     if (gUShortRangePrivateMutex == NULL) {
@@ -773,6 +773,10 @@ int32_t uShortRangeOpenUart(uShortRangeModuleType_t moduleType,
     if ((moduleType <= U_SHORT_RANGE_MODULE_TYPE_INTERNAL) ||
         (pUartConfig == NULL)) {
         return handleOrErrorCode;
+    }
+
+    if (pUartConfig->pPrefix != NULL) {
+        uPortUartPrefix(pUartConfig->pPrefix);
     }
 
     handleOrErrorCode = uPortUartOpen(pUartConfig->uartPort,
@@ -807,11 +811,11 @@ int32_t uShortRangeOpenUart(uShortRangeModuleType_t moduleType,
 
     //lint -e(838) Suppress previously assigned value has not been used
     edmStreamHandle = handleOrErrorCode;
+    stream.handle.int32 = edmStreamHandle;
+    stream.type = U_AT_CLIENT_STREAM_TYPE_EDM;
     //lint -e(838) Suppress previously assigned value has not been used
-    atClientHandle = uAtClientAdd(edmStreamHandle,
-                                  U_AT_CLIENT_STREAM_TYPE_EDM,
-                                  NULL,
-                                  U_SHORT_RANGE_AT_BUFFER_LENGTH_BYTES);
+    atClientHandle = uAtClientAddExt(&stream, NULL,
+                                     U_SHORT_RANGE_AT_BUFFER_LENGTH_BYTES);
 
     if (atClientHandle == NULL) {
         uShortRangeEdmStreamClose(edmStreamHandle);

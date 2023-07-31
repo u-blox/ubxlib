@@ -38,6 +38,7 @@
 #include "string.h"    // strlen() and strcmp()
 #include "stdio.h"     // snprintf()
 #include "time.h"      // time_t and struct tm
+#include "u_compiler.h"
 
 #include "u_cfg_sw.h"
 #include "u_cfg_os_platform_specific.h"  // For #define U_CFG_OS_CLIB_LEAKS
@@ -191,9 +192,12 @@
 #if (U_CFG_APP_GNSS_SPI >= 0)
 # ifndef U_PORT_TEST_SPI_TRIES
 /** How many attempts we make while waiting for the GNSS
- * chip to respond with an ack.
+ * chip to respond with an ack.  The limiting factor here
+ * is the Linux case where the SPI input gets buffered
+ * from very early on and so there can be a lot more
+ * to process.
  */
-#  define U_PORT_TEST_SPI_TRIES 10
+#  define U_PORT_TEST_SPI_TRIES 100
 # endif
 #endif
 
@@ -706,7 +710,7 @@ static void osTestTask(void *pParameters)
 
     uPortLog("U_PORT_TEST_OS_TASK: task with handle 0x%08x started,"
              " received parameter pointer 0x%08x containing string"
-             " \"%s\".\n", (int) gTaskHandle, pParameters,
+             " \"%s\".\n", U_PTR_TO_INT32(gTaskHandle), pParameters,
              (const char *) pParameters);
     U_PORT_TEST_ASSERT(strcmp((const char *) pParameters, gTaskParameter) == 0);
 
@@ -1079,6 +1083,10 @@ static void runUartTest(int32_t size, int32_t speed,
                       " bits/s with flow control %s.", size, speed,
                       pFlowControl);
 
+#ifdef U_CFG_TEST_UART_PREFIX
+    U_PORT_TEST_ASSERT(uPortUartPrefix(U_PORT_STRINGIFY_QUOTED(U_CFG_TEST_UART_PREFIX)) == 0);
+#endif
+
     U_TEST_PRINT_LINE("add a UART instance...");
     uartHandle = uPortUartOpen(U_CFG_TEST_UART_A,
                                speed, NULL,
@@ -1242,7 +1250,7 @@ static bool fillWordSame(uint16_t wordA, uint16_t wordB, size_t lengthBytes)
 static void timerCallback(const uPortTimerHandle_t timerHandle, void *pParameter)
 {
     //lint -e(507) Suppress size incompatibility, we know what we're doing
-    int32_t parameter = (int32_t) pParameter;
+    int32_t parameter = U_PTR_TO_INT32(pParameter);
 
     (void) timerHandle;
 
@@ -1674,7 +1682,7 @@ static void osTestTaskSemaphoreGive(void *pParameters)
     uPortTaskDelete(NULL);
 }
 
-#ifndef _WIN32
+#if (!defined(_WIN32) && !defined(__linux__)) || defined(CONFIG_IRQ_OFFLOAD)
 static void osTestTaskSemaphoreGiveFromIsr(const void *pParameters)
 {
     (void) pParameters;
@@ -1822,10 +1830,11 @@ U_PORT_TEST_FUNCTION("[port]", "portOsSemaphore")
 #ifdef CONFIG_IRQ_OFFLOAD // Only really tested for zephyr for now
     irq_offload(osTestTaskSemaphoreGiveFromIsr, NULL);
 #else
-# ifndef _WIN32
+# if !defined(_WIN32) && !defined(__linux__)
     osTestTaskSemaphoreGiveFromIsr(NULL);
 # else
-    // ISR not supported on Windows, do the non-ISR version to keep the test going
+    // ISR not supported on Windows or native Linux, do the non-ISR version
+    // to keep the test going
     U_PORT_TEST_ASSERT(uPortSemaphoreGive(gSemaphoreHandle) == 0);
 # endif
 #endif
@@ -1906,6 +1915,9 @@ U_PORT_TEST_FUNCTION("[port]", "portOsExtended")
     timeNowMs = uPortGetTickTimeMs();
     U_TEST_PRINT_LINE("tick time now is %d.", (int32_t) timeNowMs);
     U_TEST_PRINT_LINE("add a UART instance...");
+#ifdef U_CFG_TEST_UART_PREFIX
+    U_PORT_TEST_ASSERT(uPortUartPrefix(U_PORT_STRINGIFY_QUOTED(U_CFG_TEST_UART_PREFIX)) == 0);
+#endif
     uartHandle = uPortUartOpen(U_CFG_TEST_UART_A,
                                U_CFG_TEST_BAUD_RATE,
                                NULL,
@@ -2102,7 +2114,7 @@ U_PORT_TEST_FUNCTION("[port]", "portEventQueue")
             }
             U_PORT_TEST_ASSERT(y == 0);
         }
-#ifdef CONFIG_ARCH_POSIX
+#if defined(CONFIG_ARCH_POSIX) || defined(__linux__)
         // Delay needed here since Zephyr 3. Reason unknown.
         uPortTaskBlock(1);
 #endif
@@ -2113,7 +2125,7 @@ U_PORT_TEST_FUNCTION("[port]", "portEventQueue")
                                            NULL, 0) == 0);
     U_PORT_TEST_ASSERT(uPortEventQueueSend(gEventQueueMinHandle,
                                            NULL, 0) == 0);
-#ifdef CONFIG_ARCH_POSIX
+#if defined(CONFIG_ARCH_POSIX) || defined(__linux__)
     // Delay needed here since Zephyr 3. Reason unknown.
     uPortTaskBlock(1);
 #endif
@@ -2630,7 +2642,7 @@ U_PORT_TEST_FUNCTION("[port]", "portI2cRequiresSpecificWiring")
                                             U_CFG_APP_PIN_GNSS_SCL, true) < 0);
             // Now initialise I2C
             U_PORT_TEST_ASSERT(uPortI2cInit() == 0);
-# ifndef __ZEPHYR__
+# if !defined(__ZEPHYR__) && !defined(__linux__)
             // Try to open an I2C instance without pins, should fail
             U_PORT_TEST_ASSERT(uPortI2cOpen(U_CFG_APP_GNSS_I2C, -1, U_CFG_APP_PIN_GNSS_SCL, true) < 0);
             U_PORT_TEST_ASSERT(uPortI2cOpen(U_CFG_APP_GNSS_I2C, U_CFG_APP_PIN_GNSS_SDA, -1, true) < 0);
@@ -2663,16 +2675,21 @@ U_PORT_TEST_FUNCTION("[port]", "portI2cRequiresSpecificWiring")
 # if U_PORT_I2C_CLOCK_FREQUENCY_HERTZ == 400000
 #  error This test needs updating: U_PORT_I2C_CLOCK_FREQUENCY_HERTZ is now 400,000!
 # endif
-
-            U_PORT_TEST_ASSERT(uPortI2cGetClock(gI2cHandle) == U_PORT_I2C_CLOCK_FREQUENCY_HERTZ);
-            // All platforms support setting at least 400,000
-            U_PORT_TEST_ASSERT(uPortI2cSetClock(gI2cHandle, 400000) == 0);
-            U_PORT_TEST_ASSERT(uPortI2cGetClock(gI2cHandle) == 400000);
-            // Close, re-open and check that we're back at the default clock rate
-            uPortI2cClose(gI2cHandle);
-            gI2cHandle = uPortI2cOpen(U_CFG_APP_GNSS_I2C, U_CFG_APP_PIN_GNSS_SDA, U_CFG_APP_PIN_GNSS_SCL, true);
-            U_PORT_TEST_ASSERT(gI2cHandle >= 0);
-            U_PORT_TEST_ASSERT(uPortI2cGetClock(gI2cHandle) == U_PORT_I2C_CLOCK_FREQUENCY_HERTZ);
+            y = uPortI2cGetClock(gI2cHandle);
+            if (y >= 0) {
+                U_PORT_TEST_ASSERT(uPortI2cGetClock(gI2cHandle) == U_PORT_I2C_CLOCK_FREQUENCY_HERTZ);
+                // All platforms support setting at least 400,000
+                U_PORT_TEST_ASSERT(uPortI2cSetClock(gI2cHandle, 400000) == 0);
+                U_PORT_TEST_ASSERT(uPortI2cGetClock(gI2cHandle) == 400000);
+                // Close, re-open and check that we're back at the default clock rate
+                uPortI2cClose(gI2cHandle);
+                gI2cHandle = uPortI2cOpen(U_CFG_APP_GNSS_I2C, U_CFG_APP_PIN_GNSS_SDA, U_CFG_APP_PIN_GNSS_SCL, true);
+                U_PORT_TEST_ASSERT(gI2cHandle >= 0);
+                U_PORT_TEST_ASSERT(uPortI2cGetClock(gI2cHandle) == U_PORT_I2C_CLOCK_FREQUENCY_HERTZ);
+            } else {
+                U_PORT_TEST_ASSERT((y == U_ERROR_COMMON_NOT_SUPPORTED) || (y == U_ERROR_COMMON_NOT_IMPLEMENTED));
+                U_TEST_PRINT_LINE("get of I2C clock not supported/implemented, not testing I2C clock API.");
+            }
 
             // Test getting and setting the timeout
             y = uPortI2cGetTimeout(gI2cHandle);
@@ -2881,7 +2898,7 @@ U_PORT_TEST_FUNCTION("[port]", "portSpiRequiresSpecificWiring")
 
     // Now initialise SPI
     U_PORT_TEST_ASSERT(uPortSpiInit() == 0);
-# ifndef __ZEPHYR__
+# if !defined(__ZEPHYR__) && !defined(__linux__)
     // Try to open an SPI instance without a valid combination of pins, should fail
     U_PORT_TEST_ASSERT(uPortSpiOpen(U_CFG_APP_GNSS_SPI, -1, -1,
                                     U_CFG_APP_PIN_GNSS_SPI_CLK, true) < 0);
@@ -2975,7 +2992,8 @@ U_PORT_TEST_FUNCTION("[port]", "portSpiRequiresSpecificWiring")
     // definitely be spread across the three function calls.
     uPortTaskBlock(10);
     // We're looking for messageClass 0x0a and message ID 0x32
-    for (size_t x = 0; (messageClass != 0x0a) && (messageId != 0x32) &&
+    y = (int32_t) U_ERROR_COMMON_NOT_FOUND;
+    for (size_t x = 0; ((messageClass != 0x0a) || (messageId != 0x32) || (y < 0)) &&
          (x < U_PORT_TEST_SPI_TRIES); x++) {
         // 4 chosen here because receiving 4 bytes is a special case for ESP32
         y = 4;

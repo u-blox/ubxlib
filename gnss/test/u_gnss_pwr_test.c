@@ -38,6 +38,7 @@
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
+#include "string.h"    // strstr()
 
 #include "u_cfg_sw.h"
 #include "u_cfg_os_platform_specific.h"
@@ -62,6 +63,8 @@
 #include "u_gnss.h"
 #include "u_gnss_pwr.h"
 #include "u_gnss_msg.h" // uGnssMsgReceiveStatStreamLoss()
+#include "u_gnss_cfg.h"
+#include "u_gnss_cfg_val_key.h"
 #include "u_gnss_private.h"
 
 #include "u_gnss_test_private.h"
@@ -78,6 +81,14 @@
  */
 #define U_TEST_PRINT_LINE(format, ...) uPortLog(U_TEST_PREFIX format "\n", ##__VA_ARGS__)
 
+#ifndef U_GNSS_PWR_TEST_FLAG_COMBINATION
+/** A combination of power-saving flags to test, ones that are
+ * supported by all modules.
+ */
+# define U_GNSS_PWR_TEST_FLAG_COMBINATION ((1UL << U_GNSS_PWR_FLAG_ACQUISITION_RETRY_IMMEDIATELY_ENABLE) | \
+                                           (1UL << U_GNSS_PWR_FLAG_EXTINT_WAKE_ENABLE))
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -89,6 +100,84 @@
 /** Handles.
  */
 static uGnssTestPrivate_t gHandles = U_GNSS_TEST_PRIVATE_DEFAULTS;
+
+/** The original number of message retries, so that we can put it back.
+ */
+static int32_t gOriginalRetries = -1;
+
+/** The original power-saving mode, so that we can put it back.
+ */
+static int32_t gOriginalMode = -1;
+
+/** The original power-saving flags, so that we can put them back.
+ */
+static int32_t gOriginalFlags = -1;
+
+/** The original acquisition period, so that we can put it back.
+ */
+static int32_t gOriginalAcquisitionPeriodSeconds = -1;
+
+/** The original acquisition retry period, so that we can put it back.
+ */
+static int32_t gOriginalAcquisitionRetryPeriodSeconds = -1;
+
+/** The original on-time, so that we can put it back.
+ */
+static int32_t gOriginalOnTimeSeconds = -1;
+
+/** The original maximum acquisition time, so that we can put it back.
+ */
+static int32_t gOriginalMaxAcquisitionTimeSeconds = -1;
+
+/** The original minimum acquisition time, so that we can put it back.
+ */
+static int32_t gOriginalMinAcquisitionTimeSeconds = -1;
+
+/** The original grid offset, so that we can put it back.
+ */
+static int32_t gOriginalOffsetSeconds = -1;
+
+/** The original EXTINT timeout, so that we can put it back.
+ */
+static int32_t gOriginalTimeoutMs = -1;
+
+#ifndef U_CFG_TEST_GNSS_POWER_SAVING_NOT_SUPPORTED
+
+/** The power saving flags that are only supported by M8 modules.
+ */
+static const uGnssPwrFlag_t gFlagM8[] = {U_GNSS_PWR_FLAG_CYCLIC_TRACKING_OPTIMISE_FOR_POWER_ENABLE,
+                                         U_GNSS_PWR_FLAG_RTC_WAKE_ENABLE
+                                        };
+
+/** The power saving flags that are only supported by M8 and M9 modules.
+ */
+static const uGnssPwrFlag_t gFlagM8M9[] = {U_GNSS_PWR_FLAG_EXTINT_PIN_1_NOT_0};
+
+/** The power saving flags that all modules in the test system
+ * support; MUST have the same number of elements as gFlagAllKeyId.
+ */
+static const uGnssPwrFlag_t gFlagAll[] = {U_GNSS_PWR_FLAG_EXTINT_WAKE_ENABLE, // AKA key ID U_GNSS_CFG_VAL_KEY_ID_PM_EXTINTWAKE_L
+                                          U_GNSS_PWR_FLAG_EXTINT_BACKUP_ENABLE, // AKA key ID U_GNSS_CFG_VAL_KEY_ID_PM_EXTINTBACKUP_L
+                                          // U_GNSS_PWR_FLAG_EXTINT_INACTIVITY_ENABLE, // AKA key ID U_GNSS_CFG_VAL_KEY_ID_PM_EXTINTINACTIVE_L
+                                          U_GNSS_PWR_FLAG_LIMIT_PEAK_CURRENT_ENABLE, // AKA key ID U_GNSS_CFG_VAL_KEY_ID_PM_LIMITPEAKCURR_L
+                                          U_GNSS_PWR_FLAG_WAIT_FOR_TIME_FIX_ENABLE, // AKA key ID U_GNSS_CFG_VAL_KEY_ID_PM_WAITTIMEFIX_L
+                                          U_GNSS_PWR_FLAG_EPHEMERIS_WAKE_ENABLE, // AKA key ID #U_GNSS_CFG_VAL_KEY_ID_PM_UPDATEEPH_L
+                                          U_GNSS_PWR_FLAG_ACQUISITION_RETRY_IMMEDIATELY_ENABLE // AKA key ID U_GNSS_CFG_VAL_KEY_ID_PM_DONOTENTEROFF_L
+                                         };
+
+/** The CFG-VAL key IDs corresponding to gFlagAll; MUST have the same number
+ * of elements as gFlagAll.
+ */
+static const uint32_t gFlagAllKeyId[] = {U_GNSS_CFG_VAL_KEY_ID_PM_EXTINTWAKE_L,
+                                         U_GNSS_CFG_VAL_KEY_ID_PM_EXTINTBACKUP_L,
+                                         // U_GNSS_CFG_VAL_KEY_ID_PM_EXTINTINACTIVE_L,
+                                         U_GNSS_CFG_VAL_KEY_ID_PM_LIMITPEAKCURR_L,
+                                         U_GNSS_CFG_VAL_KEY_ID_PM_WAITTIMEFIX_L,
+                                         U_GNSS_CFG_VAL_KEY_ID_PM_UPDATEEPH_L,
+                                         U_GNSS_CFG_VAL_KEY_ID_PM_DONOTENTEROFF_L
+                                        };
+
+#endif
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -186,6 +275,339 @@ U_PORT_TEST_FUNCTION("[gnssPwr]", "gnssPwrBasic")
     U_PORT_TEST_ASSERT(heapUsed <= 0);
 }
 
+#ifndef U_CFG_TEST_GNSS_POWER_SAVING_NOT_SUPPORTED
+
+/** Test power-saving configurations.
+ */
+U_PORT_TEST_FUNCTION("[gnssPwr]", "gnssPwrSaving")
+{
+    uDeviceHandle_t gnssHandle;
+    const uGnssPrivateModule_t *pModule;
+    int32_t heapUsed;
+    size_t iterations;
+    uGnssTransportType_t transportTypes[U_GNSS_TRANSPORT_MAX_NUM];
+    int32_t z;
+    uint64_t value;
+
+    // Whatever called us likely initialised the
+    // port so deinitialise it here to obtain the
+    // correct initial heap size
+    uPortDeinit();
+    heapUsed = uPortGetHeapFree();
+
+    // Repeat for all transport types
+    iterations = uGnssTestPrivateTransportTypesSet(transportTypes, U_CFG_APP_GNSS_UART,
+                                                   U_CFG_APP_GNSS_I2C, U_CFG_APP_GNSS_SPI);
+    for (size_t x = 0; x < iterations; x++) {
+        // Do the standard preamble
+        U_TEST_PRINT_LINE("testing on transport %s...",
+                          pGnssTestPrivateTransportTypeName(transportTypes[x]));
+        U_PORT_TEST_ASSERT(uGnssTestPrivatePreamble(U_CFG_TEST_GNSS_MODULE_TYPE,
+                                                    transportTypes[x], &gHandles, true,
+                                                    U_CFG_APP_CELL_PIN_GNSS_POWER,
+                                                    U_CFG_APP_CELL_PIN_GNSS_DATA_READY) == 0);
+        gnssHandle = gHandles.gnssHandle;
+
+        // So that we can see what we're doing
+        uGnssSetUbxMessagePrint(gnssHandle, true);
+
+        // Get the private module data so that we can check if it supports CFG-VAL
+        pModule = pUGnssPrivateGetModule(gnssHandle);
+        U_PORT_TEST_ASSERT(pModule != NULL);
+
+        // During testing of power-saving the module may go to sleep and so
+        // make sure we retry any comms
+        gOriginalRetries = uGnssGetRetries(gnssHandle);
+        U_PORT_TEST_ASSERT(gOriginalRetries >= 0);
+        uGnssSetRetries(gnssHandle, 3);
+        U_PORT_TEST_ASSERT(uGnssGetRetries(gnssHandle) == 3);
+
+        // Set each of the power-saving modes and check that they have been set
+        gOriginalMode = uGnssPwrGetMode(gnssHandle);
+        U_TEST_PRINT_LINE("power-saving mode was %d.", gOriginalMode);
+        U_PORT_TEST_ASSERT(gOriginalMode >= 0);
+        U_PORT_TEST_ASSERT(gOriginalMode < U_GNSS_PWR_SAVING_MODE_MAX_NUM);
+        for (int32_t y = U_GNSS_PWR_SAVING_MODE_MAX_NUM - 1; y >= 0; y--) {
+            // M8 doesn't support setting no power-saving and the manual
+            // says that protocol versions 23 to 23.01 don't support
+            // on/off power-saving but I've yet to find an M8 version
+            // which supports on/off power-saving (e.g. the version 18.00
+            // one inside SARA-R5/SARA-R422 NACKs an attempt to set on/off
+            // power-saving, so don't do that for M8 either
+            if ((pModule->moduleType == U_GNSS_MODULE_TYPE_M8) &&
+                ((y == (int32_t) U_GNSS_PWR_SAVING_MODE_NONE) ||
+                 (y == (int32_t) U_GNSS_PWR_SAVING_MODE_ON_OFF))) {
+                U_TEST_PRINT_LINE("skipping setting power-saving mode %d.", y);
+            } else {
+                U_TEST_PRINT_LINE("setting power-saving mode %d...", y);
+                U_PORT_TEST_ASSERT(uGnssPwrSetMode(gnssHandle, (uGnssPwrSavingMode_t) y) == 0);
+                U_PORT_TEST_ASSERT(uGnssPwrGetMode(gnssHandle) == y);
+            }
+        }
+        // Put the original power-saving mode back
+        U_PORT_TEST_ASSERT(uGnssPwrSetMode(gnssHandle, (uGnssPwrSavingMode_t) gOriginalMode) == 0);
+        gOriginalMode = -1;
+
+        // Set all of the power saving flags that all modules support
+        // and, where possible, check that they have been set
+        // by reading the corresponding CFG-VAL key as well as by
+        // reading them back
+        gOriginalFlags = uGnssPwrGetFlag(gnssHandle);
+        U_PORT_TEST_ASSERT(gOriginalFlags >= 0);
+        U_TEST_PRINT_LINE("power-saving flags were 0x%08x.", gOriginalFlags);
+        for (size_t y = 0; y < sizeof(gFlagAll) / sizeof(gFlagAll[0]); y++) {
+            if ((gFlagAll[y] == (int32_t) U_GNSS_PWR_FLAG_EXTINT_INACTIVITY_ENABLE) &&
+                ((pModule->moduleType == U_GNSS_MODULE_TYPE_M8) ||
+                 (transportTypes[x] == U_GNSS_TRANSPORT_I2C))) {
+                // Don't enable EXTINT inactivity if we're on M8 (where it is not supported)
+                // or if we're on I2C ('cos we will go to sleep and never be able
+                // to wake up as the I2C pins aren't in the wake-up set).
+                U_TEST_PRINT_LINE("skipping setting flag %d.", gFlagAll[y]);
+            } else {
+                U_TEST_PRINT_LINE("setting flag %d (0x%08x)...", gFlagAll[y], 1UL << gFlagAll[y]);
+                U_PORT_TEST_ASSERT(uGnssPwrSetFlag(gnssHandle, 1UL << gFlagAll[y]) == 0);
+                z = uGnssPwrGetFlag(gnssHandle);
+                U_TEST_PRINT_LINE("uGnssPwrGetFlag() returned %d.", z);
+                U_PORT_TEST_ASSERT(z >= 0);
+                U_TEST_PRINT_LINE("flags are now 0x%08x.", z);
+                U_PORT_TEST_ASSERT((z & (1UL << gFlagAll[y])) == (1UL << gFlagAll[y]));
+                U_PORT_TEST_ASSERT((z & ~(1UL << gFlagAll[y])) == (gOriginalFlags & ~(1UL << gFlagAll[y])));
+                value = 0;
+                if (U_GNSS_PRIVATE_HAS(pModule, U_GNSS_PRIVATE_FEATURE_CFGVALXXX)) {
+                    U_PORT_TEST_ASSERT(uGnssCfgValGet(gnssHandle, gFlagAllKeyId[y],
+                                                      &value, 1, U_GNSS_CFG_VAL_LAYER_RAM) == 0);
+                    U_PORT_TEST_ASSERT(value);
+                }
+                U_TEST_PRINT_LINE("clearing flag %d (0x%08x)...", gFlagAll[y], 1UL << gFlagAll[y]);
+                U_PORT_TEST_ASSERT(uGnssPwrClearFlag(gnssHandle, 1UL << gFlagAll[y]) == 0);
+                z = uGnssPwrGetFlag(gnssHandle);
+                U_PORT_TEST_ASSERT(z >= 0);
+                U_TEST_PRINT_LINE("flags are now 0x%08x.", z);
+                U_PORT_TEST_ASSERT((z & (1UL << gFlagAll[y])) == 0);
+                U_PORT_TEST_ASSERT((z & ~(1UL << gFlagAll[y])) == (gOriginalFlags & ~(1UL << gFlagAll[y])));
+                if (U_GNSS_PRIVATE_HAS(pModule, U_GNSS_PRIVATE_FEATURE_CFGVALXXX)) {
+                    U_PORT_TEST_ASSERT(uGnssCfgValGet(gnssHandle, gFlagAllKeyId[y],
+                                                      &value, 1, U_GNSS_CFG_VAL_LAYER_RAM) == 0);
+                    U_PORT_TEST_ASSERT(!value);
+                }
+                if (gOriginalFlags & (1UL << gFlagAll[y])) {
+                    // Set the flag again if it was set originally
+                    U_PORT_TEST_ASSERT(uGnssPwrSetFlag(gnssHandle, 1UL << gFlagAll[y]) == 0);
+                }
+            }
+        }
+        // Try setting the flags only supported by M8 (these can't be read back with CFG-VAL)
+        if (pModule->moduleType == U_GNSS_MODULE_TYPE_M8) {
+            for (size_t y = 0; y < sizeof(gFlagM8) / sizeof(gFlagM8[0]); y++) {
+                U_TEST_PRINT_LINE("setting flag %d (0x%08x)...", gFlagM8[y], 1UL << gFlagM8[y]);
+                U_PORT_TEST_ASSERT(uGnssPwrSetFlag(gnssHandle, 1UL << gFlagM8[y]) == 0);
+                z = uGnssPwrGetFlag(gnssHandle);
+                U_PORT_TEST_ASSERT(z >= 0);
+                U_TEST_PRINT_LINE("flags are now 0x%08x.", z);
+                U_PORT_TEST_ASSERT((z & (1UL << gFlagM8[y])) == (1UL << gFlagM8[y]));
+                U_PORT_TEST_ASSERT((z & ~(1UL << gFlagM8[y])) == (gOriginalFlags & ~(1UL << gFlagM8[y])));
+                U_TEST_PRINT_LINE("clearing flag %d (0x%08x)...", gFlagM8[y], 1UL << gFlagM8[y]);
+                U_PORT_TEST_ASSERT(uGnssPwrClearFlag(gnssHandle, 1UL << gFlagM8[y]) == 0);
+                z = uGnssPwrGetFlag(gnssHandle);
+                U_PORT_TEST_ASSERT(z >= 0);
+                U_TEST_PRINT_LINE("flags are now 0x%08x.", z);
+                U_PORT_TEST_ASSERT((z & (1UL << gFlagM8[y])) == 0);
+                U_PORT_TEST_ASSERT((z & ~(1UL << gFlagM8[y])) == (gOriginalFlags & ~(1UL << gFlagM8[y])));
+                if (gOriginalFlags & (1UL << gFlagM8[y])) {
+                    // Set the flag again if it was set originally
+                    U_PORT_TEST_ASSERT(uGnssPwrSetFlag(gnssHandle, 1UL << gFlagM8[y]) == 0);
+                }
+            }
+        }
+        // Try setting the flags only supported by M8 and M9 modules
+        if ((pModule->moduleType == U_GNSS_MODULE_TYPE_M8) ||
+            (pModule->moduleType == U_GNSS_MODULE_TYPE_M9)) {
+            for (size_t y = 0; y < sizeof(gFlagM8M9) / sizeof(gFlagM8M9[0]); y++) {
+                U_TEST_PRINT_LINE("setting flag %d (0x%08x)...", gFlagM8M9[y], 1UL << gFlagM8M9[y]);
+                U_PORT_TEST_ASSERT(uGnssPwrSetFlag(gnssHandle, 1UL << gFlagM8M9[y]) == 0);
+                z = uGnssPwrGetFlag(gnssHandle);
+                U_PORT_TEST_ASSERT(z >= 0);
+                U_TEST_PRINT_LINE("flags are now 0x%08x.", z);
+                U_PORT_TEST_ASSERT((z & (1UL << gFlagM8M9[y])) == (1UL << gFlagM8M9[y]));
+                U_PORT_TEST_ASSERT((z & ~(1UL << gFlagM8M9[y])) == (gOriginalFlags & ~(1UL << gFlagM8M9[y])));
+                U_TEST_PRINT_LINE("clearing flag %d (0x%08x)...", gFlagM8M9[y], 1UL << gFlagM8M9[y]);
+                U_PORT_TEST_ASSERT(uGnssPwrClearFlag(gnssHandle, 1UL << gFlagM8M9[y]) == 0);
+                z = uGnssPwrGetFlag(gnssHandle);
+                U_PORT_TEST_ASSERT(z >= 0);
+                U_TEST_PRINT_LINE("flags are now 0x%08x.", z);
+                U_PORT_TEST_ASSERT((z & (1UL << gFlagM8M9[y])) == 0);
+                U_PORT_TEST_ASSERT((z & ~(1UL << gFlagM8M9[y])) == (gOriginalFlags & ~(1UL << gFlagM8M9[y])));
+                if (gOriginalFlags & (1UL << gFlagM8M9[y])) {
+                    // Set the flag again if it was set originally
+                    U_PORT_TEST_ASSERT(uGnssPwrSetFlag(gnssHandle, 1UL << gFlagM8M9[y]) == 0);
+                }
+            }
+        }
+
+        // Try setting more than one flag at a time
+        U_TEST_PRINT_LINE("setting flags 0x%08x...", U_GNSS_PWR_TEST_FLAG_COMBINATION);
+        U_PORT_TEST_ASSERT(uGnssPwrSetFlag(gnssHandle, U_GNSS_PWR_TEST_FLAG_COMBINATION) == 0);
+        z = uGnssPwrGetFlag(gnssHandle);
+        U_PORT_TEST_ASSERT(z >= 0);
+        U_PORT_TEST_ASSERT((z & U_GNSS_PWR_TEST_FLAG_COMBINATION) == U_GNSS_PWR_TEST_FLAG_COMBINATION);
+        U_PORT_TEST_ASSERT((z & ~U_GNSS_PWR_TEST_FLAG_COMBINATION) == (gOriginalFlags &
+                                                                       ~U_GNSS_PWR_TEST_FLAG_COMBINATION));
+        U_TEST_PRINT_LINE("clearing flags 0x%08x...", U_GNSS_PWR_TEST_FLAG_COMBINATION);
+        U_PORT_TEST_ASSERT(uGnssPwrClearFlag(gnssHandle, U_GNSS_PWR_TEST_FLAG_COMBINATION) == 0);
+        z = uGnssPwrGetFlag(gnssHandle);
+        U_PORT_TEST_ASSERT(z >= 0);
+        U_PORT_TEST_ASSERT((z & U_GNSS_PWR_TEST_FLAG_COMBINATION) == 0);
+        U_PORT_TEST_ASSERT((z & ~U_GNSS_PWR_TEST_FLAG_COMBINATION) == (gOriginalFlags &
+                                                                       ~U_GNSS_PWR_TEST_FLAG_COMBINATION));
+
+        // Put the original flag values back
+        U_PORT_TEST_ASSERT(uGnssPwrSetFlag(gnssHandle, (uint32_t) gOriginalFlags) == 0);
+        gOriginalFlags = -1;
+
+        // Set each of the main timings, doing them all at once
+        U_PORT_TEST_ASSERT(uGnssPwrGetTiming(gnssHandle,
+                                             &gOriginalAcquisitionPeriodSeconds,
+                                             &gOriginalAcquisitionRetryPeriodSeconds,
+                                             &gOriginalOnTimeSeconds,
+                                             &gOriginalMaxAcquisitionTimeSeconds,
+                                             &gOriginalMinAcquisitionTimeSeconds) == 0);
+        U_TEST_PRINT_LINE("original acquisition period %d second(s).", gOriginalAcquisitionPeriodSeconds);
+        U_TEST_PRINT_LINE("original acquisition retry period %d second(s).",
+                          gOriginalAcquisitionRetryPeriodSeconds);
+        U_TEST_PRINT_LINE("original on time %d second(s).", gOriginalOnTimeSeconds);
+        U_TEST_PRINT_LINE("original max acquisition time %d second(s).",
+                          gOriginalMaxAcquisitionTimeSeconds);
+        U_TEST_PRINT_LINE("original min acquisition time %d second(s).",
+                          gOriginalMinAcquisitionTimeSeconds);
+        z = uGnssPwrSetTiming(gnssHandle, gOriginalAcquisitionPeriodSeconds + 1,
+                              gOriginalAcquisitionRetryPeriodSeconds + 2,
+                              gOriginalOnTimeSeconds + 3,
+                              gOriginalMaxAcquisitionTimeSeconds + 4,
+                              gOriginalMinAcquisitionTimeSeconds + 5);
+        U_TEST_PRINT_LINE("uGnssPwrSetTiming() returned %d.", z);
+        U_PORT_TEST_ASSERT(z == 0);
+        U_PORT_TEST_ASSERT(uGnssPwrGetTiming(gnssHandle, &z, NULL, NULL, NULL, NULL) == 0);
+        U_TEST_PRINT_LINE("new acquisition period %d second(s).", z);
+        U_PORT_TEST_ASSERT(z == gOriginalAcquisitionPeriodSeconds + 1);
+        z = 0;
+        U_PORT_TEST_ASSERT(uGnssPwrGetTiming(gnssHandle, NULL, &z, NULL, NULL, NULL) == 0);
+        U_TEST_PRINT_LINE("new acquisition retry period %d second(s).", z);
+        U_PORT_TEST_ASSERT(z == gOriginalAcquisitionRetryPeriodSeconds + 2);
+        z = 0;
+        U_PORT_TEST_ASSERT(uGnssPwrGetTiming(gnssHandle, NULL, NULL, &z, NULL, NULL) == 0);
+        U_TEST_PRINT_LINE("new on time %d second(s).", z);
+        U_PORT_TEST_ASSERT(z == gOriginalOnTimeSeconds + 3);
+        z = 0;
+        U_PORT_TEST_ASSERT(uGnssPwrGetTiming(gnssHandle, NULL, NULL, NULL, &z, NULL) == 0);
+        U_TEST_PRINT_LINE("new max acquisition time %d second(s).", z);
+        U_PORT_TEST_ASSERT(z == gOriginalMaxAcquisitionTimeSeconds + 4);
+        z = 0;
+        U_PORT_TEST_ASSERT(uGnssPwrGetTiming(gnssHandle, NULL, NULL, NULL, NULL, &z) == 0);
+        U_TEST_PRINT_LINE("new min acquisition time %d second(s).", z);
+        U_PORT_TEST_ASSERT(z == gOriginalMinAcquisitionTimeSeconds + 5);
+
+        // Spot-check leaving some out
+        U_PORT_TEST_ASSERT(uGnssPwrSetTiming(gnssHandle, gOriginalAcquisitionPeriodSeconds + 6,
+                                             -1, -1, gOriginalMaxAcquisitionTimeSeconds + 7, -1) == 0);
+        U_PORT_TEST_ASSERT(uGnssPwrGetTiming(gnssHandle, &z, NULL, NULL, NULL, NULL) == 0);
+        U_TEST_PRINT_LINE("new acquisition period %d second(s).", z);
+        U_PORT_TEST_ASSERT(z == gOriginalAcquisitionPeriodSeconds + 6);
+        z = 0;
+        U_PORT_TEST_ASSERT(uGnssPwrGetTiming(gnssHandle, NULL, &z, NULL, NULL, NULL) == 0);
+        U_TEST_PRINT_LINE("acquisition retry period %d second(s).", z);
+        U_PORT_TEST_ASSERT(z == gOriginalAcquisitionRetryPeriodSeconds + 2);
+        z = 0;
+        U_PORT_TEST_ASSERT(uGnssPwrGetTiming(gnssHandle, NULL, NULL, &z, NULL, NULL) == 0);
+        U_TEST_PRINT_LINE("on time %d second(s).", z);
+        U_PORT_TEST_ASSERT(z == gOriginalOnTimeSeconds + 3);
+        z = 0;
+        U_PORT_TEST_ASSERT(uGnssPwrGetTiming(gnssHandle, NULL, NULL, NULL, &z, NULL) == 0);
+        U_TEST_PRINT_LINE("new max acquisition time %d second(s).", z);
+        U_PORT_TEST_ASSERT(z == gOriginalMaxAcquisitionTimeSeconds + 7);
+        z = 0;
+        U_PORT_TEST_ASSERT(uGnssPwrGetTiming(gnssHandle, NULL, NULL, NULL, NULL, &z) == 0);
+        U_TEST_PRINT_LINE("min acquisition time %d second(s).", z);
+        U_PORT_TEST_ASSERT(z == gOriginalMinAcquisitionTimeSeconds + 5);
+
+        // Out of range values
+        U_PORT_TEST_ASSERT(uGnssPwrSetTiming(gnssHandle,
+                                             gOriginalAcquisitionPeriodSeconds,
+                                             gOriginalAcquisitionRetryPeriodSeconds,
+                                             UINT16_MAX + 1,
+                                             gOriginalMaxAcquisitionTimeSeconds,
+                                             gOriginalMinAcquisitionTimeSeconds) < 0);
+        U_PORT_TEST_ASSERT(uGnssPwrSetTiming(gnssHandle,
+                                             gOriginalAcquisitionPeriodSeconds,
+                                             gOriginalAcquisitionRetryPeriodSeconds,
+                                             gOriginalOnTimeSeconds,
+                                             UINT8_MAX + 1,
+                                             gOriginalMinAcquisitionTimeSeconds) < 0);
+        z = UINT8_MAX + 1;
+        if (U_GNSS_PRIVATE_HAS(pModule, U_GNSS_PRIVATE_FEATURE_OLD_CFG_API)) {
+            z = UINT16_MAX + 1;
+        }
+        U_PORT_TEST_ASSERT(uGnssPwrSetTiming(gnssHandle,
+                                             gOriginalAcquisitionPeriodSeconds,
+                                             gOriginalAcquisitionRetryPeriodSeconds,
+                                             gOriginalOnTimeSeconds,
+                                             gOriginalMaxAcquisitionTimeSeconds, z) < 0);
+
+        // Put the original timings back
+        U_PORT_TEST_ASSERT(uGnssPwrSetTiming(gnssHandle,
+                                             gOriginalAcquisitionPeriodSeconds,
+                                             gOriginalAcquisitionRetryPeriodSeconds,
+                                             gOriginalOnTimeSeconds,
+                                             gOriginalMaxAcquisitionTimeSeconds,
+                                             gOriginalMinAcquisitionTimeSeconds) == 0);
+        gOriginalAcquisitionPeriodSeconds = -1;
+        gOriginalAcquisitionRetryPeriodSeconds = -1;
+        gOriginalOnTimeSeconds = -1;
+        gOriginalMaxAcquisitionTimeSeconds = -1;
+        gOriginalMinAcquisitionTimeSeconds = -1;
+
+        // Set the timing offset
+        gOriginalOffsetSeconds = uGnssPwrGetTimingOffset(gnssHandle);
+        U_TEST_PRINT_LINE("original timing offset %d second(s).", gOriginalOffsetSeconds);
+        U_PORT_TEST_ASSERT(uGnssPwrSetTimingOffset(gnssHandle, gOriginalOffsetSeconds + 1) == 0);
+        z = uGnssPwrGetTimingOffset(gnssHandle);
+        U_TEST_PRINT_LINE("new timing offset %d second(s).", z);
+        U_PORT_TEST_ASSERT(z ==  gOriginalOffsetSeconds + 1);
+        U_PORT_TEST_ASSERT(uGnssPwrSetTimingOffset(gnssHandle, gOriginalOffsetSeconds) == 0);
+        gOriginalOffsetSeconds = -1;
+
+        // Set the EXTINT inactivity timeout
+        gOriginalTimeoutMs = uGnssPwrGetExtintInactivityTimeout(gnssHandle);
+        U_TEST_PRINT_LINE("original EXTINT inactivity timeout %d ms.", gOriginalTimeoutMs);
+        U_PORT_TEST_ASSERT(uGnssPwrSetExtintInactivityTimeout(gnssHandle, gOriginalTimeoutMs + 10) == 0);
+        z = uGnssPwrGetExtintInactivityTimeout(gnssHandle);
+        U_TEST_PRINT_LINE("new EXTINT inactivity timeout %d ms.", z);
+        U_PORT_TEST_ASSERT(z ==  gOriginalTimeoutMs + 10);
+        U_PORT_TEST_ASSERT(uGnssPwrSetExtintInactivityTimeout(gnssHandle, gOriginalTimeoutMs) == 0);
+        gOriginalTimeoutMs = -1;
+
+        // And finally, put the number of retries back as it was
+        uGnssSetRetries(gnssHandle, gOriginalRetries);
+        gOriginalRetries = -1;
+
+        // Check that we haven't dropped any incoming data
+        z = uGnssMsgReceiveStatStreamLoss(gnssHandle);
+        U_TEST_PRINT_LINE("%d byte(s) lost from the message stream during that test.", z);
+        U_PORT_TEST_ASSERT(z == 0);
+
+        // Do the standard postamble
+        uGnssTestPrivatePostamble(&gHandles, false);
+    }
+
+    // Check for memory leaks
+    heapUsed -= uPortGetHeapFree();
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
+    // heapUsed < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT(heapUsed <= 0);
+}
+
+#endif // #ifndef U_CFG_TEST_GNSS_POWER_SAVING_NOT_SUPPORTED
+
 /** Clean-up to be run at the end of this round of tests, just
  * in case there were test failures which would have resulted
  * in the deinitialisation being skipped.
@@ -193,6 +615,35 @@ U_PORT_TEST_FUNCTION("[gnssPwr]", "gnssPwrBasic")
 U_PORT_TEST_FUNCTION("[gnssPwr]", "gnssPwrCleanUp")
 {
     int32_t x;
+
+    if (gOriginalMode >= 0) {
+        uGnssPwrSetMode(gHandles.gnssHandle, (uGnssPwrSavingMode_t) gOriginalMode);
+    }
+    if (gOriginalFlags >= 0) {
+        uGnssPwrSetFlag(gHandles.gnssHandle, (uint32_t) gOriginalFlags);
+        uGnssPwrClearFlag(gHandles.gnssHandle, ~(uint32_t) gOriginalFlags);
+    }
+    if ((gOriginalAcquisitionPeriodSeconds >= 0) ||
+        (gOriginalAcquisitionRetryPeriodSeconds >= 0) ||
+        (gOriginalOnTimeSeconds >= 0) ||
+        (gOriginalMaxAcquisitionTimeSeconds >= 0) ||
+        (gOriginalMinAcquisitionTimeSeconds >= 0)) {
+        uGnssPwrSetTiming(gHandles.gnssHandle,
+                          gOriginalAcquisitionPeriodSeconds,
+                          gOriginalAcquisitionRetryPeriodSeconds,
+                          gOriginalOnTimeSeconds,
+                          gOriginalMaxAcquisitionTimeSeconds,
+                          gOriginalMinAcquisitionTimeSeconds);
+    }
+    if (gOriginalOffsetSeconds >= 0) {
+        uGnssPwrSetTimingOffset(gHandles.gnssHandle, gOriginalOffsetSeconds);
+    }
+    if (gOriginalTimeoutMs >= 0) {
+        uGnssPwrSetExtintInactivityTimeout(gHandles.gnssHandle, gOriginalTimeoutMs);
+    }
+    if (gOriginalRetries >= 0) {
+        uGnssSetRetries(gHandles.gnssHandle, gOriginalRetries);
+    }
 
     uGnssTestPrivateCleanup(&gHandles);
 

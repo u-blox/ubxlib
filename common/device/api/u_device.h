@@ -112,9 +112,9 @@ typedef struct {
     uDeviceVersion_t version; /**< Version of this structure; allow your
                                    compiler to initialise this to zero
                                    unless otherwise specified below. */
-    int32_t uart;             /**< The UART HW block to use. */
-    int32_t baudRate;         /**< Uart speed value
-                                   Currently only applicable for short-range modules. */
+    int32_t uart;             /**< The UART HW block to use; for Linux see
+                                   also pPrefix. */
+    int32_t baudRate;         /**< UART speed value. */
     int32_t pinTxd;           /**< The output pin that sends UART data to
                                    the module. */
     int32_t pinRxd;           /**< The input pin that receives UART data from
@@ -125,6 +125,13 @@ typedef struct {
     int32_t pinRts;           /**< The output pin output pin that tells the
                                    module that it can send more UART
                                    data; use -1 if there is no such connection. */
+    const char *pPrefix;      /**< Linux only: this will be prepended to uart,
+                                   e.g. if pPrefix is "/dev/tty" and uart is 3
+                                   then the UART is "/dev/tty3"; if NULL then
+                                   #U_PORT_UART_PREFIX (/dev/ttyUSB) will apply,
+                                   if uart is negative then pPrefix alone will
+                                   be used, maximum length (strlen(pPrefix)) is
+                                   #U_PORT_UART_MAX_PREFIX_LENGTH. */
     /* This is the end of version 0 of this structure:
        should any fields be added to this structure in
        future they must be added AFTER this point and

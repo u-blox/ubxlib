@@ -1,9 +1,7 @@
-IMPORTANT: the directory structure under platform remains subject to change as we add new platforms.  We aim to settle this structure as `ubxlib` approaches release 1.0.0, likely towards the end of 2021.
-
 # Introduction
 These directories provide the implementation of the porting layer on supported SDKs/MCUs from various vendors.  The [platform/common](common) directory contains anything that is common across platforms e.g. the [platform/common/runner](common/runner) source code which allows any or all of the examples/tests to be run.
 
-Also provided are [lint](lint) and [static_size](static_size) "platforms": both include stubs for the porting layer and dummy configuration files in order that all of the `ubxlib` platform independent code can be passed through Lint and measured for \[static\] flash/RAM size.
+Also provided is a [static_size](static_size) "platform", which includes stubs for the porting layer and dummy configuration files in order that all of the `ubxlib` platform independent code can be measured for \[static\] flash/RAM size.
 
 # Supported MCUs
 The MCUs supported by the platforms are as follows:
@@ -11,8 +9,9 @@ The MCUs supported by the platforms are as follows:
 - Espressif [ESP-IDF](esp-idf) and [Arduino-ESP32](arduino): ESP32.
 - ST Microelectronics' [STM32Cube IDE](stm32cube): STM32F4.
 - Nordic [nRF5 SDK](nrf5sdk): NRF52.
-- [zephyr](zephyr): we test NRF52/NRF53, and also Linux/Posix for development purposes, but any MCU that is supported by Zephyr should work transparently.
+- [zephyr](zephyr): we test NRF52/NRF53, and also Linux/Posix for development purposes, but any MCU that is supported by Zephyr may work transparently.
 - not really an MCU but [windows](windows) is supported for development/test purposes.
+- [Linux](linux): not an MCU but native Linux is supported.
 
 In addition to the above, support is included for building certain frameworks as a `ubxlib` library under [PlatformIO](platformio). 
 

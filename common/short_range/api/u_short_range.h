@@ -104,8 +104,14 @@ typedef enum {
 } uShortRangeErrorCode_t;
 
 typedef enum {
-    U_SHORT_RANGE_SERVER_DISABLED = 0, /**< Disabled status. */
-    U_SHORT_RANGE_SERVER_SPS = 6 /**< SPS server. */
+    U_SHORT_RANGE_SERVER_DISABLED = 0,
+    U_SHORT_RANGE_SERVER_TCP = 1,
+    U_SHORT_RANGE_SERVER_UDP = 2,
+    U_SHORT_RANGE_SERVER_SPP = 3,
+    U_SHORT_RANGE_SERVER_DUN = 4,
+    U_SHORT_RANGE_SERVER_UUID = 5,
+    U_SHORT_RANGE_SERVER_SPS = 6,
+    U_SHORT_RANGE_SERVER_ATP = 7
 } uShortRangeServerType_t;
 
 typedef enum {
@@ -204,6 +210,7 @@ typedef struct {
     int32_t pinRx;
     int32_t pinCts;
     int32_t pinRts;
+    const char *pPrefix;
 } uShortRangeUartConfig_t;
 
 /* ----------------------------------------------------------------

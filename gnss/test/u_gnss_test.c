@@ -132,7 +132,7 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssInitialisation")
 U_PORT_TEST_FUNCTION("[gnss]", "gnssAddStream")
 {
     uDeviceHandle_t gnssHandleA;
-# if (U_CFG_APP_GNSS_SPI >= 0)
+# if (U_CFG_APP_GNSS_SPI >= 0) && (U_CFG_APP_GNSS_I2C < 0)
 #  ifdef U_CFG_TEST_GNSS_SPI_SELECT_INDEX
     uCommonSpiControllerDevice_t device = U_COMMON_SPI_CONTROLLER_DEVICE_INDEX_DEFAULTS(
                                               U_CFG_TEST_GNSS_SPI_SELECT_INDEX);
@@ -185,6 +185,9 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssAddStream")
     gTransportTypeA = U_GNSS_TRANSPORT_SPI;
     transportHandleA.spi = gStreamAHandle;
 # else
+#  ifdef U_CFG_TEST_UART_PREFIX
+    U_PORT_TEST_ASSERT(uPortUartPrefix(U_PORT_STRINGIFY_QUOTED(U_CFG_TEST_UART_PREFIX)) == 0);
+#  endif
     gStreamAHandle = uPortUartOpen(U_CFG_TEST_UART_A,
                                    U_CFG_TEST_BAUD_RATE,
                                    NULL,
@@ -268,6 +271,9 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssAddStream")
 
 # if (U_CFG_TEST_UART_B >= 0)
     // If we have a second UART port, add a second GNSS API on it
+#  ifdef U_CFG_TEST_UART_PREFIX
+    U_PORT_TEST_ASSERT(uPortUartPrefix(U_PORT_STRINGIFY_QUOTED(U_CFG_TEST_UART_PREFIX)) == 0);
+#  endif
     gUartBHandle = uPortUartOpen(U_CFG_TEST_UART_B,
                                  U_CFG_TEST_BAUD_RATE,
                                  NULL,

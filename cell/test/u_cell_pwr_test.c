@@ -724,6 +724,7 @@ static bool setEdrx(uDeviceHandle_t cellHandle, int32_t *pSockHandle,
  */
 U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwr")
 {
+    uAtClientStreamHandle_t stream;
     int32_t heapUsed;
     int32_t heapClibLossOffset = (int32_t) gSystemHeapLost;
 
@@ -737,6 +738,9 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwr")
     // we need to fiddle with the parameters into
     // uCellInit().
     U_PORT_TEST_ASSERT(uPortInit() == 0);
+#ifdef U_CFG_APP_UART_PREFIX
+    U_PORT_TEST_ASSERT(uPortUartPrefix(U_PORT_STRINGIFY_QUOTED(U_CFG_APP_UART_PREFIX)) == 0);
+#endif
     gHandles.uartHandle = uPortUartOpen(U_CFG_APP_CELL_UART,
                                         115200, NULL,
                                         U_CELL_UART_BUFFER_LENGTH_BYTES,
@@ -750,9 +754,9 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwr")
 
     U_TEST_PRINT_LINE("adding an AT client on UART %d...",
                       U_CFG_APP_CELL_UART);
-    gHandles.atClientHandle = uAtClientAdd(gHandles.uartHandle,
-                                           U_AT_CLIENT_STREAM_TYPE_UART,
-                                           NULL, U_CELL_AT_BUFFER_LENGTH_BYTES);
+    stream.type = U_AT_CLIENT_STREAM_TYPE_UART;
+    stream.handle.int32 = gHandles.uartHandle;
+    gHandles.atClientHandle = uAtClientAddExt(&stream, NULL, U_CELL_AT_BUFFER_LENGTH_BYTES);
     U_PORT_TEST_ASSERT(gHandles.atClientHandle != NULL);
 
     // So that we can see what we're doing

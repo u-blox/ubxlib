@@ -37,6 +37,7 @@
 
 #include "u_cfg_sw.h"
 
+#include "u_compiler.h"
 #include "u_port.h"
 #include "u_port_heap.h"
 #include "u_port_debug.h"
@@ -259,7 +260,7 @@ static void dataCallback(const uAtClientHandle_t atHandle,
     //lint -e(507) Suppress size incompatibility: the compiler
     // we use for Lint checking is 64 bit so has 8 byte pointers
     // and Lint doesn't like them being used to carry 4 byte integers
-    int32_t sockHandle = (int32_t) pParameter;
+    int32_t sockHandle = U_PTR_TO_INT32(pParameter);
     uCellSockSocket_t *pSocket;
 
     (void) atHandle;
@@ -281,7 +282,7 @@ static void closedCallback(const uAtClientHandle_t atHandle,
     //lint -e(507) Suppress size incompatibility: the compiler
     // we use for Lint checking is 64 bit so has 8 byte pointers
     // and Lint doesn't like them being used to carry 4 byte integers
-    int32_t sockHandle = (int32_t) pParameter;
+    int32_t sockHandle = U_PTR_TO_INT32(pParameter);
     uCellSockSocket_t *pSocket;
 
     (void) atHandle;
@@ -334,7 +335,7 @@ static void UUSORD_UUSORF_urc(const uAtClientHandle_t atHandle,
                 (pSocket->pDataCallback != NULL)) {
                 uAtClientCallback(atHandle,
                                   dataCallback,
-                                  (void *) (pSocket->sockHandle));
+                                  U_INT32_TO_PTR(pSocket->sockHandle));
             }
             pSocket->pendingBytes = dataSizeBytes;
         }
@@ -360,7 +361,7 @@ static void UUSOCL_urc(const uAtClientHandle_t atHandle,
             if (pSocket->pClosedCallback != NULL) {
                 uAtClientCallback(atHandle,
                                   closedCallback,
-                                  (void *) (pSocket->sockHandle));
+                                  U_INT32_TO_PTR(pSocket->sockHandle));
             }
         }
     }
@@ -910,7 +911,7 @@ int32_t uCellSockClose(uDeviceHandle_t cellHandle,
                         // doesn't support asynchronous closure,
                         // call the trampoline from here
                         uAtClientCallback(atHandle, closedCallback,
-                                          (void *) sockHandle);
+                                          U_INT32_TO_PTR(sockHandle));
                     }
                 } else {
                     // Got an AT interace error, see

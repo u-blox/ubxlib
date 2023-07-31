@@ -91,6 +91,21 @@ extern "C" {
 # define U_LOCATION_CLOUD_LOCATE_RRLP_DATA_LENGTH_BYTES 0x7FFFFFFF
 #endif
 
+#ifndef U_LOCATION_ACCESS_POINTS_FILTER_DEFAULT
+/** The default number of Wifi access points that must be visible
+ * to make a position request based on them: 5 is the minimum.
+ */
+# define U_LOCATION_ACCESS_POINTS_FILTER_DEFAULT 5
+#endif
+
+#ifndef U_LOCATION_RSSI_DBM_FILTER_DEFAULT
+/** Ignore any Wifi access points received with signal strength
+ * less than this when scanning for Wifi access points to be used
+ * in a position request; -100 is the minimum.
+ */
+# define U_LOCATION_RSSI_DBM_FILTER_DEFAULT -100
+#endif
+
 #ifndef U_LOCATION_ASSIST_DEFAULTS
 /** Default values for #uLocationAssist_t.
  */
@@ -100,7 +115,9 @@ extern "C" {
                                      U_LOCATION_CLOUD_LOCATE_MULTIPATH_INDEX_LIMIT,             \
                                      U_LOCATION_CLOUD_LOCATE_PSEUDORANGE_RMS_ERROR_INDEX_LIMIT, \
                                      NULL, NULL,                                                \
-                                     U_LOCATION_CLOUD_LOCATE_RRLP_DATA_LENGTH_BYTES}
+                                     U_LOCATION_CLOUD_LOCATE_RRLP_DATA_LENGTH_BYTES,            \
+                                     U_LOCATION_ACCESS_POINTS_FILTER_DEFAULT,                   \
+                                     U_LOCATION_RSSI_DBM_FILTER_DEFAULT}
 #endif
 
 /* ----------------------------------------------------------------
@@ -111,18 +128,18 @@ extern "C" {
  * support all types.
  */
 typedef enum {
-    U_LOCATION_TYPE_NONE,
-    U_LOCATION_TYPE_GNSS, /**< supported on GNSS network instances only. */
-    U_LOCATION_TYPE_CLOUD_CELL_LOCATE, /**< supported on cellular network
-                                            instances only. */
-    U_LOCATION_TYPE_CLOUD_GOOGLE, /**< not currently supported, will be
-                                       supported on Wi-Fi modules in future. */
-    U_LOCATION_TYPE_CLOUD_SKYHOOK, /**< not currently supported, will be
-                                        supported on Wi-Fi modules in future. */
-    U_LOCATION_TYPE_CLOUD_HERE,  /**< not currently supported, will be
-                                      supported on Wi-Fi modules in future. */
-    U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE,  /**< supported on cellular and Wi-Fi
-                                              network instances. */
+    U_LOCATION_TYPE_NONE = 0,
+    U_LOCATION_TYPE_GNSS = 1, /**< supported on GNSS network instances only. */
+    U_LOCATION_TYPE_CLOUD_CELL_LOCATE = 2, /**< supported on cellular network
+                                                instances only. */
+    U_LOCATION_TYPE_CLOUD_GOOGLE = 3, /**< supported on Wi-Fi network instances
+                                           with uConnectExpress version 5. */
+    U_LOCATION_TYPE_CLOUD_SKYHOOK = 4, /**< supported on Wi-Fi network instances
+                                            with uConnectExpress version 5. */
+    U_LOCATION_TYPE_CLOUD_HERE = 5,  /**< supported on Wi-Fi network instances
+                                          with uConnectExpress version 5. */
+    U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE = 6,  /**< supported on cellular and Wi-Fi
+                                                  network instances. */
     U_LOCATION_TYPE_MAX_NUM
 } uLocationType_t;
 
@@ -219,9 +236,20 @@ typedef struct {
                                       used), 50 for MEAS50 and 20 for MEAS20.  Only
                                       GNSS modules M10 or higher support the
                                       MEAS50/MEAS20 modes. */
+
+    /* The following fields are ONLY used by U_LOCATION_TYPE_CLOUD_GOOGLE,
+       U_LOCATION_TYPE_CLOUD_SKYHOOK and U_LOCATION_TYPE_CLOUD_HERE. */
+
+    int32_t accessPointsFilter; /**< the number of Wi-Fi access points that
+                                     must be visible for location to
+                                     be requested, range 5 to 16. */
+    int32_t rssiDbmFilter;      /**< ignore Wi-Fi access points with received
+                                     signal strength less than this,
+                                     range -100 dBm to 0 dBm. */
 } uLocationAssist_t;
 
-/** Definition of a location.
+/** Definition of a location.  If you change this, don't forget to change
+ * U_LOCATION_DEFAULTS also.
  */
 typedef struct {
     uLocationType_t type; /**< the location mechanism that was used. */
@@ -284,7 +312,7 @@ typedef enum {
 /** Get the current location, returning on success or when
  * pKeepGoingCallback returns false, whichever is earlier.
  * uNetworkInterfaceUp() (see the network API) must have been called
- * on the given networkHandle for this function to work.
+ * on the given devHandle for this function to work.
  *
  * Note that if you have a GNSS chip inside your cellular module
  * (e.g. you have a SARA-R510M8S or SARA-R422M8S) then making a
@@ -297,7 +325,7 @@ typedef enum {
  * attached on.  If you prefer to use the GNSS chip directly rather
  * than via Cell Locate you should set disableGnss in the
  * pLocationAssist structure when calling this API with the
- * cellular network handle (as once it is "claimed" by Cell Locate it
+ * cellular device handle (as once it is "claimed" by Cell Locate it
  * won't be available for GNSS calls until the module is power cycled).
  *
  * Note: where the GNSS chip is inside or connected via a SARA-R5 module,
@@ -323,26 +351,25 @@ typedef enum {
  *                                            position even when GNSS is absent,
  *                                            the latter to quickly and efficiently
  *                                            establish GNSS position in the cloud.
- *                                            For the Cell Locate service pAuthenticationTokenStr
- *                                            must be populated with a valid Cell
- *                                            Locate authentication token.  For
- *                                            the Cloud Locate service the
- *                                            pLocationAssist field pMqttClientContext
- *                                            MUST be populated, and the MQTT login
+ *                                            For the Cell Locate service
+ *                                            pAuthenticationTokenStr must be
+ *                                            populated with a valid Cell Locate
+ *                                            authentication token.  For the
+ *                                            Cloud Locate service the pLocationAssist
+ *                                            field of pMqttClientContext
+ *                                            MUST be populated and the MQTT login
  *                                            to the Thingstream server MUST already
  *                                            have been performed; the field pClientIdStr
  *                                            should be populated if you want the
  *                                            location to be returned by this function
  *                                            (as well as being available in the cloud).
- *                                - Wi-Fi:    only #U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE is
- *                                            currently supported, for which the
- *                                            pLocationAssist field pMqttClientContext
- *                                            MUST be populated, and the MQTT login to
- *                                            the Thingstream server MUST already have
- *                                            been performed; the field pClientIdStr
- *                                            should be populated if you want the location
- *                                            to be returned by this function (as well
- *                                            as being available in the cloud).
+ *                                - Wi-Fi:    #U_LOCATION_TYPE_CLOUD_GOOGLE,
+ *                                            #U_LOCATION_TYPE_CLOUD_SKYHOOK and
+ *                                            #U_LOCATION_TYPE_CLOUD_HERE are
+ *                                            supported. pAuthenticationTokenStr should
+ *                                            point to the API key for the service; the
+ *                                            accessPointsFilter and rssiDbmFilter fields
+ *                                            in pLocationAssist are obeyed.
  *                                - BLE:      no form of BLE location is currently
  *                                            supported.
  * @param pLocationAssist         additional information for the location
@@ -354,7 +381,8 @@ typedef enum {
  *                                be assumed (and Cloud Locate will not work).
  * @param pAuthenticationTokenStr the null-terminated authentication token,
  *                                required by some cloud services (for example
- *                                Cell Locate).
+ *                                Cell Locate, Google Maps, Skyhook and Here);
+ *                                must be a true constant, i.e no copy is taken.
  * @param pLocation               a place to put the location; may be NULL. In
  *                                particular, when using the Cloud Locate service,
  *                                leave this as NULL if the location is not
@@ -373,10 +401,10 @@ typedef enum {
  *                                in which case location establishment will
  *                                stop when #U_LOCATION_TIMEOUT_SECONDS have
  *                                elapsed.  The single int32_t parameter is
- *                                the network handle, but note that if
+ *                                the device handle, but note that if
  *                                pLocationAssist->networkHandleAssist is
- *                                set then the network handle may be that
- *                                of the assisting network, depending on
+ *                                set then the device handle may be that
+ *                                of the assisting device, depending on
  *                                what stage location establishment is at.
  * @return                        zero on success or negative error code
  *                                on failure.
@@ -404,8 +432,8 @@ int32_t uLocationGet(uDeviceHandle_t devHandle, uLocationType_t type,
  * cellular API to tell the cellular module which pins of the
  * cellular module the GNSS chip is attached on.  If you prefer to
  * use the GNSS chip directly rather than via Cell Locate you should set
- * disableGnss in the pLocationAssist structure when calling this API with the
- * cellular network handle (as once it is "claimed" by Cell Locate it
+ * disableGnss in the pLocationAssist structure when calling this API with
+ * the cellular device handle (as once it is "claimed" by Cell Locate it
  * won't be available for GNSS calls until the module is power cycled).
  *
  * Note: where the GNSS chip is inside or connected via a SARA-R5 module,
@@ -432,11 +460,11 @@ int32_t uLocationGet(uDeviceHandle_t devHandle, uLocationType_t type,
  *                                be assumed (and Cloud Locate will not work).
  * @param pAuthenticationTokenStr the null-terminated authentication token,
  *                                required by some cloud services (for example
- *                                Cell Locate).
+ *                                Cell Locate, Google Maps, Skyhook and Here).
  * @param pCallback               a callback that will be called when
  *                                location has been determined.  The
  *                                first parameter to the callback is the
- *                                network handle, the second parameter is the
+ *                                device handle, the second parameter is the
  *                                error code from the location establishment
  *                                process and the third parameter is a pointer
  *                                to a #uLocation_t structure (which may be NULL
@@ -455,7 +483,7 @@ int32_t uLocationGetStart(uDeviceHandle_t devHandle, uLocationType_t type,
 
 /** Get the current location to a callback, continuously, until
  * told to stop.  uNetworkInterfaceUp() (see the network API) must
- * have been called on the given networkHandle for this function to
+ * have been called on the given devHandle for this function to
  * work.
  *
  * Note that if you have a GNSS chip inside your cellular module
@@ -467,8 +495,8 @@ int32_t uLocationGetStart(uDeviceHandle_t devHandle, uLocationType_t type,
  * cellular API to tell the cellular module which pins of the
  * cellular module the GNSS chip is attached on.  If you prefer to
  * use the GNSS chip directly rather than via Cell Locate you should set
- * disableGnss in the pLocationAssist structure when calling this API with the
- * cellular network handle (as once it is "claimed" by Cell Locate it
+ * disableGnss in the pLocationAssist structure when calling this API with
+ * the cellular device handle (as once it is "claimed" by Cell Locate it
  * won't be available for GNSS calls until the module is power cycled).
  *
  * Note: where the GNSS chip is inside or connected via a SARA-R5 module,
@@ -491,6 +519,11 @@ int32_t uLocationGetStart(uDeviceHandle_t devHandle, uLocationType_t type,
  *                                in milliseconds; realistically you can only
  *                                set a value smaller than a few seconds
  *                                if you are using a GNSS networkHandle.
+ *                                For Wifi-based position this value must
+ *                                be greater than zero but is [currently]
+ *                                otherwise ignored: position is established
+ *                                at the maximum rate, which is around once
+ *                                every 10ish seconds.
  * @param type                    the type of location fix to perform; the
  *                                comments concerning which types can be
  *                                used for the uLocationGet() API apply.
@@ -503,11 +536,11 @@ int32_t uLocationGetStart(uDeviceHandle_t devHandle, uLocationType_t type,
  *                                be assumed (and Cloud Locate will not work).
  * @param pAuthenticationTokenStr the null-terminated authentication token,
  *                                required by some cloud services (for example
- *                                Cell Locate).
+ *                                Cell Locate, Google Maps, Skyhook and Here).
  * @param pCallback               a callback that will be called when
  *                                location has been determined.  The
  *                                first parameter to the callback is the
- *                                network handle, the second parameter is the
+ *                                device handle, the second parameter is the
  *                                error code from the location establishment
  *                                process and the third parameter is a pointer
  *                                to a #uLocation_t structure (which may be NULL
@@ -536,6 +569,10 @@ int32_t uLocationGetStatus(uDeviceHandle_t devHandle);
 /** Cancel a uLocationGetStart() / uLocationGetContinuousStart(); after calling
  * this function the callback passed to those functions will not be called until
  * another uLocationGetStart() / uLocationGetContinuousStart() is begun.
+ *
+ * Note: location via Wifi allocates memory for asynchronous location
+ * operations when first called that may never be released: see that API for
+ * how to free such memory.
  *
  * @param devHandle  the device handle to use.
  */

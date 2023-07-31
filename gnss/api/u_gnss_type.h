@@ -76,7 +76,7 @@
 
 #ifndef U_GNSS_DEFAULT_SPI_FILL_THRESHOLD
 /** The default number of 0xFF bytes which, if received on an
- * SPI transport, constitue fill rather than valid data.
+ * SPI transport, constitute fill rather than valid data.
  */
 # define U_GNSS_DEFAULT_SPI_FILL_THRESHOLD 48
 #endif
@@ -172,7 +172,7 @@ typedef enum {
     U_GNSS_TRANSPORT_I2C,       /**< the transport handle should be an I2C handle. */
     U_GNSS_TRANSPORT_SPI,       /**< the transport handle should be an SPI handle. */
     U_GNSS_TRANSPORT_VIRTUAL_SERIAL, /**< the transport handle should be a virtual serial,
-                                          port handle, e.g. as returned by
+                                          port handle, for example as returned by
                                           uCellMuxAddChannel() if you are talking to
                                           a GNSS device either inside or connected
                                           via a cellular module. */
@@ -324,6 +324,26 @@ typedef enum {
     U_GNSS_RRLP_MODE_MEASC12 = 3,
     U_GNSS_RRLP_MODE_MEASD12 = 4
 } uGnssRrlpMode_t;
+
+/** The possible GNSS systems; not all GNSS systems are supported by all modules.
+ */
+typedef enum {
+    U_GNSS_SYSTEM_NONE = -1,
+    U_GNSS_SYSTEM_GPS = 0,
+    U_GNSS_SYSTEM_SBAS = 1,
+    U_GNSS_SYSTEM_GALILEO = 2,
+    U_GNSS_SYSTEM_BEIDOU = 3,
+    U_GNSS_SYSTEM_IMES = 4,
+    U_GNSS_SYSTEM_QZSS = 5,
+    U_GNSS_SYSTEM_GLONASS = 6
+} uGnssSystem_t;
+
+/** A GNSS space vehicle ID.
+ */
+typedef struct {
+    uGnssSystem_t system;
+    int32_t svId;
+} uGnssSvId_t;
 
 /** @}*/
 

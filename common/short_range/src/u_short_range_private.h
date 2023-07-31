@@ -154,6 +154,8 @@ typedef struct uShortRangePrivateInstance_t {
     void *pBtDataCallbackParameter;
     uHttpClientContext_t *pHttpContext;
     uWifiHttpCallback_t *pWifiHttpCallBack;
+    uPortMutexHandle_t locMutex;
+    volatile void *pLocContext;
     struct uShortRangePrivateInstance_t *pNext;
 } uShortRangePrivateInstance_t;
 
@@ -216,6 +218,27 @@ bool uShortRangePrivateIsRegistered(const uShortRangePrivateInstance_t *pInstanc
 //lint -esym(759, pUShortRangePrivateGetModule) etc. since use of this function
 //lint -esym(765, pUShortRangePrivateGetModule) may be compiled-out in various ways
 const uShortRangePrivateModule_t *pUShortRangePrivateGetModule(uDeviceHandle_t devHandle);
+
+/** Start a short range server instance id based on the type.
+ *
+ * @param atHandle       the handle of the device AT client.
+ * @param type           type of server to start.
+ * @param[in] pParam     possible parameters for the server, can be NULL.
+ * @return               server id or negative error code on
+ *                       failure.
+ */
+int32_t uShortRangePrivateStartServer(const uAtClientHandle_t atHandle,
+                                      uShortRangeServerType_t type,
+                                      const char *pParam);
+
+/** Stop a previously started short range server instance.
+ *
+ * @param atHandle       the handle of the device AT client.
+ * @param serverId       server instance id.
+ * @return               server id or negative error code on
+ *                       failure.
+ */
+int32_t uShortRangeStopStopServer(const uAtClientHandle_t atHandle, int32_t serverId);
 
 #ifdef __cplusplus
 }

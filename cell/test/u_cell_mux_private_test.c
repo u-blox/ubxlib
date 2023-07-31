@@ -200,7 +200,7 @@ U_PORT_TEST_FUNCTION("[cellMuxPrivate]", "cellMuxPrivateBackToBack")
                                                              gType[x], pollFinal,
                                                              pInformation, informationLength,
                                                              parserContext.pBuffer);
-            if (parserContext.bufferSize != expectedFrameLength) {
+            if ((int32_t)parserContext.bufferSize != expectedFrameLength) {
                 U_TEST_PRINT_LINE("encoded frame length %d when %d was expected.",
                                   parserContext.bufferSize, expectedFrameLength);
                 U_PORT_TEST_ASSERT(false);
@@ -223,7 +223,7 @@ U_PORT_TEST_FUNCTION("[cellMuxPrivate]", "cellMuxPrivateBackToBack")
                 z = uCellMuxPrivateParseCmux(NULL, &parserContext);
             }
 
-            if (parserContext.informationLengthBytes != (int32_t) informationLength) {
+            if (parserContext.informationLengthBytes != informationLength) {
                 U_TEST_PRINT_LINE("decoded information field length %d when %d was expected.",
                                   parserContext.informationLengthBytes, informationLength);
                 U_PORT_TEST_ASSERT(false);

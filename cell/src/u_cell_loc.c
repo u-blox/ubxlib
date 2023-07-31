@@ -21,7 +21,8 @@
  */
 
 /** @file
- * @brief Implementation of the Cell Locate API.
+ * @brief Implementation of the Cell Locate API and the Assist Now API
+ * for cellular.
  */
 
 #ifdef U_CFG_OVERRIDE
@@ -56,6 +57,8 @@
 
 #include "u_location.h"
 
+#include "u_gnss_mga.h" // uGnssMgaDataType_t
+
 #include "u_cell_module_type.h"
 #include "u_cell_file.h"
 #include "u_cell.h"
@@ -89,18 +92,11 @@
 # define U_CELL_LOC_MIN_UTC_TIME 1626874836
 #endif
 
-#ifndef U_CELL_LOC_GNSS_AIDING_TYPES
-/** The aiding types to request when switching-on a GNSS
- * chip attached to a cellular module (all of them).
+#ifndef U_CELL_LOC_AUTHENTICATION_TOKEN_STR_MAX_LEN_BYTES
+/** The maximum length of a CellLocate/AssistNow server
+ * authentication token NOT INCLUDING the null terminator.
  */
-#define U_CELL_LOC_GNSS_AIDING_TYPES 15
-#endif
-
-#ifndef U_CELL_LOC_GNSS_SYSTEM_TYPES
-/** The system types to request when switching-on a GNSS
- * chip attached to a cellular module (all of them).
- */
-#define U_CELL_LOC_GNSS_SYSTEM_TYPES 0x7f
+# define U_CELL_LOC_AUTHENTICATION_TOKEN_STR_MAX_LEN_BYTES 64
 #endif
 
 /* ----------------------------------------------------------------
@@ -120,6 +116,15 @@ typedef enum {
     U_CELL_LOC_FIX_DATA_STORAGE_TYPE_BLOCK,
     U_CELL_LOC_FIX_DATA_STORAGE_TYPE_CALLBACK
 } uCellLocFixDataStorageType_t;
+
+/** The aid_mode values in AT+UGPS.
+ */
+typedef enum {
+    U_CELL_LOC_AID_MODE_AUTOMATIC_LOCAL = 1,
+    U_CELL_LOC_AID_MODE_ASSIST_NOW_OFFLINE = 2,
+    U_CELL_LOC_AID_MODE_ASSIST_NOW_ONLINE = 4,
+    U_CELL_LOC_AID_MODE_ASSIST_NOW_AUTONOMOUS = 8
+} uCellLocAidMode_t;
 
 /** Structure in which to store a position fix.
  */
@@ -627,6 +632,341 @@ static int32_t beginLocationFix(const uCellPrivateInstance_t *pInstance)
     return errorCode;
 }
 
+// Get AT+UGPS.
+//                   *** BE CAREFUL ***
+//  The cellular module will only populate *pAidMode and
+// *pGnssSystemBitMap if it is powered on.
+static int32_t getUgps(const uCellPrivateInstance_t *pInstance,
+                       bool *pOnNotOff, uint32_t *pAidMode,
+                       uint32_t *pGnssSystemBitMap)
+{
+    uAtClientHandle_t atHandle = pInstance->atHandle;
+    int32_t x;
+
+    uAtClientLock(atHandle);
+    uAtClientCommandStart(atHandle, "AT+UGPS?");
+    // Response is +UGPS: <mode>[,<aid_mode>[,<GNSS_systems>]]
+    uAtClientCommandStop(atHandle);
+    uAtClientResponseStart(atHandle, "+UGPS:");
+    x = uAtClientReadInt(atHandle);
+    if (pOnNotOff != NULL) {
+        *pOnNotOff = (x == 1);
+    }
+    x = uAtClientReadInt(atHandle);
+    if ((pAidMode != NULL) && (x >= 0)) {
+        *pAidMode = (uint32_t) x;
+    }
+    x = uAtClientReadInt(atHandle);
+    if ((pGnssSystemBitMap != NULL) && (x >= 0)) {
+        *pGnssSystemBitMap = (uint32_t) x;
+    }
+    uAtClientResponseStop(atHandle);
+
+    return uAtClientUnlock(atHandle);
+}
+
+// Set AT+UGPS.
+static int32_t setUgps(const uCellPrivateInstance_t *pInstance,
+                       bool onNotOff, uint32_t *pAidMode,
+                       uint32_t *pGnssSystemBitMap)
+{
+    uAtClientHandle_t atHandle = pInstance->atHandle;
+    int32_t atTimeoutMs = U_CELL_LOC_GNSS_POWER_DOWN_TIME_SECONDS * 1000;
+
+    if (onNotOff) {
+        atTimeoutMs = U_CELL_LOC_GNSS_POWER_UP_TIME_SECONDS * 1000;
+    }
+
+    uAtClientLock(atHandle);
+    uAtClientTimeoutSet(atHandle, atTimeoutMs);
+    uAtClientCommandStart(atHandle, "AT+UGPS=");
+    uAtClientWriteInt(atHandle, onNotOff);
+    if (pAidMode != NULL) {
+        uAtClientWriteInt(atHandle, *(int32_t *) pAidMode);
+    }
+    if (pGnssSystemBitMap != NULL) {
+        uAtClientWriteInt(atHandle, *(int32_t *) pGnssSystemBitMap);
+    }
+    uAtClientCommandStopReadResponse(atHandle);
+    return uAtClientUnlock(atHandle);
+}
+
+// Send AT+UGSRV, reading out the existing parameters as necessary
+// to make the command work.  To leave a parameter alone, set it to
+// NULL or -1.  The aid_mode is tagged on the end in case this
+// function needs to power the GNSS device off and on again,
+// potentially with a new aid_mode.
+static int32_t setUgsrv(const uCellPrivateInstance_t *pInstance,
+                        const char *pAuthenticationTokenStr,
+                        const char *pPrimaryServerStr,
+                        const char *pSecondaryServerStr,
+                        int32_t periodDays,
+                        int32_t daysBetweenItems,
+                        int32_t systemBitMap,
+                        int32_t mode,
+                        int32_t dataTypeBitMap,
+                        int32_t aidMode)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    uAtClientHandle_t atHandle = pInstance->atHandle;
+    uint32_t currentAidMode = pInstance->gnssAidMode;
+    uint32_t gnssSystemTypesBitMap = pInstance->gnssSystemTypesBitMap;
+    bool gnssOn = false;
+    int32_t x;
+    // +1 for terminator
+    char authenticationTokenStr[U_CELL_LOC_AUTHENTICATION_TOKEN_STR_MAX_LEN_BYTES + 1];
+    const char *pEmpty = "";
+
+    if ((pAuthenticationTokenStr == NULL) ||
+        (strlen(pAuthenticationTokenStr) <= U_CELL_LOC_AUTHENTICATION_TOKEN_STR_MAX_LEN_BYTES)) {
+        // This AT command allows all parameters to be left empty, in which
+        // case defaults will be used, EXCEPT the authentication string,
+        // which is unfortunate, so we have to read it out every time in order
+        // to change the other parameters
+
+        // If there is a GNSS chip attached to the cellular module and
+        // the GNSS chip is on, switch it off
+        if ((getUgps(pInstance, &gnssOn, &currentAidMode, &gnssSystemTypesBitMap) == 0) && gnssOn) {
+            // The GNSS chip is on: remember that and switch it off
+            uPortTaskBlock(U_CELL_LOC_GNSS_POWER_CHANGE_WAIT_MILLISECONDS);
+            uAtClientLock(atHandle);
+            uAtClientCommandStart(atHandle, "AT+UGPS=");
+            uAtClientWriteInt(atHandle, 0);
+            uAtClientCommandStopReadResponse(atHandle);
+            uAtClientUnlock(atHandle);
+            if (aidMode >= 0) {
+                currentAidMode = (uint32_t) aidMode;
+            }
+        }
+        // Get the current setting
+        uAtClientLock(atHandle);
+        uAtClientCommandStart(atHandle, "AT+UGSRV?");
+        uAtClientCommandStop(atHandle);
+        // Response is +UGSRV: <mga_primary_server>,<mga_secondary_server>,<auth_token>,<days>,<period>,<resolution>,<GNSS_types>,<mode>,<datatype>
+        uAtClientResponseStart(atHandle, "+UGSRV:");
+        // Skip the first two parameters
+        uAtClientSkipParameters(atHandle, 2);
+        // Read the authentication token
+        x = uAtClientReadString(atHandle, authenticationTokenStr, sizeof(authenticationTokenStr), false);
+        // Don't care about the rest
+        uAtClientResponseStop(atHandle);
+        errorCode = uAtClientUnlock(atHandle);
+        if (errorCode == 0) {
+            if (x <= 0) {
+                // AT+UGSRV won't allow anything to be written if the authentication token
+                // has not yet been set; to work around this just put "not set" in there
+                strncpy(authenticationTokenStr, "not set", sizeof(authenticationTokenStr));
+            }
+            // Now we can write the command back
+            uAtClientLock(atHandle);
+            uAtClientCommandStart(atHandle, "AT+UGSRV=");
+            if (pPrimaryServerStr != NULL) {
+                uAtClientWriteString(atHandle, pPrimaryServerStr, true);
+            } else {
+                // Skip the parameter
+                uAtClientWriteString(atHandle, pEmpty, false);
+            }
+            if (pSecondaryServerStr != NULL) {
+                uAtClientWriteString(atHandle, pSecondaryServerStr, true);
+            } else {
+                // Skip the parameter
+                uAtClientWriteString(atHandle, pEmpty, false);
+            }
+            uAtClientWriteString(atHandle, authenticationTokenStr, true);
+            // The coding of the "days" field applied by cellular modules
+            // is not actually the way the AssistNow Offline service
+            // uses the field (any more, at least): the cellular module
+            // fixes the days to certain values up to 14 but that is only
+            // for M7 modules: for M8 and above the AssistNow Offline
+            // service allows any value up to 35. However, the cellular
+            // module checks that this field obeys the M7 rules, so
+            // the best option is to leave it blank (since we don't support
+            // M7 modules in any case) and use the coarser "period" field
+            // instead, rounded-up.
+            uAtClientWriteString(atHandle, pEmpty, false);
+            if (periodDays >= 0) {
+                x = periodDays / 7;
+                if (x * 7 != periodDays) {
+                    x++;
+                }
+                uAtClientWriteInt(atHandle, x);
+            } else {
+                // Skip the parameter
+                uAtClientWriteString(atHandle, pEmpty, false);
+            }
+            if (daysBetweenItems >= 0) {
+                uAtClientWriteInt(atHandle, daysBetweenItems);
+            } else {
+                // Skip the parameter
+                uAtClientWriteString(atHandle, pEmpty, false);
+            }
+            if (systemBitMap >= 0) {
+                uAtClientWriteInt(atHandle, systemBitMap);
+            } else {
+                // Skip the parameter
+                uAtClientWriteString(atHandle, pEmpty, false);
+            }
+            if (mode >= 0) {
+                uAtClientWriteInt(atHandle, mode);
+            } else {
+                // Skip the parameter
+                uAtClientWriteString(atHandle, pEmpty, false);
+            }
+            if (dataTypeBitMap >= 0) {
+                uAtClientWriteInt(atHandle, dataTypeBitMap);
+            } else {
+                // Skip the parameter
+                uAtClientWriteString(atHandle, pEmpty, false);
+            }
+            uAtClientCommandStopReadResponse(atHandle);
+            errorCode = uAtClientUnlock(atHandle);
+        }
+
+        if (gnssOn) {
+            // Switch the GNSS chip back on again
+            uPortTaskBlock(U_CELL_LOC_GNSS_POWER_CHANGE_WAIT_MILLISECONDS);
+            setUgps(pInstance, gnssOn, &currentAidMode, &gnssSystemTypesBitMap);
+        }
+    }
+
+    return errorCode;
+}
+
+// Convert a GNSS-API style AssistNow Online data type bit-map into
+// a cellular one.
+static int32_t gnssDataTypeBitMapToCellular(int32_t gnssDataTypeBitMap)
+{
+    int32_t cellDataTypeBitMap = 0;
+
+    // The GNSS data type bit-map is:
+    // U_GNSS_MGA_DATA_TYPE_EPHEMERIS = 1ULL << 0,
+    // U_GNSS_MGA_DATA_TYPE_ALMANAC = 1ULL << 1,
+    // U_GNSS_MGA_DATA_TYPE_AUX = 1ULL << 2,
+    // U_GNSS_MGA_DATA_TYPE_POS = 1ULL << 3
+    // ...while the cellular one is:
+    // time = 0, position = 1, ephemeris = 2, almanac = 4, auxiliary = 8, filtered ephemeris = 16
+
+    // Time is therefore always set (no bits set == time),
+    // and we always set filtered ephemeris as that saves
+    // data if the cellular module can use the currently
+    // registered network as a location.
+    if (gnssDataTypeBitMap & (1ULL << U_GNSS_MGA_DATA_TYPE_EPHEMERIS)) {
+        cellDataTypeBitMap |= 2 | 16;
+    }
+    if (gnssDataTypeBitMap & (1ULL << U_GNSS_MGA_DATA_TYPE_ALMANAC)) {
+        cellDataTypeBitMap |= 4;
+    }
+    if (gnssDataTypeBitMap & (1ULL << U_GNSS_MGA_DATA_TYPE_AUX)) {
+        cellDataTypeBitMap |= 8;
+    }
+    if (gnssDataTypeBitMap & (1ULL << U_GNSS_MGA_DATA_TYPE_POS)) {
+        cellDataTypeBitMap |= 1;
+    }
+
+    return cellDataTypeBitMap;
+}
+
+// Convert a cellular AssistNow Online data type bit-map into a GNSS one.
+static int32_t cellDataTypeBitMapToGnss(int32_t cellDataTypeBitMap)
+{
+    int32_t gnssDataTypeBitMap = 0;
+
+    if (cellDataTypeBitMap & 1) { // Position
+        gnssDataTypeBitMap |= (1ULL << U_GNSS_MGA_DATA_TYPE_POS);
+    }
+    if (cellDataTypeBitMap & 2) { // Ephemeris
+        gnssDataTypeBitMap |= (1ULL << U_GNSS_MGA_DATA_TYPE_EPHEMERIS);
+    }
+    if (cellDataTypeBitMap & 4) { // Almanac
+        gnssDataTypeBitMap |= (1ULL << U_GNSS_MGA_DATA_TYPE_ALMANAC);
+    }
+    if (cellDataTypeBitMap & 8) { // Auxiliary
+        gnssDataTypeBitMap |= (1ULL << U_GNSS_MGA_DATA_TYPE_AUX);
+    }
+    // Can ignore 16 since 2 will always be set if 16 is set anyway
+
+    return gnssDataTypeBitMap;
+}
+
+// Set a single bit in the aid mode field of AT+UGPS (if it needs setting).
+static int32_t setAidModeBit(uDeviceHandle_t cellHandle, bool onNotOff,
+                             uCellLocAidMode_t aidMode)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance = NULL;
+    uint32_t currentAidMode = 0;
+    bool gnssOn = false;
+    bool writeIt = false;
+
+    U_CELL_LOC_ENTRY_FUNCTION(cellHandle, &pInstance, &errorCode);
+
+    if ((errorCode == 0) && (pInstance != NULL)) {
+        // Set the current aid_mode in case GNSS is off
+        currentAidMode = pInstance->gnssAidMode;
+        // Get the current aid mode
+        errorCode = getUgps(pInstance, &gnssOn, &currentAidMode, NULL);
+        if (errorCode == 0) {
+            if (onNotOff) {
+                if ((currentAidMode & (uint32_t) aidMode) == 0) {
+                    currentAidMode |= (uint32_t) aidMode;
+                    writeIt = true;
+                }
+            } else {
+                if ((currentAidMode & (uint32_t) aidMode) > 0) {
+                    currentAidMode &= ~(uint32_t) aidMode;
+                    writeIt = true;
+                }
+            }
+            if (writeIt) {
+                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                if (gnssOn) {
+                    // The AT interface only supports setting aid_mode
+                    // if the GNSS chip is on, otherwise we just have
+                    // to remember it for when we do switch the GNSS
+                    // chip on
+                    errorCode = setUgps(pInstance, gnssOn, &currentAidMode, NULL);
+                }
+                if (errorCode == 0) {
+                    pInstance->gnssAidMode &= ~((uint32_t) aidMode);
+                    if ((currentAidMode & (uint32_t) aidMode) > 0) {
+                        pInstance->gnssAidMode |= (uint32_t) aidMode;
+                    }
+                }
+            }
+        }
+    }
+
+    U_CELL_LOC_EXIT_FUNCTION();
+
+    return errorCode;
+}
+
+// Get a single bit in the aid mode field of AT+UGPS.
+static bool getAidModeBit(uDeviceHandle_t cellHandle, uCellLocAidMode_t aidMode)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance = NULL;
+    uint32_t currentAidMode = 0;
+    bool gnssOn = false;
+    bool onNotOff = false;
+
+    U_CELL_LOC_ENTRY_FUNCTION(cellHandle, &pInstance, &errorCode);
+
+    if ((errorCode == 0) && (pInstance != NULL)) {
+        // In case the GNSS device is off, set the outcome
+        // based on what we would apply when switching it on
+        onNotOff = ((pInstance->gnssAidMode & (uint32_t) aidMode) > 0);
+        // Get the requested aid mode bit from the device if we can
+        if ((getUgps(pInstance, &gnssOn, &currentAidMode, NULL) == 0) && gnssOn) {
+            onNotOff = ((currentAidMode & (uint32_t) aidMode) > 0);
+        }
+    }
+
+    U_CELL_LOC_EXIT_FUNCTION();
+
+    return onNotOff;
+}
+
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS: WORKAROUND FOR LINKER ISSUE
  * -------------------------------------------------------------- */
@@ -657,6 +997,211 @@ void uCellLocCleanUp(uDeviceHandle_t cellHandle)
 
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS: CONFIGURATION
+ * -------------------------------------------------------------- */
+
+// Set the module pin that enables power to the GNSS chip.
+int32_t uCellLocSetPinGnssPwr(uDeviceHandle_t cellHandle, int32_t pin)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance = NULL;
+    bool gnssOn = false;
+
+    U_CELL_LOC_ENTRY_FUNCTION(cellHandle, &pInstance, &errorCode);
+
+    if ((errorCode == 0) && (pInstance != NULL)) {
+        // There is a bit of conundrum here: on some modules
+        // (e.g. SARA-R5) an error will be returned if the
+        // module pin that controls power to the GNSS chip
+        // is configured when the GNSS chip is already powered,
+        // hence we need to check that first.
+        getUgps(pInstance, &gnssOn, NULL, NULL);
+        if (!gnssOn) {
+            // If the GNSS chip is not already on, do the thing
+            // 3 is external GNSS supply enable mode
+            errorCode = setModulePin(pInstance->atHandle, pin, 3);
+        }
+    }
+
+    U_CELL_LOC_EXIT_FUNCTION();
+
+    return errorCode;
+}
+
+// Set the module pin connected to Data Ready of the GNSS chip.
+int32_t uCellLocSetPinGnssDataReady(uDeviceHandle_t cellHandle, int32_t pin)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance = NULL;
+
+    U_CELL_LOC_ENTRY_FUNCTION(cellHandle, &pInstance, &errorCode);
+
+    if ((errorCode == 0) && (pInstance != NULL)) {
+        // 4 is external GNSS data ready mode
+        errorCode = setModulePin(pInstance->atHandle, pin, 4);
+    }
+
+    U_CELL_LOC_EXIT_FUNCTION();
+
+    return errorCode;
+}
+
+// Configure the Cell Locate server parameters.
+int32_t uCellLocSetServer(uDeviceHandle_t cellHandle,
+                          const char *pAuthenticationTokenStr,
+                          const char *pPrimaryServerStr,
+                          const char *pSecondaryServerStr)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance = NULL;
+
+    U_CELL_LOC_ENTRY_FUNCTION(cellHandle, &pInstance, &errorCode);
+
+    if ((errorCode == 0) && (pInstance != NULL)) {
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        if (pAuthenticationTokenStr != NULL) {
+            errorCode = setUgsrv(pInstance, pAuthenticationTokenStr,
+                                 pPrimaryServerStr, pSecondaryServerStr,
+                                 -1, -1, -1, -1, -1, -1);
+        }
+    }
+
+    U_CELL_LOC_EXIT_FUNCTION();
+
+    return errorCode;
+}
+
+// Set the GNSS systems that a GNSS chip should use.
+int32_t uCellLocSetSystem(uDeviceHandle_t cellHandle, uint32_t gnssSystemTypesBitMap)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance = NULL;
+    uint32_t aidMode;
+    uint32_t currentGnssSystemTypesBitMap = 0;
+    bool gnssOn = false;
+
+    U_CELL_LOC_ENTRY_FUNCTION(cellHandle, &pInstance, &errorCode);
+
+    if ((errorCode == 0) && (pInstance != NULL)) {
+        // In case GNSS is off, set the aid mode and bit-map to what we would use
+        // if we were to switch it on
+        aidMode = pInstance->gnssAidMode;
+        currentGnssSystemTypesBitMap = pInstance->gnssSystemTypesBitMap;
+        errorCode = getUgps(pInstance, &gnssOn, &aidMode, &currentGnssSystemTypesBitMap);
+        if ((errorCode == 0) && gnssOn && (gnssSystemTypesBitMap != currentGnssSystemTypesBitMap)) {
+            errorCode = setUgps(pInstance, gnssOn, &aidMode, &gnssSystemTypesBitMap);
+        }
+        if (errorCode == 0) {
+            pInstance->gnssSystemTypesBitMap = gnssSystemTypesBitMap;
+        }
+    }
+
+    U_CELL_LOC_EXIT_FUNCTION();
+
+    return errorCode;
+}
+
+// Get the GNSS systems that a GNSS chip is using.
+int32_t uCellLocGetSystem(uDeviceHandle_t cellHandle, uint32_t *pGnssSystemTypesBitMap)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance = NULL;
+
+    U_CELL_LOC_ENTRY_FUNCTION(cellHandle, &pInstance, &errorCode);
+
+    if ((errorCode == 0) && (pInstance != NULL)) {
+        if (pGnssSystemTypesBitMap != NULL) {
+            // In case GNSS is off, set the bit-map to what it would be
+            // if GNSS were powered-up
+            *pGnssSystemTypesBitMap = pInstance->gnssSystemTypesBitMap;
+        }
+        errorCode = getUgps(pInstance, NULL, NULL, pGnssSystemTypesBitMap);
+    }
+
+    U_CELL_LOC_EXIT_FUNCTION();
+
+    return errorCode;
+}
+
+// Check whether a GNSS chip is present.
+bool uCellLocIsGnssPresent(uDeviceHandle_t cellHandle)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance = NULL;
+    bool gnssPresent = false;
+
+    U_CELL_LOC_ENTRY_FUNCTION(cellHandle, &pInstance, &errorCode);
+
+    if ((errorCode == 0) && (pInstance != NULL)) {
+        // Ask if the GNSS module is powered up
+        errorCode = getUgps(pInstance, &gnssPresent, NULL, NULL);
+        if ((errorCode < 0) || !gnssPresent) {
+            // If not, try to switch GNSS on
+            // In case something has gone wrong, set all the parameters
+            // to their required values here, rather than the ones we
+            // read (which should, in any case, be the same).
+            gnssPresent = true;
+            errorCode = setUgps(pInstance, gnssPresent,
+                                &(pInstance->gnssAidMode),
+                                &(pInstance->gnssSystemTypesBitMap));
+            if (errorCode == 0) {
+                // Power it off again
+                gnssPresent = false;
+                uPortTaskBlock(U_CELL_LOC_GNSS_POWER_CHANGE_WAIT_MILLISECONDS);
+                setUgps(pInstance, gnssPresent, NULL, NULL);
+                gnssPresent = true;
+            }
+        }
+    }
+
+    U_CELL_LOC_EXIT_FUNCTION();
+
+    return gnssPresent;
+}
+
+// Check whether there is a GNSS chip on-board the cellular module.
+bool uCellLocGnssInsideCell(uDeviceHandle_t cellHandle)
+{
+    uCellPrivateInstance_t *pInstance;
+    bool isInside = false;
+    uAtClientHandle_t atHandle;
+    int32_t bytesRead;
+    char buffer[64]; // Enough for the ATI response
+
+    if (gUCellPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        pInstance = pUCellPrivateGetInstance(cellHandle);
+        if (pInstance != NULL) {
+            atHandle = pInstance->atHandle;
+            // Simplest way to check is to send ATI and see if
+            // it includes an "M8" or an "M10"
+            uAtClientLock(atHandle);
+            uAtClientCommandStart(atHandle, "ATI");
+            uAtClientCommandStop(atHandle);
+            uAtClientResponseStart(atHandle, NULL);
+            bytesRead = uAtClientReadBytes(atHandle, buffer,
+                                           sizeof(buffer) - 1, false);
+            uAtClientResponseStop(atHandle);
+            if ((uAtClientUnlock(atHandle) == 0) && (bytesRead > 0)) {
+                // Add a terminator
+                buffer[bytesRead] = 0;
+                if (strstr(buffer, "M8") != NULL) {
+                    isInside = true;
+                } else if (strstr(buffer, "M10") != NULL) {
+                    isInside = true;
+                }
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return isInside;
+}
+
+/* ----------------------------------------------------------------
+ * PUBLIC FUNCTIONS: CONFIGURATION OF CELL LOCATE
  * -------------------------------------------------------------- */
 
 // Set the desired location accuracy.
@@ -757,241 +1302,311 @@ bool uCellLocGetGnssEnable(uDeviceHandle_t cellHandle)
     return (errorCodeOrGnssEnable != (int32_t) false);
 }
 
-// Set the module pin that enables power to the GNSS chip.
-int32_t uCellLocSetPinGnssPwr(uDeviceHandle_t cellHandle, int32_t pin)
+/* ----------------------------------------------------------------
+ * PUBLIC FUNCTIONS: CONFIGURATION OF ASSIST NOW
+ * -------------------------------------------------------------- */
+
+// Set the data types used by AssistNow Online.
+int32_t uCellLocSetAssistNowOnline(uDeviceHandle_t cellHandle,
+                                   uint32_t dataTypeBitMap)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance = NULL;
     uAtClientHandle_t atHandle;
-    int32_t x;
-
-    U_CELL_LOC_ENTRY_FUNCTION(cellHandle, &pInstance, &errorCode);
-
-    if ((errorCode == 0) && (pInstance != NULL)) {
-        // There is a bit of conundrum here: on some modules
-        // (e.g. SARA-R5) an error will be returned if the
-        // module pin that controls power to the GNSS chip
-        // is configured when the GNSS chip is already powered,
-        // hence we need to check that first.
-        atHandle = pInstance->atHandle;
-        uAtClientLock(atHandle);
-        uAtClientCommandStart(atHandle, "AT+UGPS?");
-        // Response is +UGPS: <mode>[,<aid_mode>[,<GNSS_systems>]]
-        uAtClientCommandStop(atHandle);
-        uAtClientResponseStart(atHandle, "+UGPS:");
-        x = uAtClientReadInt(atHandle);
-        uAtClientResponseStop(atHandle);
-        errorCode = uAtClientUnlock(atHandle);
-        if (x != 1) {
-            // If the GNSS chip is not already on, do the thing
-            // 3 is external GNSS supply enable mode
-            errorCode = setModulePin(atHandle, pin, 3);
-        }
-    }
-
-    U_CELL_LOC_EXIT_FUNCTION();
-
-    return errorCode;
-}
-
-// Set the module pin connected to Data Ready of the GNSS chip.
-int32_t uCellLocSetPinGnssDataReady(uDeviceHandle_t cellHandle, int32_t pin)
-{
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
-    uCellPrivateInstance_t *pInstance = NULL;
-
-    U_CELL_LOC_ENTRY_FUNCTION(cellHandle, &pInstance, &errorCode);
-
-    if ((errorCode == 0) && (pInstance != NULL)) {
-        // 4 is external GNSS data ready mode
-        errorCode = setModulePin(pInstance->atHandle, pin, 4);
-    }
-
-    U_CELL_LOC_EXIT_FUNCTION();
-
-    return errorCode;
-}
-
-// Configure the Cell Locate server parameters.
-int32_t uCellLocSetServer(uDeviceHandle_t cellHandle,
-                          const char *pAuthenticationTokenStr,
-                          const char *pPrimaryServerStr,
-                          const char *pSecondaryServerStr)
-{
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
-    uCellPrivateInstance_t *pInstance = NULL;
-    uAtClientHandle_t atHandle;
-    int32_t x;
+    uint32_t aidMode = 0;
+    int32_t currentDataTypeBitMap;
+    bool writeIt = false;
     bool gnssOn = false;
-    const char *pEmpty = "";
+    int32_t dataTypeBitMapSigned = (int32_t) dataTypeBitMap;
 
     U_CELL_LOC_ENTRY_FUNCTION(cellHandle, &pInstance, &errorCode);
 
-    if ((errorCode == 0) && (pInstance != NULL)) {
-        atHandle = pInstance->atHandle;
-        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-        if (pAuthenticationTokenStr != NULL) {
-            // It is not permitted to send AT+UGSRV if there is a
-            // GNSS chip  attached to the cellular module and
-            // the GNSS chip is on, so find that out and switch
-            // it off while we do this.
-            uAtClientLock(atHandle);
-            uAtClientCommandStart(atHandle, "AT+UGPS?");
-            // Response is +UGPS: <mode>[,<aid_mode>[,<GNSS_systems>]]
-            uAtClientCommandStop(atHandle);
-            uAtClientResponseStart(atHandle, "+UGPS:");
-            x = uAtClientReadInt(atHandle);
-            uAtClientResponseStop(atHandle);
-            uAtClientUnlock(atHandle);
-            if (x == 1) {
-                // The GNSS chip is on: remember that and switch
-                // it off
-                gnssOn = true;
-                uPortTaskBlock(U_CELL_LOC_GNSS_POWER_CHANGE_WAIT_MILLISECONDS);
-                uAtClientLock(atHandle);
-                uAtClientCommandStart(atHandle, "AT+UGPS=");
-                uAtClientWriteInt(atHandle, 0);
-                uAtClientCommandStopReadResponse(atHandle);
-                uAtClientUnlock(atHandle);
-            }
-            // Now set the server strings
-            uAtClientLock(atHandle);
-            uAtClientCommandStart(atHandle, "AT+UGSRV=");
-            if (pPrimaryServerStr != NULL) {
-                uAtClientWriteString(atHandle, pPrimaryServerStr, true);
-            } else {
-                // Skip the parameter
-                uAtClientWriteString(atHandle, pEmpty, false);
-            }
-            if (pSecondaryServerStr != NULL) {
-                uAtClientWriteString(atHandle, pSecondaryServerStr, true);
-            } else {
-                // Skip the parameter
-                uAtClientWriteString(atHandle, pEmpty, false);
-            }
-            uAtClientWriteString(atHandle, pAuthenticationTokenStr, true);
-            uAtClientCommandStopReadResponse(atHandle);
-            errorCode = uAtClientUnlock(atHandle);
-            if (gnssOn) {
-                // Switch the GNSS chip back on again
-                uPortTaskBlock(U_CELL_LOC_GNSS_POWER_CHANGE_WAIT_MILLISECONDS);
-                uAtClientLock(atHandle);
-                uAtClientCommandStart(atHandle, "AT+UGPS=");
-                uAtClientWriteInt(atHandle, 1);
-                // The aiding types allowed
-                uAtClientWriteInt(atHandle, U_CELL_LOC_GNSS_AIDING_TYPES);
-                // The GNSS system types enabled
-                uAtClientWriteInt(atHandle, U_CELL_LOC_GNSS_SYSTEM_TYPES);
-                uAtClientCommandStopReadResponse(atHandle);
-                uAtClientUnlock(atHandle);
-            }
-        }
-    }
-
-    U_CELL_LOC_EXIT_FUNCTION();
-
-    return errorCode;
-}
-
-// Check whether a GNSS chip is present.
-bool uCellLocIsGnssPresent(uDeviceHandle_t cellHandle)
-{
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
-    uCellPrivateInstance_t *pInstance = NULL;
-    uAtClientHandle_t atHandle;
-    int32_t x = 0;
-
-    U_CELL_LOC_ENTRY_FUNCTION(cellHandle, &pInstance, &errorCode);
-
-    if ((errorCode == 0) && (pInstance != NULL)) {
-        atHandle = pInstance->atHandle;
-        // Ask if the GNSS module is powered up
-        uAtClientLock(atHandle);
-        uAtClientCommandStart(atHandle, "AT+UGPS?");
-        // Response is +UGPS: <mode>[,<aid_mode>[,<GNSS_systems>]]
-        uAtClientCommandStop(atHandle);
-        uAtClientResponseStart(atHandle, "+UGPS:");
-        x = uAtClientReadInt(atHandle);
-        uAtClientResponseStop(atHandle);
-        errorCode = uAtClientUnlock(atHandle);
-        if ((errorCode < 0) || (x != 1)) {
-            x = 1;
-            // If the first parameter is not 1, try to switch GNSS on
-            uAtClientLock(atHandle);
-            uPortTaskBlock(U_CELL_LOC_GNSS_POWER_CHANGE_WAIT_MILLISECONDS);
-            uAtClientTimeoutSet(atHandle,
-                                U_CELL_LOC_GNSS_POWER_UP_TIME_SECONDS * 1000);
-            uAtClientCommandStart(atHandle, "AT+UGPS=");
-            uAtClientWriteInt(atHandle, x);
-            // In case something goes wrong with the power-off
-            // procedure which follows, set all the parameters
-            // as wide as possible as that's what the GNSS API
-            // would ask for when powering a GNSS chip on.
-            // The aiding types allowed
-            uAtClientWriteInt(atHandle, U_CELL_LOC_GNSS_AIDING_TYPES);
-            // The GNSS system types enabled
-            uAtClientWriteInt(atHandle, U_CELL_LOC_GNSS_SYSTEM_TYPES);
-            uAtClientCommandStopReadResponse(atHandle);
-            errorCode = uAtClientUnlock(atHandle);
-            if (errorCode == 0) {
-                // Power it off again
-                uAtClientLock(atHandle);
-                uPortTaskBlock(U_CELL_LOC_GNSS_POWER_CHANGE_WAIT_MILLISECONDS);
-                uAtClientTimeoutSet(atHandle,
-                                    U_CELL_LOC_GNSS_POWER_DOWN_TIME_SECONDS * 1000);
-                uAtClientCommandStart(atHandle, "AT+UGPS=");
-                uAtClientWriteInt(atHandle, 0);
-                uAtClientCommandStopReadResponse(atHandle);
-                uAtClientUnlock(atHandle);
-            } else {
-                x = 0;
-            }
-        }
-    }
-
-    U_CELL_LOC_EXIT_FUNCTION();
-
-    return (x != 0);
-}
-
-// Check whether there is a GNSS chip on-board the cellular module.
-bool uCellLocGnssInsideCell(uDeviceHandle_t cellHandle)
-{
-    uCellPrivateInstance_t *pInstance;
-    bool isInside = false;
-    uAtClientHandle_t atHandle;
-    int32_t bytesRead;
-    char buffer[64]; // Enough for the ATI response
-
-    if (gUCellPrivateMutex != NULL) {
-
-        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
-
-        pInstance = pUCellPrivateGetInstance(cellHandle);
-        if (pInstance != NULL) {
+    if ((errorCode == 0) && (pInstance != NULL) && (dataTypeBitMapSigned >= 0)) {
+        // In case GNSS is off, set the aid mode to what we would use when switching it on
+        aidMode = pInstance->gnssAidMode;
+        errorCode = getUgps(pInstance, &gnssOn, &aidMode, NULL);
+        if (errorCode == 0) {
+            dataTypeBitMapSigned = gnssDataTypeBitMapToCellular(dataTypeBitMapSigned);
             atHandle = pInstance->atHandle;
-            // Simplest way to check is to send ATI and see if
-            // it includes an "M8"
+            // Get the current setting (in order to avoid power-cycling
+            // the GNSS chip unnecessarily if the setting is already correct)
             uAtClientLock(atHandle);
-            uAtClientCommandStart(atHandle, "ATI");
+            uAtClientCommandStart(atHandle, "AT+UGSRV?");
             uAtClientCommandStop(atHandle);
-            uAtClientResponseStart(atHandle, NULL);
-            bytesRead = uAtClientReadBytes(atHandle, buffer,
-                                           sizeof(buffer) - 1, false);
+            // Response is +UGSRV: <mga_primary_server>,<mga_secondary_server>,<auth_token>,<days>,<period>,<resolution>,<GNSS_types>,<mode>,<datatype>
+            uAtClientResponseStart(atHandle, "+UGSRV:");
+            // Skip the first eight parameters
+            uAtClientSkipParameters(atHandle, 8);
+            currentDataTypeBitMap = uAtClientReadInt(atHandle);
             uAtClientResponseStop(atHandle);
-            if ((uAtClientUnlock(atHandle) == 0) && (bytesRead > 0)) {
-                // Add a terminator
-                buffer[bytesRead] = 0;
-                if (strstr(buffer, "M8") != NULL) {
-                    isInside = true;
+            errorCode = uAtClientUnlock(atHandle);
+            if ((errorCode == 0) && (currentDataTypeBitMap >= 0)) {
+                if (dataTypeBitMapSigned == 0) {
+                    if ((aidMode & (uint32_t) U_CELL_LOC_AID_MODE_ASSIST_NOW_ONLINE) > 0) {
+                        // AssistNow Online is on but the caller wants it to be off
+                        aidMode &= ~((uint32_t) U_CELL_LOC_AID_MODE_ASSIST_NOW_ONLINE);
+                        dataTypeBitMapSigned = -1;
+                        writeIt = true;
+                    }
+                } else {
+                    if ((aidMode & (uint32_t) U_CELL_LOC_AID_MODE_ASSIST_NOW_ONLINE) == 0) {
+                        // The caller wants AssistNow Online to be on but it is currently off
+                        aidMode |= (uint32_t) U_CELL_LOC_AID_MODE_ASSIST_NOW_ONLINE;
+                        writeIt = true;
+                    } else if (currentDataTypeBitMap != dataTypeBitMapSigned) {
+                        // The caller is changing data types, so we need to write that
+                        writeIt = true;
+                    }
+                }
+                if (writeIt) {
+                    if (dataTypeBitMapSigned >= 0) {
+                        errorCode = setUgsrv(pInstance, NULL, NULL, NULL,
+                                             -1, -1, -1, -1, (uint32_t) dataTypeBitMapSigned, aidMode);
+                    } else {
+                        // Just an aid_mode change to switch AssistNow Online off
+                        if (gnssOn) {
+                            errorCode = setUgps(pInstance, gnssOn, &aidMode, NULL);
+                        }
+                    }
+                    if (errorCode == 0) {
+                        pInstance->gnssAidMode &= ~((uint32_t) U_CELL_LOC_AID_MODE_ASSIST_NOW_ONLINE);
+                        if ((aidMode & (uint32_t) U_CELL_LOC_AID_MODE_ASSIST_NOW_ONLINE) > 0) {
+                            pInstance->gnssAidMode |= (uint32_t) U_CELL_LOC_AID_MODE_ASSIST_NOW_ONLINE;
+                        }
+                    }
                 }
             }
         }
-
-        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
     }
 
-    return isInside;
+    U_CELL_LOC_EXIT_FUNCTION();
+
+    return errorCode;
+}
+
+// Get which data types of the AssistNow Online service are being used.
+int32_t uCellLocGetAssistNowOnline(uDeviceHandle_t cellHandle,
+                                   uint32_t *pDataTypeBitMap)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance = NULL;
+    uAtClientHandle_t atHandle;
+    uint32_t aidMode = 0;
+    int32_t dataTypeBitMap = 0;
+
+    U_CELL_LOC_ENTRY_FUNCTION(cellHandle, &pInstance, &errorCode);
+
+    if ((errorCode == 0) && (pInstance != NULL)) {
+        // In case GNSS is off, set the aid mode to what we would use when switching it on
+        aidMode = pInstance->gnssAidMode;
+        errorCode = getUgps(pInstance, NULL, &aidMode, NULL);
+        if (errorCode == 0) {
+            if ((aidMode & (uint32_t) U_CELL_LOC_AID_MODE_ASSIST_NOW_ONLINE) > 0) {
+                atHandle = pInstance->atHandle;
+                // Get the current setting
+                uAtClientLock(atHandle);
+                uAtClientCommandStart(atHandle, "AT+UGSRV?");
+                uAtClientCommandStop(atHandle);
+                // Response is +UGSRV: <mga_primary_server>,<mga_secondary_server>,<auth_token>,<days>,<period>,<resolution>,<GNSS_types>,<mode>,<datatype>
+                uAtClientResponseStart(atHandle, "+UGSRV:");
+                // Skip the first eight parameters
+                uAtClientSkipParameters(atHandle, 8);
+                dataTypeBitMap = uAtClientReadInt(atHandle);
+                // Don't care about the rest
+                uAtClientResponseStop(atHandle);
+                errorCode = uAtClientUnlock(atHandle);
+            }
+            if ((errorCode == 0) && (dataTypeBitMap >= 0)) {
+                if (pDataTypeBitMap != NULL) {
+                    *pDataTypeBitMap = (uint32_t) cellDataTypeBitMapToGnss(dataTypeBitMap);
+                }
+            }
+        }
+    }
+
+    U_CELL_LOC_EXIT_FUNCTION();
+
+    return errorCode;
+}
+
+// Configure AssistNow Offline.
+int32_t uCellLocSetAssistNowOffline(uDeviceHandle_t cellHandle,
+                                    uint32_t gnssSystemTypesBitMap,
+                                    int32_t periodDays,
+                                    int32_t daysBetweenItems)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance = NULL;
+    uAtClientHandle_t atHandle;
+    uint32_t aidMode = 0;
+    int32_t currentGnssSystemTypesBitMap = 0;
+    int32_t currentPeriodDays = 0;
+    int32_t currentDaysBetweenItems = 0;
+    bool writeIt = false;
+    bool gnssOn = false;
+    int32_t gnssSystemTypesBitMapSigned = (int32_t) gnssSystemTypesBitMap;
+
+    U_CELL_LOC_ENTRY_FUNCTION(cellHandle, &pInstance, &errorCode);
+
+    if ((errorCode == 0) && (pInstance != NULL) && (periodDays >= 0) &&
+        ((periodDays == 0) || (gnssSystemTypesBitMapSigned == 0) || (daysBetweenItems >= 1))) {
+        // In case GNSS is off, set the aid mode to what we would use when switching it on
+        aidMode = pInstance->gnssAidMode;
+        errorCode = getUgps(pInstance, &gnssOn, &aidMode, NULL);
+        if (errorCode == 0) {
+            atHandle = pInstance->atHandle;
+            // Get the current setting (in order to avoid power-cycling
+            // the GNSS chip unnecessarily if the setting is already correct)
+            uAtClientLock(atHandle);
+            uAtClientCommandStart(atHandle, "AT+UGSRV?");
+            uAtClientCommandStop(atHandle);
+            // Response is +UGSRV: <mga_primary_server>,<mga_secondary_server>,<auth_token>,<days>,<period>,<resolution>,<GNSS_types>,<mode>,<datatype>
+            uAtClientResponseStart(atHandle, "+UGSRV:");
+            // Skip the first four parameters to get to the period (we ignore the
+            // days parameter since the cellular module treats that as M7 only)
+            uAtClientSkipParameters(atHandle, 4);
+            currentPeriodDays = uAtClientReadInt(atHandle) * 7;
+            currentDaysBetweenItems = uAtClientReadInt(atHandle);
+            currentGnssSystemTypesBitMap = uAtClientReadInt(atHandle);
+            // Don't care about the rest
+            uAtClientResponseStop(atHandle);
+            errorCode = uAtClientUnlock(atHandle);
+            if ((errorCode == 0) && (currentPeriodDays >= 0) &&
+                (currentDaysBetweenItems >= 0) && (currentGnssSystemTypesBitMap >= 0)) {
+                if ((periodDays == 0) || (gnssSystemTypesBitMapSigned == 0)) {
+                    if ((aidMode & (uint32_t) U_CELL_LOC_AID_MODE_ASSIST_NOW_OFFLINE) > 0) {
+                        // AssistNow Offline is on but the caller wants it to be off
+                        aidMode &= ~((uint32_t) U_CELL_LOC_AID_MODE_ASSIST_NOW_OFFLINE);
+                        gnssSystemTypesBitMapSigned = -1;
+                        periodDays = -1;
+                        daysBetweenItems = -1;
+                        writeIt = true;
+                    }
+                } else {
+                    if ((aidMode & (uint32_t) U_CELL_LOC_AID_MODE_ASSIST_NOW_OFFLINE) == 0) {
+                        // The caller wants AssistNow Offline to be on but it is currently off
+                        aidMode |= (uint32_t) U_CELL_LOC_AID_MODE_ASSIST_NOW_OFFLINE;
+                        writeIt = true;
+                    } else if ((currentPeriodDays != periodDays) ||
+                               (currentDaysBetweenItems != daysBetweenItems) ||
+                               (currentGnssSystemTypesBitMap != gnssSystemTypesBitMapSigned)) {
+                        // The caller is changing parameters, so we need to write that
+                        writeIt = true;
+                    }
+                }
+                if (writeIt) {
+                    if (gnssSystemTypesBitMapSigned >= 0) {
+                        errorCode = setUgsrv(pInstance, NULL, NULL, NULL,
+                                             periodDays, daysBetweenItems,
+                                             (uint32_t) gnssSystemTypesBitMapSigned,
+                                             -1, -1, aidMode);
+                    } else {
+                        if (gnssOn) {
+                            // Just an aid_mode change to switch AssistNow Offline off
+                            errorCode = setUgps(pInstance, gnssOn, &aidMode, NULL);
+                        }
+                    }
+                    if (errorCode == 0) {
+                        pInstance->gnssAidMode &= ~((uint32_t) U_CELL_LOC_AID_MODE_ASSIST_NOW_OFFLINE);
+                        if ((aidMode & (uint32_t) U_CELL_LOC_AID_MODE_ASSIST_NOW_OFFLINE) > 0) {
+                            pInstance->gnssAidMode |= (uint32_t) U_CELL_LOC_AID_MODE_ASSIST_NOW_OFFLINE;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    U_CELL_LOC_EXIT_FUNCTION();
+
+    return errorCode;
+}
+
+// Get the AssistNow Offline configuration.
+int32_t uCellLocGetAssistNowOffline(uDeviceHandle_t cellHandle,
+                                    uint32_t *pGnssSystemTypesBitMap,
+                                    int32_t *pPeriodDays,
+                                    int32_t *pDaysBetweenItems)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance = NULL;
+    uAtClientHandle_t atHandle;
+    uint32_t aidMode = 0;
+    int32_t gnssSystemTypesBitMap = 0;
+    int32_t periodDays = 0;
+    int32_t daysBetweenItems = 0;
+
+    U_CELL_LOC_ENTRY_FUNCTION(cellHandle, &pInstance, &errorCode);
+
+    if ((errorCode == 0) && (pInstance != NULL)) {
+        // In case GNSS is off, set the aid mode to what we would use when switching it on
+        aidMode = pInstance->gnssAidMode;
+        errorCode = getUgps(pInstance, NULL, &aidMode, NULL);
+        if (errorCode == 0) {
+            if ((aidMode & (uint32_t) U_CELL_LOC_AID_MODE_ASSIST_NOW_OFFLINE) > 0) {
+                atHandle = pInstance->atHandle;
+                // Get the current setting (in order to avoid power-cycling
+                // the GNSS chip unnecessarily if the setting is already correct)
+                uAtClientLock(atHandle);
+                uAtClientCommandStart(atHandle, "AT+UGSRV?");
+                uAtClientCommandStop(atHandle);
+                // Response is +UGSRV: <mga_primary_server>,<mga_secondary_server>,<auth_token>,<days>,<period>,<resolution>,<GNSS_types>,<mode>,<datatype>
+                uAtClientResponseStart(atHandle, "+UGSRV:");
+                // Skip the first four parameters to get to the period (we ignore the
+                // days parameter since the cellular module treats that as M7 only)
+                uAtClientSkipParameters(atHandle, 4);
+                periodDays = uAtClientReadInt(atHandle) * 7;
+                daysBetweenItems = uAtClientReadInt(atHandle);
+                gnssSystemTypesBitMap = uAtClientReadInt(atHandle);
+                // Don't care about the rest
+                uAtClientResponseStop(atHandle);
+                errorCode = uAtClientUnlock(atHandle);
+            }
+            if ((errorCode == 0) && (periodDays >= 0) && (daysBetweenItems >= 0) &&
+                (gnssSystemTypesBitMap >= 0)) {
+                if (pPeriodDays != NULL) {
+                    *pPeriodDays = periodDays;
+                }
+                if (pDaysBetweenItems != NULL) {
+                    *pDaysBetweenItems = daysBetweenItems;
+                }
+                if (pGnssSystemTypesBitMap != NULL) {
+                    *pGnssSystemTypesBitMap = (uint32_t) gnssSystemTypesBitMap;
+                }
+            } else {
+                errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
+            }
+        }
+    }
+
+    U_CELL_LOC_EXIT_FUNCTION();
+
+    return errorCode;
+}
+
+// Set whether AssistNow Autonomous is on or off.
+int32_t uCellLocSetAssistNowAutonomous(uDeviceHandle_t cellHandle,
+                                       bool onNotOff)
+{
+    return setAidModeBit(cellHandle, onNotOff, U_CELL_LOC_AID_MODE_ASSIST_NOW_AUTONOMOUS);
+}
+
+// Get whether AssistNow Autonomous is on or off.
+bool uCellLocAssistNowAutonomousIsOn(uDeviceHandle_t cellHandle)
+{
+    return getAidModeBit(cellHandle, U_CELL_LOC_AID_MODE_ASSIST_NOW_AUTONOMOUS);
+}
+
+// Set whether the GNSS assistance database is saved or not.
+int32_t uCellLocSetAssistNowDatabaseSave(uDeviceHandle_t cellHandle, bool onNotOff)
+{
+    return setAidModeBit(cellHandle, onNotOff, U_CELL_LOC_AID_MODE_AUTOMATIC_LOCAL);
+}
+
+// Get whether the GNSS assistance database is saved or not.
+bool uCellLocAssistNowDatabaseSaveIsOn(uDeviceHandle_t cellHandle)
+{
+    return getAidModeBit(cellHandle, U_CELL_LOC_AID_MODE_AUTOMATIC_LOCAL);
 }
 
 /* ----------------------------------------------------------------

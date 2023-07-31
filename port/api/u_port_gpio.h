@@ -99,6 +99,15 @@ typedef struct {
     uPortGpioPullMode_t pullMode;
     uPortGpioDriveMode_t driveMode;
     uPortGpioDriveCapability_t driveCapability;
+    int32_t index; /**< currently only relevant for Linux, ignored
+                        otherwise, set to -1 to indicate the default;
+                        this is used to inform this driver which of
+                        a set of GPIO chips the given pin is on.
+                        Note that the pin number must still be unique
+                        across all GPIO chips: for example if the
+                        last pin on GPIO chip 0 were pin 15 then the
+                        first pin on GPIO chip 1 would likely be pin 16,
+                        it could not be pin 0 again. */
 } uPortGpioConfig_t;
 
 /** Default values for the above.
@@ -107,7 +116,8 @@ typedef struct {
                                    U_PORT_GPIO_DIRECTION_NONE,          \
                                    U_PORT_GPIO_PULL_MODE_NONE,          \
                                    U_PORT_GPIO_DRIVE_MODE_NORMAL,       \
-                                   U_PORT_GPIO_DRIVE_CAPABILITY_STRONG}
+                                   U_PORT_GPIO_DRIVE_CAPABILITY_STRONG, \
+                                   -1}
 
 /** Compilers won't generally allow myConfig = #U_PORT_GPIO_CONFIG_DEFAULT;
  * to be done anywhere other than where myConfig is declared.  This macro
@@ -117,7 +127,8 @@ typedef struct {
                                          (pConfig)->direction = U_PORT_GPIO_DIRECTION_NONE;                \
                                          (pConfig)->pullMode = U_PORT_GPIO_PULL_MODE_NONE;                 \
                                          (pConfig)->driveMode = U_PORT_GPIO_DRIVE_MODE_NORMAL;             \
-                                         (pConfig)->driveCapability = U_PORT_GPIO_DRIVE_CAPABILITY_STRONG
+                                         (pConfig)->driveCapability = U_PORT_GPIO_DRIVE_CAPABILITY_STRONG; \
+                                         (pConfig)->index = -1
 
 /* ----------------------------------------------------------------
  * FUNCTIONS
@@ -126,7 +137,9 @@ typedef struct {
 /** Configure a GPIO pin.
  *
  * @param[in] pConfig a pointer to the configuration to set, cannot be
- *                    NULL.
+ *                    NULL; it is good practice to initialise the
+ *                    configuration to #U_PORT_GPIO_CONFIG_DEFAULT
+ *                    and then modify any values that you want different.
  * @return            zero on success else negative error code.
  */
 int32_t uPortGpioConfig(uPortGpioConfig_t *pConfig);

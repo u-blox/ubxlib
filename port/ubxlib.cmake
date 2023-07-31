@@ -96,6 +96,7 @@ u_add_module_dir(base ${UBXLIB_BASE}/common/sock)
 u_add_module_dir(base ${UBXLIB_BASE}/common/ubx_protocol)
 u_add_module_dir(base ${UBXLIB_BASE}/common/spartn)
 u_add_module_dir(base ${UBXLIB_BASE}/common/utils)
+u_add_module_dir(base ${UBXLIB_BASE}/common/dns)
 u_add_module_dir(base ${UBXLIB_BASE}/port/platform/common/debug_utils)
 
 # Additional source directories
@@ -158,8 +159,10 @@ u_add_source_file(cell ${UBXLIB_BASE}/common/network/src/u_network_private_cell.
 u_add_source_file(cell ${UBXLIB_BASE}/common/device/src/u_device_private_cell.c)
 # gnss
 u_add_module_dir(gnss ${UBXLIB_BASE}/gnss)
+u_add_source_file(gnss ${UBXLIB_BASE}/gnss/src/lib_mga/u_lib_mga.c)
 u_add_source_file(gnss ${UBXLIB_BASE}/common/network/src/u_network_private_gnss.c)
 u_add_source_file(gnss ${UBXLIB_BASE}/common/device/src/u_device_private_gnss.c)
+list(APPEND UBXLIB_PRIVATE_INC ${UBXLIB_BASE}/gnss/src/lib_mga)
 
 # Bring in linker workaround files, needed for ESP-IDF (and no harm for others)
 if (NOT short_range IN_LIST UBXLIB_FEATURES)

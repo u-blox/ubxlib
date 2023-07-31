@@ -110,6 +110,7 @@ U_PORT_TEST_FUNCTION("[cell]", "cellInitialisation")
  */
 U_PORT_TEST_FUNCTION("[cell]", "cellAdd")
 {
+    uAtClientStreamHandle_t stream;
     uAtClientHandle_t atClientHandleA;
     uDeviceHandle_t devHandleA;
 # if (U_CFG_TEST_UART_B >= 0)
@@ -129,6 +130,9 @@ U_PORT_TEST_FUNCTION("[cell]", "cellAdd")
 
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
+#ifdef U_CFG_TEST_UART_PREFIX
+    U_PORT_TEST_ASSERT(uPortUartPrefix(U_PORT_STRINGIFY_QUOTED(U_CFG_TEST_UART_PREFIX)) == 0);
+#endif
     gUartAHandle = uPortUartOpen(U_CFG_TEST_UART_A,
                                  U_CFG_TEST_BAUD_RATE,
                                  NULL,
@@ -144,8 +148,9 @@ U_PORT_TEST_FUNCTION("[cell]", "cellAdd")
     U_PORT_TEST_ASSERT(uCellInit() == 0);
 
     U_TEST_PRINT_LINE("adding an AT client on UART %d...", U_CFG_TEST_UART_A);
-    atClientHandleA = uAtClientAdd(gUartAHandle, U_AT_CLIENT_STREAM_TYPE_UART,
-                                   NULL, U_CELL_AT_BUFFER_LENGTH_BYTES);
+    stream.handle.int32 = gUartAHandle;
+    stream.type = U_AT_CLIENT_STREAM_TYPE_UART;
+    atClientHandleA = uAtClientAddExt(&stream, NULL, U_CELL_AT_BUFFER_LENGTH_BYTES);
     U_PORT_TEST_ASSERT(atClientHandleA != NULL);
 
     U_TEST_PRINT_LINE("adding a cellular instance on that AT client...");
@@ -162,6 +167,7 @@ U_PORT_TEST_FUNCTION("[cell]", "cellAdd")
 
 # if (U_CFG_TEST_UART_B >= 0)
     // If we have a second UART port, add a second cellular API on it
+    // and do it the old way for now
     gUartBHandle = uPortUartOpen(U_CFG_TEST_UART_B,
                                  U_CFG_TEST_BAUD_RATE,
                                  NULL,

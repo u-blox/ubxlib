@@ -490,9 +490,7 @@ int32_t uWifiSockListen(uDeviceHandle_t devHandle,
  * @param[out] pRemoteAddress a pointer to a place to put the
  *                            address of the thing from which the
  *                            connection has been accepted.
- * @return                    the sockHandle to be used with this
- *                            connection from now on else negated
- *                            value of U_SOCK_Exxx from
+ * @return                    status value of U_SOCK_Exxx from
  *                            u_sock_errno.h.
  */
 int32_t uWifiSockAccept(uDeviceHandle_t devHandle,

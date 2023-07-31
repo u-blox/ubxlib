@@ -117,10 +117,11 @@
 #endif
 
 #ifndef U_CELL_CFG_TEST_FIXED_TIME
-/** A time value to use if the module doesn't have one: should
- * be no less than #U_CELL_INFO_TEST_MIN_TIME (i.e. 21 July 2021 13:40:36).
+/** A time value to use if the module doesn't have one: should be no
+ * less than #U_CELL_INFO_TEST_MIN_TIME (i.e. 21 July 2021 13:40:36)
+ * plus any timezone offset.
  */
-# define U_CELL_CFG_TEST_FIXED_TIME 1626874836
+# define U_CELL_CFG_TEST_FIXED_TIME (1626874836 + (3600 * 24))
 #endif
 
 /* ----------------------------------------------------------------

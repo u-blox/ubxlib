@@ -186,4 +186,14 @@ U_WEAK int32_t uCellHttpGetLastErrorCode(uDeviceHandle_t cellHandle, int32_t htt
     return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
 }
 
+// This used only in the test code, but still needs a U_WEAK
+// version for that case.
+U_WEAK int32_t uCellPwrReboot(uDeviceHandle_t cellHandle,
+                              bool (*pKeepGoingCallback) (uDeviceHandle_t))
+{
+    (void) cellHandle;
+    (void) pKeepGoingCallback;
+    return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+}
+
 // End of file

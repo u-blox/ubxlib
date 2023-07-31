@@ -158,7 +158,7 @@ typedef void (*uGnssMsgReceiveCallback_t)(uDeviceHandle_t gnssHandle,
 
 /** Determine if a message ID is a wanted one.  For instance if
  * pMessageIdWanted is NULL or has the protocol type #U_GNSS_PROTOCOL_ALL
- * then true will always be returned, pMessageIdWanted has the
+ * then true will always be returned, if pMessageIdWanted has the
  * protocol type #U_GNSS_PROTOCOL_NMEA and an empty pNmea then
  * all NMEA message IDs will match, if pNmea contains "G" then
  * "GX" and "GAZZN" would match, if pMessageIdWanted has the
@@ -376,7 +376,7 @@ int32_t uGnssMsgReceiveStart(uDeviceHandle_t gnssHandle,
  * @param[out] pBuffer a place to put the message; cannot be NULL.
  * @param size         the amount of storage at pBuffer, should be
  *                     the size of the message, as indicated by the
- *                     pCallback "size" parameter.
+ *                     pCallback "errorCodeOrLength" parameter.
  * @return             on success the number of bytes read,
  *                     else negative error code.
  */

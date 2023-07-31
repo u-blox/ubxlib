@@ -239,6 +239,8 @@ If the commit text does *not* contain a line starting with `test:` (the usual ca
 
 [scripts/u_get_arm_toolchain.py](./scripts/u_get_arm_toolchain.py): script used by vscode to get the ARM toolchain path via `u_packages`.
 
+[scripts/u_get_build_dir.py](./scripts/u_get_build_dir.py): script used by vscode to get the default build directory.
+
 # Maintenance
 - If you add a new API make sure that it is listed in the `APIs available` column of at least one row in [DATABASE.md](DATABASE.md), otherwise [u_select.py](./scripts/u_select.py) will **not**  select it for automated-testing of a branch.
 - If you add a new board to the test system, update [u_connection.py](./scripts/u_connection.py) to include it.

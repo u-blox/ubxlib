@@ -555,7 +555,7 @@ int32_t uCellMuxPrivateDisable(uCellPrivateInstance_t *pInstance)
                 uAtClientRemove(atHandle);
                 // Unhijack the old AT handler and unlock it
                 atHandle = pContext->savedAtHandle;
-                uAtClientUrcHandlerHijack(atHandle, NULL, NULL);
+                uAtClientUrcHandlerHijackExt(atHandle, NULL, NULL);
                 uAtClientUnlock(atHandle);
                 pInstance->atHandle = atHandle;
                 pContext->savedAtHandle = NULL;

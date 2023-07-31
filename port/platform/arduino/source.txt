@@ -36,13 +36,17 @@ gnss/src/u_gnss_cfg.c
 gnss/src/u_gnss_info.c
 gnss/src/u_gnss_pos.c
 gnss/src/u_gnss_msg.c
+gnss/src/u_gnss_mga.c
 gnss/src/u_gnss_util.c
 gnss/src/u_gnss_private.c
+gnss/src/lib_mga/u_lib_mga.c
 wifi/src/u_wifi.c
 wifi/src/u_wifi_cfg.c
 wifi/src/u_wifi_sock.c
 wifi/src/u_wifi_mqtt.c
 wifi/src/u_wifi_http.c
+wifi/src/u_wifi_private.c
+wifi/src/u_wifi_loc.c
 common/device/src/u_device.c
 common/device/src/u_device_serial.c
 common/device/src/u_device_shared.c
@@ -81,6 +85,7 @@ common/location/src/u_location_shared.c
 common/location/src/u_location_private_cloud_locate.c
 common/location/src/u_location_stub_cell.c
 common/location/src/u_location_stub_gnss.c
+common/location/src/u_location_stub_wifi.c
 common/at_client/src/u_at_client.c
 common/at_client/src/u_at_client_stub_short_range.c
 common/ubx_protocol/src/u_ubx_protocol.c

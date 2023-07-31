@@ -67,7 +67,10 @@ CONNECTION_LIST = [
     # Instance 26, NINA-B4 (NRF52833)
     {"lock": None, "id": 26, **u_settings.CONNECTION_INSTANCE_26},
     # Instance 27, C213/C215 board (NORA-B1, ESP32S3)
-    {"lock": None, "id": 27, **u_settings.CONNECTION_INSTANCE_27}
+    {"lock": None, "id": 27, **u_settings.CONNECTION_INSTANCE_27},
+    # Note: Linux has no serial port to download code/receive debug
+    # etc. but we need the lock field to permit parallel operations.
+    {"lock": None, "id": 28}
 ]
 
 def init_locks(manager):

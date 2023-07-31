@@ -434,6 +434,8 @@ typedef struct uCellPrivateInstance_t {
     void *pGreetingCallbackParameter;
     uCellPrivateNet_t *pScanResults;    /**< Anchor for list of network scan results. */
     int32_t sockNextLocalPort;
+    uint32_t gnssAidMode;  /**< A bit-map of the types of aiding to use (AssistNow Online, Offline, Autonomous, etc.). */
+    uint32_t gnssSystemTypesBitMap;  /**< A bit-map of the GNSS system types (GPS, GLONASS, etc.) a GNSS chip should use. */
     volatile void *pMqttContext; /**< Hook for MQTT context, volatile as it
                                       can be populared by a URC in a different thread. */
     uCellPrivateLocContext_t *pLocContext; /**< Hook for a location context. **/

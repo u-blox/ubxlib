@@ -23,6 +23,8 @@
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
 
+#include "u_device_serial.h"
+
 /** \addtogroup _AT-client __AT Client
  *  @{
  */
@@ -251,6 +253,11 @@ extern "C" {
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+/** A sensible default for any variable of type #uAtClientStreamHandle_t.
+*/
+#define U_AT_CLIENT_STREAM_HANDLE_DEFAULTS {.handle.pDeviceSerial = NULL,         \
+                                            .type = U_AT_CLIENT_STREAM_TYPE_NONE}
+
 /** A marker to check for buffer overruns.  Must be a multiple of
  * 4 bytes in size.
  */
@@ -415,8 +422,22 @@ typedef enum {
     U_AT_CLIENT_STREAM_TYPE_UART,
     U_AT_CLIENT_STREAM_TYPE_EDM,
     U_AT_CLIENT_STREAM_TYPE_VIRTUAL_SERIAL,
-    U_AT_CLIENT_STREAM_TYPE_MAX
+    U_AT_CLIENT_STREAM_TYPE_MAX,
+    U_AT_CLIENT_STREAM_TYPE_NONE
 } uAtClientStream_t;
+
+/** Type to hold a stream handle, which can be an int32_t or a
+ * uDeviceSerial_t *.  If you are going to call uAtClientStreamGetExt()
+ * to populate a veriable of this type then best assign it to
+ * #U_AT_CLIENT_STREAM_HANDLE_DEFAULTS when it is declared.
+ */
+typedef struct {
+    union {
+        int32_t int32;
+        uDeviceSerial_t *pDeviceSerial;
+    } handle;
+    uAtClientStream_t type;
+} uAtClientStreamHandle_t;
 
 /** The types of AT error response.
  */
@@ -440,7 +461,7 @@ typedef struct {
  * -------------------------------------------------------------- */
 
 /** Initialise the AT client infrastructure.  This must be called
- * before an AT client can be added with uAtClientAdd().
+ * before an AT client can be added with uAtClientAddExt().
  *
  * @return zero on success else negative error code.
  */
@@ -457,9 +478,11 @@ int32_t uAtClientInit();
  */
 void uAtClientDeinit();
 
-/** Add an AT client on the given stream.  uAtClientInit() must
- * be called beforehand.  If an AT client has already been added
- * for the stream this function will return an error.
+/** \deprecated Add an AT client on the given stream; this function
+ * is deprecated and may be removed at some point in the future, please
+ * use uAtClientAddExt() (which supports 64-bit pointers) instead.
+ * uAtClientInit() must be called beforehand.  If an AT client has
+ * already been added for the stream this function will return an error.
  *
  * @param streamHandle         the stream handle to use; the stream must
  *                             have already been opened by the caller.
@@ -469,7 +492,7 @@ void uAtClientDeinit();
  *                             there can only be one).
  * @param streamType           the type of stream that streamHandle
  *                             is for.
- * @param[out] pReceiveBuffer  a buffer to use for received data from
+ * @param[in] pReceiveBuffer   a buffer to use for received data from
  *                             the AT server.  The buffer must have
  *                             structure alignment; which usually
  *                             means it must be 4-byte aligned.  May
@@ -492,6 +515,40 @@ uAtClientHandle_t uAtClientAdd(int32_t streamHandle,
                                uAtClientStream_t streamType,
                                void *pReceiveBuffer,
                                size_t receiveBufferSize);
+
+/** Add an AT client on the given stream.  uAtClientInit() must
+ * be called beforehand.  If an AT client has already been added
+ * for the stream this function will return an error.
+ *
+ * @param[in] pStream          a pointer to the stream handle; the stream
+ *                             must have already been opened by the caller.
+ *                             The AT client will set an event callback
+ *                             on the stream (by calling
+ *                             uPortUartEventCallbackSet() or equivalent)
+ *                             and hence the caller must not do so (since
+ *                             there can only be one).
+ * @param[in] pReceiveBuffer   a buffer to use for received data from
+ *                             the AT server.  The buffer must have
+ *                             structure alignment; which usually
+ *                             means it must be 4-byte aligned.  May
+ *                             be NULL in which case a buffer will be
+ *                             allocated by the AT client.
+ * @param receiveBufferSize    if pReceiveBuffer is non-NULL this must
+ *                             be set to the amount of memory at
+ *                             pReceiveBuffer in bytes.  If pReceiveBuffer
+ *                             is NULL then this is the size of buffer
+ *                             that the AT client will allocate.  What
+ *                             size to chose?  See the definition
+ *                             of #U_AT_CLIENT_BUFFER_LENGTH_BYTES, noting
+ *                             that #U_AT_CLIENT_BUFFER_OVERHEAD_BYTES of
+ *                             the buffer memory will be used for management
+ *                             overhead.
+ * @return                     on success the handle of the AT client, else
+ *                             NULL.
+ */
+uAtClientHandle_t uAtClientAddExt(const uAtClientStreamHandle_t *pStream,
+                                  void *pReceiveBuffer,
+                                  size_t receiveBufferSize);
 
 /** Tell the given AT client to throw away asynchronous events; use NULL
  * as the parameter to apply this to all AT clients.  This function
@@ -797,10 +854,9 @@ size_t uAtClientWriteBytes(uAtClientHandle_t atHandle,
  * argument call the function again but with isFirst set to
  * false.
  *
- * Example:
+ * For example, "tcp://www.google.com:80" can be written like
+ * this:
  *
- * String argument to write: "tcp://www.google.com:80"
- * Can be written like this:
  * ```
  * uAtClientWritePartialString(atHandle, true, "tcp://");
  * uAtClientWritePartialString(atHandle, false, "www.google.com");
@@ -1213,17 +1269,10 @@ int32_t uAtClientUrcHandlerGetNext(uAtClientHandle_t atHandle,
                                                        void *),
                                    void **ppHandlerParam);
 
-/** Hijack the URC handler, replacing it with the given URC handler.
- * This is useful when the stream the AT transport was running on
- * morphs into something else, i.e. it no longer contains stuff that
- * is intended for this AT client.
- *
- * Note that this is not an intercept function, i.e. the URC handler
- * of this AT client is not called afterwards, it is entirely out
- * of circuit, you can't modify the data stream with this mechanism.
- * If the stuff being received is intended for this AT client but
- * just needs pre-processing somehow, use uAtClientStreamInterceptRx()
- * instead.
+/** \deprecated Hijack the URC handler, replacing it with the given
+ * URC handler.  This function is deprecated and may be removed at
+ * some point in the future; please use uAtClientUrcHandlerHijackExt()
+ * (which supports 64-bit pointers) instead.
  *
  * @param atHandle             the handle of the AT client.
  * @param[in] pHandler         the event handler, the function
@@ -1238,6 +1287,34 @@ void uAtClientUrcHandlerHijack(uAtClientHandle_t atHandle,
                                void (*pHandler)(int32_t, uint32_t,
                                                 void *),
                                void *pHandlerParam);
+
+/** Hijack the URC handler, replacing it with the given URC handler.
+ *
+ * This function is useful when the stream the AT transport was running
+ * on morphs into something else, i.e. it no longer contains stuff that
+ * is intended for this AT client.
+ *
+ * Note that this is not an intercept function, i.e. the URC handler
+ * of this AT client is not called afterwards, it is entirely out
+ * of circuit, you can't modify the data stream with this mechanism.
+ * If the stuff being received is intended for this AT client but
+ * just needs pre-processing somehow, use uAtClientStreamInterceptRx()
+ * instead.
+ *
+ * @param atHandle             the handle of the AT client.
+ * @param[in] pHandler         the event handler, the function
+ *                             parameters being a pointer to the
+ *                             stream handle, the event bit-mask and
+ *                             a void * user parameter; use NULL to
+ *                             cancel a previous hijack.
+ * @param[in] pHandlerParam    the void * parameter that will be passed
+ *                             to pHandler as its last parameter.
+ */
+void uAtClientUrcHandlerHijackExt(uAtClientHandle_t atHandle,
+                                  void (*pHandler)(const uAtClientStreamHandle_t *,
+                                                   uint32_t,
+                                                   void *),
+                                  void *pHandlerParam);
 
 /** Get the stack high watermark for the URC task, the
  * minimum amount of free stack space.  If this gets close
@@ -1289,12 +1366,12 @@ int32_t uAtClientCallbackStackMinFree();
  * be handled with the uAtClientSetUrcHandler() function since they
  * arrive asynchronously.  However, there are cases (e.g. in
  * code handling wake-up from deep sleep when asynchronous URCs
- * are held back held back for processing after wake-up has been
- * completed) where it is necessary to wait for a URC "in-line".
- * For those cases the same URC handler callback as would be
- * written for the uAtClientSetUrcHandler() case can be called
- * directly using this function, just like a
- * uAtClientResponseStart()/Stop() but for the URC case. Make
+ * are held back for processing after wake-up has been completed)
+ * where it is necessary to wait for a URC "in-line". For those
+ * cases the same URC handler callback as would be written for
+ * the uAtClientSetUrcHandler() case can be called directly
+ * using this function, just like a uAtClientResponseStart() /
+ * uAtClientResponseStop() but for the URC case.  Make
  * sure that this is used within the SAME AT client locks that
  * caused the URC to be generated, otherwise the asynchronous
  * URC handler may jump in, process the URC string and throw it
@@ -1369,7 +1446,11 @@ int32_t uAtClientErrorGet(uAtClientHandle_t atHandle);
 void uAtClientDeviceErrorGet(uAtClientHandle_t atHandle,
                              uAtClientDeviceError_t *pDeviceError);
 
-/** Get the handle and type of the underlying stream.
+/** \deprecated Get the handle and type of the underlying
+ * stream.  This function is deprecated and may be removed
+ * at some point in the future; please use
+ * uAtClientStreamGetExt() (which supports 64-bit pointers)
+ * instead.
  *
  * @param atHandle          the handle of the AT client.
  * @param[out] pStreamType  a pointer to a place to put the
@@ -1379,11 +1460,20 @@ void uAtClientDeviceErrorGet(uAtClientHandle_t atHandle,
 int32_t uAtClientStreamGet(uAtClientHandle_t atHandle,
                            uAtClientStream_t *pStreamType);
 
+/** Get the handle and type of the underlying stream.
+ *
+ * @param atHandle     the handle of the AT client.
+ * @param[out] pStream a pointer to a place to put the
+ *                     stream handle; cannot be NULL.
+ */
+void uAtClientStreamGetExt(uAtClientHandle_t atHandle,
+                           uAtClientStreamHandle_t *pStream);
+
 /** Add a function that will intercept the transmitted
  * data before it is presented to the stream and may return
  * a modified buffer or hold onto the data until a whole
  * command has been assembled etc., allowing it to add
- * framing, perform encryption, etc. of the data.
+ * framing, perform encryption, etc., of the data.
  *
  * The intercept function may do the following:
  *

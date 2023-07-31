@@ -121,9 +121,13 @@
  */
 #define U_AT_CLIENT_TEST_AT_TIMEOUT_MS 2000
 
+#ifndef U_AT_CLIENT_TEST_AT_TIMEOUT_TOLERANCE_MS
 /** The tolerance allowed on the AT timeout in milliseconds.
+ * You might need to override this for less real-time platforms,
+ * e.g. Raspberry Pi.
  */
-#define U_AT_CLIENT_TEST_AT_TIMEOUT_TOLERANCE_MS 250
+# define U_AT_CLIENT_TEST_AT_TIMEOUT_TOLERANCE_MS 250
+#endif
 
 /** The AT client buffer length to use during testing:
  * we send non-prefixed response of length 256 bytes plus
@@ -237,6 +241,9 @@ static void twoUartsPreamble()
 {
     char buffer[10];
 
+#ifdef U_CFG_TEST_UART_PREFIX
+    U_PORT_TEST_ASSERT(uPortUartPrefix(U_PORT_STRINGIFY_QUOTED(U_CFG_TEST_UART_PREFIX)) == 0);
+#endif
     gUartAHandle = uPortUartOpen(U_CFG_TEST_UART_A,
                                  U_CFG_TEST_BAUD_RATE,
                                  NULL,
@@ -928,25 +935,25 @@ int32_t uAtClientTestCheckParam(uAtClientHandle_t atClientHandle,
         switch (pParameter->type) {
             case U_AT_CLIENT_TEST_PARAMETER_INT32:
                 int32 = uAtClientReadInt(atClientHandle);
-                U_TEST_PRINT_LINE("read int32_t parameter %d (expected %d).",
-                                  pPostfix, int32, pParameter->parameter.int32);
+                U_TEST_PRINT_LINE_STR("read int32_t parameter %d (expected %d).",
+                                      pPostfix, int32, pParameter->parameter.int32);
                 if (int32 != pParameter->parameter.int32) {
                     lastError = 1;
                 }
                 break;
             case U_AT_CLIENT_TEST_PARAMETER_UINT64:
                 if (uAtClientReadUint64(atClientHandle, &uint64) == 0) {
-                    U_TEST_PRINT_LINE("read uint64_t parameter %u (expected"
-                                      " %u, noting that this may not print"
-                                      " properly where 64-bit printf() is"
-                                      " not supported).", pPostfix,
-                                      (uint32_t) uint64,
-                                      (uint32_t) pParameter->parameter.uint64);
+                    U_TEST_PRINT_LINE_STR("read uint64_t parameter %u (expected"
+                                          " %u, noting that this may not print"
+                                          " properly where 64-bit printf() is"
+                                          " not supported).", pPostfix,
+                                          (uint32_t) uint64,
+                                          (uint32_t) pParameter->parameter.uint64);
                     if (uint64 != pParameter->parameter.uint64) {
                         lastError = 2;
                     }
                 } else {
-                    U_TEST_PRINT_LINE("error reading uint64_t.", pPostfix);
+                    U_TEST_PRINT_LINE_STR("error reading uint64_t.", pPostfix);
                     lastError = 3;
                 }
                 break;
@@ -973,7 +980,7 @@ int32_t uAtClientTestCheckParam(uAtClientHandle_t atClientHandle,
                                        strlen(pParameter->parameter.pString));
                     uPortLog("\").\n");
                     // Check length
-                    if (y == strlen(pParameter->parameter.pString)) {
+                    if (y == (int32_t)strlen(pParameter->parameter.pString)) {
                         // Check explicitly for a terminator
                         if (*(pBuffer + y) != 0) {
                             U_TEST_PRINT_LINE_STR("string terminator missing.",
@@ -1010,7 +1017,7 @@ int32_t uAtClientTestCheckParam(uAtClientHandle_t atClientHandle,
                 if (y >= 0) {
                     U_TEST_PRINT_LINE_STR("read %d byte(s) (expected %d byte(s)).",
                                           pPostfix, y, pParameter->length);
-                    if (y != pParameter->length) {
+                    if (y != (int32_t)pParameter->length) {
                         U_TEST_PRINT_LINE_STR("lengths differ.", pPostfix);
                         lastError = 8;
                     } else {
@@ -1067,6 +1074,7 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientInitialisation")
 U_PORT_TEST_FUNCTION("[atClient]", "atClientConfiguration")
 {
     uAtClientHandle_t atClientHandle;
+    uAtClientStreamHandle_t stream;
     bool thingIsOn;
     int32_t x;
     char c;
@@ -1079,6 +1087,9 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientConfiguration")
     uPortDeinit();
     heapUsed = uPortGetHeapFree();
     U_PORT_TEST_ASSERT(uPortInit() == 0);
+#ifdef U_CFG_TEST_UART_PREFIX
+    U_PORT_TEST_ASSERT(uPortUartPrefix(U_PORT_STRINGIFY_QUOTED(U_CFG_TEST_UART_PREFIX)) == 0);
+#endif
     gUartAHandle = uPortUartOpen(U_CFG_TEST_UART_A,
                                  U_CFG_TEST_BAUD_RATE,
                                  NULL,
@@ -1092,8 +1103,9 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientConfiguration")
     U_PORT_TEST_ASSERT(uAtClientInit() == 0);
 
     U_TEST_PRINT_LINE("adding an AT client on UART %d...", U_CFG_TEST_UART_A);
-    atClientHandle = uAtClientAdd(gUartAHandle, U_AT_CLIENT_STREAM_TYPE_UART,
-                                  NULL, U_AT_CLIENT_TEST_AT_BUFFER_LENGTH_BYTES);
+    stream.handle.int32 = gUartAHandle;
+    stream.type = U_AT_CLIENT_STREAM_TYPE_UART;
+    atClientHandle = uAtClientAddExt(&stream, NULL, U_AT_CLIENT_TEST_AT_BUFFER_LENGTH_BYTES);
     U_PORT_TEST_ASSERT(atClientHandle != NULL);
 
     thingIsOn = uAtClientDebugGet(atClientHandle);
@@ -1185,6 +1197,7 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientConfiguration")
 U_PORT_TEST_FUNCTION("[atClient]", "atClientCommandSet1")
 {
     uAtClientHandle_t atClientHandle;
+    uAtClientStreamHandle_t stream;
     const uAtClientTestCommandResponse_t *pCommandResponse;
     const uAtClientTestParameter_t *pParameter;
     const uAtClientTestResponseLine_t *pLine;
@@ -1233,8 +1246,9 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientCommandSet1")
     U_PORT_TEST_ASSERT(uAtClientInit() == 0);
 
     U_TEST_PRINT_LINE("adding an AT client on UART %d...", U_CFG_TEST_UART_A);
-    atClientHandle = uAtClientAdd(gUartAHandle, U_AT_CLIENT_STREAM_TYPE_UART,
-                                  NULL, U_AT_CLIENT_TEST_AT_BUFFER_LENGTH_BYTES);
+    stream.handle.int32 = gUartAHandle;
+    stream.type = U_AT_CLIENT_STREAM_TYPE_UART;
+    atClientHandle = uAtClientAddExt(&stream, NULL, U_AT_CLIENT_TEST_AT_BUFFER_LENGTH_BYTES);
     U_PORT_TEST_ASSERT(atClientHandle != NULL);
 
     U_TEST_PRINT_LINE("setting consecutive AT timeout callback...");
@@ -1267,7 +1281,7 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientCommandSet1")
                                                urcHandler, (void *) &checkUrc);
         }
         if (lastError == 0) {
-            snprintf(buffer, sizeof(buffer), "_%d", x + 1);
+            snprintf(buffer, sizeof(buffer), "_%d", (int)x + 1);
             U_TEST_PRINT_LINE_X("sending command: \"%s\"...\n", x + 1,
                                 pCommandResponse->command.pString);
             uAtClientLock(atClientHandle);
@@ -1605,6 +1619,7 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientCommandSet2")
     U_PORT_TEST_ASSERT(uAtClientInit() == 0);
 
     U_TEST_PRINT_LINE("adding an AT client on UART %d...", U_CFG_TEST_UART_A);
+    // Do it the old way this time
     atClientHandle = uAtClientAdd(gUartAHandle, U_AT_CLIENT_STREAM_TYPE_UART,
                                   NULL, U_AT_CLIENT_TEST_AT_BUFFER_LENGTH_BYTES);
     U_PORT_TEST_ASSERT(atClientHandle != NULL);
@@ -1700,7 +1715,7 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientCommandSet2")
         }
     }
 
-    U_TEST_PRINT_LINE("%d out of %d, tests passed and, of %d URCs"
+    U_TEST_PRINT_LINE("%d out of %d, tests executed and, of %d URCs"
                       " (%d expected) %d arrived correctly.", x,
                       gAtClientTestSetSize2, checkUrc.count,
                       U_AT_CLIENT_TEST_NUM_URCS_SET_2,

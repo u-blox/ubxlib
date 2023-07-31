@@ -563,7 +563,7 @@ static int32_t doUdpEchoBasic(uSockDescriptor_t descriptor,
     U_PORT_TEST_ASSERT(pDataReceived != NULL);
 
     // Retry this a few times, don't want to fail due to a flaky link
-    for (size_t x = 0; (receivedSizeBytes != sendSizeBytes) &&
+    for (size_t x = 0; (receivedSizeBytes != (int32_t)sendSizeBytes) &&
          (x < U_SOCK_TEST_UDP_RETRIES); x++) {
         U_TEST_PRINT_LINE("echo testing UDP packet size %d byte(s), try %d.",
                           sendSizeBytes, x + 1);
@@ -576,7 +576,7 @@ static int32_t doUdpEchoBasic(uSockDescriptor_t descriptor,
             // Reset errno 'cos we're going to retry and subsequent things might be upset by it
             errno = 0;
         }
-        if (sentSizeBytes == sendSizeBytes) {
+        if (sentSizeBytes == (int32_t)sendSizeBytes) {
 #if U_CFG_ENABLE_LOGGING
             timeNowMs = (int32_t) uPortGetTickTimeMs();
 #endif
@@ -599,7 +599,7 @@ static int32_t doUdpEchoBasic(uSockDescriptor_t descriptor,
                 // Reset errno 'cos we're going to retry and subsequent things might be upset by it
                 errno = 0;
             }
-            if (receivedSizeBytes == sendSizeBytes) {
+            if (receivedSizeBytes == (int32_t)sendSizeBytes) {
                 U_PORT_TEST_ASSERT(memcmp(pSendData, pDataReceived +
                                           U_SOCK_TEST_GUARD_LENGTH_SIZE_BYTES,
                                           sendSizeBytes) == 0);
@@ -842,7 +842,7 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAddressStrings")
                              strlen(buffer));
                 }
                 uPortLog(".\n");
-                U_PORT_TEST_ASSERT(errorCode == strlen(buffer));
+                U_PORT_TEST_ASSERT(errorCode == (int32_t)strlen(buffer));
                 U_PORT_TEST_ASSERT(strcmp(gTestAddressList[x].pAddressString,
                                           buffer) == 0);
             } else {
@@ -860,7 +860,7 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAddressStrings")
                              buffer, strlen(buffer));
                 }
                 uPortLog(".\n");
-                U_PORT_TEST_ASSERT(errorCode == strlen(buffer));
+                U_PORT_TEST_ASSERT(errorCode == (int32_t)strlen(buffer));
                 U_PORT_TEST_ASSERT(strcmp(gTestAddressList[x].pAddressString,
                                           buffer) == 0);
             }
@@ -1018,7 +1018,7 @@ U_PORT_TEST_FUNCTION("[sock]", "sockBasicUdp")
                 sizeBytes = fix(sizeBytes, U_SOCK_TEST_MAX_UDP_PACKET_SIZE);
                 // Test max size
                 if (doUdpEchoBasic(descriptor, &remoteAddress,
-                                   gSendData, sizeBytes) != sizeBytes) {
+                                   gSendData, sizeBytes) != (int32_t)sizeBytes) {
                     success = false;
                 }
             }
@@ -1222,7 +1222,7 @@ U_PORT_TEST_FUNCTION("[sock]", "sockBasicTcp")
                           sizeBytes, (int32_t) uPortGetTickTimeMs());
 
         // Check if the uSockTotalBytesSent() matches value of sizeBytes
-        U_PORT_TEST_ASSERT(uSockGetTotalBytesSent(descriptor) == sizeBytes);
+        U_PORT_TEST_ASSERT(uSockGetTotalBytesSent(descriptor) == (int32_t)sizeBytes);
 
         // ...and capture them all again afterwards
         pDataReceived = (char *) pUPortMalloc((sizeof(gSendData) - 1) +
@@ -2147,7 +2147,7 @@ U_PORT_TEST_FUNCTION("[sock]", "sockUdpEchoNonPingPong")
                                           " byte(s), send try %d.", y + 1,
                                           sizeBytes, z + 1);
                         if (uSockSendTo(descriptor, &remoteAddress,
-                                        gSendData + offset, sizeBytes) == sizeBytes) {
+                                        gSendData + offset, sizeBytes) == (int32_t)sizeBytes) {
                             success = true;
                             offset += sizeBytes;
                         } else {
@@ -2398,7 +2398,7 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAsyncUdpEchoMayFailDueToInternetDatagramLoss
                                       sizeBytes, z + 1);
                     if (uSockSendTo(gTestConfig.descriptor,
                                     &remoteAddress, gSendData + offset,
-                                    sizeBytes) == sizeBytes) {
+                                    sizeBytes) == (int32_t)sizeBytes) {
                         success = true;
                         offset += sizeBytes;
                         y++;
@@ -2423,7 +2423,7 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAsyncUdpEchoMayFailDueToInternetDatagramLoss
                               " totalling %d byte(s).", gTestConfig.packetsReceived,
                               gTestConfig.bytesReceived);
 
-            if (gTestConfig.packetsReceived == y) {
+            if ((int32_t)gTestConfig.packetsReceived == y) {
                 // Check that we reassembled everything
                 U_PORT_TEST_ASSERT(checkAgainstSentData(gSendData,
                                                         gTestConfig.bytesToSend,

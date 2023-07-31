@@ -123,7 +123,9 @@ func handler(response http.ResponseWriter, request *http.Request) {
             if err := os.MkdirAll(filepath.Dir(path), 0770); err == nil {
                 if file, err := os.Create(path); err == nil {
                     defer file.Close()
-                    _, err = io.Copy(file, request.Body)
+                    var written int64
+                    written, err = io.Copy(file, request.Body)
+                    fmt.Printf("%d byte(s) written to \"%s\".\n", written, path)
                     if request.Method == "POST" {
                         // For a POST we return the file in the body of the response
                         http.ServeFile(response, request, path)
