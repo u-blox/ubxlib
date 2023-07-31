@@ -654,8 +654,9 @@ docker run --rm ubxlib_builder nrfjprog --ids
 - Some test instances will test Cell Locate, for which a token must be entered as an environment variable and a secret in Jenkins: `Manage Jenkins` -> `Manage Credentials`, create a credential of type `Secret text`, paste the token for the Location thing from the Thingstream account, something like `tLLgF0pwRq-nx19wZXBYFg` into the `Secret` field, give it the `ID` `ubxlib_cell_locate_authentication_token` and a sensible `Description`, e.g. "Authentication token for Cell Locate from Thingstream account", then press `Save`; [Jenkinsfile](Jenkinsfile) will parse this out and into a conditional compilation flag value for the builds.
 - Similarly, some GNSS test instances will AssistNow (Online and Offline), also known as MGA (multiple GNSS assistance), for which a token must be entered as an environment variable and a secret in Jenkins: `Manage Jenkins` -> `Manage Credentials`, create a credential of type `Secret text`, paste the token for a Location thing from the Thingstream account, something like `tLLgF0pwRq-nx19wZXBYFg` into the `Secret` field, give it the `ID` `ubxlib_assist_now_authentication_token` and a sensible `Description`, e.g. "Authentication token for AssistNow (online and offline) from Thingstream account", then press `Save`; [Jenkinsfile](Jenkinsfile) will parse this out and into a conditional compilation flag value for the builds.  Note: if you use the same token for this and Cell Locate then make sure they run on the same test instance to avoid clashes.
 - Instance 28, pure Linux:
-  - Enable the SPI and I2C interfaces via `raspi-config`.
+  - Enable the SPI interface via `raspi-config` (but _not_ the I2C interface, see below).
   - In the same way, set the serial port to NOT be used as a console, but still to be _enabled_.
+  - The I2C HW blocks on the BCM chip of the Raspberry Pi do not support clock stretching (which u-blox GNSS chips require) properly, hence it is necessary to enable the SW I2C implementation on the I2C pins by editing `/boot/config.txt` to add the line `dtoverlay=i2c-gpio,i2c_gpio_sda=2,i2c_gpio_scl=3,i2c_gpio_delay_us=2,bus=8`.
   - To use the UART port, which appears by default on pins GPIO14/GPIO15, use `raspi-config` -> `Performance Options` to switch off fan-control.
   - BEFORE allowing the Raspberry Pi to reboot, disable Bluetooth (so that we get to use `UART0` on `GPIO14`/`GPIO15` for stuff) by editing `/boot/config.txt` to add the line `dtoverlay=disable-bt`, then run the following to disable the associated services:
 ```
@@ -664,11 +665,11 @@ sudo systemctl disable bluetooth.service
 ```
   - ALSO BEFORE rebooting the Raspberry Pi, enable UART3 (by default on pins GPIO4 (TXD), GPIO5 (RXD), GPIO6 (CTS) and GPIO7 (RTS)) by editing `/boot/config.txt` to add the line `dtoverlay=uart3,ctsrts`.
   - ALSO ALSO BEFORE rebooting the Raspberry Pi, switch off the second SPI chip-select pin as it clashes with the UART3 CTS pin (GPIO7) by editing `/boot/config.txt` to add the line `dtoverlay=spi0-1cs`.
-  - Note: if you're confused about what GPIO is now doing what, once rebooted, enter `raspi-gpio get` to get a list.
+  - Note: if you're confused about what GPIO is now doing what, once rebooted, enter `raspi-gpio get` to obtain a list.
   - Hint: probably don't copy this particular SD card for use on any other Raspberry Pis as it is now rather specifically configured.
 
 ## Adding a New Test Instance With Physical HW
-Not strictly part of the setup process but, should you need to add an instance that has physical HW attached to the test system afterwards, the generic parts  i.e. after you have, for instance, attached the HW to a new Raspberry Pi and added the new Raspberry Pi to the Jenkins (see above), are as follows:
+Not strictly part of the setup process but, should you need to add an instance that has physical HW attached to the test system afterwards, the generic parts i.e. after you have, for instance, attached the HW to a new Raspberry Pi and added the new Raspberry Pi to the Jenkins (see above), are as follows:
 
 - Edit [u_settings.py](scripts/u_settings.py) to add the new entry on the end of the `__DEFAULT_SETTINGS["CONNECTION_INSTANCE_...` set; copy an existing one that is close (e.g. copy an NRF one for a new NRF board etc.), e.g.
 
