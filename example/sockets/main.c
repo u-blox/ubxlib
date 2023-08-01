@@ -43,7 +43,7 @@
  * -------------------------------------------------------------- */
 
 // Echo server URL and port number
-#define MY_SERVER_NAME "ubxlib.redirectme.net"
+#define MY_SERVER_NAME "ubxlib.com"
 #define MY_SERVER_PORT 5055
 
 // For u-blox internal testing only

@@ -34,13 +34,13 @@
 #ifndef U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME
 /** Echo server to use for UDP sockets testing as a domain name.
  */
-# define U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME  "ubxlib.redirectme.net"
+# define U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME  "ubxlib.com"
 #endif
 
 #ifndef U_SOCK_TEST_ECHO_UDP_SERVER_IP_ADDRESS
 /** Echo server to use for UDP sockets testing as an IP address.
  */
-# define U_SOCK_TEST_ECHO_UDP_SERVER_IP_ADDRESS  "159.65.52.65"
+# define U_SOCK_TEST_ECHO_UDP_SERVER_IP_ADDRESS  "18.133.144.142"
 #endif
 
 #ifndef U_SOCK_TEST_ECHO_UDP_SERVER_PORT
@@ -52,13 +52,13 @@
 #ifndef U_SOCK_TEST_ECHO_SECURE_UDP_SERVER_DOMAIN_NAME
 /** Echo server to use for secure (DTLS) UDP sockets testing as a domain name.
  */
-# define U_SOCK_TEST_ECHO_SECURE_UDP_SERVER_DOMAIN_NAME  "ubxlib.redirectme.net"
+# define U_SOCK_TEST_ECHO_SECURE_UDP_SERVER_DOMAIN_NAME  "ubxlib.com"
 #endif
 
 #ifndef U_SOCK_TEST_ECHO_SECURE_UDP_SERVER_IP_ADDRESS
 /** Echo server to use for secure (DTLS) UDP sockets testing as an IP address.
  */
-# define U_SOCK_TEST_ECHO_SECURE_UDP_SERVER_IP_ADDRESS  "159.65.52.65"
+# define U_SOCK_TEST_ECHO_SECURE_UDP_SERVER_IP_ADDRESS  "18.133.144.142"
 #endif
 
 #ifndef U_SOCK_TEST_ECHO_SECURE_UDP_SERVER_PORT
@@ -70,13 +70,13 @@
 #ifndef U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME
 /** Echo server to use for TCP sockets testing as a domain name.
  */
-# define U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME  "ubxlib.redirectme.net"
+# define U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME  "ubxlib.com"
 #endif
 
 #ifndef U_SOCK_TEST_ECHO_TCP_SERVER_IP_ADDRESS
 /** Echo server to use for TCP sockets testing as an IP address.
  */
-# define U_SOCK_TEST_ECHO_TCP_SERVER_IP_ADDRESS  "159.65.52.65"
+# define U_SOCK_TEST_ECHO_TCP_SERVER_IP_ADDRESS  "18.133.144.142"
 #endif
 
 #ifndef U_SOCK_TEST_ECHO_TCP_SERVER_PORT
@@ -88,13 +88,13 @@
 #ifndef U_SOCK_TEST_ECHO_SECURE_TCP_SERVER_DOMAIN_NAME
 /** Echo server to use for secure (TLS) TCP sockets testing as a domain name.
  */
-# define U_SOCK_TEST_ECHO_SECURE_TCP_SERVER_DOMAIN_NAME  "ubxlib.redirectme.net"
+# define U_SOCK_TEST_ECHO_SECURE_TCP_SERVER_DOMAIN_NAME  "ubxlib.com"
 #endif
 
 #ifndef U_SOCK_TEST_ECHO_SECURE_TCP_SERVER_IP_ADDRESS
 /** Echo server to use for secure (TLS) TCP sockets testing as an IP address.
  */
-# define U_SOCK_TEST_ECHO_SECURE_TCP_SERVER_IP_ADDRESS  "159.65.52.65"
+# define U_SOCK_TEST_ECHO_SECURE_TCP_SERVER_IP_ADDRESS  "18.133.144.142"
 #endif
 
 #ifndef U_SOCK_TEST_ECHO_SECURE_TCP_SERVER_PORT

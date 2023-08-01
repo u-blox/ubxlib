@@ -104,7 +104,7 @@ uMqttClientContext_t *gpMqttClientCtx;
 char gUniqueClientId[U_SHORT_RANGE_SERIAL_NUMBER_LENGTH];
 
 const uMqttClientConnection_t gMqttUnsecuredConnection = {
-    .pBrokerNameStr = "ubxlib.redirectme.net",
+    .pBrokerNameStr = "ubxlib.com",
     .pUserNameStr = "test_user",
     .pPasswordStr = "test_passwd",
     .pClientIdStr = gUniqueClientId,
@@ -113,7 +113,7 @@ const uMqttClientConnection_t gMqttUnsecuredConnection = {
 
 
 const uMqttClientConnection_t gMqttSecuredConnection = {
-    .pBrokerNameStr = "ubxlib.redirectme.net",
+    .pBrokerNameStr = "ubxlib.com",
     .pUserNameStr = "test_user",
     .pPasswordStr = "test_passwd",
     .pClientIdStr = gUniqueClientId,
@@ -123,33 +123,34 @@ const uMqttClientConnection_t gMqttSecuredConnection = {
 
 uSecurityTlsSettings_t gMqttTlsSettings = {
 
-    .pRootCaCertificateName = "ubxlib.redirectme.crt",
+    .pRootCaCertificateName = "ubxlib.com.crt",
     .pClientCertificateName = NULL,
     .pClientPrivateKeyName = NULL,
     .certificateCheck = U_SECURITY_TLS_CERTIFICATE_CHECK_ROOT_CA
 };
 
 static const char *gpRootCaCert = "-----BEGIN CERTIFICATE-----\n"
-                                  "MIIDozCCAougAwIBAgIUYxNzZCRRPxHpbOCU6MMgI3yqdyUwDQYJKoZIhvcNAQEL\n"
-                                  "BQAwYDELMAkGA1UEBhMCR0IxEzARBgNVBAgMClNvbWUtU3RhdGUxDzANBgNVBAoM\n"
-                                  "BnUtYmxveDELMAkGA1UECwwCY2ExHjAcBgNVBAMMFXVieGxpYi5yZWRpcmVjdG1l\n"
-                                  "Lm5ldDAgFw0yMzAxMTkxNjEwNTlaGA8yMTIyMTIyNjE2MTA1OVowYDELMAkGA1UE\n"
-                                  "BhMCR0IxEzARBgNVBAgMClNvbWUtU3RhdGUxDzANBgNVBAoMBnUtYmxveDELMAkG\n"
-                                  "A1UECwwCY2ExHjAcBgNVBAMMFXVieGxpYi5yZWRpcmVjdG1lLm5ldDCCASIwDQYJ\n"
-                                  "KoZIhvcNAQEBBQADggEPADCCAQoCggEBAMvcbsm2/2B+qTzDRrLWV3WkNT95SIpH\n"
-                                  "lxKb/UeIvLNby0CGc5F7TATGOBtcpJflvUV5CIrMRcoTlS7RMhEvI8fOgxO0FYZD\n"
-                                  "FEixK5EaD3yZg5QRQJrz/J/CCVpUnbX1PXN9HvWLcBM2etUWIld8eIiUrdNltbQf\n"
-                                  "+YPxhq785V3d4wGM9vdcvj61HoX1HkF+Sqvb4geLUloBrLkUsHAAz8Qkg7BmE1Bp\n"
-                                  "tfG6lH8hnkdGQm1bRo7dpV/egWgNVAuq38YT6obu318zy6PAz48ujrhBhACMiqki\n"
-                                  "Ya8ipY2rBbe11Cm7Lcb4cizZCtNMmEq/D2ghZE4s2PrmE9e1QB5IBs0CAwEAAaNT\n"
-                                  "MFEwHQYDVR0OBBYEFMn4tm58Q0h0cqzGV8EbxiIWi8x/MB8GA1UdIwQYMBaAFMn4\n"
-                                  "tm58Q0h0cqzGV8EbxiIWi8x/MA8GA1UdEwEB/wQFMAMBAf8wDQYJKoZIhvcNAQEL\n"
-                                  "BQADggEBAAQz/6M4USrCKzDdd1nt1mfHgL+0jXnF08nXkhE3fYqNA0tKB4TkF0VG\n"
-                                  "cXBdddD+4NPzIGykmKkKYnisw6EVav/dGDXZ4eb2cMwJw8Fv8unQj6VZFfiS0O2p\n"
-                                  "Vh2dOGVPPWJpm/9zy9gb58jr5NwCbwz3hPWCiCqXPyPTEZ7/aT9NAODkFv3Kexew\n"
-                                  "iWwWRc/ymQ1yjYRWNrm51DDMSuFd5y/jRpAOZETLJxGOBijHbtYbL9LXEqM0p3kn\n"
-                                  "m20z8m1G08LWc2T0wEmQUd0CLowNXcA0FLULKGz+0eUStjT13SiOtLyr4BM7/PBT\n"
-                                  "4SW1kPRGZAGea7AX1JYjKJEjT5XWtSs=\n"
+                                  "MIID5zCCAs+gAwIBAgIUTEgSJDC+dF9XeSzXYRE0TQRYRVowDQYJKoZIhvcNAQEL\n"
+                                  "BQAwgYExCzAJBgNVBAYTAlVTMQswCQYDVQQIDAJXQTEQMA4GA1UEBwwHVGhhbHdp\n"
+                                  "bDEPMA0GA1UECgwGdS1ibG94MQswCQYDVQQLDAJjYTETMBEGA1UEAwwKdWJ4bGli\n"
+                                  "LmNvbTEgMB4GCSqGSIb3DQEJARYRdWJ4bGliQHUtYmxveC5jb20wIBcNMjMwNzMx\n"
+                                  "MjIzNDQ5WhgPMjEyMzA3MDcyMjM0NDlaMIGBMQswCQYDVQQGEwJVUzELMAkGA1UE\n"
+                                  "CAwCV0ExEDAOBgNVBAcMB1RoYWx3aWwxDzANBgNVBAoMBnUtYmxveDELMAkGA1UE\n"
+                                  "CwwCY2ExEzARBgNVBAMMCnVieGxpYi5jb20xIDAeBgkqhkiG9w0BCQEWEXVieGxp\n"
+                                  "YkB1LWJsb3guY29tMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAq1PQ\n"
+                                  "xqnk7vuxexFticwr5wqR+n6cdQCJW37UGAml6fWQ4opyuZo+tUWLMrZJjS/wa/jK\n"
+                                  "j+JVxvlOrVehdrnce5kpFWHj8Iz85QrGE21FsS2IpV7yVBIcBdC6LpC8CwNmffBg\n"
+                                  "gzjMRdHiqVpz8761E82mp1iTt1BqrBGYrBKmk4H2QPkpJf2ymaff0Jm4Zf8m1Ozq\n"
+                                  "JWj27jxre3hy8yi0PLRI5+bC7sdUNheZc43mwfLua2hFyzh046VoZ/ZIOKuiBqjG\n"
+                                  "uy4Yo+diIBzneiAMXNimMO0STCfTeiUpNtfLuvDhLkYkx7FEcRWq5Navz3DyzwG/\n"
+                                  "iI3Dtj13MmpW9RwkcwIDAQABo1MwUTAdBgNVHQ4EFgQUID2tRSRpiIhPRNWo0RVY\n"
+                                  "zB/2S28wHwYDVR0jBBgwFoAUID2tRSRpiIhPRNWo0RVYzB/2S28wDwYDVR0TAQH/\n"
+                                  "BAUwAwEB/zANBgkqhkiG9w0BAQsFAAOCAQEAaTC+6oIEQLJMMiIfzT4M5SAnU0jg\n"
+                                  "YrZdzqcnX434uFIV6FlXKHs/tUuKFXA/grjj4XZuxtpkxdTvDW5lOwC59tBD4ATS\n"
+                                  "YDY+nUC4EMwv2aoFUrHV6zTUayqJHE2mNK+OuVc2OUVXUb7CEDbJJsECrPCDIIH+\n"
+                                  "LqqmRbvEypT0IRGp8a/vWI1XRdqf1x6MRvvIt+ju1kTe8/8WFVgu+sf1sO9JPYAL\n"
+                                  "rDiCkDLChTkFxDHAWQjl1ZE9qS01/a9rXLohdSPknIxuJn/TE/xF1tik/x7sJgNI\n"
+                                  "0OTAHWp66P43CopVUKJy5uprBYxkPwKICiB5/sY9ukH+gqLx2jRhwX4y6A==\n"
                                   "-----END CERTIFICATE-----\n";
 
 //lint -e(843) Suppress warning "could be declared as const"

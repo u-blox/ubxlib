@@ -29,7 +29,7 @@ Note also that, for moving stuff around, all the keys here are plain text and ca
 These steps need to be performed once to get the server sorted and each client authenticated to use it.
 
 ## Server
-These steps are carried out on the same machine as the Jenkins Docker container is running.  The DNS entry through which the machine is externally visible is assumed to be `ubxlib-test-system.redirectme.net` and the e-mail address of the administrator is assumed to be `ubxlib@u-blox.com`.
+These steps are carried out on the same machine as the Jenkins Docker container is running.  The DNS entry through which the machine is externally visible is assumed to be `ubxlib.com` and the e-mail address of the administrator is assumed to be `ubxlib@u-blox.com`.
 
 ### DNS Address
 By whatever means at your disposal give the externally-visible IP address of the `ubxlib` test system's router a DNS address on the public internet.  For instance, you might use a service such as [noip](https://www.noip.com/), with the router running the necessary dynamic DNS client (most routers support this).  Note that, if the WAN-side of your router will be behind a firewall your DNS provider must allow you to create TXT records for your domain,.
@@ -45,9 +45,9 @@ If the WAN-side of the router inside the `ubxlib` test system is on the public i
 sudo docker run -it --rm --name certbot -v /etc/letsencrypt:/etc/letsencrypt -v /var/lib/letsencrypt:/var/lib/letsencrypt -p 80:80 certbot/certbot certonly --standalone
 ```
 
-  ...giving it the e-mail address `ubxlib@u-blox.com` and the URL `ubxlib-test-system.redirectme.net` when prompted.
+  ...giving it the e-mail address `ubxlib@u-blox.com` and the URL `ubxlib.com` when prompted.
 
-- The private key and signed certificate will have been placed into `/etc/letsencrypt/live/ubxlib-test-system.redirectme.net`.
+- The private key and signed certificate will have been placed into `/etc/letsencrypt/live/ubxlib.com`.
 
 - `ubxlib@u-blox.com` will be sent an e-mail a few weeks before the certificate (3 months validity) expires; if port 80 will ALWAYS be open for incoming TCP connections you may renew it automatically by running the following command on the Jenkins machine, say, once a day:
 
@@ -58,25 +58,100 @@ sudo docker run -it --rm --name certbot -v /etc/letsencrypt:/etc/letsencrypt -v 
 - Note: once you have NGINX running, after updating certificates you will need to reload it to start using them: `docker exec -it nginx nginx -s reload`.
 
 ### HTTPS Certificate: "Router Behind Firewall" Case
-If the WAN-side of the router inside the `ubxlib` test system is behind a firewall you can no longer use the usual Certbot HTTP route to get a certificate for your HTTP server.  This is because ports can only be made open for incoming connections through the [Tunneling](#tunneling) mechanism and that does NOT work for ports numbered less than 1024 (that's just the way Linux is written) and Let's Encrypt will ONLY use port 80 to establish trust over HTTP.  Instead you must use the DNS authentication mechanism that Certbot/Let's Encrypt offers, where trust is established by checking that you own the DNS entry for the server.  Unforunately `noip` only allows this to be done manually, and hence the renewal process cannot be automated.
+If the WAN-side of the router inside the `ubxlib` test system is behind a firewall you can no longer use the usual Certbot HTTP route to get a certificate for your HTTP server.  This is because ports can only be made open for incoming connections through the [Tunneling](#tunneling) mechanism and that does NOT work for ports numbered less than 1024 (that's just the way Linux is written) and Let's Encrypt will ONLY use port 80 to establish trust over HTTP.  Instead you must use the DNS authentication mechanism that Certbot/Let's Encrypt offers, where trust is established by checking that you own the DNS entry for the server.
 
-- Log-in to the place that provides the DNS record for `ubxlib-test-system.redirectme.net` and be ready to add a new TXT record.
+#### `noip` Case
+If you are using `noip` to provide your DNS record/static IP address, it does not, unfortunately, support setting the necessary DNS record through an API, and hence the renewal process cannot be automated, it has to be performed manually as follows:
 
-- Obtain a private key for `ubxlib-test-system.redirectme.net` and get that signed by a CA (Let's Encrypt) by running Certbot in a Docker container as follows:
+- Log-in to `noip` and be ready to add a new TXT record.
+
+- Obtain a private key for the URL of the test system (e.g. `ubxlib.com`) and get that signed by a CA (Let's Encrypt) by running Certbot in a Docker container as follows:
 
 ```
-sudo docker run -it --rm --name certbot -v /etc/letsencrypt:/etc/letsencrypt -v /var/lib/letsencrypt:/var/lib/letsencrypt certbot/certbot certonly --manual --debug-challenges --preferred-challenges dns -d ubxlib-test-system.redirectme.net
+sudo docker run -it --rm --name certbot -v /etc/letsencrypt:/etc/letsencrypt -v /var/lib/letsencrypt:/var/lib/letsencrypt certbot/certbot certonly --manual --debug-challenges --preferred-challenges dns -d ubxlib.com
 ```
 
-  ...giving it the e-mail address `ubxlib@u-blox.com` and the URL `ubxlib-test-system.redirectme.net` if prompted.
+  ...giving it the e-mail address `ubxlib@u-blox.com` and the URL of the test system (assumed to be `ubxlib.com`) if prompted.
 
-- You will be asked to add a TXT record to the `ubxlib-test-system.redirectme.net` domain name record, with a `_acme-challenge` sub-domain (i.e. prefix) and with the value being a random text string that Let's Encrypt will check.  Do this and confirm to `CertBot` that you have done so.
+- You will be asked to add a TXT record to the DNS record inside `noip`, with a `_acme-challenge` sub-domain (i.e. prefix) and with the value being a random text string that Let's Encrypt will check.  Do this and confirm to `CertBot` that you have done so.
 
-- The private key and signed certificate will have been placed into `/etc/letsencrypt/live/ubxlib-test-system.redirectme.net`.
+- The private key and signed certificate will have been placed into `/etc/letsencrypt/live/ubxlib.com`.
 
 - Note: `ubxlib@u-blox.com` will be sent an e-mail a few weeks before the certificate (3 months validity) expires, at which point you can renew it manually by repeating the process above.
 
 - Note: once you have NGINX running, after updating certificates you will need to reload it to start using them: `docker exec -it nginx nginx -s reload`.
+
+#### AWS Route 53 Case
+If you are using Amazon Web Services Route 53 to provide your DNS record/static IP address then you can set up Cerbot/Let's Encrypt to obtain a private key for the URL of the test system (e.g. `ubxlib.com`) and get that signed by a CA (Let's Encrypt) automatically using [certboot-dns-route53](https://certbot-dns-route53.readthedocs.io/en/stable/).
+
+Do the following in the AWS web console:
+
+- Create an IAM (Identity and Access Management) policy named `certbot-dns-route53`, description `Permissions sufficient to auto-update Lets Encrypt certificate via DNS with Certbot`, using the following JSON, where the `HOSTEDZONEID` for `ubxlib.com` can be found in the `Hosted Zones` section of your AWS Route 53 management console:
+
+```
+{
+    "Version": "2012-10-17",
+    "Id": "certbot-dns-route53 policy",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "route53:ListHostedZones",
+                "route53:GetChange"
+            ],
+            "Resource": [
+                "*"
+            ]
+        },
+        {
+            "Effect" : "Allow",
+            "Action" : [
+                "route53:ChangeResourceRecordSets"
+            ],
+            "Resource" : [
+                "arn:aws:route53:::hostedzone/HOSTEDZONEID"
+            ]
+        }
+    ]
+}
+```
+
+- Create an IAM user named `certbot`, without console access, and attach to it the `certbot-dns-route53` policy you just created.
+
+- Select the newly created `certbot` user and create an access key (ID/secret pair) for it with the description `Certbot renewal`.
+
+Do the following on the Jenkins machine:
+
+- Create a path named `/etc/aws/config` with the following contents, replacing the example values with the access key ID/secret you obtained above:
+
+```
+[default]
+aws_access_key_id=AKIAIOSFODNN7EXAMPLE
+aws_secret_access_key=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+```
+
+- Run the `certbot/dns-route53` Docker container as follows to create the certificate:
+
+```
+sudo docker run -it --rm --name certbot --env AWS_CONFIG_FILE=/etc/aws/config -v /etc/aws:/etc/aws -v /etc/letsencrypt:/etc/letsencrypt -v /var/lib/letsencrypt:/var/lib/letsencrypt certbot/dns-route53 certonly --dns-route53 -d ubxlib.com
+```
+
+- The private key and signed certificate will be placed into `/etc/letsencrypt/live/ubxlib.com`.
+
+- Set this up to [auto-renew](https://eff-certbot.readthedocs.io/en/stable/using.html#setting-up-automated-renewal) with:
+
+```
+SLEEPTIME=$(awk 'BEGIN{srand(); print int(rand()*(3600+1))}'); echo "0 0,12 * * * root sleep $SLEEPTIME && docker run -it --rm --name certbot --env AWS_CONFIG_FILE=/etc/aws/config -v /etc/aws:/etc/aws -v /etc/letsencrypt:/etc/letsencrypt -v /var/lib/letsencrypt:/var/lib/letsencrypt certbot/dns-route53 renew -q" | sudo tee -a /etc/crontab > /dev/null
+```
+
+- To have `NGINX` restarted when auto-renewal has occurred, create a file named `/etc/letsencrypt/renewal-hooks/deploy/nginx_restart.sh` with the following contents:
+
+```
+#!/bin/sh
+docker exec -it nginx nginx -s reload
+```
+
+  ...and give it the correct permissions with `sudo chmod 755 /etc/letsencrypt/renewal-hooks/deploy/nginx_restart.sh`.
 
 ### Setting Up As A Certificate Authority
 Note: the keys/certificates etc. used here are entirely separate from those generated by Certbot above, don't mix the two.  Also, the naming pattern used by Cerbot (more correct in my view), in which the file extension `.pem` designates the format of the file, is replaced here by what appears to be the more usual format for SSL stuff, which is that certificates end with `.crt`, keys with `.key` and certificate signing requests with `.csr`; all are PEM format anyway.
@@ -124,7 +199,7 @@ emailAddress            = supplied
 openssl genrsa -des3 -out /etc/ssl/private/ubxlib_test_system.key 4096
 ```
 
-- Create a CA certificate for the server to sign things with, valid for 10 years, using the same key as was used to authenticate this machine through Certbot and populating `Country Name` with `GB`, `State or Province Name` empty, `Locality Name` empty, `Organization Name` with `u-blox`, `Organizational Unit Name` with `ubxlib`, `Common Name` with `ubxlib-test-system.redirectme.net` and `Email Address` with `ubxlib@u-blox.com`:
+- Create a CA certificate for the server to sign things with, valid for 10 years, using the same key as was used to authenticate this machine through Certbot and populating `Country Name` with `GB`, `State or Province Name` empty, `Locality Name` empty, `Organization Name` with `u-blox`, `Organizational Unit Name` with `ubxlib`, `Common Name` with the URL that the test system will appear as (e.g. `ubxlib.com`) and `Email Address` with `ubxlib@u-blox.com`:
 
 ```
 openssl req -new -x509 -days 3650 -key /etc/ssl/private/ubxlib_test_system.key -out /etc/ssl/certs/ubxlib_test_system_ca.crt
@@ -163,14 +238,14 @@ docker exec -u root -t -i nginx nano /etc/nginx/conf.d/default.conf
 ```
     listen       xxxx ssl;
     listen  [::]:xxxx ssl;
-    server_name  ubxlib-test-system.redirectme.net;
+    server_name  ubxlib.com;
 ```
 
   ...locate the files generated by Certbot and the local Certificate Authority CA file by adding:
 
 ```
-    ssl_certificate        /etc/letsencrypt/live/ubxlib-test-system.redirectme.net/fullchain.pem;
-    ssl_certificate_key    /etc/letsencrypt/live/ubxlib-test-system.redirectme.net/privkey.pem;
+    ssl_certificate        /etc/letsencrypt/live/ubxlib.com/fullchain.pem;
+    ssl_certificate_key    /etc/letsencrypt/live/ubxlib.com/privkey.pem;
 
     ssl_client_certificate /etc/ssl/certs/ubxlib_test_system_ca.crt;
     ssl_crl                /etc/ssl/CA/ca.crl;
@@ -189,11 +264,11 @@ docker exec -u root -t -i nginx nano /etc/nginx/conf.d/default.conf
 
 - On the router, set up port forwarding so that requests arriving on the WAN side for port `xxxx` are forwarded to the same port on the LAN-side address of the Jenkins machine.  If the WAN-side of your router is behind a firewall, see [Tunneling](#tunneling).
 
-- Run `docker restart nginx` and open a browser window to `https://ubxlib-test-system.redirectme.net:xxxx`: you should see a message something like `400 Bad Request: No required SSL certificate was sent`; this is because we've not yet set up your client device as one that is permitted to log in (if you comment out the line `ssl_verify_client on` above and restart NGINX you will get to the Jenkins log-in prompt, but don't do that 'cos were open to the internet now).
+- Run `docker restart nginx` and open a browser window to `https://ubxlib.com:xxxx`: you should see a message something like `400 Bad Request: No required SSL certificate was sent`; this is because we've not yet set up your client device as one that is permitted to log in (if you comment out the line `ssl_verify_client on` above and restart NGINX you will get to the Jenkins log-in prompt, but don't do that 'cos were open to the internet now).
 
 - Note: if you are unable to get to the warning stage, logs of NGINX's behaviour can be viewed with `docker logs nginx`.  If you are not able to even get that far, temporarily switch logging to "everything" on the router and see if you can see an incoming connection being dropped or accepted from the IP address of the machine you are browsing from (browse to https://whatsmyip.com/ on that machine to determine its external IP address if you don't know it).  If the connection _is_ being accepted at the router, try taking a [Wireshark](https://www.wireshark.org/) log on the Jenkins machine with `sudo yum install wireshark` followed by something like `sudo tshark -i eno1`, assuming `eno1` is the Ethernet port that is the LAN address of the Jenkins machine, to see if the connection attempt is getting from the router to the machine.
 
-- With all of this done, in order to get Jenkins to refer to itself as being at the new external URL, in Jenkins go to `Manage Jenkins` -> `Configure System` find `Jenkins Location` and set `Jenkins URL` to be `https://ubxlib-test-system.redirectme.net:xxxx`.  The Jenkins configuration page will then pop-up a warning along the lines of `It appears that your reverse proxy set up is broken`, since Jenkins itself cannot get to that URL; this warning can be dismissed.
+- With all of this done, in order to get Jenkins to refer to itself as being at the new external URL, in Jenkins go to `Manage Jenkins` -> `Configure System` find `Jenkins Location` and set `Jenkins URL` to be `https://ubxlib.com:xxxx`.  The Jenkins configuration page will then pop-up a warning along the lines of `It appears that your reverse proxy set up is broken`, since Jenkins itself cannot get to that URL; this warning can be dismissed.
 
 ## Clients
 The steps required for initial setup of each client that wishes to access the system are set out below.  Generation of the key/Certificate Signing Request may be done either by the user (typically a Linux user will know how to do this) or by the `ubxlib` test system admin (which might be an easier option for Windows users since then there is no need to install OpenSSL on their machine).  Getting the user to do it is preferred as that way their private key never leaves their device.
@@ -253,7 +328,7 @@ openssl pkcs12 -export -out ubxlib_test_system_devicename.pfx -inkey ubxlib_test
 
 - Troubleshooting: if it does not you might take a Wireshark log on your local machine while doing the above and look in the SSL handshake for (a) the server sending a Certificate Request (the Distinguished Names it is asking for should be those of the CA certificate) and (b) the client responding with Certificate: is it of non-zero length and, if so, does the Public Key string match the one in the signed certificate that you installed?
 
-### "Ubxlib Test System Admin Generates Private Key"  Method
+### "`ubxlib` Test System Admin Generates Private Key"  Method
 Use this method if the user is not able to generate a private key on their device.
 
 - Ask them to e-mail their `devicename` to `ubxlib@u-blox.com`.

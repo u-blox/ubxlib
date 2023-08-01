@@ -47,7 +47,7 @@
 // may make a secure [D]TLS connection on broker.emqx.io instead
 // by editing this code to add [D]TLS security (see below) and
 // changing MY_BROKER_NAME to have ":8883" on the end.
-#define MY_BROKER_NAME "ubxlib.redirectme.net"
+#define MY_BROKER_NAME "ubxlib.com"
 
 // For u-blox internal testing only
 #ifdef U_PORT_TEST_ASSERT
@@ -255,7 +255,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleMqttClient")
             if (pContext != NULL) {
                 // Set the URL for the connection; everything
                 // else can be left at defaults for the
-                // public ubxlib.redirectme.net broker
+                // public ubxlib.com broker
                 connection.pBrokerNameStr = MY_BROKER_NAME;
 
                 // If you wish to use MQTT-SN instead of MQTT,

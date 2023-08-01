@@ -68,7 +68,7 @@
 #define SOCKET_THREAD_STACK_SIZE 8*1024
 
 // Socket echo server URL
-#define TCP_SERVER_NAME "ubxlib.redirectme.net"
+#define TCP_SERVER_NAME "ubxlib.com"
 
 // Socket echo server port
 #define TCP_SERVER_PORT 5055

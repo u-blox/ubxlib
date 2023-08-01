@@ -94,26 +94,26 @@
 #ifndef U_CELL_MQTT_TEST_MQTT_SERVER_IP_ADDRESS
 /** Server to use for MQTT testing.
  */
-# define U_CELL_MQTT_TEST_MQTT_SERVER_IP_ADDRESS  ubxlib.redirectme.net
+# define U_CELL_MQTT_TEST_MQTT_SERVER_IP_ADDRESS  ubxlib.com
 #endif
 
 #ifndef U_CELL_MQTT_TEST_MQTT_SERVER_IP_ADDRESS_SECURED
 /** Server to use for MQTT testing on a secured connection,
  * can't be hivemq as that doesn't support security.
  */
-# define U_CELL_MQTT_TEST_MQTT_SERVER_IP_ADDRESS_SECURED  ubxlib.redirectme.net:8883
+# define U_CELL_MQTT_TEST_MQTT_SERVER_IP_ADDRESS_SECURED  ubxlib.com:8883
 #endif
 
 #ifndef U_CELL_MQTT_TEST_MQTTSN_SERVER_IP_ADDRESS
 /** Server to use for MQTT-SN testing.
  */
-# define U_CELL_MQTT_TEST_MQTTSN_SERVER_IP_ADDRESS  ubxlib.redirectme.net
+# define U_CELL_MQTT_TEST_MQTTSN_SERVER_IP_ADDRESS  ubxlib.com
 #endif
 
 #ifndef U_CELL_MQTT_TEST_MQTTSN_SERVER_IP_ADDRESS_SECURED
 /** Server to use for MQTT-SN testing on a secured connection.
  */
-# define U_CELL_MQTT_TEST_MQTTSN_SERVER_IP_ADDRESS_SECURED  ubxlib.redirectme.net:8883
+# define U_CELL_MQTT_TEST_MQTTSN_SERVER_IP_ADDRESS_SECURED  ubxlib.com:8883
 #endif
 
 /* ----------------------------------------------------------------

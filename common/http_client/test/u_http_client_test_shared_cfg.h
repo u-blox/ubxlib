@@ -35,13 +35,13 @@
 #ifndef U_HTTP_CLIENT_TEST_SERVER_DOMAIN_NAME
 /** The domain name of the HTTP test server.
  */
-# define U_HTTP_CLIENT_TEST_SERVER_DOMAIN_NAME  "ubxlib.redirectme.net"
+# define U_HTTP_CLIENT_TEST_SERVER_DOMAIN_NAME  "ubxlib.com"
 #endif
 
 #ifndef U_HTTP_CLIENT_TEST_SERVER_IP_ADDRESS
 /** The HTTP test server as an IP address.
  */
-# define U_HTTP_CLIENT_TEST_SERVER_IP_ADDRESS  "159.65.52.65"
+# define U_HTTP_CLIENT_TEST_SERVER_IP_ADDRESS  "18.133.144.142"
 #endif
 
 #ifndef U_HTTP_CLIENT_TEST_SERVER_PORT

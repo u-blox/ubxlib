@@ -112,7 +112,7 @@
 #ifndef U_CELL_MUX_TEST_MQTT_SERVER_IP_ADDRESS
 /** Server to use for the MQTT part of the mux test.
  */
-# define U_CELL_MUX_TEST_MQTT_SERVER_IP_ADDRESS  ubxlib.redirectme.net
+# define U_CELL_MUX_TEST_MQTT_SERVER_IP_ADDRESS  ubxlib.com
 #endif
 
 #ifndef U_CELL_MUX_TEST_MQTT_RESPONSE_TIMEOUT_MS

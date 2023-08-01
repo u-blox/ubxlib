@@ -46,7 +46,7 @@
 // HTTPS server URL: this is a test server that accepts PUT/POST
 // requests and GET/HEAD/DELETE requests on port 8081; there is
 // also an HTTP server on port 8080.
-#define MY_SERVER_NAME "ubxlib.redirectme.net:8081"
+#define MY_SERVER_NAME "ubxlib.com:8081"
 
 // Some data to PUT and GET with the server.
 const char *gpMyData = "Hello world!";

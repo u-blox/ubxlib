@@ -1,10 +1,10 @@
 # Introduction
 This folder contains the source code for the `go` based HTTP test server, used when testing `ubxlib` HTTP stuff.
 
-Two HTTP test servers using this `go` code are running on a publicly accessible server `ubxlib.redirectme.net`:
+Two HTTP test servers using this `go` code are running on a publicly accessible server `ubxlib.com`:
 
-- HTTP:   `ubxlib.redirectme.net:8080`
-- HTTPS:  `ubxlib.redirectme.net:8081`
+- HTTP:   `ubxlib.com:8080`
+- HTTPS:  `ubxlib.com:8081`
 
 The HTTPS server uses the same certificates as are used for the [MQTT client](/common/mqtt_client/test/mqtt_broker/certs).
 
