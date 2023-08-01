@@ -137,12 +137,11 @@ int32_t uWifiMqttSetMessageCallback(const uMqttClientContext_t *pContext,
                                     void *pCallbackParam);
 
 /** Set a callback to be called if the MQTT client disconnects
- * from the boker. WiFi MQTT client triggers disconnect callback
- * Error code will be set to #U_ERROR_COMMON_TIMEOUT,
+ * from the broker.  Error code will be set to #U_ERROR_COMMON_TIMEOUT
  * when the connection to broker fails during connection initiation.
- * Error code will be set to #U_ERROR_COMMON_SUCCESS,
- * when the disconnection initiated by the user using
- * uWifiMqttClose() or uWifiMqttDisconnect()
+ * Error code will be set to #U_ERROR_COMMON_SUCCESS when the
+ * disconnection was initiated by the user with uWifiMqttClose() or
+ * uWifiMqttDisconnect()
  *
  * @param[in] pContext        client context returned by pUMqttClientOpen().
  * @param[in] pCallback       the callback. The first parameter is the
@@ -217,7 +216,7 @@ int32_t uWifiMqttMessageRead(const uMqttClientContext_t *pContext,
 
 /** Check if we are connected to the given MQTT session.
  *
- * @param[in] pContext            client context returned by pUMqttClientOpen().
+ * @param[in] pContext        client context returned by pUMqttClientOpen().
  * @return                    true/false.
  */
 bool uWifiMqttIsConnected(const uMqttClientContext_t *pContext);

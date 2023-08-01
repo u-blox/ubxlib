@@ -120,14 +120,14 @@ int32_t uGnssAdd(uGnssModuleType_t moduleType,
  * #U_GNSS_TRANSPORT_VIRTUAL_SERIAL because the GNSS chip is inside or
  * connected via an intermediate (for example cellular) module then you
  * should call this function to let the GNSS instance know that there
- * is such an intermediate device.  This is because some procedures,
+ * is such an intermediate device.  This is required because some procedures,
  * e.g. powering the GNSS device on or off, need to be done differently
  * when there is an intermediate module.  You do NOT need to call this
  * function (it will return an error) if you are using
- * #U_GNSS_TRANSPORT_AT as the code will already know that there is an
- * intermediate module in that case; likewise, if you are using
- * #U_GNSS_TRANSPORT_VIRTUAL_SERIAL for another reason, no intermediate
- * module is involved, you do not need to call this function.
+ * #U_GNSS_TRANSPORT_AT, as the code will already know that there is an
+ * intermediate module in that case.  Likewise, if you are using
+ * #U_GNSS_TRANSPORT_VIRTUAL_SERIAL for another reason and no
+ * intermediate module is involved, you do not need to call this function.
  *
  * @param gnssHandle          the handle of the GNSS instance.
  * @param intermediateHandle  the handle of the intermediate (e.g. cellular)

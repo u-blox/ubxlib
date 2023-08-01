@@ -6,16 +6,16 @@ The complete set up of the automated test system, from scratch, is described in 
 # The Instances
 The automated test system runs several instances all defined in [DATABASE.md](DATABASE.md). Each row in [DATABASE.md](DATABASE.md) corresponds to an instance that runs in parallel on Jenkins. The process for each instance is divided into the stages: build, flash and test. However, some of the instances only use the test stage.
 
-Each instance (i.e. each row in [DATABASE.md](DATABASE.md) or each parallel test) has an ID with format `x.y.z` where x-z are integer values. `x` is mandatory while `y` and `z` are optional. The `x` is used for referring to a specific HW configuration and `y` & `z` are used to for defining variants of tests performed on the same HW config.
+Each instance (i.e. each row in [DATABASE.md](DATABASE.md) or each parallel test) has an ID with format `x.y.z` where x-z are integer values. `x` is mandatory while `y` and `z` are optional. The `x` is used for referring to a specific HW configuration and `y` & `z` are used for defining variants of tests performed on the same HW config.
 
 Example:
-11.0: ESP32-DevKitC HW, build, flash and test `ubxlib` for ESP-IDF
-11.1: ESP32-DevKitC HW (i.e. same HW as above), build, flash and test `ubxlib` for Arduino
 
-i.e. 11 in the above example identifies the HW and `.0` & `.1` are used for testing `ubxlib` built for both ESP-IDF and Arduino on the same HW.
-When running on Jenkins the test system will run these two test instances in sequence if there is only one instance of `11` HW available.
+- 11.0: ESP32-DevKitC HW, build, flash and test `ubxlib` for ESP-IDF
+- 11.1: ESP32-DevKitC HW (i.e. same HW as above), build, flash and test `ubxlib` for Arduino
 
-**NOTE:** it is important to note that the values set for the instances in [DATABASE.md](DATABASE.md) are used as input to the build, flash and test stage.
+11 in the above example identifies the HW and `.0` & `.1` are used for testing `ubxlib` built under ESP-IDF or Arduino on the same HW.  When running on Jenkins the test system will run these two test instances in sequence if there is only one instance of `11` HW available.
+
+The values set for the instances in [DATABASE.md](DATABASE.md) are used as input to the build, flash and test stages.
 
 # Reading The Jenkins Output
 Whenever a push is made to the `ubxlib_priv` repository, Jenkins will be triggered to test it.
@@ -28,7 +28,7 @@ If there is a failure the stage will be marked red, or if there is a timeout it 
 
 ![Test output](/readme_images/test_output.png)
 
-To understand why the test failed you will likely need the debug output from the target. For the `test` stage test outcome together with the debug log from the target are stored in JUnit XML reports parsed by Jenkins. In this way you can use the `Test` tab in BlueOcean to view the failed test to find the debug output in the `Standard Output` section:
+To understand why the test failed you will likely need the debug output from the target. For the `test` stage the test outcome, together with the debug log from the target, are stored in JUnit XML reports parsed by Jenkins; you can use the `Test` tab in BlueOcean to view the failed test, and you will find the debug output in the `Standard Output` section:
 
 ![Test tab](/readme_images/test_tab.png)
 
@@ -108,13 +108,13 @@ inv --help automation.build 12.0
 ```
 
 ### Shell Tab Completion For Invoke Command
-Since the PyInvoke task name are quite long, it can be convenient to enable shell tab completion.
-The `invoke` command is already prepared for this, but you need to do some steps to enable it:
-1. Generate the needed shell script for your shell by using executing `invoke --print-completion-script <name of your shell> > ~/.invoke-completion.sh`.
-I.e. for bash you would run:
+Since the PyInvoke task name are quite long, it can be convenient to enable shell tab completion.  The `invoke` command is already prepared for this, but you need to do some steps to enable it:
+
+1. Generate the needed shell script for your shell by using executing `invoke --print-completion-script <name of your shell> > ~/.invoke-completion.sh` i.e. for bash you would run:
 ```
 invoke --print-completion-script bash > ~/.invoke-completion.sh
 ```
+
 2. You need to source the script generated in step 1 at startup of each shell session. For bash you can do this by adding the following line to `~/.bashrc`:
 ```
 source ~/.invoke-completion.sh
@@ -143,7 +143,7 @@ When you switch version in `u_packages.yml` the package manager will first check
 # CodeChecker
 [CodeChecker](https://github.com/Ericsson/codechecker) is a frame work for static code analysis using [Clang Static Analyzer](https://clang-analyzer.llvm.org/). We currently support running CodeChecker for STM32Cube and nRFConnect platforms.
 
-In `DATABASE.md` the CodeChecker is run by adding `CodeChecker:` prefix to the `Platform` field. All defines and configurations will be regarded exactly like building a firmware for the specific platform.
+In `DATABASE.md` the CodeChecker is run by adding a `CodeChecker:` prefix to the `Platform` field. All defines and configurations will be regarded exactly like building a firmware for the specific platform.
 
 If you are running CodeChecker locally you need to `pip3 install codechecker` and, on Windows, install at least [LLVM version 14](https://github.com/llvm/llvm-project/releases/tag/llvmorg-14.0.0), adding the `bin` directory to your path.
 
@@ -166,12 +166,7 @@ This can only be done by the normal compiler ways. Please see Clang Static Analy
 # Running A Specified Test Instance
 As described in the previous section Jenkins uses the `automation.<command>` PyInvoke tasks. These tasks can be run locally and this is described in the [`automation` Tasks](#automation-tasks) section.
 
-**NOTE:** If you want to use hardware dependent task such as `automation.flash` you will likely need to adjust the files in `$HOME/.ubx_automation`.
-In this directory you will find `settings_v2_agent_specific.json` which among other things contains a list of COM-ports and debugger serial to use for each instance.
-The file will automatically created with default value if it doesn't exist. In this case the settings will use a `_FIX_ME` postfix.
-To get local testing working you will need to adjust the `CONNECTION_INSTANCE_<instance>_FIX_ME` for the instance you want to run.
-When you have configured COM port and/or debugger serial number you should remove the `_FIX_ME` postfix.
-For instance, to run instance 16 locally you might open that file and change:
+**NOTE:** If you want to use a hardware dependent task such as `automation.flash` you will likely need to adjust the files in `$HOME/.ubx_automation`. In this directory you will find `settings_v2_agent_specific.json` which among other things contains a list of COM-ports and debugger serial to use for each instance. The file will automatically created with default value if it doesn't exist. In this case the settings will use a `_FIX_ME` postfix. To get local testing working you will need to adjust the `CONNECTION_INSTANCE_<instance>_FIX_ME` for the instance you want to run. When you have configured COM port and/or debugger serial number you should remove the `_FIX_ME` postfix. For instance, to run instance 16 locally you might open that file and change:
 
 ```
   "CONNECTION_INSTANCE_16_FIX_ME": {

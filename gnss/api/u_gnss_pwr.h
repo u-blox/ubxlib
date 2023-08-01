@@ -35,7 +35,7 @@
  * GNSS device for an overview of the terms used and a description
  * of the states involved; the state machine diagram is particularly
  * useful.  Note that power-saving is not supported on all GNSS devices
- * (e.g. ADR, FTS or HPG devices do not).
+ * (e.g. ADR, FTS and HPG devices do not).
  *
  * To define a few terms:
  *
@@ -320,7 +320,7 @@ int32_t uGnssPwrOffBackup(uDeviceHandle_t gnssHandle);
 int32_t uGnssPwrSetMode(uDeviceHandle_t gnssHandle, uGnssPwrSavingMode_t mode);
 
 /** Get the power-saving mode.  Note that power-saving is not
- * supported on all GNSS devices (e.g. ADR, FTS or HPG devices do not).
+ * supported on all GNSS devices (e.g. ADR, FTS and HPG devices do not).
  *
  * For M9 devices and later this is equivalent to getting key ID
  * #U_GNSS_CFG_VAL_KEY_ID_PM_OPERATEMODE_E1.

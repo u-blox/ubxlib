@@ -397,7 +397,7 @@ typedef bool (uGnssMgaDatabaseCallback_t) (uDeviceHandle_t devHandle,
  * -------------------------------------------------------------- */
 
 /** Encode an AssistNow Online request body suitable for sending via
- * an HTTP GET request to a u-blox assistance server (e.g.
+ * an HTTP GET request to a u-blox assistance server (for example
  * online-live1.services.u-blox.com).  This does NOT send the HTTP
  * request: you must do that, e.g. using the uHttpClient API.  This
  * function is designed such that the buffer size may be determined
@@ -455,7 +455,7 @@ int32_t uGnssMgaOnlineRequestEncode(const uGnssMgaOnlineRequest_t *pRequest,
                                     char *pBuffer, size_t size);
 
 /** Encode an AssistNow Offline request body suitable for sending via an
- * HTTP GET request to a u-blox assistance server (e.g.
+ * HTTP GET request to a u-blox assistance server (for example
  * offline-live1.services.u-blox.com).  This does NOT send the HTTP
  * request: you must do that, e.g. using the uHttpClient API.  This
  * function is designed such that the buffer size may be determined
@@ -680,8 +680,8 @@ int32_t uGnssMgaSetAutonomous(uDeviceHandle_t gnssHandle, bool onNotOff);
  * followed by up to #U_GNSS_MGA_DBD_MESSAGE_PAYLOAD_LENGTH_MAX_BYTES
  * bytes of payload); pCallback will be called for each chunk returned.
  * pCallback must store the raw data (i.e. all up-to-166 bytes) in a
- * contigouous manner and return true on success, else return false
- * (in which case this function will return and the remaining chunks
+ * contigouous manner and return true on success, else false (in
+ * which case this function will return and the remaining chunks
  * will be ignored).  Database retrieval will time-out if the final ack
  * is not received within #U_GNSS_MGA_DATABASE_READ_TIMEOUT_MS.
  *

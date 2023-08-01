@@ -7,12 +7,10 @@ The echo server is an EC2 instance under a `ubxlib` account set up inside the u-
 ```
 chcp 65001
 aws ssm start-session --target <instance ID>
-sudo su - ubuntu
+sudo su - <username>
 ```
 
 The first line is ONLY REQUIRED ON WINDOWS: it switches to the correct code-page (UTF-8) so that line-draw characters etc. are displayed correctly; useful if you are looking at `systemctl status` or some such.
-
-The only thing on the echo server which requires active management is renewal of the 
 
 # Test Peers
 Install each of the [sockets](/common/sock/test/echo_server), [MQTT/MQTTSN](/common/mqtt_client/test/mqtt_broker) and [HTTP/HTTPS](/common/http_client/test/http_server) test peers according to their instructions, ensuring that they start at boot.

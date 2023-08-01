@@ -73,7 +73,7 @@ extern "C" {
 
 #ifndef U_PORT_UART_PREFIX
 /** The UART prefix to use, on platforms where such a prefix
- * is employed (e.g. Linux).
+ * is employed (for example Linux).
  */
 # define U_PORT_UART_PREFIX "/dev/ttyUSB"
 #endif

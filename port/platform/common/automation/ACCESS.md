@@ -439,7 +439,7 @@ systemctl restart sshd_external.service
 
 - The client should now be able to SSH into the Jenkins machine with something like `ssh -i path/to/ubxlib_test_system_client_key -p <ssh_port> ubxlib@jenkinsurl`, or you may use [PuTTY](https://www.putty.org/), for which you need [to convert your private key to a `.ppk` file](https://sites.google.com/site/xiangyangsite/home/technical-tips/linux-unix/common-tips/how-to-convert-ssh-id_rsa-keys-to-putty-ppk).
 
-If this doesn't work, try looking at `systemctl status sshd_external.service` or taking Wireshark logs on the client and server machines to see what SSH might be objecting to.
+If this doesn't work, try looking at `systemctl status sshd_external.service`, maybe set `LogLevel DEBUG` in the server's `sshd_external_config` or try taking Wireshark logs on the client and server machines to see what SSH might be objecting to.
 
 - Similarly, the client should be able to SFTP into the Jenkins machine with something like `sftp -i path/to/ubxlib_test_system_client_key -P <ssh_port> ubxlib@jenkinsurl` (noting the capital `-P` this time) or, if a GUI is preferred, using something like [FileZilla](https://filezilla-project.org/).
 
@@ -458,13 +458,21 @@ You want port 8888 on your local machine to be available to someone who accesses
 ssh -N -R 8888:localhost:8888 user@remote_machine
 ```
 
-This tells the SSH server on `remote_machine` to send any packets headed for port 8888 on that machine (the first 8888) to the machine where you ran the above command, port 8888 (the second 8888). `-N` means don't do an interactive login.
+This tells the SSH server on `remote_machine` to send any packets headed for port 8888 on that machine (the first 8888) to the machine where you ran the above command, port 8888 (the second 8888). `-N` means don't do an interactive login.  Note: if the `remote_machine` is an Amazon EC2 instance the `user` here is a Linux user on that machine, it has nothing at all to do with the many AWS IAM users etc.
 
-Obviously it is important to make sure that you only SSH-forward to ports where you know you have, for instance, NGINX or an SSH-key-protected SSH server listening on the local machine.  You may also need to make sure that, on the remote machine, `/etc/ssh/sshd_config` has `GatewayPorts` set to `yes`.  And obvously the port (8888 in this case) would need to be open to the public internet for incoming TCP connections both on the remote machine and on that machine's network firewall.  Then, if you do the above command on the Jenkins machine, users will be able to access the Jenkins web pages, secured through NGINX, at the URL of the remote machine.  Obviously you will need to do the same for SSH/SFTP access.
+Obviously it is important to make sure that you only SSH-forward to ports where you know you have, for instance, NGINX or an SSH-key-protected SSH server listening on the local machine.  You may also need to make sure that, on the remote machine, `/etc/ssh/sshd_config` has `GatewayPorts` set to `yes`, `AllowTcpForwarding` set to `remote` and `ClientAliveInterval 30`/`ClientAliveCountMax 2` to drop unused connections (restart `ssh.service` after making changes).  And obviously the port (8888 in this case) would need to be open to the public internet for incoming TCP connections both on the remote machine and on that machine's network firewall.  Then, if you do the above command on the Jenkins machine, users will be able to access the Jenkins web pages, secured through NGINX, at the URL of the remote machine.  Obviously you will need to do the same for SSH/SFTP access.
 
 Note: with this approach you don't actually need any port-forwarding on your router at all, since all TCP connections (i.e. the SSH tunnel) are outward.
 
-To set this up to run at boot on the Jenkins machine, make sure that you authenticate with the SSH server machine using a key pair so that you don't need to type in a password (you can give your SSH key to the `ssh` command line with the `-i` option).  Rather than just running `ssh` as a command-line, or even as `systemd` service, the favoured approach seems to be to install [autossh](https://www.harding.motd.ca/autossh/) with:
+To set this up to run at boot on the Jenkins machine, first create a key-pair (no passphrase, the SSH daemon can't type) with:
+
+```
+ssh-keygen -f path/to/tunnel_key -t ecdsa -b 521
+```
+
+...and, similar to above, on the server machine add the contents of the `.pub` file as a new line in the file `~/.ssh/authorized_keys` (which should have the right permissions set (see above)).
+
+Rather than just running `ssh` as a command-line, or even as `systemd` service, the favoured approach seems to be to install [autossh](https://www.harding.motd.ca/autossh/) with:
 
 ```
 wget -c https://www.harding.motd.ca/autossh/autossh-1.4g.tgz
@@ -479,7 +487,7 @@ sudo make install
 ...run `autossh` once, manually, as `sudo` in order to accept the signature of the remote server with something like:
 
 ```
-sudo /usr/local/bin/autossh -M 0 -o "ServerAliveInterval 30" -o "ServerAliveCountMax 3" -N -R 8888:localhost:8888 user@remote_machine -i path/to/ssh_key
+sudo /usr/local/bin/autossh -M 0 -o "ServerAliveInterval 30" -o "ServerAliveCountMax 3" -N -R 8888:localhost:8888 user@remote_machine -i path/to/tunnel_key
 ```
 
 ...and start `autossh` with a `systemd` file named something like `/etc/systemd/system/tunnel-https.service` containing something like the following:
@@ -493,7 +501,7 @@ After=network.target
 Restart=on-failure
 RestartSec=5
 Environment=AUTOSSH_GATETIME=0
-ExecStart=/usr/local/bin/autossh -M 0 -o "ServerAliveInterval 30" -o "ServerAliveCountMax 3" -N -R 8888:localhost:8888 user@remote_machine -i path/to/ssh_key
+ExecStart=/usr/local/bin/autossh -M 0 -o "ServerAliveInterval 30" -o "ServerAliveCountMax 3" -N -R 8888:localhost:8888 user@remote_machine -i path/to/tunnel_key
 ExecStop= /usr/bin/killall autossh
 
 [Install]

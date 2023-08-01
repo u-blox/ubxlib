@@ -174,8 +174,7 @@ typedef void (*uWifiNetworkStatusCallback_t) (uDeviceHandle_t devHandle,
  */
 int32_t uWifiInit();
 
-/** Shut-down wifi.  All instances will be removed internally
- * with calls to uWifiRemove().
+/** Shut-down wifi.  All instances will be removed internally.
  */
 void uWifiDeinit();
 

@@ -175,8 +175,8 @@ int32_t uCellFileBlockRead(uDeviceHandle_t cellHandle,
 int32_t uCellFileSize(uDeviceHandle_t cellHandle,
                       const char *pFileName);
 
-/** Delete a file from the file system. If the file does not exist,
- * error will be return.
+/** Delete a file from the file system. If the file does not exist an
+ * error will be returned.
  *
  * @param cellHandle     the handle of the cellular instance.
  * @param[in] pFileName  a pointer to the file name to delete from the

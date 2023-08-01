@@ -6,14 +6,18 @@ Also provided is a [static_size](static_size) "platform", which includes stubs f
 # Supported MCUs
 The MCUs supported by the platforms are as follows:
 
-- Espressif [ESP-IDF](esp-idf) and [Arduino-ESP32](arduino): ESP32.
+- Espressif [ESP-IDF](esp-idf): ESP32.
 - ST Microelectronics' [STM32Cube IDE](stm32cube): STM32F4.
-- Nordic [nRF5 SDK](nrf5sdk): NRF52.
 - [zephyr](zephyr): we test NRF52/NRF53, and also Linux/Posix for development purposes, but any MCU that is supported by Zephyr may work transparently.
 - not really an MCU but [windows](windows) is supported for development/test purposes.
 - [Linux](linux): not an MCU but native Linux is supported.
 
 In addition to the above, support is included for building certain frameworks as a `ubxlib` library under [PlatformIO](platformio). 
+
+The following platforms are currently supported but WILL BE DEPRECATED soon and will be REMOVED at the end of 2023:
+
+- [Arduino-ESP32](arduino): please build for Arduino through [PlatformIO](platformio) instead.
+- Nordic [nRF5 SDK](nrf5sdk) on NRF52: please use [zephyr](zephyr) instead.
 
 # Structure
 Each platform sub-directory includes the following items:

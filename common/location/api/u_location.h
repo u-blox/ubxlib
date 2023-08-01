@@ -32,7 +32,7 @@
  * @brief This header file defines the location API, which is designed
  * to determine location using any u-blox module and potentially a
  * cloud service.  These functions are thread-safe with the exception
- * that the network layer should not be deactivated (i.e. with
+ * that the device layer should not be deactivated (i.e. with
  * uDeviceDeinit()) while an asynchronous location request is
  * outstanding.
  */
@@ -248,8 +248,7 @@ typedef struct {
                                      range -100 dBm to 0 dBm. */
 } uLocationAssist_t;
 
-/** Definition of a location.  If you change this, don't forget to change
- * U_LOCATION_DEFAULTS also.
+/** Definition of a location.
  */
 typedef struct {
     uLocationType_t type; /**< the location mechanism that was used. */
@@ -312,7 +311,7 @@ typedef enum {
 /** Get the current location, returning on success or when
  * pKeepGoingCallback returns false, whichever is earlier.
  * uNetworkInterfaceUp() (see the network API) must have been called
- * on the given devHandle for this function to work.
+ * on the given device handle for this function to work.
  *
  * Note that if you have a GNSS chip inside your cellular module
  * (e.g. you have a SARA-R510M8S or SARA-R422M8S) then making a
@@ -339,7 +338,7 @@ typedef enum {
  * @param devHandle               the device handle to use.
  * @param type                    the type of location fix to perform;
  *                                how this can be used depends upon the
- *                                type of networkHandle:
+ *                                type of devHandle:
  *                                - GNSS:     ignored, #U_LOCATION_TYPE_GNSS
  *                                            will always be used, but
  *                                            please set #U_LOCATION_TYPE_GNSS
@@ -401,11 +400,7 @@ typedef enum {
  *                                in which case location establishment will
  *                                stop when #U_LOCATION_TIMEOUT_SECONDS have
  *                                elapsed.  The single int32_t parameter is
- *                                the device handle, but note that if
- *                                pLocationAssist->networkHandleAssist is
- *                                set then the device handle may be that
- *                                of the assisting device, depending on
- *                                what stage location establishment is at.
+ *                                the device handle.
  * @return                        zero on success or negative error code
  *                                on failure.
  */
@@ -416,7 +411,7 @@ int32_t uLocationGet(uDeviceHandle_t devHandle, uLocationType_t type,
                      bool (*pKeepGoingCallback) (uDeviceHandle_t));
 
 /** Get the current location, non-blocking version.  uNetworkInterfaceUp()
- * (see the network API) must have been called on the given networkHandle
+ * (see the network API) must have been called on the given device handle
  * for this function to work.  This is a one-shot establishment:
  * once pCallback has been called it is over, you must call this
  * function again to start a new location establishment attempt.  If you
@@ -483,7 +478,7 @@ int32_t uLocationGetStart(uDeviceHandle_t devHandle, uLocationType_t type,
 
 /** Get the current location to a callback, continuously, until
  * told to stop.  uNetworkInterfaceUp() (see the network API) must
- * have been called on the given devHandle for this function to
+ * have been called on the given device handle for this function to
  * work.
  *
  * Note that if you have a GNSS chip inside your cellular module
@@ -518,7 +513,7 @@ int32_t uLocationGetStart(uDeviceHandle_t devHandle, uLocationType_t type,
  * @param desiredRateMs           the desired position-establishment rate
  *                                in milliseconds; realistically you can only
  *                                set a value smaller than a few seconds
- *                                if you are using a GNSS networkHandle.
+ *                                if you are using a GNSS devHandle.
  *                                For Wifi-based position this value must
  *                                be greater than zero but is [currently]
  *                                otherwise ignored: position is established
