@@ -12,6 +12,8 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ * Copyright 2023 Siemens AG for zephyr v3.4.0 spi api change fix
  */
 
 /** @file
@@ -311,7 +313,16 @@ static int32_t setSpiConfig(int32_t spi, uPortSpiCfg_t *pSpiCfg,
     pSpiCfg->spiConfig.operation = operation;
     pSpiCfg->spiConfig.frequency = pDevice->frequencyHertz;
 
+#if KERNEL_VERSION_MAJOR < 3
     pSpiCfg->spiConfig.cs = NULL;
+    pSpiCfg->spiCsControl.gpio_dev = NULL;
+#else
+#   if KERNEL_VERSION_MAJOR == 3 && KERNEL_VERSION_MINOR < 4
+        pSpiCfg->spiConfig.cs = NULL;
+#   endif
+    pSpiCfg->spiCsControl.gpio.port = NULL;
+#endif
+
     if ((pDevice->pinSelect >= 0) || (pDevice->indexSelect >= 0)) {
 #if KERNEL_VERSION_MAJOR < 3
         pSpiCfg->spiCsControl.gpio_dev = pUPortPrivateGetGpioDevice(pinSelect);
@@ -331,7 +342,11 @@ static int32_t setSpiConfig(int32_t spi, uPortSpiCfg_t *pSpiCfg,
                                     &pSpiCfg->spiCsControl);
         if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
             // pinSelect/index matched a CS pin for this SPI controller
+#if ((KERNEL_VERSION_MAJOR < 3) || (KERNEL_VERSION_MAJOR == 3 && KERNEL_VERSION_MINOR < 4))
             pSpiCfg->spiConfig.cs = &pSpiCfg->spiCsControl;
+#else
+            pSpiCfg->spiConfig.cs = pSpiCfg->spiCsControl;
+#endif
         } else if ((errorCode == (int32_t) U_ERROR_COMMON_NOT_FOUND) &&
                    (pDevice->pinSelect >= 0)) {
             errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
@@ -347,7 +362,11 @@ static int32_t setSpiConfig(int32_t spi, uPortSpiCfg_t *pSpiCfg,
                     pSpiCfg->spiCsControl.gpio.port = pGpioPort;
                     pSpiCfg->spiCsControl.gpio.pin = pinSelect;
                     pSpiCfg->spiCsControl.gpio.dt_flags = gpioFlags;
+#if ((KERNEL_VERSION_MAJOR < 3) || (KERNEL_VERSION_MAJOR == 3 && KERNEL_VERSION_MINOR < 4))
                     pSpiCfg->spiConfig.cs = &pSpiCfg->spiCsControl;
+#else
+                    pSpiCfg->spiConfig.cs = pSpiCfg->spiCsControl;
+#endif
                     errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
                 }
             }
@@ -361,6 +380,12 @@ static int32_t setSpiConfig(int32_t spi, uPortSpiCfg_t *pSpiCfg,
                 offsetDuration = pDevice->stopOffsetNanoseconds;
             }
             pSpiCfg->spiCsControl.delay = offsetDuration / 1000;
+#if ((KERNEL_VERSION_MAJOR < 3) || (KERNEL_VERSION_MAJOR == 3 && KERNEL_VERSION_MINOR < 4))
+            pSpiCfg->spiConfig.cs = &pSpiCfg->spiCsControl;
+#else
+            pSpiCfg->spiConfig.cs = pSpiCfg->spiCsControl;
+#endif
+
         }
     }
 
@@ -528,7 +553,8 @@ int32_t uPortSpiControllerGetDevice(int32_t handle,
 
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if ((handle >= 0) && (handle < sizeof(gSpiCfg) / sizeof(gSpiCfg[0])) &&
-            (gSpiCfg[handle].pDevice != NULL) && (pDevice != NULL)) {
+            (gSpiCfg[handle].pDevice != NULL) && (pDevice != NULL))
+        {
             pSpiCfg = &(gSpiCfg[handle]);
             // Note: we don't return the index, it is not worth the macro madness,
             // and the amount of code that would generate, we just return pinSelect
@@ -536,16 +562,20 @@ int32_t uPortSpiControllerGetDevice(int32_t handle,
             pDevice->pinSelect = -1;
             pDevice->startOffsetNanoseconds = 0;
 #if KERNEL_VERSION_MAJOR >= 3
+#if ((KERNEL_VERSION_MAJOR == 3 && KERNEL_VERSION_MINOR < 4))
             if (pSpiCfg->spiConfig.cs != NULL) {
-                // Have a chip select pin, work out what it is
+#endif // ((KERNEL_VERSION_MAJOR == 3 && KERNEL_VERSION_MINOR < 4))
+       // Have a chip select pin, work out what it is
                 pDevice->pinSelect = uPortPrivateGetGpioPort(pSpiCfg->spiCsControl.gpio.port,
                                                              pSpiCfg->spiCsControl.gpio.pin);
                 if (!(pSpiCfg->spiCsControl.gpio.dt_flags & GPIO_ACTIVE_LOW)) {
                     pDevice->pinSelect |= U_COMMON_SPI_PIN_SELECT_INVERTED;
                 }
                 pDevice->startOffsetNanoseconds = pSpiCfg->spiCsControl.delay * 1000;
+#if ((KERNEL_VERSION_MAJOR == 3 && KERNEL_VERSION_MINOR < 4))
             }
-#endif
+#endif // ((KERNEL_VERSION_MAJOR == 3 && KERNEL_VERSION_MINOR < 4))
+#endif // KERNEL_VERSION_MAJOR >= 3
             pDevice->stopOffsetNanoseconds = pDevice->startOffsetNanoseconds;
             pDevice->sampleDelayNanoseconds = 0; // Not an option in Zephyr
             pDevice->frequencyHertz = pSpiCfg->spiConfig.frequency;
