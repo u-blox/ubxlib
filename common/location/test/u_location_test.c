@@ -111,7 +111,7 @@
 
 /** Used for keepGoingCallback() timeout.
  */
-static int64_t gStopTimeMs;
+static int32_t gStopTimeMs = 0;
 
 /** Keep track of the current network handle so that the
  * keepGoingCallback() can check it.
@@ -320,7 +320,7 @@ static void testBlocking(uDeviceHandle_t devHandle,
                          const uLocationTestCfg_t *pLocationCfg)
 {
     uLocation_t location;
-    int32_t startTime = 0;
+    int32_t startTimeMs = 0;
     int32_t timeoutMs = U_LOCATION_TEST_CFG_TIMEOUT_SECONDS * 1000;
     int32_t y;
     const uLocationAssist_t *pLocationAssist = NULL;
@@ -348,8 +348,8 @@ static void testBlocking(uDeviceHandle_t devHandle,
         // WiFi can sometimes fail
         y = -1;
         for (int32_t x = 0; (x < 3) && (y != 0); x++) {
-            startTime = uPortGetTickTimeMs();
-            gStopTimeMs = startTime + timeoutMs;
+            startTimeMs = uPortGetTickTimeMs();
+            gStopTimeMs = startTimeMs + timeoutMs;
             y = uLocationGet(devHandle, locationType,
                              pLocationAssist,
                              pAuthenticationTokenStr,
@@ -373,7 +373,7 @@ static void testBlocking(uDeviceHandle_t devHandle,
             }
         }
         U_TEST_PRINT_LINE("location establishment took %d second(s).",
-                          (int32_t) (uPortGetTickTimeMs() - startTime) / 1000);
+                          (int32_t) (uPortGetTickTimeMs() - startTimeMs) / 1000);
         // If we are running on a test cellular network we won't get position but
         // we should always get time
         if ((location.radiusMillimetres > 0) &&
@@ -445,7 +445,7 @@ static void testOneShot(uDeviceHandle_t devHandle,
                         uLocationType_t locationType,
                         const uLocationTestCfg_t *pLocationCfg)
 {
-    int32_t startTime;
+    int32_t startTimeMs;
     int32_t y;
     int32_t timeoutMs = U_LOCATION_TEST_CFG_TIMEOUT_SECONDS * 1000;
     const uLocationAssist_t *pLocationAssist = NULL;
@@ -459,8 +459,7 @@ static void testOneShot(uDeviceHandle_t devHandle,
         pAuthenticationTokenStr = pLocationCfg->pAuthenticationTokenStr;
         pLocationAssist = pLocationCfg->pLocationAssist;
     }
-    startTime = uPortGetTickTimeMs();
-    gStopTimeMs = startTime + timeoutMs;
+    startTimeMs = uPortGetTickTimeMs();
 
     uLocationTestResetLocation(&gLocation);
     if (pLocationCfg != NULL) {
@@ -481,7 +480,8 @@ static void testOneShot(uDeviceHandle_t devHandle,
                 U_TEST_PRINT_LINE("waiting up to %d second(s) for results from"
                                   " one-shot API...",
                                   timeoutMs);
-                while ((gErrorCode == INT_MIN) && (uPortGetTickTimeMs() < gStopTimeMs)) {
+                while ((gErrorCode == INT_MIN) &&
+                       (uPortGetTickTimeMs() - startTimeMs < timeoutMs)) {
                     // Location establishment status is only supported for cell locate
                     y = uLocationGetStatus(devHandle);
                     if (locationType == U_LOCATION_TYPE_CLOUD_CELL_LOCATE) {
@@ -494,7 +494,7 @@ static void testOneShot(uDeviceHandle_t devHandle,
 
                 if (gErrorCode == 0) {
                     U_TEST_PRINT_LINE("location establishment took %d second(s).",
-                                      (int32_t) (uPortGetTickTimeMs() - startTime) / 1000);
+                                      (int32_t) (uPortGetTickTimeMs() - startTimeMs) / 1000);
                     // If we are running on a cellular test network we might not
                     // get position but we should always get time
                     U_PORT_TEST_ASSERT(gDevHandle == devHandle);
@@ -577,7 +577,7 @@ static void testContinuous(uDeviceHandle_t devHandle,
                            uLocationType_t locationType,
                            const uLocationTestCfg_t *pLocationCfg)
 {
-    int32_t startTime;
+    int32_t startTimeMs;
     int32_t timeoutMs = U_LOCATION_TEST_CFG_TIMEOUT_SECONDS * 1000;
     int32_t y;
     const uLocationAssist_t *pLocationAssist = NULL;
@@ -591,8 +591,7 @@ static void testContinuous(uDeviceHandle_t devHandle,
         pAuthenticationTokenStr = pLocationCfg->pAuthenticationTokenStr;
         pLocationAssist = pLocationCfg->pLocationAssist;
     }
-    startTime = uPortGetTickTimeMs();
-    gStopTimeMs = startTime + (timeoutMs * U_LOCATION_TEST_CFG_CONTINUOUS_COUNT * 1000);
+    startTimeMs = uPortGetTickTimeMs();
 
     uLocationTestResetLocation(&gLocation);
     if (pLocationCfg != NULL) {
@@ -614,7 +613,7 @@ static void testContinuous(uDeviceHandle_t devHandle,
                               timeoutMs * U_LOCATION_TEST_CFG_CONTINUOUS_COUNT,
                               U_LOCATION_TEST_CFG_CONTINUOUS_COUNT);
             while ((gCount < U_LOCATION_TEST_CFG_CONTINUOUS_COUNT) &&
-                   (uPortGetTickTimeMs() < gStopTimeMs)) {
+                   (uPortGetTickTimeMs() - startTimeMs < timeoutMs)) {
                 // Location establishment status is only supported for cell locate
                 y = uLocationGetStatus(devHandle);
                 if (locationType == U_LOCATION_TYPE_CLOUD_CELL_LOCATE) {
@@ -625,9 +624,14 @@ static void testContinuous(uDeviceHandle_t devHandle,
                 uPortTaskBlock(1000);
             }
 
+            // There has been something off going on with this test on Windows,
+            // so print a little extra diagnostic information here so that we
+            // can watch it
+            U_TEST_PRINT_LINE("startTimeMs is %d, ticks now is %d, gCount is %d.",
+                              startTimeMs, uPortGetTickTimeMs(), gCount);
             if (gCount >= U_LOCATION_TEST_CFG_CONTINUOUS_COUNT) {
                 U_TEST_PRINT_LINE("took %d second(s) to get location %d time(s).",
-                                  (int32_t) (uPortGetTickTimeMs() - startTime) / 1000,
+                                  (int32_t) (uPortGetTickTimeMs() - startTimeMs) / 1000,
                                   gCount);
                 // If we are running on a cellular test network we might not
                 // get position but we should always get time
