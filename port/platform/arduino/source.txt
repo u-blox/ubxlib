@@ -24,6 +24,7 @@ cell/src/u_cell_mqtt.c
 cell/src/u_cell_http.c
 cell/src/u_cell_file.c
 cell/src/u_cell_loc.c
+cell/src/u_cell_time.c
 cell/src/u_cell_gpio.c
 cell/src/u_cell_fota.c
 cell/src/u_cell_mux.c

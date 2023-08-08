@@ -1163,9 +1163,6 @@ bool uCellLocGnssInsideCell(uDeviceHandle_t cellHandle)
 {
     uCellPrivateInstance_t *pInstance;
     bool isInside = false;
-    uAtClientHandle_t atHandle;
-    int32_t bytesRead;
-    char buffer[64]; // Enough for the ATI response
 
     if (gUCellPrivateMutex != NULL) {
 
@@ -1173,25 +1170,7 @@ bool uCellLocGnssInsideCell(uDeviceHandle_t cellHandle)
 
         pInstance = pUCellPrivateGetInstance(cellHandle);
         if (pInstance != NULL) {
-            atHandle = pInstance->atHandle;
-            // Simplest way to check is to send ATI and see if
-            // it includes an "M8" or an "M10"
-            uAtClientLock(atHandle);
-            uAtClientCommandStart(atHandle, "ATI");
-            uAtClientCommandStop(atHandle);
-            uAtClientResponseStart(atHandle, NULL);
-            bytesRead = uAtClientReadBytes(atHandle, buffer,
-                                           sizeof(buffer) - 1, false);
-            uAtClientResponseStop(atHandle);
-            if ((uAtClientUnlock(atHandle) == 0) && (bytesRead > 0)) {
-                // Add a terminator
-                buffer[bytesRead] = 0;
-                if (strstr(buffer, "M8") != NULL) {
-                    isInside = true;
-                } else if (strstr(buffer, "M10") != NULL) {
-                    isInside = true;
-                }
-            }
+            isInside = uCellPrivateGnssInsideCell(pInstance);
         }
 
         U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);

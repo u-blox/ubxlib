@@ -399,7 +399,7 @@ int32_t uCellCfgSetGreetingCallback(uDeviceHandle_t cellHandle,
  * @param size        the number of bytes available at pStr,
  *                    including room for a null terminator.
  * @return            on success, the number of characters copied into
- *                    pStr NOT including the terminator (i.e. as
+ *                    pStr NOT including the terminator (as
  *                    strlen() would return), on failure negative
  *                    error code.  If there is no greeting message
  *                    zero will be returned.
@@ -486,7 +486,7 @@ int32_t uCellCfgGetGnssProfile(uDeviceHandle_t cellHandle, char *pServerName,
  *
  * @param cellHandle          the handle of the cellular instance.
  * @param timeLocal           the local time in seconds since midnight on
- *                            1st Jan 1970, (i.e. Unix time, but local rather
+ *                            1st Jan 1970, (Unix time, but local rather
  *                            than UTC).
  * @param timeZoneSeconds     the time-zone offset of timeLocal in seconds; for
  *                            example, if you are one hour ahead of UTC

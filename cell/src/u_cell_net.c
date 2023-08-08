@@ -35,6 +35,7 @@
 #include "stdbool.h"
 #include "string.h"    // memcpy(), memcmp(), strlen()
 #include "stdio.h"     // snprintf()
+#include "ctype.h"     // isblank()
 
 #include "u_cfg_sw.h"
 #include "u_cfg_os_platform_specific.h"  // For #define U_CFG_OS_CLIB_LEAKS
@@ -737,31 +738,6 @@ static int32_t radioOff(uCellPrivateInstance_t *pInstance)
     return errorCode;
 }
 
-// Perform an abort of an AT command.
-static void abortCommand(const uCellPrivateInstance_t *pInstance)
-{
-    uAtClientHandle_t atHandle = pInstance->atHandle;
-    uAtClientDeviceError_t deviceError;
-    bool success = false;
-
-    // Abort is done by sending anything, we use
-    // here just a space, after an AT command has
-    // been sent and before the response comes
-    // back.  It is, however, possible for
-    // an abort to be ignored so we test for that
-    // and try a few times
-    for (size_t x = 3; (x > 0) && !success; x--) {
-        uAtClientLock(atHandle);
-        uAtClientCommandStart(atHandle, " ");
-        uAtClientCommandStopReadResponse(atHandle);
-        uAtClientDeviceErrorGet(atHandle, &deviceError);
-        // Check that a device error has been signalled,
-        // we've not simply timed out
-        success = (deviceError.type != U_AT_CLIENT_DEVICE_ERROR_TYPE_NO_ERROR);
-        uAtClientUnlock(atHandle);
-    }
-}
-
 // Prepare for connection with the network.
 static int32_t prepareConnect(uCellPrivateInstance_t *pInstance)
 {
@@ -850,7 +826,7 @@ static int32_t setAutomaticMode(const uCellPrivateInstance_t *pInstance)
                          U_AT_CLIENT_DEVICE_ERROR_TYPE_NO_ERROR)) {
             // If we never got an answer, abort the
             // command and check the status
-            abortCommand(pInstance);
+            uCellPrivateAbortAtCommand(pInstance);
             uAtClientLock(atHandle);
             uAtClientCommandStart(atHandle, "AT+COPS?");
             uAtClientCommandStop(atHandle);
@@ -1087,7 +1063,7 @@ static int32_t registerNetwork(uCellPrivateInstance_t *pInstance,
             // we timed out waiting for an answer: need to
             // abort the command for the module to start
             // listening to us again
-            abortCommand(pInstance);
+            uCellPrivateAbortAtCommand(pInstance);
         }
         // Let the registration outcome be decided
         // by the code block below, driven by the URCs
@@ -1612,7 +1588,7 @@ static int32_t activateContextUpsd(const uCellPrivateInstance_t *pInstance,
             (deviceError.type == U_AT_CLIENT_DEVICE_ERROR_TYPE_NO_ERROR)) {
             // If we never got an answer, abort the
             // UPSDA command first.
-            abortCommand(pInstance);
+            uCellPrivateAbortAtCommand(pInstance);
         }
     }
 
@@ -2013,6 +1989,69 @@ static int32_t getDnsStrUpsd(const uCellPrivateInstance_t *pInstance,
     }
 
     return errorCode;
+}
+
+// Move a pointer on if it is pointing to a blank.
+static void stripBlanks(char **ppStr)
+{
+    while (isblank((int32_t) **ppStr)) {
+        (*ppStr)++;
+    }
+}
+
+// Parse a line returned by AT+COPS=5.
+// Returns 1 if a line is found, U_ERROR_COMMON_TIMEOUT otherwise.
+static int32_t parseDeepScanLine(uAtClientHandle_t atHandle,
+                                 uCellNetCellInfo_t *pCell)
+{
+    int32_t errorCodeOrNumber = (int32_t) U_ERROR_COMMON_TIMEOUT;
+    int32_t numParameters = 0;
+    char buffer[32];
+    char *pStr;
+
+    // The line should contain something like
+    // MCC:222, MNC:88, TAC:562c, CI:57367043, DLF: 1325, ULF:19325, PCI:163, RSRP LEV:25, RSRQ LEV:1
+    memset(pCell, 0, sizeof(*pCell));
+    while ((errorCodeOrNumber == (int32_t) U_ERROR_COMMON_TIMEOUT) &&
+           (uAtClientReadString(atHandle, buffer, sizeof(buffer), false) > 0)) {
+        pStr = buffer;
+        stripBlanks(&pStr);
+        if (strstr(pStr, "MCC:") == pStr) {
+            pCell->mcc = strtol(pStr + 4, NULL, 10);
+            numParameters++;
+        } else if (strstr(pStr, "MNC:") == pStr) {
+            pCell->mnc = strtol(pStr + 4, NULL, 10);
+            numParameters++;
+        } else if (strstr(pStr, "TAC:") == pStr) {
+            pCell->tac = strtol(pStr + 4, NULL, 16);
+            numParameters++;
+        } else if (strstr(pStr, "CI:") == pStr) {
+            pCell->cellIdLogical = strtol(pStr + 3, NULL, 10);
+            numParameters++;
+        } else if (strstr(pStr, "DLF:") == pStr) {
+            pCell->earfcnDownlink = strtol(pStr + 4, NULL, 10);
+            numParameters++;
+        } else if (strstr(pStr, "ULF:") == pStr) {
+            pCell->earfcnUplink = strtol(pStr + 4, NULL, 10);
+            numParameters++;
+        } else if (strstr(pStr, "PCI:") == pStr) {
+            pCell->cellIdPhysical = strtol(pStr + 4, NULL, 10);
+            numParameters++;
+        } else if (strstr(pStr, "RSRP LEV:") == pStr) {
+            pCell->rsrpDbm = uCellPrivateRsrpToDbm(strtol(pStr + 9, NULL, 10));
+            numParameters++;
+        } else if (strstr(pStr, "RSRQ LEV:") == pStr) {
+            pCell->rsrqDb = uCellPrivateRsrqToDb(strtol(pStr + 9, NULL, 10));
+            numParameters++;
+        } else if (strstr(pStr, "OK\r\n") != NULL) {
+            errorCodeOrNumber = (int32_t) U_ERROR_COMMON_SUCCESS;
+        }
+        if (numParameters == 9) {
+            errorCodeOrNumber = 1;
+        }
+    }
+
+    return errorCodeOrNumber;
 }
 
 /* ----------------------------------------------------------------
@@ -2651,7 +2690,7 @@ int32_t uCellNetScanGetFirst(uDeviceHandle_t cellHandle,
                     if (!gotAnswer) {
                         // If we never got an answer, abort the
                         // command first.
-                        abortCommand(pInstance);
+                        uCellPrivateAbortAtCommand(pInstance);
                     }
                 }
 
@@ -2724,6 +2763,120 @@ void uCellNetScanGetLast(uDeviceHandle_t cellHandle)
 
         U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
     }
+}
+
+// Do an extended network search.
+int32_t uCellNetDeepScan(uDeviceHandle_t cellHandle,
+                         bool (*pCallback) (uDeviceHandle_t,
+                                            uCellNetCellInfo_t *,
+                                            void *),
+                         void *pCallbackParameter)
+{
+    int32_t errorCodeOrNumber = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance;
+    uCellNetCellInfo_t cell;
+    uAtClientHandle_t atHandle;
+    uAtClientDeviceError_t deviceError;
+    bool keepGoing = true;
+    int32_t number;
+    int32_t cFunMode;
+    int32_t startTimeMs;
+
+    if (gUCellPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        errorCodeOrNumber = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        pInstance = pUCellPrivateGetInstance(cellHandle);
+        if (pInstance != NULL) {
+            errorCodeOrNumber = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+            if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R5) {
+                // Make sure the radio is on for this
+                cFunMode = uCellPrivateCFunOne(pInstance);
+                atHandle = pInstance->atHandle;
+                // Do this three times: if the module
+                // is busy doing its own search when we ask it
+                // to do a network search, as it might be if
+                // we've just come out of airplane mode,
+                // it may return "Temporary Failure"
+                startTimeMs = uPortGetTickTimeMs();
+                for (size_t x = U_CELL_NET_DEEP_SCAN_RETRIES + 1;
+                     (x > 0) && (errorCodeOrNumber < 0) && keepGoing &&
+                     (uPortGetTickTimeMs() - startTimeMs < U_CELL_NET_DEEP_SCAN_TIME_SECONDS * 1000);
+                     x--) {
+                    number = 0;
+                    errorCodeOrNumber = (int32_t) U_ERROR_COMMON_TIMEOUT;
+                    uAtClientLock(atHandle);
+                    // Set the timeout to a second so that we
+                    // can spin around the loop and check
+                    // pKeepGoingCallback while waiting
+                    uAtClientTimeoutSet(atHandle, 1000);
+                    uAtClientCommandStart(atHandle, "AT+COPS=5");
+                    uAtClientCommandStop(atHandle);
+                    // Will get back a set of lines of the form:
+                    // MCC:222, MNC:88, TAC:562c, CI:57367043, DLF: 1325, ULF:19325, PCI:163, RSRP LEV:25, RSRQ LEV:1
+                    // These lines are "dribbled" out, one by one, and we
+                    // want to be able to stop the command part way through,
+                    // hence the AT handling code below is more complex than usual.
+                    while ((errorCodeOrNumber == (int32_t) U_ERROR_COMMON_TIMEOUT) && keepGoing &&
+                           (uPortGetTickTimeMs() - startTimeMs < U_CELL_NET_DEEP_SCAN_TIME_SECONDS * 1000)) {
+                        if (uAtClientResponseStart(atHandle, NULL) == 0) {
+                            // See if we have a line
+                            errorCodeOrNumber = parseDeepScanLine(atHandle, &cell);
+                            if (errorCodeOrNumber > 0) {
+                                // Got something, call the callback
+                                number += errorCodeOrNumber;
+                                if (pCallback != NULL) {
+                                    keepGoing = pCallback(cellHandle, &cell, pCallbackParameter);
+                                }
+                                // Wait for more
+                                errorCodeOrNumber = (int32_t) U_ERROR_COMMON_TIMEOUT;
+                                uPortTaskBlock(1000);
+                            }
+                        } else {
+                            // Either there was nothing (a timeout) or there was a "+CME ERROR"
+                            // message or there was an "OK"
+                            errorCodeOrNumber = uAtClientErrorGet(atHandle);
+                            if (errorCodeOrNumber != (int32_t) U_ERROR_COMMON_SUCCESS) {
+                                // It was either a "CME ERROR" or a timeout; determine which
+                                uAtClientDeviceErrorGet(atHandle, &deviceError);
+                                if (deviceError.type == U_AT_CLIENT_DEVICE_ERROR_TYPE_NO_ERROR) {
+                                    // Not a "+CME ERROR", must have been a timeout, call the
+                                    // callback with NULL to see if we should continue
+                                    if (pCallback != NULL) {
+                                        keepGoing = pCallback(cellHandle, NULL, pCallbackParameter);
+                                    }
+                                    errorCodeOrNumber = (int32_t) U_ERROR_COMMON_TIMEOUT;
+                                    uAtClientClearError(atHandle);
+                                    if (keepGoing) {
+                                        uPortTaskBlock(1000);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    uAtClientResponseStop(atHandle);
+                    uAtClientUnlock(atHandle);
+                    if (errorCodeOrNumber == (int32_t) U_ERROR_COMMON_SUCCESS) {
+                        // If we got a complete response, accept the answer
+                        errorCodeOrNumber = number;
+                    } else if (errorCodeOrNumber == (int32_t) U_ERROR_COMMON_TIMEOUT) {
+                        // Abort the command first to avoid it being caught
+                        // up in any future command sequence
+                        uCellPrivateAbortAtCommand(pInstance);
+                    }
+                }
+                // Put the AT+CFUN back if it was not already 1
+                if ((cFunMode >= 0) && (cFunMode != 1)) {
+                    uCellPrivateCFunMode(pInstance, cFunMode);
+                }
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return errorCodeOrNumber;
 }
 
 // Enable or disable the registration status call-back.

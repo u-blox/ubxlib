@@ -452,6 +452,8 @@ typedef struct uCellPrivateInstance_t {
     void *pHttpContext;  /**< Hook for a HTTP context. */
     void *pMuxContext; /**< CMUX context, lodged here as a void * to
                             avoid spreading its types all over. */
+    void *pCellTimeContext;  /**< Hook for CellTime context. */
+    void *pCellTimeCellSyncContext;   /**< Hook for CellTime cell synchronisation context. */
     struct uCellPrivateInstance_t *pNext;
 } uCellPrivateInstance_t;
 
@@ -480,6 +482,15 @@ extern uPortMutexHandle_t gUCellPrivateMutex;
  * FUNCTIONS
  * -------------------------------------------------------------- */
 
+/** Abort an AT command; only works if the AT command is actually
+ * an abortable one according to the AT manual.
+ *
+ * Note: gUCellPrivateMutex should be locked before this is called.
+ *
+ * @param pInstance a pointer to the instance.
+ */
+void uCellPrivateAbortAtCommand(const uCellPrivateInstance_t *pInstance);
+
 /** Return true if the given buffer contains only numeric
  * characters (0 to 9).
  *
@@ -498,6 +509,32 @@ bool uCellPrivateIsNumeric(const char *pBuffer, size_t bufferSize);
  * @return            a pointer to the instance.
  */
 uCellPrivateInstance_t *pUCellPrivateGetInstance(uDeviceHandle_t cellHandle);
+
+/** Convert RSRP in 3GPP TS 36.133 format to dBm.
+ *
+ * Returns 0 if the number is not known.
+ * 0: -141 dBm or less,
+ * 1..96: from -140 dBm to -45 dBm with 1 dBm steps,
+ * 97: -44 dBm or greater,
+ * 255: not known or not detectable.
+ *
+ * @param rsrp  the RSRP in 3GPP TS 36.133 units.
+ * @return      the RSRP in dBm.
+ */
+int32_t uCellPrivateRsrpToDbm(int32_t rsrp);
+
+/** Convert RSRQ in 3GPP TS 36.133 format to dB.
+ *
+ * Returns 0x7FFFFFFF if the number is not known.
+ * -30: less than -34 dB
+ * -29..46: from -34 dB to 2.5 dB with 0.5 dB steps
+ *          where 0 is -19.5 dB
+ * 255: not known or not detectable.
+ *
+ * @param rsrq  the RSRP in 3GPP TS 36.133 units.
+ * @return      the RSRP in dBm.
+ */
+int32_t uCellPrivateRsrqToDb(int32_t rsrq);
 
 /** Set the radio parameters back to defaults.
  *
@@ -876,6 +913,22 @@ int32_t uCellPrivateSetGnssProfile(const uCellPrivateInstance_t *pInstance,
  */
 int32_t uCellPrivateGetGnssProfile(const uCellPrivateInstance_t *pInstance,
                                    char *pServerName, size_t sizeBytes);
+
+/** Check whether there is a GNSS chip on-board the cellular module.
+ *
+ * @param pInstance      a pointer to the cellular instance.
+ * @return            true if there is a GNSS chip inside the cellular
+ *                    module, else false.
+ */
+bool uCellPrivateGnssInsideCell(const uCellPrivateInstance_t *pInstance);
+
+/** Remove the CellTime context for the given instance.
+ *
+ * Note:  gUCellPrivateMutex should be locked before this is called.
+ *
+ * @param pInstance   a pointer to the cellular instance.
+ */
+void uCellPrivateCellTimeRemoveContext(uCellPrivateInstance_t *pInstance);
 
 #ifdef __cplusplus
 }

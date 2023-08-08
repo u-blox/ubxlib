@@ -140,6 +140,8 @@ static void removeCellInstance(uCellPrivateInstance_t *pInstance)
             uCellPrivateHttpRemoveContext(pInstance);
             // Free any CMUX context
             uCellMuxPrivateRemoveContext(pInstance);
+            // Free any CellTime context
+            uCellPrivateCellTimeRemoveContext(pInstance);
             uDeviceDestroyInstance(U_DEVICE_INSTANCE(pInstance->cellHandle));
             uPortFree(pInstance);
             pCurrent = NULL;

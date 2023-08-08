@@ -59,8 +59,10 @@
 #include "u_cell_pwr.h"
 #include "u_cell_cfg.h"
 #include "u_cell_http.h"
+#include "u_cell_time.h"
 #include "u_cell_http_private.h"
 #include "u_cell_pwr_private.h"
+#include "u_cell_time_private.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -604,6 +606,36 @@ uCellPrivateInstance_t *pUCellPrivateGetInstance(uDeviceHandle_t cellHandle)
     }
 
     return pInstance;
+}
+
+// Convert RSRP in 3GPP TS 36.133 format to dBm.
+int32_t uCellPrivateRsrpToDbm(int32_t rsrp)
+{
+    int32_t rsrpDbm = 0;
+
+    if ((rsrp >= 0) && (rsrp <= 97)) {
+        rsrpDbm = rsrp - (97 + 44);
+        if (rsrpDbm < -141) {
+            rsrpDbm = -141;
+        }
+    }
+
+    return rsrpDbm;
+}
+
+// Convert RSRQ in 3GPP TS 36.133 format to dB.
+int32_t uCellPrivateRsrqToDb(int32_t rsrq)
+{
+    int32_t rsrqDb = 0x7FFFFFFF;
+
+    if ((rsrq >= -30) && (rsrq <= 46)) {
+        rsrqDb = (rsrq - 39) / 2;
+        if (rsrqDb < -34) {
+            rsrqDb = -34;
+        }
+    }
+
+    return rsrqDb;
 }
 
 // Set the radio parameters back to defaults.
@@ -1414,6 +1446,86 @@ int32_t uCellPrivateGetGnssProfile(const uCellPrivateInstance_t *pInstance,
     }
 
     return errorCodeOrBitMap;
+}
+
+// Check whether there is a GNSS chip on-board the cellular module.
+bool uCellPrivateGnssInsideCell(const uCellPrivateInstance_t *pInstance)
+{
+    bool isInside = false;
+    uAtClientHandle_t atHandle;
+    int32_t bytesRead;
+    char buffer[64]; // Enough for the ATI response
+
+    if (pInstance != NULL) {
+        atHandle = pInstance->atHandle;
+        // Simplest way to check is to send ATI and see if
+        // it includes an "M8" or an "M10"
+        uAtClientLock(atHandle);
+        uAtClientCommandStart(atHandle, "ATI");
+        uAtClientCommandStop(atHandle);
+        uAtClientResponseStart(atHandle, NULL);
+        bytesRead = uAtClientReadBytes(atHandle, buffer,
+                                       sizeof(buffer) - 1, false);
+        uAtClientResponseStop(atHandle);
+        if ((uAtClientUnlock(atHandle) == 0) && (bytesRead > 0)) {
+            // Add a terminator
+            buffer[bytesRead] = 0;
+            if (strstr(buffer, "M8") != NULL) {
+                isInside = true;
+            } else if (strstr(buffer, "M10") != NULL) {
+                isInside = true;
+            }
+        }
+    }
+
+    return isInside;
+}
+
+// Remove the CellTime context for the given instance.
+void uCellPrivateCellTimeRemoveContext(uCellPrivateInstance_t *pInstance)
+{
+    uCellTimePrivateContext_t *pContext;
+
+    if (pInstance != NULL) {
+        pContext = (uCellTimePrivateContext_t *) pInstance->pCellTimeContext;
+        if (pContext != NULL) {
+            if (pContext->pCallbackEvent != NULL) {
+                uAtClientRemoveUrcHandler(pInstance->atHandle, "+UUTIMEIND:");
+            }
+            if (pContext->pCallbackTime != NULL) {
+                uAtClientRemoveUrcHandler(pInstance->atHandle, "+UTIME:");
+            }
+            uPortFree(pInstance->pCellTimeContext);
+            pInstance->pCellTimeContext = NULL;
+        }
+        uPortFree(pInstance->pCellTimeCellSyncContext);
+        pInstance->pCellTimeCellSyncContext = NULL;
+    }
+}
+
+// Perform an abort of an AT command.
+void uCellPrivateAbortAtCommand(const uCellPrivateInstance_t *pInstance)
+{
+    uAtClientHandle_t atHandle = pInstance->atHandle;
+    uAtClientDeviceError_t deviceError;
+    bool success = false;
+
+    // Abort is done by sending anything, we use
+    // here just a space, after an AT command has
+    // been sent and before the response comes
+    // back.  It is, however, possible for
+    // an abort to be ignored so we test for that
+    // and try a few times
+    for (size_t x = 3; (x > 0) && !success; x--) {
+        uAtClientLock(atHandle);
+        uAtClientCommandStart(atHandle, " ");
+        uAtClientCommandStopReadResponse(atHandle);
+        uAtClientDeviceErrorGet(atHandle, &deviceError);
+        // Check that a device error has been signalled,
+        // we've not simply timed out
+        success = (deviceError.type != U_AT_CLIENT_DEVICE_ERROR_TYPE_NO_ERROR);
+        uAtClientUnlock(atHandle);
+    }
 }
 
 // End of file

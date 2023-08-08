@@ -136,6 +136,18 @@ extern "C" {
     ((status) == U_CELL_NET_STATUS_REGISTERED_NO_CSFB_HOME) ||     \
     ((status) == U_CELL_NET_STATUS_REGISTERED_NO_CSFB_ROAMING))
 
+#ifndef U_CELL_NET_DEEP_SCAN_RETRIES
+/** The number of times to retry a deep scan on error.
+ */
+# define U_CELL_NET_DEEP_SCAN_RETRIES 2
+#endif
+
+#ifndef U_CELL_NET_DEEP_SCAN_TIME_SECONDS
+/** A guard time-out value for uCellNetDeepScan().
+ */
+# define U_CELL_NET_DEEP_SCAN_TIME_SECONDS 240
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -238,6 +250,21 @@ typedef enum {
     U_CELL_NET_REG_DOMAIN_MAX_NUM
 } uCellNetRegDomain_t;
 
+/** Information on a cell, passed to the callback of uCellNetDeepScan(),
+ * could be used in a call to uCellTimeSyncCellEnable().
+ */
+typedef struct {
+    int32_t mcc;    /**< mobile country code. */
+    int32_t mnc;    /**< mobile network code. */
+    int32_t tac;    /**< tracking area code. */
+    int32_t earfcnDownlink; /**< downlink E-UTRAN absolute radio frequency channel number. */
+    int32_t earfcnUplink;   /**< uplink E-UTRAN absolute radio frequency channel number. */
+    int32_t cellIdLogical;  /**< logical cell ID. */
+    int32_t cellIdPhysical; /**< physical cell ID. */
+    int32_t rsrpDbm; /**< current reference signal received power in dBm. */
+    int32_t rsrqDb;  /**< current reference signal received quality in dB. */
+} uCellNetCellInfo_t;
+
 /* ----------------------------------------------------------------
  * FUNCTIONS
  * -------------------------------------------------------------- */
@@ -284,11 +311,9 @@ typedef enum {
  *                               convenience. This function may also be
  *                               used to feed any watchdog timer that
  *                               might be running during longer cat-M1/NB1
- *                               network search periods.  The single
- *                               int32_t parameter is the cell handle.
- *                               May be NULL, in which case the connection
- *                               attempt will eventually time out on
- *                               failure.
+ *                               network search periods. May be NULL, in
+ *                               which case the connection attempt will
+ *                               eventually time out on failure.
  * @return                       zero on success or negative error code on
  *                               failure.
  */
@@ -320,10 +345,9 @@ int32_t uCellNetConnect(uDeviceHandle_t cellHandle,
  *                               This function may also be used to feed
  *                               any watchdog timer that might be running
  *                               during longer cat-M1/NB1 network search
- *                               periods.  The single int32_t parameter
- *                               is the cell handle. May be NULL, in which
- *                               case the registration attempt will
- *                               eventually time-out on failure.
+ *                               periods.  May be NULL, in which case the
+ *                               registration attempt will eventually
+ *                               time out on failure.
  * @return                       zero on success or negative error code on
  *                               failure.
  */
@@ -392,8 +416,7 @@ int32_t uCellNetActivate(uDeviceHandle_t cellHandle,
  *                               continue while it returns true. This
  *                               allows the caller to terminate
  *                               activation at their convenience.
- *                               May be NULL.  The single int32_t
- *                               parameter is the cell handle.
+ *                               May be NULL.
  * @return                       zero on success or negative error code
  *                               on failure.
  */
@@ -413,8 +436,7 @@ int32_t uCellNetDeactivate(uDeviceHandle_t cellHandle,
  *                               continue while it returns true. This
  *                               allows the caller to terminate
  *                               registration at their convenience.
- *                               May be NULL.  The single int32_t
- *                               parameter is the cell handle.
+ *                               May be NULL.
  * @return                       zero on success or negative error code on
  *                               failure.
  */
@@ -463,8 +485,7 @@ int32_t uCellNetDisconnect(uDeviceHandle_t cellHandle,
  *                               watch-dog function to be called if required;
  *                               may be NULL.  The function should return
  *                               true; if it returns false the network
- *                               scan will be aborted.  The single
- *                               int32_t parameter is the cell handle.
+ *                               scan will be aborted.
  * @return                       the number of networks found or negative
  *                               error code.  If
  *                               #U_CELL_ERROR_TEMPORARY_FAILURE is returned
@@ -523,10 +544,60 @@ int32_t uCellNetScanGetNext(uDeviceHandle_t cellHandle,
  */
 void uCellNetScanGetLast(uDeviceHandle_t cellHandle);
 
+/** Do an extended network search, AT+COPS=5; only supported on SARA-R5.
+ * The detected cells may be used with uCellTimeSyncCellEnable(),
+ * supported on SARA-R5xx-01B and later modules.
+ *
+ * @param cellHandle                 the handle of the cellular instance.
+ * @param[in] pCallback              pointer to a function to process each
+ *                                   result, as they are returned, where the
+ *                                   first parameter is the handle of the
+ *                                   cellular device, the second parameter
+ *                                   is a pointer to the cell information
+ *                                   WHICH MAY BE NULL if pCallback is just
+ *                                   being called as a periodic "keep going"
+ *                                   check (the contents of a (non-NULL) pointer
+ *                                   MUST be copied by the callback as it
+ *                                   will no longer be valid once the
+ *                                   callback has returned) and the third
+ *                                   parameter is the value of pCallbackParameter;
+ *                                   the function should return true to
+ *                                   continue the scan or it may return false
+ *                                   to abort the scan (e.g. if it has been
+ *                                   informed of a good enough cell).
+ *                                   May be NULL (useful for debugging only).
+ *                                   A scan will be aborted if more than
+ *                                   #U_CELL_NET_DEEP_SCAN_TIME_SECONDS pass.
+ *                                   IMPORTANT: the callback function should
+ *                                   not call back into this API (which will
+ *                                   be locked): it must return false to allow
+ *                                   uCellNetDeepScan() to exit and only then
+ *                                   should it call, for instance,
+ *                                   uCellTimeSyncCellEnable().
+ * @param[in,out] pCallbackParameter a pointer to be passed to pCallback
+ *                                   as its third parameter; may be NULL.
+ * @return                           on success the number of cells that were
+ *                                   detected else negative error code; note that
+ *                                   this is the number of cells in a complete
+ *                                   and successful scan.  If the scan had to
+ *                                   be repeated because the module indicated
+ *                                   a failure part way through then the
+ *                                   callback may end up being called more
+ *                                   times than the return value might suggest.
+ *                                   A value of zero will be returned if the
+ *                                   scan succeeds but returns no cells.
+ */
+int32_t uCellNetDeepScan(uDeviceHandle_t cellHandle,
+                         bool (*pCallback) (uDeviceHandle_t,
+                                            uCellNetCellInfo_t *,
+                                            void *),
+                         void *pCallbackParameter);
+
 /** Enable or disable the registration status call-back. This
  * call-back allows the application to know the various
  * states of the network scanning, registration and rejections
  * from the networks.
+ *
  * You may use the #U_CELL_NET_STATUS_MEANS_REGISTERED macro
  * with the second parameter passed to the callback to
  * determine if the status value means that the module is

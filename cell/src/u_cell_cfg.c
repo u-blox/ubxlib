@@ -903,7 +903,10 @@ static void GREETING_urc(uAtClientHandle_t atHandle, void *pParameter)
             pGreeting->cellHandle = pInstance->cellHandle;
             pGreeting->pCallback = pInstance->pGreetingCallback;
             pGreeting->pCallbackParameter = pInstance->pGreetingCallbackParameter;
-            uAtClientCallback(atHandle, greetingCallback, pGreeting);
+            if (uAtClientCallback(atHandle, greetingCallback, pGreeting) != 0) {
+                // Clean up on error
+                uPortFree(pGreeting);
+            }
         }
     }
 }

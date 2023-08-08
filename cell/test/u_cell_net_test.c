@@ -526,6 +526,9 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetScanRegActDeact")
     // Must be at least one, can't guarantee more than that
     U_PORT_TEST_ASSERT(y > 0);
 
+    // Note: uCellNetDeepScan() is tested with the uCellTime API
+    // since that is where the results can be used
+
     // Register with a very short time-out to show that aborts work
     gStopTimeMs = uPortGetTickTimeMs() + 1000;
     U_PORT_TEST_ASSERT(uCellNetRegister(cellHandle, NULL, keepGoingCallback) < 0);

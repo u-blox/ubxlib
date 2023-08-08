@@ -75,46 +75,6 @@
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-// Convert RSRP in 3GPP TS 36.133 format to dBm.
-// Returns 0 if the number is not known.
-// 0: -141 dBm or less,
-// 1..96: from -140 dBm to -45 dBm with 1 dBm steps,
-// 97: -44 dBm or greater,
-// 255: not known or not detectable.
-static int32_t rsrpToDbm(int32_t rsrp)
-{
-    int32_t rsrpDbm = 0;
-
-    if ((rsrp >= 0) && (rsrp <= 97)) {
-        rsrpDbm = rsrp - (97 + 44);
-        if (rsrpDbm < -141) {
-            rsrpDbm = -141;
-        }
-    }
-
-    return rsrpDbm;
-}
-
-// Convert RSRQ in 3GPP TS 36.133 format to dB.
-// Returns 0x7FFFFFFF if the number is not known.
-// -30: less than -34 dB
-// -29..46: from -34 dB to 2.5 dB with 0.5 dB steps
-//          where 0 is -19.5 dB
-// 255: not known or not detectable.
-static int32_t rsrqToDb(int32_t rsrq)
-{
-    int32_t rsrqDb = 0x7FFFFFFF;
-
-    if ((rsrq >= -30) && (rsrq <= 46)) {
-        rsrqDb = (rsrq - 39) / 2;
-        if (rsrqDb < -34) {
-            rsrqDb = -34;
-        }
-    }
-
-    return rsrqDb;
-}
-
 // Convert the UTRAN RSSI number in 3GPP TS 25.133 format to dBm.
 // Returns 0x7FFFFFFF if the number is not known.
 // 0:     less than -100 dBm
@@ -281,7 +241,7 @@ static int32_t getRadioParamsUcged2SaraR5(uAtClientHandle_t atHandle,
     // Skip <mTmsi>, <mmeGrId> and <mmeCode>
     uAtClientSkipParameters(atHandle, 3);
     // RSRP is element 11, coded as specified in TS 36.133
-    pRadioParameters->rsrpDbm = rsrpToDbm(uAtClientReadInt(atHandle));
+    pRadioParameters->rsrpDbm = uCellPrivateRsrpToDbm(uAtClientReadInt(atHandle));
     // RSRQ is element 12, coded as specified in TS 36.133.
     x = uAtClientReadInt(atHandle);
     if (uAtClientErrorGet(atHandle) == 0) {
@@ -289,7 +249,7 @@ static int32_t getRadioParamsUcged2SaraR5(uAtClientHandle_t atHandle,
         // we check for errors here so as not to mix up
         // what might be a negative error code with a
         // negative return value.
-        pRadioParameters->rsrqDb = rsrqToDb(x);
+        pRadioParameters->rsrqDb = uCellPrivateRsrqToDb(x);
     }
     // SINR is element 13, directly in dB, a decimal number
     // with a mantissa, 255 if unknown.

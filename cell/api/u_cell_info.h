@@ -326,8 +326,8 @@ int32_t uCellInfoGetTimeUtcStr(uDeviceHandle_t cellHandle,
  *                               offset in seconds; may be NULL.
  * @return                       on success the local time in
  *                               seconds since midnight on 1st
- *                               Jan 1970 (i.e. Unix time but
- *                               local instead of UTC) else
+ *                               Jan 1970 (Unix time but local
+ *                               instead of UTC) else
  *                               negative error code.
  */
 int64_t uCellInfoGetTime(uDeviceHandle_t cellHandle,

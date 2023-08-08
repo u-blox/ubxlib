@@ -119,6 +119,7 @@
 #include <u_cell_gpio.h>
 #include <u_cell_info.h>
 #include <u_cell_loc.h>
+#include <u_cell_time.h>
 #include <u_cell_mqtt.h>
 #include <u_cell_http.h>
 #include <u_cell_pwr.h>

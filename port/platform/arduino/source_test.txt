@@ -35,6 +35,7 @@ cell/test/u_cell_mqtt_test.c
 cell/test/u_cell_http_test.c
 cell/test/u_cell_file_test.c
 cell/test/u_cell_loc_test.c
+cell/test/u_cell_time_test.c
 cell/test/u_cell_gpio_test.c
 cell/test/u_cell_fota_test.c
 cell/test/u_cell_mux_test.c
