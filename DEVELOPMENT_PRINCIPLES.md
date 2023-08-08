@@ -43,3 +43,8 @@ Similar to commenting, it is easy when writing a commit message to forget that o
 Then, in the body of the commit message don't be afraid to say why, in a verbose/readable way, the change is justified; these commit messages are publicly visible and the only change documentation we have so put your back into it.  Note that, for a single commit, a `squash` merge in Github gives you the opportunity to refine/re-word the commit message at the last minute when merging your approved PR.
 
 A corollary of this is that you should try not to combine disparate changes into a single commit; discrete commits are easier for the customer to absorb.
+
+# Do Not Get Fat
+Every line of `ubxlib` core code (i.e. ignoring test code) carries a cost for us and for the customer: for the customer it takes precious space in their MCU's memory and for us it increases test time.  Code that improves thread-safety, code that makes a `ubxlib` API easier to use and code which forms a feature that a customer has _requested_, is fine, but don't add code without being _sure_ it is worth it.  Conversely, remove code when you can: deprecate and then remove things that are either no longer supported in the module or that you believe no one is using, despite seeming like a good idea at the time \[a customer can object that they are using the thing in the deprecation period, so do make the deprecation notices clear\].  This especially applies to common code, which cannot be excluded like `cell`, `gnss`, `wifi` and `ble` code can.
+
+Adding code is putting on weight: make sure it is muscle and not fat.
