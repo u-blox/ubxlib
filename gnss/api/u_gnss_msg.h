@@ -162,9 +162,10 @@ typedef void (*uGnssMsgReceiveCallback_t)(uDeviceHandle_t gnssHandle,
  * protocol type #U_GNSS_PROTOCOL_NMEA and an empty pNmea then
  * all NMEA message IDs will match, if pNmea contains "G" then
  * "GX" and "GAZZN" would match, if pMessageIdWanted has the
- * protocol type #U_GNSS_PROTOCOL_UBX and the message class
- * (upper byte) set to #U_GNSS_UBX_MESSAGE_CLASS_ALL then all UBX
- * format messages of that class will match, etc.
+ * protocol type #U_GNSS_PROTOCOL_UBX, message class (upper byte)
+ * 0x01 (UBX-NAV) and message ID (lower byte) set to
+ * #U_GNSS_UBX_MESSAGE_ID_ALL then all UBX format messages of
+ * the UBX-NAV class will match, etc.
  *
  * @param[in] pMessageId       the message ID to check.
  * @param[in] pMessageIdWanted the wanted message ID.
