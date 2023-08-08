@@ -169,8 +169,8 @@ typedef void (*uGnssMsgReceiveCallback_t)(uDeviceHandle_t gnssHandle,
  *
  * @param[in] pMessageId       the message ID to check.
  * @param[in] pMessageIdWanted the wanted message ID.
- *                             pMessageIdWanted, else false.
  * @return                     true if pMessageId is inside
+ *                             pMessageIdWanted, else false.
  */
 bool uGnssMsgIdIsWanted(uGnssMessageId_t *pMessageId,
                         uGnssMessageId_t *pMessageIdWanted);
