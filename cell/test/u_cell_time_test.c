@@ -102,6 +102,13 @@
 # define U_CELL_TIME_TEST_GUARD_TIME_SECONDS 30
 #endif
 
+#ifndef U_CELL_TIME_TEST_RETRIES
+/** How many times to re-try CellTime if it fails to
+ * synchronise the first time.
+ */
+# define U_CELL_TIME_TEST_RETRIES 2
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -271,8 +278,8 @@ static bool cellInfoCallback(uDeviceHandle_t cellHandle,
     return keepGoing;
 }
 
-// Print an event structure.
-static void printEvent(uCellTimeEvent_t *pEvent)
+// Print and check an event structure.
+static void printAndCheckEvent(uCellTimeEvent_t *pEvent, bool cellTime)
 {
     U_TEST_PRINT_LINE("  synchronised: %s.", pEvent->synchronised ? "true" : "false");
     U_TEST_PRINT_LINE("  result:       %d.", pEvent->result);
@@ -282,16 +289,35 @@ static void printEvent(uCellTimeEvent_t *pEvent)
     U_TEST_PRINT_LINE("  cell time:    %s.", pEvent->cellTime ? "true" : "false");
     U_TEST_PRINT_LINE("  offset:       %d.%09d.", (int32_t) (pEvent->offsetNanoseconds / 1000000000),
                       (int32_t) (pEvent->offsetNanoseconds % 1000000000));
+    U_PORT_TEST_ASSERT(pEvent->result == 0);
+    // Can't check mode - it seems to come back as "best-effort" sometimes,
+    // despite us specifically requesting CellTime ONLY.
+    if (cellTime) {
+        U_PORT_TEST_ASSERT(pEvent->source == U_CELL_TIME_SOURCE_CELL);
+    }
+    if (pEvent->source == U_CELL_TIME_SOURCE_CELL) {
+        U_PORT_TEST_ASSERT(pEvent->cellIdPhysical >= 0);
+    } else {
+        U_PORT_TEST_ASSERT(pEvent->cellIdPhysical == -1);
+    }
+    U_PORT_TEST_ASSERT(pEvent->cellTime);
+    U_PORT_TEST_ASSERT(pEvent->offsetNanoseconds >= 0);
 }
 
-// Print a time structure.
-static void printTime(uCellTime_t *pTime)
+// Print and check a time structure.
+static void printAndCheckTime(uCellTime_t *pTime)
 {
     U_TEST_PRINT_LINE("  cell time: %s.", pTime->cellTime ? "true" : "false");
     U_TEST_PRINT_LINE("  time:      %d.%09d.", (int32_t) (pTime->timeNanoseconds / 1000000000),
                       (int32_t) (pTime->timeNanoseconds % 1000000000));
     U_TEST_PRINT_LINE("  accuracy:  %d.%09d.", (int32_t) (pTime->accuracyNanoseconds / 1000000000),
                       (int32_t) (pTime->accuracyNanoseconds % 1000000000));
+    if (pTime->cellTime) {
+        U_PORT_TEST_ASSERT(pTime->timeNanoseconds < U_CELL_TIME_TEST_MAX_CELL_TIME * 1000000000);
+    } else {
+        U_PORT_TEST_ASSERT(pTime->timeNanoseconds / 1000000000 >= U_CELL_TIME_TEST_MIN_UTC_TIME);
+    }
+    U_PORT_TEST_ASSERT(pTime->accuracyNanoseconds >= 0);
 }
 
 /* ----------------------------------------------------------------
@@ -312,6 +338,7 @@ U_PORT_TEST_FUNCTION("[cellTime]", "cellTimeBasic")
     int32_t y;
     int32_t startTimeMs;
     uCellTimeTestCellInfoList_t *pTmp;
+    bool gnssIsInsideCell;
 #ifndef U_CELL_CFG_SARA_R5_00B
     int32_t timingAdvance;
 #endif
@@ -332,6 +359,8 @@ U_PORT_TEST_FUNCTION("[cellTime]", "cellTimeBasic")
     U_PORT_TEST_ASSERT(pModule != NULL);
     //lint -esym(613, pModule) Suppress possible use of NULL pointer
     // for pModule from now on
+
+    gnssIsInsideCell = uCellLocGnssInsideCell(cellHandle);
 
     // Make a cellular connection so that we can test that sync works
     // despite that
@@ -373,41 +402,34 @@ U_PORT_TEST_FUNCTION("[cellTime]", "cellTimeBasic")
     memset(&gEvent, 0xFF, sizeof(gEvent));
     gEvent.synchronised = false;
     startTimeMs = uPortGetTickTimeMs();
-    y = uCellTimeEnable(cellHandle, U_CELL_TIME_MODE_PULSE, true, 0,
-                        eventCallback, &gEventCallback);
-    if (pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R5) {
-        U_PORT_TEST_ASSERT(y == 0);
-        while (!gEvent.synchronised &&
-               (uPortGetTickTimeMs() - startTimeMs < U_CELL_TIME_TEST_GUARD_TIME_SECONDS * 1000)) {
-            uPortTaskBlock(100);
-        }
-        U_TEST_PRINT_LINE("gEventCallback is %d.", gEventCallback);
-        U_TEST_PRINT_LINE("  synchronised:      %s.", gEvent.synchronised ? "true" : "false");
-        U_TEST_PRINT_LINE("  result:            %d.", gEvent.result);
-        U_TEST_PRINT_LINE("  mode:              %d.", gEvent.mode);
-        U_TEST_PRINT_LINE("  source:            %d.", gEvent.source);
-        U_TEST_PRINT_LINE("  cell ID:           %d.", gEvent.cellIdPhysical);
-        U_TEST_PRINT_LINE("  cellTime:          %s.", gEvent.cellTime ? "true" : "false");
-        U_TEST_PRINT_LINE("  offsetNanoseconds: %d.", (int32_t) gEvent.offsetNanoseconds);
-        U_PORT_TEST_ASSERT(gEventCallback == 0);
-        U_PORT_TEST_ASSERT(gEvent.synchronised);
-        U_PORT_TEST_ASSERT(gEvent.result == 0);
-        // Can't check mode - it seems to come back as "best-effort" sometimes,
-        // despite us specifically requesting CellTime ONLY.
-        U_PORT_TEST_ASSERT(gEvent.source == U_CELL_TIME_SOURCE_CELL);
-        U_PORT_TEST_ASSERT(gEvent.cellIdPhysical >= 0);
-        U_PORT_TEST_ASSERT(gEvent.cellTime);
-        U_PORT_TEST_ASSERT(gEvent.offsetNanoseconds >= 0);
+    y = 0;
+    // Give this a few goes as sync can fail randomly
+    for (size_t x = 0; (y == 0) && !gEvent.synchronised && (x < U_CELL_TIME_TEST_RETRIES + 1); x++) {
+        y = uCellTimeEnable(cellHandle, U_CELL_TIME_MODE_PULSE, true, 0,
+                            eventCallback, &gEventCallback);
+        if (pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R5) {
+            U_PORT_TEST_ASSERT(y == 0);
+            while (!gEvent.synchronised &&
+                   (uPortGetTickTimeMs() - startTimeMs < U_CELL_TIME_TEST_GUARD_TIME_SECONDS * 1000)) {
+                uPortTaskBlock(100);
+            }
+            U_TEST_PRINT_LINE("gEventCallback is %d.", gEventCallback);
+            if (gEvent.synchronised) {
+                U_PORT_TEST_ASSERT(gEventCallback == 0);
+                printAndCheckEvent(&gEvent, true);
 #if defined (U_CFG_TEST_PIN_CELL_GPIO4) && (U_CFG_TEST_PIN_CELL_GPIO4 >= 0)
-        U_TEST_PRINT_LINE("pin %d of this MCU must be connected to the \"GPIO4\" pin of SARA-R5.",
-                          U_CFG_TEST_PIN_CELL_GPIO4);
-        // TODO test that toggling occurred
+                U_TEST_PRINT_LINE("pin %d of this MCU must be connected to the \"GPIO4\" pin of SARA-R5.",
+                                  U_CFG_TEST_PIN_CELL_GPIO4);
+                // TODO test that toggling occurred
 #endif
-        U_PORT_TEST_ASSERT(uCellTimeDisable(cellHandle) == 0);
-    } else {
-        U_TEST_PRINT_LINE("CellTime not supported, not testing uCellTimeEnable().");
-        U_PORT_TEST_ASSERT(y < 0);
+            }
+            U_PORT_TEST_ASSERT(uCellTimeDisable(cellHandle) == 0);
+        } else {
+            U_TEST_PRINT_LINE("CellTime not supported, not testing uCellTimeEnable().");
+            U_PORT_TEST_ASSERT(y < 0);
+        }
     }
+    U_PORT_TEST_ASSERT((y < 0) || (gEvent.synchronised));
 
     // Next one-shot mode, where "GPIO4" of the module should
     // be toggled once and we should get a timestamp URC
@@ -417,89 +439,80 @@ U_PORT_TEST_FUNCTION("[cellTime]", "cellTimeBasic")
     memset(&gEvent, 0xFF, sizeof(gEvent));
     gEvent.synchronised = false;
     startTimeMs = uPortGetTickTimeMs();
-    y = uCellTimeEnable(cellHandle, U_CELL_TIME_MODE_ONE_SHOT, true, 0,
-                        eventCallback, &gEventCallback);
-    if (pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R5) {
-        U_PORT_TEST_ASSERT(y == 0);
-        while (!gEvent.synchronised &&
-               (uPortGetTickTimeMs() - startTimeMs < U_CELL_TIME_TEST_GUARD_TIME_SECONDS * 1000)) {
-            uPortTaskBlock(100);
-        }
-        U_TEST_PRINT_LINE("gEventCallback is %d.", gEventCallback);
-        printEvent(&gEvent);
-        U_PORT_TEST_ASSERT(gEventCallback == 0);
-        U_PORT_TEST_ASSERT(gEvent.synchronised);
-        U_PORT_TEST_ASSERT(gEvent.result == 0);
-        // Can't check mode - it seems to come back as "best-effort" sometimes,
-        // despite us specifically requesting CellTime ONLY.
-        U_PORT_TEST_ASSERT(gEvent.source == U_CELL_TIME_SOURCE_CELL);
-        U_PORT_TEST_ASSERT(gEvent.cellIdPhysical >= 0);
-        U_PORT_TEST_ASSERT(gEvent.cellTime);
-        U_PORT_TEST_ASSERT(gEvent.offsetNanoseconds >= 0);
+    y = 0;
+    // Give this a few goes as sync can fail randomly
+    for (size_t x = 0; (y == 0) && !gEvent.synchronised && (x < U_CELL_TIME_TEST_RETRIES + 1); x++) {
+        y = uCellTimeEnable(cellHandle, U_CELL_TIME_MODE_ONE_SHOT, true, 0,
+                            eventCallback, &gEventCallback);
+        if (pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R5) {
+            U_PORT_TEST_ASSERT(y == 0);
+            while (!gEvent.synchronised &&
+                   (uPortGetTickTimeMs() - startTimeMs < U_CELL_TIME_TEST_GUARD_TIME_SECONDS * 1000)) {
+                uPortTaskBlock(100);
+            }
+            U_TEST_PRINT_LINE("gEventCallback is %d.", gEventCallback);
+            if (gEvent.synchronised) {
+                U_PORT_TEST_ASSERT(gEventCallback == 0);
+                printAndCheckEvent(&gEvent, true);
 #if defined (U_CFG_TEST_PIN_CELL_GPIO4) && (U_CFG_TEST_PIN_CELL_GPIO4 >= 0)
-        U_TEST_PRINT_LINE("pin %d of this MCU must be connected to the \"GPIO4\" pin of SARA-R5.",
-                          U_CFG_TEST_PIN_CELL_GPIO4);
-        // TODO test that toggling occurred
+                U_TEST_PRINT_LINE("pin %d of this MCU must be connected to the \"GPIO4\" pin of SARA-R5.",
+                                  U_CFG_TEST_PIN_CELL_GPIO4);
+                // TODO test that toggling occurred
 #endif
-        U_PORT_TEST_ASSERT(uCellTimeDisable(cellHandle) == 0);
-    } else {
-        U_PORT_TEST_ASSERT(y < 0);
+            }
+            U_PORT_TEST_ASSERT(uCellTimeDisable(cellHandle) == 0);
+        } else {
+            U_PORT_TEST_ASSERT(y < 0);
+        }
     }
+    U_PORT_TEST_ASSERT((y < 0) || (gEvent.synchronised));
 
     // And again with a callback, also this time allowing non-cellular timing,
     // if GNSS is available inside the module of course
     U_TEST_PRINT_LINE("testing CellTime one-shot pulse mode with a callback...");
     gTimeCallback = INT_MIN;
     memset(&gTime, 0xFF, sizeof(gTime));
-    y = uCellTimeSetCallback(cellHandle, timeCallback, &gTimeCallback);
-    if (pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R5) {
-        U_PORT_TEST_ASSERT(y == 0);
-        gEventCallback = INT_MIN;
-        memset(&gEvent, 0xFF, sizeof(gEvent));
-        gEvent.synchronised = false;
-        startTimeMs = uPortGetTickTimeMs();
-        U_PORT_TEST_ASSERT(uCellTimeEnable(cellHandle, U_CELL_TIME_MODE_ONE_SHOT,
-                                           !uCellLocGnssInsideCell(cellHandle), 0,
-                                           eventCallback, &gEventCallback) == 0);
-        while (!gEvent.synchronised &&
-               (uPortGetTickTimeMs() - startTimeMs < U_CELL_TIME_TEST_GUARD_TIME_SECONDS * 1000)) {
-            uPortTaskBlock(100);
-        }
-        U_TEST_PRINT_LINE("gEventCallback is %d.", gEventCallback);
-        printEvent(&gEvent);
-        U_PORT_TEST_ASSERT(gEventCallback == 0);
-        U_PORT_TEST_ASSERT(gEvent.synchronised);
-        U_PORT_TEST_ASSERT(gEvent.result == 0);
-        // Can't check mode
-        if (gEvent.source == U_CELL_TIME_SOURCE_CELL) {
-            U_PORT_TEST_ASSERT(gEvent.cellIdPhysical >= 0);
-        } else {
-            U_PORT_TEST_ASSERT(gEvent.cellIdPhysical == -1);
-        }
-        U_PORT_TEST_ASSERT(gEvent.offsetNanoseconds >= 0);
-        startTimeMs = uPortGetTickTimeMs();
-        while ((gTimeCallback == INT_MIN) &&
-               (uPortGetTickTimeMs() - startTimeMs < U_CELL_TIME_TEST_GUARD_TIME_SECONDS * 1000)) {
-            uPortTaskBlock(100);
-        }
-        U_TEST_PRINT_LINE("gTimeCallback is %d.", gTimeCallback);
-        printTime(&gTime);
-        U_PORT_TEST_ASSERT(gTimeCallback == 0);
-        if (gTime.cellTime) {
-            U_PORT_TEST_ASSERT(gTime.timeNanoseconds < U_CELL_TIME_TEST_MAX_CELL_TIME * 1000000000);
-        } else {
-            U_PORT_TEST_ASSERT(gTime.timeNanoseconds / 1000000000 >= U_CELL_TIME_TEST_MIN_UTC_TIME);
-        }
-        U_PORT_TEST_ASSERT(gTime.accuracyNanoseconds >= 0);
+    y = 0;
+    // Give this a few goes as sync can fail randomly
+    for (size_t x = 0; (y == 0) && !gEvent.synchronised && (x < U_CELL_TIME_TEST_RETRIES + 1); x++) {
+        y = uCellTimeSetCallback(cellHandle, timeCallback, &gTimeCallback);
+        if (pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R5) {
+            U_PORT_TEST_ASSERT(y == 0);
+            gEventCallback = INT_MIN;
+            memset(&gEvent, 0xFF, sizeof(gEvent));
+            gEvent.synchronised = false;
+            startTimeMs = uPortGetTickTimeMs();
+            U_PORT_TEST_ASSERT(uCellTimeEnable(cellHandle, U_CELL_TIME_MODE_ONE_SHOT,
+                                               !gnssIsInsideCell, 0,
+                                               eventCallback, &gEventCallback) == 0);
+            while (!gEvent.synchronised &&
+                   (uPortGetTickTimeMs() - startTimeMs < U_CELL_TIME_TEST_GUARD_TIME_SECONDS * 1000)) {
+                uPortTaskBlock(100);
+            }
+            U_TEST_PRINT_LINE("gEventCallback is %d.", gEventCallback);
+            if (gEvent.synchronised) {
+                U_PORT_TEST_ASSERT(gEventCallback == 0);
+                printAndCheckEvent(&gEvent, !gnssIsInsideCell);
+                startTimeMs = uPortGetTickTimeMs();
+                while ((gTimeCallback == INT_MIN) &&
+                       (uPortGetTickTimeMs() - startTimeMs < U_CELL_TIME_TEST_GUARD_TIME_SECONDS * 1000)) {
+                    uPortTaskBlock(100);
+                }
+                U_TEST_PRINT_LINE("gTimeCallback is %d.", gTimeCallback);
+                U_PORT_TEST_ASSERT(gTimeCallback == 0);
+                printAndCheckTime(&gTime);
 #if defined (U_CFG_TEST_PIN_CELL_GPIO4) && (U_CFG_TEST_PIN_CELL_GPIO4 >= 0)
-        U_TEST_PRINT_LINE("pin %d of this MCU must be connected to the \"GPIO4\" pin of SARA-R5.",
-                          U_CFG_TEST_PIN_CELL_GPIO4);
-        // TODO test that toggling occurred
+                U_TEST_PRINT_LINE("pin %d of this MCU must be connected to the \"GPIO4\" pin of SARA-R5.",
+                                  U_CFG_TEST_PIN_CELL_GPIO4);
+                // TODO test that toggling occurred
 #endif
-        U_PORT_TEST_ASSERT(uCellTimeDisable(cellHandle) == 0);
-    } else {
-        U_PORT_TEST_ASSERT(y < 0);
+            }
+            U_PORT_TEST_ASSERT(uCellTimeDisable(cellHandle) == 0);
+        } else {
+            U_PORT_TEST_ASSERT(y < 0);
+        }
     }
+    U_PORT_TEST_ASSERT((y < 0) || (gEvent.synchronised));
 
     // Remove the time callback: should always work, even for non-SARA-R5 modules
     U_PORT_TEST_ASSERT(uCellTimeSetCallback(cellHandle, NULL, NULL) == 0);
@@ -518,46 +531,37 @@ U_PORT_TEST_FUNCTION("[cellTime]", "cellTimeBasic")
         memset(&gEvent, 0xFF, sizeof(gEvent));
         gEvent.synchronised = false;
         startTimeMs = uPortGetTickTimeMs();
-        U_PORT_TEST_ASSERT(uCellTimeEnable(cellHandle, U_CELL_TIME_MODE_EXT_INT_TIMESTAMP,
-                                           !uCellLocGnssInsideCell(cellHandle), 0,
-                                           eventCallback, &gEventCallback) == 0);
-        while (!gEvent.synchronised &&
-               (uPortGetTickTimeMs() - startTimeMs < U_CELL_TIME_TEST_GUARD_TIME_SECONDS * 1000)) {
-            uPortTaskBlock(100);
-        }
-        U_TEST_PRINT_LINE("gEventCallback is %d.", gEventCallback);
-        printEvent(&gEvent);
-        U_PORT_TEST_ASSERT(gEventCallback == 0);
-        U_PORT_TEST_ASSERT(gEvent.synchronised);
-        U_PORT_TEST_ASSERT(gEvent.result == 0);
-        // Can't check mode
-        if (gEvent.source == U_CELL_TIME_SOURCE_CELL) {
-            U_PORT_TEST_ASSERT(gEvent.cellIdPhysical >= 0);
+        y = 0;
+        // Give this a few goes as sync can fail randomly
+        for (size_t x = 0; (y == 0) && !gEvent.synchronised && (x < U_CELL_TIME_TEST_RETRIES + 1); x++) {
+            U_PORT_TEST_ASSERT(uCellTimeEnable(cellHandle, U_CELL_TIME_MODE_EXT_INT_TIMESTAMP,
+                                               !uCellLocGnssInsideCell(cellHandle), 0,
+                                               eventCallback, &gEventCallback) == 0);
+            while (!gEvent.synchronised &&
+                   (uPortGetTickTimeMs() - startTimeMs < U_CELL_TIME_TEST_GUARD_TIME_SECONDS * 1000)) {
+                uPortTaskBlock(100);
+            }
+            U_TEST_PRINT_LINE("gEventCallback is %d.", gEventCallback);
+            if (gEvent.synchronised) {
+                U_PORT_TEST_ASSERT(gEventCallback == 0);
+                printAndCheckEvent(&gEvent, !gnssIsInsideCell);
+                startTimeMs = uPortGetTickTimeMs();
+                while ((gTimeCallback == INT_MIN) &&
+                       (uPortGetTickTimeMs() - startTimeMs < U_CELL_TIME_TEST_GUARD_TIME_SECONDS * 1000)) {
+                    uPortTaskBlock(100);
+                }
+                U_TEST_PRINT_LINE("gTimeCallback is %d.", gTimeCallback);
+                U_PORT_TEST_ASSERT(gTimeCallback == 0);
+                printAndCheckTime(&gTime);
+            }
+            // Don't disable this time: we do a uCellTimeEnable() in the same
+            // mode below and that should work without needing to disable first
         } else {
-            U_PORT_TEST_ASSERT(gEvent.cellIdPhysical == -1);
+            U_PORT_TEST_ASSERT(y < 0);
         }
-        U_PORT_TEST_ASSERT(gEvent.offsetNanoseconds >= 0);
-        startTimeMs = uPortGetTickTimeMs();
-        while ((gTimeCallback == INT_MIN) &&
-               (uPortGetTickTimeMs() - startTimeMs < U_CELL_TIME_TEST_GUARD_TIME_SECONDS * 1000)) {
-            uPortTaskBlock(100);
-        }
-        U_TEST_PRINT_LINE("gTimeCallback is %d.", gTimeCallback);
-        printTime(&gTime);
-        U_PORT_TEST_ASSERT(gTimeCallback == 0);
-        U_PORT_TEST_ASSERT(gTime.timeNanoseconds >= 0);
-        if (gTime.cellTime) {
-            U_PORT_TEST_ASSERT(gTime.timeNanoseconds < U_CELL_TIME_TEST_MAX_CELL_TIME * 1000000000);
-        } else {
-            U_PORT_TEST_ASSERT(gTime.timeNanoseconds / 1000000000 >= U_CELL_TIME_TEST_MIN_UTC_TIME);
-        }
-        U_PORT_TEST_ASSERT(gTime.accuracyNanoseconds >= 0);
-        // Don't disable this time: we do a uCellTimeEnable() in the same
-        // mode below and that should work without needing to disable first
-    } else {
-        U_PORT_TEST_ASSERT(y < 0);
     }
 #endif
+    U_PORT_TEST_ASSERT((y < 0) || (gEvent.synchronised));
 
     // Do a deep scan, first with no callback
     U_TEST_PRINT_LINE("performing a deep scan, no callback provided.");
@@ -650,20 +654,9 @@ U_PORT_TEST_FUNCTION("[cellTime]", "cellTimeBasic")
                     uPortTaskBlock(100);
                 }
                 U_TEST_PRINT_LINE("gEventCallback is %d.", gEventCallback);
-                printEvent(&gEvent);
                 U_PORT_TEST_ASSERT(gEventCallback == 0);
-                U_PORT_TEST_ASSERT(gEvent.synchronised);
-                U_PORT_TEST_ASSERT(gEvent.result == 0);
-                // Can't check mode - it seems to come back as "best-effort" sometimes,
-                // despite us specifically requesting CellTime ONLY.
-                U_PORT_TEST_ASSERT(gEvent.source == U_CELL_TIME_SOURCE_CELL);
+                printAndCheckEvent(&gEvent, true);
                 U_PORT_TEST_ASSERT(gEvent.cellIdPhysical == gpCellInfoList->cell.cellIdPhysical);
-                U_PORT_TEST_ASSERT(gEvent.cellTime);
-                U_PORT_TEST_ASSERT(gEvent.offsetNanoseconds >= 0);
-                while ((gTimeCallback == INT_MIN) &&
-                       (uPortGetTickTimeMs() - startTimeMs < U_CELL_TIME_TEST_GUARD_TIME_SECONDS * 1000)) {
-                    uPortTaskBlock(100);
-                }
                 // The time URC won't be emitted since this is one-shot mode and it has already "shot"
                 // Don't disable the callback this time, allow closing to sort it out
 #endif
