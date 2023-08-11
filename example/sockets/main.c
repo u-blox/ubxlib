@@ -292,7 +292,8 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSockets")
                 // and print the echo that comes back
                 uPortLog("Sending data...\n");
                 while ((x >= 0) && (txSize > 0)) {
-                    x = uSockWrite(sock, message, txSize);
+                    x = uSockWrite(sock + (sizeof(message) - txSize),
+                                   message, txSize);
                     if (x > 0) {
                         txSize -= x;
                     }

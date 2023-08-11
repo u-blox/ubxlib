@@ -218,7 +218,9 @@ static void printPosition(const char *pBuffer, size_t length)
     int32_t longitudeX1e7;
     int32_t latitudeX1e7;
 
-    if ((length >= 32) && (*(pBuffer + 21) & 0x01)) {
+    // We have the complete raw message so need to move past the header
+    pBuffer += U_UBX_PROTOCOL_HEADER_LENGTH_BYTES;
+    if ((length >= U_UBX_PROTOCOL_HEADER_LENGTH_BYTES + 32) && (*(pBuffer + 21) & 0x01)) {
         longitudeX1e7 =  uUbxProtocolUint32Decode(pBuffer + 24);
         latitudeX1e7 = uUbxProtocolUint32Decode(pBuffer + 28);
         prefix[0] = latLongToBits(longitudeX1e7, &(whole[0]), &(fraction[0]));
