@@ -163,9 +163,13 @@ static const uGnssPwrFlag_t gFlagM8M9[] = {U_GNSS_PWR_FLAG_EXTINT_PIN_1_NOT_0};
 
 /** The power saving flags that all modules in the test system
  * support; MUST have the same number of elements as gFlagAllKeyId.
+ *
+ * Note: #U_GNSS_PWR_FLAG_EXTINT_BACKUP_ENABLE and
+ * #U_GNSS_PWR_FLAG_EXTINT_INACTIVITY_ENABLE are commented out since
+ * modules can be come unresponsive if they get set.
  */
 static const uGnssPwrFlag_t gFlagAll[] = {U_GNSS_PWR_FLAG_EXTINT_WAKE_ENABLE, // AKA key ID U_GNSS_CFG_VAL_KEY_ID_PM_EXTINTWAKE_L
-                                          U_GNSS_PWR_FLAG_EXTINT_BACKUP_ENABLE, // AKA key ID U_GNSS_CFG_VAL_KEY_ID_PM_EXTINTBACKUP_L
+                                          // U_GNSS_PWR_FLAG_EXTINT_BACKUP_ENABLE, // AKA key ID U_GNSS_CFG_VAL_KEY_ID_PM_EXTINTBACKUP_L
                                           // U_GNSS_PWR_FLAG_EXTINT_INACTIVITY_ENABLE, // AKA key ID U_GNSS_CFG_VAL_KEY_ID_PM_EXTINTINACTIVE_L
                                           U_GNSS_PWR_FLAG_LIMIT_PEAK_CURRENT_ENABLE, // AKA key ID U_GNSS_CFG_VAL_KEY_ID_PM_LIMITPEAKCURR_L
                                           U_GNSS_PWR_FLAG_WAIT_FOR_TIME_FIX_ENABLE, // AKA key ID U_GNSS_CFG_VAL_KEY_ID_PM_WAITTIMEFIX_L
@@ -175,9 +179,13 @@ static const uGnssPwrFlag_t gFlagAll[] = {U_GNSS_PWR_FLAG_EXTINT_WAKE_ENABLE, //
 
 /** The CFG-VAL key IDs corresponding to gFlagAll; MUST have the same number
  * of elements as gFlagAll.
+ *
+ * Note: #U_GNSS_CFG_VAL_KEY_ID_PM_EXTINTBACKUP_L and
+ * #U_GNSS_CFG_VAL_KEY_ID_PM_EXTINTINACTIVE_L are commented out since
+ * modules can be come unresponsive if they get set.
  */
 static const uint32_t gFlagAllKeyId[] = {U_GNSS_CFG_VAL_KEY_ID_PM_EXTINTWAKE_L,
-                                         U_GNSS_CFG_VAL_KEY_ID_PM_EXTINTBACKUP_L,
+                                         // U_GNSS_CFG_VAL_KEY_ID_PM_EXTINTBACKUP_L,
                                          // U_GNSS_CFG_VAL_KEY_ID_PM_EXTINTINACTIVE_L,
                                          U_GNSS_CFG_VAL_KEY_ID_PM_LIMITPEAKCURR_L,
                                          U_GNSS_CFG_VAL_KEY_ID_PM_WAITTIMEFIX_L,
