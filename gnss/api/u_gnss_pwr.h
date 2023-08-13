@@ -338,6 +338,10 @@ int32_t uGnssPwrGetMode(uDeviceHandle_t gnssHandle);
  * Not all flags are supported by all GNSS devices: check the return
  * value of the function to determine the outcome.
  *
+ * It is advisable to read back the flags that have been set using
+ * uGnssPwrGetFlag() after you have performed all of your configuration
+ * to ensure that everything was received and actioned by the GNSS device.
+ *
  * See uGnssPwrClearFlag() if you want to clear a power-saving flag.
  *
  * Note that the power-saving mode is set with a call to uGnssPwrSetMode()
@@ -358,6 +362,10 @@ int32_t uGnssPwrSetFlag(uDeviceHandle_t gnssHandle, uint32_t setBitMap);
  *
  * Not all flags are supported by all GNSS devices: check the return
  * value of the function to determine the outcome.
+ *
+ * It is advisable to read back the flags that have been set using
+ * uGnssPwrGetFlag() after you have performed all of your configuration
+ * to ensure that everything was received and actioned by the GNSS device.
  *
  * See uGnssPwrSetFlag() if you want to set a power-saving flag.
  *

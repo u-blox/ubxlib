@@ -97,6 +97,14 @@
 # define U_GNSS_PWR_TEST_FLAG_SET_WAIT_MS 10
 #endif
 
+#ifndef U_GNSS_PWR_TEST_FLAG_SET_RETRIES
+/** Quite infrequently, but often enough to be problematic, a
+ * GNSS device may acknowledge the a flag has been set but then
+ * not actually do the job, hence we allow a retry.
+ */
+# define U_GNSS_PWR_TEST_FLAG_SET_RETRIES 1
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -198,6 +206,46 @@ static const uint32_t gFlagAllKeyId[] = {U_GNSS_CFG_VAL_KEY_ID_PM_EXTINTWAKE_L,
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
+
+// Set or clear power saving flags, returning the new setting.
+// Note: each operation has to return success but we may allow
+// a retry if the GNSS device did not action the request for
+// some reason.
+static int32_t setOrClearPwrSavingFlag(uDeviceHandle_t gnssHandle,
+                                       int32_t flagBitMap,
+                                       bool setNotClear)
+{
+    int32_t y = 0;
+    bool keepGoing = true;
+
+    for (size_t x = 0; keepGoing && (x < U_GNSS_PWR_TEST_FLAG_SET_RETRIES + 1); x++) {
+        if (setNotClear) {
+            U_PORT_TEST_ASSERT(uGnssPwrSetFlag(gnssHandle, flagBitMap) == 0);
+        } else {
+            U_PORT_TEST_ASSERT(uGnssPwrClearFlag(gnssHandle, flagBitMap) == 0);
+        }
+        // Allow a short delay to avoid hammering the interface
+        uPortTaskBlock(U_GNSS_PWR_TEST_FLAG_SET_WAIT_MS);
+        y = uGnssPwrGetFlag(gnssHandle);
+        U_PORT_TEST_ASSERT(y >= 0);
+        if (setNotClear) {
+            keepGoing = ((y & flagBitMap) != flagBitMap);
+        } else {
+            keepGoing = ((y & flagBitMap) != 0);
+        }
+        if (keepGoing) {
+            U_TEST_PRINT_LINE("*** WARNING asked to %s flag(s) 0x%08x but on read"
+                              " flags were still 0x%08x.", setNotClear ? "set" : "clear",
+                              flagBitMap, y);
+            if (x < U_GNSS_PWR_TEST_FLAG_SET_RETRIES) {
+                U_TEST_PRINT_LINE("*** trying again...");
+            }
+        }
+    }
+
+    return y;
+}
+
 
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
@@ -349,7 +397,7 @@ U_PORT_TEST_FUNCTION("[gnssPwr]", "gnssPwrSaving")
             // on/off power-saving but I've yet to find an M8 version
             // which supports on/off power-saving (e.g. the version 18.00
             // one inside SARA-R5/SARA-R422 NACKs an attempt to set on/off
-            // power-saving, so don't do that for M8 either
+            // power-saving) so don't do that for M8 either
             if ((pModule->moduleType == U_GNSS_MODULE_TYPE_M8) &&
                 ((y == (int32_t) U_GNSS_PWR_SAVING_MODE_NONE) ||
                  (y == (int32_t) U_GNSS_PWR_SAVING_MODE_ON_OFF))) {
@@ -381,12 +429,7 @@ U_PORT_TEST_FUNCTION("[gnssPwr]", "gnssPwrSaving")
                 U_TEST_PRINT_LINE("skipping setting flag %d.", gFlagAll[y]);
             } else {
                 U_TEST_PRINT_LINE("setting flag %d (0x%08x)...", gFlagAll[y], 1UL << gFlagAll[y]);
-                U_PORT_TEST_ASSERT(uGnssPwrSetFlag(gnssHandle, 1UL << gFlagAll[y]) == 0);
-                // Allow a short delay to avoid hammering the interface
-                uPortTaskBlock(U_GNSS_PWR_TEST_FLAG_SET_WAIT_MS);
-                z = uGnssPwrGetFlag(gnssHandle);
-                U_TEST_PRINT_LINE("uGnssPwrGetFlag() returned %d.", z);
-                U_PORT_TEST_ASSERT(z >= 0);
+                z = setOrClearPwrSavingFlag(gnssHandle, 1UL << gFlagAll[y], true);
                 U_TEST_PRINT_LINE("flags are now 0x%08x.", z);
                 U_PORT_TEST_ASSERT((z & (1UL << gFlagAll[y])) == (1UL << gFlagAll[y]));
                 U_PORT_TEST_ASSERT((z & ~(1UL << gFlagAll[y])) == (gOriginalFlags & ~(1UL << gFlagAll[y])));
@@ -397,10 +440,7 @@ U_PORT_TEST_FUNCTION("[gnssPwr]", "gnssPwrSaving")
                     U_PORT_TEST_ASSERT(value);
                 }
                 U_TEST_PRINT_LINE("clearing flag %d (0x%08x)...", gFlagAll[y], 1UL << gFlagAll[y]);
-                U_PORT_TEST_ASSERT(uGnssPwrClearFlag(gnssHandle, 1UL << gFlagAll[y]) == 0);
-                uPortTaskBlock(U_GNSS_PWR_TEST_FLAG_SET_WAIT_MS);
-                z = uGnssPwrGetFlag(gnssHandle);
-                U_PORT_TEST_ASSERT(z >= 0);
+                z = setOrClearPwrSavingFlag(gnssHandle, 1UL << gFlagAll[y], false);
                 U_TEST_PRINT_LINE("flags are now 0x%08x.", z);
                 U_PORT_TEST_ASSERT((z & (1UL << gFlagAll[y])) == 0);
                 U_PORT_TEST_ASSERT((z & ~(1UL << gFlagAll[y])) == (gOriginalFlags & ~(1UL << gFlagAll[y])));
@@ -411,7 +451,7 @@ U_PORT_TEST_FUNCTION("[gnssPwr]", "gnssPwrSaving")
                 }
                 if (gOriginalFlags & (1UL << gFlagAll[y])) {
                     // Set the flag again if it was set originally
-                    U_PORT_TEST_ASSERT(uGnssPwrSetFlag(gnssHandle, 1UL << gFlagAll[y]) == 0);
+                    setOrClearPwrSavingFlag(gnssHandle, 1UL << gFlagAll[y], true);
                 }
             }
         }
@@ -419,22 +459,18 @@ U_PORT_TEST_FUNCTION("[gnssPwr]", "gnssPwrSaving")
         if (pModule->moduleType == U_GNSS_MODULE_TYPE_M8) {
             for (size_t y = 0; y < sizeof(gFlagM8) / sizeof(gFlagM8[0]); y++) {
                 U_TEST_PRINT_LINE("setting flag %d (0x%08x)...", gFlagM8[y], 1UL << gFlagM8[y]);
-                U_PORT_TEST_ASSERT(uGnssPwrSetFlag(gnssHandle, 1UL << gFlagM8[y]) == 0);
-                z = uGnssPwrGetFlag(gnssHandle);
-                U_PORT_TEST_ASSERT(z >= 0);
+                z = setOrClearPwrSavingFlag(gnssHandle, 1UL << gFlagM8[y], true);
                 U_TEST_PRINT_LINE("flags are now 0x%08x.", z);
                 U_PORT_TEST_ASSERT((z & (1UL << gFlagM8[y])) == (1UL << gFlagM8[y]));
                 U_PORT_TEST_ASSERT((z & ~(1UL << gFlagM8[y])) == (gOriginalFlags & ~(1UL << gFlagM8[y])));
                 U_TEST_PRINT_LINE("clearing flag %d (0x%08x)...", gFlagM8[y], 1UL << gFlagM8[y]);
-                U_PORT_TEST_ASSERT(uGnssPwrClearFlag(gnssHandle, 1UL << gFlagM8[y]) == 0);
-                z = uGnssPwrGetFlag(gnssHandle);
-                U_PORT_TEST_ASSERT(z >= 0);
+                z = setOrClearPwrSavingFlag(gnssHandle, 1UL << gFlagM8[y], false);
                 U_TEST_PRINT_LINE("flags are now 0x%08x.", z);
                 U_PORT_TEST_ASSERT((z & (1UL << gFlagM8[y])) == 0);
                 U_PORT_TEST_ASSERT((z & ~(1UL << gFlagM8[y])) == (gOriginalFlags & ~(1UL << gFlagM8[y])));
                 if (gOriginalFlags & (1UL << gFlagM8[y])) {
                     // Set the flag again if it was set originally
-                    U_PORT_TEST_ASSERT(uGnssPwrSetFlag(gnssHandle, 1UL << gFlagM8[y]) == 0);
+                    setOrClearPwrSavingFlag(gnssHandle, 1UL << gFlagM8[y], true);
                 }
             }
         }
@@ -443,48 +479,36 @@ U_PORT_TEST_FUNCTION("[gnssPwr]", "gnssPwrSaving")
             (pModule->moduleType == U_GNSS_MODULE_TYPE_M9)) {
             for (size_t y = 0; y < sizeof(gFlagM8M9) / sizeof(gFlagM8M9[0]); y++) {
                 U_TEST_PRINT_LINE("setting flag %d (0x%08x)...", gFlagM8M9[y], 1UL << gFlagM8M9[y]);
-                U_PORT_TEST_ASSERT(uGnssPwrSetFlag(gnssHandle, 1UL << gFlagM8M9[y]) == 0);
-                uPortTaskBlock(U_GNSS_PWR_TEST_FLAG_SET_WAIT_MS);
-                z = uGnssPwrGetFlag(gnssHandle);
-                U_PORT_TEST_ASSERT(z >= 0);
+                z = setOrClearPwrSavingFlag(gnssHandle, 1UL << gFlagM8M9[y], true);
                 U_TEST_PRINT_LINE("flags are now 0x%08x.", z);
                 U_PORT_TEST_ASSERT((z & (1UL << gFlagM8M9[y])) == (1UL << gFlagM8M9[y]));
                 U_PORT_TEST_ASSERT((z & ~(1UL << gFlagM8M9[y])) == (gOriginalFlags & ~(1UL << gFlagM8M9[y])));
                 U_TEST_PRINT_LINE("clearing flag %d (0x%08x)...", gFlagM8M9[y], 1UL << gFlagM8M9[y]);
-                U_PORT_TEST_ASSERT(uGnssPwrClearFlag(gnssHandle, 1UL << gFlagM8M9[y]) == 0);
-                uPortTaskBlock(U_GNSS_PWR_TEST_FLAG_SET_WAIT_MS);
-                z = uGnssPwrGetFlag(gnssHandle);
-                U_PORT_TEST_ASSERT(z >= 0);
+                z = setOrClearPwrSavingFlag(gnssHandle, 1UL << gFlagM8M9[y], false);
                 U_TEST_PRINT_LINE("flags are now 0x%08x.", z);
                 U_PORT_TEST_ASSERT((z & (1UL << gFlagM8M9[y])) == 0);
                 U_PORT_TEST_ASSERT((z & ~(1UL << gFlagM8M9[y])) == (gOriginalFlags & ~(1UL << gFlagM8M9[y])));
                 if (gOriginalFlags & (1UL << gFlagM8M9[y])) {
                     // Set the flag again if it was set originally
-                    U_PORT_TEST_ASSERT(uGnssPwrSetFlag(gnssHandle, 1UL << gFlagM8M9[y]) == 0);
+                    setOrClearPwrSavingFlag(gnssHandle, 1UL << gFlagM8M9[y], true);
                 }
             }
         }
 
         // Try setting more than one flag at a time
         U_TEST_PRINT_LINE("setting flags 0x%08x...", U_GNSS_PWR_TEST_FLAG_COMBINATION);
-        U_PORT_TEST_ASSERT(uGnssPwrSetFlag(gnssHandle, U_GNSS_PWR_TEST_FLAG_COMBINATION) == 0);
-        uPortTaskBlock(U_GNSS_PWR_TEST_FLAG_SET_WAIT_MS);
-        z = uGnssPwrGetFlag(gnssHandle);
-        U_PORT_TEST_ASSERT(z >= 0);
+        z = setOrClearPwrSavingFlag(gnssHandle, U_GNSS_PWR_TEST_FLAG_COMBINATION, true);
         U_PORT_TEST_ASSERT((z & U_GNSS_PWR_TEST_FLAG_COMBINATION) == U_GNSS_PWR_TEST_FLAG_COMBINATION);
         U_PORT_TEST_ASSERT((z & ~U_GNSS_PWR_TEST_FLAG_COMBINATION) == (gOriginalFlags &
                                                                        ~U_GNSS_PWR_TEST_FLAG_COMBINATION));
         U_TEST_PRINT_LINE("clearing flags 0x%08x...", U_GNSS_PWR_TEST_FLAG_COMBINATION);
-        U_PORT_TEST_ASSERT(uGnssPwrClearFlag(gnssHandle, U_GNSS_PWR_TEST_FLAG_COMBINATION) == 0);
-        uPortTaskBlock(U_GNSS_PWR_TEST_FLAG_SET_WAIT_MS);
-        z = uGnssPwrGetFlag(gnssHandle);
-        U_PORT_TEST_ASSERT(z >= 0);
+        z = setOrClearPwrSavingFlag(gnssHandle, U_GNSS_PWR_TEST_FLAG_COMBINATION, false);
         U_PORT_TEST_ASSERT((z & U_GNSS_PWR_TEST_FLAG_COMBINATION) == 0);
         U_PORT_TEST_ASSERT((z & ~U_GNSS_PWR_TEST_FLAG_COMBINATION) == (gOriginalFlags &
                                                                        ~U_GNSS_PWR_TEST_FLAG_COMBINATION));
 
         // Put the original flag values back
-        U_PORT_TEST_ASSERT(uGnssPwrSetFlag(gnssHandle, (uint32_t) gOriginalFlags) == 0);
+        setOrClearPwrSavingFlag(gnssHandle, (uint32_t) gOriginalFlags, true);
         gOriginalFlags = -1;
 
         // Set each of the main timings, doing them all at once
