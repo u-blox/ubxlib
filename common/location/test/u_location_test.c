@@ -308,6 +308,8 @@ static bool httpPostCheck(uLocationType_t locationType,
         } else {
             success = true;
         }
+        // Reset for next time
+        *pHttpStatusCode = 0;
     }
 
     return success;
@@ -845,7 +847,6 @@ U_PORT_TEST_FUNCTION("[location]", "locationBasic")
             testBlocking(devHandle, pTmp->networkType,
                          (uLocationType_t) locationType, gpLocationCfg);
             U_PORT_TEST_ASSERT(httpPostCheck((uLocationType_t) locationType, gpHttpContext, &httpStatusCode));
-            httpStatusCode = 0;
 
             U_PORT_TEST_ASSERT(httpPostRequest((uLocationType_t) locationType,
                                                gpHttpContext, serialNumber) == 0);
@@ -853,7 +854,6 @@ U_PORT_TEST_FUNCTION("[location]", "locationBasic")
             testOneShot(devHandle, pTmp->networkType,
                         (uLocationType_t) locationType, gpLocationCfg);
             U_PORT_TEST_ASSERT(httpPostCheck((uLocationType_t) locationType, gpHttpContext, &httpStatusCode));
-            httpStatusCode = 0;
 
             U_PORT_TEST_ASSERT(httpPostRequest((uLocationType_t) locationType,
                                                gpHttpContext, serialNumber) == 0);
