@@ -89,12 +89,12 @@
                                            (1UL << U_GNSS_PWR_FLAG_EXTINT_WAKE_ENABLE))
 #endif
 
-#ifndef U_GNSS_PWR_TEST_FLAG_SET_WAIT_MS
-/** A short delay between setting a flag and reading it back as
+#ifndef U_GNSS_PWR_TEST_SET_WAIT_MS
+/** A short delay between setting a flag/timer and reading it back as
  * some modules (e.g. NEO-M9) can become upset if you hammer
  * the CFG-VAL interface.
  */
-# define U_GNSS_PWR_TEST_FLAG_SET_WAIT_MS 10
+# define U_GNSS_PWR_TEST_SET_WAIT_MS 100
 #endif
 
 #ifndef U_GNSS_PWR_TEST_FLAG_SET_RETRIES
@@ -225,7 +225,7 @@ static int32_t setOrClearPwrSavingFlag(uDeviceHandle_t gnssHandle,
             U_PORT_TEST_ASSERT(uGnssPwrClearFlag(gnssHandle, flagBitMap) == 0);
         }
         // Allow a short delay to avoid hammering the interface
-        uPortTaskBlock(U_GNSS_PWR_TEST_FLAG_SET_WAIT_MS);
+        uPortTaskBlock(U_GNSS_PWR_TEST_SET_WAIT_MS);
         y = uGnssPwrGetFlag(gnssHandle);
         U_PORT_TEST_ASSERT(y >= 0);
         if (setNotClear) {
@@ -531,6 +531,7 @@ U_PORT_TEST_FUNCTION("[gnssPwr]", "gnssPwrSaving")
                               gOriginalOnTimeSeconds + 3,
                               gOriginalMaxAcquisitionTimeSeconds + 4,
                               gOriginalMinAcquisitionTimeSeconds + 5);
+        uPortTaskBlock(U_GNSS_PWR_TEST_SET_WAIT_MS);
         U_TEST_PRINT_LINE("uGnssPwrSetTiming() returned %d.", z);
         U_PORT_TEST_ASSERT(z == 0);
         U_PORT_TEST_ASSERT(uGnssPwrGetTiming(gnssHandle, &z, NULL, NULL, NULL, NULL) == 0);
@@ -556,6 +557,7 @@ U_PORT_TEST_FUNCTION("[gnssPwr]", "gnssPwrSaving")
         // Spot-check leaving some out
         U_PORT_TEST_ASSERT(uGnssPwrSetTiming(gnssHandle, gOriginalAcquisitionPeriodSeconds + 6,
                                              -1, -1, gOriginalMaxAcquisitionTimeSeconds + 7, -1) == 0);
+        uPortTaskBlock(U_GNSS_PWR_TEST_SET_WAIT_MS);
         U_PORT_TEST_ASSERT(uGnssPwrGetTiming(gnssHandle, &z, NULL, NULL, NULL, NULL) == 0);
         U_TEST_PRINT_LINE("new acquisition period %d second(s).", z);
         U_PORT_TEST_ASSERT(z == gOriginalAcquisitionPeriodSeconds + 6);
@@ -616,20 +618,24 @@ U_PORT_TEST_FUNCTION("[gnssPwr]", "gnssPwrSaving")
         gOriginalOffsetSeconds = uGnssPwrGetTimingOffset(gnssHandle);
         U_TEST_PRINT_LINE("original timing offset %d second(s).", gOriginalOffsetSeconds);
         U_PORT_TEST_ASSERT(uGnssPwrSetTimingOffset(gnssHandle, gOriginalOffsetSeconds + 1) == 0);
+        uPortTaskBlock(U_GNSS_PWR_TEST_SET_WAIT_MS);
         z = uGnssPwrGetTimingOffset(gnssHandle);
         U_TEST_PRINT_LINE("new timing offset %d second(s).", z);
         U_PORT_TEST_ASSERT(z ==  gOriginalOffsetSeconds + 1);
         U_PORT_TEST_ASSERT(uGnssPwrSetTimingOffset(gnssHandle, gOriginalOffsetSeconds) == 0);
+        uPortTaskBlock(U_GNSS_PWR_TEST_SET_WAIT_MS);
         gOriginalOffsetSeconds = -1;
 
         // Set the EXTINT inactivity timeout
         gOriginalTimeoutMs = uGnssPwrGetExtintInactivityTimeout(gnssHandle);
         U_TEST_PRINT_LINE("original EXTINT inactivity timeout %d ms.", gOriginalTimeoutMs);
         U_PORT_TEST_ASSERT(uGnssPwrSetExtintInactivityTimeout(gnssHandle, gOriginalTimeoutMs + 10) == 0);
+        uPortTaskBlock(U_GNSS_PWR_TEST_SET_WAIT_MS);
         z = uGnssPwrGetExtintInactivityTimeout(gnssHandle);
         U_TEST_PRINT_LINE("new EXTINT inactivity timeout %d ms.", z);
         U_PORT_TEST_ASSERT(z ==  gOriginalTimeoutMs + 10);
         U_PORT_TEST_ASSERT(uGnssPwrSetExtintInactivityTimeout(gnssHandle, gOriginalTimeoutMs) == 0);
+        uPortTaskBlock(U_GNSS_PWR_TEST_SET_WAIT_MS);
         gOriginalTimeoutMs = -1;
 
         // And finally, put the number of retries back as it was
