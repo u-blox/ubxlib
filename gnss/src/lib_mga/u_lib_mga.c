@@ -21,8 +21,10 @@
  *
  *****************************************************************************/
 
-// MODIFIED throughout: U_ASSERT() -> U_ASSERT(),
-// malloc -> pUPortMalloc, free -> uPortFree
+// MODIFIED throughout:
+// assert() -> U_ASSERT(),
+// malloc -> pUPortMalloc,
+// free -> uPortFree,
 // time() -> uPortGetTickTimeMs() / 1000
 
 // MODIFIED: headers added

@@ -89,6 +89,7 @@
 #include "u_gnss_mga.h"
 #include "u_gnss_pwr.h"     // U_GNSS_RESET_TIME_SECONDS
 #include "u_gnss_msg.h"     // uGnssMsgReceiveStatStreamLoss(), uGnssMsgSend()
+#include "u_gnss_info.h"    // uGnssInfoGetCommunicationStats()
 #include "u_gnss_private.h"
 
 #include "u_gnss_test_private.h"
@@ -517,6 +518,8 @@ U_PORT_TEST_FUNCTION("[gnssMga]", "gnssMgaBasic")
     const char reset[] = {0xFE, 0xFF, 0x01, 0x00};
     // Enough room for a UBX-CFG-RST, with a body of reset[] and overheads
     char buffer[4 + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES];
+    uGnssCommunicationStats_t communicationStats;
+    const char *pProtocolName;
 
     // In case a previous test failed
     uGnssTestPrivateCleanup(&gHandles);
@@ -662,6 +665,43 @@ U_PORT_TEST_FUNCTION("[gnssMga]", "gnssMgaBasic")
                                             x + 1, callbackParameter);
                     }
                     U_TEST_PRINT_LINE_X("uGnssMgaSetDatabase() returned %d.", x + 1, y);
+                    if (((callbackParameter < 0) || (y == 0)) &&
+                        (uGnssInfoGetCommunicationStats(gnssDevHandle, -1, &communicationStats) == 0)) {
+                        // Obtain and print the message stats of the GNSS device
+                        // in case the failure is because we have stressed it
+                        U_TEST_PRINT_LINE_X("communications from the GNSS chip's perspective:");
+                        U_TEST_PRINT_LINE_X(" %d transmit byte(s) currently pending.", x + 1,
+                                            communicationStats.txPendingBytes);
+                        U_TEST_PRINT_LINE_X(" %d byte(s) ever transmitted.", x + 1, communicationStats.txBytes);
+                        U_TEST_PRINT_LINE_X(" %d%% transmit buffer currently used.", x + 1,
+                                            communicationStats.txPercentageUsage);
+                        U_TEST_PRINT_LINE_X(" %d%% peak transmit buffer usage.", x + 1,
+                                            communicationStats.txPeakPercentageUsage);
+                        U_TEST_PRINT_LINE_X(" %d receive byte(s) currently pending.", x + 1,
+                                            communicationStats.rxPendingBytes);
+                        U_TEST_PRINT_LINE_X(" %d byte(s) ever received.", x + 1, communicationStats.rxBytes);
+                        U_TEST_PRINT_LINE_X(" %d%% receive buffer currently used.", x + 1,
+                                            communicationStats.rxPercentageUsage);
+                        U_TEST_PRINT_LINE_X(" %d%% peak receive buffer usage.", x + 1,
+                                            communicationStats.rxPeakPercentageUsage);
+                        U_TEST_PRINT_LINE_X(" %d 100 ms interval(s) with receive overrun errors.", x + 1,
+                                            communicationStats.rxOverrunErrors);
+                        for (size_t a = 0; a < sizeof(communicationStats.rxNumMessages) /
+                             sizeof(communicationStats.rxNumMessages[0]); a++) {
+                            if (communicationStats.rxNumMessages[a] >= 0) {
+                                pProtocolName = pGnssTestPrivateProtocolName((uGnssProtocol_t) a);
+                                if (pProtocolName != NULL) {
+                                    U_TEST_PRINT_LINE_X(" %d %s message(s) decoded.", x + 1,
+                                                        communicationStats.rxNumMessages[a], pProtocolName);
+                                } else {
+                                    U_TEST_PRINT_LINE_X(" %d protocol %d message(s) decoded.", x + 1,
+                                                        communicationStats.rxNumMessages[a], a);
+                                }
+                            }
+                        }
+                        U_TEST_PRINT_LINE_X(" %d receive byte(s) skipped.", x + 1,
+                                            communicationStats.rxSkippedBytes);
+                    }
                     U_PORT_TEST_ASSERT(callbackParameter >= 0);
                     U_PORT_TEST_ASSERT(y == 0);
                 }
