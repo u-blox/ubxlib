@@ -2023,10 +2023,12 @@ static int32_t parseDeepScanLine(uAtClientHandle_t atHandle,
             pCell->mnc = strtol(pStr + 4, NULL, 10);
             numParameters++;
         } else if (strstr(pStr, "TAC:") == pStr) {
+            // TAC is in hex
             pCell->tac = strtol(pStr + 4, NULL, 16);
             numParameters++;
         } else if (strstr(pStr, "CI:") == pStr) {
-            pCell->cellIdLogical = strtol(pStr + 3, NULL, 10);
+            // [logical] cell ID is in hex
+            pCell->cellIdLogical = strtol(pStr + 3, NULL, 16);
             numParameters++;
         } else if (strstr(pStr, "DLF:") == pStr) {
             pCell->earfcnDownlink = strtol(pStr + 4, NULL, 10);
