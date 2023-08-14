@@ -590,11 +590,16 @@ int32_t uCellTimeDisable(uDeviceHandle_t cellHandle)
                         pContext->pCallbackTime = NULL;
                     }
                 }
-                uAtClientLock(atHandle);
-                uAtClientCommandStart(atHandle, "AT+UTIME=");
-                uAtClientWriteInt(atHandle, 0);
-                uAtClientCommandStopReadResponse(atHandle);
-                errorCode = uAtClientUnlock(atHandle);
+                errorCode = (int32_t) U_CELL_ERROR_AT;
+                // This sometimes doesn't receive a response on the
+                // first occasion, so allow a few tries
+                for (size_t x = 0; (errorCode < 0) && (x < 3); x++) {
+                    uAtClientLock(atHandle);
+                    uAtClientCommandStart(atHandle, "AT+UTIME=");
+                    uAtClientWriteInt(atHandle, 0);
+                    uAtClientCommandStopReadResponse(atHandle);
+                    errorCode = uAtClientUnlock(atHandle);
+                }
                 // Leave the context to avoid race conditions:
                 // it will be cleaned-up when the cellular
                 // instance is closed
