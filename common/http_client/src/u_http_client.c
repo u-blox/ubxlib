@@ -63,6 +63,7 @@
 #include "u_port_heap.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"
+#include "u_port_uart.h"
 
 #include "u_assert.h"
 
@@ -113,6 +114,15 @@
  * cellular module can only write to flash so fast.
  */
 # define U_HTTP_CLIENT_CELL_FILE_CHUNK_LENGTH 1024
+#endif
+
+#ifndef U_HTTP_CLIENT_CELL_FILE_WRITE_DELAY_MS
+/** If flow control is not enabled, a delay of this many milliseconds
+ * will be inserted betweeen each write to file, just to be sure
+ * we lose no data because of flash-writes needing time inside
+ * the module.
+ */
+# define U_HTTP_CLIENT_CELL_FILE_WRITE_DELAY_MS 50
 #endif
 
 /** The maximum length of the first line of an HTTP response.
@@ -466,13 +476,37 @@ static int32_t cellPutPost(uDeviceHandle_t devHandle, int32_t httpHandle,
     uAtClientHandle_t atHandle = NULL;
     bool atPrintOn = false;
     int32_t thisSize = 0;
+    int32_t writeDelayMs = U_HTTP_CLIENT_CELL_FILE_WRITE_DELAY_MS;
+    uAtClientStreamHandle_t streamHandle = {0};
+    uDeviceSerial_t *pDeviceSerial;
 
+    // Determine if flow control is enabled on the UART interface and,
+    // if it is, set the write delay to zero as we don't need it
+    uCellAtClientHandleGet(devHandle, &atHandle);
+    if (atHandle != NULL) {
+        uAtClientStreamGetExt(atHandle, &streamHandle);
+        switch (streamHandle.type) {
+            case U_AT_CLIENT_STREAM_TYPE_UART:
+                if (uPortUartIsRtsFlowControlEnabled(streamHandle.handle.int32)) {
+                    writeDelayMs = 0;
+                }
+                break;
+            case U_AT_CLIENT_STREAM_TYPE_VIRTUAL_SERIAL:
+                pDeviceSerial = streamHandle.handle.pDeviceSerial;
+                if (pDeviceSerial->isRtsFlowControlEnabled(pDeviceSerial)) {
+                    writeDelayMs = 0;
+                }
+                break;
+            default:
+                break;
+        }
+    }
     // If you change the string here, you may need to change the one
     // in cellClose() to match
     snprintf(fileName, sizeof(fileName),
              "%s%d_%s", U_CELL_HTTP_FILE_NAME_RESPONSE_AUTO_PREFIX,
              (int) httpHandle,  "putpost");
-    if (uCellAtClientHandleGet(devHandle, &atHandle) == 0) {
+    if (atHandle != NULL) {
         // Switch AT printing off for this as it is quite a load
         atPrintOn = uAtClientPrintAtGet(atHandle);
         uAtClientPrintAtSet(atHandle, false);
@@ -490,6 +524,9 @@ static int32_t cellPutPost(uDeviceHandle_t devHandle, int32_t httpHandle,
         if (thisSize > 0) {
             pData += thisSize;
             size -= thisSize;
+        }
+        if ((size > 0) && (writeDelayMs > 0)) {
+            uPortTaskBlock(writeDelayMs);
         }
     }
     if (thisSize < 0) {
