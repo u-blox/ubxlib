@@ -639,12 +639,16 @@ int32_t uCellPrivateRsrqToDb(int32_t rsrq)
 }
 
 // Set the radio parameters back to defaults.
-void uCellPrivateClearRadioParameters(uCellPrivateRadioParameters_t *pParameters)
+void uCellPrivateClearRadioParameters(uCellPrivateRadioParameters_t *pParameters,
+                                      bool leaveCellIdLogicalAlone)
 {
     pParameters->rssiDbm = 0;
     pParameters->rsrpDbm = 0;
     pParameters->rsrqDb = 0x7FFFFFFF;
-    pParameters->cellId = -1;
+    pParameters->cellIdPhysical = -1;
+    if (!leaveCellIdLogicalAlone) {
+        pParameters->cellIdLogical = -1;
+    }
     pParameters->earfcn = -1;
     pParameters->snrDb = 0x7FFFFFFF;
 }
@@ -664,7 +668,7 @@ void uCellPrivateClearDynamicParameters(uCellPrivateInstance_t *pInstance)
          x++) {
         pInstance->rat[x] = U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED;
     }
-    uCellPrivateClearRadioParameters(&(pInstance->radioParameters));
+    uCellPrivateClearRadioParameters(&(pInstance->radioParameters), false);
 }
 
 // Get the current CFUN mode.

@@ -154,14 +154,41 @@ int32_t uCellInfoGetRxQual(uDeviceHandle_t cellHandle);
 int32_t uCellInfoGetSnrDb(uDeviceHandle_t cellHandle,
                           int32_t *pSnrDb);
 
-/** Get the cell ID that pertained after the last call to
- * uCellInfoRefreshRadioParameters().
+/** \deprecated Get the cell ID that pertained after the
+ * last call to uCellInfoRefreshRadioParameters().  When on
+ * a 2G or 3G RAT the logical cell ID will be returned, else
+ * the physical cell ID will be returned.
+ *
+ * This function is deprecated and may be removed at some
+ * point in the future; please use uCellInfoGetCellIdLogical()
+ * or uCellInfoGetCellIdPhysical() instead.
  *
  * @param cellHandle  the handle of the cellular instance.
  * @return            the cell ID, or negative error code on
  *                    failure.
  */
 int32_t uCellInfoGetCellId(uDeviceHandle_t cellHandle);
+
+/** Get the logical cell ID; since the logical cell ID is emitted
+ * by the module whenever it changes cell, this does not require
+ * uCellInfoRefreshRadioParameters() to have been issued.
+ *
+ * @param cellHandle  the handle of the cellular instance.
+ * @return            the logical cell ID, or negative error
+ *                    code on failure.
+ */
+int32_t uCellInfoGetCellIdLogical(uDeviceHandle_t cellHandle);
+
+/** Get the physical cell ID that pertained after the last
+ * call to uCellInfoRefreshRadioParameters(); only relevant
+ * for LTE networks and really does require
+ * uCellInfoRefreshRadioParameters() to have been issued.
+ *
+ * @param cellHandle  the handle of the cellular instance.
+ * @return            the physical cell ID, or negative error
+ *                    code on failure.
+ */
+int32_t uCellInfoGetCellIdPhysical(uDeviceHandle_t cellHandle);
 
 /** Get the EARFCN that pertained after the last call to
  * uCellInfoRefreshRadioParameters().

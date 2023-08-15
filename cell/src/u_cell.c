@@ -292,7 +292,7 @@ int32_t uCellAdd(uCellModuleType_t moduleType,
                          x++) {
                         pInstance->networkStatus[x] = U_CELL_NET_STATUS_UNKNOWN;
                     }
-                    uCellPrivateClearRadioParameters(&(pInstance->radioParameters));
+                    uCellPrivateClearRadioParameters(&(pInstance->radioParameters), false);
                     pInstance->pModule = &(gUCellPrivateModuleList[moduleType]);
                     pInstance->sockNextLocalPort = -1;
                     pInstance->deepSleepBlockedBy = -1;

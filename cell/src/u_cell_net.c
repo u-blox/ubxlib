@@ -33,7 +33,7 @@
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
-#include "string.h"    // memcpy(), memcmp(), strlen()
+#include "string.h"    // memcpy(), memcmp(), strlen(), strtol()
 #include "stdio.h"     // snprintf()
 #include "ctype.h"     // isblank()
 
@@ -426,8 +426,9 @@ static inline uCellNetStatus_t CXREG_urc(uCellPrivateInstance_t *pInstance,
     uCellNetStatus_t status = U_CELL_NET_STATUS_UNKNOWN;
     int32_t secondInt;
     int32_t rat = -1;
-    int32_t skippedParameters = 1;
+    int32_t skippedParameters = 0;
     bool responseToCommandNotUrc = false;
+    char buffer[U_CELL_PRIVATE_CELL_ID_LOGICAL_SIZE + 1]; // +1 for terminator
 
     // As described in registerNetwork(), it is possible
     // for this URC handler to capture the response to
@@ -476,7 +477,8 @@ static inline uCellNetStatus_t CXREG_urc(uCellPrivateInstance_t *pInstance,
         // of CEREG type 4 (so not for CREG or CGREG) and on SARA-R4xx-02B in
         // all cases and on LARA-R6 JUST in the "response to AT+CEREG" case (the
         // URC is different), an additional parameter is inserted (not added on
-        // the end, inserted), which has to be skipped before the RAT can be read.
+        // the end, inserted) after <tac> and before <ci>, which has to be
+        // skipped before the RAT can be read.
         if ((gRegTypes[2 /* CEREG */].type == 4) &&
             (((pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R410M_02B) ||
               (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R412M_02B)) ||
@@ -484,10 +486,14 @@ static inline uCellNetStatus_t CXREG_urc(uCellPrivateInstance_t *pInstance,
               responseToCommandNotUrc))) {
             skippedParameters++;
         }
-        // Skip <ci> (<lac> already absorbed by the
-        // read of secondInt above) and potentially
+        // <lac>/<tac> will have already been absorbed by the
+        // read of secondInt above, now potentially skip
         // <rac_or_mme>
         uAtClientSkipParameters(atHandle, skippedParameters);
+        // Read CI, which is hex, encoded as an 8-digit string
+        if (uAtClientReadString(atHandle, buffer, sizeof(buffer), false) > 0) {
+            pInstance->radioParameters.cellIdLogical = strtol(buffer, NULL, 16);
+        }
         // Read the RAT that we're on
         rat = uAtClientReadInt(atHandle);
         // Use the assumed 3GPP RAT if no RAT is included
@@ -999,10 +1005,11 @@ static int32_t registerNetwork(uCellPrivateInstance_t *pInstance,
     int32_t firstInt;
     int32_t status3gpp;
     uCellNetStatus_t status;
-    int32_t skippedParameters = 2;
+    int32_t skippedParameters = 1;
     int32_t rat = (int32_t) U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED;
     bool gotUrc;
     size_t errorCount = 0;
+    char buffer[U_CELL_PRIVATE_CELL_ID_LOGICAL_SIZE + 1]; // +1 for terminator
 
     // Come out of airplane mode and try to register
     // Wait for flip time to expire first though
@@ -1136,19 +1143,23 @@ static int32_t registerNetwork(uCellPrivateInstance_t *pInstance,
                     status = g3gppStatusToCellStatus[status3gpp];
                 }
                 if (U_CELL_NET_STATUS_MEANS_REGISTERED(status)) {
-                    // Skip <lac>, <ci>
+                    // Skip <lac>/<tac>
                     if ((regType == 2 /* CEREG */) && (gRegTypes[regType].type == 4) &&
                         (((pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R410M_02B) ||
                           (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R412M_02B)) ||
                          ((pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_LARA_R6) &&
                           !gotUrc))) {
                         // SARA-R41x-02B modules, and LARA-R6 modules but only in the
-                        // non-URC case, sneak an extra <rac_or_mme> parameter in when
-                        // U_CELL_NET_CEREG_TYPE is 4 so we need to skip an additional
-                        // parameter
+                        // non-URC case, sneak an extra <rac_or_mme> parameter in between
+                        // <tac> and <ci> when U_CELL_NET_CEREG_TYPE is 4 so we need to
+                        // skip an additional parameter
                         skippedParameters++;
                     }
                     uAtClientSkipParameters(atHandle, skippedParameters);
+                    // Read CI, which is hex, encoded as an 8-digit string
+                    if (uAtClientReadString(atHandle, buffer, sizeof(buffer), false) > 0) {
+                        pInstance->radioParameters.cellIdLogical = strtol(buffer, NULL, 16);
+                    }
                     // Read the RAT that we're on
                     rat = uAtClientReadInt(atHandle);
                     if ((rat < 0) && (regType == 2 /* CEREG */)) {
@@ -2548,7 +2559,7 @@ int32_t uCellNetDisconnect(uDeviceHandle_t cellHandle,
             // See if we are already disconnected
             uAtClientLock(atHandle);
             // Clear out the old RF readings
-            uCellPrivateClearRadioParameters(&(pInstance->radioParameters));
+            uCellPrivateClearRadioParameters(&(pInstance->radioParameters), false);
             uAtClientCommandStart(atHandle, "AT+COPS?");
             uAtClientCommandStop(atHandle);
             uAtClientResponseStart(atHandle, "+COPS:");

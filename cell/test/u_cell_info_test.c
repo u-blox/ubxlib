@@ -302,6 +302,8 @@ U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoRadioParameters")
     U_PORT_TEST_ASSERT(uCellInfoGetRsrqDb(cellHandle) == 0x7FFFFFFF);
     U_PORT_TEST_ASSERT(uCellInfoGetSnrDb(cellHandle, &snrDb) != 0);
     U_PORT_TEST_ASSERT(uCellInfoGetCellId(cellHandle) == -1);
+    U_PORT_TEST_ASSERT(uCellInfoGetCellIdLogical(cellHandle) == -1);
+    U_PORT_TEST_ASSERT(uCellInfoGetCellIdPhysical(cellHandle) == -1);
     U_PORT_TEST_ASSERT(uCellInfoGetEarfcn(cellHandle) == -1);
 
     U_TEST_PRINT_LINE("checking values after a refresh but before"
@@ -312,6 +314,8 @@ U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoRadioParameters")
     U_PORT_TEST_ASSERT(uCellInfoGetRsrqDb(cellHandle) == 0x7FFFFFFF);
     U_PORT_TEST_ASSERT(uCellInfoGetSnrDb(cellHandle, &snrDb) != 0);
     U_PORT_TEST_ASSERT(uCellInfoGetCellId(cellHandle) == -1);
+    U_PORT_TEST_ASSERT(uCellInfoGetCellIdLogical(cellHandle) == -1);
+    U_PORT_TEST_ASSERT(uCellInfoGetCellIdPhysical(cellHandle) == -1);
     U_PORT_TEST_ASSERT(uCellInfoGetEarfcn(cellHandle) == -1);
 
     U_TEST_PRINT_LINE("checking values after registration...");
@@ -333,6 +337,7 @@ U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoRadioParameters")
         U_PORT_TEST_ASSERT(uCellInfoGetRsrpDbm(cellHandle) < 0);
         U_PORT_TEST_ASSERT(uCellInfoGetRsrqDb(cellHandle) != 0x7FFFFFFF);
         U_PORT_TEST_ASSERT(uCellInfoGetCellId(cellHandle) >= 0);
+        U_PORT_TEST_ASSERT(uCellInfoGetCellIdPhysical(cellHandle) >= 0);
         U_PORT_TEST_ASSERT(uCellInfoGetEarfcn(cellHandle) >= 0);
     }
     // ...however RSSI can take a long time to
@@ -343,6 +348,7 @@ U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoRadioParameters")
         uPortTaskBlock(5000);
     }
     U_PORT_TEST_ASSERT(uCellInfoGetRssiDbm(cellHandle) < 0);
+    U_PORT_TEST_ASSERT(uCellInfoGetCellIdLogical(cellHandle) >= 0);
     if (U_CELL_PRIVATE_RAT_IS_EUTRAN(uCellNetGetActiveRat(cellHandle))) {
         // Only get this if we have RSRP as well
         x = uCellInfoGetSnrDb(cellHandle, &snrDb);

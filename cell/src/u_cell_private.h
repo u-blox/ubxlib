@@ -185,6 +185,13 @@ extern "C" {
  */
 #define U_CELL_PRIVATE_DTR_POWER_SAVING_PIN_ON_STATE(pinStates) (int32_t) (((pinStates) >> U_CELL_PRIVATE_DTR_POWER_SAVING_PIN_BIT_ON_STATE) & 1)
 
+/** The number of digits in a logical cell ID; note that
+ * it is read as a string and this value does NOT include
+ * room for the terminator, hence for sizing of storage
+ * you should add one.
+ */
+#define U_CELL_PRIVATE_CELL_ID_LOGICAL_SIZE  8
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -294,7 +301,8 @@ typedef struct {
     int32_t rsrpDbm;  /**< The RSRP of the serving cell. */
     int32_t rsrqDb;   /**< The RSRQ of the serving cell. */
     int32_t rxQual;   /**< The RxQual of the serving cell. */
-    int32_t cellId;   /**< The cell ID of the serving cell. */
+    int32_t cellIdPhysical;  /**< The physical cell ID of the serving cell (LTE only). */
+    int32_t cellIdLogical;   /**< The logical cell ID of the serving cell. */
     int32_t earfcn;   /**< The EARFCN of the serving cell. */
     int32_t snrDb;   /**< The SINR as reported by the module (LTE only). */
 } uCellPrivateRadioParameters_t;
@@ -538,9 +546,20 @@ int32_t uCellPrivateRsrqToDb(int32_t rsrq);
 
 /** Set the radio parameters back to defaults.
  *
- * @param pParameters pointer to a radio parameters structure.
+ * @param pParameters             pointer to a radio parameters
+ *                                structure.
+ * @param leaveCellIdLogicalAlone on an LTE RAT the logical cell
+ *                                ID cannot be read from the
+ *                                module, instead it has to be
+ *                                captured from the end of the
+ *                                +CEREG URC when it happens
+ *                                to be emitted; this parameter
+ *                                should be set to true to
+ *                                avoid destroying that ephemeral
+ *                                value.
  */
-void uCellPrivateClearRadioParameters(uCellPrivateRadioParameters_t *pParameters);
+void uCellPrivateClearRadioParameters(uCellPrivateRadioParameters_t *pParameters,
+                                      bool leaveCellIdLogicalAlone);
 
 /** Clear the dynamic parameters of an instance, so the network
  * status, the active RAT and the radio parameters.  This should
