@@ -281,13 +281,14 @@ static bool cellInfoCallback(uDeviceHandle_t cellHandle,
 // Print and check an event structure.
 static void printAndCheckEvent(uCellTimeEvent_t *pEvent, bool cellTime)
 {
-    U_TEST_PRINT_LINE("  synchronised: %s.", pEvent->synchronised ? "true" : "false");
-    U_TEST_PRINT_LINE("  result:       %d.", pEvent->result);
-    U_TEST_PRINT_LINE("  mode:         %d.", pEvent->mode);
-    U_TEST_PRINT_LINE("  source:       %d.", pEvent->source);
-    U_TEST_PRINT_LINE("  cell ID:      %d.", pEvent->cellIdPhysical);
-    U_TEST_PRINT_LINE("  cell time:    %s.", pEvent->cellTime ? "true" : "false");
-    U_TEST_PRINT_LINE("  offset:       %d.%09d.", (int32_t) (pEvent->offsetNanoseconds / 1000000000),
+    U_TEST_PRINT_LINE("  synchronised:     %s.", pEvent->synchronised ? "true" : "false");
+    U_TEST_PRINT_LINE("  result:           %d.", pEvent->result);
+    U_TEST_PRINT_LINE("  mode:             %d.", pEvent->mode);
+    U_TEST_PRINT_LINE("  source:           %d.", pEvent->source);
+    U_TEST_PRINT_LINE("  physical cell ID: %d.", pEvent->cellIdPhysical);
+    U_TEST_PRINT_LINE("  cell time:        %s.", pEvent->cellTime ? "true" : "false");
+    U_TEST_PRINT_LINE("  offset:           %d.%09d.",
+                      (int32_t) (pEvent->offsetNanoseconds / 1000000000),
                       (int32_t) (pEvent->offsetNanoseconds % 1000000000));
     U_PORT_TEST_ASSERT(pEvent->result == 0);
     // Can't check mode - it seems to come back as "best-effort" sometimes,
@@ -296,7 +297,12 @@ static void printAndCheckEvent(uCellTimeEvent_t *pEvent, bool cellTime)
         U_PORT_TEST_ASSERT(pEvent->source == U_CELL_TIME_SOURCE_CELL);
     }
     if (pEvent->source == U_CELL_TIME_SOURCE_CELL) {
-        U_PORT_TEST_ASSERT(pEvent->cellIdPhysical >= 0);
+        if (pEvent->cellIdPhysical < 0) {
+            // Can't assert on this as sometimes AT+CELLINFO returns 65535 for
+            // the cell ID, even after CellTime says that it has successfully
+            // synchronised to it
+            U_TEST_PRINT_LINE("*** WARNING *** CELLINFO did not return a valid cell ID.");
+        }
     } else {
         U_PORT_TEST_ASSERT(pEvent->cellIdPhysical == -1);
     }
