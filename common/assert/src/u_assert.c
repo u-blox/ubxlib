@@ -52,14 +52,14 @@
 
 /** The assert failed hook.
  */
-static upAssertFailed_t *gpAssertFailed = NULL;
+static uAssertFailed_t *gpAssertFailed = NULL;
 
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
 // Register an assertFailed() function.
-void uAssertHookSet(upAssertFailed_t *pAssertFailed)
+void uAssertHookSet(uAssertFailed_t *pAssertFailed)
 {
     gpAssertFailed = pAssertFailed;
 }

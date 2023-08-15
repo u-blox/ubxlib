@@ -63,7 +63,19 @@ extern "C" {
  * i.e. from __FILE__, the second parameter is the line number in
  * pFileStr where the assert failure occurred, i.e. from __LINE__.
  */
-typedef void (upAssertFailed_t) (const char *pFileStr, int32_t line);
+typedef void (uAssertFailed_t) (const char *pFileStr, int32_t line);
+
+/** \deprecated The function signature for the assertFailed()
+ * callback.   The first parameter is a pointer to the name and
+ * path of the file where the assert failure occurred as a
+ * null-terminated string, i.e. from __FILE__, the second parameter
+ * is the line number in pFileStr where the assert failure occurred,
+ * i.e. from __LINE__.
+ *
+ * This type is deprecated, and will be removed at some point in
+ * the future, please use uAssertFailed_t instead.
+ */
+U_DEPRECATED typedef uAssertFailed_t upAssertFailed_t;
 
 /* ----------------------------------------------------------------
  * FUNCTIONS
@@ -80,7 +92,7 @@ typedef void (upAssertFailed_t) (const char *pFileStr, int32_t line);
  *
  * @param[in] pAssertFailed the assert failure function to register.
  */
-void uAssertHookSet(upAssertFailed_t *pAssertFailed);
+void uAssertHookSet(uAssertFailed_t *pAssertFailed);
 
 /** The default assertFailed() function.  If no assert hook has been
  * registered (with uAssertHookSet()) then the assertFailed() function
