@@ -386,16 +386,18 @@ def get_test_selection(ctx, message="", files="", run_everything=False):
         instances = u_data.get_instances_all(db_data)
     else:
         # Parse the message
-        found, filter_string = u_utils.commit_message_parse(message, instances)
+        found, filter_string = u_utils.commit_message_parse(message,
+                                                            u_data.get_instances_all(db_data),
+                                                            instances)
         if found:
-            if instances and instances[0][0] == "*":
-                # If there is a user instance, do what we're told
-                print("running everything ", end="")
+            text = "at user request, running"
+            if instances:
+                text += f" instance(s) {u_utils.get_instances_text(instances)}"
                 if filter_string:
-                    print(f"on API \"{filter_string}\" ", end="")
-                print("at user request.")
-                del instances[:]
-                instances = u_data.get_instances_all(db_data)
+                    text += f" and test(s) \"{filter_string}\""
+            else:
+                text += " nothing"
+            print(text)
         else:
             # No instance specified by the user, decide what to run
             filter_string = u_select.select(db_data, instances, files)

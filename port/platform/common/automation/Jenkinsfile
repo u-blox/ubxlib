@@ -604,7 +604,7 @@ node('ubxlib && linux && distributor')
             println output
             def jsonStr = output.split('JSON_DATA: ')[1]
             jsonObj = readJSON text: jsonStr
-            println "Test filter will be: " + jsonObj.filter
+            println "Test filter string will be: " + jsonObj.filter
             def pretty_json = groovy.json.JsonOutput.prettyPrint(jsonObj.toString())
             println "Test selection JSON data: " + pretty_json
             if (jsonObj.filter instanceof net.sf.json.JSONNull) {
