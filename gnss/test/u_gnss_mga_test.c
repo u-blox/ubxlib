@@ -669,7 +669,7 @@ U_PORT_TEST_FUNCTION("[gnssMga]", "gnssMgaBasic")
                         (uGnssInfoGetCommunicationStats(gnssDevHandle, -1, &communicationStats) == 0)) {
                         // Obtain and print the message stats of the GNSS device
                         // in case the failure is because we have stressed it
-                        U_TEST_PRINT_LINE_X("communications from the GNSS chip's perspective:");
+                        U_TEST_PRINT_LINE_X("communications from the GNSS chip's perspective:", x + 1);
                         U_TEST_PRINT_LINE_X(" %d transmit byte(s) currently pending.", x + 1,
                                             communicationStats.txPendingBytes);
                         U_TEST_PRINT_LINE_X(" %d byte(s) ever transmitted.", x + 1, communicationStats.txBytes);
