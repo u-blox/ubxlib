@@ -115,7 +115,7 @@ typedef struct {
  *                                string that pNmea ends up pointing-to
  *                                MUST be a true constant, not from
  *                                allocated memory or on the stack
- *                                (unless the caller has devise a
+ *                                (unless the caller has devised a
  *                                scheme to provide non-transient
  *                                storage by clever use of
  *                                pCallbackParam).
