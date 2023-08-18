@@ -173,7 +173,7 @@ func deletePaths(ctx context.Context, pDeleteDelay *time.Duration, pKeepGoing *b
         // Remove any empty directories; first get a slice of all of the directories
         directories := []string{}
         filepath.Walk(parameters.dataDir, func(path string, info os.FileInfo, err error) error {
-            if path != parameters.dataDir && info.IsDir() {
+            if path != parameters.dataDir && info != nil && info.IsDir() {
                 directories = append(directories, path)
             }
             return nil
