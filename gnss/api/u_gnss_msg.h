@@ -104,7 +104,8 @@ extern "C" {
  * This callback should be executed as quickly as possible to
  * avoid data loss.  The ONLY GNSS API calls that pCallback may make
  * are uGnssMsgReceiveCallbackRead() / uGnssMsgReceiveCallbackExtract(),
- * no others or you risk getting mutex-locked.
+ * and potentially pUGnssDecAlloc() / uGnssDecFree(), no others or
+ * you risk getting mutex-locked.
  *
  * If you are checking for a specific UBX-format message (i.e. no
  * wild-cards) and a NACK is received for that message then
@@ -259,6 +260,10 @@ int32_t uGnssMsgSend(uDeviceHandle_t gnssHandle,
  * if you used a wildcard in pMessageId and you don't want to decode
  * the message ID from the message yourself (e.g. in the case of a
  * UBX protocol message by using uUbxProtocolDecode()), then you
+ * can use pUGnssDecAlloc() / uGnssDecFree() which will always
+ * give you the protocol type and message ID (though it may give the
+ * error #U_ERROR_COMMON_NOT_SUPPORTED if pUGnssDecAlloc() happens not
+ * to support decoding the body of that kind of message), or you
  * could instead use uGnssMsgReceiveStart(), which does pass back
  * the decoded message ID to the pCallback.
  *
@@ -343,11 +348,13 @@ int32_t uGnssMsgReceive(uDeviceHandle_t gnssHandle,
  *                               checksum, etc. will be included.
  *                               IMPORTANT: the ONLY GNSS API calls that
  *                               pCallback may make are
- *                               uGnssMsgReceiveCallbackRead() and
- *                               uGnssMsgReceiveCallbackExtract(), no others
- *                               or you risk getting mutex-locked. pCallback
- *                               is run in the context of a task with a stack
- *                               of size #U_GNSS_MSG_RECEIVE_TASK_STACK_SIZE_BYTES;
+ *                               uGnssMsgReceiveCallbackRead(),
+ *                               uGnssMsgReceiveCallbackExtract(), and
+ *                               potentially pUGnssDecAlloc() / uGnssDecFree(),
+ *                               no others or you risk getting mutex-locked.
+ *                               pCallback is run in the context of a task with
+ *                               a stack of size
+ *                               #U_GNSS_MSG_RECEIVE_TASK_STACK_SIZE_BYTES;
  *                               you may call uGnssMsgReceiveStackMinFree()
  *                               just before calling uGnssMsgReceiveStop()
  *                               to check if the remaining stack margin was

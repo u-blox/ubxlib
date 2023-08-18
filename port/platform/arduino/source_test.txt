@@ -48,6 +48,7 @@ gnss/test/u_gnss_cfg_test.c
 gnss/test/u_gnss_info_test.c
 gnss/test/u_gnss_pos_test.c
 gnss/test/u_gnss_msg_test.c
+gnss/test/u_gnss_dec_test.c
 gnss/test/u_gnss_mga_test.c
 gnss/test/u_gnss_util_test.c
 gnss/test/u_gnss_private_test.c

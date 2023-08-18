@@ -136,6 +136,9 @@
 #include <u_gnss_pos.h>
 #include <u_gnss_pwr.h>
 #include <u_gnss_msg.h>
+#include <u_gnss_dec.h>
+#include <u_gnss_dec_ubx_nav_pvt.h>
+#include <u_gnss_dec_ubx_nav_hpposllh.h>
 #include <u_gnss_mga.h>
 #include <u_gnss_util.h>
 #include <u_wifi.h>
