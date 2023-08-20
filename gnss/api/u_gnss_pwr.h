@@ -358,7 +358,7 @@ int32_t uGnssPwrSetFlag(uDeviceHandle_t gnssHandle, uint32_t setBitMap);
 /** Clear one or more power-saving flags, chosen from #uGnssPwrFlag_t.
  * For instance, to not allow extra wake-ups for RTC and ephemeris data,
  * clearBitMap would be
- * `((1UL << U_GNSS_PWR_FLAG_RTC_WAKE_ENABLE) | (1UL << U_GNSS_PWR_FLAG_RTC_WAKE_ENABLE))`.
+ * `((1UL << U_GNSS_PWR_FLAG_RTC_WAKE_ENABLE) | (1UL << U_GNSS_PWR_FLAG_EPHEMERIS_WAKE_ENABLE))`.
  *
  * Not all flags are supported by all GNSS devices: check the return
  * value of the function to determine the outcome.
