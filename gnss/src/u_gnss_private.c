@@ -1157,7 +1157,7 @@ int32_t setRateUbxCfgVal(uGnssPrivateInstance_t *pInstance,
         errorCode = uGnssCfgPrivateValSetList(pInstance,
                                               val, numEntries,
                                               U_GNSS_CFG_VAL_TRANSACTION_NONE,
-                                              U_GNSS_CFG_VAL_LAYER_RAM);
+                                              U_GNSS_CFG_LAYERS_SET);
     }
 
     return errorCode;
@@ -1347,7 +1347,7 @@ static int32_t setProtocolOutUbxCfgVal(uGnssPrivateInstance_t *pInstance,
             errorCode = uGnssCfgPrivateValSetList(pInstance,
                                                   val, numEntries,
                                                   U_GNSS_CFG_VAL_TRANSACTION_NONE,
-                                                  U_GNSS_CFG_VAL_LAYER_RAM);
+                                                  U_GNSS_CFG_LAYERS_SET);
         }
     }
 
@@ -1703,7 +1703,7 @@ void uGnssPrivateCleanUpStreamedPos(uGnssPrivateInstance_t *pInstance)
                     cfgVal.value = pStreamedPosition->messageRate;
                     y = uGnssCfgPrivateValSetList(pInstance, &cfgVal, 1,
                                                   U_GNSS_CFG_VAL_TRANSACTION_NONE,
-                                                  U_GNSS_CFG_VAL_LAYER_RAM);
+                                                  U_GNSS_CFG_LAYERS_SET);
                 }
             }
         }

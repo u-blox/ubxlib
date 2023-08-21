@@ -104,6 +104,14 @@ extern "C" {
  */
 #define U_GNSS_PRIVATE_SPI_FILL 0xFF
 
+#ifndef U_GNSS_CFG_LAYERS_SET
+/** The layers to use when using CFG-VAL to set a configuration
+ * value: both RAM and BBRAM if on/off power saving might be used
+ * since RAM is erased in the power-off state.
+ */
+# define U_GNSS_CFG_LAYERS_SET (U_GNSS_CFG_VAL_LAYER_RAM | U_GNSS_CFG_VAL_LAYER_BBRAM)
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */

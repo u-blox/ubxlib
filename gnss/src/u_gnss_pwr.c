@@ -452,7 +452,7 @@ static int32_t setOrClearFlags(uDeviceHandle_t gnssHandle, uint32_t bitMap, bool
                     if (x > 0) {
                         errorCode = uGnssCfgPrivateValSetList(pInstance, cfgVal, x,
                                                               U_GNSS_CFG_VAL_TRANSACTION_NONE,
-                                                              U_GNSS_CFG_VAL_LAYER_RAM);
+                                                              U_GNSS_CFG_LAYERS_SET);
                     }
                 } else {
                     // Old style
@@ -735,10 +735,12 @@ int32_t uGnssPwrSetMode(uDeviceHandle_t gnssHandle, uGnssPwrSavingMode_t mode)
         if (pInstance != NULL) {
             if (U_GNSS_PRIVATE_HAS(pInstance->pModule,
                                    U_GNSS_PRIVATE_FEATURE_CFGVALXXX)) {
-                // Use the CFG-VAL interface
+                // Use the CFG-VAL interface, setting the mode in
+                // BBRAM as well as RAM in case it is on/off power saving,
+                // which loses the contents of RAM
                 errorCode = uGnssCfgPrivateValSetList(pInstance, &cfgVal, 1,
                                                       U_GNSS_CFG_VAL_TRANSACTION_NONE,
-                                                      U_GNSS_CFG_VAL_LAYER_RAM);
+                                                      U_GNSS_CFG_LAYERS_SET);
             } else {
                 // Old style: the mode is in the flags field, bits 17 and 18,
                 // where 0 == on/off power-saving and 1 == cyclic tracking
@@ -939,7 +941,7 @@ int32_t uGnssPwrSetTiming(uDeviceHandle_t gnssHandle,
                 }
                 errorCode = uGnssCfgPrivateValSetList(pInstance, cfgVal, x,
                                                       U_GNSS_CFG_VAL_TRANSACTION_NONE,
-                                                      U_GNSS_CFG_VAL_LAYER_RAM);
+                                                      U_GNSS_CFG_LAYERS_SET);
             }
         }
 
@@ -1086,7 +1088,7 @@ int32_t uGnssPwrSetTimingOffset(uDeviceHandle_t gnssHandle, int32_t offsetSecond
                                    U_GNSS_PRIVATE_FEATURE_CFGVALXXX)) {
                 errorCode = uGnssCfgPrivateValSetList(pInstance, &cfgVal, 1,
                                                       U_GNSS_CFG_VAL_TRANSACTION_NONE,
-                                                      U_GNSS_CFG_VAL_LAYER_RAM);
+                                                      U_GNSS_CFG_LAYERS_SET);
             } else {
                 errorCode = setUbxCfgPm2(pInstance, -1, -1, -1,
                                          offsetSeconds * 1000, -1, -1, -1, 0, 0);
@@ -1160,7 +1162,7 @@ int32_t uGnssPwrSetExtintInactivityTimeout(uDeviceHandle_t gnssHandle,
                                    U_GNSS_PRIVATE_FEATURE_CFGVALXXX)) {
                 errorCode = uGnssCfgPrivateValSetList(pInstance, &cfgVal, 1,
                                                       U_GNSS_CFG_VAL_TRANSACTION_NONE,
-                                                      U_GNSS_CFG_VAL_LAYER_RAM);
+                                                      U_GNSS_CFG_LAYERS_SET);
             } else {
                 errorCode = setUbxCfgPm2(pInstance, -1, -1, -1, -1, -1, -1,
                                          timeoutMs, 0, 0);

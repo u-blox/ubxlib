@@ -1010,7 +1010,7 @@ int32_t uGnssMgaSetAutonomous(uDeviceHandle_t gnssHandle, bool onNotOff)
                 cfgVal.value = onNotOff;
                 errorCode = uGnssCfgPrivateValSetList(pInstance, &cfgVal, 1,
                                                       U_GNSS_CFG_VAL_TRANSACTION_NONE,
-                                                      U_GNSS_CFG_VAL_LAYER_RAM);
+                                                      U_GNSS_CFG_LAYERS_SET);
             } else {
                 errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
                 // Ye olde way: with the UBX-CFG-NAVX5 message

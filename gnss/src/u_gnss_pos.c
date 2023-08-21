@@ -666,7 +666,7 @@ int32_t uGnssPosGetStreamedStart(uDeviceHandle_t gnssHandle,
                                 if (messageRate != (int32_t) cfgVal.value) {
                                     errorCode = uGnssCfgPrivateValSetList(pInstance, &cfgVal, 1,
                                                                           U_GNSS_CFG_VAL_TRANSACTION_NONE,
-                                                                          U_GNSS_CFG_VAL_LAYER_RAM);
+                                                                          U_GNSS_CFG_LAYERS_SET);
                                     if (errorCode == 0) {
                                         pStreamedPosition->messageRate = messageRate;
                                     }
