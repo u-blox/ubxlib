@@ -213,16 +213,18 @@ typedef struct {
  *                         type.  This must be stored
  *                         statically, a true constant: the
  *                         contents are not copied by this
- *                         function. The configuration
- *                         structures are defined by this
- *                         API in the u_network_xxx.h header
- *                         files and have the name
+ *                         function AND MAY BE REFERRED TO LATER
+ *                         in subsequent calls to this function,
+ *                         or by uNetworkInterfaceDown().  The
+ *                         configuration structures are defined
+ *                         by this API in the u_network_xxx.h
+ *                         header files and have the name
  *                         uNetworkCfgXxx_t, where Xxx is
  *                         replaced by one of Cell, BLE or
  *                         Wifi.  The configuration is passed
  *                         transparently through to the given
  *                         API, hence the use of void *
- *                         here. The second entry in all of
+ *                         here.  The second entry in all of
  *                         these structures is of type
  *                         #uNetworkType_t to indicate the
  *                         type and allow cross-checking.
