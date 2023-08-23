@@ -37,7 +37,8 @@
  * In addition to heap memory allocation, it is also possible to
  * switch on heap tracking by defining U_CFG_HEAP_MONITOR.  This
  * will add guards either end of a memory block and check them
- * when it is free'd, and will also log each allocation so that
+ * when it is free'd (U_ASSERT() will be called with false if
+ * a guard is corrupted), and will also log each allocation so that
  * they can be printed with uPortHeapDump().  Note that monitoring
  * will require at least 36 additional bytes of heap storage per
  * heap allocation.
@@ -125,6 +126,11 @@ void *pUPortMallocMonitor(size_t sizeBytes, const char *pFile,
 
 /** Free memory that was allocated by pUPortMalloc(); does whatever
  * free() does on your platform.
+ *
+ * If U_CFG_HEAP_MONITOR is defined then the guards applied either
+ * end of the allocation at creation by the pUPortMalloc() macro will
+ * be checked and U_ASSERT() will be called with false if a guard is
+ * corrupted.
  *
  * @param[in] pMemory a pointer to a block of heap memory that was
  *                    returned by pUPortMalloc(); may be NULL.
