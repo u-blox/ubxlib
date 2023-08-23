@@ -69,8 +69,8 @@ typedef int SOCKET;
                                               before the other port files if
                                               any print or scan function is used. */
 #include "u_port.h"
-#include "u_port_heap.h"
 #include "u_port_os.h"
+#include "u_port_heap.h"
 #include "u_time.h"
 #include "u_ubx_protocol.h" // uUbxProtocolUint32Encode()
 #include "u_gnss_mga.h"

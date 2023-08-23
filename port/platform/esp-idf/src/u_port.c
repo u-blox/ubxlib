@@ -29,6 +29,7 @@
 #include "u_error_common.h"
 #include "u_port.h"
 #include "u_port_os.h"
+#include "u_port_heap.h"
 #include "u_port_uart.h"
 #include "u_port_event_queue_private.h"
 #include "u_port_private.h"
@@ -108,11 +109,14 @@ int32_t uPortInit()
     int32_t errorCode = 0;
 
     if (!gInitialised) {
-        errorCode = uPortEventQueuePrivateInit();;
+        errorCode = uPortHeapMonitorInit(NULL, NULL, NULL);
         if (errorCode == 0) {
-            errorCode = uPortPrivateInit();
+            errorCode = uPortEventQueuePrivateInit();
             if (errorCode == 0) {
-                errorCode = uPortUartInit();
+                errorCode = uPortPrivateInit();
+                if (errorCode == 0) {
+                    errorCode = uPortUartInit();
+                }
             }
         }
         gInitialised = (errorCode == 0);

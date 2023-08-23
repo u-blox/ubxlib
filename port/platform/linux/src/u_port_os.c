@@ -61,6 +61,7 @@
 
 #define _GNU_SOURCE
 
+#include "stdlib.h"    // malloc() / free(), needed in special case of mutexCreate()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
@@ -80,6 +81,7 @@
 
 #include "u_cfg_sw.h"
 #include "u_cfg_os_platform_specific.h"
+#include "u_port_os.h"
 #include "u_port_heap.h"
 
 #include "u_error_common.h"
@@ -269,6 +271,52 @@ static uErrorCode_t readFromQueue(uPortQueue_t *pQueue,
     return errorCode;
 }
 
+// Special version of uPortMutexCreate() which does not use
+// pUPortMalloc(): required by uPortHeapMonitorInit() on this
+// platform.
+static int32_t mutexCreate(uPortMutexHandle_t *pMutexHandle)
+{
+    uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+    if (pMutexHandle != NULL) {
+        errorCode = U_ERROR_COMMON_NO_MEMORY;
+        pthread_mutex_t *pMutex = malloc(sizeof(pthread_mutex_t));
+        if (pMutex != NULL) {
+            errorCode = U_ERROR_COMMON_PLATFORM;
+            if (pthread_mutex_init(pMutex, NULL) == 0) {
+                *pMutexHandle = pMutex;
+                errorCode = U_ERROR_COMMON_SUCCESS;
+            }
+        }
+    }
+    return (int32_t)errorCode;
+}
+
+// Special version of uPortMutexLock() to go with mutexCreate().
+static int32_t mutexLock(const uPortMutexHandle_t mutexHandle)
+{
+    uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+    if (mutexHandle != NULL) {
+        errorCode = U_ERROR_COMMON_PLATFORM;
+        if (pthread_mutex_lock((pthread_mutex_t *)mutexHandle) == 0) {
+            errorCode = U_ERROR_COMMON_SUCCESS;
+        }
+    }
+    return (int32_t) errorCode;
+}
+
+// Special version of uPortMutexUnLock() to go with mutexCreate().
+static int32_t mutexUnlock(const uPortMutexHandle_t mutexHandle)
+{
+    uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+    if (mutexHandle != NULL) {
+        errorCode = U_ERROR_COMMON_PLATFORM;
+        if (pthread_mutex_unlock((pthread_mutex_t *)mutexHandle) == 0) {
+            errorCode = U_ERROR_COMMON_SUCCESS;
+        }
+    }
+    return (int32_t)errorCode;
+}
+
 /* ----------------------------------------------------------------
  * PRIVATE FUNCTIONS SPECIFIC TO THIS PORT, MISC
  * -------------------------------------------------------------- */
@@ -277,7 +325,8 @@ static uErrorCode_t readFromQueue(uPortQueue_t *pQueue,
 int32_t uPortPrivateInit(void)
 {
     int32_t errorCode = (int32_t)U_ERROR_COMMON_SUCCESS;
-    if (gMutexThread == NULL) {
+    errorCode = uPortHeapMonitorInit(mutexCreate, mutexLock, mutexUnlock);
+    if ((errorCode == 0) && (gMutexThread == NULL)) {
         errorCode = MTX_FN(uPortMutexCreate(&gMutexThread));
     }
     if ((errorCode == 0) && (gMutexTimer == NULL)) {

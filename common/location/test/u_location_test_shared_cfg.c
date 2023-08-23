@@ -39,6 +39,7 @@
 #include "u_cfg_app_platform_specific.h"
 
 #include "u_port.h"
+#include "u_port_os.h"
 #include "u_port_heap.h"
 #include "u_port_debug.h"
 

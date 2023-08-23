@@ -59,6 +59,7 @@
 #include "u_short_range_test_private.h"
 #include "u_short_range_pbuf.h"
 #include "u_short_range_edm.h"
+#include "u_port_os.h"
 #include "u_port_heap.h"
 
 /* ----------------------------------------------------------------

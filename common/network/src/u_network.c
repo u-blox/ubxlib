@@ -39,8 +39,8 @@
 
 #include "u_network_shared.h"
 
-#include "u_port_heap.h"
 #include "u_port_os.h"
+#include "u_port_heap.h"
 
 #include "u_location.h"
 #include "u_location_shared.h"

@@ -36,6 +36,7 @@
 #include "u_port_debug.h"
 #include "u_port.h"
 #include "u_port_os.h"
+#include "u_port_heap.h"
 #include "u_port_gpio.h"
 #include "u_port_uart.h"
 #include "u_port_event_queue_private.h"
@@ -94,7 +95,10 @@ int32_t uPortInit()
 
     // Workaround for Zephyr thread resource pool bug
     uPortOsPrivateInit();
-    errorCode = uPortEventQueuePrivateInit();
+    errorCode = uPortHeapMonitorInit(NULL, NULL, NULL);
+    if (errorCode == 0) {
+        errorCode = uPortEventQueuePrivateInit();
+    }
     if (errorCode == 0) {
         errorCode = uPortUartInit();
     }

@@ -46,6 +46,7 @@
 //lint -efile(766, u_port.h) Suppress header file not used, which
 // is true if U_CELL_TEST_CFG_APN is not defined
 #include "u_port.h" // For U_PORT_STRINGIFY_QUOTED()
+#include "u_port_os.h"
 #include "u_port_heap.h"
 #include "u_port_debug.h"
 

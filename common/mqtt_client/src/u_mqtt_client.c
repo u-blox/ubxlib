@@ -53,8 +53,8 @@
 
 #include "u_device_shared.h"
 
-#include "u_port_heap.h"
 #include "u_port_os.h"
+#include "u_port_heap.h"
 
 #include "u_mqtt_common.h"
 #include "u_mqtt_client.h"

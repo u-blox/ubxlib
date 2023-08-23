@@ -69,11 +69,15 @@ U_WEAK void uAssertFailed(const char *pFileStr, int32_t line)
 {
     if (gpAssertFailed != NULL) {
         gpAssertFailed(pFileStr, line);
+#ifndef U_ASSERT_HOOK_FUNCTION_TEST_RETURN
+        // Enter infinite loop
+        for (;;) {}
+#endif
     } else {
         uPortLog("*** ASSERT FAILURE at %s:%d ***\n", pFileStr, line);
+        // Enter infinite loop
+        for (;;) {}
     }
-    // Enter infinite loop
-    for (;;) {}
 }
 
 // End of file

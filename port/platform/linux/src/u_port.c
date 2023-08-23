@@ -37,11 +37,11 @@
 #include "u_port_debug.h"
 #include "u_port.h"
 #include "u_port_os.h"
+#include "u_port_heap.h"
 #include "u_port_gpio.h"
 #include "u_port_uart.h"
 #include "u_port_event_queue_private.h"
 #include "u_port_private.h"
-
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -54,7 +54,6 @@
 /* ----------------------------------------------------------------
  * VARIABLES
  * -------------------------------------------------------------- */
-
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS

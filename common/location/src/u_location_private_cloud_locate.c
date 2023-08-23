@@ -43,8 +43,8 @@
 
 #include "u_port.h"
 #include "u_port_clib_platform_specific.h" // strtok_r()
-#include "u_port_heap.h"
 #include "u_port_os.h"
+#include "u_port_heap.h"
 #include "u_port_debug.h"
 
 #include "u_time.h"

@@ -45,9 +45,9 @@
 
 #include "u_port_clib_platform_specific.h" /* struct timeval in some cases. */
 #include "u_port.h"
+#include "u_port_os.h"
 #include "u_port_heap.h"
 #include "u_port_debug.h"
-#include "u_port_os.h"
 #include "u_mempool.h"
 #include "u_short_range_pbuf.h"
 #include "u_short_range_edm.h" // For U_SHORT_RANGE_EDM_BLK_SIZE

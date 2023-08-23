@@ -86,9 +86,11 @@ U_DEPRECATED typedef uAssertFailed_t upAssertFailed_t;
  * with the file string and line number of the assert; no other
  * action will be taken, it is entirely up to the pAssertFailed function
  * to do whatever it wishes (print something log, something, restart
- * the system, etc.).  If the pAssertFailed function returns then
- * code execution will resume at the line after the assert failure
- * occurred.
+ * the system, etc.).  After the assert function has been called
+ * an infinite loop will be entered.  If you wish to have your assert
+ * function return while testing, you may do so by defining
+ * U_ASSERT_HOOK_FUNCTION_TEST_RETURN: code execution will then resume
+ * at the line after the assert failure occurred.
  *
  * @param[in] pAssertFailed the assert failure function to register.
  */
@@ -107,8 +109,11 @@ void uAssertHookSet(uAssertFailed_t *pAssertFailed);
  */
 //lint -function(exit, uAssertFailed) tell Lint that this has the same
 // properties as exit()
+#ifndef U_ASSERT_HOOK_FUNCTION_TEST_RETURN
 U_NO_RETURN void uAssertFailed(const char *pFileStr, int32_t line);
-
+#else
+void uAssertFailed(const char *pFileStr, int32_t line);
+#endif
 #ifdef __cplusplus
 }
 #endif

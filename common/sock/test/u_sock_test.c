@@ -53,9 +53,9 @@
 
 #include "u_port_clib_platform_specific.h" /* struct timeval in some cases. */
 #include "u_port.h"
+#include "u_port_os.h"
 #include "u_port_heap.h"
 #include "u_port_debug.h"
-#include "u_port_os.h"
 #include "u_port_event_queue.h"
 
 #include "u_network.h"                  // In order to provide a comms

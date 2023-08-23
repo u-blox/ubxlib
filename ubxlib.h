@@ -53,13 +53,13 @@
 
 // Porting APIs
 #include <u_port.h>
+#include <u_port_os.h>
 #include <u_port_heap.h>
 #include <u_port_crypto.h>
 #include <u_port_debug.h>
 #include <u_port_event_queue.h>
 #include <u_port_gatt.h>
 #include <u_port_gpio.h>
-#include <u_port_os.h>
 #include <u_port_uart.h>
 #include <u_port_i2c.h>
 #include <u_port_spi.h>

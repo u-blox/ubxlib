@@ -40,8 +40,8 @@
 
 #include "u_port_clib_platform_specific.h" /* In some cases gmtime_r(). */
 #include "u_port.h"
-#include "u_port_heap.h"
 #include "u_port_os.h"
+#include "u_port_heap.h"
 #include "u_port_debug.h"
 
 #include "u_at_client.h"

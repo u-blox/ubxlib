@@ -44,8 +44,8 @@
 #include "u_assert.h"
 
 #include "u_port.h"
-#include "u_port_heap.h"
 #include "u_port_os.h"
+#include "u_port_heap.h"
 #include "u_port_uart.h"
 #include "u_port_i2c.h"
 #include "u_port_spi.h"

@@ -52,9 +52,9 @@
                                               is used. */
 #include "u_port_clib_mktime64.h"
 #include "u_port.h"
+#include "u_port_os.h"
 #include "u_port_heap.h"
 #include "u_port_debug.h"
-#include "u_port_os.h"
 #include "u_port_gpio.h"
 //lint -esym(766, u_port_uart.h) Suppress not referenced, which will be the case if U_PORT_TEST_CHECK_TIME_TAKEN is defined
 #include "u_port_uart.h"
@@ -70,6 +70,7 @@
 #include "u_port_crypto.h"
 #include "u_port_event_queue.h"
 #include "u_error_common.h"
+#include "u_assert.h"
 
 #ifdef CONFIG_IRQ_OFFLOAD
 # include <irq_offload.h> // To test semaphore from ISR in zephyr
@@ -224,6 +225,12 @@
  * allocate space in words, hence it is 4 for greater compatibility.
  */
 #define U_PORT_TEST_OS_EVENT_QUEUE_PARAM_MIN_SIZE_BYTES 4
+
+#ifndef U_PORT_MALLOC_LENGTH_BYTES
+/** How much to allocate in the heap test.
+ */
+# define U_PORT_MALLOC_LENGTH_BYTES 10
+#endif
 
 /** How long to wait to receive  a message on a queue in osTestTask.
  */
@@ -514,9 +521,13 @@ static size_t gTimerParameterIndex = 0;
  */
 static uPortTimerHandle_t gTimerHandle[4] = {0};
 
-/** A variable to use during critical section testing.
+/** A variable to use during critical section and heap testing.
  */
 static uint32_t gVariable = 0;
+
+/** A place to hook an allocated block during heap testing.
+ */
+static void *gpMalloc = NULL;
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -1309,6 +1320,15 @@ static bool gnssReset()
     return resetDone;
 }
 #endif
+
+// An assert hook function.
+static void assertFunction(const char *pFileStr, int32_t line)
+{
+    (void) pFileStr;
+    (void) line;
+
+    gVariable = 1;
+}
 
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS: TESTS
@@ -2207,6 +2227,83 @@ U_PORT_TEST_FUNCTION("[port]", "portEventQueue")
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT((heapUsed < 0) ||
                        (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
+}
+
+/** Test heap API.
+ *
+ * NOTE: for this to work fully U_ASSERT_HOOK_FUNCTION_TEST_RETURN must be defined.
+ */
+U_PORT_TEST_FUNCTION("[port]", "portHeap")
+{
+    int32_t x;
+    int32_t y;
+
+    U_PORT_TEST_ASSERT(uPortInit() == 0);
+
+    U_TEST_PRINT_LINE("testing heap allocation.");
+
+    // Dump current heap with no prefix
+    y = uPortHeapDump(NULL);
+#ifdef U_CFG_HEAP_MONITOR
+    U_PORT_TEST_ASSERT(y >= 0);
+#else
+    U_PORT_TEST_ASSERT(y == 0);
+#endif
+    gpMalloc = pUPortMalloc(U_PORT_MALLOC_LENGTH_BYTES);
+    U_PORT_TEST_ASSERT(gpMalloc != NULL);
+
+    // Dump new heap extent, this time with a prefix
+    x = uPortHeapDump(U_TEST_PREFIX);
+#ifdef U_CFG_HEAP_MONITOR
+    U_PORT_TEST_ASSERT(x == y + 1);
+#else
+    U_PORT_TEST_ASSERT(x == 0);
+#endif
+
+    // Register an assert function
+    gVariable = 0;
+    uAssertHookSet(assertFunction);
+
+    // Free memory: should be fine
+    uPortFree(gpMalloc);
+    gpMalloc = NULL;
+    U_PORT_TEST_ASSERT(gVariable == 0);
+
+#if defined(U_CFG_HEAP_MONITOR) && defined(U_ASSERT_HOOK_FUNCTION_TEST_RETURN)
+    U_TEST_PRINT_LINE("testing buffer overrun detection with assert hook.");
+
+    // Malloc another block and corrupt it with an overrun
+    gpMalloc = pUPortMalloc(U_PORT_MALLOC_LENGTH_BYTES);
+    U_PORT_TEST_ASSERT(gpMalloc != NULL);
+    *(((char *) gpMalloc) + U_PORT_MALLOC_LENGTH_BYTES) = 0;
+    uPortFree(gpMalloc);
+    gpMalloc = NULL;
+    U_PORT_TEST_ASSERT(gVariable == 1);
+
+    // And again, no corruption this time
+    gVariable = 0;
+    gpMalloc = pUPortMalloc(U_PORT_MALLOC_LENGTH_BYTES);
+    U_PORT_TEST_ASSERT(gpMalloc != NULL);
+    uPortFree(gpMalloc);
+    gpMalloc = NULL;
+    U_PORT_TEST_ASSERT(gVariable == 0);
+
+    U_TEST_PRINT_LINE("testing buffer underrun detection with assert hook.");
+
+    // Finally with an underrun
+    gVariable = 0;
+    gpMalloc = pUPortMalloc(U_PORT_MALLOC_LENGTH_BYTES);
+    U_PORT_TEST_ASSERT(gpMalloc != NULL);
+    *(((char *) gpMalloc) - 1) = 0;
+    uPortFree(gpMalloc);
+    gpMalloc = NULL;
+    U_PORT_TEST_ASSERT(gVariable == 1);
+#endif
+
+    U_TEST_PRINT_LINE("removing assert hook.");
+    // Remove the assert hook
+    uAssertHookSet(NULL);
+    uPortDeinit();
 }
 
 /** Test: strtok_r since we have our own implementation on
@@ -3407,6 +3504,8 @@ U_PORT_TEST_FUNCTION("[port]", "portCleanUp")
     }
     uPortSpiDeinit();
 #endif
+
+    uPortFree(gpMalloc);
 
     uPortDeinit();
 

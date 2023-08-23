@@ -49,9 +49,9 @@
 #include "u_error_common.h" // For U_ERROR_COMMON_NOT_SUPPORTED
 
 #include "u_port.h"
+#include "u_port_os.h"
 #include "u_port_heap.h"
 #include "u_port_debug.h"
-#include "u_port_os.h"
 
 #ifdef U_CFG_TEST_CELL_MODULE_TYPE
 #include "u_cell_module_type.h"

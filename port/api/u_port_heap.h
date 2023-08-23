@@ -33,6 +33,14 @@
  * port code, or you may just leave them as they are (in which case
  * malloc() and free() for your platform will be called by the
  * default implementation).
+ *
+ * In addition to heap memory allocation, it is also possible to
+ * switch on heap tracking by defining U_CFG_HEAP_MONITOR.  This
+ * will add guards either end of a memory block and check them
+ * when it is free'd, and will also log each allocation so that
+ * they can be printed with uPortHeapDump().  Note that monitoring
+ * will require at least 36 additional bytes of heap storage per
+ * heap allocation.
  */
 
 #ifdef __cplusplus
@@ -78,6 +86,7 @@ extern int32_t gUHeapLossHeapFreeDebug;
  * FUNCTIONS
  * -------------------------------------------------------------- */
 
+#ifndef U_CFG_HEAP_MONITOR
 /** Allocate memory: does whatever malloc() does on your platform,
  * which should be to return a pointer to a block of heap memory
  * of at least the requested size, aligned for the worst-case
@@ -90,6 +99,29 @@ extern int32_t gUHeapLossHeapFreeDebug;
  *                  alignment, else NULL.
  */
 void *pUPortMalloc(size_t sizeBytes);
+#else
+/** For heap monitoring, pUPortMalloc() becomes a macro so that we
+ * get to trap the file/line and add our structure in
+ * pUPortMallocMonitor() before, internally, calling pUPortMalloc().
+ */
+# define pUPortMalloc(sizeBytes) pUPortMallocMonitor(sizeBytes, __FILE__, __LINE__)
+
+/** Allocate memory, adding monitoring information along the
+ * way: this should NOT be called directly, it is called through
+ * the pUPortMalloc() macro when U_CFG_HEAP_MONITOR is defined.
+ *
+ * @param sizeBytes the amount of memory required in bytes.
+ * @param[in] pFile the name of the file that the calling
+ *                  function is in.
+ * @param line      the line in pFile that is calling this
+ *                  function.
+ * @return          a pointer to at least sizeBytes of memory,
+ *                  aligned for the worst-case structure-type
+ *                  alignment, else NULL.
+ */
+void *pUPortMallocMonitor(size_t sizeBytes, const char *pFile,
+                          int32_t line);
+#endif
 
 /** Free memory that was allocated by pUPortMalloc(); does whatever
  * free() does on your platform.
@@ -98,6 +130,41 @@ void *pUPortMalloc(size_t sizeBytes);
  *                    returned by pUPortMalloc(); may be NULL.
  */
 void uPortFree(void *pMemory);
+
+/** Print out the contents of the heap; only useful if
+ * U_CFG_HEAP_MONITOR is defined.
+ *
+ * @param[in] pPrefix  print this before each line; may be NULL.
+ * @return             the number of entries printed.
+ */
+int32_t uPortHeapDump(const char *pPrefix);
+
+/** Initialise heap monitoring: you do NOT need to call this, it
+ * is called internally by the porting layer if U_CFG_HEAP_MONITOR
+ * is defined.
+ *
+ * @param[in] pMutexCreate normally this will be NULL; it is only
+ *                         provided for platforms where the
+ *                         implementation of uPortMutexCreate()
+ *                         itself calls pUPortMalloc(), which won't
+ *                         work here as uPortHeapMonitorInit() needs
+ *                         to create a mutex before heap allocations
+ *                         can be done.  Where this is the case, a
+ *                         special version of uPortMutexCreate()
+ *                         can be passed in by the platform to be
+ *                         called by uPortHeapMonitorInit() instead
+ *                         of the usual one.
+ * @param[in] pMutexLock   similar to pMutexCreate, a pointer to a
+ *                         special mutex lock function, else
+ *                         (the normal case) use NULL.
+ * @param[in] pMutexUnlock similar to pMutexlock, a pointer to a
+ *                         special mutex unlock function, else
+ *                         (the normal case) use NULL.
+ * @return                 zero on success else negative error code.
+ */
+int32_t uPortHeapMonitorInit(int32_t (*pMutexCreate) (uPortMutexHandle_t *),
+                             int32_t (*pMutexLock) (const uPortMutexHandle_t),
+                             int32_t (*pMutexUnlock) (const uPortMutexHandle_t));
 
 #ifdef __cplusplus
 }

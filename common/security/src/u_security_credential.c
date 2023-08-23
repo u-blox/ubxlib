@@ -46,9 +46,9 @@
 
 #include "u_port_clib_platform_specific.h" // isblank() in some cases
 #include "u_port_clib_mktime64.h"
-#include "u_port_heap.h"
 #include "u_port.h"
 #include "u_port_os.h"
+#include "u_port_heap.h"
 
 #include "u_at_client.h"
 

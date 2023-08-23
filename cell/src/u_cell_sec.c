@@ -36,8 +36,8 @@
 
 #include "u_error_common.h"
 
-#include "u_port_heap.h"
 #include "u_port_os.h"
+#include "u_port_heap.h"
 #include "u_port_crypto.h"
 
 #include "u_hex_bin_convert.h"

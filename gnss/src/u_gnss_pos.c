@@ -40,8 +40,8 @@
 #include "u_error_common.h"
 
 #include "u_port.h"
+#include "u_port_os.h"
 #include "u_port_heap.h"
-#include "u_port_os.h"  // Required by u_gnss_private.h
 #include "u_port_debug.h"
 
 #include "u_time.h"
