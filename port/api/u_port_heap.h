@@ -40,7 +40,7 @@
  * when it is free'd (U_ASSERT() will be called with false if
  * a guard is corrupted), and will also log each allocation so that
  * they can be printed with uPortHeapDump().  Note that monitoring
- * will require at least 36 additional bytes of heap storage per
+ * will require at least 28 additional bytes of heap storage per
  * heap allocation.
  */
 
@@ -49,35 +49,8 @@ extern "C" {
 #endif
 
 /* ----------------------------------------------------------------
- * COMPILE-TIME MACROS: DEBUG AIDS
+ * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
-
-/** To track heap loss (using #U_PORT_HEAP_LOSS_DEBUG_PRINT).
- */
-extern int32_t gUHeapLossHeapFreeDebug;
-
-/** If you wish to use the heap loss debug macros, add this macro once
- * near the top of a single .c file, below the inclusions; it doesn't
- * matter which .c file you do this in.
- */
-#define U_PORT_HEAP_LOSS_DEBUG_DEFINE      int32_t gUHeapLossHeapFreeDebug = 0x80000000
-
-/** At any point in a .c file use this macro to print out the current
- * free heap and the difference in free heap from the previous call to
- * the macro.
- *
- *  "tag" can be any string, e.g. "0", "1", etc. or "after function blah()":
- * this will form part of the printed output so that you can map the debug
- * print to a place in a file.
- *
- * You will also need to include u_port_debug.h of course (and u_port.h).
- */
-#define U_PORT_HEAP_LOSS_DEBUG_PRINT(tag)  if (gUHeapLossHeapFreeDebug == 0x80000000) {                                   \
-                                               gUHeapLossHeapFreeDebug = uPortGetHeapFree();                              \
-                                           }                                                                              \
-                                           uPortLogF("##### %s: heap free %d (%d).\n", tag,                               \
-                                                     uPortGetHeapFree(), uPortGetHeapFree() - gUHeapLossHeapFreeDebug);   \
-                                           gUHeapLossHeapFreeDebug = uPortGetHeapFree()
 
 /* ----------------------------------------------------------------
  * TYPES
@@ -163,7 +136,7 @@ int32_t uPortHeapDump(const char *pPrefix);
  * @param[in] pMutexLock   similar to pMutexCreate, a pointer to a
  *                         special mutex lock function, else
  *                         (the normal case) use NULL.
- * @param[in] pMutexUnlock similar to pMutexlock, a pointer to a
+ * @param[in] pMutexUnlock similar to pMutexLock, a pointer to a
  *                         special mutex unlock function, else
  *                         (the normal case) use NULL.
  * @return                 zero on success else negative error code.

@@ -49,17 +49,20 @@
  * -------------------------------------------------------------- */
 
 #ifndef U_PORT_HEAP_GUARD
-/** The guard to put before and after each heap block, allowing
- * us to check for overruns ("DEADBEEF", readable in a hex dump).
+/** The uint32_t guard to put before and after each heap block, allowing
+ * us to check for overruns ("DEADBEEF", readable in a hex dump on
+ * a little-endian MCU, which they pretty much all are these days).
  */
-# define U_PORT_HEAP_GUARD "\xd\xe\xa\xd\xb\xe\xe\xf"
+# define U_PORT_HEAP_GUARD 0xefbeaddeUL
 #endif
 
-#ifndef U_PORT_HEAP_GUARD_SIZE
-/** The size of #U_PORT_HEAP_GUARD.
+/** The size of #U_PORT_HEAP_GUARD; must be 4.
  */
-# define U_PORT_HEAP_GUARD_SIZE 8
-#endif
+#define U_PORT_HEAP_GUARD_SIZE sizeof(uint32_t)
+
+/** The size of uPortHeapBlock_t, _without_ any packing on the end.
+ */
+#define U_PORT_HEAP_STRUCTURE_SIZE_NO_END_PACKING ((sizeof(void *) * 2) + (sizeof(int32_t) * 3))
 
 #ifndef U_PORT_HEAP_BUFFER_OVERRUN_MARKER
 /** The string to prefix a buffer overrun with.
@@ -93,13 +96,25 @@
  * start, then a guard of length #U_PORT_HEAP_GUARD_SIZE, then
  * the actual callers memory block and finally another guard of
  * length #U_PORT_HEAP_GUARD_SIZE on the end.
+ *
+ * IMPORTANT: this structure must work out to be a multiple of
+ * the worst-case pointer size of any supported platform (currently
+ * 64-bit for LINUX64) minus #U_PORT_HEAP_GUARD_SIZE, otherwise the
+ * memory passed back to the user will not be properly aligned;
+ * the structure is ordered as it is, with the smallest members last,
+ * in order to ensure this is the case.
+ *
+ * IF you change this structure make sure that
+ * #U_PORT_HEAP_STRUCTURE_SIZE_NO_END_PACKING is updated to match
+ * and make sure to use #U_PORT_HEAP_STRUCTURE_SIZE_NO_END_PACKING
+ * and not sizeof(uPortHeapBlock_t).
  */
 typedef struct uPortHeapBlock_t {
-    const char *pFile;
-    size_t line;
-    size_t size;
-    int32_t timeMilliseconds;
     struct uPortHeapBlock_t *pNext;
+    const char *pFile;
+    int32_t line;
+    int32_t size;
+    int32_t timeMilliseconds;
 } uPortHeapBlock_t;
 
 /* ----------------------------------------------------------------
@@ -183,11 +198,13 @@ void *pUPortMallocMonitor(size_t sizeBytes, const char *pFile,
     uPortHeapBlock_t *pBlockTmp;
     char *pTmp;
     size_t blockSizeBytes;
+    uint32_t heapGuard = U_PORT_HEAP_GUARD;
 
     if (gMutex != NULL) {
         // Allocate enough memory for what the caller wanted,
         // plus our monitoring structure, plus two guards
-        blockSizeBytes = sizeBytes + sizeof(uPortHeapBlock_t) + (U_PORT_HEAP_GUARD_SIZE * 2);
+        blockSizeBytes = sizeBytes + U_PORT_HEAP_STRUCTURE_SIZE_NO_END_PACKING +
+                         (U_PORT_HEAP_GUARD_SIZE * 2);
         pBlock = (uPortHeapBlock_t *) _pUPortMalloc(blockSizeBytes);
         if (pBlock != NULL) {
             // Populate the structure
@@ -196,17 +213,15 @@ void *pUPortMallocMonitor(size_t sizeBytes, const char *pFile,
             pBlock->line = line;
             pBlock->size = sizeBytes;
             pBlock->timeMilliseconds = uPortGetTickTimeMs();
-            pTmp = ((char *) pBlock) + sizeof(*pBlock);
+            pTmp = ((char *) pBlock) + U_PORT_HEAP_STRUCTURE_SIZE_NO_END_PACKING;
             // Add the opening guard after the block
-            // NOLINTNEXTLINE(bugprone-not-null-terminated-result)
-            memcpy(pTmp, U_PORT_HEAP_GUARD, U_PORT_HEAP_GUARD_SIZE);
+            memcpy(pTmp, &heapGuard, U_PORT_HEAP_GUARD_SIZE);
             pTmp += U_PORT_HEAP_GUARD_SIZE;
             // This is what we'll return to the caller
             pMemory = pTmp;
             // Add the closing guard on the very end
             pTmp += sizeBytes;
-            // NOLINTNEXTLINE(bugprone-not-null-terminated-result)
-            memcpy(pTmp, U_PORT_HEAP_GUARD, U_PORT_HEAP_GUARD_SIZE);
+            memcpy(pTmp, &heapGuard, U_PORT_HEAP_GUARD_SIZE);
 
             U_PORT_HEAP_MUTEX_LOCK(gMutex);
 
@@ -231,26 +246,27 @@ U_WEAK void uPortFree(void *pMemory)
     uPortHeapBlock_t *pBlockTmp2 = NULL;
     char *pTmp;
     const char *pMarker = NULL;
+    uint32_t heapGuard = U_PORT_HEAP_GUARD;
 
     if ((pMemory != NULL) && (gMutex != NULL)) {
         // Wind back to the start of the block
-        pBlock = (uPortHeapBlock_t *) (((char *) pMemory) - (sizeof(uPortHeapBlock_t) +
+        pBlock = (uPortHeapBlock_t *) (((char *) pMemory) - (U_PORT_HEAP_STRUCTURE_SIZE_NO_END_PACKING +
                                                              U_PORT_HEAP_GUARD_SIZE));
         // Check the guards
         pTmp = ((char *) pMemory) - U_PORT_HEAP_GUARD_SIZE;
-        if (memcmp(pTmp, U_PORT_HEAP_GUARD, U_PORT_HEAP_GUARD_SIZE) != 0) {
+        if (memcmp(pTmp, &heapGuard, U_PORT_HEAP_GUARD_SIZE) != 0) {
             pMarker = U_PORT_HEAP_BUFFER_UNDERRUN_MARKER;
             uPortLog("%sexpected: ", pMarker);
-            printMemory(U_PORT_HEAP_GUARD, U_PORT_HEAP_GUARD_SIZE);
+            printMemory((char *) &heapGuard, U_PORT_HEAP_GUARD_SIZE);
             uPortLog(", got: ");
             printMemory(pTmp, U_PORT_HEAP_GUARD_SIZE);
             uPortLog("\n");
         }
         pTmp += U_PORT_HEAP_GUARD_SIZE + pBlock->size;
-        if (memcmp(pTmp, U_PORT_HEAP_GUARD, U_PORT_HEAP_GUARD_SIZE) != 0) {
+        if (memcmp(pTmp, &heapGuard, U_PORT_HEAP_GUARD_SIZE) != 0) {
             pMarker = U_PORT_HEAP_BUFFER_OVERRUN_MARKER;
             uPortLog("%sexpected: ", pMarker);
-            printMemory(U_PORT_HEAP_GUARD, U_PORT_HEAP_GUARD_SIZE);
+            printMemory((char *) &heapGuard, U_PORT_HEAP_GUARD_SIZE);
             uPortLog(", got: ");
             printMemory(pTmp, U_PORT_HEAP_GUARD_SIZE);
             uPortLog("\n");

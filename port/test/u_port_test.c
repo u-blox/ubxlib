@@ -227,9 +227,9 @@
 #define U_PORT_TEST_OS_EVENT_QUEUE_PARAM_MIN_SIZE_BYTES 4
 
 #ifndef U_PORT_MALLOC_LENGTH_BYTES
-/** How much to allocate in the heap test.
+/** How much to allocate in the heap test; deliberately an odd size.
  */
-# define U_PORT_MALLOC_LENGTH_BYTES 10
+# define U_PORT_MALLOC_LENGTH_BYTES 9
 #endif
 
 /** How long to wait to receive  a message on a queue in osTestTask.
