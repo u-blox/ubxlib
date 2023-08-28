@@ -220,7 +220,7 @@ int32_t uPortSpiControllerGetDevice(int32_t handle,
                 errorCode = U_ERROR_COMMON_PLATFORM;
             }
 
-            uint8_t mode;
+            uint8_t mode = 0; // Initialised to keep Valgrind happy
             if (ioctl(fd, SPI_IOC_WR_MODE, &mode) == -1) {
                 errorCode = U_ERROR_COMMON_PLATFORM;
             }

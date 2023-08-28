@@ -14,19 +14,11 @@
  * limitations under the License.
  */
 
-#ifndef _U_DEVICE_SHARED_GNSS_H_
-#define _U_DEVICE_SHARED_GNSS_H_
-
-/* Only header files representing a direct and unavoidable
- * dependency between the API of this module and the API
- * of another module should be included here; otherwise
- * please keep #includes to your .c files. */
+#ifndef _U_PORT_OS_PRIVATE_H_
+#define _U_PORT_OS_PRIVATE_H_
 
 /** @file
- * @brief This file define types that are specific to GNSS and
- * are known to the device layer but need to be visible to the
- * network layer; the data here is passed around in the pContext
- * pointer of a device instance.
+ * @brief Stuff private to the OS part of the Linux porting layer.
  */
 
 #ifdef __cplusplus
@@ -41,24 +33,24 @@ extern "C" {
  * TYPES
  * -------------------------------------------------------------- */
 
-/** The transport handle for #uDeviceGnssInstance_t.
- */
-typedef union {
-    int32_t int32Handle;
-    uDeviceSerial_t *pDeviceSerial;
-} uDeviceGnssTransportHandle_t;
+/* ----------------------------------------------------------------
+ * FUNCTIONS: OS PORT FUNCTIONS THAT ARE PRIVATE TO THE PORTING LAYER
+ * -------------------------------------------------------------- */
 
-/** The things we need to remember per GNSS device.
+/** Initialise the private bits of the OS of the porting layer.
+ *
+ * @return: zero on success else negative error code.
  */
-typedef struct {
-    uDeviceGnssTransportHandle_t transportHandle;
-    uDeviceTransportType_t deviceTransportType;
-} uDeviceGnssInstance_t;
+int32_t uPortOsPrivateInit(void);
+
+/** Deinitialise the private bits of the OS of the porting layer.
+ */
+void uPortOsPrivateDeinit(void);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // _U_DEVICE_SHARED_GNSS_H_
+#endif  // _U_PORT_OS_PRIVATE_H_
 
 // End of file

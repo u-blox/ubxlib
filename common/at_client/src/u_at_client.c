@@ -1098,7 +1098,7 @@ static void clearError(uAtClientInstance_t *pClient)
 // and call the callback if there is one
 static void consecutiveTimeout(uAtClientInstance_t *pClient)
 {
-    uAtClientCallback_t cb;
+    uAtClientCallback_t cb = {0}; // Keep Valgrind happy (otherwise the last four bytes will be uninitialised)
 
     U_PORT_MUTEX_LOCK(gMutexEventQueue);
 
@@ -3977,7 +3977,7 @@ int32_t uAtClientCallback(uAtClientHandle_t atHandle,
                           void *pCallbackParam)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-    uAtClientCallback_t cb;
+    uAtClientCallback_t cb = {0}; // Keep Valgrind happy (otherwise the last four bytes will be uninitialised)
 
     U_PORT_MUTEX_LOCK(gMutexEventQueue);
 

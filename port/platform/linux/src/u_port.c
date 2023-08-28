@@ -41,7 +41,7 @@
 #include "u_port_gpio.h"
 #include "u_port_uart.h"
 #include "u_port_event_queue_private.h"
-#include "u_port_private.h"
+#include "u_port_os_private.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -83,9 +83,9 @@ int32_t uPortPlatformStart(void (*pEntryPoint)(void *),
 int32_t uPortInit()
 {
     uErrorCode_t errorCode;
-    // uPortPrivateInit() must be called first for
+    // uPortOsPrivateInit() must be called first for
     // U_CFG_MUTEX_DEBUG option to work on Linux
-    errorCode = uPortPrivateInit();
+    errorCode = uPortOsPrivateInit();
     if (errorCode == 0) {
         errorCode = uPortEventQueuePrivateInit();
     }
@@ -100,7 +100,7 @@ void uPortDeinit()
 {
     uPortUartDeinit();
     uPortEventQueuePrivateDeinit();
-    uPortPrivateDeinit();
+    uPortOsPrivateDeinit();
 }
 
 // Get the current tick converted to a time in milliseconds.

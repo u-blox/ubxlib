@@ -67,6 +67,13 @@
 
 #define U_SHORT_RANGE_BT_ADDRESS_SIZE 14
 
+#ifndef U_SHORT_RANGE_AT_CLIENT_CLOSE_DELAY_MS
+/** Delay to allow the AT client to process enqueued asynchronous
+ * events (URCs) before it is removed.
+ */
+# define U_SHORT_RANGE_AT_CLIENT_CLOSE_DELAY_MS 1000
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -883,6 +890,11 @@ void uShortRangeClose(uDeviceHandle_t devHandle)
         uAtClientIgnoreAsync(pInstance->atHandle);
         uShortRangeEdmStreamClose(pInstance->streamHandle);
         uShortRangeEdmStreamDeinit();
+        // URCs may have landed during the process of closing-up
+        // the AT interface to the module which are still queued
+        // and being processed by the AT handler; let them
+        // land before we pull it out from under them
+        uPortTaskBlock(U_SHORT_RANGE_AT_CLIENT_CLOSE_DELAY_MS);
         uAtClientRemoveUrcHandler(pInstance->atHandle, "+STARTUP");
         uAtClientRemove(pInstance->atHandle);
         uPortUartClose(pInstance->uartHandle);

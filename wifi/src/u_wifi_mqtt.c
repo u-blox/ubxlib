@@ -620,13 +620,11 @@ static void atMqttConnectionCallback(uDeviceHandle_t devHandle,
                         // Report to user that we are disconnected
                         if (pMqttSession->pDisconnectCb) {
                             //lint -save -e785
-                            uCallbackEvent_t event = {
-                                .pDataCb = NULL,
-                                .pDisconnectCb = pMqttSession->pDisconnectCb,
-                                .pCbParam = pMqttSession->pCbParam,
-                                .pMqttSession = pMqttSession,
-                                .disconnStatus = (int32_t)U_ERROR_COMMON_SUCCESS
-                            };
+                            uCallbackEvent_t event = {0}; // Constructed this way to keep Valgrind happy
+                            event.pDisconnectCb = pMqttSession->pDisconnectCb;
+                            event.pCbParam = pMqttSession->pCbParam;
+                            event.pMqttSession = pMqttSession;
+                            event.disconnStatus = (int32_t)U_ERROR_COMMON_SUCCESS;
                             //lint -restore
                             uPortEventQueueSend(gCallbackQueue, &event, sizeof(event));
                         }

@@ -219,6 +219,7 @@ U_PORT_TEST_FUNCTION("[wifiCaptivePortal]", "wifiCaptivePortalCleanUp")
     int32_t x;
 
     if (gDeviceHandle != NULL) {
+        uSockCleanUp();
         uNetworkInterfaceDown(gDeviceHandle, U_NETWORK_TYPE_WIFI);
         uDeviceClose(gDeviceHandle, false);
     }

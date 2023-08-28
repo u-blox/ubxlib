@@ -122,6 +122,11 @@ RUN groupadd -g 999 spi &&                                                      
 
 # Note: the dialout group is already present (group ID 20) in the container
 
+# When on a Pi, add Valgrind so that we can apply it when we run on Linux natively
+RUN if [ "$(arch)" == "aarch64" ]; then                                         \
+        apt-get update && apt-get install --no-install-recommends -y valgrind;  \
+    fi
+
 WORKDIR /workdir
 
 #***************************************************

@@ -913,7 +913,7 @@ U_PORT_TEST_FUNCTION("[sock]", "sockBasicUdp")
     uSockDescriptor_t descriptor;
     bool dataCallbackCalled;
     size_t sizeBytes;
-    bool success = false;
+    bool success;
     int32_t heapUsed;
     int32_t heapSockInitLoss = 0;
     int32_t heapXxxSockInitLoss = 0;
@@ -960,6 +960,7 @@ U_PORT_TEST_FUNCTION("[sock]", "sockBasicUdp")
 
         // Quite often nothing at all comes back so retry this
         // if that is the case
+        success = false;
         for (size_t retries = 2; !success && (retries > 0); retries--) {
             success = true;
             // Create a UDP socket

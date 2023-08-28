@@ -167,6 +167,8 @@ static bool gKeepGoing = false;
 // Selected credentials
 static char gSsid[U_WIFI_SSID_SIZE];
 static char gPw[100] = {0};
+// Network configuration
+static uNetworkCfgWifi_t gNetworkCfg = {0};
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -327,17 +329,16 @@ int32_t uWifiCaptivePortal(uDeviceHandle_t deviceHandle,
                            const char *pPassword,
                            uWifiCaptivePortalKeepGoingCallback_t cb)
 {
-    // Wifi access point configuration
-    uNetworkCfgWifi_t networkCfg = {
-        .type = U_NETWORK_TYPE_WIFI,
-        .mode = U_WIFI_MODE_AP,
-        .apAuthentication =
-        pPassword == NULL ? U_WIFI_AUTH_OPEN : U_WIFI_AUTH_WPA_PSK,
-        .pApSssid = pSsid,
-        .pApPassPhrase = pPassword,
-        .pApIpAddress = "8.8.8.8"  // Required for Android
-    };
     int32_t errorCode = 0;
+
+    // Wifi access point configuration
+    gNetworkCfg.type = U_NETWORK_TYPE_WIFI;
+    gNetworkCfg.mode = U_WIFI_MODE_AP;
+    gNetworkCfg.apAuthentication = (pPassword == NULL) ? U_WIFI_AUTH_OPEN : U_WIFI_AUTH_WPA_PSK;
+    gNetworkCfg.pApSssid = pSsid;
+    gNetworkCfg.pApPassPhrase = pPassword;
+    gNetworkCfg.pApIpAddress = "8.8.8.8";  // Required for Android
+
     gDevHandle = deviceHandle;
     gKeepGoing = true;
     gSsid[0] = 0;
@@ -346,7 +347,7 @@ int32_t uWifiCaptivePortal(uDeviceHandle_t deviceHandle,
         // Make sure that possible auto connected station mode is disconnected
         uWifiStationDisconnect(gDevHandle);
         // Start the access point
-        errorCode = uNetworkInterfaceUp(gDevHandle, U_NETWORK_TYPE_WIFI, &networkCfg);
+        errorCode = uNetworkInterfaceUp(gDevHandle, U_NETWORK_TYPE_WIFI, &gNetworkCfg);
     }
     if (errorCode == 0) {
         // Start a dns server which redirects all requests to this portal
@@ -354,7 +355,7 @@ int32_t uWifiCaptivePortal(uDeviceHandle_t deviceHandle,
         uPortTaskCreate(dnsServerTask,
                         "dns",
                         U_WIFI_CAPTIVE_PORTAL_DNS_TASK_STACK_SIZE_BYTES,
-                        (void *)networkCfg.pApIpAddress,
+                        (void *)gNetworkCfg.pApIpAddress,
                         U_WIFI_CAPTIVE_PORTAL_DNS_TASK_PRIORITY,
                         &dnsServer);
 
@@ -401,11 +402,11 @@ int32_t uWifiCaptivePortal(uDeviceHandle_t deviceHandle,
             }
             if (strlen(gSsid)) {
                 uPortTaskBlock(1000);
-                networkCfg.authentication = strlen(gPw) == 0 ? U_WIFI_AUTH_OPEN : U_WIFI_AUTH_WPA_PSK;
-                networkCfg.pSsid = gSsid;
-                networkCfg.pPassPhrase = gPw;
-                networkCfg.mode = U_WIFI_MODE_STA;
-                errorCode = uNetworkInterfaceUp(gDevHandle, U_NETWORK_TYPE_WIFI, &networkCfg);
+                gNetworkCfg.authentication = (strlen(gPw) == 0) ? U_WIFI_AUTH_OPEN : U_WIFI_AUTH_WPA_PSK;
+                gNetworkCfg.pSsid = gSsid;
+                gNetworkCfg.pPassPhrase = gPw;
+                gNetworkCfg.mode = U_WIFI_MODE_STA;
+                errorCode = uNetworkInterfaceUp(gDevHandle, U_NETWORK_TYPE_WIFI, &gNetworkCfg);
                 if (errorCode == 0) {
                     errorCode = uWifiStationStoreConfig(gDevHandle, false);
                 }

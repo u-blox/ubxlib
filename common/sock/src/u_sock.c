@@ -1461,6 +1461,7 @@ void uSockCleanUp()
         while (pContainer != NULL) {
             if ((pContainer->socket.state == U_SOCK_STATE_CLOSED) ||
                 (pContainer->socket.state == U_SOCK_STATE_CLOSING)) {
+                devHandle = NULL;
                 if (!(pContainer->isStatic)) {
                     // If this socket is not static, uncouple it
                     // If there is a previous container, move its pNext
@@ -1490,6 +1491,7 @@ void uSockCleanUp()
                     // Remember the network handle
                     devHandle = pContainer->socket.devHandle;
                     pContainer->socket.state = U_SOCK_STATE_CLOSED;
+                    pContainer->socket.devHandle = NULL;
                     // Move on
                     pContainer = pContainer->pNext;
                 }

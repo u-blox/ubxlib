@@ -52,6 +52,19 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+#ifndef U_PORT_UART_READ_WAIT_MS
+/** How long to wait when there is nothing to read from the UART.
+ */
+# define U_PORT_UART_READ_WAIT_MS 10
+#endif
+
+#ifndef U_PORT_UART_START_STOP_WAIT_MS
+/** How long to wait for a UART, mostly the read task, to start up
+ * and shut down.
+ */
+# define U_PORT_UART_START_STOP_WAIT_MS (U_PORT_UART_READ_WAIT_MS * 10)
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -129,15 +142,18 @@ static void eventHandler(void *pParam, size_t paramLength)
 static void readTask(void *pParam)
 {
     uPortUartData_t *p = (uPortUartData_t *)pParam;
+    struct timeval tv = {0};
+
     // Initiate a set for select operation.
     fd_set set;
+    tv.tv_usec = U_CFG_OS_YIELD_MS * 1000;
     // Need a brief pause before calling select after open.
     uPortTaskBlock(10);
-    while (1) {
+    while (!p->markedForDeletion) {
         FD_ZERO(&set);
         FD_SET(p->uartFd, &set);
         // Wait for input
-        int res = select(p->uartFd + 1, &set, NULL, NULL, NULL);
+        int res = select(p->uartFd + 1, &set, NULL, NULL, &tv);
         if (res > 0) {
             // Input is available.
             int available;
@@ -146,8 +162,10 @@ static void readTask(void *pParam)
                 ioctl(p->uartFd, FIONREAD, &available);
                 size_t cnt = 0;
                 size_t tot = 0;
+                // Sample readPos
+                size_t readPos = p->readPos;
                 U_PORT_MUTEX_LOCK(p->mutex);
-                if (p->writePos >= p->readPos) {
+                if (p->writePos >= readPos) {
                     // Write pos ahead of read. Use the remaining area in the
                     // buffer first.
                     cnt = MIN(available, p->bufferSize - p->writePos);
@@ -158,15 +176,15 @@ static void readTask(void *pParam)
                     }
                     tot = cnt;
                 }
-                if ((available > 0) && (p->writePos < p->readPos)) {
+                if ((available > 0) && (p->writePos < readPos)) {
                     // Read pos ahead of write.
-                    cnt = MIN(available, p->readPos - p->writePos);
+                    cnt = MIN(available, readPos - p->writePos);
                     cnt = read(p->uartFd, p->pBuffer + p->writePos, cnt);
                     if (cnt > 0) {
                         available -= cnt;
                         p->writePos = (p->writePos + cnt) % p->bufferSize;
                         // We might have filled up the buffer, in which case we must wait below.
-                        p->bufferFull = p->writePos == p->readPos;
+                        p->bufferFull = p->writePos == readPos;
                     }
                     tot += cnt;
                 }
@@ -181,11 +199,11 @@ static void readTask(void *pParam)
                     event.pEventCallbackParam = p->pEventCallbackParam;
                     uPortEventQueueSend(p->eventQueueHandle, &event, sizeof(event));
                 }
-                while (p->bufferFull) {
+                while (p->bufferFull && !p->markedForDeletion) {
                     // Buffer is full, wait for consumption.
-                    uPortTaskBlock(10);
+                    uPortTaskBlock(U_PORT_UART_READ_WAIT_MS);
                 }
-            } while (available > 0);
+            } while ((available > 0) && !p->markedForDeletion);
         }
     }
 }
@@ -222,6 +240,9 @@ static void disposeUartData(uPortUartData_t *p)
         uPortPrivateListRemove(&gpUartList, p);
         if (p->rxTask != NULL) {
             uPortTaskDelete(p->rxTask);
+            // Wait for the task to exit before
+            // we pull the structures out from under it
+            uPortTaskBlock(U_PORT_UART_START_STOP_WAIT_MS);
         }
         if (p->eventQueueHandle >= 0) {
             uPortEventQueueClose(p->eventQueueHandle);
@@ -289,7 +310,9 @@ static uint32_t suspendResumeUartHwHandshake(int32_t handle, bool suspendNotResu
 int32_t uPortUartInit()
 {
     uErrorCode_t errorCode = U_ERROR_COMMON_SUCCESS;
-    errorCode = uPortMutexCreate(&gMutex);
+    if (gMutex == NULL) {
+        errorCode = uPortMutexCreate(&gMutex);
+    }
     return (int32_t) errorCode;
 }
 
@@ -311,6 +334,7 @@ void uPortUartDeinit()
         // Remove any UART prefixes
         while (gpUartPrefixList != NULL) {
             uPortUartPrefix_t *pUartPrefix = (uPortUartPrefix_t *)(gpUartPrefixList->ptr);
+            uPortFree(pUartPrefix);
             uPortPrivateListRemove(&gpUartPrefixList, pUartPrefix);
         }
 
@@ -342,6 +366,7 @@ int32_t uPortUartPrefix(const char *pPrefix)
             pthread_t threadId = pthread_self();
             uPortUartPrefix_t *p;
             while ((p = findPrefix(threadId)) != NULL) {
+                uPortFree(p);
                 uPortPrivateListRemove(&gpUartPrefixList, p);
             }
             // Add the new one
@@ -460,6 +485,8 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
                         &(pUartData->rxTask)) != 0) {
         FAIL(U_ERROR_COMMON_PLATFORM);
     }
+    // Wait for the read task to start
+    uPortTaskBlock(U_PORT_UART_START_STOP_WAIT_MS);
     U_PORT_MUTEX_LOCK(gMutex);
     uPortPrivateListAdd(&gpUartList, (void *)pUartData);
     U_PORT_MUTEX_UNLOCK(gMutex);

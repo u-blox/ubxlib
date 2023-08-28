@@ -1015,6 +1015,7 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgGnssProfile")
     // on we will read back during testing
     pServerNameOriginal = (char *) pUPortMalloc(U_CELL_CFG_GNSS_SERVER_NAME_MAX_LEN_BYTES);
     U_PORT_TEST_ASSERT(pServerNameOriginal != NULL);
+    memset(pServerNameOriginal, 0, U_CELL_CFG_GNSS_SERVER_NAME_MAX_LEN_BYTES);
     pServerName = (char *) pUPortMalloc(U_CELL_CFG_GNSS_SERVER_NAME_MAX_LEN_BYTES);
     U_PORT_TEST_ASSERT(pServerName != NULL);
     memset(pServerName, 0xFF, U_CELL_CFG_GNSS_SERVER_NAME_MAX_LEN_BYTES);

@@ -2754,9 +2754,11 @@ U_PORT_TEST_FUNCTION("[port]", "portI2cRequiresSpecificWiring")
             // Note: no real way of testing uPortI2cAdopt() here since
             // it would require platform specific test code.
 
-            // Close again and deinit I2C, using the bus-recovery version in case of
-            // previous test failures
-            uPortI2cCloseRecoverBus(gI2cHandle);
+            // Close again and deinit I2C, using the bus-recovery version
+            // (where supported) in case of previous test failures
+            if (uPortI2cCloseRecoverBus(gI2cHandle) == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
+                uPortI2cClose(gI2cHandle);
+            }
             uPortI2cDeinit();
             // Try to open an I2C instance without having initialised I2C again, should fail
             U_PORT_TEST_ASSERT(uPortI2cOpen(U_CFG_APP_GNSS_I2C, U_CFG_APP_PIN_GNSS_SDA,
@@ -2909,7 +2911,7 @@ U_PORT_TEST_FUNCTION("[port]", "portI2cRequiresSpecificWiring")
                 U_PORT_TEST_ASSERT(messageClass == 0x0a);
                 U_PORT_TEST_ASSERT(messageId == 0x04);
 
-                // Deinit I2C without closing the open instance; should tidy itself up
+                uPortI2cClose(gI2cHandle);
                 uPortI2cDeinit();
                 U_PORT_TEST_ASSERT(uPortI2cGetClock(gI2cHandle) < 0);
                 U_PORT_TEST_ASSERT(uPortI2cSetClock(gI2cHandle, U_PORT_I2C_CLOCK_FREQUENCY_HERTZ) < 0);
@@ -3127,7 +3129,8 @@ U_PORT_TEST_FUNCTION("[port]", "portSpiRequiresSpecificWiring")
     // The body of the response is 12 bytes long
     U_PORT_TEST_ASSERT(y == 12);
 
-    // Deinit SPI without closing the open instance; should tidy itself up
+    // Deinit SPI
+    uPortSpiClose(gSpiHandle);
     uPortSpiDeinit();
 
     // Now we're done
@@ -3346,6 +3349,7 @@ U_PORT_TEST_FUNCTION("[port]", "portTimers")
         U_PORT_TEST_ASSERT(gTimerParameterValue[1] == 0);
         U_PORT_TEST_ASSERT(gTimerParameterValue[2] == 2);
         U_PORT_TEST_ASSERT(gTimerParameterValue[3] == 4);
+
     } else {
         U_TEST_PRINT_LINE("timers are not supported.");
     }

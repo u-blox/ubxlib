@@ -1253,7 +1253,7 @@ int32_t uGnssMgaSetDatabase(uDeviceHandle_t gnssHandle,
                     }
                 }
 
-                if ((protocolsOut >= 0) && ((protocolsOut & (1ULL << U_GNSS_PROTOCOL_NMEA)) != 0)) {
+                if ((protocolsOut >= 0) && ((protocolsOut & (1UL << U_GNSS_PROTOCOL_NMEA)) != 0)) {
                     // Restore NMEA messages, if we switched them off above
                     uGnssPrivateSetProtocolOut(pInstance, U_GNSS_PROTOCOL_NMEA, true);
                 }

@@ -92,6 +92,7 @@
 #include "u_port_debug.h"
 #include "u_port.h"
 #include "u_port_os.h"
+#include "u_port_os_private.h"
 #include "u_port_private.h"
 
 // Prototypes for the _ versions of uPortMutexXxx() in case U_CFG_MUTEX_DEBUG is defined
@@ -318,11 +319,11 @@ static int32_t mutexUnlock(const uPortMutexHandle_t mutexHandle)
 }
 
 /* ----------------------------------------------------------------
- * PRIVATE FUNCTIONS SPECIFIC TO THIS PORT, MISC
+ * PUBLIC FUNCTIONS SPECIFIC TO THE OS PART OF THIS PORT
  * -------------------------------------------------------------- */
 
-// Initialise the private bits of the porting layer.
-int32_t uPortPrivateInit(void)
+// Initialise the private bits of the OS of the porting layer.
+int32_t uPortOsPrivateInit(void)
 {
     int32_t errorCode = (int32_t)U_ERROR_COMMON_SUCCESS;
     errorCode = uPortHeapMonitorInit(mutexCreate, mutexLock, mutexUnlock);
@@ -353,8 +354,8 @@ int32_t uPortPrivateInit(void)
     return errorCode;
 }
 
-// De-initialise the private bits of the porting layer.
-void uPortPrivateDeinit(void)
+// De-initialise the private bits of the OS of the porting layer.
+void uPortOsPrivateDeinit(void)
 {
     if (gMutexTimer != NULL) {
         MTX_FN(uPortMutexLock(gMutexTimer));
@@ -422,6 +423,8 @@ int32_t uPortTaskCreate(void (*pFunction)(void *),
         pthread_attr_t attr;
         struct sched_param param;
         pthread_attr_init(&attr);
+        // So that the thread is tidied-up when it exits
+        pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
         pthread_attr_getschedparam(&attr, &param);
         param.sched_priority = priority;
         pthread_attr_setschedparam(&attr, &param);

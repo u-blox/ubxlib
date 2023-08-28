@@ -374,7 +374,7 @@ static int32_t sendMessageStream(uGnssPrivateInstance_t *pInstance,
         }
         break;
         case U_GNSS_PRIVATE_STREAM_TYPE_SPI: {
-            char spiBuffer[U_GNSS_SPI_FILL_THRESHOLD_MAX];
+            char spiBuffer[U_GNSS_SPI_FILL_THRESHOLD_MAX] = {0}; // Zero'ed to keep Valgrind happy
             size_t offset = 0;
             size_t thisLength;
             // In the SPI case we are always necessarily receiving while
@@ -1965,7 +1965,7 @@ int32_t uGnssPrivateStreamGetReceiveSize(uGnssPrivateInstance_t *pInstance)
             }
             break;
             case U_GNSS_PRIVATE_STREAM_TYPE_SPI: {
-                char spiBuffer[U_GNSS_SPI_FILL_THRESHOLD_MAX];
+                char spiBuffer[U_GNSS_SPI_FILL_THRESHOLD_MAX] = {0}; // Zero'ed to keep Valgrind happy
                 size_t spiReadLength;
                 // SPI handling is a little different: since there is no way
                 // to tell if there is any valid data, one just has to read
@@ -2542,7 +2542,7 @@ int32_t uGnssPrivateSendUbxMessage(uGnssPrivateInstance_t *pInstance,
                                    size_t messageBodyLengthBytes)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-    uGnssPrivateUbxReceiveMessage_t response;
+    uGnssPrivateUbxReceiveMessage_t response = {0}; // Keep Valgrind happy
     int32_t timeoutMs;
     int32_t startTimeMs;
     char ackBody[2] = {0};

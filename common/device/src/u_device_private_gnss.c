@@ -335,25 +335,27 @@ int32_t uDevicePrivateGnssRemove(uDeviceHandle_t devHandle,
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
     uDeviceGnssInstance_t *pContext = (uDeviceGnssInstance_t *) U_DEVICE_INSTANCE(devHandle)->pContext;
+    uDeviceTransportType_t deviceTransportType = pContext->deviceTransportType;
+    uDeviceGnssTransportHandle_t transportHandle = pContext->transportHandle;
 
     if (pContext != NULL) {
         errorCode = removeDevice(devHandle, powerOff);
         if (errorCode == 0) {
             // Having removed the device, close the transport
-            switch (pContext->deviceTransportType) {
+            switch (deviceTransportType) {
                 case U_DEVICE_TRANSPORT_TYPE_UART:
                 // fall-through
                 case U_DEVICE_TRANSPORT_TYPE_UART_2:
-                    uPortUartClose(pContext->transportHandle.int32Handle);
+                    uPortUartClose(transportHandle.int32Handle);
                     break;
                 case U_DEVICE_TRANSPORT_TYPE_I2C:
                     uDevicePrivateI2cCloseDevHandle(devHandle);
                     break;
                 case U_DEVICE_TRANSPORT_TYPE_SPI:
-                    uPortSpiClose(pContext->transportHandle.int32Handle);
+                    uPortSpiClose(transportHandle.int32Handle);
                     break;
                 case U_DEVICE_TRANSPORT_TYPE_VIRTUAL_SERIAL:
-                    pContext->transportHandle.pDeviceSerial->close(pContext->transportHandle.pDeviceSerial);;
+                    pContext->transportHandle.pDeviceSerial->close(transportHandle.pDeviceSerial);
                     break;
                 default:
                     break;

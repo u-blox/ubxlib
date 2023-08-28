@@ -304,11 +304,14 @@ int32_t uDeviceOpen(const uDeviceCfg_t *pDeviceCfg, uDeviceHandle_t *pDeviceHand
 
 int32_t uDeviceClose(uDeviceHandle_t devHandle, bool powerOff)
 {
-    // Lock the API
-    int32_t errorCode = uDeviceLock();
+    int32_t errorCode;
+    uDeviceType_t deviceType;
 
+    // Lock the API
+    errorCode = uDeviceLock();
     if (errorCode == 0) {
-        switch (uDeviceGetDeviceType(devHandle)) {
+        deviceType = uDeviceGetDeviceType(devHandle);
+        switch (deviceType) {
             case U_DEVICE_TYPE_CELL:
                 errorCode = uDevicePrivateCellRemove(devHandle, powerOff);
                 break;
@@ -331,8 +334,9 @@ int32_t uDeviceClose(uDeviceHandle_t devHandle, bool powerOff)
         }
 
         if (errorCode == 0) {
-            errorCode = uDeviceCallback("close", (void *)(U_DEVICE_INSTANCE(devHandle)->deviceType),
-                                        (void *)powerOff);
+            void *pDeviceType = (void *) deviceType;
+            void *pPowerOff = (void *) powerOff;
+            errorCode = uDeviceCallback("close", pDeviceType, pPowerOff);
         }
 
         // ...and done

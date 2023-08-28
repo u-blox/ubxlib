@@ -683,6 +683,16 @@ class ExeRun():
                 else:
                     sig = signal.CTRL_BREAK_EVENT
                 self._process.send_signal(sig)
+                # Sometimes a process can spew stuff after it
+                # has been asked to stop (e.g. a Valgrind report)
+                # and it won't terminate until that has been read
+                line = self._process.stdout.readline().decode(). \
+                       encode("ascii", errors="replace").decode()
+                while (self._process.poll() is None) and line :
+                    line = line.rstrip()
+                    self._logger.info(line)
+                    line = self._process.stdout.readline().decode(). \
+                           encode("ascii", errors="replace").decode()
                 sleep(1)
                 retry -= 1
             return_value = self._process.poll()

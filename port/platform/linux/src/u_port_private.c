@@ -52,7 +52,7 @@
  * FUNCTIONS SPECIFIC TO THIS PORT, LIST OF POINTERS
  * -------------------------------------------------------------- */
 
-bool uPortPrivateListAdd(uPortPrivateList_t **ppList, void *ptr)
+bool uPortPrivateListAdd(uPortPrivateList_t **ppList, void *p)
 {
     if (ppList == NULL) {
         return false;
@@ -61,7 +61,7 @@ bool uPortPrivateListAdd(uPortPrivateList_t **ppList, void *ptr)
     if (pMember == NULL) {
         return false;
     }
-    pMember->ptr = ptr;
+    pMember->p = p;
     pMember->pNext = NULL;
     if (*ppList == NULL) {
         *ppList = pMember;
@@ -75,21 +75,21 @@ bool uPortPrivateListAdd(uPortPrivateList_t **ppList, void *ptr)
     return true;
 }
 
-uPortPrivateList_t *uPortPrivateListFind(uPortPrivateList_t **ppList, void *ptr)
+uPortPrivateList_t *uPortPrivateListFind(uPortPrivateList_t **ppList, void *p)
 {
     uPortPrivateList_t *p = *ppList;
-    while ((p != NULL) && (p->ptr != ptr)) {
+    while ((p != NULL) && (p->p != p)) {
         p = p->pNext;
     }
     return p;
 }
 
-bool uPortPrivateListRemove(uPortPrivateList_t **ppList, void *ptr)
+bool uPortPrivateListRemove(uPortPrivateList_t **ppList, void *p)
 {
     uPortPrivateList_t *pCurr = *ppList;
     uPortPrivateList_t *pPrev = pCurr;
     while ((pCurr != NULL)) {
-        if (pCurr->ptr == ptr) {
+        if (pCurr->p == p) {
             if (pCurr == *ppList) {
                 *ppList = pCurr->pNext;
             } else {
@@ -103,6 +103,5 @@ bool uPortPrivateListRemove(uPortPrivateList_t **ppList, void *ptr)
     }
     return false;
 }
-
 
 // End of file

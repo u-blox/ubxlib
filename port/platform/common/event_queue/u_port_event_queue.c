@@ -32,7 +32,7 @@
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
-#include "string.h"    // memcpy()
+#include "string.h"    // memcpy(), memset()
 
 #include "u_cfg_os_platform_specific.h"
 #include "u_error_common.h"
@@ -167,6 +167,9 @@ static int32_t eventQueueFree(uEventQueue_t *pEventQueue)
                             U_PORT_EVENT_QUEUE_CONTROL_OR_SIZE_LENGTH_BYTES);
 
     if (pControl != NULL) {
+        // Keep memory checkers (e.g. Valgrind) happy
+        memset(pControl, 0, pEventQueue->paramMaxLengthBytes +
+               U_PORT_EVENT_QUEUE_CONTROL_OR_SIZE_LENGTH_BYTES);
         *((uEventQueueControlOrSize_t *) pControl) = U_EVENT_CONTROL_EXIT_NOW;
         // Get the task to exit, persisting until it is done
         while (uPortQueueSend(pEventQueue->queue, pControl) != 0) {
@@ -411,6 +414,9 @@ int32_t uPortEventQueueSend(int32_t handle, const void *pParam,
             pBlock = (char *) pUPortMalloc(pEventQueue->paramMaxLengthBytes +
                                            U_PORT_EVENT_QUEUE_CONTROL_OR_SIZE_LENGTH_BYTES);
             if (pBlock != NULL) {
+                // Keep memory checkers (e.g. Valgrind) happy
+                memset(pBlock, 0, pEventQueue->paramMaxLengthBytes +
+                       U_PORT_EVENT_QUEUE_CONTROL_OR_SIZE_LENGTH_BYTES);
                 // Copy in the control word, which is actually just
                 // the size in this case
                 //lint -e(826) Suppress area too small; the size of pBlock is always

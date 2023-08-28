@@ -510,6 +510,8 @@ U_PORT_TEST_FUNCTION("[gnssMga]", "gnssMgaBasic")
     uGnssMgaTimeReference_t timeReference = {U_GNSS_MGA_EXT_INT_0, true, true};
     int32_t y;
     int32_t z;
+    bool a;
+    bool b;
     size_t iterations;
     uGnssTransportType_t transportTypes[U_GNSS_TRANSPORT_MAX_NUM];
     uDeviceHandle_t intermediateHandle = NULL;
@@ -562,18 +564,18 @@ U_PORT_TEST_FUNCTION("[gnssMga]", "gnssMgaBasic")
         uGnssSetUbxMessagePrint(gnssDevHandle, true);
 
         // Check that setting AssistNow Autonomous works
-        y = uGnssMgaAutonomousIsOn(gnssDevHandle);
-        U_TEST_PRINT_LINE("AssistNow Autonomous is initially %s.", y ? "on" : "off");
+        a = uGnssMgaAutonomousIsOn(gnssDevHandle);
+        U_TEST_PRINT_LINE("AssistNow Autonomous is initially %s.", a ? "on" : "off");
 #ifndef U_GNSS_MGA_TEST_ASSIST_NOW_AUTONOMOUS_NOT_SUPPORTED
-        U_PORT_TEST_ASSERT(uGnssMgaSetAutonomous(gnssDevHandle, !y) == 0);
-        z = uGnssMgaAutonomousIsOn(gnssDevHandle);
-        U_TEST_PRINT_LINE("AssistNow Autonomous is now %s.", z ? "on" : "off");
-        U_PORT_TEST_ASSERT(z != y);
+        U_PORT_TEST_ASSERT(uGnssMgaSetAutonomous(gnssDevHandle, !a) == 0);
+        b = uGnssMgaAutonomousIsOn(gnssDevHandle);
+        U_TEST_PRINT_LINE("AssistNow Autonomous is now %s.", b ? "on" : "off");
+        U_PORT_TEST_ASSERT(b != a);
         // Put it back
-        U_PORT_TEST_ASSERT(uGnssMgaSetAutonomous(gnssDevHandle, y) == 0);
-        z = uGnssMgaAutonomousIsOn(gnssDevHandle);
-        U_TEST_PRINT_LINE("AssistNow Autonomous is back to %s.", z ? "on" : "off");
-        U_PORT_TEST_ASSERT(z == y);
+        U_PORT_TEST_ASSERT(uGnssMgaSetAutonomous(gnssDevHandle, a) == 0);
+        b = uGnssMgaAutonomousIsOn(gnssDevHandle);
+        U_TEST_PRINT_LINE("AssistNow Autonomous is back to %s.", b ? "on" : "off");
+        U_PORT_TEST_ASSERT(b == a);
 #endif
 
         // And check that sending initialisation vales for time and position work

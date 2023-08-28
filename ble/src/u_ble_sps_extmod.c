@@ -408,7 +408,7 @@ static void dataCallback(int32_t handle, int32_t channel, uShortRangePbufList_t 
                     }
 
                     if (bufferWasEmtpy) {
-                        bleSpsEvent_t event;
+                        bleSpsEvent_t event = {0};
                         event.channel = channel;
                         event.pInstance = pInstance;
                         uPortEventQueueSend(gBleSpsEventQueue, &event, sizeof(event));

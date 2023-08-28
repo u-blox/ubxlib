@@ -1,0 +1,38 @@
+{
+  suppress not removing the mutex debug watchdog task: this should exist forever
+  Memcheck:Leak
+  match-leak-kinds: possible
+  fun:calloc
+  ...
+  fun:uPortTaskCreate
+  fun:uMutexDebugWatchdog
+  fun:appTask
+  fun:uPortPlatformStart
+  fun:main
+}
+{
+  suppress not removing the mutex that protects mutex debug: this should exist forever
+  Memcheck:Leak
+  match-leak-kinds: definite
+  fun:malloc
+  fun:pUPortMalloc
+  fun:_uPortMutexCreate
+  fun:uMutexDebugCreate
+  ...
+}
+{
+  the very first timer that is created results in a helper task being created that is never destroyed: ubxlib only runs any timers in the port tests, suppress the loss of stack there
+  Memcheck:Leak
+  match-leak-kinds: possible
+  ...
+  fun:allocate_stack
+  ...
+  fun:__start_helper_thread
+  fun:__pthread_once_slow
+  ...
+  fun:timer_create
+  fun:uPortTimerCreate
+  ...
+  fun:runFunction
+  ...
+}

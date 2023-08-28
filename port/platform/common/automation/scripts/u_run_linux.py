@@ -44,6 +44,28 @@ DEVICE_REDIRECTS = []
 # to the socat utility which does the redirection
 UART_BAUD_RATE = 115200
 
+# The start marker to use on a Valgrind print
+VALGRIND_START_MARKER = "VALGRIND SAYS:"
+
+# Regex to capture the start of a block of Valgrind output
+VALGRIND_REGEX = f"^==\\d+== {VALGRIND_START_MARKER}$"
+
+# The path to the valgrind suppression file
+VALGRIND_SUPPRESSION_PATH = f"{u_utils.UBXLIB_DIR}/port/platform/linux/valgrind.supp"
+
+# Used by native Linux when Valgrind is employed.
+# Note: valgrind_error_counter has to be a mutable object,
+# in this case a list, so that the callback can update it.
+def valgrind_callback(match, valgrind_error_counter, results, reporter):
+    '''Count up and highlight Valgrind issues'''
+    del match
+    del results
+    valgrind_error_counter[0] += 1
+    if reporter:
+        reporter.event(u_report.EVENT_TYPE_TEST,
+                       u_report.EVENT_ERROR,
+                       "possible memory problem flagged by Valgrind")
+
 def uart_to_device_list_create(u_flags, logger):
     '''Create a UART context by parsing u_flags'''
     uart_to_device_list = []
@@ -117,7 +139,7 @@ def uart_to_device_list_create(u_flags, logger):
 # This used by Zephyr-Linux, called-back by u_monitor.py once
 # it has captured the random UART-device-mappings that a
 # Zephyr-Linux executable tells us it has chosen.
-def callback(match, uart_to_device_list, results, reporter):
+def uart_to_device_callback(match, uart_to_device_list, results, reporter):
     '''Redirect a UART based on the match and the list of UARTs we care about'''
 
     del results
@@ -277,6 +299,7 @@ def run(ctx, instance, platform, board_name=DEFAULT_BOARD_NAME, build_dir=DEFAUL
     '''Build/run on Linux'''
     return_value = -1
     instance_text = u_utils.get_instance_text(instance)
+    valgrind_error_counter = [0]
 
     # "global" should be avoided, but we make an exception for the logger
     global U_LOG # pylint: disable=global-statement
@@ -311,7 +334,7 @@ def run(ctx, instance, platform, board_name=DEFAULT_BOARD_NAME, build_dir=DEFAUL
                     # to other devices, as defined by flags set in DATABASE.md.
                     uart_to_device_list = uart_to_device_list_create(defines, logger=U_LOG)
                     if uart_to_device_list:
-                        u_monitor.callback(callback, UART_TO_DEVICE_REGEX, uart_to_device_list)
+                        u_monitor.callback(uart_to_device_callback, UART_TO_DEVICE_REGEX, uart_to_device_list)
 
                     # Start the .exe and monitor what it spits out
                     try:
@@ -385,7 +408,29 @@ def run(ctx, instance, platform, board_name=DEFAULT_BOARD_NAME, build_dir=DEFAUL
                     # Start the .exe and monitor what it spits out
                     try:
                         # Start the executable and monitor what it spits out
-                        with u_utils.ExeRun([exe_path], logger=U_LOG) as process:
+                        call_list = [exe_path]
+                        if "U_CFG_TEST_USE_VALGRIND" in defines:
+                            call_list = ["valgrind"] + ["--leak-check=yes"] +          \
+                                        [f"--error-markers={VALGRIND_START_MARKER}"] + \
+                                        [f"--suppressions={VALGRIND_SUPPRESSION_PATH}"] + call_list
+
+                            # If you need Valgrind to suppress more errors, the best way
+                            # to go about that is to temporarily use the following line
+                            # to obtain the necessary suppression-file contents in the
+                            # log output.  You can then use that as a basis for adding
+                            # the correct suppressions to VALGRIND_SUPPRESSION_PATH
+                            #
+                            # call_list = ["valgrind"] + ["--leak-check=yes"] + \
+                            #             [f"--error-markers={VALGRIND_START_MARKER}"] + \
+                            #             ["--gen-suppressions=all"] +          \
+                            #             [f"--suppressions={VALGRIND_SUPPRESSION_PATH}"] + call_list
+                            #
+                            # Note: the Valgrind leak summary is emitted after the executable
+                            # has been sent SIGINT, at which point we are no longer monitoring
+                            # its output, hence no leak error will be flagged by this script
+                            # (though they will still be there in the logged output)
+                            u_monitor.callback(valgrind_callback, VALGRIND_REGEX, valgrind_error_counter)
+                        with u_utils.ExeRun(call_list, logger=U_LOG) as process:
                             return_value = u_monitor.main(process,
                                                           u_monitor.CONNECTION_PROCESS,
                                                           RUN_GUARD_TIME_SECONDS,
@@ -393,6 +438,7 @@ def run(ctx, instance, platform, board_name=DEFAULT_BOARD_NAME, build_dir=DEFAUL
                                                           None, instance,
                                                           ctx.reporter,
                                                           ctx.test_report)
+                            return_value += valgrind_error_counter[0]
                             if return_value == 0:
                                 ctx.reporter.event(u_report.EVENT_TYPE_TEST,
                                                    u_report.EVENT_COMPLETE)

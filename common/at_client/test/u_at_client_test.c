@@ -313,7 +313,10 @@ static bool atTimeoutIsObeyed(uAtClientHandle_t atClientHandle,
     y = uAtClientUnlock(atClientHandle);
     // Give consecutiveTimeoutCallback() chance
     // to complete
-    uPortTaskBlock(U_CFG_OS_YIELD_MS);
+    // Note: used to use U_CFG_OS_YIELD_MS here
+    // but on Raspbian Linux (Pi 4) 1 ms isn't
+    // always enough
+    uPortTaskBlock(10);
     if ((x < 0) && (y < 0) &&
         (gConsecutiveTimeout == consecutiveTimeouts + 1)) {
         duration = (int32_t) (uPortGetTickTimeMs() - startTime);
@@ -326,6 +329,8 @@ static bool atTimeoutIsObeyed(uAtClientHandle_t atClientHandle,
         }
     } else {
         U_TEST_PRINT_LINE("expected AT timeout error did not occur.");
+        U_TEST_PRINT_LINE("(x %d, y %d, consecutiveTimeouts was %d, gConsecutiveTimeout is now %d).",
+                          x, y, consecutiveTimeouts, gConsecutiveTimeout);
     }
 
     return success;

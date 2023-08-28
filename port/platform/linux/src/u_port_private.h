@@ -29,44 +29,51 @@ extern "C" {
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
-#ifndef U_PORT_MAX_NUM_TASKS
-/** The maximum number of tasks that can be created.
- */
-#define U_PORT_MAX_NUM_TASKS 64
-#endif
-
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
 
+/** Structure to hold a linked-list entry.
+ */
 typedef struct uPortPrivateList_t {
-    void *ptr;
+    void *p;
     struct uPortPrivateList_t *pNext;
 } uPortPrivateList_t;
 
 /* ----------------------------------------------------------------
- * FUNCTIONS: LIST OF POINTERS
+ * FUNCTIONS SPECIFIC TO THIS PORT, LIST OF POINTERS
  * -------------------------------------------------------------- */
 
-bool uPortPrivateListAdd(uPortPrivateList_t **ppList, void *ptr);
-
-uPortPrivateList_t *uPortPrivateListFind(uPortPrivateList_t **ppList, void *ptr);
-
-bool uPortPrivateListRemove(uPortPrivateList_t **ppList, void *ptr);
-
-/* ----------------------------------------------------------------
- * FUNCTIONS: MISC
- * -------------------------------------------------------------- */
-
-/** Initialise the private bits of the porting layer.
+/** Add an entry to a linked list.
  *
- * @return: zero on success else negative error code.
+ * @param[in] ppList  a pointer to the root of the linked list.
+ * @param[in] p       the entry to add to the linked list.
+ * @return            true if addition of the entry was successful,
+ *                    else false (for example if no memory was available
+ *                    for the linked-list container).
  */
-int32_t uPortPrivateInit(void);
+bool uPortPrivateListAdd(uPortPrivateList_t **ppList, void *p);
 
-/** Deinitialise the private bits of the porting layer.
+/** Find an entry in a linked list.
+ *
+ * @param[in] ppList  a pointer to the root of the linked list.
+ * @param[in] p       the entry to find.
+ * @return            a pointer to the linked list entry if p is found,
+ *                    else NULL.
  */
-void uPortPrivateDeinit(void);
+uPortPrivateList_t *uPortPrivateListFind(uPortPrivateList_t **ppList, void *p);
+
+/** Remove an entry from a linked list.
+ *
+ * @param[in] ppList  a pointer to the root of the linked list.
+ * @param[in] p       the entry to remove; note that the memory pointed
+ *                    to by p is not touched in any way: if the caller
+ *                    had allocated memory from the heap it is up to the
+ *                    caller to free that memory.
+ * @return            true if removal was successful, else false (for
+ *                    example if the entry could not be found in the list).
+ */
+bool uPortPrivateListRemove(uPortPrivateList_t **ppList, void *p);
 
 #ifdef __cplusplus
 }

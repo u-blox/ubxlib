@@ -403,6 +403,7 @@ static void UUHTTPCR_urc(uAtClientHandle_t atHandle, void *pParameter)
         if (pHttpInstance != NULL) {
             pCallback = (uCellHttpCallbackParameters_t *) pUPortMalloc(sizeof(*pCallback));
             if (pCallback != NULL) {
+                memset(pCallback, 0, sizeof(*pCallback)); // Keep Valgrind happy
                 // Note: eventQueueCallback() will free() pFileNameResponse.
                 //lint -esym(429, pFileNameResponse) Suppress pFileNameResponse not being free()ed here
                 //lint -esym(593, pFileNameResponse) Suppress pFileNameResponse not being free()ed here
