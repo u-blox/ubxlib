@@ -82,7 +82,7 @@ static i2cPendingDataInfo_t *findPendingData(pthread_t threadId,
 {
     uPortPrivateList_t *p = gpI2cPendingDataList;
     while (p != NULL) {
-        i2cPendingDataInfo_t *pI2cData = (i2cPendingDataInfo_t *)(p->ptr);
+        i2cPendingDataInfo_t *pI2cData = (i2cPendingDataInfo_t *)(p->p);
         if ((pI2cData->threadId == threadId) &&
             (pI2cData->handle == handle) &&
             ((address == 0) || (pI2cData->address == address))) {

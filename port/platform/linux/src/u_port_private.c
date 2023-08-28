@@ -77,11 +77,11 @@ bool uPortPrivateListAdd(uPortPrivateList_t **ppList, void *p)
 
 uPortPrivateList_t *uPortPrivateListFind(uPortPrivateList_t **ppList, void *p)
 {
-    uPortPrivateList_t *p = *ppList;
-    while ((p != NULL) && (p->p != p)) {
-        p = p->pNext;
+    uPortPrivateList_t *pList = *ppList;
+    while ((pList != NULL) && (pList->p != p)) {
+        pList = pList->pNext;
     }
-    return p;
+    return pList;
 }
 
 bool uPortPrivateListRemove(uPortPrivateList_t **ppList, void *p)

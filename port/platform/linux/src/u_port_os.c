@@ -227,7 +227,7 @@ int32_t suspendOrResumeAllTasks(bool suspend)
         uPortPrivateList_t *p = gpThreadList;
         // Signal all tasks to suspend.
         while ((errorCode == U_ERROR_COMMON_SUCCESS) && (p != NULL)) {
-            pthread_t threadId = (pthread_t)(p->ptr);
+            pthread_t threadId = (pthread_t)(p->p);
             if (threadId != pthread_self()) {
                 if (pthread_kill(threadId, SIGUSR1) != 0) {
                     errorCode = U_ERROR_COMMON_PLATFORM;
@@ -362,7 +362,7 @@ void uPortOsPrivateDeinit(void)
         // Tidy away the timers
         uPortPrivateList_t *p = gpTimerList;
         while (p != NULL) {
-            uPortTimer_t *pTimer = (uPortTimer_t *)(p->ptr);
+            uPortTimer_t *pTimer = (uPortTimer_t *)(p->p);
             uPortTimerDelete(pTimer);
             uPortPrivateList_t *pNext = p->pNext;
             uPortPrivateListRemove(&gpTimerList, p);

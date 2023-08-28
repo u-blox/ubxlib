@@ -212,7 +212,7 @@ static uPortUartPrefix_t *findPrefix(pthread_t threadId)
 {
     uPortPrivateList_t *p = gpUartPrefixList;
     while (p != NULL) {
-        uPortUartPrefix_t *pUartPrefix = (uPortUartPrefix_t *)(p->ptr);
+        uPortUartPrefix_t *pUartPrefix = (uPortUartPrefix_t *)(p->p);
         if (pUartPrefix->threadId == threadId) {
             return pUartPrefix;
         }
@@ -225,7 +225,7 @@ static uPortUartData_t *findUart(int32_t handle)
 {
     uPortPrivateList_t *p = gpUartList;
     while (p != NULL) {
-        uPortUartData_t *pUart = (uPortUartData_t *)(p->ptr);
+        uPortUartData_t *pUart = (uPortUartData_t *)(p->p);
         if (pUart->uartFd == handle) {
             return pUart;
         }
@@ -326,14 +326,14 @@ void uPortUartDeinit()
         // First, mark all instances for deletion
         uPortPrivateList_t *pList = gpUartList;
         while (pList != NULL) {
-            uPortUartData_t *pUart = (uPortUartData_t *)(pList->ptr);
+            uPortUartData_t *pUart = (uPortUartData_t *)(pList->p);
             pUart->markedForDeletion = true;
             pList = pList->pNext;
         }
 
         // Remove any UART prefixes
         while (gpUartPrefixList != NULL) {
-            uPortUartPrefix_t *pUartPrefix = (uPortUartPrefix_t *)(gpUartPrefixList->ptr);
+            uPortUartPrefix_t *pUartPrefix = (uPortUartPrefix_t *)(gpUartPrefixList->p);
             uPortFree(pUartPrefix);
             uPortPrivateListRemove(&gpUartPrefixList, pUartPrefix);
         }
@@ -343,7 +343,7 @@ void uPortUartDeinit()
 
         // Now remove all existing uarts
         while (gpUartList != NULL) {
-            uPortUartData_t *pUart = (uPortUartData_t *)(gpUartList->ptr);
+            uPortUartData_t *pUart = (uPortUartData_t *)(gpUartList->p);
             disposeUartData(pUart);
         }
         // Delete the mutex
