@@ -83,6 +83,9 @@ common/utils/test/u_utils_test_ringbuffer.c
 common/http_client/test/u_http_client_test.c
 port/test/u_port_test.c
 port/platform/common/test/u_preamble_test.c
+port/platform/common/test/u_postamble_test.c
+port/platform/common/test/u_cleanup_test.c
+port/platform/common/test_util/u_test_util_resource_check.c
 # Note: it is deliberate that u_runner.c is here but 
 # port/platform/common/runner is in "include.txt"
 # and NOT just in "include_test.txt": the header file

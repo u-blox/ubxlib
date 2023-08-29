@@ -112,6 +112,45 @@
 #define U_PTR_TO_INT32(p) (int32_t)((uintptr_t)p)
 #define U_INT32_TO_PTR(i) (void *)((uintptr_t)i)
 
+/** U_ATOMIC_GET: return the value of a variable atomically.
+ */
+#ifdef _MSC_VER
+/** Microsoft Visual C++ definition; fetches (of volatiles) are
+ * atomic on x86_64.
+ */
+# define U_ATOMIC_GET(pPtr) *pPtr
+#else
+/** Default (GCC) definition.
+ */
+#define U_ATOMIC_GET(pPtr) __atomic_load_n(pPtr, __ATOMIC_SEQ_CST)
+#endif
+
+/** U_ATOMIC_INCREMENT: increment a variable atomically and return
+ * its new value.
+ */
+#ifdef _MSC_VER
+/** Microsoft Visual C++ definition; requires inclusion of windows.h.
+ */
+# define U_ATOMIC_INCREMENT(pPtr) InterlockedIncrement(pPtr)
+#else
+/** Default (GCC) definition.
+ */
+#define U_ATOMIC_INCREMENT(pPtr) __atomic_fetch_add(pPtr, 1, __ATOMIC_SEQ_CST)
+#endif
+
+/** U_ATOMIC_DECREMENT: decrement a variable atomically and return
+ * its new value.
+ */
+#ifdef _MSC_VER
+/** Microsoft Visual C++ definition; requires inclusion of windows.h.
+ */
+# define U_ATOMIC_DECREMENT(pPtr) InterlockedDecrement(pPtr)
+#else
+/** Default (GCC) definition.
+ */
+#define U_ATOMIC_DECREMENT(pPtr) __atomic_fetch_sub(pPtr, 1, __ATOMIC_SEQ_CST)
+#endif
+
 /** @}*/
 
 #endif // _U_COMPILER_H_

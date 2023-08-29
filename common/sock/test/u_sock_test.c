@@ -58,8 +58,12 @@
 #include "u_port_debug.h"
 #include "u_port_event_queue.h"
 
+#include "u_test_util_resource_check.h"
+
 #include "u_network.h"                  // In order to provide a comms
 #include "u_network_test_shared_cfg.h"  // path for the socket
+
+#include "u_security_tls.h" // For uSecurityTlsCleanUp()
 
 #include "u_sock_errno.h" // For U_SOCK_EWOULDBLOCK
 #include "u_sock.h"
@@ -899,6 +903,8 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAddressStrings")
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 /** Basic UDP test.
@@ -2766,7 +2772,7 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAsyncTcpEcho")
  */
 U_PORT_TEST_FUNCTION("[sock]", "sockCleanUp")
 {
-    int32_t y;
+    U_TEST_PRINT_LINE("cleaning up any outstanding resources.\n");
 
     osCleanup();
 
@@ -2775,23 +2781,18 @@ U_PORT_TEST_FUNCTION("[sock]", "sockCleanUp")
     // so must reset the handles here in case the
     // tests of one of the other APIs are coming next.
     uNetworkTestCleanUp();
+
+    uSockCleanUp();
+    // Clean-up the sockets thread-safety mutexes and the TLS
+    // security mutex; an application wouldn't normally,
+    // do this, we only do it here to make the sums add up
+    uSockFree();
+    uSecurityTlsCleanUp();
+
     uDeviceDeinit();
-
-    y = uPortTaskStackMinFree(NULL);
-    if (y != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-        U_TEST_PRINT_LINE("main task stack had a minimum of %d byte(s)"
-                          " free at the end of these tests.", y);
-        U_PORT_TEST_ASSERT(y >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
-    }
-
     uPortDeinit();
-
-    y = uPortGetHeapMinFree();
-    if (y >= 0) {
-        U_TEST_PRINT_LINE("heap had a minimum of %d byte(s) free"
-                          " at the end of these tests.", y);
-        U_PORT_TEST_ASSERT(y >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
-    }
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 // End of file

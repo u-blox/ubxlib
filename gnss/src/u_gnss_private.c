@@ -1772,8 +1772,7 @@ void uGnssPrivateStopMsgReceive(uGnssPrivateInstance_t *pInstance)
             pMsgReceive->pReaderList = pNext;
         }
 
-        // Free all OS resources
-        uPortTaskDelete(pMsgReceive->taskHandle);
+        // Free all the other OS resources
         uPortMutexDelete(pMsgReceive->taskRunningMutexHandle);
         uPortQueueDelete(pMsgReceive->taskExitQueueHandle);
         uPortMutexDelete(pMsgReceive->readerMutexHandle);

@@ -50,6 +50,8 @@
 #include "u_port_debug.h"
 #include "u_port_uart.h"
 
+#include "u_test_util_resource_check.h"
+
 #include "u_at_client.h"
 
 #include "u_cell_module_type.h"
@@ -481,6 +483,8 @@ U_PORT_TEST_FUNCTION("[cellSecTls]", "cellSecTlsSettings")
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 /** Clean-up to be run at the end of this round of tests, just
@@ -489,19 +493,10 @@ U_PORT_TEST_FUNCTION("[cellSecTls]", "cellSecTlsSettings")
  */
 U_PORT_TEST_FUNCTION("[cellSecTls]", "cellSecTlsCleanUp")
 {
-    int32_t minFreeStackBytes;
-
     uCellTestPrivateCleanup(&gHandles);
-
-    minFreeStackBytes = uPortTaskStackMinFree(NULL);
-    if (minFreeStackBytes != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-        U_TEST_PRINT_LINE("main task stack had a minimum of %d byte(s)"
-                          " free at the end of these tests.", minFreeStackBytes);
-        U_PORT_TEST_ASSERT(minFreeStackBytes >=
-                           U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
-    }
-
     uPortDeinit();
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 #endif // #ifdef U_CFG_TEST_CELL_MODULE_TYPE

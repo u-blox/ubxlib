@@ -305,6 +305,15 @@ int32_t uPortI2cControllerSend(int32_t handle, uint16_t address,
                                const char *pSend, size_t bytesToSend,
                                bool noStop);
 
+/** Get the number of I2C interfaces currently open; this may be used
+ * as a basic check for heap monitoring.
+ *
+ * You do not need to implement this function: where it is not
+ * implemented a #U_WEAK implementation provided in u_port_resource.c will
+ * return zero.
+ */
+int32_t uPortI2cResourceAllocCount();
+
 #ifdef __cplusplus
 }
 #endif

@@ -78,20 +78,19 @@
 #include "signal.h"
 #include "errno.h"
 
-
 #include "u_cfg_sw.h"
 #include "u_cfg_os_platform_specific.h"
-#include "u_port_os.h"
-#include "u_port_heap.h"
+#include "u_compiler.h" // U_ATOMIC_XXX() macros
 
 #include "u_error_common.h"
 
 #include "u_port_clib_platform_specific.h" /* Integer stdio, must be included
                                               before the other port files if
                                               any print or scan function is used. */
-#include "u_port_debug.h"
-#include "u_port.h"
 #include "u_port_os.h"
+#include "u_port_heap.h"
+#include "u_port_debug.h"
+
 #include "u_port_os_private.h"
 #include "u_port_private.h"
 
@@ -169,8 +168,10 @@ uPortPrivateList_t *gpTimerList = NULL;
 // ** However this function is now disabled by default due to problems when
 // interrupting things like uart reads.
 // Can be enabled via U_PORT_LINUX_ENABLE_CRITICAL_SECTIONS
-
 uPortMutexHandle_t gMutexCriticalSection = NULL;
+
+// Variable to keep track of OS resource usage.
+static int32_t gResourceAllocCount = 0;
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -192,7 +193,7 @@ static void msToTimeSpec(int32_t ms, struct timespec *t, bool fromNow)
     }
 }
 
-void threadSignalCallback(int sig)
+static void threadSignalCallback(int sig)
 {
     // Blocked wait for mutex when signal received.
     MTX_FN(uPortMutexLock(gMutexCriticalSection));
@@ -217,8 +218,9 @@ static void *taskProc(void *pParam)
     return NULL;
 }
 
+#ifdef U_PORT_LINUX_ENABLE_CRITICAL_SECTIONS
 // Suspend or resume all tasks but the current.
-int32_t suspendOrResumeAllTasks(bool suspend)
+static int32_t suspendOrResumeAllTasks(bool suspend)
 {
     uErrorCode_t errorCode = errorCode = U_ERROR_COMMON_SUCCESS;
     MTX_FN(uPortMutexLock(gMutexThread));
@@ -242,6 +244,7 @@ int32_t suspendOrResumeAllTasks(bool suspend)
     uPortTaskBlock(100);
     return errorCode;
 }
+#endif
 
 // Posix timer callback function in required format.
 static void timerCallback(union sigval sv)
@@ -440,6 +443,8 @@ int32_t uPortTaskCreate(void (*pFunction)(void *),
             MTX_FN(uPortMutexLock(gMutexThread));
             uPortPrivateListAdd(&gpThreadList, (void *)threadId);
             MTX_FN(uPortMutexUnlock(gMutexThread));
+            U_ATOMIC_INCREMENT(&gResourceAllocCount);
+            U_PORT_OS_DEBUG_PRINT_TASK_CREATE(*pTaskHandle, pName, stackSizeBytes, priority);
         }
     }
     return (int32_t)errorCode;
@@ -455,6 +460,8 @@ int32_t uPortTaskDelete(const uPortTaskHandle_t taskHandle)
     pthread_t tread = taskHandle == NULL ? pthread_self() : (pthread_t)taskHandle;
     if (pthread_cancel(tread) == 0) {
         errorCode = U_ERROR_COMMON_SUCCESS;
+        U_ATOMIC_DECREMENT(&gResourceAllocCount);
+        U_PORT_OS_DEBUG_PRINT_TASK_DELETE(tread);
     }
     MTX_FN(uPortMutexLock(gMutexThread));
     uPortPrivateListRemove(&gpThreadList, (void *)tread);
@@ -521,6 +528,8 @@ int32_t uPortQueueCreate(size_t queueLength,
                         pQueue->readCount = 0;
                         *pQueueHandle = pQueue;
                         errorCode = U_ERROR_COMMON_SUCCESS;
+                        U_ATOMIC_INCREMENT(&gResourceAllocCount);
+                        U_PORT_OS_DEBUG_PRINT_QUEUE_CREATE(*pQueueHandle, queueLength, itemSizeBytes);
                     }
                 } else {
                     MTX_FN(uPortMutexDelete(mutex));
@@ -544,6 +553,8 @@ int32_t uPortQueueDelete(const uPortQueueHandle_t queueHandle)
         uPortSemaphoreDelete(pQueue->semHandle);
         uPortFree(pQueue);
         errorCode = U_ERROR_COMMON_SUCCESS;
+        U_ATOMIC_DECREMENT(&gResourceAllocCount);
+        U_PORT_OS_DEBUG_PRINT_QUEUE_DELETE(queueHandle);
     }
     return (int32_t)errorCode;
 }
@@ -656,6 +667,8 @@ int32_t MTX_FN(uPortMutexCreate(uPortMutexHandle_t *pMutexHandle))
             if (pthread_mutex_init(pMutex, NULL) == 0) {
                 *pMutexHandle = pMutex;
                 errorCode = U_ERROR_COMMON_SUCCESS;
+                U_ATOMIC_INCREMENT(&gResourceAllocCount);
+                U_PORT_OS_DEBUG_PRINT_MUTEX_CREATE(*pMutexHandle);
             }
         }
     }
@@ -671,6 +684,8 @@ int32_t MTX_FN(uPortMutexDelete(const uPortMutexHandle_t mutexHandle))
         if (pthread_mutex_destroy((pthread_mutex_t *)mutexHandle) == 0) {
             errorCode = U_ERROR_COMMON_SUCCESS;
             uPortFree(mutexHandle);
+            U_ATOMIC_DECREMENT(&gResourceAllocCount);
+            U_PORT_OS_DEBUG_PRINT_MUTEX_DELETE(mutexHandle);
         }
     }
     return (int32_t)errorCode;
@@ -754,6 +769,8 @@ int32_t uPortSemaphoreCreate(uPortSemaphoreHandle_t *pSemaphoreHandle,
                 pSemaphore->limit = limit;
                 *pSemaphoreHandle = pSemaphore;
                 errorCode = U_ERROR_COMMON_SUCCESS;
+                U_ATOMIC_INCREMENT(&gResourceAllocCount);
+                U_PORT_OS_DEBUG_PRINT_SEMAPHORE_CREATE(*pSemaphoreHandle, initialCount, limit);
             } else {
                 uPortFree(pSemaphore);
             }
@@ -772,6 +789,8 @@ int32_t uPortSemaphoreDelete(const uPortSemaphoreHandle_t semaphoreHandle)
         if (sem_destroy(&pSemaphore->semaphore) == 0) {
             errorCode = U_ERROR_COMMON_SUCCESS;
             uPortFree(semaphoreHandle);
+            U_ATOMIC_DECREMENT(&gResourceAllocCount);
+            U_PORT_OS_DEBUG_PRINT_SEMAPHORE_DELETE(semaphoreHandle);
         }
     }
     return (int32_t)errorCode;
@@ -881,6 +900,8 @@ int32_t uPortTimerCreate(uPortTimerHandle_t *pTimerHandle,
             if (timer_create(CLOCK_REALTIME, &sev, &(pTimer->timerId)) == 0) {
                 *pTimerHandle = (uPortTimerHandle_t *)pTimer;
                 errorCode = U_ERROR_COMMON_SUCCESS;
+                U_ATOMIC_INCREMENT(&gResourceAllocCount);
+                U_PORT_OS_DEBUG_PRINT_TIMER_CREATE(*pTimerHandle, pName, intervalMs, periodic);
             } else {
                 uPortFree(pTimer);
             }
@@ -899,6 +920,8 @@ int32_t uPortTimerDelete(const uPortTimerHandle_t timerHandle)
         if (timer_delete(pTimer->timerId) == 0) {
             uPortFree(pTimer);
             errorCode = U_ERROR_COMMON_SUCCESS;
+            U_ATOMIC_DECREMENT(&gResourceAllocCount);
+            U_PORT_OS_DEBUG_PRINT_TIMER_DELETE(timerHandle);
         }
     }
     return (int32_t)errorCode;
@@ -965,6 +988,16 @@ void uPortExitCritical()
 #ifdef U_PORT_LINUX_ENABLE_CRITICAL_SECTIONS
     suspendOrResumeAllTasks(false);
 #endif
+}
+
+/* ----------------------------------------------------------------
+ * FUNCTIONS: DEBUGGING/MONITORING
+ * -------------------------------------------------------------- */
+
+// Get the number of OS resources currently allocated.
+int32_t uPortOsResourceAllocCount()
+{
+    return U_ATOMIC_GET(&gResourceAllocCount);
 }
 
 // End of file

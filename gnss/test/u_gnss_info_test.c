@@ -55,6 +55,8 @@
 #include "u_port_debug.h"
 #include "u_port_uart.h"
 
+#include "u_test_util_resource_check.h"
+
 #include "u_gnss_module_type.h"
 #include "u_gnss_type.h"
 #include "u_gnss.h"
@@ -244,6 +246,8 @@ U_PORT_TEST_FUNCTION("[gnssInfo]", "gnssInfoStatic")
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 /** Read time from GNSS.
@@ -314,6 +318,8 @@ U_PORT_TEST_FUNCTION("[gnssInfo]", "gnssInfoTime")
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 #endif // #ifdef U_CFG_TEST_GNSS_MODULE_TYPE

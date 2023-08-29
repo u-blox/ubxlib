@@ -52,6 +52,8 @@
 #include "u_port_debug.h"
 #endif
 
+#include "u_test_util_resource_check.h"
+
 #ifdef U_CFG_TEST_SHORT_RANGE_MODULE_TYPE
 #include "u_ble_sps.h"
 #include "u_short_range_private.h"
@@ -123,6 +125,8 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeInitialisation")
     uAtClientDeinit();
     uPortDeinit();
     resetGlobals();
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 #ifdef U_CFG_TEST_SHORT_RANGE_MODULE_TYPE
@@ -203,6 +207,8 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeOpenUart")
 #else
     (void) heapUsed;
 #endif
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 /** Short range set baudrate UART test.
@@ -259,6 +265,8 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeUartSetBaudrate")
     }
     uShortRangeTestPrivateCleanup(&gHandles);
     U_TEST_PRINT_LINE("shortRangeUartSetBaudrate succeded.");
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeMemFullRecovery")
@@ -322,6 +330,8 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeMemFullRecovery")
     uPortFree(pBuffer3);
     uShortRangeTestPrivateCleanup(&gHandles);
     U_TEST_PRINT_LINE("shortRangeMemFullRecovery() succeded.");
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 #if defined(U_CFG_APP_PIN_SHORT_RANGE_RESET_TO_DEFAULTS) && (U_CFG_APP_PIN_SHORT_RANGE_RESET_TO_DEFAULTS >= 0)
@@ -389,6 +399,8 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeResetToDefaultSettings")
     uShortRangeTestPrivateCleanup(&gHandles);
 
     U_TEST_PRINT_LINE("shortRangeResetToDefaultSettings() succeded.");
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 #endif // #if U_CFG_APP_PIN_SHORT_RANGE_RESET_TO_DEFAULTS >= 0
@@ -400,6 +412,8 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeResetToDefaultSettings")
 U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeCleanUp")
 {
     uShortRangeTestPrivateCleanup(&gHandles);
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 #endif

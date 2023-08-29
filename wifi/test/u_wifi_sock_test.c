@@ -57,6 +57,8 @@
 #include "u_port_debug.h"
 #include "u_port_uart.h"
 
+#include "u_test_util_resource_check.h"
+
 #include "u_sock.h"
 
 #include "u_at_client.h"
@@ -619,6 +621,8 @@ U_PORT_TEST_FUNCTION("[wifiSock]", "wifiSockTCPTest")
 #else
     (void) heapUsed;
 #endif
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 U_PORT_TEST_FUNCTION("[wifiSock]", "wifiSockUDPTest")
@@ -806,8 +810,20 @@ U_PORT_TEST_FUNCTION("[wifiSock]", "wifiSockUDPTest")
 #else
     (void) heapUsed;
 #endif
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
+/** Clean-up to be run at the end of this round of tests, just
+ * in case there were test failures which would have resulted
+ * in the deinitialisation being skipped.
+ */
+U_PORT_TEST_FUNCTION("[wifi]", "wifiSockCleanUp")
+{
+    uWifiTestPrivateCleanup(&gHandles);
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+}
 
 #endif // U_SHORT_RANGE_TEST_WIFI()
 

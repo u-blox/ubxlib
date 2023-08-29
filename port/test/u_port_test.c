@@ -70,7 +70,10 @@
 #include "u_port_crypto.h"
 #include "u_port_event_queue.h"
 #include "u_error_common.h"
+
 #include "u_assert.h"
+
+#include "u_test_util_resource_check.h"
 
 #ifdef CONFIG_IRQ_OFFLOAD
 # include <irq_offload.h> // To test semaphore from ISR in zephyr
@@ -101,7 +104,7 @@
 /** On some OSes it is possible to delete a task from another task,
  * so we can check that.
  */
-#define U_PORT_TEST_DELETE_OTHER_TASK
+# define U_PORT_TEST_DELETE_OTHER_TASK
 #endif
 
 /** The queue length to create during testing.
@@ -1344,6 +1347,8 @@ U_PORT_TEST_FUNCTION("[port]", "portInitialisation")
 {
     U_PORT_TEST_ASSERT(uPortInit() == 0);
     uPortDeinit();
+    // Printed for information: asserting happens at the end
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 /** Test that the C stdlib functions are re-entrant.
@@ -1501,6 +1506,8 @@ U_PORT_TEST_FUNCTION("[port]", "portRentrancy")
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT((heapUsed < 0) ||
                        (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
+    // Printed for information: asserting happens at the end
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 /** Test all the normal OS stuff.
@@ -1691,6 +1698,8 @@ U_PORT_TEST_FUNCTION("[port]", "portOs")
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT((heapUsed < 0) ||
                        (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
+    // Printed for information: asserting happens at the end
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 static void osTestTaskSemaphoreGive(void *pParameters)
@@ -1887,6 +1896,8 @@ U_PORT_TEST_FUNCTION("[port]", "portOsSemaphore")
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT((heapUsed < 0) ||
                        (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
+    // Printed for information: asserting happens at the end
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 #if (U_CFG_TEST_UART_A >= 0) && defined(U_PORT_TEST_CHECK_TIME_TAKEN)
@@ -2004,6 +2015,8 @@ U_PORT_TEST_FUNCTION("[port]", "portOsExtended")
 # else
     (void) heapUsed;
 # endif
+    // Printed for information: asserting happens at the end
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 #endif
 
@@ -2027,6 +2040,8 @@ U_PORT_TEST_FUNCTION("[port]", "portOsBlock")
                       U_PORT_TEST_OS_BLOCK_TIME_MS / 1000);
 
     uPortDeinit();
+    // Printed for information: asserting happens at the end
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 #endif
 
@@ -2227,6 +2242,8 @@ U_PORT_TEST_FUNCTION("[port]", "portEventQueue")
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT((heapUsed < 0) ||
                        (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
+    // Printed for information: asserting happens at the end
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 /** Test heap API.
@@ -2304,6 +2321,8 @@ U_PORT_TEST_FUNCTION("[port]", "portHeap")
     // Remove the assert hook
     uAssertHookSet(NULL);
     uPortDeinit();
+    // Printed for information: asserting happens at the end
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 /** Test: strtok_r since we have our own implementation on
@@ -2368,6 +2387,8 @@ U_PORT_TEST_FUNCTION("[port]", "portStrtok_r")
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
+    // Printed for information: asserting happens at the end
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 /** Test: mktime64().
@@ -2399,6 +2420,8 @@ U_PORT_TEST_FUNCTION("[port]", "portMktime64")
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
+    // Printed for information: asserting happens at the end
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 /** Test: gmtime_r().
@@ -2442,6 +2465,8 @@ U_PORT_TEST_FUNCTION("[port]", "portGmtime_r")
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
+    // Printed for information: asserting happens at the end
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 /** Test: uPortGetTimezoneOffsetSeconds().
@@ -2498,6 +2523,8 @@ U_PORT_TEST_FUNCTION("[port]", "portGetTimezoneOffsetSeconds")
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
+    // Printed for information: asserting happens at the end
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 #if (U_CFG_TEST_PIN_A >= 0) && (U_CFG_TEST_PIN_B >= 0) && \
@@ -2632,6 +2659,8 @@ U_PORT_TEST_FUNCTION("[port]", "portGpioRequiresSpecificWiring")
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
+    // Printed for information: asserting happens at the end
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 #endif
 
@@ -2693,6 +2722,8 @@ U_PORT_TEST_FUNCTION("[port]", "portUartRequiresSpecificWiring")
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT((heapUsed < 0) ||
                        (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
+    // Printed for information: asserting happens at the end
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 #endif
 
@@ -2953,6 +2984,8 @@ U_PORT_TEST_FUNCTION("[port]", "portI2cRequiresSpecificWiring")
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT((heapUsed < 0) ||
                        (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
+    // Printed for information: asserting happens at the end
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 #endif
 
@@ -3146,6 +3179,8 @@ U_PORT_TEST_FUNCTION("[port]", "portSpiRequiresSpecificWiring")
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT((heapUsed < 0) ||
                        (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
+    // Printed for information: asserting happens at the end
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 #endif
 
@@ -3231,6 +3266,8 @@ U_PORT_TEST_FUNCTION("[port]", "portCrypto")
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
+    // Printed for information: asserting happens at the end
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 /** Test timers.
@@ -3362,6 +3399,8 @@ U_PORT_TEST_FUNCTION("[port]", "portTimers")
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
+    // Printed for information: asserting happens at the end
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 /** Test critical sections.
@@ -3463,6 +3502,7 @@ U_PORT_TEST_FUNCTION("[port]", "portCriticalSection")
     // Allow time for the idle task to clean up the task
     uPortTaskBlock(1000);
     // Now it can be deleted
+    U_PORT_TEST_ASSERT(uPortMutexUnlock(gMutexHandle) == 0);
     uPortMutexDelete(gMutexHandle);
     gMutexHandle = NULL;
 
@@ -3474,6 +3514,8 @@ U_PORT_TEST_FUNCTION("[port]", "portCriticalSection")
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
+    // Printed for information: asserting happens at the end
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 /** Clean-up to be run at the end of this round of tests, just
@@ -3482,20 +3524,14 @@ U_PORT_TEST_FUNCTION("[port]", "portCriticalSection")
  */
 U_PORT_TEST_FUNCTION("[port]", "portCleanUp")
 {
-    int32_t x;
-
-    x = uPortTaskStackMinFree(NULL);
-    if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-        U_TEST_PRINT_LINE("main task stack had a minimum of %d byte(s)"
-                          " free at the end of these tests.", x);
-        U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
-    }
 
 #if (U_CFG_APP_GNSS_I2C >= 0)
     if (gI2cHandle >= 0) {
-        // Make sure to do bus recovery so as not to upset
+        // Do bus recovery where possible so as not to upset
         // any subsequent tests that use I2C
-        uPortI2cCloseRecoverBus(gI2cHandle);
+        if (uPortI2cCloseRecoverBus(gI2cHandle) == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
+            uPortI2cClose(gI2cHandle);
+        }
     }
     uPortI2cDeinit();
     uPortFree(gpI2cBuffer);
@@ -3513,12 +3549,9 @@ U_PORT_TEST_FUNCTION("[port]", "portCleanUp")
 
     uPortDeinit();
 
-    x = uPortGetHeapMinFree();
-    if (x >= 0) {
-        U_TEST_PRINT_LINE("heap had a minimum of %d byte(s) free"
-                          " at the end of these tests.", x);
-        U_PORT_TEST_ASSERT(x >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
-    }
+    U_PORT_TEST_ASSERT(uTestUtilResourceCheck(U_TEST_PREFIX,
+                                              U_TEST_UTIL_RESOURCE_CHECK_ERROR_MARKER,
+                                              true));
 }
 
 // End of file

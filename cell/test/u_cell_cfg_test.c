@@ -54,6 +54,8 @@
 #include "u_port_debug.h"
 #include "u_port_uart.h"
 
+#include "u_test_util_resource_check.h"
+
 #include "u_at_client.h"
 
 #include "u_cell_module_type.h"
@@ -311,6 +313,8 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgBandMask")
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 /** Test getting/setting RAT.
@@ -394,6 +398,8 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgGetSetRat")
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 /** Test getting/setting RAT at a rank.
@@ -641,6 +647,8 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgSetGetRatRank")
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 /** Test getting/setting MNO profile.
@@ -743,6 +751,8 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgGetSetMnoProfile")
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 /** Test UDCONF.
@@ -796,6 +806,8 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgUdconf")
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 /** Test setting auto-bauding off and on.
@@ -867,6 +879,8 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgAutoBaud")
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 /** Test greeting message.
@@ -988,6 +1002,8 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgGreeting")
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 /** Test setting GNSS profile.
@@ -1061,6 +1077,8 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgGnssProfile")
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 /** Test setting time.
@@ -1143,6 +1161,8 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgTime")
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 /** Clean-up to be run at the end of this round of tests, just
@@ -1151,8 +1171,6 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgTime")
  */
 U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgCleanUp")
 {
-    int32_t x;
-
     if ((gHandles.cellHandle != NULL) && (gGnssProfileBitMapOriginal >= 0)) {
         // Make sure that the value that ends up in the GNSS profile
         // does NOT include a server name as that causes confusion
@@ -1163,22 +1181,9 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgCleanUp")
     }
 
     uCellTestPrivateCleanup(&gHandles);
-
-    x = uPortTaskStackMinFree(NULL);
-    if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-        U_TEST_PRINT_LINE("main task stack had a minimum of %d"
-                          " byte(s) free at the end of these tests.", x);
-        U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
-    }
-
     uPortDeinit();
-
-    x = uPortGetHeapMinFree();
-    if (x >= 0) {
-        U_TEST_PRINT_LINE("heap had a minimum of %d byte(s) free"
-                          " at the end of these tests.", x);
-        U_PORT_TEST_ASSERT(x >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
-    }
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 #endif // #ifdef U_CFG_TEST_CELL_MODULE_TYPE

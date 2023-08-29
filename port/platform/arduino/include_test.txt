@@ -19,6 +19,7 @@ common/http_client/test
 common/ubx_protocol/test
 common/spartn/test
 port/test
+port/platform/common/test_util
 
 # There is a single header file in this example which usually doesn't
 # need to be mentioned since it is in the same directory as the

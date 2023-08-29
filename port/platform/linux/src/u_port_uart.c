@@ -38,6 +38,8 @@
 #include "u_error_common.h"
 
 #include "u_cfg_os_platform_specific.h"
+#include "u_compiler.h" // U_ATOMIC_XXX() macros
+
 #include "u_port_clib_platform_specific.h" /* Integer stdio, must be included
                                               before the other port files if
                                               any print or scan function is used. */
@@ -121,6 +123,10 @@ static uPortPrivateList_t *gpUartList = NULL;
 /** Root of linked list of UART prefixes.
  */
 static uPortPrivateList_t *gpUartPrefixList = NULL;
+
+/** Variable to keep track of the number of UARTs open.
+ */
+static volatile int32_t gResourceAllocCount = 0;
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -257,6 +263,7 @@ static void disposeUartData(uPortUartData_t *p)
             uPortMutexDelete(p->mutex);
         }
         uPortFree(p);
+        U_ATOMIC_DECREMENT(&gResourceAllocCount);
     }
 }
 
@@ -490,6 +497,7 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
     U_PORT_MUTEX_LOCK(gMutex);
     uPortPrivateListAdd(&gpUartList, (void *)pUartData);
     U_PORT_MUTEX_UNLOCK(gMutex);
+    U_ATOMIC_INCREMENT(&gResourceAllocCount);
     return (int32_t)(pUartData->uartFd);
 }
 
@@ -820,6 +828,12 @@ int32_t uPortUartCtsSuspend(int32_t handle)
 void uPortUartCtsResume(int32_t handle)
 {
     suspendResumeUartHwHandshake(handle, true);
+}
+
+// Get the number of UART interfaces currently open.
+int32_t uPortUartResourceAllocCount()
+{
+    return U_ATOMIC_GET(&gResourceAllocCount);
 }
 
 // End of file

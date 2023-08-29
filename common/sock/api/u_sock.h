@@ -791,7 +791,6 @@ int32_t uSockGetLocalAddress(uSockDescriptor_t descriptor,
 int32_t uSockGetHostByName(uDeviceHandle_t devHandle, const char *pHostName,
                            uSockIpAddress_t *pHostIpAddress);
 
-
 /* ----------------------------------------------------------------
  * FUNCTIONS: ADDRESS CONVERSION
  * -------------------------------------------------------------- */
@@ -873,6 +872,18 @@ int32_t uSockDomainGetPort(char *pDomainString);
  *                      modified domain name.
  */
 char *pUSockDomainRemovePort(char *pDomainString);
+
+/* ----------------------------------------------------------------
+ * FUNCTIONS: FOR INTERNAL USE ONLY
+ * -------------------------------------------------------------- */
+
+/** Internally, the sockets code sets up a couple of mutexes that
+ * are intended never to be free'd, for thread-safe operation.
+ * This function is used by the ubxlib test code to free those
+ * mutexes, when it is known to be safe to do so, in order to
+ * make the memory sums add up, or minus down.
+ */
+void uSockFree();
 
 #ifdef __cplusplus
 }

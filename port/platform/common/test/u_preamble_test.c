@@ -58,6 +58,8 @@
 #include "u_port_i2c.h"
 #include "u_port_crypto.h"
 
+#include "u_test_util_resource_check.h"
+
 #ifdef U_CFG_TEST_CELL_MODULE_TYPE
 # include "u_cell_module_type.h"
 # include "u_cell_test_preamble.h"
@@ -258,6 +260,8 @@ U_PORT_TEST_FUNCTION("[preamble]", "preambleHeapDefence")
 U_PORT_TEST_FUNCTION("[preamble]", "preambleCell")
 {
     uCellTestPreamble(U_CFG_TEST_CELL_MODULE_TYPE);
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 #endif // #ifdef U_CFG_TEST_CELL_MODULE_TYPE
 
@@ -267,6 +271,8 @@ U_PORT_TEST_FUNCTION("[preamble]", "preambleCell")
 U_PORT_TEST_FUNCTION("[preamble]", "preambleShortRange")
 {
     uShortRangeTestPreamble(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE);
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 #endif // #ifdef U_CFG_TEST_SHORT_RANGE_MODULE_TYPE
 
@@ -276,23 +282,9 @@ U_PORT_TEST_FUNCTION("[preamble]", "preambleShortRange")
  */
 U_PORT_TEST_FUNCTION("[preamble]", "preambleCleanUp")
 {
-    int32_t x;
-
-    x = uPortTaskStackMinFree(NULL);
-    if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-        U_TEST_PRINT_LINE("main task stack had a minimum of %d"
-                          " byte(s) free at the end of the preamble.", x);
-        U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
-    }
-
     uPortDeinit();
-
-    x = uPortGetHeapMinFree();
-    if (x >= 0) {
-        U_TEST_PRINT_LINE("heap had a minimum of %d"
-                          " byte(s) free at the end of the preamble.", x);
-        U_PORT_TEST_ASSERT(x >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
-    }
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 // End of file

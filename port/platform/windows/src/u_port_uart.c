@@ -30,6 +30,7 @@
 #include "windows.h"
 
 #include "u_cfg_sw.h"
+#include "u_compiler.h" // U_ATOMIC_XXX() macros
 
 #include "u_error_common.h"
 
@@ -119,6 +120,10 @@ static uPortUartData_t *gpUartListRoot = NULL;
 /** The next UART handle to use.
  */
 static int32_t gUartHandleNext = 0;
+
+/** Variable to keep track of the number of UARTs open.
+ */
+static volatile int32_t gResourceAllocCount = 0;
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -250,6 +255,7 @@ static void uartCloseRequiresMutex(uPortUartData_t *pUartData)
     uartRemove(pUartData);
 
     U_PORT_MUTEX_UNLOCK(gMutex);
+    U_ATOMIC_DECREMENT(&gResourceAllocCount);
 }
 
 // Event handler, calls the user's event callback.
@@ -640,6 +646,7 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
                                                                                                     (PVOID) pUartData->uartHandle,
                                                                                                     0, NULL);
                                                 if (pUartData->waitCommEventThreadHandle != INVALID_HANDLE_VALUE) {
+                                                    U_ATOMIC_INCREMENT(&gResourceAllocCount);
                                                     // Done!
                                                     handleOrErrorCode = pUartData->uartHandle;
                                                 }
@@ -1194,6 +1201,12 @@ void uPortUartCtsResume(int32_t handle)
 
         U_PORT_MUTEX_UNLOCK(gMutex);
     }
+}
+
+// Get the number of UART interfaces currently open.
+int32_t uPortUartResourceAllocCount()
+{
+    return U_ATOMIC_GET(&gResourceAllocCount);
 }
 
 // End of file

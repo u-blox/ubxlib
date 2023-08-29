@@ -91,14 +91,16 @@ typedef struct uShortRangePktList_t {
 /* ----------------------------------------------------------------
  * FUNCTIONS
  * -------------------------------------------------------------- */
-/** Initialize the memory pool for shortrange.
+
+/** Initialize the memory pool for shortrange; it is always safe
+ * to call this, even if the memory pool might have already been
+ * initialised.
  *
  * @return zero on success else negative error code.
  */
 int32_t uShortRangeMemPoolInit(void);
 
 /** Release all the associated memory pools for shortrange.
- *
  */
 void uShortRangeMemPoolDeInit(void);
 

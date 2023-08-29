@@ -2904,4 +2904,21 @@ char *pUSockDomainRemovePort(char *pDomainString)
     return pDomainString;
 }
 
+/* ----------------------------------------------------------------
+ * PUBLIC FUNCTIONS: FOR INTERNAL USE ONLY
+ * -------------------------------------------------------------- */
+
+// Free the mutexes that should never be free'd.
+void uSockFree()
+{
+    if (gMutexContainer != NULL) {
+        uPortMutexDelete(gMutexContainer);
+        gMutexContainer = NULL;
+    }
+    if (gMutexCallbacks != NULL) {
+        uPortMutexDelete(gMutexCallbacks);
+        gMutexCallbacks = NULL;
+    }
+}
+
 // End of file

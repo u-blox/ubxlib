@@ -31,6 +31,8 @@
 #include "string.h"   // memset()
 #include "limits.h"   // UINT8_MAX
 
+#include "u_compiler.h" // U_ATOMIC_XXX() macros
+
 #include "u_error_common.h"
 #include "u_port.h"
 #include "u_port_os.h"
@@ -75,6 +77,10 @@ static uPortMutexHandle_t gMutex = NULL;
  */
 static uPortSpiData_t gSpiData[U_PORT_SPI_MAX_NUM];
 
+/** Variable to keep track of the number of SPI interfaces open.
+ */
+static volatile int32_t gResourceAllocCount = 0;
+
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -88,6 +94,7 @@ static void closeSpi(uPortSpiData_t *pSpi)
         uPortSemaphoreDelete(pSpi->completionSemaphore);
         // Zero the instance to indicate that it is no longer in use
         memset(&pSpi->instance, 0, sizeof(pSpi->instance));
+        U_ATOMIC_DECREMENT(&gResourceAllocCount);
     }
 }
 
@@ -352,6 +359,7 @@ int32_t uPortSpiOpen(int32_t spi, int32_t pinMosi, int32_t pinMiso,
                         gSpiData[spi].instance = instance;
                         gSpiData[spi].cfg = cfg;
                         gSpiData[spi].completionSemaphore = completionSemaphore;
+                        U_ATOMIC_INCREMENT(&gResourceAllocCount);
                         // Return the SPI HW block number as the handle
                         handleOrErrorCode = spi;
                     } else {
@@ -568,6 +576,12 @@ int32_t uPortSpiControllerSendReceiveBlock(int32_t handle, const char *pSend,
     }
 
     return errorCodeOrReceiveSize;
+}
+
+// Get the number of SPI interfaces currently open.
+int32_t uPortSpiResourceAllocCount()
+{
+    return U_ATOMIC_GET(&gResourceAllocCount);
 }
 
 // End of file

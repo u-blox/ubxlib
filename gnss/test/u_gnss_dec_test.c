@@ -51,6 +51,8 @@
 #include "u_port_heap.h"
 #include "u_port_debug.h"
 
+#include "u_test_util_resource_check.h"
+
 #include "u_gnss_module_type.h"
 #include "u_gnss_type.h"
 #include "u_gnss.h"
@@ -623,6 +625,8 @@ U_PORT_TEST_FUNCTION("[gnssDec]", "gnssDecCallback")
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 /** Test of decoding the known functions.
@@ -705,6 +709,8 @@ U_PORT_TEST_FUNCTION("[gnssDec]", "gnssDecKnown")
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 // End of file

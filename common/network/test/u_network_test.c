@@ -57,6 +57,8 @@
 #include "u_port_i2c.h"
 #include "u_port_spi.h"
 
+#include "u_test_util_resource_check.h"
+
 #ifdef U_CFG_TEST_CELL_MODULE_TYPE
 # include "u_cell_module_type.h"
 # include "u_cell_test_cfg.h" // For the cellular test macros
@@ -615,6 +617,8 @@ U_PORT_TEST_FUNCTION("[network]", "networkSock")
     (void) heapSockInitLoss;
     (void) heapUsed;
 #endif
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 #if defined(U_BLE_TEST_CFG_REMOTE_SPS_CENTRAL) || defined(U_BLE_TEST_CFG_REMOTE_SPS_PERIPHERAL)
@@ -813,6 +817,8 @@ U_PORT_TEST_FUNCTION("[network]", "networkBle")
     (void) heapSockInitLoss;
     (void) heapUsed;
 # endif
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 #endif // #if defined(U_BLE_TEST_CFG_REMOTE_SPS_CENTRAL) || defined(U_BLE_TEST_CFG_REMOTE_SPS_PERIPHERAL)
 
@@ -955,6 +961,8 @@ U_PORT_TEST_FUNCTION("[network]", "networkLoc")
     (void) gSystemHeapLost;
     (void) heapUsed;
 #endif
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 /** Test BLE and Wifi one after the other on a single device.
@@ -1376,6 +1384,8 @@ U_PORT_TEST_FUNCTION("[network]", "networkOutage")
     (void) heapSockInitLoss;
     (void) heapUsed;
 # endif
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 #endif // #if defined(U_CFG_TEST_NET_STATUS_SHORT_RANGE) || defined (U_CFG_TEST_NET_STATUS_CELL)
@@ -1386,8 +1396,6 @@ U_PORT_TEST_FUNCTION("[network]", "networkOutage")
  */
 U_PORT_TEST_FUNCTION("[network]", "networkCleanUp")
 {
-    int32_t y;
-
     // Make sure that the switches haven't been left in the
     // "off" position
 #ifdef U_CFG_TEST_NET_STATUS_SHORT_RANGE
@@ -1398,30 +1406,26 @@ U_PORT_TEST_FUNCTION("[network]", "networkCleanUp")
     uPortTaskBlock(1000);
 #endif
 
+    U_TEST_PRINT_LINE("cleaning up any outstanding resources.\n");
+    uSockDeinit();
+    uSockCleanUp();
+
+    // Clean-up the sockets thread-safety mutexes; an
+    // application wouldn't normally, do this, we only
+    // do it here to make the sums add up
+    uSockFree();
+
     // The network test configuration is shared between
     // the network, sockets, security and location tests
     // so must reset the handles here in case the
     // tests of one of the other APIs are coming next.
     uNetworkTestCleanUp();
     uDeviceDeinit();
-
-    y = uPortTaskStackMinFree(NULL);
-    if (y != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-        U_TEST_PRINT_LINE("main task stack had a minimum of %d byte(s)"
-                          " free at the end of these tests.", y);
-        U_PORT_TEST_ASSERT(y >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
-    }
-
     uPortSpiDeinit();
     uPortI2cDeinit();
     uPortDeinit();
-
-    y = uPortGetHeapMinFree();
-    if (y >= 0) {
-        U_TEST_PRINT_LINE("heap had a minimum of %d byte(s) free"
-                          " at the end of these tests.", y);
-        U_PORT_TEST_ASSERT(y >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
-    }
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 // End of file

@@ -53,6 +53,8 @@
 #include "u_port_heap.h"
 #include "u_port_debug.h"
 
+#include "u_test_util_resource_check.h"
+
 #ifdef U_CFG_TEST_CELL_MODULE_TYPE
 #include "u_cell_module_type.h"
 #include "u_cell_test_cfg.h" // For the cellular test macros
@@ -521,30 +523,15 @@ U_PORT_TEST_FUNCTION("[security]", "securityZtp")
  */
 U_PORT_TEST_FUNCTION("[security]", "securityCleanUp")
 {
-    int32_t y;
-
     // The network test configuration is shared between
     // the network, sockets, security and location tests
     // so must reset the handles here in case the
     // tests of one of the other APIs are coming next.
     uNetworkTestCleanUp();
     uDeviceDeinit();
-
-    y = uPortTaskStackMinFree(NULL);
-    if (y != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-        U_TEST_PRINT_LINE("main task stack had a minimum of %d byte(s)"
-                          " free at the end of these tests.", y);
-        U_PORT_TEST_ASSERT(y >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
-    }
-
     uPortDeinit();
-
-    y = uPortGetHeapMinFree();
-    if (y >= 0) {
-        U_TEST_PRINT_LINE("heap had a minimum of %d byte(s) free"
-                          " at the end of these tests.", y);
-        U_PORT_TEST_ASSERT(y >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
-    }
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 #endif // #ifndef U_CFG_TEST_SECURITY_DISABLE

@@ -60,6 +60,8 @@
 #include "u_port_heap.h"
 #include "u_port_debug.h"
 
+#include "u_test_util_resource_check.h"
+
 #include "u_at_client.h"
 
 #include "u_sock.h"
@@ -513,6 +515,8 @@ U_PORT_TEST_FUNCTION("[cellMux]", "cellMuxBasic")
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 /** Test sockets over CMUX.
@@ -683,6 +687,8 @@ U_PORT_TEST_FUNCTION("[cellMux]", "cellMuxSock")
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 /** Test MQTT over CMUX.
@@ -826,6 +832,8 @@ U_PORT_TEST_FUNCTION("[cellMux]", "cellMuxMqtt")
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 /** Test HTTP over CMUX.
@@ -956,6 +964,8 @@ U_PORT_TEST_FUNCTION("[cellMux]", "cellMuxHttp")
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 /** Clean-up to be run at the end of this round of tests, just
@@ -964,8 +974,6 @@ U_PORT_TEST_FUNCTION("[cellMux]", "cellMuxHttp")
  */
 U_PORT_TEST_FUNCTION("[cellMux]", "cellMuxCleanUp")
 {
-    int32_t x;
-
     if (!gTestPassed && (gHandles.cellHandle != NULL)) {
         // If anything failed above we are likely still in CMUX
         // mode so the clean-up is to do a hard reset or
@@ -978,22 +986,9 @@ U_PORT_TEST_FUNCTION("[cellMux]", "cellMuxCleanUp")
     }
 
     uCellTestPrivateCleanup(&gHandles);
-
-    x = uPortTaskStackMinFree(NULL);
-    if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-        U_TEST_PRINT_LINE("main task stack had a minimum of %d"
-                          " byte(s) free at the end of these tests.", x);
-        U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
-    }
-
     uPortDeinit();
-
-    x = uPortGetHeapMinFree();
-    if (x >= 0) {
-        U_TEST_PRINT_LINE("heap had a minimum of %d byte(s) free at"
-                          " the end of these tests.", x);
-        U_PORT_TEST_ASSERT(x >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
-    }
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 #endif // #if defined(U_CFG_TEST_CELL_MODULE_TYPE) && !defined(U_CFG_TEST_DISABLE_MUX)

@@ -52,6 +52,27 @@ extern "C" {
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+#ifdef U_CFG_HEAP_MONITOR
+# if defined(__linux__) && !defined(__ZEPHYR__)
+/** The number of OS resources (tasks, mutexes, etc.) that
+ * this code requires when monitoring heap: though there is still
+ * a mutex in the native Linux case, it is implemented outside
+ * the resource monitoring code.
+ */
+#  define U_PORT_HEAP_MONITOR_OS_RESOURCES 0
+# else
+/** The number of OS resources (tasks, mutexes, etc.) that
+ * this code requires when monitoring heap: just a mutex.
+ */
+#  define U_PORT_HEAP_MONITOR_OS_RESOURCES 1
+# endif
+#else
+/** The number of OS resources (tasks, mutexes, etc.) that
+ * this code requires when not monitoring heap: none.
+ */
+# define U_PORT_HEAP_MONITOR_OS_RESOURCES 0
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -109,6 +130,20 @@ void *pUPortMallocMonitor(size_t sizeBytes, const char *pFile,
  *                    returned by pUPortMalloc(); may be NULL.
  */
 void uPortFree(void *pMemory);
+
+/** Get the number of heap allocations outstanding: this is purely
+ * a count of the number of pUPortMalloc() calls minus the number
+ * of uPortFree() calls, used only for basic sanity checking when
+ * testing.
+ *
+ * You do not need to implement this function: where it is not
+ * implemented a #U_WEAK implementation provided in u_port_resource.c
+ * will return zero.
+ *
+ * @return   the number of pUPortMalloc() calls minus the number
+ *           of uPortFree() calls.
+ */
+int32_t uPortHeapAllocCount();
 
 /** Print out the contents of the heap; only useful if
  * U_CFG_HEAP_MONITOR is defined.

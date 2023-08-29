@@ -27,6 +27,7 @@
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS FOR MUTEX DEBUG
  * -------------------------------------------------------------- */
+
 #ifdef U_CFG_MUTEX_DEBUG
 /** If we're adding the mutex debug intermediate functions to
  * the build then the implementations of the mutex functions
@@ -64,7 +65,10 @@
 
 #include "u_cfg_sw.h"
 #include "u_cfg_os_platform_specific.h"
+#include "u_compiler.h" // U_ATOMIC_XXX() macros
+
 #include "u_error_common.h"
+
 #include "u_port_debug.h"
 #include "u_port.h"
 #include "u_port_os.h"
@@ -87,6 +91,10 @@
 /* ----------------------------------------------------------------
  * VARIABLES
  * -------------------------------------------------------------- */
+
+/** Variable to keep track of OS resource usage.
+ */
+static volatile int32_t gResourceAllocCount = 0;
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -113,6 +121,8 @@ int32_t uPortTaskCreate(void (*pFunction)(void *),
                         pParameter, priority,
                         (TaskHandle_t *) pTaskHandle) == pdPASS) {
             errorCode = U_ERROR_COMMON_SUCCESS;
+            U_ATOMIC_INCREMENT(&gResourceAllocCount);
+            U_PORT_OS_DEBUG_PRINT_TASK_CREATE(*pTaskHandle, pName, stackSizeBytes, priority);
         }
     }
 
@@ -126,6 +136,8 @@ int32_t uPortTaskDelete(const uPortTaskHandle_t taskHandle)
 
     // Can only delete oneself in freeRTOS
     if (taskHandle == NULL) {
+        U_ATOMIC_DECREMENT(&gResourceAllocCount);
+        U_PORT_OS_DEBUG_PRINT_TASK_DELETE(xTaskGetCurrentTaskHandle());
         vTaskDelete((TaskHandle_t) taskHandle);
         errorCode = U_ERROR_COMMON_SUCCESS;
     }
@@ -190,6 +202,8 @@ int32_t uPortQueueCreate(size_t queueLength,
                                                           itemSizeBytes);
         if (*pQueueHandle != NULL) {
             errorCode = U_ERROR_COMMON_SUCCESS;
+            U_ATOMIC_INCREMENT(&gResourceAllocCount);
+            U_PORT_OS_DEBUG_PRINT_QUEUE_CREATE(*pQueueHandle, queueLength, itemSizeBytes);
         }
     }
 
@@ -204,6 +218,8 @@ int32_t uPortQueueDelete(const uPortQueueHandle_t queueHandle)
     if (queueHandle != NULL) {
         vQueueDelete((QueueHandle_t) queueHandle);
         errorCode = U_ERROR_COMMON_SUCCESS;
+        U_ATOMIC_DECREMENT(&gResourceAllocCount);
+        U_PORT_OS_DEBUG_PRINT_QUEUE_DELETE(queueHandle);
     }
 
     return (int32_t) errorCode;
@@ -368,6 +384,8 @@ int32_t MTX_FN(uPortMutexCreate)(uPortMutexHandle_t *pMutexHandle)
         *pMutexHandle = (uPortMutexHandle_t) xSemaphoreCreateMutex();
         if (*pMutexHandle != NULL) {
             errorCode = U_ERROR_COMMON_SUCCESS;
+            U_ATOMIC_INCREMENT(&gResourceAllocCount);
+            U_PORT_OS_DEBUG_PRINT_MUTEX_CREATE(*pMutexHandle);
         }
     }
 
@@ -382,6 +400,8 @@ int32_t MTX_FN(uPortMutexDelete)(const uPortMutexHandle_t mutexHandle)
     if (mutexHandle != NULL) {
         vSemaphoreDelete((SemaphoreHandle_t) mutexHandle);
         errorCode = U_ERROR_COMMON_SUCCESS;
+        U_ATOMIC_DECREMENT(&gResourceAllocCount);
+        U_PORT_OS_DEBUG_PRINT_MUTEX_DELETE(mutexHandle);
     }
 
     return (int32_t) errorCode;
@@ -449,6 +469,8 @@ int32_t uPortSemaphoreCreate(uPortSemaphoreHandle_t *pSemaphoreHandle,
         *pSemaphoreHandle = (uPortSemaphoreHandle_t) xSemaphoreCreateCounting(limit, initialCount);
         if (*pSemaphoreHandle != NULL) {
             errorCode = U_ERROR_COMMON_SUCCESS;
+            U_ATOMIC_INCREMENT(&gResourceAllocCount);
+            U_PORT_OS_DEBUG_PRINT_SEMAPHORE_CREATE(*pSemaphoreHandle, initialCount, limit);
         }
     }
 
@@ -463,6 +485,8 @@ int32_t uPortSemaphoreDelete(const uPortSemaphoreHandle_t semaphoreHandle)
     if (semaphoreHandle != NULL) {
         vSemaphoreDelete((SemaphoreHandle_t) semaphoreHandle);
         errorCode = U_ERROR_COMMON_SUCCESS;
+        U_ATOMIC_DECREMENT(&gResourceAllocCount);
+        U_PORT_OS_DEBUG_PRINT_SEMAPHORE_DELETE(semaphoreHandle);
     }
 
     return (int32_t) errorCode;
@@ -548,17 +572,27 @@ int32_t uPortTimerCreate(uPortTimerHandle_t *pTimerHandle,
                          uint32_t intervalMs,
                          bool periodic)
 {
-    return uPortPrivateTimerCreate(pTimerHandle,
-                                   pName, pCallback,
-                                   pCallbackParam,
-                                   intervalMs,
-                                   periodic);
+    int32_t errorCode = uPortPrivateTimerCreate(pTimerHandle,
+                                                pName, pCallback,
+                                                pCallbackParam,
+                                                intervalMs,
+                                                periodic);
+    if (errorCode == 0) {
+        U_ATOMIC_INCREMENT(&gResourceAllocCount);
+        U_PORT_OS_DEBUG_PRINT_TIMER_CREATE(*pTimerHandle, pName, intervalMs, periodic);
+    }
+    return errorCode;
 }
 
 // Destroy a timer.
 int32_t uPortTimerDelete(const uPortTimerHandle_t timerHandle)
 {
-    return uPortPrivateTimerDelete(timerHandle);
+    int32_t errorCode = uPortPrivateTimerDelete(timerHandle);
+    if (errorCode == 0) {
+        U_ATOMIC_DECREMENT(&gResourceAllocCount);
+        U_PORT_OS_DEBUG_PRINT_TIMER_DELETE(timerHandle);
+    }
+    return errorCode;
 }
 
 // Start a timer.
@@ -600,6 +634,16 @@ int32_t uPortTimerChange(const uPortTimerHandle_t timerHandle,
     }
 
     return errorCode;
+}
+
+/* ----------------------------------------------------------------
+ * FUNCTIONS: DEBUGGING/MONITORING
+ * -------------------------------------------------------------- */
+
+// Get the number of OS resources currently allocated.
+int32_t uPortOsResourceAllocCount()
+{
+    return U_ATOMIC_GET(&gResourceAllocCount);
 }
 
 // End of file

@@ -71,6 +71,14 @@
 # define U_RUNNER_PREAMBLE_STR preamble
 #endif
 
+/** The prefix string which should form a postamble: this will be
+ * sorted last and can be used to check that all resources have been
+ * free'd etc..  Same rules as for #U_RUNNER_PREAMBLE_STR.
+ */
+#ifndef U_RUNNER_POSTAMBLE_STR
+# define U_RUNNER_POSTAMBLE_STR postamble
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -204,14 +212,18 @@ static size_t bringToTopFunctionList(uRunnerFunctionDescription_t **ppFunctionLi
 // 1.  Puts any function beginning with pPreambleStr at the top.
 // 2.  Then puts anything beginning with pTopStr next.
 // 3.  Functions within the same file are not sorted.
-// 4.  Otherwise sorts alphabetically by group and then name.
+// 4.  Otherwise sorts alphabetically by group and then name except...
+// 5.  ...anything that begins with pPostambleStr, which is
+//     always placed last.
 static void sortFunctionList(uRunnerFunctionDescription_t **ppFunctionList,
                              const char *pPreambleStr,
-                             const char *pTopStr)
+                             const char *pTopStr,
+                             const char *pPostambleStr)
 {
     uRunnerFunctionDescription_t **ppFunctionStart = ppFunctionList;
     uRunnerFunctionDescription_t **ppFunction;
     size_t ignoreCount;
+    size_t y = strlen(pPostambleStr);
 
     // Bring everything that begins with pPreambleStr
     // up to the top
@@ -225,7 +237,7 @@ static void sortFunctionList(uRunnerFunctionDescription_t **ppFunctionList,
     ignoreCount += bringToTopFunctionList(ppFunctionStart, pTopStr);
 
     // Then ignoring all of the ones we've moved, sort the
-    // rest alphabetically
+    // rest alphabetically, provided they don't begin with pPostambleStr
     ppFunctionStart = ppFunctionList;
     for (size_t x = 0; (x < ignoreCount) && (*ppFunctionStart != NULL); x++) {
         ppFunctionStart = &((*ppFunctionStart)->pNext);
@@ -234,8 +246,9 @@ static void sortFunctionList(uRunnerFunctionDescription_t **ppFunctionList,
     while ((*ppFunction != NULL) && ((*ppFunction)->pNext != NULL)) {
         // Compare the current entry with the next
         // to see if they need to be swapped
-        if (compareFunctionFileGroupName(*ppFunction,
-                                         (*ppFunction)->pNext)) {
+        if ((strncmp((*ppFunction)->pName, pPostambleStr, y) == 0) ||
+            ((strncmp((*ppFunction)->pNext->pName, pPostambleStr, y) != 0) &&
+             compareFunctionFileGroupName(*ppFunction, (*ppFunction)->pNext))) {
             // Yup, swap 'em.
             swap(ppFunction);
             // Start again
@@ -311,10 +324,11 @@ void uRunnerFunctionRegister(uRunnerFunctionDescription_t *pDescription)
 #endif
 
         // Re-sort the function list with U_RUNNER_PREAMBLE_STR at the top,
-        // then U_RUNNER_TOP_STR
+        // then U_RUNNER_TOP_STR and U_RUNNER_POSTAMBLE_STR at the bottom
         sortFunctionList(&gpFunctionList,
                          U_PORT_STRINGIFY_QUOTED(U_RUNNER_PREAMBLE_STR),
-                         U_PORT_STRINGIFY_QUOTED(U_RUNNER_TOP_STR));
+                         U_PORT_STRINGIFY_QUOTED(U_RUNNER_TOP_STR),
+                         U_PORT_STRINGIFY_QUOTED(U_RUNNER_POSTAMBLE_STR));
     }
 }
 
@@ -366,6 +380,11 @@ void uRunnerRunFiltered(const char *pFilter,
             || (strncmp(U_PORT_STRINGIFY_QUOTED(U_RUNNER_PREAMBLE_STR),
                         pFunction->pName,
                         strlen(U_PORT_STRINGIFY_QUOTED(U_RUNNER_PREAMBLE_STR))) == 0)
+#endif
+#ifdef U_RUNNER_POSTAMBLE_STR
+            || (strncmp(U_PORT_STRINGIFY_QUOTED(U_RUNNER_POSTAMBLE_STR),
+                        pFunction->pName,
+                        strlen(U_PORT_STRINGIFY_QUOTED(U_RUNNER_POSTAMBLE_STR))) == 0)
 #endif
            ) {
             runFunction(pFunction, pPrefix);

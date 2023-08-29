@@ -15,7 +15,8 @@
  */
 
 /** @file
- * @brief Default implementation of pUPortMalloc() / uPortFree().
+ * @brief Default implementation of pUPortMalloc() / uPortFree() and
+ * uPortHeapAllocCount().
  */
 
 #ifdef U_CFG_OVERRIDE
@@ -34,7 +35,8 @@
 #include "ctype.h"     // isprint()
 
 #include "u_cfg_sw.h"
-#include "u_compiler.h"
+#include "stdint.h"      // int32_t etc.
+#include "u_compiler.h"  // U_WEAK
 
 #include "u_error_common.h"
 #include "u_assert.h"
@@ -121,6 +123,11 @@ typedef struct uPortHeapBlock_t {
  * VARIABLES
  * -------------------------------------------------------------- */
 
+/** Variable to keep track of the total number of heap allocations
+ * outstanding.
+ */
+static int32_t gHeapAllocCount = 0;
+
 #ifdef U_CFG_HEAP_MONITOR
 /** Root of linked list of blocks on the heap.
  */
@@ -184,7 +191,11 @@ static void *_pUPortMalloc(size_t sizeBytes)
 U_WEAK void *pUPortMalloc(size_t sizeBytes)
 #endif
 {
-    return malloc(sizeBytes);
+    void *pMalloc = malloc(sizeBytes);
+    if (pMalloc != NULL) {
+        gHeapAllocCount++;
+    }
+    return pMalloc;
 }
 
 #ifdef U_CFG_HEAP_MONITOR
@@ -300,7 +311,13 @@ U_WEAK void uPortFree(void *pMemory)
     }
 #endif
 
+    gHeapAllocCount--;
     free(pMemory);
+}
+
+U_WEAK int32_t uPortHeapAllocCount()
+{
+    return gHeapAllocCount;
 }
 
 // Print out the contents of the heap.

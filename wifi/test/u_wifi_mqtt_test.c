@@ -54,6 +54,8 @@
 #include "u_port_heap.h"
 #include "u_port_debug.h"
 
+#include "u_test_util_resource_check.h"
+
 #include "u_at_client.h"
 
 #include "u_short_range_module_type.h"
@@ -567,6 +569,8 @@ U_PORT_TEST_FUNCTION("[wifiMqtt]", "wifiMqttPublishSubscribeTest")
     U_PORT_TEST_ASSERT(uWifiTestPrivateConnect(&gHandles) == U_WIFI_TEST_ERROR_NONE);
     wifiMqttPublishSubscribeTest(false);
     uWifiTestPrivatePostamble(&gHandles);
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 U_PORT_TEST_FUNCTION("[wifiMqtt]", "wifiMqttUnsubscribeTest")
@@ -576,6 +580,8 @@ U_PORT_TEST_FUNCTION("[wifiMqtt]", "wifiMqttUnsubscribeTest")
     U_PORT_TEST_ASSERT(uWifiTestPrivateConnect(&gHandles) == U_WIFI_TEST_ERROR_NONE);
     wifiMqttUnsubscribeTest(false);
     uWifiTestPrivatePostamble(&gHandles);
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 U_PORT_TEST_FUNCTION("[wifiMqtt]", "wifiMqttSecuredPublishSubscribeTest")
@@ -599,6 +605,8 @@ U_PORT_TEST_FUNCTION("[wifiMqtt]", "wifiMqttSecuredPublishSubscribeTest")
                                     gMqttTlsSettings.pRootCaCertificateName);
     U_PORT_TEST_ASSERT(err == (int32_t)U_ERROR_COMMON_SUCCESS);
     uWifiTestPrivatePostamble(&gHandles);
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 U_PORT_TEST_FUNCTION("[wifiMqtt]", "wifiMqttSecuredUnsubscribeTest")
@@ -622,7 +630,24 @@ U_PORT_TEST_FUNCTION("[wifiMqtt]", "wifiMqttSecuredUnsubscribeTest")
                                     gMqttTlsSettings.pRootCaCertificateName);
     U_PORT_TEST_ASSERT(err == (int32_t)U_ERROR_COMMON_SUCCESS);
     uWifiTestPrivatePostamble(&gHandles);
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
+
+/** Clean-up to be run at the end of this round of tests, just
+ * in case there were test failures which would have resulted
+ * in the deinitialisation being skipped.
+ */
+U_PORT_TEST_FUNCTION("[wifi]", "wifiMqttCleanUp")
+{
+    uWifiTestPrivateCleanup(&gHandles);
+    // Clean-up TLS security mutex; an application wouldn't normally,
+    // do this, we only do it here to make the sums add up
+    uSecurityTlsCleanUp();
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+}
+
 #endif // U_SHORT_RANGE_TEST_WIFI()
 
 // End of file

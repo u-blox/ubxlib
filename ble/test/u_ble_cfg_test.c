@@ -54,6 +54,8 @@
 #include "u_port_os.h"
 #include "u_port_uart.h"
 
+#include "u_test_util_resource_check.h"
+
 #include "u_at_client.h"
 #include "u_short_range_pbuf.h"
 #include "u_short_range.h"
@@ -148,6 +150,8 @@ U_PORT_TEST_FUNCTION("[bleCfg]", "bleCfgConfigureModule")
 #else
     (void) heapUsed;
 #endif
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 /** Clean-up to be run at the end of this round of tests, just
@@ -156,8 +160,6 @@ U_PORT_TEST_FUNCTION("[bleCfg]", "bleCfgConfigureModule")
  */
 U_PORT_TEST_FUNCTION("[bleCfg]", "bleCfgCleanUp")
 {
-    int32_t x;
-
     uBleDeinit();
     if (gHandles.edmStreamHandle >= 0) {
         uShortRangeEdmStreamClose(gHandles.edmStreamHandle);
@@ -167,20 +169,8 @@ U_PORT_TEST_FUNCTION("[bleCfg]", "bleCfgCleanUp")
         uPortUartClose(gHandles.uartHandle);
     }
 
-    x = uPortTaskStackMinFree(NULL);
-    if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-        U_TEST_PRINT_LINE("main task stack had a minimum of %d byte(s)"
-                          " free at the end of these tests.", x);
-        U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
-    }
-    uPortDeinit();
-
-    x = uPortGetHeapMinFree();
-    if (x >= 0) {
-        U_TEST_PRINT_LINE("heap had a minimum of %d byte(s) free"
-                          " at the end of these tests.", x);
-        U_PORT_TEST_ASSERT(x >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
-    }
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 #endif // U_SHORT_RANGE_TEST_BLE()

@@ -32,6 +32,7 @@
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 
+#include "u_cfg_sw.h"
 #include "u_assert.h"
 #include "u_port.h"
 #include "u_port_os.h"
@@ -127,7 +128,7 @@ void uMemPoolDeinit(uMemPoolDesc_t *pMemPool)
         U_PORT_MUTEX_LOCK(pMemPool->mutex);
 
         if (pMemPool->pBuffer != NULL) {
-            uPortLog("U_MEM_POOL: Freeing buffer: %p\n", pMemPool->pBuffer);
+            uPortLog("U_MEM_POOL: freeing buffer %p.\n", pMemPool->pBuffer);
             uPortFree(pMemPool->pBuffer);
         }
         U_PORT_MUTEX_UNLOCK(pMemPool->mutex);
@@ -149,7 +150,7 @@ void *uMemPoolAllocMem(uMemPoolDesc_t *pMemPool)
         // allocate the buffer
         if (pMemPool->pBuffer == NULL) {
             pMemPool->pBuffer = (uint8_t *)pUPortMalloc(U_BUFFER_SIZE(pMemPool));
-            uPortLog("U_MEM_POOL: Allocated buffer %p\n", pMemPool->pBuffer);
+            uPortLog("U_MEM_POOL: allocated buffer %p.\n", pMemPool->pBuffer);
             if (pMemPool->pBuffer != NULL) {
                 initFreeList(pMemPool);
             }
@@ -184,7 +185,6 @@ void uMemPoolFreeMem(uMemPoolDesc_t *pMemPool, void *pMem)
     if ((pMemPool != NULL) && (pMem != NULL) && (pMemPool->mutex != NULL)) {
         U_PORT_MUTEX_LOCK(pMemPool->mutex);
         // Make sure the memory segment is within our buffer
-        uPortLog("pMem: %08x\n", pMem);
         U_ASSERT((uint8_t *)pMem >= pMemPool->pBuffer);
         U_ASSERT((uint8_t *)pMem < (pMemPool->pBuffer + U_BUFFER_SIZE(pMemPool)));
 

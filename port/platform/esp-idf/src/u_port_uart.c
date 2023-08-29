@@ -29,6 +29,8 @@
 #include "u_cfg_sw.h"
 #include "u_cfg_hw_platform_specific.h"
 #include "u_cfg_os_platform_specific.h"
+#include "u_compiler.h" // U_ATOMIC_XXX() macros
+
 #include "u_error_common.h"
 #include "u_port_debug.h"
 #include "u_port.h"
@@ -86,6 +88,10 @@ static uPortUartData_t gUartData[U_PORT_UART_MAX_NUM];
  * Only UART_DATA supported at the moment.
  */
 static uint32_t gEsp32EventToEvent[] = { U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED /* UART_DATA */};
+
+/** Variable to keep track of the number of UARTs open.
+ */
+static volatile int32_t gResourceAllocCount = 0;
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -150,6 +156,7 @@ static void uartCloseRequiresMutex(int32_t handle)
 
         // Set queue to NULL to mark this as free
         gUartData[handle].queue = NULL;
+        U_ATOMIC_DECREMENT(&gResourceAllocCount);
     }
 }
 
@@ -327,6 +334,7 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
                                                        &gUartData[uart].queue,
                                                        0);
                         if (espError == ESP_OK) {
+                            U_ATOMIC_INCREMENT(&gResourceAllocCount);
                             handleOrErrorCode = uart;
                         }
                     }
@@ -847,6 +855,12 @@ void uPortUartCtsResume(int32_t handle)
 
         U_PORT_MUTEX_UNLOCK(gMutex);
     }
+}
+
+// Get the number of UART interfaces currently open.
+int32_t uPortUartResourceAllocCount()
+{
+    return U_ATOMIC_GET(&gResourceAllocCount);
 }
 
 // End of file

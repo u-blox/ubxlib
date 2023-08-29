@@ -54,6 +54,8 @@
 #include "u_port.h"
 #include "u_port_debug.h"
 
+#include "u_test_util_resource_check.h"
+
 #include "u_at_client.h"
 #include "u_short_range_pbuf.h"
 #include "u_short_range.h"
@@ -114,6 +116,8 @@ U_PORT_TEST_FUNCTION("[ble]", "bleInitialisation")
     uAtClientDeinit();
     uShortRangeEdmStreamDeinit();
     uPortDeinit();
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 #ifndef U_CFG_BLE_MODULE_INTERNAL
@@ -188,6 +192,8 @@ U_PORT_TEST_FUNCTION("[ble]", "bleOpenUart")
 #else
     (void) heapUsed;
 #endif
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 #else
@@ -218,10 +224,10 @@ U_PORT_TEST_FUNCTION("[ble]", "bleOpenCpuInit")
 #else
     (void) heapUsed;
 #endif
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 #endif
-
-
 
 /** Clean-up to be run at the end of this round of tests, just
  * in case there were test failures which would have resulted
@@ -230,6 +236,8 @@ U_PORT_TEST_FUNCTION("[ble]", "bleOpenCpuInit")
 U_PORT_TEST_FUNCTION("[ble]", "bleCleanUp")
 {
     uBleTestPrivateCleanup(&gHandles);
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 #endif // U_SHORT_RANGE_TEST_BLE()

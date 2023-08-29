@@ -51,8 +51,10 @@
 /* ----------------------------------------------------------------
  * STATIC VARIABLES
  * -------------------------------------------------------------- */
-static uMemPoolDesc_t gPBufListPool;
-static uMemPoolDesc_t gPBufPool;
+
+static uMemPoolDesc_t gPBufListPool = {0};
+static uMemPoolDesc_t gPBufPool = {0};
+
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -80,18 +82,20 @@ static void freePbuf(uShortRangePbuf_t *pBuf, bool freeWholeChain)
 
 int32_t uShortRangeMemPoolInit(void)
 {
-    int32_t err;
+    int32_t err = (int32_t)U_ERROR_COMMON_SUCCESS;
 
-    err = uMemPoolInit(&gPBufListPool, sizeof(uShortRangePbufList_t),
-                       U_SHORT_RANGE_PBUFLIST_COUNT);
+    if ((gPBufListPool.mutex == NULL) && (gPBufPool.mutex == NULL)) {
+        err = uMemPoolInit(&gPBufListPool, sizeof(uShortRangePbufList_t),
+                           U_SHORT_RANGE_PBUFLIST_COUNT);
 
-    if (err == 0) {
+        if (err == 0) {
+            err = uMemPoolInit(&gPBufPool, sizeof(uShortRangePbuf_t) + U_SHORT_RANGE_EDM_BLK_SIZE,
+                               U_SHORT_RANGE_EDM_BLK_COUNT);
 
-        err = uMemPoolInit(&gPBufPool, sizeof(uShortRangePbuf_t) + U_SHORT_RANGE_EDM_BLK_SIZE,
-                           U_SHORT_RANGE_EDM_BLK_COUNT);
-
-        if (err != (int32_t)U_ERROR_COMMON_SUCCESS) {
-            uMemPoolDeinit(&gPBufListPool);
+            if (err != (int32_t)U_ERROR_COMMON_SUCCESS) {
+                uMemPoolDeinit(&gPBufListPool);
+                // Deinit will also set the mutex to NULL again
+            }
         }
     }
 
@@ -102,6 +106,7 @@ void uShortRangeMemPoolDeInit(void)
 {
     uMemPoolDeinit(&gPBufPool);
     uMemPoolDeinit(&gPBufListPool);
+    // Deinit will also set the mutex to NULL again
 }
 
 int32_t uShortRangePbufAlloc(uShortRangePbuf_t **ppBuf)

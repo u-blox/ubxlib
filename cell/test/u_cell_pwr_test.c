@@ -52,6 +52,8 @@
 #include "u_port_os.h"   // Required by u_cell_private.h
 #include "u_port_uart.h"
 
+#include "u_test_util_resource_check.h"
+
 #include "u_at_client.h"
 
 #include "u_sock.h"
@@ -788,6 +790,8 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwr")
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT((heapUsed < 0) ||
                        (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 # endif // if (U_CFG_APP_PIN_CELL_PWR_ON >= 0) && !defined(U_CFG_TEST_CELL_PWR_DISABLE)
@@ -835,6 +839,8 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrReboot")
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT((heapUsed < 0) ||
                        (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 /** Test reset
@@ -879,6 +885,8 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrReset")
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT((heapUsed < 0) ||
                        (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 /** Test UART power saving.
@@ -933,6 +941,8 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSavingUart")
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT((heapUsed < 0) ||
                        (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 # ifndef U_CFG_CELL_DISABLE_UART_POWER_SAVING
@@ -1347,6 +1357,8 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSaving3gpp")
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT((heapUsed < 0) ||
                        (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 #  endif // if (U_CFG_APP_PIN_CELL_PWR_ON >= 0) && (U_CFG_APP_PIN_CELL_VINT >= 0)
@@ -1574,6 +1586,8 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSavingEDrx")
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT((heapUsed < 0) ||
                        (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 # endif //U_CFG_CELL_DISABLE_UART_POWER_SAVING
 
@@ -1583,7 +1597,6 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSavingEDrx")
  */
 U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrCleanUp")
 {
-    int32_t x;
     bool onNotOff = false;
 
     // Make completely sure 3GPP power saving is off as it can mess us up
@@ -1605,22 +1618,9 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrCleanUp")
     }
 
     uCellTestPrivateCleanup(&gHandles);
-
-    x = uPortTaskStackMinFree(NULL);
-    if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-        U_TEST_PRINT_LINE("main task stack had a minimum of %d byte(s)"
-                          " free at the end of these tests.", x);
-        U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
-    }
-
     uPortDeinit();
-
-    x = uPortGetHeapMinFree();
-    if (x >= 0) {
-        U_TEST_PRINT_LINE("heap had a minimum of %d bytes"
-                          " free at the end of these tests.", x);
-        U_PORT_TEST_ASSERT(x >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
-    }
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 #endif // #ifdef U_CFG_TEST_CELL_MODULE_TYPE

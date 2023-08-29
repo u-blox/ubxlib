@@ -53,6 +53,8 @@
 #include "u_port_i2c.h"
 #include "u_port_spi.h"
 
+#include "u_test_util_resource_check.h"
+
 #include "u_gnss_module_type.h"
 #include "u_gnss_type.h"
 #include "u_gnss.h"
@@ -395,6 +397,8 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssAddStream")
 # else
     (void) heapUsed;
 # endif
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 #endif
 
@@ -534,6 +538,8 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssI2cAddress")
 # else
     (void) heapUsed;
 # endif
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 #endif
 
@@ -543,8 +549,6 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssI2cAddress")
  */
 U_PORT_TEST_FUNCTION("[gnss]", "gnssCleanUp")
 {
-    int32_t x;
-
     uGnssDeinit();
     if (gStreamAHandle >= 0) {
         switch (gTransportTypeA) {
@@ -565,23 +569,11 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssCleanUp")
         uPortUartClose(gUartBHandle);
     }
 
-    x = uPortTaskStackMinFree(NULL);
-    if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-        U_TEST_PRINT_LINE("main task stack had a minimum of %d byte(s)"
-                          " free at the end of these tests.", x);
-        U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
-    }
-
     uPortSpiDeinit();
     uPortI2cDeinit();
     uPortDeinit();
-
-    x = uPortGetHeapMinFree();
-    if (x >= 0) {
-        U_TEST_PRINT_LINE("heap had a minimum of %d byte(s) free"
-                          " at the end of these tests.", x);
-        U_PORT_TEST_ASSERT(x >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
-    }
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 // End of file

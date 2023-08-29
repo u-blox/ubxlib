@@ -64,6 +64,7 @@
 #include "u_short_range_test_selector.h"
 #if U_SHORT_RANGE_TEST_WIFI()
 # include "u_wifi_test_cfg.h"
+# include "u_wifi_loc.h" // For uWifiLocFree()
 #endif
 
 #ifdef U_CFG_TEST_GNSS_MODULE_TYPE
@@ -508,6 +509,13 @@ void uNetworkTestCleanUp(void)
             for (size_t y = 0; y < sizeof(gUNetworkTest[x].network) /
                  sizeof(gUNetworkTest[x].network[0]); y++, pNetwork++) {
                 networkType = getNetworkType(pNetwork);
+#if U_SHORT_RANGE_TEST_WIFI()
+                if (networkType == U_NETWORK_TYPE_WIFI) {
+                    // Wifi location can result in a mutex being created;
+                    // get the memory back
+                    uWifiLocFree(pDevice->devHandle);
+                }
+#endif
                 if ((networkType != U_NETWORK_TYPE_NONE) &&
                     (uNetworkInterfaceDown(pDevice->devHandle, networkType) != 0)) {
                     closeDevice = false;

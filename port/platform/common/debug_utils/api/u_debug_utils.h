@@ -43,6 +43,13 @@ extern "C" {
 # define U_DEBUG_UTILS_INACTIVITY_TASK_CHECK_PERIOD_SEC 180
 #endif
 
+#ifndef U_DEBUG_UTILS_OS_RESOURCES
+/** The number of OS resources (tasks, mutexes, etc.) that
+ * this code requires and never frees: just the one task.
+ */
+# define U_DEBUG_UTILS_OS_RESOURCES 1
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */

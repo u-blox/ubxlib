@@ -345,9 +345,6 @@ int32_t uGnssMsgPrivateReceiveStart(uGnssPrivateInstance_t *pInstance,
                         }
                         if (errorCodeOrHandle != 0) {
                             // Tidy up if we couldn't get OS resources
-                            if (pMsgReceive->taskHandle != NULL) {
-                                uPortTaskDelete(msgReceiveTask);
-                            }
                             if (pMsgReceive->taskRunningMutexHandle != NULL) {
                                 uPortMutexDelete(pMsgReceive->taskRunningMutexHandle);
                             }

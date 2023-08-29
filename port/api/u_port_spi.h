@@ -209,6 +209,15 @@ int32_t uPortSpiControllerSendReceiveBlock(int32_t handle, const char *pSend,
                                            size_t bytesToSend, char *pReceive,
                                            size_t bytesToReceive);
 
+/** Get the number of SPI interfaces currently open; this may be used
+ * as a basic check for heap monitoring.
+ *
+ * You do not need to implement this function: where it is not
+ * implemented a #U_WEAK implementation provided in u_port_resource.c will
+ * return zero.
+ */
+int32_t uPortSpiResourceAllocCount();
+
 #ifdef __cplusplus
 }
 #endif

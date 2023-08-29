@@ -55,6 +55,8 @@
 # include "u_port_spi.h"
 #endif
 
+#include "u_test_util_resource_check.h"
+
 #include "u_at_client.h"
 
 #ifdef U_CFG_TEST_GNSS_MODULE_TYPE
@@ -641,6 +643,8 @@ U_PORT_TEST_FUNCTION("[cellLoc]", "cellLocCfg")
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 /** Test getting position using Cell Locate.
@@ -860,6 +864,8 @@ U_PORT_TEST_FUNCTION("[cellLoc]", "cellLocLoc")
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 #else
     U_TEST_PRINT_LINE("*** WARNING *** U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN"
                       " is not defined, unable to run the Cell Locate"
@@ -976,6 +982,8 @@ U_PORT_TEST_FUNCTION("[cellLoc]", "cellLocAssistNow")
 #else
     (void) heapUsed;
 #endif
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 #endif // #ifdef U_CFG_TEST_GNSS_MODULE_TYPE
 
@@ -985,10 +993,7 @@ U_PORT_TEST_FUNCTION("[cellLoc]", "cellLocAssistNow")
  */
 U_PORT_TEST_FUNCTION("[cellLoc]", "cellLocCleanUp")
 {
-    int32_t x;
-
     uCellTestPrivateCleanup(&gHandles);
-
 #ifdef U_CFG_TEST_GNSS_MODULE_TYPE
     // The network test configuration is shared between
     // the network, sockets, security and location tests
@@ -996,22 +1001,9 @@ U_PORT_TEST_FUNCTION("[cellLoc]", "cellLocCleanUp")
     // tests of one of the other APIs are coming next.
     uNetworkTestCleanUp();
 #endif
-
-    x = uPortTaskStackMinFree(NULL);
-    if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-        U_TEST_PRINT_LINE("main task stack had a minimum of %d"
-                          " byte(s) free at the end of these tests.", x);
-        U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
-    }
-
     uPortDeinit();
-
-    x = uPortGetHeapMinFree();
-    if (x >= 0) {
-        U_TEST_PRINT_LINE("heap had a minimum of %d"
-                          " byte(s) free at the end of these tests.", x);
-        U_PORT_TEST_ASSERT(x >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
-    }
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 #endif // #ifdef U_CFG_TEST_CELL_MODULE_TYPE

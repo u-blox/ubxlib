@@ -30,7 +30,10 @@
 #include <sys/ioctl.h>
 #include "pthread.h"  // threadId
 
+#include "u_compiler.h" // U_ATOMIC_XXX() macros
+
 #include "u_error_common.h"
+
 #include "u_port.h"
 #include "u_port_os.h"
 #include "u_port_heap.h"
@@ -40,8 +43,6 @@
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
-
-
 
 /* ----------------------------------------------------------------
  * TYPES
@@ -68,6 +69,10 @@ static uPortMutexHandle_t gMutex = NULL;
 /** Root of linked list for pending no stop bit write data.
  */
 static uPortPrivateList_t *gpI2cPendingDataList = NULL;
+
+/** Variable to keep track of the number of I2C interfaces open.
+ */
+static volatile int32_t gResourceAllocCount = 0;
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -123,6 +128,7 @@ void uPortI2cDeinit()
 int32_t uPortI2cOpen(int32_t i2c, int32_t pinSda, int32_t pinSdc,
                      bool controller)
 {
+    int32_t errorCode;
     if ((pinSda != -1) || (pinSdc != -1) || !controller) {
         return (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
     }
@@ -132,7 +138,11 @@ int32_t uPortI2cOpen(int32_t i2c, int32_t pinSda, int32_t pinSdc,
     char devName[25];
     snprintf(devName, sizeof(devName), "/dev/i2c-%d", i2c);
     // Open the I2C bus
-    return open(devName, O_RDWR);
+    errorCode = open(devName, O_RDWR);
+    if (errorCode == 0) {
+        U_ATOMIC_INCREMENT(&gResourceAllocCount);
+    }
+    return errorCode;
 }
 
 // Adopt an I2C instance.
@@ -153,6 +163,7 @@ void uPortI2cClose(int32_t handle)
             uPortPrivateListRemove(&gpI2cPendingDataList, p);
         }
         close(handle);
+        U_ATOMIC_DECREMENT(&gResourceAllocCount);
     }
 }
 
@@ -306,4 +317,11 @@ int32_t uPortI2cControllerSend(int32_t handle, uint16_t address,
     }
     return (int32_t)errorCode;
 }
+
+// Get the number of I2C interfaces currently open.
+int32_t uPortI2cResourceAllocCount()
+{
+    return U_ATOMIC_GET(&gResourceAllocCount);
+}
+
 // End of file

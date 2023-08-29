@@ -61,6 +61,8 @@
 #include "u_port_debug.h"
 #include "u_port_event_queue.h"
 
+#include "u_test_util_resource_check.h"
+
 #include "u_network.h"
 #include "u_network_test_shared_cfg.h"
 
@@ -258,6 +260,7 @@ static void disconnectCallback(int32_t errorCode, void *pParam)
 
     gDisconnectCallbackCalled = true;
 }
+
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS: TESTS
  * -------------------------------------------------------------- */
@@ -957,7 +960,7 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClientSn")
  */
 U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClientCleanUp")
 {
-    int32_t y;
+    U_TEST_PRINT_LINE_MQTT("cleaning up any outstanding resources.\n");
 
     if (gpMqttContextA != NULL) {
         uMqttClientClose(gpMqttContextA);
@@ -970,23 +973,13 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClientCleanUp")
     // so must reset the handles here in case the
     // tests of one of the other APIs are coming next.
     uNetworkTestCleanUp();
+    // Clean-up TLS security mutex; an application wouldn't normally,
+    // do this, we only do it here to make the sums add up
+    uSecurityTlsCleanUp();
     uDeviceDeinit();
-
-    y = uPortTaskStackMinFree(NULL);
-    if (y != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-        U_TEST_PRINT_LINE_MQTTSN("main task stack had a minimum of %d"
-                                 " byte(s) free at the end of these tests.", y);
-        U_PORT_TEST_ASSERT(y >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
-    }
-
     uPortDeinit();
-
-    y = uPortGetHeapMinFree();
-    if (y >= 0) {
-        U_TEST_PRINT_LINE_MQTTSN("heap had a minimum of %d byte(s) free"
-                                 " at the end of these tests.", y);
-        U_PORT_TEST_ASSERT(y >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
-    }
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX_MQTT, NULL, true);
 }
 
 // End of file

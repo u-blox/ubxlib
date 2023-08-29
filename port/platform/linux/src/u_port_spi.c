@@ -29,7 +29,10 @@
 
 #include <linux/spi/spidev.h>
 
+#include "u_compiler.h" // U_ATOMIC_XXX() macros
+
 #include "u_error_common.h"
+
 #include "u_port.h"
 #include "u_port_os.h"
 #include "u_port_heap.h"
@@ -81,6 +84,10 @@ static uPortSpiCfg_t gSpiCfg[U_PORT_SPI_MAX_NUM];
 static uCommonSpiControllerDevice_t gDefaultDevCfg =
     U_COMMON_SPI_CONTROLLER_DEVICE_INDEX_DEFAULTS(0);
 
+/** Variable to keep track of the number of SPI interfaces open.
+ */
+static volatile int32_t gResourceAllocCount = 0;
+
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -98,6 +105,7 @@ static bool checkOpenDevice(int32_t handle)
                  "/dev/spidev%d.%d",
                  handle, gSpiCfg[handle].devCfg.indexSelect);
         gSpiCfg[handle].fd = open(devName, O_RDWR);
+        U_ATOMIC_INCREMENT(&gResourceAllocCount);
     }
     return (gSpiCfg[handle].fd != -1);
 }
@@ -159,6 +167,7 @@ void uPortSpiClose(int32_t handle)
             close(gSpiCfg[handle].fd);
             gSpiCfg[handle].fd = -1;
         }
+        U_ATOMIC_DECREMENT(&gResourceAllocCount);
         gSpiCfg[handle].devCfg = gDefaultDevCfg;
         U_PORT_MUTEX_UNLOCK(gMutex);
     }
@@ -329,4 +338,11 @@ int32_t uPortSpiControllerSendReceiveBlock(int32_t handle, const char *pSend,
     }
     return errorCodeOrReceiveSize;
 }
+
+// Get the number of SPI interfaces currently open.
+int32_t uPortSpiResourceAllocCount()
+{
+    return U_ATOMIC_GET(&gResourceAllocCount);
+}
+
 // End of file

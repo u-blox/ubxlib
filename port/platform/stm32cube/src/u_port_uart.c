@@ -30,6 +30,7 @@
 #include "u_cfg_sw.h"
 #include "u_cfg_hw_platform_specific.h"
 #include "u_cfg_os_platform_specific.h" // For U_CFG_OS_YIELD_MS
+#include "u_compiler.h" // U_ATOMIC_XXX() macros
 
 #include "u_error_common.h"
 
@@ -406,6 +407,10 @@ static uPortUartData_t *gpUart[U_PORT_MAX_NUM_UARTS + 1] = {NULL};
 // get to the UART data.  +1 is for the usual reason.
 static uPortUartData_t *gpDmaUart[U_PORT_MAX_NUM_DMA_ENGINES + 1][U_PORT_MAX_NUM_DMA_STREAMS] = {NULL};
 
+/** Variable to keep track of the number of UARTs open.
+ */
+static volatile int32_t gResourceAllocCount = 0;
+
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -588,6 +593,7 @@ static void uartClose(int32_t handle)
         }
         // And finally remove the UART from the list
         removeUart(pUartData);
+        U_ATOMIC_DECREMENT(&gResourceAllocCount);
     }
 }
 
@@ -1151,6 +1157,7 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
                         uartData.uartHandle = nextHandleGet();
                         if (pAddUart(&uartData) != NULL) {
                             handleOrErrorCode = uartData.uartHandle;
+                            U_ATOMIC_INCREMENT(&gResourceAllocCount);
                         }
                     }
                 }
@@ -1684,6 +1691,12 @@ void uPortUartCtsResume(int32_t handle)
 
         U_PORT_MUTEX_UNLOCK(gMutex);
     }
+}
+
+// Get the number of UART interfaces currently open.
+int32_t uPortUartResourceAllocCount()
+{
+    return U_ATOMIC_GET(&gResourceAllocCount);
 }
 
 // End of file

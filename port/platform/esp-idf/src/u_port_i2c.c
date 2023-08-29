@@ -23,6 +23,8 @@
 #include "stdbool.h"
 
 #include "u_cfg_sw.h"
+#include "u_compiler.h" // U_ATOMIC_XXX() macros
+
 #include "u_error_common.h"
 
 #include "u_port.h"
@@ -112,6 +114,10 @@ static uPortMutexHandle_t gMutex = NULL;
  */
 static uPortI2cData_t gI2cData[U_PORT_I2C_MAX_NUM];
 
+/** Variable to keep track of the number of I2C interfaces open.
+ */
+static volatile int32_t gResourceAllocCount = 0;
+
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -168,6 +174,7 @@ static void closeI2c(int32_t index)
             i2c_driver_delete(index);
         }
         gI2cData[index].clockHertz = -1;
+        U_ATOMIC_DECREMENT(&gResourceAllocCount);
     }
 }
 
@@ -288,6 +295,7 @@ static int32_t openI2c(int32_t i2c, int32_t pinSda, int32_t pinSdc,
                 gI2cData[i2c].pinSdc = pinSdc;
                 gI2cData[i2c].clockHertz = cfg.master.clk_speed;
                 gI2cData[i2c].adopted = adopt;
+                U_ATOMIC_INCREMENT(&gResourceAllocCount);
                 // Return the I2C HW block number as the handle
                 handleOrErrorCode = i2c;
             }
@@ -576,6 +584,12 @@ int32_t uPortI2cControllerSend(int32_t handle, uint16_t address,
     }
 
     return errorCode;
+}
+
+// Get the number of I2C interfaces currently open.
+int32_t uPortI2cResourceAllocCount()
+{
+    return U_ATOMIC_GET(&gResourceAllocCount);
 }
 
 // End of file

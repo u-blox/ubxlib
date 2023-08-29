@@ -32,6 +32,8 @@
 #include "stdbool.h"
 #include "string.h"
 
+#include "u_compiler.h" // U_ATOMIC_XXX() macros
+
 #include "u_error_common.h"
 
 #include "u_port.h"
@@ -94,6 +96,10 @@ static uPortMutexHandle_t gMutex = NULL;
 /** SPI configuration data.
  */
 static uPortSpiCfg_t gSpiCfg[U_PORT_SPI_MAX_NUM];
+
+/** Variable to keep track of the number of SPI interfaces open.
+ */
+static volatile int32_t gResourceAllocCount = 0;
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -463,6 +469,7 @@ int32_t uPortSpiOpen(int32_t spi, int32_t pinMosi, int32_t pinMiso,
                     // Hook the device data structure into the entry
                     // to flag that it is in use
                     gSpiCfg[spi].pDevice = pDevice;
+                    U_ATOMIC_INCREMENT(&gResourceAllocCount);
                     // Return the SPI HW block number as the handle
                     handleOrErrorCode = spi;
                 }
@@ -486,6 +493,7 @@ void uPortSpiClose(int32_t handle)
             // Just set the device data structure to NULL to indicate that the device
             // is no longer in use
             gSpiCfg[handle].pDevice = NULL;
+            U_ATOMIC_DECREMENT(&gResourceAllocCount);
         }
 
         U_PORT_MUTEX_UNLOCK(gMutex);
@@ -683,6 +691,12 @@ int32_t uPortSpiControllerSendReceiveBlock(int32_t handle, const char *pSend,
     }
 
     return errorCodeOrReceiveSize;
+}
+
+// Get the number of SPI interfaces currently open.
+int32_t uPortSpiResourceAllocCount()
+{
+    return U_ATOMIC_GET(&gResourceAllocCount);
 }
 
 // End of file

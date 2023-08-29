@@ -64,17 +64,18 @@ static void appTask(void *pParam)
 {
     (void) pParam;
 
+    uPortInit();
+
 #if U_CFG_TEST_ENABLE_INACTIVITY_DETECTOR
+    // Normally this would be called before uPortInit() but
+    // in the Linux case there is a list of threads set up
+    // by uPortInit() that have to be sorted before mutex
+    // debug can work
     uDebugUtilsInitInactivityDetector(&gStdoutCounter);
 #endif
 
-    uPortInit();
-
 #ifdef U_CFG_MUTEX_DEBUG
-    // Normally this would be called before uPortInit() but
-    // in the Linux case there is a list of threads maintained
-    // set up by uPortInit() that have to be sorted before
-    // Mutex
+    // Has to be after uPortInit() for the same reason as above
     uMutexDebugInit();
     uMutexDebugWatchdog(uMutexDebugPrint, NULL,
                         U_MUTEX_DEBUG_WATCHDOG_TIMEOUT_SECONDS);

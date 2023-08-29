@@ -57,6 +57,8 @@
 #include "u_port_heap.h"
 #include "u_port_debug.h"
 
+#include "u_test_util_resource_check.h"
+
 #include "u_ringbuffer.h"
 
 #include "u_gnss_module_type.h"
@@ -654,6 +656,8 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssPrivateNmea")
 # else
     (void) heapUsed;
 # endif
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 /** Test the RTCM message decode function; not tested on Zephyr for
@@ -771,6 +775,8 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssPrivateRtcm")
 # else
     (void) heapUsed;
 # endif
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 /** Test the UBX message decode function; not tested on Zephyr for
@@ -912,6 +918,8 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssPrivateUbx")
 # else
     (void) heapUsed;
 # endif
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 #endif // #ifndef __ZEPHYR__
@@ -922,30 +930,15 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssPrivateUbx")
  */
 U_PORT_TEST_FUNCTION("[gnss]", "gnssPrivateCleanUp")
 {
-    int32_t x;
-
     uPortFree(gpBody);
     uPortFree(gpBuffer);
     uRingBufferDelete(&gRingBuffer);
     uPortFree(gpLinearBuffer);
 
     uGnssDeinit();
-
-    x = uPortTaskStackMinFree(NULL);
-    if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-        U_TEST_PRINT_LINE("main task stack had a minimum of %d byte(s)"
-                          " free at the end of these tests.", x);
-        U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
-    }
-
     uPortDeinit();
-
-    x = uPortGetHeapMinFree();
-    if (x >= 0) {
-        U_TEST_PRINT_LINE("heap had a minimum of %d byte(s) free"
-                          " at the end of these tests.", x);
-        U_PORT_TEST_ASSERT(x >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
-    }
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 // End of file

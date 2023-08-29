@@ -20,6 +20,7 @@
 port/platform/common/runner
 common/device/test
 common/network/test
+port/platform/common/test_util
 
 # Source files
 [SOURCE]
@@ -28,6 +29,7 @@ common/device/test
 common/network/test
 example/**/*.c
 port/platform/common/runner/u_runner.c
+port/platform/common/test_util/u_test_util_resource_check.c
 
 # Source files brought in only for a specific framework
 [zephyr]

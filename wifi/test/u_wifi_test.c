@@ -56,6 +56,8 @@
 #include "u_port_os.h"
 #include "u_port_uart.h"
 
+#include "u_test_util_resource_check.h"
+
 #include "u_at_client.h"
 #include "u_short_range_pbuf.h"
 #include "u_short_range.h"
@@ -311,6 +313,8 @@ U_PORT_TEST_FUNCTION("[wifi]", "wifiInitialisation")
     uAtClientDeinit();
     uShortRangeEdmStreamDeinit();
     uPortDeinit();
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 /** Add a wifi instance and remove it again.
@@ -386,6 +390,8 @@ U_PORT_TEST_FUNCTION("[wifi]", "wifiOpenUart")
 #else
     (void) heapUsed;
 #endif
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 U_PORT_TEST_FUNCTION("[wifi]", "wifiNetworkInitialisation")
@@ -440,6 +446,8 @@ U_PORT_TEST_FUNCTION("[wifi]", "wifiNetworkInitialisation")
     uWifiTestPrivatePostamble(&gHandles);
 
     U_PORT_TEST_ASSERT(testError == U_WIFI_TEST_ERROR_NONE);
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 U_PORT_TEST_FUNCTION("[wifi]", "wifiStationConnect")
@@ -448,6 +456,8 @@ U_PORT_TEST_FUNCTION("[wifi]", "wifiStationConnect")
                                              U_PORT_STRINGIFY_QUOTED(U_WIFI_TEST_CFG_WPA2_PASSPHRASE));
     // Handle errors
     U_PORT_TEST_ASSERT(testError == U_WIFI_TEST_ERROR_NONE);
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 U_PORT_TEST_FUNCTION("[wifi]", "wifiStationConnectWrongSSID")
@@ -460,6 +470,8 @@ U_PORT_TEST_FUNCTION("[wifi]", "wifiStationConnectWrongSSID")
     // Handle errors
     U_PORT_TEST_ASSERT(testError == U_WIFI_TEST_ERROR_CONNECTED);
     U_PORT_TEST_ASSERT(gDisconnectReasonFound);
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 U_PORT_TEST_FUNCTION("[wifi]", "wifiStationConnectWrongPassphrase")
@@ -551,6 +563,8 @@ U_PORT_TEST_FUNCTION("[wifi]", "wifiScan")
 
     // Handle errors
     U_PORT_TEST_ASSERT(testError == U_WIFI_TEST_ERROR_NONE);
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 /** Clean-up to be run at the end of this round of tests, just
@@ -560,6 +574,8 @@ U_PORT_TEST_FUNCTION("[wifi]", "wifiScan")
 U_PORT_TEST_FUNCTION("[wifi]", "wifiCleanUp")
 {
     uWifiTestPrivateCleanup(&gHandles);
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 #endif // U_SHORT_RANGE_TEST_WIFI()

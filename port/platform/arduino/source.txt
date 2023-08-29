@@ -114,6 +114,7 @@ common/http_client/src/u_http_client_stub_cell.c
 common/http_client/src/u_http_client_stub_wifi.c
 common/assert/src/u_assert.c
 port/u_port_heap.c
+port/u_port_resource.c
 port/platform/common/event_queue/u_port_event_queue.c
 port/platform/common/mbedtls/u_port_crypto.c
 port/clib/u_port_clib_mktime64.c

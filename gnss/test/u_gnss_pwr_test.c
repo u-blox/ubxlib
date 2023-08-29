@@ -52,6 +52,8 @@
 #include "u_port_os.h"   // Required by u_gnss_private.h
 #include "u_port_uart.h"
 
+#include "u_test_util_resource_check.h"
+
 #include "u_at_client.h" // Required by u_gnss_private.h
 
 #include "u_cell_module_type.h"
@@ -246,7 +248,6 @@ static int32_t setOrClearPwrSavingFlag(uDeviceHandle_t gnssHandle,
     return y;
 }
 
-
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -337,6 +338,8 @@ U_PORT_TEST_FUNCTION("[gnssPwr]", "gnssPwrBasic")
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 #ifndef U_CFG_TEST_GNSS_POWER_SAVING_NOT_SUPPORTED
@@ -657,6 +660,8 @@ U_PORT_TEST_FUNCTION("[gnssPwr]", "gnssPwrSaving")
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 #endif // #ifndef U_CFG_TEST_GNSS_POWER_SAVING_NOT_SUPPORTED
@@ -667,8 +672,6 @@ U_PORT_TEST_FUNCTION("[gnssPwr]", "gnssPwrSaving")
  */
 U_PORT_TEST_FUNCTION("[gnssPwr]", "gnssPwrCleanUp")
 {
-    int32_t x;
-
     if (gOriginalMode >= 0) {
         uGnssPwrSetMode(gHandles.gnssHandle, (uGnssPwrSavingMode_t) gOriginalMode);
     }
@@ -699,22 +702,8 @@ U_PORT_TEST_FUNCTION("[gnssPwr]", "gnssPwrCleanUp")
     }
 
     uGnssTestPrivateCleanup(&gHandles);
-
-    x = uPortTaskStackMinFree(NULL);
-    if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-        U_TEST_PRINT_LINE("main task stack had a minimum of %d byte(s)"
-                          " free at the end of these tests.", x);
-        U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
-    }
-
-    uPortDeinit();
-
-    x = uPortGetHeapMinFree();
-    if (x >= 0) {
-        U_TEST_PRINT_LINE("heap had a minimum of %d byte(s) free"
-                          " at the end of these tests.", x);
-        U_PORT_TEST_ASSERT(x >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
-    }
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 #endif // #ifdef U_CFG_TEST_GNSS_MODULE_TYPE

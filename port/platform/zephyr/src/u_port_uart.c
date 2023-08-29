@@ -41,6 +41,8 @@
 #include "u_cfg_sw.h"
 #include "u_cfg_hw_platform_specific.h"
 #include "u_cfg_os_platform_specific.h" // For U_CFG_OS_YIELD_MS
+#include "u_compiler.h" // U_ATOMIC_XXX() macros
+
 #include "u_error_common.h"
 
 #include "u_port_debug.h"
@@ -114,6 +116,9 @@ struct uartData_t {
 static uPortMutexHandle_t gMutex = NULL;
 static uPortUartData_t gUartData[U_PORT_UART_MAX_NUM];
 
+// Variable to keep track of the number of UARTs open.
+static volatile int32_t gResourceAllocCount = 0;
+
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -165,6 +170,7 @@ static void uartClose(int32_t handle)
     gUartData[handle].pTxData = NULL;
     gUartData[handle].txWritten = 0;
 #endif
+    U_ATOMIC_DECREMENT(&gResourceAllocCount);
 }
 
 static void rxTimer(struct k_timer *timer_id)
@@ -452,6 +458,7 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
                 k_timer_user_data_set(&gUartData[uart].pollTimer, (void *)uart);
                 k_timer_start(&gUartData[uart].pollTimer, K_MSEC(1), K_MSEC(1));
 #endif
+                U_ATOMIC_INCREMENT(&gResourceAllocCount);
                 handleOrErrorCode = uart;
             }
         }
@@ -909,6 +916,12 @@ int32_t uPortUartCtsSuspend(int32_t handle)
 void uPortUartCtsResume(int32_t handle)
 {
     (void) handle;
+}
+
+// Get the number of UART interfaces currently open.
+int32_t uPortUartResourceAllocCount()
+{
+    return U_ATOMIC_GET(&gResourceAllocCount);
 }
 
 // End of file

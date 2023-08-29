@@ -29,6 +29,8 @@
 #include "stdint.h"
 #include "stdbool.h"
 
+#include "u_compiler.h" // U_ATOMIC_XXX() macros
+
 #include "u_error_common.h"
 
 #include "u_port.h"
@@ -90,6 +92,10 @@ static int32_t gClockHertzToIndex[] = {-1,
                                        3400000,  /* 4: I2C_SPEED_HIGH */
                                        5000000   /* 5: I2C_SPEED_ULTRA */
                                       };
+
+/** Variable to keep track of the number of I2C interfaces open.
+ */
+static volatile int32_t gResourceAllocCount = 0;
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -159,6 +165,7 @@ static int32_t openI2c(int32_t i2c, int32_t pinSda, int32_t pinSdc,
                 // to flag that it is in use
                 gI2cData[i2c].pDevice = pDevice;
                 gI2cData[i2c].adopted = adopt;
+                U_ATOMIC_INCREMENT(&gResourceAllocCount);
                 // Return the I2C HW block number as the handle
                 handleOrErrorCode = i2c;
             }
@@ -228,6 +235,7 @@ void uPortI2cClose(int32_t handle)
         // Just set the device data structure to NULL to indicate that the device
         // is no longer in use
         gI2cData[handle].pDevice = NULL;
+        U_ATOMIC_DECREMENT(&gResourceAllocCount);
 
         U_PORT_MUTEX_UNLOCK(gMutex);
     }
@@ -251,9 +259,8 @@ int32_t uPortI2cCloseRecoverBus(int32_t handle)
             if (!gI2cData[handle].adopted) {
                 errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
                 pDevice = gI2cData[handle].pDevice;
-                // Mark the device as closed; adopt is not a factor
-                // here, we've been asked to fiddle
                 gI2cData[handle].pDevice = NULL;
+                U_ATOMIC_DECREMENT(&gResourceAllocCount);
                 x = i2c_recover_bus(pDevice);
                 if (x == -ENOSYS) {
                     errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
@@ -441,6 +448,12 @@ int32_t uPortI2cControllerSend(int32_t handle, uint16_t address,
     }
 
     return errorCode;
+}
+
+// Get the number of I2C interfaces currently open.
+int32_t uPortI2cResourceAllocCount()
+{
+    return U_ATOMIC_GET(&gResourceAllocCount);
 }
 
 // End of file

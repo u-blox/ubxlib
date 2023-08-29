@@ -66,6 +66,9 @@ UBXLIB_SRC += ${UBXLIB_BASE}/port/u_port_heap.c
 # Default uPortGetTimezoneOffsetSeconds() implementation
 UBXLIB_SRC += ${UBXLIB_BASE}/port/u_port_timezone.c
 
+# Default uPortXxxResource implementation
+UBXLIB_SRC += ${UBXLIB_BASE}/port/u_port_resource.c
+
 # Optional short range related files and directories
 ifneq ($(filter short_range,$(UBXLIB_FEATURES)),)
 UBXLIB_MODULE_DIRS += \
@@ -145,6 +148,7 @@ endif
 # Extra test directories
 UBXLIB_TEST_DIRS += \
 	${UBXLIB_BASE}/port/platform/common/runner \
+	${UBXLIB_BASE}/port/platform/common/test_util \
 	${UBXLIB_BASE}/port/platform/common/test \
 	${UBXLIB_BASE}/port/test \
 	${UBXLIB_BASE}/common/device/test \

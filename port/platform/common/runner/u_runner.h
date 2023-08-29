@@ -224,9 +224,9 @@ void uRunnerRunNamed(const char *pName,
  * multiple entries separated with a full stop
  * character (but no spaces), e.g "thinga.thingb"; think
  * of the full stop as an "or".
- * NOTE: in addition, if U_RUNNER_PREAMBLE_STR is defined,
- * then functions beginning with that string will also
- * be run.
+ * NOTE: in addition, if U_RUNNER_PREAMBLE_STR or
+ * U_RUNNER_POSTAMBLE_STR are defined, then functions
+ * beginning with those strings will also be run.
  *
  * @param pFilter  the filter string; if NULL then all
  *                 functions are run.
