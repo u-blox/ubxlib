@@ -99,6 +99,7 @@ U_PORT_TEST_FUNCTION("[wifiCfg]", "wifiCfgConfigureModule")
 {
     int32_t heapUsed;
     uWifiCfg_t cfg;
+    uWifiIpCfg_t wifiIpCfg = {"172.0.1.100", "255.255.255.0", "172.0.1.1", "172.0.1.2", "172.0.1.3" };
     uShortRangeUartConfig_t uart = { .uartPort = U_CFG_APP_SHORT_RANGE_UART,
                                      .baudRate = U_SHORT_RANGE_UART_BAUD_RATE,
                                      .pinTx = U_CFG_APP_PIN_SHORT_RANGE_TXD,
@@ -117,7 +118,12 @@ U_PORT_TEST_FUNCTION("[wifiCfg]", "wifiCfgConfigureModule")
     U_PORT_TEST_ASSERT(uWifiTestPrivatePreamble((uWifiModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
                                                 &uart,
                                                 &gHandles) == 0);
-    cfg.notUsed = false;
+
+    cfg.dhcp = false; // set static IP
+    cfg.wifiIpCfg = wifiIpCfg;
+    U_PORT_TEST_ASSERT(uWifiCfgConfigure(gHandles.devHandle, &cfg) == 0);
+
+    cfg.dhcp = true; // set DHCP
     U_PORT_TEST_ASSERT(uWifiCfgConfigure(gHandles.devHandle, &cfg) == 0);
 
 

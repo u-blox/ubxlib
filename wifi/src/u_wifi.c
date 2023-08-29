@@ -50,6 +50,7 @@
 
 #include "u_wifi_module_type.h"
 #include "u_wifi.h"
+#include "u_wifi_cfg.h"
 
 #include "u_hex_bin_convert.h"
 
@@ -766,10 +767,6 @@ int32_t uWifiStationConnect(uDeviceHandle_t devHandle, const char *pSsid,
                 (authentication != U_WIFI_AUTH_OPEN)) {
                 // Set PSK/passphrase
                 errorCode = writeWifiStaCfgStr(atHandle, 0, 8, pPassPhrase);
-            }
-            if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
-                // Set IP mode to static IP
-                errorCode = writeWifiStaCfgInt(atHandle, 0, 100, 2);
             }
         }
         if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {

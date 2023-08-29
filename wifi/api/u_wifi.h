@@ -116,7 +116,6 @@ typedef struct {
     uint8_t grpCipherBitmask;   /**< group cipher bitmask, see U_WIFI_CIPHER_MASK_xx defines for values. */
 } uWifiScanResult_t;
 
-
 /** Scan result callback type.
  *
  * This callback will be called once for each entry found.

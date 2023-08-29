@@ -38,12 +38,23 @@ extern "C" {
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+#define U_WIFI_IP_ADDR_STR_MAX_LEN 16 /**< Max length of IP string, including null terminator. */
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
 
 typedef struct {
-    bool notUsed; //DHCP/static TODO
+    uint8_t IPv4Addr[U_WIFI_IP_ADDR_STR_MAX_LEN];
+    uint8_t subnetMask[U_WIFI_IP_ADDR_STR_MAX_LEN];
+    uint8_t defaultGW[U_WIFI_IP_ADDR_STR_MAX_LEN];
+    uint8_t DNS1[U_WIFI_IP_ADDR_STR_MAX_LEN];
+    uint8_t DNS2[U_WIFI_IP_ADDR_STR_MAX_LEN];
+} uWifiIpCfg_t;
+
+typedef struct {
+    bool         dhcp;
+    uWifiIpCfg_t wifiIpCfg;
 } uWifiCfg_t;
 
 /* ----------------------------------------------------------------
