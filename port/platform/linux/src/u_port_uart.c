@@ -433,7 +433,7 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
         FAIL(U_ERROR_COMMON_INVALID_PARAMETER);
     }
     char prefix[U_PORT_UART_MAX_PREFIX_LENGTH + 1]; // +1 for terminator
-    char portName[U_PORT_UART_MAX_PREFIX_LENGTH + 4]; // +4 for terminator and uart index
+    char portName[U_PORT_UART_MAX_PREFIX_LENGTH + 16]; // +16 for terminator and uart index
     U_PORT_MUTEX_LOCK(gMutex);
     uPortUartPrefix_t *pUartPrefix = findPrefix(pthread_self());
     if (pUartPrefix != NULL) {

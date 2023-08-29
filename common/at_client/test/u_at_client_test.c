@@ -1292,7 +1292,9 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientCommandSet1")
                                                urcHandler, (void *) &checkUrc);
         }
         if (lastError == 0) {
-            snprintf(buffer, sizeof(buffer), "_%d", (int)x + 1);
+            int32_t ignored = snprintf(buffer, sizeof(buffer), "_%03d", (int)x + 1);
+            // This to stop GCC 12.3.0 complaining that variables printed into buffer are being truncated
+            (void) ignored;
             U_TEST_PRINT_LINE_X("sending command: \"%s\"...\n", x + 1,
                                 pCommandResponse->command.pString);
             uAtClientLock(atClientHandle);

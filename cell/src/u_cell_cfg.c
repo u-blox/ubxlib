@@ -1938,11 +1938,13 @@ int64_t uCellCfgSetTime(uDeviceHandle_t cellHandle, int64_t timeLocal,
         // The format is "yy/MM/dd,hh:mm:ss+TZ" where +TZ is
         // in quarter hours.  First get the time in a struct
         if ((pInstance != NULL) && gmtime_r((const time_t *) &timeLocal, &tmStruct) != NULL) {
-            snprintf(buffer, sizeof(buffer), "%02d/%02d/%02d,%02d:%02d:%02d%c%02d",
-                     tmStruct.tm_year % 100, tmStruct.tm_mon + 1, tmStruct.tm_mday,
-                     tmStruct.tm_hour, tmStruct.tm_min, tmStruct.tm_sec,
-                     timeZoneSeconds >= 0 ? '+' : '-', // Do this cos %+02d doesn't fill with zeroes as it should
-                     timeZoneSeconds >= 0 ? (int) timeZoneSeconds / (15 * 60) : (int) - timeZoneSeconds / (15 * 60));
+            int32_t ignored = snprintf(buffer, sizeof(buffer), "%02d/%02d/%02d,%02d:%02d:%02d%c%02d",
+                                       tmStruct.tm_year % 100, tmStruct.tm_mon + 1, tmStruct.tm_mday,
+                                       tmStruct.tm_hour, tmStruct.tm_min, tmStruct.tm_sec,
+                                       timeZoneSeconds >= 0 ? '+' : '-', // Do this cos %+02d doesn't fill with zeroes as it should
+                                       timeZoneSeconds >= 0 ? (int) timeZoneSeconds / (15 * 60) : (int) - timeZoneSeconds / (15 * 60));
+            // This to stop GCC 12.3.0 complaining that variables printed into buffer are being truncated
+            (void) ignored;
             atHandle = pInstance->atHandle;
             uAtClientLock(atHandle);
             uAtClientCommandStart(atHandle, "AT+CCLK=");

@@ -591,7 +591,9 @@ static int32_t handleSkipParams(uAtClientHandle_t atClientHandle,
     const uAtClientTestEchoSkipParams_t *pSkipParams;
     char buffer[5]; // Enough characters for a 3 digit index as a string
 
-    snprintf(buffer, sizeof(buffer), "_%d", (int)index + 1);
+    int32_t ignored = snprintf(buffer, sizeof(buffer), "_%03d", (int)index + 1);
+    // This to stop GCC 12.3.0 complaining that variables printed into buffer are being truncated
+    (void) ignored;
     pSkipParams = (const uAtClientTestEchoSkipParams_t *) pParameter;
 
     U_TEST_PRINT_LINE_X("checking that uAtClientSkipParameters()"
@@ -638,7 +640,9 @@ static int32_t handleSkipBytes(uAtClientHandle_t atClientHandle,
     const uAtClientTestEchoSkipBytes_t *pSkipBytes;
     char buffer[5]; // Enough characters for a 3 digit index as a string
 
-    snprintf(buffer, sizeof(buffer), "_%d", (int)index + 1);
+    int32_t ignored = snprintf(buffer, sizeof(buffer), "_%03d", (int)index + 1);
+    // This to stop GCC 12.3.0 complaining that variables printed into buffer are being truncated
+    (void) ignored;
     pSkipBytes = (const uAtClientTestEchoSkipBytes_t *) pParameter;
 
     U_TEST_PRINT_LINE_X("checking that uAtClientSkipBytes() works on"
@@ -690,7 +694,9 @@ static int32_t handleEarlyStop(uAtClientHandle_t atClientHandle,
     const uAtClientTestEchoEarlyStop_t *pEarlyStop;
     char buffer[5]; // Enough characters for a 3 digit index as a string
 
-    snprintf(buffer, sizeof(buffer), "_%d", (int)index + 1);
+    int32_t ignored = snprintf(buffer, sizeof(buffer), "_%03d", (int)index + 1);
+    // This to stop GCC 12.3.0 complaining that variables printed into buffer are being truncated
+    (void) ignored;
     pEarlyStop = (const uAtClientTestEchoEarlyStop_t *) pParameter;
 
     U_TEST_PRINT_LINE_X("checking that uAtClientResponseStop() can be called"
@@ -724,7 +730,9 @@ static int32_t handleWaitForChar(uAtClientHandle_t atClientHandle,
     const uAtClientTestEchoWaitForChar_t *pWaitForChar;
     char buffer[5]; // Enough characters for a 3 digit index as a string
 
-    snprintf(buffer, sizeof(buffer), "_%d", (int)index + 1);
+    int32_t ignored = snprintf(buffer, sizeof(buffer), "_%03d", (int)index + 1);
+    // This to stop GCC 12.3.0 complaining that variables printed into buffer are being truncated
+    (void) ignored;
     pWaitForChar = (const uAtClientTestEchoWaitForChar_t *) pParameter;
 
     uPortLog(U_TEST_PREFIX_X "checking that we can wait for character"
@@ -1010,7 +1018,9 @@ static int32_t handleMiscUseLast(uAtClientHandle_t atClientHandle,
     uAtClientTestCheckUrc_t checkUrc;
     char buffer[5]; // Enough characters for a 3 digit index as a string
 
-    snprintf(buffer, sizeof(buffer), "_%d", (int)index + 1);
+    int32_t ignored = snprintf(buffer, sizeof(buffer), "_%03d", (int)index + 1);
+    // This to stop GCC 12.3.0 complaining that variables printed into buffer are being truncated
+    (void) ignored;
     pEcho = (const uAtClientTestEchoMisc_t *) pParameter;
 
     memset(&checkUrc, 0, sizeof(checkUrc));
