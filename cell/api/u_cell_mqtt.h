@@ -510,7 +510,10 @@ int32_t uCellMqttGetWill(uDeviceHandle_t cellHandle, char *pTopicNameStr,
  */
 int32_t uCellMqttConnect(uDeviceHandle_t cellHandle);
 
-/** Stop an MQTT session.
+/** Stop an MQTT session.  Note that if, for whatever reason,
+ * there is no connection to the broker at this time, a local
+ * disconnect will in any case be performed and you must always
+ * connect to the broker again by calling uCellMqttConnect().
  *
  * @param cellHandle the handle of the cellular instance to be used.
  * @return           zero on success or negative error code.

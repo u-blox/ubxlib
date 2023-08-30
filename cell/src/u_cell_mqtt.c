@@ -408,26 +408,25 @@ static void UUMQTTC_UUMQTTSNC_urc(uAtClientHandle_t atHandle,
     // back are different depending on whether this is UUMQTTC (MQTT)
     // or UUMQTTSNC (MQTT-SN)
     if (urcType == 0) {
-        // Logout/disonnect, where 1 means success
-        if ((urcParam1 == 1) ||
-            (urcParam1 == 100) || // SARA-R5/R422, inactivity
-            (urcParam1 == 101) || // SARA-R5/R422, connection lost
-            (urcParam1 == 102)) { // SARA-R5/R422, connection lost due to protocol violation
-            // Disconnected
-            if (pContext->connected &&
-                (pContext->pDisconnectCallback != NULL)) {
-                // Launch the local callback via the AT
-                // parser's callback facility.
-                //lint -e(1773) Suppress complaints about
-                // passing the pointer as non-volatile
-                uAtClientCallback(atHandle, disconnectCallback,
-                                  (void *) pInstance);
-            }
-            pContext->connected = false;
-            // Keep alive returns to "off" when the session ends,
-            // it must be set afresh each time
-            pContext->keptAlive = false;
+        // Logout/disconnect
+        // Note: there are various possible urcParam1 values here:
+        // 1 for successful disconnect, 0 for unsuccessful disconnect,
+        // then, for SARA-R5/R422, 100 for inactivity, 101 for connection
+        // lost and 102 for connection lost due to protocol violation.
+        // HOWEVER, in all cases a local disconnect WILL have been
+        // performed, therefore we ignore them.
+        if (pContext->connected && (pContext->pDisconnectCallback != NULL)) {
+            // Launch the local callback via the AT
+            // parser's callback facility.
+            //lint -e(1773) Suppress complaints about
+            // passing the pointer as non-volatile
+            uAtClientCallback(atHandle, disconnectCallback,
+                              (void *) pInstance);
         }
+        pContext->connected = false;
+        // Keep alive returns to "off" when the session ends,
+        // it must be set afresh each time
+        pContext->keptAlive = false;
         pUrcStatus->flagsBitmap |= 1 << U_CELL_MQTT_URC_FLAG_CONNECT_UPDATED;
     } else if (urcType == 1) {
         // Login
