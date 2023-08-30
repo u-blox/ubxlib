@@ -282,7 +282,7 @@ def buildAndTestPipeline(instance_str, json_entry, filter) {
                          string(credentialsId: 'ubxlib_google_maps_api_key', variable: 'GOOGLE_MAPS_API_KEY'),
                          string(credentialsId: 'ubxlib_skyhook_api_key', variable: 'SKYHOOK_API_KEY'),
                          string(credentialsId: 'ubxlib_here_api_key', variable: 'HERE_API_KEY')]) {
-            def value = "${env.UBXLIB_EXTRA_DEFINES};U_WIFI_TEST_CFG_WPA2_PASSPHRASE=${WIFI_PASSKEY};U_CFG_APP_CLOUD_LOCATE_MQTT_PASSWORD=${CLOUD_LOCATE_MQTT_PASSWORD};U_CFG_APP_GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY};U_CFG_APP_SKYHOOK_API_KEY=${SKYHOOK_API_KEY};U_CFG_APP_HERE_API_KEY=${HERE_API_KEY}"
+            def value = "${env.UBXLIB_EXTRA_DEFINES};U_WIFI_TEST_CFG_WPA2_PASSPHRASE=${WIFI_PASSKEY};U_CFG_APP_CLOUD_LOCATE_MQTT_PASSWORD=${CLOUD_LOCATE_MQTT_PASSWORD};U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN=${CELL_LOCATE_AUTHENTICATION_TOKEN};U_CFG_APP_GNSS_ASSIST_NOW_AUTHENTICATION_TOKEN=${ASSIST_NOW_AUTHENTICATION_TOKEN};U_CFG_APP_GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY};U_CFG_APP_SKYHOOK_API_KEY=${SKYHOOK_API_KEY};U_CFG_APP_HERE_API_KEY=${HERE_API_KEY}"
             extra_env.add("U_UBXLIB_DEFINES=\"${value}\"")
             env.U_UBXLIB_DEFINES = value
         }
