@@ -64,6 +64,19 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+#ifndef U_WIFI_LOC_TRIES
+/** How many times to try AT+ULOCWIFIPOS; must be at least 1.
+ */
+# define U_WIFI_LOC_TRIES 3
+#endif
+
+#ifndef U_WIFI_LOC_RETRY_DELAY_MS
+/** How long to wait between failed attempts at AT+ULOCWIFIPOS in
+ * milliseconds.
+ */
+# define U_WIFI_LOC_RETRY_DELAY_MS 5000
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -289,6 +302,7 @@ static volatile uWifiLocContext_t *pBeginLocationAlloc(uShortRangePrivateInstanc
                                                        int32_t rssiDbmFilter,
                                                        uLocation_t *pLocation)
 {
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
     uAtClientHandle_t atHandle;
     volatile uWifiLocContext_t *pContext = NULL;
 
@@ -313,16 +327,22 @@ static volatile uWifiLocContext_t *pBeginLocationAlloc(uShortRangePrivateInstanc
             pLocation->type = type;
         }
         atHandle = pInstance->atHandle;
-        uAtClientLock(atHandle);
-        // This needs a little longer to respond with OK
-        uAtClientTimeoutSet(atHandle, U_WIFI_LOC_REQUEST_TIMEOUT_SECONDS * 1000);
-        uAtClientCommandStart(atHandle, "AT+ULOCWIFIPOS=");
-        uAtClientWriteInt(atHandle, accessPointsFilter);
-        uAtClientWriteInt(atHandle, rssiDbmFilter);
-        uAtClientWriteInt(atHandle, gULocationTypeToUConnectType[type]);
-        uAtClientWriteString(atHandle, pApiKey, true);
-        uAtClientCommandStopReadResponse(atHandle);
-        if (uAtClientUnlock(atHandle) != 0) {
+        for (size_t x = 0; (x < U_WIFI_LOC_TRIES) && (errorCode < 0); x++) {
+            uAtClientLock(atHandle);
+            // This needs a little longer to respond with OK
+            uAtClientTimeoutSet(atHandle, U_WIFI_LOC_REQUEST_TIMEOUT_SECONDS * 1000);
+            uAtClientCommandStart(atHandle, "AT+ULOCWIFIPOS=");
+            uAtClientWriteInt(atHandle, accessPointsFilter);
+            uAtClientWriteInt(atHandle, rssiDbmFilter);
+            uAtClientWriteInt(atHandle, gULocationTypeToUConnectType[type]);
+            uAtClientWriteString(atHandle, pApiKey, true);
+            uAtClientCommandStopReadResponse(atHandle);
+            errorCode = uAtClientUnlock(atHandle);
+            if (errorCode < 0) {
+                uPortTaskBlock(U_WIFI_LOC_RETRY_DELAY_MS);
+            }
+        }
+        if (errorCode != 0) {
             // Free memory on error
             pInstance->pLocContext = NULL;
             uPortFree((void *) pContext);
