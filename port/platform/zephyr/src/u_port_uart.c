@@ -324,7 +324,8 @@ int32_t uPortUartInit()
         for (size_t x = 0; x < sizeof(gUartData) / sizeof(gUartData[0]); x++) {
             const struct device *dev = NULL;
             switch (x) {
-#if KERNEL_VERSION_MAJOR < 3
+#ifdef CONFIG_SERIAL
+# if KERNEL_VERSION_MAJOR < 3
                 case 0:
                     dev = device_get_binding("UART_0");
                     break;
@@ -337,9 +338,7 @@ int32_t uPortUartInit()
                 case 3:
                     dev = device_get_binding("UART_3");
                     break;
-                default:
-                    break;
-#else
+# else
                 case 0:
                     dev = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(uart0));
                     break;
@@ -352,9 +351,10 @@ int32_t uPortUartInit()
                 case 3:
                     dev = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(uart3));
                     break;
+# endif
+#endif
                 default:
                     break;
-#endif
             }
 
             gUartData[x].pDevice = dev;
@@ -413,53 +413,52 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
         handleOrErrorCode = U_ERROR_COMMON_INVALID_PARAMETER;
         if ((uart >= 0) &&
             (uart < sizeof(gUartData) / sizeof(gUartData[0])) &&
-            (gUartData[uart].pDevice != NULL) &&
             (pReceiveBuffer == NULL) &&
             (gUartData[uart].pBuffer == NULL) &&
             (pinTx < 0) && (pinRx < 0) && (pinCts < 0) && (pinRts < 0)) {
-
-            gUartData[uart].pBuffer = k_malloc(receiveBufferSizeBytes);
-
-            if (gUartData[uart].pBuffer == NULL) {
+            handleOrErrorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
+            if (gUartData[uart].pDevice != NULL) {
                 handleOrErrorCode = U_ERROR_COMMON_NO_MEMORY;
-            } else {
+                gUartData[uart].pBuffer = k_malloc(receiveBufferSizeBytes);
+                if (gUartData[uart].pBuffer != NULL) {
 #ifdef CONFIG_UART_INTERRUPT_DRIVEN
-                k_sem_init(&gUartData[uart].txSem, 0, 1);
-                k_fifo_init(&gUartData[uart].fifoTxData);
-                gUartData[uart].pTxData = NULL;
-                gUartData[uart].txWritten = 0;
+                    k_sem_init(&gUartData[uart].txSem, 0, 1);
+                    k_fifo_init(&gUartData[uart].fifoTxData);
+                    gUartData[uart].pTxData = NULL;
+                    gUartData[uart].txWritten = 0;
 #endif
-                gUartData[uart].receiveBufferSizeBytes = receiveBufferSizeBytes;
-                gUartData[uart].bufferRead = 0;
-                gUartData[uart].bufferWrite = 0;
-                gUartData[uart].bufferFull = false;
-                gUartData[uart].eventQueueHandle = -1;
-                gUartData[uart].eventFilter = 0;
-                gUartData[uart].pEventCallback = NULL;
-                gUartData[uart].pEventCallbackParam = NULL;
-                k_timer_init(&gUartData[uart].rxTimer, rxTimer, NULL);
-                k_timer_user_data_set(&gUartData[uart].rxTimer, (void *)uart);
+                    gUartData[uart].receiveBufferSizeBytes = receiveBufferSizeBytes;
+                    gUartData[uart].bufferRead = 0;
+                    gUartData[uart].bufferWrite = 0;
+                    gUartData[uart].bufferFull = false;
+                    gUartData[uart].eventQueueHandle = -1;
+                    gUartData[uart].eventFilter = 0;
+                    gUartData[uart].pEventCallback = NULL;
+                    gUartData[uart].pEventCallbackParam = NULL;
+                    k_timer_init(&gUartData[uart].rxTimer, rxTimer, NULL);
+                    k_timer_user_data_set(&gUartData[uart].rxTimer, (void *)uart);
 
-                uart_config_get(gUartData[uart].pDevice, &gUartData[uart].config);
-                // Flow control is set in the .overlay file
-                // by including the line:
-                //     hw-flow-control;
-                // in the definition of the relevant UART
-                // so all we need to configure here is the
-                // baud rate as everything else is good at the
-                // default values (8N1).
-                gUartData[uart].config.baudrate = baudRate;
-                uart_configure(gUartData[uart].pDevice, &gUartData[uart].config);
+                    uart_config_get(gUartData[uart].pDevice, &gUartData[uart].config);
+                    // Flow control is set in the .overlay file
+                    // by including the line:
+                    //     hw-flow-control;
+                    // in the definition of the relevant UART
+                    // so all we need to configure here is the
+                    // baud rate as everything else is good at the
+                    // default values (8N1).
+                    gUartData[uart].config.baudrate = baudRate;
+                    uart_configure(gUartData[uart].pDevice, &gUartData[uart].config);
 #ifdef CONFIG_UART_INTERRUPT_DRIVEN
-                uart_irq_callback_user_data_set(gUartData[uart].pDevice, uartCb, NULL);
-                uart_irq_rx_enable(gUartData[uart].pDevice);
+                    uart_irq_callback_user_data_set(gUartData[uart].pDevice, uartCb, NULL);
+                    uart_irq_rx_enable(gUartData[uart].pDevice);
 #else
-                k_timer_init(&gUartData[uart].pollTimer, pollTimer, NULL);
-                k_timer_user_data_set(&gUartData[uart].pollTimer, (void *)uart);
-                k_timer_start(&gUartData[uart].pollTimer, K_MSEC(1), K_MSEC(1));
+                    k_timer_init(&gUartData[uart].pollTimer, pollTimer, NULL);
+                    k_timer_user_data_set(&gUartData[uart].pollTimer, (void *)uart);
+                    k_timer_start(&gUartData[uart].pollTimer, K_MSEC(1), K_MSEC(1));
 #endif
-                U_ATOMIC_INCREMENT(&gResourceAllocCount);
-                handleOrErrorCode = uart;
+                    U_ATOMIC_INCREMENT(&gResourceAllocCount);
+                    handleOrErrorCode = uart;
+                }
             }
         }
 

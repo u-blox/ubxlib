@@ -139,20 +139,22 @@ static int32_t openI2c(int32_t i2c, int32_t pinSda, int32_t pinSdc,
             (pinSda < 0) && (pinSdc < 0)) {
             handleOrErrorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
             switch (i2c) {
+#ifdef CONFIG_I2C
                 case 0:
-#if KERNEL_VERSION_MAJOR < 3
+# if KERNEL_VERSION_MAJOR < 3
                     pDevice = device_get_binding("I2C_0");
-#else
+# else
                     pDevice = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(i2c0));
-#endif
+# endif
                     break;
                 case 1:
-#if KERNEL_VERSION_MAJOR < 3
+# if KERNEL_VERSION_MAJOR < 3
                     pDevice = device_get_binding("I2C_1");
-#else
+# else
                     pDevice = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(i2c1));
-#endif
+# endif
                     break;
+#endif
                 default:
                     break;
             }

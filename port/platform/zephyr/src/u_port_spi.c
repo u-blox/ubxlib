@@ -423,42 +423,45 @@ int32_t uPortSpiOpen(int32_t spi, int32_t pinMosi, int32_t pinMiso,
         if ((spi >= 0) && (spi < sizeof(gSpiCfg) / sizeof(gSpiCfg[0])) &&
             (gSpiCfg[spi].pDevice == NULL) && controller &&
             (pinMosi < 0) && (pinMiso < 0) && (pinClk < 0)) {
+            handleOrErrorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
             switch (spi) {
+#ifdef CONFIG_SPI
                 case 0:
-#if KERNEL_VERSION_MAJOR < 3
+# if KERNEL_VERSION_MAJOR < 3
                     pDevice = device_get_binding("SPI_0");
-#else
+# else
                     pDevice = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(spi0));
-#endif
+# endif
                     break;
                 case 1:
-#if KERNEL_VERSION_MAJOR < 3
+# if KERNEL_VERSION_MAJOR < 3
                     pDevice = device_get_binding("SPI_1");
-#else
+# else
                     pDevice = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(spi1));
-#endif
+# endif
                     break;
                 case 2:
-#if KERNEL_VERSION_MAJOR < 3
+# if KERNEL_VERSION_MAJOR < 3
                     pDevice = device_get_binding("SPI_2");
-#else
+# else
                     pDevice = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(spi2));
-#endif
+# endif
                     break;
                 case 3:
-#if KERNEL_VERSION_MAJOR < 3
+# if KERNEL_VERSION_MAJOR < 3
                     pDevice = device_get_binding("SPI_3");
-#else
+# else
                     pDevice = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(spi3));
-#endif
+# endif
                     break;
                 case 4:
-#if KERNEL_VERSION_MAJOR < 3
+# if KERNEL_VERSION_MAJOR < 3
                     pDevice = device_get_binding("SPI_4");
-#else
+# else
                     pDevice = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(spi4));
-#endif
+# endif
                     break;
+#endif
                 default:
                     break;
             }
