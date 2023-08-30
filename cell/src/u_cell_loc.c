@@ -772,7 +772,11 @@ static int32_t setUgsrv(const uCellPrivateInstance_t *pInstance,
                 // Skip the parameter
                 uAtClientWriteString(atHandle, pEmpty, false);
             }
-            uAtClientWriteString(atHandle, authenticationTokenStr, true);
+            if (pAuthenticationTokenStr != NULL) {
+                uAtClientWriteString(atHandle, pAuthenticationTokenStr, true);
+            } else {
+                uAtClientWriteString(atHandle, authenticationTokenStr, true);
+            }
             // The coding of the "days" field applied by cellular modules
             // is not actually the way the AssistNow Offline service
             // uses the field (any more, at least): the cellular module
