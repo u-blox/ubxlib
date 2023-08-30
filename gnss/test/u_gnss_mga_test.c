@@ -195,6 +195,10 @@ static uGnssTestPrivate_t gHandles = U_GNSS_TEST_PRIVATE_DEFAULTS;
  */
 static char *gpDatabase = NULL;
 
+/** Flag to catch whether the database includes a QZSS AUXDB item.
+ */
+static bool gDatabaseHasQzss = false;
+
 /** A place to hook our outgoing HTTP buffer, the one to encode into.
  */
 static char *gpHttpBufferOut = NULL;
@@ -485,15 +489,29 @@ static bool databaseCallback(uDeviceHandle_t devHandle,
                 keepGoing = false;
             } else if ((gpDatabase != NULL) && (size > 0) && (pBuffer != NULL)) {
                 memcpy(gpDatabase + paramLocal, pBuffer, size);
+                // We _very_ occasionally get a NACK back from the GNSS
+                // device if the MGA data is for QZSS.  In order to work
+                // around this, set a flag if the record is a QZSS one
+                //
+                // In the record 03 00 05 FF 00 00 00 00 00 00 00 00 5C 40 10 05 91 02 01 00 3E 00 00 00 3E 3E 00 3E 3E 3E 00 00
+                //                     ^^ this is the GNSS ID (05 for QZSS)
+                //               ^^ this is the data type (03 for AUXDB)
+                if ((size >= 2 + 2) &&            // +2 for length
+                    (*(pBuffer + 0 + 2) == 3) &&  // AUXDB
+                    (*(pBuffer + 2 + 2) == 5)) {  // QZSS
+                    uPortLog("#### gDatabaseHasQzss %s.\n", gDatabaseHasQzss ? "true" : "false");
+                    gDatabaseHasQzss = true;
+                }
+                paramLocal += size;
+                gDatabaseCalledCount++;
             }
-            paramLocal += size;
-            gDatabaseCalledCount++;
+            *((int32_t *) pDatabaseCallbackParam) = paramLocal;
         }
-        *((int32_t *) pDatabaseCallbackParam) = paramLocal;
     }
 
     return keepGoing;
 }
+
 # endif // ifndef U_GNSS_MGA_TEST_DISABLE_DATABASE
 
 /* ----------------------------------------------------------------
@@ -639,6 +657,7 @@ U_PORT_TEST_FUNCTION("[gnssMga]", "gnssMgaBasic")
         startTimeMs = uPortGetTickTimeMs();
         if ((transportTypes[w] != U_GNSS_TRANSPORT_AT) && (intermediateHandle == NULL)) {
             U_TEST_PRINT_LINE("reading database from GNSS device.");
+            gDatabaseHasQzss = false;
             z = uGnssMgaGetDatabase(gnssDevHandle, databaseCallback, &callbackParameter);
             U_TEST_PRINT_LINE("uGnssMgaGetDatabase() returned %d.", z);
             if (callbackParameter >= 0) {
@@ -706,8 +725,22 @@ U_PORT_TEST_FUNCTION("[gnssMga]", "gnssMgaBasic")
                         U_TEST_PRINT_LINE_X(" %d receive byte(s) skipped.", x + 1,
                                             communicationStats.rxSkippedBytes);
                     }
+                    if (y != 0) {
+                        if ((y == (int32_t) U_GNSS_ERROR_NACK) &&
+                            (gFlowControlList[x] != U_GNSS_MGA_FLOW_CONTROL_WAIT) &&
+                            gDatabaseHasQzss) {
+                            U_PORT_TEST_ASSERT(callbackParameter == (int32_t) U_GNSS_ERROR_NACK);
+                            callbackParameter = 0;
+                            U_TEST_PRINT_LINE_X("*** WARNING *** uGnssMgaSetDatabase() returned %d"
+                                                " when using %s flow control but a QZSS MGA DBD"
+                                                " record was included, which can result in a NACK,"
+                                                " on some GNSS devices, so letting that by.",
+                                                x + 1, y, gpFlowControlNameList[x]);
+                        } else {
+                            U_PORT_TEST_ASSERT(false);
+                        }
+                    }
                     U_PORT_TEST_ASSERT(callbackParameter >= 0);
-                    U_PORT_TEST_ASSERT(y == 0);
                 }
             } else {
                 U_TEST_PRINT_LINE("*** WARNING *** not testing writing database as there is nothing to write.");

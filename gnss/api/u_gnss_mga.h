@@ -714,10 +714,11 @@ int32_t uGnssMgaSetAutonomous(uDeviceHandle_t gnssHandle, bool onNotOff);
  *                           The first parameter is the GNSS handle,
  *                           the second a pointer to the chunk, the
  *                           third the size of the chunk, which can
- *                           be up to 166 bytes, and the last the
- *                           user parameter pCallbackParam.
- *                           The callback should copy the entire
- *                           buffer, adding it to any previous chunks
+ *                           be up to #U_GNSS_MGA_DBD_MESSAGE_PAYLOAD_LENGTH_MAX_BYTES,
+ *                           plus 2 length bytes, and the last the user
+ *                           parameter pCallbackParam. The callback should
+ *                           copy the entire buffer, including the length
+ *                           bytes, adding it to any previous chunks
  *                           contiguously, and return true if it wants
  *                           to be called for further chunks, else
  *                           false.  When there are no more chunks to
@@ -746,6 +747,15 @@ int32_t uGnssMgaGetDatabase(uDeviceHandle_t gnssHandle,
  * when waiting for Acks, NMEA messages from the GNSS chip are temporarily
  * disabled.  You can disable the disabling by defining the conditional
  * compilation flag U_GNSS_MGA_DISABLE_NMEA_MESSAGE_DISABLE.
+ *
+ * Note: if this function returns #U_GNSS_ERROR_NACK then whatever MGA data
+ * _has_ been restored to the GNSS device may still be useful and so it is
+ * probably not worth retrying.  Specifically, an intermittent issue has been
+ * observed where restoring an MGA DBD record that contains QZSS data (e.g.
+ * beginning 03 00 05... where the 03 indicates AUXDB and the 05 indicates QZSS)
+ * to a GNSS device of FW version SPG 5.10 results in a NACK; should this occur
+ * it is probably best ignored, especially since the QZSS record is usually at
+ * the end of the list.
  *
  * Note: not supported if the GNSS device is connected via an intermediate
  * e.g. cellular module; instead please use uCellLocSetAssistNowDatabaseSave().
