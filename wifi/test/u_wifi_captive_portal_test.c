@@ -182,6 +182,7 @@ U_PORT_TEST_FUNCTION("[wifiCaptivePortal]", "wifiCaptivePortal")
     gStartTimeMs = uPortGetTickTimeMs();
     int32_t returnCode = uWifiCaptivePortal(gDeviceHandle, "UBXLIB_TEST_PORTAL", NULL,
                                             keepGoingCallback);
+    U_TEST_PRINT_LINE("uWifiCaptivePortal() returned %d.", returnCode);
     U_PORT_TEST_ASSERT(returnCode == 0);
 
     // The network interface will have been brought up by

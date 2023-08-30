@@ -67,6 +67,15 @@
 
 #define LOG_PREFIX "U_WIFI_CAPTIVE_PORTAL: "
 
+#ifndef U_WIFI_CAPTIVE_PORTAL_CLIENT_SOCKET_READ_DELAY_MS
+/** When waiting for a client that has connected to us, wait for
+ * this many milliseconds while going around a loop reading
+ * from it to make sure that we have really read everything that
+ * it has sent to us.
+ */
+# define U_WIFI_CAPTIVE_PORTAL_CLIENT_SOCKET_READ_DELAY_MS 100
+#endif
+
 /* ----------------------------------------------------------------
  * STATIC VARIABLES
  * ------------------------------------------------------------- */
@@ -245,7 +254,7 @@ static void getVal(const char *txt,
     }
 }
 
-// Send the user entered credentials
+// Set the user entered credentials
 static void updateWifi(int32_t sock, const char *params)
 {
     getVal(params, "ssid", gSsid, sizeof(gSsid));
@@ -379,9 +388,21 @@ int32_t uWifiCaptivePortal(uDeviceHandle_t deviceHandle,
                 if (clientSock >= 0) {
                     uSockIpAddressToString(&(remoteAddr.ipAddress), addrStr, sizeof(addrStr));
                     uPortLog(LOG_PREFIX "Connected to: %s\n", addrStr);
-                    int32_t cnt = uSockRead(clientSock, request, sizeof(request) - 1);
-                    if (cnt > 0) {
-                        request[cnt] = 0;
+                    // Set non-blocking: we'll do our own
+                    uSockBlockingSet(clientSock, false);
+                    int32_t cnt;
+                    size_t requestLength = 0;
+                    do {
+                        // Wait for a short while to make sure we don't miss anything
+                        uPortTaskBlock(U_WIFI_CAPTIVE_PORTAL_CLIENT_SOCKET_READ_DELAY_MS);
+                        cnt = uSockRead(clientSock, request + requestLength,
+                                        sizeof(request) - requestLength - 1);
+                        if (cnt > 0) {
+                            requestLength += cnt;
+                        }
+                    } while ((cnt > 0) && (requestLength < (sizeof(request) - 1)));
+                    if (requestLength > 0) {
+                        request[requestLength] = 0;
                         handleRequest(request, clientSock);
                     } else {
                         uPortLog(LOG_PREFIX "ERROR No request\n");
@@ -401,6 +422,7 @@ int32_t uWifiCaptivePortal(uDeviceHandle_t deviceHandle,
                 uNetworkInterfaceDown(gDevHandle, U_NETWORK_TYPE_WIFI);
             }
             if (strlen(gSsid)) {
+                uPortLog(LOG_PREFIX "Connecting to SSID \"%s\"...\n", gSsid);
                 uPortTaskBlock(1000);
                 gNetworkCfg.authentication = (strlen(gPw) == 0) ? U_WIFI_AUTH_OPEN : U_WIFI_AUTH_WPA_PSK;
                 gNetworkCfg.pSsid = gSsid;
@@ -419,7 +441,7 @@ int32_t uWifiCaptivePortal(uDeviceHandle_t deviceHandle,
             errorCode = sock;
         }
     } else {
-        uPortLog(LOG_PREFIX "ERROR to start the access point: %d\n", errorCode);
+        uPortLog(LOG_PREFIX "ERROR Failed to start the access point: %d\n", errorCode);
     }
     return errorCode;
 }
