@@ -1,0 +1,11 @@
+
+# Make VS code C/C++ editor formatting (somewhat) consistent
+# with ubxlib astyle format
+
+IndentWidth: 4
+ColumnLimit: 100
+TabWidth: 4
+UseTab: Never
+BreakBeforeBraces: Linux
+InsertBraces: true
+SortIncludes: false
