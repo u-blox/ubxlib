@@ -526,11 +526,12 @@ void uCellMuxPrivateCloseChannel(uCellMuxPrivateContext_t *pContext, uint8_t cha
 int32_t uCellMuxPrivateDisable(uCellPrivateInstance_t *pInstance)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-    uAtClientHandle_t atHandle = pInstance->atHandle;
+    uAtClientHandle_t atHandle;
     uCellMuxPrivateContext_t *pContext;
     uCellMuxPrivateChannelContext_t *pChannelContext;
 
     if (pInstance != NULL) {
+        atHandle = pInstance->atHandle;
         errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
         if (pInstance->pMuxContext != NULL) {
             pContext = (uCellMuxPrivateContext_t *) pInstance->pMuxContext;

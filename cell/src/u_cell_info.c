@@ -106,7 +106,7 @@ static int32_t ecnoLevToDb(int32_t ecnoLev)
     int32_t ecnoDb = 0x7FFFFFFF;
 
     if ((ecnoLev >= 0) && (ecnoLev <= 49)) {
-        ecnoDb = -((ecnoLev - 49) >> 2);
+        ecnoDb = - (int32_t) (((uint32_t) (ecnoLev - 49)) >> 2);
     }
 
     return ecnoDb;

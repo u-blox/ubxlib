@@ -430,6 +430,7 @@ int32_t uLocationGet(uDeviceHandle_t devHandle, uLocationType_t type,
 
         U_PORT_MUTEX_LOCK(gULocationMutex);
 
+        location.type = type;
         int32_t devType = uDeviceGetDeviceType(devHandle);
         if (devType == (int32_t) U_DEVICE_TYPE_SHORT_RANGE) {
             errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
@@ -451,7 +452,6 @@ int32_t uLocationGet(uDeviceHandle_t devHandle, uLocationType_t type,
             }
         } else if (devType == (int32_t) U_DEVICE_TYPE_CELL) {
             errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
-            location.type = type;
             switch (location.type) {
                 case U_LOCATION_TYPE_GNSS:
                     // A GNSS device inside or connected-via a cellular device

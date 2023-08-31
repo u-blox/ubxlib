@@ -335,10 +335,12 @@ int32_t uDevicePrivateGnssRemove(uDeviceHandle_t devHandle,
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
     uDeviceGnssInstance_t *pContext = (uDeviceGnssInstance_t *) U_DEVICE_INSTANCE(devHandle)->pContext;
-    uDeviceTransportType_t deviceTransportType = pContext->deviceTransportType;
-    uDeviceGnssTransportHandle_t transportHandle = pContext->transportHandle;
+    uDeviceTransportType_t deviceTransportType;
+    uDeviceGnssTransportHandle_t transportHandle;
 
     if (pContext != NULL) {
+        deviceTransportType = pContext->deviceTransportType;
+        transportHandle = pContext->transportHandle;
         errorCode = removeDevice(devHandle, powerOff);
         if (errorCode == 0) {
             // Having removed the device, close the transport

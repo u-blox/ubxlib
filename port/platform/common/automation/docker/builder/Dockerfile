@@ -23,7 +23,7 @@ RUN apt-get update && apt-get install -y \
     wget -qO - https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add - && \
     add-apt-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-14 main" && \
     apt-get update && apt-get install --no-install-recommends -y \
-        sudo clang-14 clang-tidy-14 clang-format-14 libpq-dev make build-essential \
+        sudo clang-14 clang-tidy-14 clang-format-14 cppcheck libpq-dev make build-essential \
         curl git python3-venv python3-dev python3-pip python3-setuptools libsasl2-dev \
         libldap2-dev libssl-dev && \
     update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-14 9999 && \

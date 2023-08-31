@@ -2106,6 +2106,14 @@ static size_t write(uAtClientInstance_t *pClient,
     size_t lengthToWrite;
     const char *pDataStart = pData;
     const char *pDataToWrite = pData;
+    // cppcheck insists that pDataStart + length can be
+    // out of bounds if length is 23 when being called
+    // from uAtClientWriteUint64(), where length is checked
+    // against the size of numberString, which is 24.
+    // I can't see how that's possible: maybe the
+    // the ORing with andFlush below is confusing it?
+    // codechecker_suppress [cppcheck-pointerOutOfBoundsCond] "pDataStart + length is not out of bounds"
+    const char *pDataEnd = pDataStart + length;
     int32_t savedLockTimeMs;
     int32_t wakeUpDurationMs = 0;
     uAtClientScope_t savedScope;
@@ -2114,7 +2122,7 @@ static size_t write(uAtClientInstance_t *pClient,
     uAtClientDeviceError_t savedDeviceError;
     uDeviceSerial_t *pDeviceSerial;
 
-    while (((pData < pDataStart + length) || andFlush) &&
+    while (((pData < pDataEnd) || andFlush) &&
            (pClient->error == U_ERROR_COMMON_SUCCESS)) {
         lengthToWrite = length - (pData - pDataStart);
         if ((pClient->pWakeUp != NULL) && (pClient->lastTxTimeMs >= 0) &&
@@ -2181,7 +2189,7 @@ static size_t write(uAtClientInstance_t *pClient,
 
         if (pClient->error == U_ERROR_COMMON_SUCCESS) {
             if (pClient->pInterceptTx != NULL) {
-                if (pData < pDataStart + length) {
+                if (pData < pDataEnd) {
                     // Call the intercept function
                     pDataToWrite = pClient->pInterceptTx((uAtClientHandle_t) pClient,
                                                          &pData, &lengthToWrite,
@@ -2197,7 +2205,7 @@ static size_t write(uAtClientInstance_t *pClient,
             } else {
                 // If there is no intercept function then move pData
                 // on, plus clear andFlush, to indicate that we're done
-                pData = pDataStart + length;
+                pData = pDataEnd;
                 andFlush = false;
             }
             if ((pDataToWrite == NULL) && (lengthToWrite > 0)) {

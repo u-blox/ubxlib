@@ -244,7 +244,7 @@ static int32_t parseBuffer(uLocation_t *pLocation, char *pStr)
     // Now we should have the latitude value
     pLocation->latitudeX1e7 = parseNumber(pTmp, 7);
     // Make sure there is a "lng" next
-    if (strstr(pTmp, "lng") != NULL) {
+    if ((pTmp != NULL) && (strstr(pTmp, "lng") != NULL)) {
         pTmp = strtok_r(NULL, ":", &pSave);
         count++;
     }
@@ -252,7 +252,7 @@ static int32_t parseBuffer(uLocation_t *pLocation, char *pStr)
     pLocation->longitudeX1e7 = parseNumber(pTmp, 7);
     // There is no altitude value, all that is left is
     // the accuracy, which is provided in metres
-    if (strstr(pTmp, "accuracy") != NULL) {
+    if ((pTmp != NULL) && (strstr(pTmp, "accuracy") != NULL)) {
         pTmp = strtok_r(NULL, ":", &pSave);
         count++;
     }
@@ -403,43 +403,39 @@ void uWifiLocPrivateUrc(uAtClientHandle_t atHandle, void *pParameter)
                     uAtClientSkipParameters(atHandle, 1);
                     // Have an HTTP status code, check if it is good
                     if (pContext->errorCode == 200) {
+                        // Allocate memory to read the contents into,
+                        // +1 for terminator.
+                        pBuffer = pUPortMalloc(bytesReadOrErrorCode + 1);
+                        // Now read the contents into pBuffer (if pBuffer is
+                        // NULL that's OK, this will just throw the contents away)
+                        // The contents are NOT in quotes and may contain commas
+                        // (the standard AT interface delimiter) and CR/LF etc,
+                        // hence we do a binary read ignoring any stop tags
+                        uAtClientIgnoreStopTag(atHandle);
+                        bytesReadOrErrorCode = uAtClientReadBytes(atHandle, pBuffer,
+                                                                  bytesReadOrErrorCode, true);
+                        // Note: don't restore stop tag here, since we're not in
+                        // a usual response, we're in a URC; as this is the last
+                        // part of the URC the generic AT Client URC handling will
+                        // do the right thing
                         if (bytesReadOrErrorCode >= 0) {
-                            // Allocate memory to read the contents into,
-                            // +1 for terminator.
-                            pBuffer = pUPortMalloc(bytesReadOrErrorCode + 1);
-                            // Now read the contents into pBuffer (if pBuffer is
-                            // NULL that's OK, this will just throw the contents away)
-                            // The contents are NOT in quotes and may contain commas
-                            // (the standard AT interface delimiter) and CR/LF etc,
-                            // hence we do a binary read ignoring any stop tags
-                            uAtClientIgnoreStopTag(atHandle);
-                            bytesReadOrErrorCode = uAtClientReadBytes(atHandle, pBuffer,
-                                                                      bytesReadOrErrorCode, true);
-                            // Note: don't restore stop tag here, since we're not in
-                            // a usual response, we're in a URC; as this is the last
-                            // part of the URC the generic AT Client URC handling will
-                            // do the right thing
-                            if (bytesReadOrErrorCode >= 0) {
-                                pContext->errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
-                                if (pBuffer != NULL) {
-                                    // Add a terminator so that pBuffer can be treated as a string
-                                    *(pBuffer + bytesReadOrErrorCode) = 0;
-                                    pContext->errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-                                    if (pContext->pLocation != NULL) {
-                                        // We should now have the location response as
-                                        // a string, parse it
-                                        pContext->errorCode = parseBuffer(pContext->pLocation,
-                                                                          pBuffer);
-                                    }
+                            pContext->errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
+                            if (pBuffer != NULL) {
+                                // Add a terminator so that pBuffer can be treated as a string
+                                *(pBuffer + bytesReadOrErrorCode) = 0;
+                                pContext->errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                                if (pContext->pLocation != NULL) {
+                                    // We should now have the location response as
+                                    // a string, parse it
+                                    pContext->errorCode = parseBuffer(pContext->pLocation,
+                                                                      pBuffer);
                                 }
-                            } else {
-                                pContext->errorCode = bytesReadOrErrorCode;
                             }
-                            // Free memory
-                            uPortFree(pBuffer);
                         } else {
                             pContext->errorCode = bytesReadOrErrorCode;
                         }
+                        // Free memory
+                        uPortFree(pBuffer);
                     } else {
                         if (bytesReadOrErrorCode > 0) {
                             // For any other error code that has contents, read it

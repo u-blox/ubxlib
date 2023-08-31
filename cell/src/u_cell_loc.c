@@ -1609,7 +1609,7 @@ int32_t uCellLocGet(uDeviceHandle_t cellHandle,
     uCellPrivateInstance_t *pInstance = NULL;
     uCellPrivateLocContext_t *pContext;
     uCellLocFixDataStorage_t *pFixDataStorage;
-    volatile uCellLocFixDataStorageBlock_t fixDataStorageBlock;
+    volatile uCellLocFixDataStorageBlock_t fixDataStorageBlock = {0};
     int64_t startTime;
 
     fixDataStorageBlock.errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
