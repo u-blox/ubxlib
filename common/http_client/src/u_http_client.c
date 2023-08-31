@@ -476,6 +476,8 @@ static int32_t cellPutPost(uDeviceHandle_t devHandle, int32_t httpHandle,
     uAtClientHandle_t atHandle = NULL;
     bool atPrintOn = false;
     int32_t thisSize = 0;
+    int32_t fileSize = (int32_t) size;
+    bool rtsFlowControlEnabled = false;
     int32_t writeDelayMs = U_HTTP_CLIENT_CELL_FILE_WRITE_DELAY_MS;
     uAtClientStreamHandle_t streamHandle = {0};
     uDeviceSerial_t *pDeviceSerial;
@@ -487,19 +489,18 @@ static int32_t cellPutPost(uDeviceHandle_t devHandle, int32_t httpHandle,
         uAtClientStreamGetExt(atHandle, &streamHandle);
         switch (streamHandle.type) {
             case U_AT_CLIENT_STREAM_TYPE_UART:
-                if (uPortUartIsRtsFlowControlEnabled(streamHandle.handle.int32)) {
-                    writeDelayMs = 0;
-                }
+                rtsFlowControlEnabled = uPortUartIsRtsFlowControlEnabled(streamHandle.handle.int32);
                 break;
             case U_AT_CLIENT_STREAM_TYPE_VIRTUAL_SERIAL:
                 pDeviceSerial = streamHandle.handle.pDeviceSerial;
-                if (pDeviceSerial->isRtsFlowControlEnabled(pDeviceSerial)) {
-                    writeDelayMs = 0;
-                }
+                rtsFlowControlEnabled = pDeviceSerial->isRtsFlowControlEnabled(pDeviceSerial);
                 break;
             default:
                 break;
         }
+    }
+    if (rtsFlowControlEnabled) {
+        writeDelayMs = 0;
     }
     // If you change the string here, you may need to change the one
     // in cellClose() to match
@@ -515,22 +516,37 @@ static int32_t cellPutPost(uDeviceHandle_t devHandle, int32_t httpHandle,
     uCellFileDelete(devHandle, fileName);
     // Write in chunks so as not to stress the capabilities
     // of the UART or the flash-write speed of the module
-    while ((size > 0) && (thisSize >= 0)) {
+    while ((fileSize > 0) && (thisSize >= 0)) {
         thisSize = U_HTTP_CLIENT_CELL_FILE_CHUNK_LENGTH;
-        if (thisSize > (int32_t) size) {
-            thisSize = (int32_t) size;
+        if (thisSize > fileSize) {
+            thisSize = fileSize;
         }
         thisSize = uCellFileWrite(devHandle, fileName, pData, thisSize);
         if (thisSize > 0) {
             pData += thisSize;
-            size -= thisSize;
+            fileSize -= thisSize;
         }
-        if ((size > 0) && (writeDelayMs > 0)) {
+        if ((fileSize > 0) && (writeDelayMs > 0)) {
             uPortTaskBlock(writeDelayMs);
         }
     }
     if (thisSize < 0) {
         errorCode = thisSize;
+    } else {
+        if (!rtsFlowControlEnabled) {
+            // If there was no error and RTS flow control is NOT enabled
+            // there is still _potential_ for there to have been an issue
+            // in writing the file, so check that it is of the expected
+            // length to be quite sure
+            thisSize = uCellFileSize(devHandle, fileName);
+            if (thisSize < 0) {
+                errorCode = thisSize;
+            } else {
+                if (thisSize != (int32_t) size) {
+                    errorCode = (int32_t) U_ERROR_COMMON_TRUNCATED;
+                }
+            }
+        }
     }
     if (atPrintOn) {
         uAtClientPrintAtSet(atHandle, true);

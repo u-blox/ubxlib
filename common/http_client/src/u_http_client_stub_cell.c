@@ -60,6 +60,14 @@ U_WEAK int32_t uCellFileWrite(uDeviceHandle_t cellHandle,
     return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
 }
 
+U_WEAK int32_t uCellFileSize(uDeviceHandle_t cellHandle,
+                             const char *pFileName)
+{
+    (void) cellHandle;
+    (void) pFileName;
+    return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+}
+
 U_WEAK int32_t uCellFileBlockRead(uDeviceHandle_t cellHandle,
                                   const char *pFileName,
                                   char *pData,

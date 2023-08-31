@@ -272,7 +272,10 @@ void uHttpClientClose(uHttpClientContext_t *pContext);
  *
  * If you are going to perform large PUT requests (e.g. more than 1024
  * bytes) then you should ensure that you have flow control on the interface
- * to the module or you might experience data loss.
+ * to the module or you might experience data loss.  If you do not have
+ * flow control connected when using HTTP with a cellular module this code
+ * will try to detect that data has been lost and, if so, return the error
+ * #U_ERROR_COMMON_TRUNCATED.
  *
  * @param[in] pContext               a pointer to the internal HTTP context
  *                                   structure that was originally returned by
@@ -312,7 +315,10 @@ int32_t uHttpClientPutRequest(uHttpClientContext_t *pContext,
  *
  * If you are going to perform large POST requests (e.g. more than 1024
  * bytes) then you should ensure that you have flow control on the interface
- * to the module or you might experience data loss.
+ * to the module or you might experience data loss.  If you do not have
+ * flow control connected when using HTTP with a cellular module this code
+ * will try to detect that data has been lost and, if so, return the error
+ * #U_ERROR_COMMON_TRUNCATED.
  *
  * @param[in] pContext               a pointer to the internal HTTP context
  *                                   structure that was originally returned by
