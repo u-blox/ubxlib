@@ -100,7 +100,7 @@ static uBleTestPrivate_t gHandles = { -1, -1, NULL, NULL };
 
 U_PORT_TEST_FUNCTION("[bleCfg]", "bleCfgConfigureModule")
 {
-    int32_t heapUsed;
+    int32_t resourceCount;
     uBleCfg_t cfg;
     uShortRangeUartConfig_t uart = { .uartPort = U_CFG_APP_SHORT_RANGE_UART,
                                      .baudRate = U_SHORT_RANGE_UART_BAUD_RATE,
@@ -114,8 +114,7 @@ U_PORT_TEST_FUNCTION("[bleCfg]", "bleCfgConfigureModule")
                                      .pPrefix = NULL
 #endif
                                    };
-    heapUsed = uPortGetHeapFree();
-
+    resourceCount = uTestUtilGetDynamicResourceCount();
 
     U_PORT_TEST_ASSERT(uBleTestPrivatePreamble((uBleModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
                                                &uart,
@@ -136,22 +135,10 @@ U_PORT_TEST_FUNCTION("[bleCfg]", "bleCfgConfigureModule")
 
     uBleTestPrivatePostamble(&gHandles);
 
-#ifndef __XTENSA__
-    // Check for memory leaks
-    // TODO: this if'ed out for ESP32 (xtensa compiler) at
-    // the moment as there is an issue with ESP32 hanging
-    // on to memory in the UART drivers that can't easily be
-    // accounted for.
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT(heapUsed <= 0);
-#else
-    (void) heapUsed;
-#endif
-    // Printed for information: asserting happens in the postamble
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 /** Clean-up to be run at the end of this round of tests, just

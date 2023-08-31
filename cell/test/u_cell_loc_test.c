@@ -540,15 +540,15 @@ static void cellLocAssistNowConfigTest(uDeviceHandle_t cellHandle)
 U_PORT_TEST_FUNCTION("[cellLoc]", "cellLocCfg")
 {
     uDeviceHandle_t cellHandle;
-    int32_t heapUsed;
+    int32_t resourceCount;
     int32_t y;
     int32_t z;
 
     // In case a previous test failed
     uCellTestPrivateCleanup(&gHandles);
 
-    // Obtain the initial heap size
-    heapUsed = uPortGetHeapFree();
+    // Obtain the initial resource count
+    resourceCount = uTestUtilGetDynamicResourceCount();
 
     // Do the standard preamble
     U_PORT_TEST_ASSERT(uCellTestPrivatePreamble(U_CFG_TEST_CELL_MODULE_TYPE,
@@ -637,14 +637,11 @@ U_PORT_TEST_FUNCTION("[cellLoc]", "cellLocCfg")
     // test to speed things up
     uCellTestPrivatePostamble(&gHandles, false);
 
-    // Check for memory leaks
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT(heapUsed <= 0);
-    // Printed for information: asserting happens in the postamble
+    // Check for resource leaks
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 /** Test getting position using Cell Locate.
@@ -653,7 +650,7 @@ U_PORT_TEST_FUNCTION("[cellLoc]", "cellLocLoc")
 {
 #if defined(U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN) && defined(U_CFG_TEST_CELL_LOCATE)
     uDeviceHandle_t cellHandle;
-    int32_t heapUsed;
+    int32_t resourceCount;
     int64_t startTime;
     int32_t latitudeX1e7 = INT_MIN;
     int32_t longitudeX1e7 = INT_MIN;
@@ -671,8 +668,8 @@ U_PORT_TEST_FUNCTION("[cellLoc]", "cellLocLoc")
     // In case a previous test failed
     uCellTestPrivateCleanup(&gHandles);
 
-    // Obtain the initial heap size
-    heapUsed = uPortGetHeapFree();
+    // Obtain the initial resource count
+    resourceCount = uTestUtilGetDynamicResourceCount();
 
     // Do the standard preamble
     U_PORT_TEST_ASSERT(uCellTestPrivatePreamble(U_CFG_TEST_CELL_MODULE_TYPE,
@@ -858,14 +855,11 @@ U_PORT_TEST_FUNCTION("[cellLoc]", "cellLocLoc")
     // (SARA-R5) can become unresponsive.
     uCellTestPrivatePostamble(&gHandles, true);
 
-    // Check for memory leaks
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT(heapUsed <= 0);
-    // Printed for information: asserting happens in the postamble
+    // Check for resource leaks
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 #else
     U_TEST_PRINT_LINE("*** WARNING *** U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN"
                       " is not defined, unable to run the Cell Locate"
@@ -887,7 +881,7 @@ U_PORT_TEST_FUNCTION("[cellLoc]", "cellLocAssistNow")
     uNetworkTestList_t *pList;
     uDeviceHandle_t cellHandle = NULL;
     uDeviceHandle_t gnssHandle = NULL;
-    int32_t heapUsed;
+    int32_t resourceCount;
 
     // In case a previous test failed
     uCellTestPrivateCleanup(&gHandles);
@@ -897,7 +891,9 @@ U_PORT_TEST_FUNCTION("[cellLoc]", "cellLocAssistNow")
     // port so deinitialise it here to obtain the
     // correct initial heap size
     uPortDeinit();
-    heapUsed = uPortGetHeapFree();
+
+    // Obtain the initial resource count
+    resourceCount = uTestUtilGetDynamicResourceCount();
 
     U_PORT_TEST_ASSERT(uPortInit() == 0);
     // Don't check these for success as not all platforms support I2C or SPI
@@ -967,23 +963,11 @@ U_PORT_TEST_FUNCTION("[cellLoc]", "cellLocAssistNow")
     uPortI2cDeinit();
     uPortDeinit();
 
-#ifndef __XTENSA__
-    // Check for memory leaks
-    // TODO: this if'defed out for ESP32 (xtensa compiler) at
-    // the moment as there is an issue with ESP32 hanging
-    // on to memory in the UART drivers that can't easily be
-    // accounted for.
-    // Check for memory leaks
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT(heapUsed <= 0);
-#else
-    (void) heapUsed;
-#endif
-    // Printed for information: asserting happens in the postamble
+    // Check for resource leaks
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 #endif // #ifdef U_CFG_TEST_GNSS_MODULE_TYPE
 

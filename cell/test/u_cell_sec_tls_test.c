@@ -135,7 +135,7 @@ static uCellSecTlsCertficateCheck_t gChecks[] = {U_CELL_SEC_TLS_CERTIFICATE_CHEC
 U_PORT_TEST_FUNCTION("[cellSecTls]", "cellSecTlsSettings")
 {
     uDeviceHandle_t cellHandle;
-    int32_t heapUsed;
+    int32_t resourceCount;
     const uCellPrivateModule_t *pModule;
     uCellSecTlsContext_t *pContext;
     char *pBuffer;
@@ -148,7 +148,9 @@ U_PORT_TEST_FUNCTION("[cellSecTls]", "cellSecTlsSettings")
     // port so deinitialise it here to obtain the
     // correct initial heap size
     uPortDeinit();
-    heapUsed = uPortGetHeapFree();
+
+    // Obtain the initial resource count
+    resourceCount = uTestUtilGetDynamicResourceCount();
 
     // malloc a buffer to put names in
     pBuffer = (char *) pUPortMalloc(U_CELL_SEC_TLS_TEST_NAME_LENGTH_BYTES + 1);
@@ -477,14 +479,11 @@ U_PORT_TEST_FUNCTION("[cellSecTls]", "cellSecTlsSettings")
     // Release memory
     uPortFree(pBuffer);
 
-    // Check for memory leaks
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT(heapUsed <= 0);
-    // Printed for information: asserting happens in the postamble
+    // Check for resource leaks
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 /** Clean-up to be run at the end of this round of tests, just

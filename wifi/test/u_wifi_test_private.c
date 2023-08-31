@@ -35,7 +35,7 @@
 
 #include "u_cfg_sw.h"
 #include "u_cfg_app_platform_specific.h"
-#include "u_cfg_os_platform_specific.h"  // For #define U_CFG_OS_CLIB_LEAKS
+#include "u_cfg_os_platform_specific.h"
 
 #include "u_error_common.h"
 

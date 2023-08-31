@@ -578,9 +578,7 @@ U_PORT_TEST_FUNCTION("[httpClient]", "httpClient")
     uDeviceHandle_t devHandle;
     uHttpClientConnection_t connection = U_HTTP_CLIENT_CONNECTION_DEFAULT;
     uSecurityTlsSettings_t tlsSettings = U_SECURITY_TLS_SETTINGS_DEFAULT;
-    int32_t heapUsed;
-    int32_t heapHttpInitLoss = 0;
-    int32_t heapXxxSecurityInitLoss = 0;
+    int32_t resourceCount = 0;
     char urlBuffer[64];
     int32_t port = U_HTTP_CLIENT_TEST_SERVER_PORT;
     char serialNumber[U_SECURITY_SERIAL_NUMBER_MAX_LENGTH_BYTES];
@@ -588,7 +586,7 @@ U_PORT_TEST_FUNCTION("[httpClient]", "httpClient")
     size_t uHttpClientTestDataSizeBytes;
     char pathBuffer[32];
     uHttpClientTestCallback_t callbackData = {0};
-    int32_t errorOrStatusCode = 0;
+    int32_t errorOrStatusCode;
     int32_t requestOperation;
     int32_t outcome;
     size_t busyCount;
@@ -603,6 +601,14 @@ U_PORT_TEST_FUNCTION("[httpClient]", "httpClient")
 
     // In case a previous test failed
     uNetworkTestCleanUp();
+
+    // Whatever called us likely initialised the
+    // port so deinitialise it here to obtain the
+    // correct initial heap size
+    uPortDeinit();
+
+    // Get the initial resource count
+    resourceCount = uTestUtilGetDynamicResourceCount();
 
     // Do the standard preamble
     pList = pStdPreamble();
@@ -620,8 +626,6 @@ U_PORT_TEST_FUNCTION("[httpClient]", "httpClient")
     // Repeat for all bearers that support HTTP/HTTPS
     for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
         devHandle = *pTmp->pDevHandle;
-        // Get the initial-ish heap
-        heapUsed = uPortGetHeapFree();
 
         // Get a unique number we can use to stop parallel
         // tests colliding at the HTTP server
@@ -703,27 +707,9 @@ U_PORT_TEST_FUNCTION("[httpClient]", "httpClient")
                 uPortLog(".\n");
 
                 if (x == 0) {
-                    // Opening an HTTP client for the first time creates a mutex
-                    // that is not destroyed for thread-safety reasons; take
-                    // account of that here
-                    if (y == 0) {
-                        heapHttpInitLoss += uPortGetHeapFree();
-                    }
                     gpHttpContext[y] = pUHttpClientOpen(devHandle, &connection, NULL);
-                    if (y == 0) {
-                        heapHttpInitLoss -= uPortGetHeapFree();
-                    }
                 } else {
-                    // This time account for potential security initialisation loss
-                    // and pass in the security settings (just default, so encryption
-                    // but no server authentication)
-                    if (y == 0) {
-                        heapXxxSecurityInitLoss += uPortGetHeapFree();
-                    }
                     gpHttpContext[y] = pUHttpClientOpen(devHandle, &connection, &tlsSettings);
-                    if (y == 0) {
-                        heapXxxSecurityInitLoss -= uPortGetHeapFree();
-                    }
                 }
                 if (gpHttpContext[y] == NULL) {
                     U_PORT_TEST_ASSERT(uHttpClientOpenResetLastError() == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED);
@@ -745,6 +731,7 @@ U_PORT_TEST_FUNCTION("[httpClient]", "httpClient")
                         tries = 0;
                         checkBinary = true;
                         do {
+                            errorOrStatusCode = 0;
                             switch (requestOperation) {
                                 case U_HTTP_CLIENT_TEST_OPERATION_PUT:
                                     // Fill the data buffer with data to PUT and PUT it
@@ -924,13 +911,6 @@ U_PORT_TEST_FUNCTION("[httpClient]", "httpClient")
                 uHttpClientClose(gpHttpContext[y]);
             }
         } // for (HTTP and HTTPS)
-        // Check for memory leaks
-        heapUsed -= uPortGetHeapFree();
-        U_TEST_PRINT_LINE("%d byte(s) were lost to security initialisation"
-                          " and %d byte(s) to HTTP client initialisation;"
-                          " we have leaked %d byte(s).", heapXxxSecurityInitLoss,
-                          heapHttpInitLoss, heapUsed - (heapXxxSecurityInitLoss + heapHttpInitLoss));
-        U_PORT_TEST_ASSERT(heapUsed <= (heapXxxSecurityInitLoss + heapHttpInitLoss));
     }
 
     // Free memory
@@ -955,6 +935,16 @@ U_PORT_TEST_FUNCTION("[httpClient]", "httpClient")
         }
     }
     uNetworkTestListFree();
+    // Clean-up TLS security mutex; an application wouldn't normally,
+    // do this, we only do it here to make the sums add up
+    uSecurityTlsCleanUp();
+    uDeviceDeinit();
+    uPortDeinit();
+    // Check for resource leaks
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 /** Clean-up to be run at the end of this round of tests, just

@@ -117,7 +117,7 @@ static char const gSha256Input[] =
  * (e.g. UART initialisation, rand(), printf()) allocate
  * memory from the heap when they are first called and never
  * free that memory again.  The heap accounting in our tests
- * will fail due to this loss, even though it is out of our control.
+ * can fail due to this loss, even though it is out of our control.
  * Hence this test is provided and positioned early in
  * the test suite to call those functions and hence move those
  * allocations out of the sums.
@@ -221,17 +221,17 @@ U_PORT_TEST_FUNCTION("[preamble]", "preambleHeapDefence")
     uPortDeinit();
 
 #ifdef PRE_ALLOCATE_FILE_COUNT
-    // This is newlib specific workaround
+    // This is a newlib-specific workaround
     // When newlib is built with _REENT_GLOBAL_STDIO_STREAMS *disabled*
     // a global dynamic pool will be used for FILE pointers.
     // The pool re-uses existing FILE pointers but if no FILE is currently
-    // free for use, newlib will allocate a new one. Since our tests checks
-    // heap usage this can result in "false" memory leak failurs.
+    // free for use, newlib will allocate a new one. Some of our tests check
+    // heap usage directly, rather than through the resource counting mechanism,
+    // and so this can result in "false" memory leak failurs.
     // To mitigate this problem we start with allocating a couple of FILE
     // pointers so that that newlib doesn't need to allocate any new ones
     // throughout the complete test suite.
     //
-    // TODO: REMOVE THIS WHEN #275 IS DONE
     static bool files_allocated = false;
     extern FILE *__sfp (struct _reent *);
     if (!files_allocated) {

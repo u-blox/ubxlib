@@ -44,6 +44,8 @@
 #include "u_port_debug.h"
 #include "u_port_os.h"
 
+#include "u_test_util_resource_check.h"
+
 #ifdef U_CFG_TEST_CELL_MODULE_TYPE
 # include "u_cell_module_type.h"
 # include "u_cell_test_cfg.h" // For the cellular test macros
@@ -210,7 +212,7 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialTest")
 {
     uNetworkTestList_t *pList;
     uDeviceHandle_t devHandle = NULL;
-    int32_t heapUsed;
+    int32_t resourceCount;
     uSecurityCredential_t credential;
     int32_t otherCredentialCount;
     int32_t z;
@@ -224,7 +226,7 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialTest")
     // port so deinitialise it here to obtain the
     // correct initial heap size
     uPortDeinit();
-    heapUsed = uPortGetHeapFree();
+    resourceCount = uTestUtilGetDynamicResourceCount();
 
     U_PORT_TEST_ASSERT(uPortInit() == 0);
     U_PORT_TEST_ASSERT(uDeviceInit() == 0);
@@ -544,20 +546,11 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialTest")
     uDeviceDeinit();
     uPortDeinit();
 
-#ifndef __XTENSA__
-    // Check for memory leaks
-    // TODO: this if'ed out for ESP32 (xtensa compiler) at
-    // the moment as there is an issue with ESP32 hanging
-    // on to memory in the UART drivers that can't easily be
-    // accounted for.
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("during this test we have leaked %d byte(s).", heapUsed);
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT(heapUsed <= 0);
-#else
-    (void) heapUsed;
-#endif
+    // Check for resource leaks
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 /** Clean-up to be run at the end of this round of tests, just

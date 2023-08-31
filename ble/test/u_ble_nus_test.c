@@ -55,6 +55,8 @@
 #include "u_port_os.h"
 #include "u_port_uart.h"
 
+#include "u_test_util_resource_check.h"
+
 #include "u_at_client.h"
 #include "u_short_range_pbuf.h"
 #include "u_short_range.h"
@@ -144,11 +146,10 @@ static uBleGapAdvConfig_t gAdvCfg = {
     .advDataLength = 0
 };
 
-
 static char gPeerMac[U_SHORT_RANGE_BT_ADDRESS_SIZE] = {0};
 static char gPeerResponse[100] = {0};
 
-static int32_t gHeapStartSize;
+static int32_t gResourceCountStart;
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -176,7 +177,7 @@ static void peerIncoming(uint8_t *pValue, uint8_t valueSize)
 static void preamble(int32_t role)
 {
     uPortDeinit();
-    gHeapStartSize = uPortGetHeapFree();
+    gResourceCountStart = uTestUtilGetDynamicResourceCount();
     U_PORT_TEST_ASSERT(uPortInit() == 0);
     U_PORT_TEST_ASSERT(uDeviceInit() == 0);
     U_TEST_PRINT_LINE("initiating the module");
@@ -195,18 +196,10 @@ static void postamble()
     U_PORT_TEST_ASSERT(uDeviceClose(gDeviceHandle, false) == 0);
     uDeviceDeinit();
     uPortDeinit();
-#ifndef __XTENSA__
-    // Check for memory leaks
-    // TODO: this if'ed out for ESP32 (xtensa compiler) at
-    // the moment as there is an issue with ESP32 hanging
-    // on to memory in the UART drivers that can't easily be
-    // accounted for.
-    int32_t heapUsed = gHeapStartSize - uPortGetHeapFree();
-    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT(heapUsed <= 0);
-#endif
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    int32_t resourceCount = gResourceCountStart - uTestUtilGetDynamicResourceCount();
+    U_TEST_PRINT_LINE("we have leaked %d resource(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 /* ----------------------------------------------------------------

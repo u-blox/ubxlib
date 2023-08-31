@@ -35,7 +35,7 @@
 #include "string.h"    // memset(), strtok_r()
 
 #include "u_cfg_sw.h"
-#include "u_cfg_os_platform_specific.h"  // For U_CFG_OS_YIELD_MS and U_CFG_OS_CLIB_LEAKS
+#include "u_cfg_os_platform_specific.h"  // For U_CFG_OS_YIELD_MS
 
 #include "u_error_common.h"
 

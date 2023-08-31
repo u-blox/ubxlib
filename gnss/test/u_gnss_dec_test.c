@@ -519,12 +519,12 @@ static void testHelperFunctions(const uGnssMessageId_t *pId,
  */
 U_PORT_TEST_FUNCTION("[gnssDec]", "gnssDecCallback")
 {
-    int32_t heapUsed;
+    int32_t resourceCount;
     uGnssDec_t *pDec;
     const uGnssDecTestDataCallback_t *pTestData = NULL;
 
-    // Obtain the initial heap size
-    heapUsed = uPortGetHeapFree();
+    // Get the initial resource count
+    resourceCount = uTestUtilGetDynamicResourceCount();
 
     // Do this three times: first run without a callback
     // set, second run with a callback, and then one more
@@ -619,28 +619,25 @@ U_PORT_TEST_FUNCTION("[gnssDec]", "gnssDecCallback")
         }
     }
 
-    // Check for memory leaks
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT(heapUsed <= 0);
-    // Printed for information: asserting happens in the postamble
+    // Check for resource leaks
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 /** Test of decoding the known functions.
  */
 U_PORT_TEST_FUNCTION("[gnssDec]", "gnssDecKnown")
 {
-    int32_t heapUsed;
+    int32_t resourceCount;
     uGnssDec_t *pDec;
     const uGnssDecTestDataKnown_t *pTestData = NULL;
     size_t decodedStructureSize;
     char prefix[64]; // Just for printing
 
-    // Obtain the initial heap size
-    heapUsed = uPortGetHeapFree();
+    // Get the initial resource count
+    resourceCount = uTestUtilGetDynamicResourceCount();
 
     // For each message type
     for (size_t x = 0; x < sizeof(gTestDataKnownSet) / sizeof(gTestDataKnownSet[0]); x++) {
@@ -703,14 +700,11 @@ U_PORT_TEST_FUNCTION("[gnssDec]", "gnssDecKnown")
         }
     }
 
-    // Check for memory leaks
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT(heapUsed <= 0);
-    // Printed for information: asserting happens in the postamble
+    // Check for resource leaks
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 // End of file

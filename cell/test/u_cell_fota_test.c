@@ -119,15 +119,14 @@ U_PORT_TEST_FUNCTION("[cellFota]", "cellFotaVeryBasicIndeed")
 {
     uDeviceHandle_t cellHandle;
     const uCellPrivateModule_t *pModule;
-    int32_t heapUsed;
-    int32_t heapFotaInitLoss = 0;
+    int32_t resourceCount;
     int32_t x;
 
     // In case a previous test failed
     uCellTestPrivateCleanup(&gHandles);
 
-    // Obtain the initial heap size
-    heapUsed = uPortGetHeapFree();
+    // Obtain the initial resource count
+    resourceCount = uTestUtilGetDynamicResourceCount();
 
     // Do the standard preamble
     U_PORT_TEST_ASSERT(uCellTestPrivatePreamble(U_CFG_TEST_CELL_MODULE_TYPE,
@@ -145,13 +144,7 @@ U_PORT_TEST_FUNCTION("[cellFota]", "cellFotaVeryBasicIndeed")
 
         U_TEST_PRINT_LINE("setting FOTA call-back.");
 
-        // The first call to FOTA will allocate a context which
-        // is not deallocated until cellular is taken down, which
-        // we don't do here to save time; take account of that
-        // initialisation heap cost here.
-        heapFotaInitLoss = uPortGetHeapFree();
         x = uCellFotaSetStatusCallback(cellHandle, -1, fotaStatusCallback, NULL);
-        heapFotaInitLoss -= uPortGetHeapFree();
         if (U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_FOTA)) {
             U_PORT_TEST_ASSERT(x == 0);
             x = uCellFotaSetStatusCallback(cellHandle, -1, NULL, NULL);
@@ -173,15 +166,11 @@ U_PORT_TEST_FUNCTION("[cellFota]", "cellFotaVeryBasicIndeed")
     // test to speed things up
     uCellTestPrivatePostamble(&gHandles, false);
 
-    // Check for memory leaks
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("during this part of the test %d byte(s)"
-                      " were lost to cell FOTA initialisation; we"
-                      " have leaked %d byte(s).",
-                      heapFotaInitLoss, heapUsed - heapFotaInitLoss);
-    U_PORT_TEST_ASSERT(heapUsed <= heapFotaInitLoss);
-    // Printed for information: asserting happens in the postamble
+    // Check for resource leaks
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 /** Clean-up to be run at the end of this round of tests, just

@@ -523,7 +523,7 @@ static bool databaseCallback(uDeviceHandle_t devHandle,
 U_PORT_TEST_FUNCTION("[gnssMga]", "gnssMgaBasic")
 {
     uDeviceHandle_t gnssDevHandle = NULL;
-    int32_t heapUsed;
+    int32_t resourceCount;
     int64_t timeUtc = 1685651437; // Chosen randomly
     int32_t callbackParameter;
     int32_t startTimeMs;
@@ -546,8 +546,8 @@ U_PORT_TEST_FUNCTION("[gnssMga]", "gnssMgaBasic")
     // In case a previous test failed
     uGnssTestPrivateCleanup(&gHandles);
 
-    // Obtain the initial heap size
-    heapUsed = uPortGetHeapFree();
+    // Get the initial resource count
+    resourceCount = uTestUtilGetDynamicResourceCount();
 
     // Allocate a buffer to hold the GNSS device database
     gpDatabase = (char *) pUPortMalloc(U_GNSS_MGA_TEST_DATABASE_LENGTH_BYTES);
@@ -769,14 +769,11 @@ U_PORT_TEST_FUNCTION("[gnssMga]", "gnssMgaBasic")
     uPortFree(gpDatabase);
     gpDatabase = NULL;
 
-    // Check for memory leaks
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT(heapUsed <= 0);
-    // Printed for information: asserting happens in the postamble
+    // Check for resource leaks
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 # if defined(U_CFG_APP_GNSS_ASSIST_NOW_AUTHENTICATION_TOKEN) && defined(U_CFG_TEST_GNSS_ASSIST_NOW) && \
@@ -795,7 +792,7 @@ U_PORT_TEST_FUNCTION("[gnssMga]", "gnssMgaServer")
     uSecurityTlsSettings_t httpTlsSettingsOffline = U_SECURITY_TLS_SETTINGS_DEFAULT;
     uHttpClientContext_t *pHttpContext;
     int32_t httpStatusCode;
-    int32_t heapUsed;
+    int32_t resourceCount;
     uGnssMgaSendOfflineOperation_t offlineOperation;
     int64_t timeUtcMilliseconds = -1;
     int64_t timeUtc = -1;
@@ -811,7 +808,9 @@ U_PORT_TEST_FUNCTION("[gnssMga]", "gnssMgaServer")
     uGnssTestPrivateCleanup(&gHandles);
     uNetworkTestCleanUp();
 
-    U_PORT_TEST_ASSERT(uPortInit() == 0);
+    U_PORT_TEST_ASSERT(uPortInit() == 0);    // Get the initial resource count
+    resourceCount = uTestUtilGetDynamicResourceCount();
+
     // Don't check these for success as not all platforms support I2C or SPI
     uPortI2cInit();
     uPortSpiInit();
@@ -857,9 +856,6 @@ U_PORT_TEST_FUNCTION("[gnssMga]", "gnssMgaServer")
     }
 
     U_PORT_TEST_ASSERT(httpDevHandle != NULL);
-
-    // Obtain the initial heap size
-    heapUsed = uPortGetHeapFree();
 
     // Find the GNSS device
     for (uNetworkTestList_t *pTmp = pList; (pTmp != NULL) &&
@@ -1006,13 +1002,6 @@ U_PORT_TEST_FUNCTION("[gnssMga]", "gnssMgaServer")
     U_TEST_PRINT_LINE("%d byte(s) lost at the input to the ring-buffer during that test.", y);
     U_PORT_TEST_ASSERT(y == 0);
 
-    // Check for memory leaks
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT(heapUsed <= 0);
-
     U_TEST_PRINT_LINE("closing HTTPS connections...");
     for (size_t x = 0; x < sizeof(gpHttpContext) / sizeof(gpHttpContext[0]); x++) {
         uHttpClientClose(gpHttpContext[x]);
@@ -1037,8 +1026,12 @@ U_PORT_TEST_FUNCTION("[gnssMga]", "gnssMgaServer")
     uPortSpiDeinit();
     uPortI2cDeinit();
     uPortDeinit();
-    // Printed for information: asserting happens in the postamble
+
+    // Check for resource leaks
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 # endif // #if defined(U_CFG_APP_GNSS_ASSIST_NOW_AUTHENTICATION_TOKEN) && defined(U_CFG_TEST_GNSS_MGA) &&

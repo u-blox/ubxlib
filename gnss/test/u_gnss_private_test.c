@@ -519,13 +519,13 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssPrivateNmea")
     char *pMessage;
     size_t messageSize;
     size_t z;
-    int32_t heapUsed;
+    int32_t resourceCount;
 
     // Whatever called us likely initialised the
     // port so deinitialise it here to obtain the
     // correct initial heap size
     uPortDeinit();
-    heapUsed = uPortGetHeapFree();
+    resourceCount = uTestUtilGetDynamicResourceCount();
 
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
@@ -642,22 +642,11 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssPrivateNmea")
 
     uPortDeinit();
 
-# ifndef __XTENSA__
-    // Check for memory leaks
-    // TODO: this if'ed out for ESP32 (xtensa compiler) at
-    // the moment as there is an issue with ESP32 hanging
-    // on to memory in the UART drivers that can't easily be
-    // accounted for.
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT(heapUsed <= 0);
-# else
-    (void) heapUsed;
-# endif
-    // Printed for information: asserting happens in the postamble
+    // Check for resource leaks
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 /** Test the RTCM message decode function; not tested on Zephyr for
@@ -672,13 +661,13 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssPrivateRtcm")
     char *pMessage;
     size_t bufferSize;
     size_t z;
-    int32_t heapUsed;
+    int32_t resourceCount;
 
     // Whatever called us likely initialised the
     // port so deinitialise it here to obtain the
     // correct initial heap size
     uPortDeinit();
-    heapUsed = uPortGetHeapFree();
+    resourceCount = uTestUtilGetDynamicResourceCount();
 
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
@@ -761,22 +750,11 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssPrivateRtcm")
 
     uPortDeinit();
 
-# ifndef __XTENSA__
-    // Check for memory leaks
-    // TODO: this if'ed out for ESP32 (xtensa compiler) at
-    // the moment as there is an issue with ESP32 hanging
-    // on to memory in the UART drivers that can't easily be
-    // accounted for.
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT(heapUsed <= 0);
-# else
-    (void) heapUsed;
-# endif
-    // Printed for information: asserting happens in the postamble
+    // Check for resource leaks
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 /** Test the UBX message decode function; not tested on Zephyr for
@@ -791,13 +769,13 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssPrivateUbx")
     uint8_t messageId;
     size_t bufferSize;
     size_t y;
-    int32_t heapUsed;
+    int32_t resourceCount;
 
     // Whatever called us likely initialised the
     // port so deinitialise it here to obtain the
     // correct initial heap size
     uPortDeinit();
-    heapUsed = uPortGetHeapFree();
+    resourceCount = uTestUtilGetDynamicResourceCount();
 
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
@@ -904,22 +882,11 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssPrivateUbx")
 
     uPortDeinit();
 
-# ifndef __XTENSA__
-    // Check for memory leaks
-    // TODO: this if'ed out for ESP32 (xtensa compiler) at
-    // the moment as there is an issue with ESP32 hanging
-    // on to memory in the UART drivers that can't easily be
-    // accounted for.
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT(heapUsed <= 0);
-# else
-    (void) heapUsed;
-# endif
-    // Printed for information: asserting happens in the postamble
+    // Check for resource leaks
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 #endif // #ifndef __ZEPHYR__

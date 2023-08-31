@@ -171,7 +171,6 @@ void uBleTestPrivatePostamble(uBleTestPrivate_t *pParameters)
 #else
     uDeviceDestroyInstance((uDeviceInstance_t *)pParameters->devHandle);
     uBleDeinit();
-    (void)pParameters;
 #endif
 
     pParameters->uartHandle = -1;
@@ -190,6 +189,7 @@ void uBleTestPrivateCleanup(uBleTestPrivate_t *pParameters)
     uBleDeinit();
     uAtClientDeinit();
 #else
+    uDeviceDestroyInstance((uDeviceInstance_t *)pParameters->devHandle);
     uBleDeinit();
 #endif
     pParameters->uartHandle = -1;

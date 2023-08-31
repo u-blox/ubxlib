@@ -38,7 +38,7 @@
 
 #include "u_error_common.h"
 
-#include "u_cfg_os_platform_specific.h"  // For #define U_CFG_OS_CLIB_LEAKS
+#include "u_cfg_os_platform_specific.h"
 
 #include "u_at_client.h"
 
@@ -182,7 +182,7 @@ static void wifiConnectionCallback(uDeviceHandle_t devHandle,
         }
     }
 
-#if U_CFG_ENABLE_LOGGING && !U_CFG_OS_CLIB_LEAKS
+#if U_CFG_ENABLE_LOGGING
     if (status == U_WIFI_CON_STATUS_CONNECTED) {
         uPortLog(LOG_TAG "Wifi connected connId: %d, bssid: %s, channel: %d\n",
                  connId,
@@ -220,14 +220,12 @@ static void wifiNetworkStatusCallback(uDeviceHandle_t devHandle,
     (void)pCallbackParameter;
     uPortQueueHandle_t queueHandle = getQueueHandle(devHandle);
 
-#if !U_CFG_OS_CLIB_LEAKS
     uPortLog(LOG_TAG "Network status IPv4 %s, IPv6 %s\n",
              ((statusMask & U_WIFI_STATUS_MASK_IPV4_UP) > 0) ? "up" : "down",
              ((statusMask & U_WIFI_STATUS_MASK_IPV6_UP) > 0) ? "up" : "down");
     if (queueHandle == NULL) {
         uPortLog(LOG_TAG "[no-one to tell].\n");
     }
-#endif
 
     uStatusMessage_t msg = {
         .msgType = U_MSG_NET_STATUS,

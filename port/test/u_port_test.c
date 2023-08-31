@@ -41,7 +41,7 @@
 #include "u_compiler.h"
 
 #include "u_cfg_sw.h"
-#include "u_cfg_os_platform_specific.h"  // For #define U_CFG_OS_CLIB_LEAKS
+#include "u_cfg_os_platform_specific.h"
 #include "u_cfg_app_platform_specific.h"
 #include "u_cfg_test_platform_specific.h"
 
@@ -506,10 +506,6 @@ static const char gAes128CbcClear[] = "Single block msg";
 static const char gAes128CbcEncrypted[] =
     "\xe3\x53\x77\x9c\x10\x79\xae\xb8\x27\x08\x94\x2d\xbe\x77\x18\x1a";
 
-/** For tracking heap lost to memory  lost by the C library.
- */
-static size_t gSystemHeapLost = 0;
-
 /** Timer parameter value array; must have the same number of
  * entries as gTimerHandle.
  */
@@ -727,11 +723,6 @@ static void osTestTask(void *pParameters)
              " \"%s\".\n", U_PTR_TO_INT32(gTaskHandle), pParameters,
              (const char *) pParameters);
     U_PORT_TEST_ASSERT(strcmp((const char *) pParameters, gTaskParameter) == 0);
-
-#if U_CFG_OS_CLIB_LEAKS
-    // Take account of any heap lost through the first printf()
-    gSystemHeapLost += (size_t) (unsigned) (heapClibLoss - uPortGetHeapFree());
-#endif
 
     U_PORT_TEST_ASSERT(uPortTaskIsThis(gTaskHandle));
     U_PORT_TEST_ASSERT(uPortTaskGetHandle(NULL) < 0);
@@ -1378,8 +1369,7 @@ U_PORT_TEST_FUNCTION("[port]", "portRentrancy")
     int32_t taskParameter[U_PORT_TEST_OS_NUM_REENT_TASKS];
     uPortTaskHandle_t taskHandle[U_PORT_TEST_OS_NUM_REENT_TASKS];
     int32_t stackMinFreeBytes;
-    int32_t heapUsed;
-    int32_t heapClibLossOffset = (int32_t) gSystemHeapLost;
+    int32_t resourceCount;
 #if U_CFG_OS_CLIB_LEAKS
     int32_t heapClibLoss;
 #endif
@@ -1399,7 +1389,7 @@ U_PORT_TEST_FUNCTION("[port]", "portRentrancy")
     // correct initial heap size
     uPortDeinit();
 
-    heapUsed = uPortGetHeapFree();
+    resourceCount = uTestUtilGetDynamicResourceCount();
 
     // Note: deliberately do NO printf()s until we have
     // set up the test scenario
@@ -1482,12 +1472,6 @@ U_PORT_TEST_FUNCTION("[port]", "portRentrancy")
     // Let the idle task tidy-away the tasks
     uPortTaskBlock(1000);
 
-#if U_CFG_OS_CLIB_LEAKS
-    // Take account of any heap lost through the
-    // library calls
-    gSystemHeapLost += (size_t) (unsigned) (heapClibLoss - uPortGetHeapFree());
-#endif
-
     // If the returnCode is 0 then that
     // is success.  If it is negative
     // that it indicates an error.
@@ -1496,18 +1480,11 @@ U_PORT_TEST_FUNCTION("[port]", "portRentrancy")
 
     uPortDeinit();
 
-    // Check for memory leaks
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("%d byte(s) of heap were lost to the C library"
-                      " during this test and we have leaked %d byte(s).",
-                      gSystemHeapLost - heapClibLossOffset,
-                      heapUsed - (gSystemHeapLost - heapClibLossOffset));
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT((heapUsed < 0) ||
-                       (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
-    // Printed for information: asserting happens at the end
+    // Check for resource leaks
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 /** Test all the normal OS stuff.
@@ -1524,14 +1501,13 @@ U_PORT_TEST_FUNCTION("[port]", "portOs")
     int32_t y = -1;
     int32_t z;
     uPortQueueHandle_t queueHandle = NULL;
-    int32_t heapUsed;
-    int32_t heapClibLossOffset = (int32_t) gSystemHeapLost;
+    int32_t resourceCount;
 
     // Whatever called us likely initialised the
     // port so deinitialise it here to obtain the
     // correct initial heap size
     uPortDeinit();
-    heapUsed = uPortGetHeapFree();
+    resourceCount = uTestUtilGetDynamicResourceCount();
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
     startTimeMs = uPortGetTickTimeMs();
@@ -1688,18 +1664,11 @@ U_PORT_TEST_FUNCTION("[port]", "portOs")
 
     uPortDeinit();
 
-    // Check for memory leaks
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("%d byte(s) of heap were lost to the C library"
-                      " during this test and we have leaked %d byte(s).",
-                      gSystemHeapLost - heapClibLossOffset,
-                      heapUsed - (gSystemHeapLost - heapClibLossOffset));
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT((heapUsed < 0) ||
-                       (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
-    // Printed for information: asserting happens at the end
+    // Check for resource leaks
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 static void osTestTaskSemaphoreGive(void *pParameters)
@@ -1726,14 +1695,13 @@ U_PORT_TEST_FUNCTION("[port]", "portOsSemaphore")
     int32_t startTimeTestMs;
     int32_t startTimeMs;
     int32_t timeNowMs;
-    int32_t heapUsed;
-    int32_t heapClibLossOffset = (int32_t) gSystemHeapLost;
+    int32_t resourceCount;
 
     // Whatever called us likely initialised the
     // port so deinitialise it here to obtain the
     // correct initial heap size
     uPortDeinit();
-    heapUsed = uPortGetHeapFree();
+    resourceCount = uTestUtilGetDynamicResourceCount();
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
     startTimeTestMs = uPortGetTickTimeMs();
@@ -1886,18 +1854,11 @@ U_PORT_TEST_FUNCTION("[port]", "portOsSemaphore")
 
     uPortDeinit();
 
-    // Check for memory leaks
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("%d byte(s) of heap were lost to the C library"
-                      " during this test and we have leaked %d byte(s).",
-                      gSystemHeapLost - heapClibLossOffset,
-                      heapUsed - (gSystemHeapLost - heapClibLossOffset));
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT((heapUsed < 0) ||
-                       (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
-    // Printed for information: asserting happens at the end
+    // Check for resource leaks
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 #if (U_CFG_TEST_UART_A >= 0) && defined(U_PORT_TEST_CHECK_TIME_TAKEN)
@@ -1915,13 +1876,13 @@ U_PORT_TEST_FUNCTION("[port]", "portOsExtended")
     int32_t timeNowMs;
     int32_t timeDelta;
     int32_t uartHandle;
-    int32_t heapUsed;
+    int32_t resourceCount;
 
     // Whatever called us likely initialised the
     // port so deinitialise it here to obtain the
     // correct initial heap size
     uPortDeinit();
-    heapUsed = uPortGetHeapFree();
+    resourceCount = uTestUtilGetDynamicResourceCount();
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
     U_TEST_PRINT_LINE("running this test will take around %d second(s).",
@@ -1999,24 +1960,11 @@ U_PORT_TEST_FUNCTION("[port]", "portOsExtended")
 
     uPortDeinit();
 
-# ifndef ARDUINO
-    // Check for memory leaks except on Arduino; for some
-    // reason, under Arduino, 24 bytes are lost to the system
-    // here; this doesn't occur under headrev ESP-IDF or on
-    // any of the subsequent tests and so it must be an
-    // initialisation loss to do with the particular version
-    // of ESP-IDF used under Arduino, or maybe how it is compiled
-    // into the ESP-IDF library that Arduino uses.
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT(heapUsed <= 0);
-# else
-    (void) heapUsed;
-# endif
-    // Printed for information: asserting happens at the end
+    // Check for resource leaks
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 #endif
 
@@ -2054,14 +2002,13 @@ U_PORT_TEST_FUNCTION("[port]", "portEventQueue")
     size_t x;
     int32_t y;
     int32_t stackMinFreeBytes;
-    int32_t heapUsed;
-    int32_t heapClibLossOffset = (int32_t) gSystemHeapLost;
+    int32_t resourceCount;
 
     // Whatever called us likely initialised the
     // port so deinitialise it here to obtain the
     // correct initial heap size
     uPortDeinit();
-    heapUsed = uPortGetHeapFree();
+    resourceCount = uTestUtilGetDynamicResourceCount();
 
     // Reset error flags and counters
     gEventQueueMaxErrorFlag = 0;
@@ -2232,18 +2179,11 @@ U_PORT_TEST_FUNCTION("[port]", "portEventQueue")
     // Give the RTOS idle task time to tidy-away the tasks
     uPortTaskBlock(1000);
 
-    // Check for memory leaks
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("%d byte(s) of heap were lost to the C library"
-                      " during this test and we have leaked %d byte(s).",
-                      gSystemHeapLost - heapClibLossOffset,
-                      heapUsed - (gSystemHeapLost - heapClibLossOffset));
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT((heapUsed < 0) ||
-                       (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
-    // Printed for information: asserting happens at the end
+    // Check for resource leaks
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 /** Test heap API.
@@ -2332,13 +2272,13 @@ U_PORT_TEST_FUNCTION("[port]", "portStrtok_r")
 {
     char *pSave;
     char buffer[8];
-    int32_t heapUsed;
+    int32_t resourceCount;
 
     // Whatever called us likely initialised the
     // port so deinitialise it here to obtain the
     // correct initial heap size
     uPortDeinit();
-    heapUsed = uPortGetHeapFree();
+    resourceCount = uTestUtilGetDynamicResourceCount();
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
     U_TEST_PRINT_LINE("testing strtok_r()...");
@@ -2381,27 +2321,24 @@ U_PORT_TEST_FUNCTION("[port]", "portStrtok_r")
 
     uPortDeinit();
 
-    // Check for memory leaks
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT(heapUsed <= 0);
-    // Printed for information: asserting happens at the end
+    // Check for resource leaks
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 /** Test: mktime64().
  */
 U_PORT_TEST_FUNCTION("[port]", "portMktime64")
 {
-    int32_t heapUsed;
+    int32_t resourceCount;
 
     // Whatever called us likely initialised the
     // port so deinitialise it here to obtain the
     // correct initial heap size
     uPortDeinit();
-    heapUsed = uPortGetHeapFree();
+    resourceCount = uTestUtilGetDynamicResourceCount();
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
     U_TEST_PRINT_LINE("testing mktime64()...");
@@ -2414,28 +2351,25 @@ U_PORT_TEST_FUNCTION("[port]", "portMktime64")
 
     uPortDeinit();
 
-    // Check for memory leaks
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT(heapUsed <= 0);
-    // Printed for information: asserting happens at the end
+    // Check for resource leaks
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 /** Test: gmtime_r().
  */
 U_PORT_TEST_FUNCTION("[port]", "portGmtime_r")
 {
-    int32_t heapUsed;
+    int32_t resourceCount;
     struct tm timeStruct;
 
     // Whatever called us likely initialised the
     // port so deinitialise it here to obtain the
     // correct initial heap size
     uPortDeinit();
-    heapUsed = uPortGetHeapFree();
+    resourceCount = uTestUtilGetDynamicResourceCount();
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
     U_TEST_PRINT_LINE("testing gmtime_r()...");
@@ -2459,21 +2393,18 @@ U_PORT_TEST_FUNCTION("[port]", "portGmtime_r")
 
     uPortDeinit();
 
-    // Check for memory leaks
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT(heapUsed <= 0);
-    // Printed for information: asserting happens at the end
+    // Check for resource leaks
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 /** Test: uPortGetTimezoneOffsetSeconds().
  */
 U_PORT_TEST_FUNCTION("[port]", "portGetTimezoneOffsetSeconds")
 {
-    int32_t heapUsed;
+    int32_t resourceCount;
     struct tm utcTm;
     time_t utc = 0;
     time_t wrong;
@@ -2482,7 +2413,7 @@ U_PORT_TEST_FUNCTION("[port]", "portGetTimezoneOffsetSeconds")
     // port so deinitialise it here to obtain the
     // correct initial heap size
     uPortDeinit();
-    heapUsed = uPortGetHeapFree();
+    resourceCount = uTestUtilGetDynamicResourceCount();
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
     U_TEST_PRINT_LINE("testing uPortGetTimezoneOffsetSeconds()...");
@@ -2517,14 +2448,11 @@ U_PORT_TEST_FUNCTION("[port]", "portGetTimezoneOffsetSeconds")
 
     uPortDeinit();
 
-    // Check for memory leaks
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT(heapUsed <= 0);
-    // Printed for information: asserting happens at the end
+    // Check for resource leaks
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 #if (U_CFG_TEST_PIN_A >= 0) && (U_CFG_TEST_PIN_B >= 0) && \
@@ -2534,13 +2462,13 @@ U_PORT_TEST_FUNCTION("[port]", "portGetTimezoneOffsetSeconds")
 U_PORT_TEST_FUNCTION("[port]", "portGpioRequiresSpecificWiring")
 {
     uPortGpioConfig_t gpioConfig = U_PORT_GPIO_CONFIG_DEFAULT;
-    int32_t heapUsed;
+    int32_t resourceCount;
 
     // Whatever called us likely initialised the
     // port so deinitialise it here to obtain the
     // correct initial heap size
     uPortDeinit();
-    heapUsed = uPortGetHeapFree();
+    resourceCount = uTestUtilGetDynamicResourceCount();
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
     U_TEST_PRINT_LINE("testing GPIOs.");
@@ -2653,14 +2581,11 @@ U_PORT_TEST_FUNCTION("[port]", "portGpioRequiresSpecificWiring")
 
     uPortDeinit();
 
-    // Check for memory leaks
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT(heapUsed <= 0);
-    // Printed for information: asserting happens at the end
+    // Check for resource leaks
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 #endif
 
@@ -2669,14 +2594,13 @@ U_PORT_TEST_FUNCTION("[port]", "portGpioRequiresSpecificWiring")
  */
 U_PORT_TEST_FUNCTION("[port]", "portUartRequiresSpecificWiring")
 {
-    int32_t heapUsed;
-    int32_t heapClibLossOffset = (int32_t) gSystemHeapLost;
+    int32_t resourceCount;
 
     // Whatever called us likely initialised the
     // port so deinitialise it here to obtain the
     // correct initial heap size
     uPortDeinit();
-    heapUsed = uPortGetHeapFree();
+    resourceCount = uTestUtilGetDynamicResourceCount();
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
 #if defined(U_CFG_TEST_PIN_UART_A_CTS_GET) && defined (U_CFG_TEST_PIN_UART_A_RTS_GET)
@@ -2712,18 +2636,11 @@ U_PORT_TEST_FUNCTION("[port]", "portUartRequiresSpecificWiring")
 
     uPortDeinit();
 
-    // Check for memory leaks
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("%d byte(s) of heap were lost to the C library"
-                      " during this test and we have leaked %d byte(s).",
-                      gSystemHeapLost - heapClibLossOffset,
-                      heapUsed - (gSystemHeapLost - heapClibLossOffset));
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT((heapUsed < 0) ||
-                       (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
-    // Printed for information: asserting happens at the end
+    // Check for resource leaks
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 #endif
 
@@ -2736,8 +2653,7 @@ U_PORT_TEST_FUNCTION("[port]", "portI2cRequiresSpecificWiring")
     int32_t z;
     int32_t messageClass = -1;
     int32_t messageId = -1;
-    int32_t heapUsed;
-    int32_t heapClibLossOffset = (int32_t) gSystemHeapLost;
+    int32_t resourceCount;
     char *gpI2cBuffer;
     bool success = false;
 
@@ -2745,7 +2661,7 @@ U_PORT_TEST_FUNCTION("[port]", "portI2cRequiresSpecificWiring")
     // port so deinitialise it here to obtain the
     // correct initial heap size
     uPortDeinit();
-    heapUsed = uPortGetHeapFree();
+    resourceCount = uTestUtilGetDynamicResourceCount();
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
     // Enough room for the fixed part of a UBX-MON-VER message
@@ -2974,18 +2890,11 @@ U_PORT_TEST_FUNCTION("[port]", "portI2cRequiresSpecificWiring")
     uPortDeinit();
     gI2cHandle = -1;
 
-    // Check for memory leaks
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("%d byte(s) of heap were lost to the C library"
-                      " during this test and we have leaked %d byte(s).",
-                      gSystemHeapLost - heapClibLossOffset,
-                      heapUsed - (gSystemHeapLost - heapClibLossOffset));
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT((heapUsed < 0) ||
-                       (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
-    // Printed for information: asserting happens at the end
+    // Check for resource leaks
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 #endif
 
@@ -3005,8 +2914,7 @@ U_PORT_TEST_FUNCTION("[port]", "portSpiRequiresSpecificWiring")
     int32_t y = 0;
     int32_t messageClass = -1;
     int32_t messageId = -1;
-    int32_t heapUsed;
-    int32_t heapClibLossOffset = (int32_t) gSystemHeapLost;
+    int32_t resourceCount;
     char buffer1[12]; // Enough room for the body of a UBX-MON-BATCH message
     char buffer2[(12 +
                   U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES) *
@@ -3018,7 +2926,7 @@ U_PORT_TEST_FUNCTION("[port]", "portSpiRequiresSpecificWiring")
     // port so deinitialise it here to obtain the
     // correct initial heap size
     uPortDeinit();
-    heapUsed = uPortGetHeapFree();
+    resourceCount = uTestUtilGetDynamicResourceCount();
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
     U_TEST_PRINT_LINE("testing SPI, assuming a u-blox GNSS device is connected to it.");
@@ -3169,18 +3077,11 @@ U_PORT_TEST_FUNCTION("[port]", "portSpiRequiresSpecificWiring")
     // Now we're done
     uPortDeinit();
 
-    // Check for memory leaks
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("%d byte(s) of heap were lost to the C library"
-                      " during this test and we have leaked %d byte(s).",
-                      gSystemHeapLost - heapClibLossOffset,
-                      heapUsed - (gSystemHeapLost - heapClibLossOffset));
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT((heapUsed < 0) ||
-                       (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
-    // Printed for information: asserting happens at the end
+    // Check for resource leaks
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 #endif
 
@@ -3190,7 +3091,7 @@ U_PORT_TEST_FUNCTION("[port]", "portCrypto")
 {
     char buffer[64];
     char iv[U_PORT_CRYPTO_AES128_INITIALISATION_VECTOR_LENGTH_BYTES];
-    int32_t heapUsed;
+    int32_t resourceCount;
     int32_t x;
 
     // Whatever called us likely initialised the
@@ -3200,7 +3101,7 @@ U_PORT_TEST_FUNCTION("[port]", "portCrypto")
 
     memset(buffer, 0, sizeof(buffer));
 
-    heapUsed = uPortGetHeapFree();
+    resourceCount = uTestUtilGetDynamicResourceCount();
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
     U_TEST_PRINT_LINE("testing SHA256...");
@@ -3260,21 +3161,18 @@ U_PORT_TEST_FUNCTION("[port]", "portCrypto")
 
     uPortDeinit();
 
-    // Check for memory leaks
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT(heapUsed <= 0);
-    // Printed for information: asserting happens at the end
+    // Check for resource leaks
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 /** Test timers.
  */
 U_PORT_TEST_FUNCTION("[port]", "portTimers")
 {
-    int32_t heapUsed;
+    int32_t resourceCount;
     int32_t y;
     int64_t startTime;
 
@@ -3283,7 +3181,7 @@ U_PORT_TEST_FUNCTION("[port]", "portTimers")
     // correct initial heap size
     uPortDeinit();
 
-    heapUsed = uPortGetHeapFree();
+    resourceCount = uTestUtilGetDynamicResourceCount();
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
     U_TEST_PRINT_LINE("testing timers...");
@@ -3393,14 +3291,11 @@ U_PORT_TEST_FUNCTION("[port]", "portTimers")
 
     uPortDeinit();
 
-    // Check for memory leaks
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT(heapUsed <= 0);
-    // Printed for information: asserting happens at the end
+    // Check for resource leaks
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 /** Test critical sections.
@@ -3408,7 +3303,7 @@ U_PORT_TEST_FUNCTION("[port]", "portTimers")
 U_PORT_TEST_FUNCTION("[port]", "portCriticalSection")
 {
     int32_t errorCode;
-    int32_t heapUsed;
+    int32_t resourceCount;
     uint32_t y;
     int32_t startTimeMs;
     int32_t errorFlag = 0x00;
@@ -3417,7 +3312,7 @@ U_PORT_TEST_FUNCTION("[port]", "portCriticalSection")
     // port so deinitialise it here to obtain the
     // correct initial heap size
     uPortDeinit();
-    heapUsed = uPortGetHeapFree();
+    resourceCount = uTestUtilGetDynamicResourceCount();
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
     U_TEST_PRINT_LINE("testing critical sections, may take up to %d second(s)...",
@@ -3508,14 +3403,11 @@ U_PORT_TEST_FUNCTION("[port]", "portCriticalSection")
 
     uPortDeinit();
 
-    // Check for memory leaks
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT(heapUsed <= 0);
-    // Printed for information: asserting happens at the end
+    // Check for resource leaks
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 /** Clean-up to be run at the end of this round of tests, just

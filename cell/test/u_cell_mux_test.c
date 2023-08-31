@@ -445,7 +445,7 @@ U_PORT_TEST_FUNCTION("[cellMux]", "cellMuxBasic")
 {
     uDeviceHandle_t cellHandle;
     const uCellPrivateModule_t *pModule;
-    int32_t heapUsed;
+    int32_t resourceCount;
     // +1 and zero init so that we can treat it as a string
     char buffer1[U_CELL_INFO_IMEI_SIZE + 1] = {0};
     char buffer2[U_CELL_INFO_IMEI_SIZE + 1] = {0};
@@ -453,8 +453,8 @@ U_PORT_TEST_FUNCTION("[cellMux]", "cellMuxBasic")
     // In case a previous test failed
     uCellTestPrivateCleanup(&gHandles);
 
-    // Obtain the initial heap size
-    heapUsed = uPortGetHeapFree();
+    // Obtain the initial resource count
+    resourceCount = uTestUtilGetDynamicResourceCount();
 
     // Do the standard preamble
     U_PORT_TEST_ASSERT(uCellTestPrivatePreamble(U_CFG_TEST_CELL_MODULE_TYPE,
@@ -509,14 +509,11 @@ U_PORT_TEST_FUNCTION("[cellMux]", "cellMuxBasic")
     // test to speed things up
     uCellTestPrivatePostamble(&gHandles, false);
 
-    // Check for memory leaks
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT(heapUsed <= 0);
-    // Printed for information: asserting happens in the postamble
+    // Check for resource leaks
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 /** Test sockets over CMUX.
@@ -525,7 +522,7 @@ U_PORT_TEST_FUNCTION("[cellMux]", "cellMuxSock")
 {
     uDeviceHandle_t cellHandle;
     const uCellPrivateModule_t *pModule;
-    int32_t heapUsed;
+    int32_t resourceCount;
     uSockAddress_t echoServerAddress;
     int32_t w;
     int32_t y;
@@ -536,8 +533,8 @@ U_PORT_TEST_FUNCTION("[cellMux]", "cellMuxSock")
     // In case a previous test failed
     uCellTestPrivateCleanup(&gHandles);
 
-    // Obtain the initial heap size
-    heapUsed = uPortGetHeapFree();
+    // Obtain the initial resource count
+    resourceCount = uTestUtilGetDynamicResourceCount();
 
     gTestPassed = false;
 
@@ -681,14 +678,11 @@ U_PORT_TEST_FUNCTION("[cellMux]", "cellMuxSock")
     // test to speed things up
     uCellTestPrivatePostamble(&gHandles, false);
 
-    // Check for memory leaks
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT(heapUsed <= 0);
-    // Printed for information: asserting happens in the postamble
+    // Check for resource leaks
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 /** Test MQTT over CMUX.
@@ -697,7 +691,7 @@ U_PORT_TEST_FUNCTION("[cellMux]", "cellMuxMqtt")
 {
     uDeviceHandle_t cellHandle;
     const uCellPrivateModule_t *pModule;
-    int32_t heapUsed;
+    int32_t resourceCount;
     int32_t x;
     const char *pServerAddress = U_PORT_STRINGIFY_QUOTED(U_CELL_MUX_TEST_MQTT_SERVER_IP_ADDRESS);
     // +1 and zero init so that we can treat it as a string
@@ -711,8 +705,8 @@ U_PORT_TEST_FUNCTION("[cellMux]", "cellMuxMqtt")
     // In case a previous test failed
     uCellTestPrivateCleanup(&gHandles);
 
-    // Obtain the initial heap size
-    heapUsed = uPortGetHeapFree();
+    // Obtain the initial resource count
+    resourceCount = uTestUtilGetDynamicResourceCount();
 
     gTestPassed = false;
 
@@ -826,14 +820,11 @@ U_PORT_TEST_FUNCTION("[cellMux]", "cellMuxMqtt")
     // test to speed things up
     uCellTestPrivatePostamble(&gHandles, false);
 
-    // Check for memory leaks
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT(heapUsed <= 0);
-    // Printed for information: asserting happens in the postamble
+    // Check for resource leaks
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 /** Test HTTP over CMUX.
@@ -843,7 +834,7 @@ U_PORT_TEST_FUNCTION("[cellMux]", "cellMuxHttp")
     uDeviceHandle_t cellHandle;
     const uCellPrivateModule_t *pModule;
     int32_t httpHandle;
-    int32_t heapUsed;
+    int32_t resourceCount;
     char urlBuffer[64];
     // +1 and zero init so that we can treat it as a string
     char imeiBuffer[U_CELL_INFO_IMEI_SIZE + 1] = {0};
@@ -852,8 +843,8 @@ U_PORT_TEST_FUNCTION("[cellMux]", "cellMuxHttp")
     // In case a previous test failed
     uCellTestPrivateCleanup(&gHandles);
 
-    // Obtain the initial heap size
-    heapUsed = uPortGetHeapFree();
+    // Obtain the initial resource count
+    resourceCount = uTestUtilGetDynamicResourceCount();
 
     gTestPassed = false;
 
@@ -958,14 +949,11 @@ U_PORT_TEST_FUNCTION("[cellMux]", "cellMuxHttp")
     // test to speed things up
     uCellTestPrivatePostamble(&gHandles, false);
 
-    // Check for memory leaks
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT(heapUsed <= 0);
-    // Printed for information: asserting happens in the postamble
+    // Check for resource leaks
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 /** Clean-up to be run at the end of this round of tests, just

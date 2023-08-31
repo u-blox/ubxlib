@@ -38,7 +38,7 @@
 #include "u_cfg_sw.h"
 #include "u_cfg_app_platform_specific.h"
 #include "u_cfg_test_platform_specific.h"
-#include "u_cfg_os_platform_specific.h"  // For #define U_CFG_OS_CLIB_LEAKS
+#include "u_cfg_os_platform_specific.h"
 
 #include "u_error_common.h"
 
@@ -47,6 +47,9 @@
 #include "u_port_debug.h"
 #include "u_port_os.h"
 #include "u_port_event_queue.h"
+
+#include "u_test_util_resource_check.h"
+
 #include "u_mempool.h"
 
 /* ----------------------------------------------------------------
@@ -95,13 +98,13 @@ U_PORT_TEST_FUNCTION("[mempool]", "mempoolBasic")
     uMemPoolDesc_t mempoolDesc;
     uint8_t *pBuf1;
     uint8_t *pBuf2;
-    int32_t heapUsed;
+    int32_t resourceCount;
 
     // Whatever called us likely initialised the
     // port so deinitialise it here to obtain the
     // correct initial heap size
     uPortDeinit();
-    heapUsed = uPortGetHeapFree();
+    resourceCount = uTestUtilGetDynamicResourceCount();
 
     errCode = uMemPoolInit(&mempoolDesc, TEST_BLOCK_SIZE, TEST_BLOCK_COUNT);
     U_PORT_TEST_ASSERT(errCode == U_ERROR_COMMON_SUCCESS);
@@ -125,27 +128,25 @@ U_PORT_TEST_FUNCTION("[mempool]", "mempoolBasic")
 
     uMemPoolDeinit(&mempoolDesc);
 
-    // Check for memory leaks
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT((heapUsed == 0) || (heapUsed == (int32_t)U_ERROR_COMMON_NOT_SUPPORTED));
+    // Check for resource leaks
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
-
 
 U_PORT_TEST_FUNCTION("[mempool]", "mempoolFull")
 {
     int32_t errCode;
     uMemPoolDesc_t mempoolDesc;
     uint8_t *pBuf[TEST_BLOCK_COUNT];
-    int32_t heapUsed;
+    int32_t resourceCount;
 
     // Whatever called us likely initialised the
     // port so deinitialise it here to obtain the
     // correct initial heap size
     uPortDeinit();
-    heapUsed = uPortGetHeapFree();
+    resourceCount = uTestUtilGetDynamicResourceCount();
 
     errCode = uMemPoolInit(&mempoolDesc, TEST_BLOCK_SIZE, TEST_BLOCK_COUNT);
     U_PORT_TEST_ASSERT(errCode == U_ERROR_COMMON_SUCCESS);
@@ -169,12 +170,11 @@ U_PORT_TEST_FUNCTION("[mempool]", "mempoolFull")
 
     uMemPoolDeinit(&mempoolDesc);
 
-    // Check for memory leaks
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT((heapUsed == 0) || (heapUsed == (int32_t)U_ERROR_COMMON_NOT_SUPPORTED));
+    // Check for resource leaks
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 U_PORT_TEST_FUNCTION("[mempool]", "mempoolFreeAllMem")
@@ -183,14 +183,13 @@ U_PORT_TEST_FUNCTION("[mempool]", "mempoolFreeAllMem")
     uMemPoolDesc_t mempoolDesc;
     uint8_t *pBuf1[TEST_BLOCK_COUNT];
     uint8_t *pBuf2[TEST_BLOCK_COUNT];
-    int32_t heapUsed;
+    int32_t resourceCount;
 
     // Whatever called us likely initialised the
     // port so deinitialise it here to obtain the
     // correct initial heap size
     uPortDeinit();
-    heapUsed = uPortGetHeapFree();
-    U_TEST_PRINT_LINE("heap used at start %d.", heapUsed);
+    resourceCount = uTestUtilGetDynamicResourceCount();
 
     errCode = uMemPoolInit(&mempoolDesc, TEST_BLOCK_SIZE, TEST_BLOCK_COUNT);
     U_PORT_TEST_ASSERT(errCode == U_ERROR_COMMON_SUCCESS);
@@ -218,13 +217,11 @@ U_PORT_TEST_FUNCTION("[mempool]", "mempoolFreeAllMem")
 
     uMemPoolDeinit(&mempoolDesc);
 
-    // Check for memory leaks
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT((heapUsed == 0) || (heapUsed == (int32_t)U_ERROR_COMMON_NOT_SUPPORTED));
-
+    // Check for resource leaks
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 // End of file

@@ -151,7 +151,7 @@ static bool keepGoingCallback(uDeviceHandle_t devHandle)
 U_PORT_TEST_FUNCTION("[wifiCaptivePortal]", "wifiCaptivePortal")
 {
     uPortDeinit();
-    int32_t heapUsed = uPortGetHeapFree();
+    int32_t resourceCount = uTestUtilGetDynamicResourceCount();
     U_PORT_TEST_ASSERT(uPortInit() == 0);
     U_PORT_TEST_ASSERT(uDeviceInit() == 0);
     U_TEST_PRINT_LINE("initiating the module");
@@ -170,12 +170,10 @@ U_PORT_TEST_FUNCTION("[wifiCaptivePortal]", "wifiCaptivePortal")
         .pPassPhrase = U_PORT_STRINGIFY_QUOTED(U_WIFI_TEST_CFG_WPA2_PASSPHRASE)
     };
     U_PORT_TEST_ASSERT(uNetworkInterfaceUp(gDeviceHandle, U_NETWORK_TYPE_WIFI, &networkCfg) == 0);
-    int32_t heapSockInitLoss = uPortGetHeapFree();
     uSockAddress_t remoteAddress;
     U_PORT_TEST_ASSERT(uSockGetHostByName(gDeviceHandle,
                                           "8.8.8.8",
                                           &(remoteAddress.ipAddress)) == 0);
-    heapSockInitLoss -= uPortGetHeapFree();
     uNetworkInterfaceDown(gDeviceHandle, U_NETWORK_TYPE_WIFI);
 
     // Now do the actual test
@@ -197,22 +195,11 @@ U_PORT_TEST_FUNCTION("[wifiCaptivePortal]", "wifiCaptivePortal")
 
     uDeviceDeinit();
     uPortDeinit();
-#ifndef __XTENSA__
-    // Check for memory leaks
-    // TODO: this if'ed out for ESP32 (xtensa compiler) at
-    // the moment as there is an issue with ESP32 hanging
-    // on to memory in the UART drivers that can't easily be
-    // accounted for.
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("%d byte(s) were lost to sockets initialisation;"
-                      " we have leaked %d byte(s).",
-                      heapSockInitLoss, heapUsed - heapSockInitLoss);
-    U_PORT_TEST_ASSERT(heapUsed <= heapSockInitLoss);
-#else
-    (void) heapUsed;
-#endif
-    // Printed for information: asserting happens in the postamble
+    // Check for resource leaks
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 /** Clean-up to be run at the end of this round of tests, just

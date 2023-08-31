@@ -188,12 +188,6 @@ typedef struct {
  */
 static uCellTestPrivate_t gHandles = U_CELL_TEST_PRIVATE_DEFAULTS;
 
-/** For tracking heap lost to allocations made
- * by the C library in new tasks: newlib does NOT
- * necessarily reclaim it on task deletion.
- */
-static size_t gSystemHeapLost = 0;
-
 # if ((U_CFG_APP_PIN_CELL_PWR_ON >= 0) && !defined(U_CFG_TEST_CELL_PWR_DISABLE)) || \
   !defined(U_CFG_CELL_DISABLE_UART_POWER_SAVING)
 /** Used for keepGoingCallback() timeout.
@@ -727,14 +721,13 @@ static bool setEdrx(uDeviceHandle_t cellHandle, int32_t *pSockHandle,
 U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwr")
 {
     uAtClientStreamHandle_t stream;
-    int32_t heapUsed;
-    int32_t heapClibLossOffset = (int32_t) gSystemHeapLost;
+    int32_t resourceCount;
 
     // In case a previous test failed
     uCellTestPrivateCleanup(&gHandles);
 
-    // Obtain the initial heap size
-    heapUsed = uPortGetHeapFree();
+    // Obtain the initial resource count
+    resourceCount = uTestUtilGetDynamicResourceCount();
 
     // Note: not using the standard preamble here as
     // we need to fiddle with the parameters into
@@ -780,18 +773,11 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwr")
     // test to speed things up
     uCellTestPrivatePostamble(&gHandles, false);
 
-    // Check for memory leaks
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("%d byte(s) of heap were lost to the C library"
-                      " during this test and we have leaked %d byte(s).",
-                      gSystemHeapLost - heapClibLossOffset,
-                      heapUsed - (gSystemHeapLost - heapClibLossOffset));
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT((heapUsed < 0) ||
-                       (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
-    // Printed for information: asserting happens in the postamble
+    // Check for resource leaks
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 # endif // if (U_CFG_APP_PIN_CELL_PWR_ON >= 0) && !defined(U_CFG_TEST_CELL_PWR_DISABLE)
@@ -800,14 +786,13 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwr")
  */
 U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrReboot")
 {
-    int32_t heapUsed;
-    int32_t heapClibLossOffset = (int32_t) gSystemHeapLost;
+    int32_t resourceCount;
 
     // In case a previous test failed
     uCellTestPrivateCleanup(&gHandles);
 
-    // Obtain the initial heap size
-    heapUsed = uPortGetHeapFree();
+    // Obtain the initial resource count
+    resourceCount = uTestUtilGetDynamicResourceCount();
 
     // Do the standard preamble
     U_PORT_TEST_ASSERT(uCellTestPrivatePreamble(U_CFG_TEST_CELL_MODULE_TYPE,
@@ -829,33 +814,25 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrReboot")
     // test to speed things up
     uCellTestPrivatePostamble(&gHandles, false);
 
-    // Check for memory leaks
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("%d byte(s) of heap were lost to the C library"
-                      " during this test and we have leaked %d byte(s).",
-                      gSystemHeapLost - heapClibLossOffset,
-                      heapUsed - (gSystemHeapLost - heapClibLossOffset));
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT((heapUsed < 0) ||
-                       (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
-    // Printed for information: asserting happens in the postamble
+    // Check for resource leaks
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 /** Test reset
  */
 U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrReset")
 {
-    int32_t heapUsed;
-    int32_t heapClibLossOffset = (int32_t) gSystemHeapLost;
+    int32_t resourceCount;
     int32_t x;
 
     // In case a previous test failed
     uCellTestPrivateCleanup(&gHandles);
 
-    // Obtain the initial heap size
-    heapUsed = uPortGetHeapFree();
+    // Obtain the initial resource count
+    resourceCount = uTestUtilGetDynamicResourceCount();
 
     // Do the standard preamble
     U_PORT_TEST_ASSERT(uCellTestPrivatePreamble(U_CFG_TEST_CELL_MODULE_TYPE,
@@ -875,33 +852,25 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrReset")
     // test to speed things up
     uCellTestPrivatePostamble(&gHandles, false);
 
-    // Check for memory leaks
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("%d byte(s) of heap were lost to the C library"
-                      " during this test and we have leaked %d byte(s).",
-                      gSystemHeapLost - heapClibLossOffset,
-                      heapUsed - (gSystemHeapLost - heapClibLossOffset));
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT((heapUsed < 0) ||
-                       (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
-    // Printed for information: asserting happens in the postamble
+    // Check for resource leaks
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 /** Test UART power saving.
  */
 U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSavingUart")
 {
-    int32_t heapUsed;
-    int32_t heapClibLossOffset = (int32_t) gSystemHeapLost;
+    int32_t resourceCount;
     uDeviceHandle_t cellHandle;
 
     // In case a previous test failed
     uCellTestPrivateCleanup(&gHandles);
 
-    // Obtain the initial heap size
-    heapUsed = uPortGetHeapFree();
+    // Obtain the initial resource count
+    resourceCount = uTestUtilGetDynamicResourceCount();
 
     // Do the standard preamble
     U_PORT_TEST_ASSERT(uCellTestPrivatePreamble(U_CFG_TEST_CELL_MODULE_TYPE,
@@ -931,18 +900,11 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSavingUart")
     // test to speed things up
     uCellTestPrivatePostamble(&gHandles, false);
 
-    // Check for memory leaks
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("%d byte(s) of heap were lost to the C library"
-                      " during this test and we have leaked %d byte(s).",
-                      gSystemHeapLost - heapClibLossOffset,
-                      heapUsed - (gSystemHeapLost - heapClibLossOffset));
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT((heapUsed < 0) ||
-                       (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
-    // Printed for information: asserting happens in the postamble
+    // Check for resource leaks
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 # ifndef U_CFG_CELL_DISABLE_UART_POWER_SAVING
@@ -952,8 +914,7 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSavingUart")
  */
 U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSaving3gpp")
 {
-    int32_t heapUsed;
-    int32_t heapClibLossOffset = (int32_t) gSystemHeapLost;
+    int32_t resourceCount;
     const uCellPrivateModule_t *pModule;
     uDeviceHandle_t cellHandle;
     int32_t x;
@@ -976,8 +937,8 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSaving3gpp")
     // In case a previous test failed
     uCellTestPrivateCleanup(&gHandles);
 
-    // Obtain the initial heap size
-    heapUsed = uPortGetHeapFree();
+    // Obtain the initial resource count
+    resourceCount = uTestUtilGetDynamicResourceCount();
 
     // Do the standard preamble
     U_PORT_TEST_ASSERT(uCellTestPrivatePreamble(U_CFG_TEST_CELL_MODULE_TYPE,
@@ -1347,18 +1308,11 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSaving3gpp")
     // test to speed things up
     uCellTestPrivatePostamble(&gHandles, false);
 
-    // Check for memory leaks
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("%d byte(s) of heap were lost to the C library during this"
-                      " test and we have leaked %d byte(s).",
-                      gSystemHeapLost - heapClibLossOffset,
-                      heapUsed - (gSystemHeapLost - heapClibLossOffset));
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT((heapUsed < 0) ||
-                       (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
-    // Printed for information: asserting happens in the postamble
+    // Check for resource leaks
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 #  endif // if (U_CFG_APP_PIN_CELL_PWR_ON >= 0) && (U_CFG_APP_PIN_CELL_VINT >= 0)
@@ -1367,8 +1321,7 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSaving3gpp")
  */
 U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSavingEDrx")
 {
-    int32_t heapUsed;
-    int32_t heapClibLossOffset = (int32_t) gSystemHeapLost;
+    int32_t resourceCount;
     const uCellPrivateModule_t *pModule;
     uDeviceHandle_t cellHandle;
     int32_t x;
@@ -1391,8 +1344,8 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSavingEDrx")
     // In case a previous test failed
     uCellTestPrivateCleanup(&gHandles);
 
-    // Obtain the initial heap size
-    heapUsed = uPortGetHeapFree();
+    // Obtain the initial resource count
+    resourceCount = uTestUtilGetDynamicResourceCount();
 
     // Do the standard preamble
     U_PORT_TEST_ASSERT(uCellTestPrivatePreamble(U_CFG_TEST_CELL_MODULE_TYPE,
@@ -1576,18 +1529,11 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSavingEDrx")
     // test to speed things up
     uCellTestPrivatePostamble(&gHandles, false);
 
-    // Check for memory leaks
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("%d byte(s) of heap were lost to the C library"
-                      " during this test and we have leaked %d byte(s).",
-                      gSystemHeapLost - heapClibLossOffset,
-                      heapUsed - (gSystemHeapLost - heapClibLossOffset));
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT((heapUsed < 0) ||
-                       (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
-    // Printed for information: asserting happens in the postamble
+    // Check for resource leaks
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 # endif //U_CFG_CELL_DISABLE_UART_POWER_SAVING
 

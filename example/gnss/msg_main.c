@@ -244,7 +244,7 @@ static void callback(uDeviceHandle_t devHandle, const uGnssMessageId_t *pMessage
         length = uGnssMsgReceiveCallbackRead(devHandle, pBuffer, errorCodeOrLength);
         if (length >= 0) {
             gMessageCount++;
-#if !U_CFG_OS_CLIB_LEAKS && !defined(U_CFG_TEST_USING_NRF5SDK) // NRF52 goes a bit crazy if you print here
+#ifndef U_CFG_TEST_USING_NRF5SDK // NRF52 goes a bit crazy if you print here
             uPortLog("%.*s", length, pBuffer);
         } else {
             uPortLog("Empty or bad message received.\n");

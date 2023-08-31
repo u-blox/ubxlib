@@ -250,9 +250,7 @@ static void callback(uDeviceHandle_t wifiHandle, int32_t errorCode,
         if (pLocation == NULL) {
             gCallback = -1001;
         } else {
-#if !U_CFG_OS_CLIB_LEAKS
             printLocation(pLocation);
-#endif
             if (gIteration >= sizeof(gLocType) / sizeof(gLocType[0])) {
                 gCallback = -1002;
             } else {
@@ -289,11 +287,11 @@ static void callback(uDeviceHandle_t wifiHandle, int32_t errorCode,
 U_PORT_TEST_FUNCTION("[wifiLoc]", "wifiLocBasic")
 {
     int32_t z;
-    int32_t heapUsed;
+    int32_t resourceCount;
     int32_t startTimeMs = 0;
     uLocation_t location;
 
-    heapUsed = uPortGetHeapFree();
+    resourceCount = uTestUtilGetDynamicResourceCount();
 
     U_PORT_TEST_ASSERT(uWifiTestPrivatePreamble((uWifiModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
                                                 &gUart, &gHandles) == 0);
@@ -374,22 +372,11 @@ U_PORT_TEST_FUNCTION("[wifiLoc]", "wifiLocBasic")
 
     uWifiTestPrivatePostamble(&gHandles);
 
-#ifndef __XTENSA__
-    // Check for memory leaks
-    // TODO: this if'ed out for ESP32 (xtensa compiler) at
-    // the moment as there is an issue with ESP32 hanging
-    // on to memory in the UART drivers that can't easily be
-    // accounted for.
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT(heapUsed <= 0);
-#else
-    (void) heapUsed;
-#endif
-    // Printed for information: asserting happens in the postamble
+    // Check for resource leaks
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 /** Clean-up to be run at the end of this round of tests, just

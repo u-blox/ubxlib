@@ -28,7 +28,7 @@
 #include "stdbool.h"
 
 #include "u_cfg_sw.h"
-#include "u_cfg_os_platform_specific.h"  // For #define U_CFG_OS_CLIB_LEAKS
+#include "u_cfg_os_platform_specific.h"
 #include "u_cfg_app_platform_specific.h"
 #include "u_cfg_test_platform_specific.h"
 
@@ -70,6 +70,45 @@
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
+
+// Get the current number of resources in use that might be freed.
+int32_t uTestUtilGetDynamicResourceCount()
+{
+    int32_t resources = 0;
+    int32_t x;
+    int32_t y;
+
+    x = uPortHeapAllocCount();
+    y = uPortHeapPerpetualAllocCount();
+    if (x > 0) {
+        resources += x;
+        if (y >= x) {
+            resources -= x;
+        }
+    }
+    x = uPortOsResourceAllocCount();
+    y = uPortOsResourcePerpetualCount();
+    if (x > 0) {
+        resources += x;
+        if (y >= x) {
+            resources -= x;
+        }
+    }
+    x = uPortUartResourceAllocCount();
+    if (x > 0) {
+        resources += x;
+    }
+    x = uPortI2cResourceAllocCount();
+    if (x > 0) {
+        resources += x;
+    }
+    x = uPortSpiResourceAllocCount();
+    if (x > 0) {
+        resources += x;
+    }
+
+    return resources;
+}
 
 // Check that resources are within limits and have been cleaned up.
 bool uTestUtilResourceCheck(const char *pPrefix,

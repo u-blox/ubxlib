@@ -122,7 +122,7 @@ static uGnssTestPrivate_t gHandles = U_GNSS_TEST_PRIVATE_DEFAULTS;
 U_PORT_TEST_FUNCTION("[gnssInfo]", "gnssInfoStatic")
 {
     uDeviceHandle_t gnssHandle;
-    int32_t heapUsed;
+    int32_t resourceCount;
     char *pBuffer;
     int32_t y;
     size_t z;
@@ -133,8 +133,8 @@ U_PORT_TEST_FUNCTION("[gnssInfo]", "gnssInfoStatic")
     // In case a previous test failed
     uGnssTestPrivateCleanup(&gHandles);
 
-    // Obtain the initial heap size
-    heapUsed = uPortGetHeapFree();
+    // Get the initial resource count
+    resourceCount = uTestUtilGetDynamicResourceCount();
 
     // Repeat for all transport types
     iterations = uGnssTestPrivateTransportTypesSet(transportTypes, U_CFG_APP_GNSS_UART,
@@ -240,14 +240,11 @@ U_PORT_TEST_FUNCTION("[gnssInfo]", "gnssInfoStatic")
         uGnssTestPrivatePostamble(&gHandles, false);
     }
 
-    // Check for memory leaks
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT(heapUsed <= 0);
-    // Printed for information: asserting happens in the postamble
+    // Check for resource leaks
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 /** Read time from GNSS.
@@ -255,7 +252,7 @@ U_PORT_TEST_FUNCTION("[gnssInfo]", "gnssInfoStatic")
 U_PORT_TEST_FUNCTION("[gnssInfo]", "gnssInfoTime")
 {
     uDeviceHandle_t gnssHandle;
-    int32_t heapUsed;
+    int32_t resourceCount;
     int64_t y = -1;
     int32_t startTimeMs;
     size_t iterations;
@@ -264,8 +261,8 @@ U_PORT_TEST_FUNCTION("[gnssInfo]", "gnssInfoTime")
     // In case a previous test failed
     uGnssTestPrivateCleanup(&gHandles);
 
-    // Obtain the initial heap size
-    heapUsed = uPortGetHeapFree();
+    // Get the initial resource count
+    resourceCount = uTestUtilGetDynamicResourceCount();
 
     // Repeat for all transport types
     iterations = uGnssTestPrivateTransportTypesSet(transportTypes, U_CFG_APP_GNSS_UART,
@@ -312,14 +309,11 @@ U_PORT_TEST_FUNCTION("[gnssInfo]", "gnssInfoTime")
         uGnssTestPrivatePostamble(&gHandles, false);
     }
 
-    // Check for memory leaks
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT(heapUsed <= 0);
-    // Printed for information: asserting happens in the postamble
+    // Check for resource leaks
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 #endif // #ifdef U_CFG_TEST_GNSS_MODULE_TYPE

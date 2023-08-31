@@ -40,7 +40,7 @@
 #include "time.h"      // time_t and struct tm
 
 #include "u_cfg_sw.h"
-#include "u_cfg_os_platform_specific.h"  // For #define U_CFG_OS_CLIB_LEAKS
+#include "u_cfg_os_platform_specific.h"
 
 #include "u_error_common.h"
 
@@ -1499,21 +1499,13 @@ static bool bufferFill(uAtClientInstance_t *pClient,
 
     // Reset buffer if it has become full
     if (pReceiveBuffer->lengthBuffered == pReceiveBuffer->dataBufferSize) {
-#if U_CFG_OS_CLIB_LEAKS
-        // If the C library leaks then don't print
-        // in a callback as it will leak
-        if (!eventIsCallback) {
-#endif
-            if (pClient->debugOn) {
-                uPortLog("U_AT_CLIENT_%d-%d%s: !!! overflow.\n",
-                         pClient->stream.type, U_AT_CLIENT_HANDLE_FOR_PRINT(pClient),
-                         pPrintTimestamp(" ", NULL, timestampBuffer, sizeof(timestampBuffer)));
-            }
-            printAt(pClient, U_AT_CLIENT_DATA_BUFFER_PTR(pReceiveBuffer),
-                    pReceiveBuffer->length, false);
-#if U_CFG_OS_CLIB_LEAKS
+        if (pClient->debugOn) {
+            uPortLog("U_AT_CLIENT_%d-%d%s: !!! overflow.\n",
+                     pClient->stream.type, U_AT_CLIENT_HANDLE_FOR_PRINT(pClient),
+                     pPrintTimestamp(" ", NULL, timestampBuffer, sizeof(timestampBuffer)));
         }
-#endif
+        printAt(pClient, U_AT_CLIENT_DATA_BUFFER_PTR(pReceiveBuffer),
+                pReceiveBuffer->length, false);
         LOG_BUFFER_FILL(2);
         bufferReset(pClient, true);
     }
@@ -1685,17 +1677,9 @@ static bool bufferFill(uAtClientInstance_t *pClient,
 
     LOG_BUFFER_FILL(15);
     if (readLength > 0) {
-#if U_CFG_OS_CLIB_LEAKS
-        // If the C library leaks then don't print
-        // in a callback as it will leak
-        if (!eventIsCallback) {
-#endif
-            printAt(pClient, U_AT_CLIENT_DATA_BUFFER_PTR(pReceiveBuffer) +
-                    pReceiveBuffer->length + pReceiveBuffer->readIndex,
-                    readLength, false);
-#if U_CFG_OS_CLIB_LEAKS
-        }
-#endif
+        printAt(pClient, U_AT_CLIENT_DATA_BUFFER_PTR(pReceiveBuffer) +
+                pReceiveBuffer->length + pReceiveBuffer->readIndex,
+                readLength, false);
         pReceiveBuffer->length += readLength;
         LOG_BUFFER_FILL(16);
     }
@@ -2648,9 +2632,6 @@ static void urcCallback(const uAtClientStreamHandle_t *pStream,
                         pReceiveBuffer = pClient->pReceiveBuffer;
                         while (((sizeOrError = getReceiveSizeForUrc(pClient)) > 0) ||
                                (pReceiveBuffer->readIndex < pReceiveBuffer->length)) {
-#if !U_CFG_OS_CLIB_LEAKS
-                            // Don't do this if CLIB is leaky on this platform since
-                            // it is the printf() that leaks
                             if (pClient->debugOn) {
                                 uPortLog("U_AT_CLIENT_%d-%d%s: possible URC data readable %d,"
                                          " already buffered %u.\n",
@@ -2660,7 +2641,6 @@ static void urcCallback(const uAtClientStreamHandle_t *pStream,
                                          sizeOrError,
                                          pReceiveBuffer->length - pReceiveBuffer->readIndex);
                             }
-#endif
                             pClient->scope = U_AT_CLIENT_SCOPE_NONE;
                             for (size_t x = 0; x < U_AT_CLIENT_URC_DATA_LOOP_GUARD; x++) {
                                 // Search through the URCs
@@ -2696,16 +2676,12 @@ static void urcCallback(const uAtClientStreamHandle_t *pStream,
                                     }
                                 }
                             }
-#if !U_CFG_OS_CLIB_LEAKS
-                            // Don't do this if CLIB is leaky on this platform since
-                            // it is the printf() that leaks
                             if (pClient->debugOn) {
                                 uPortLog("U_AT_CLIENT_%d-%d%s: URC checking done.\n",
                                          pClient->stream.type,
                                          U_AT_CLIENT_HANDLE_FOR_PRINT(pClient),
                                          pPrintTimestamp(" ", NULL, timestampBuffer, sizeof(timestampBuffer)));
                             }
-#endif
                         }
 
                         // Just unlock the stream without

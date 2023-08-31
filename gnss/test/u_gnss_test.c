@@ -154,14 +154,14 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssAddStream")
     uGnssTransportType_t transportType = U_GNSS_TRANSPORT_NONE;
     uGnssTransportHandle_t transportHandle;
     int32_t errorCode;
-    int32_t heapUsed;
+    int32_t resourceCount;
     bool printUbxMessagesDefault;
 
     // Whatever called us likely initialised the
     // port so deinitialise it here to obtain the
     // correct initial heap size
     uPortDeinit();
-    heapUsed = uPortGetHeapFree();
+    resourceCount = uTestUtilGetDynamicResourceCount();
 
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
@@ -383,22 +383,11 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssAddStream")
     uPortI2cDeinit();
     uPortDeinit();
 
-# ifndef __XTENSA__
-    // Check for memory leaks
-    // TODO: this if'ed out for ESP32 (xtensa compiler) at
-    // the moment as there is an issue with ESP32 hanging
-    // on to memory in the UART drivers that can't easily be
-    // accounted for.
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT(heapUsed <= 0);
-# else
-    (void) heapUsed;
-# endif
-    // Printed for information: asserting happens in the postamble
+    // Check for resource leaks
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 #endif
 
@@ -414,13 +403,13 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssI2cAddress")
     char *pTmp;
     int32_t y;
     int32_t errorCode;
-    int32_t heapUsed;
+    int32_t resourceCount;
 
     // Whatever called us likely initialised the
     // port so deinitialise it here to obtain the
     // correct initial heap size
     uPortDeinit();
-    heapUsed = uPortGetHeapFree();
+    resourceCount = uTestUtilGetDynamicResourceCount();
 
     U_PORT_TEST_ASSERT(uPortInit() == 0);
     U_PORT_TEST_ASSERT(uPortI2cInit() == 0);
@@ -524,22 +513,11 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssI2cAddress")
     uPortI2cDeinit();
     uPortDeinit();
 
-# ifndef __XTENSA__
-    // Check for memory leaks
-    // TODO: this if'ed out for ESP32 (xtensa compiler) at
-    // the moment as there is an issue with ESP32 hanging
-    // on to memory in the UART drivers that can't easily be
-    // accounted for.
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT(heapUsed <= 0);
-# else
-    (void) heapUsed;
-# endif
-    // Printed for information: asserting happens in the postamble
+    // Check for resource leaks
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 #endif
 

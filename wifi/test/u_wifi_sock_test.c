@@ -47,7 +47,7 @@
 #include "u_cfg_sw.h"
 #include "u_cfg_app_platform_specific.h"
 #include "u_cfg_test_platform_specific.h"
-#include "u_cfg_os_platform_specific.h"  // For #define U_CFG_OS_CLIB_LEAKS
+#include "u_cfg_os_platform_specific.h"
 
 #include "u_error_common.h"
 
@@ -224,10 +224,8 @@ static void closedCallbackUdp(uDeviceHandle_t devHandle, int32_t sockHandle)
 // Callback for socket closed, TCP.
 static void closedCallbackTcp(uDeviceHandle_t devHandle, int32_t sockHandle)
 {
-#if !U_CFG_OS_CLIB_LEAKS
     U_TEST_PRINT_LINE("wifi socket closed devHandle: %d, sockHandle: %d.",
                       devHandle, sockHandle);
-#endif
     if (devHandle != gHandles.devHandle) {
         gCallbackErrorNum = 7;
     } else if (sockHandle != gSockHandleTcp)  {
@@ -276,13 +274,11 @@ static void wifiConnectionCallback(uDeviceHandle_t devHandle,
     (void)disconnectReason;
     (void)pCallbackParameter;
     if (status == U_WIFI_CON_STATUS_CONNECTED) {
-#if !U_CFG_OS_CLIB_LEAKS
         U_TEST_PRINT_LINE("connected Wifi connId: %d, bssid: %s, channel: %d.",
                           connId, pBssid, channel);
-#endif
         gWifiConnected = 1;
     } else {
-#if defined(U_CFG_ENABLE_LOGGING) && !U_CFG_OS_CLIB_LEAKS
+#ifndef U_CFG_ENABLE_LOGGING
         //lint -esym(752, strDisconnectReason)
         static const char strDisconnectReason[6][20] = {
             "Unknown", "Remote Close", "Out of range",
@@ -310,11 +306,9 @@ static void wifiNetworkStatusCallback(uDeviceHandle_t devHandle,
     (void)interfaceType;
     (void)statusMask;
     (void)pCallbackParameter;
-#if !U_CFG_OS_CLIB_LEAKS
     U_TEST_PRINT_LINE("network status IPv4 %s, IPv6 %s.",
                       ((statusMask & U_WIFI_STATUS_MASK_IPV4_UP) > 0) ? "up" : "down",
                       ((statusMask & U_WIFI_STATUS_MASK_IPV6_UP) > 0) ? "up" : "down");
-#endif
 
     gWifiStatusMask = statusMask;
 }
@@ -395,7 +389,7 @@ static void disconnectWifi()
 
 U_PORT_TEST_FUNCTION("[wifiSock]", "wifiSockTCPTest")
 {
-    int32_t heapUsed;
+    int32_t resourceCount;
     char *pBuffer;
     int32_t returnCode;
 
@@ -407,8 +401,8 @@ U_PORT_TEST_FUNCTION("[wifiSock]", "wifiSockTCPTest")
     // out of our sums.
     rand();
 
-    // Obtain the initial heap size
-    heapUsed = uPortGetHeapFree();
+    // Get the initial resource count
+    resourceCount = uTestUtilGetDynamicResourceCount();
 
     gWifiStatusMask = 0;
     gWifiConnected = 0;
@@ -607,27 +601,16 @@ U_PORT_TEST_FUNCTION("[wifiSock]", "wifiSockTCPTest")
     U_PORT_TEST_ASSERT_EQUAL(gCallbackErrorNum, 0);
     U_PORT_TEST_ASSERT(gClosedCallbackCalledTcp);
 
-#ifndef __XTENSA__
-    // Check for memory leaks
-    // TODO: this if'ed out for ESP32 (xtensa compiler) at
-    // the moment as there is an issue with ESP32 hanging
-    // on to memory in the UART drivers that can't easily be
-    // accounted for.
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT(heapUsed <= 0);
-#else
-    (void) heapUsed;
-#endif
-    // Printed for information: asserting happens in the postamble
+    // Check for resource leaks
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 U_PORT_TEST_FUNCTION("[wifiSock]", "wifiSockUDPTest")
 {
-    int32_t heapUsed;
+    int32_t resourceCount;
     char *pBuffer;
     int32_t returnCode;
 
@@ -639,8 +622,8 @@ U_PORT_TEST_FUNCTION("[wifiSock]", "wifiSockUDPTest")
     // out of our sums.
     rand();
 
-    // Obtain the initial heap size
-    heapUsed = uPortGetHeapFree();
+    // Get the initial resource count
+    resourceCount = uTestUtilGetDynamicResourceCount();
 
     gWifiStatusMask = 0;
     gWifiConnected = 0;
@@ -796,22 +779,11 @@ U_PORT_TEST_FUNCTION("[wifiSock]", "wifiSockUDPTest")
     U_PORT_TEST_ASSERT(gClosedCallbackCalledUdp);
     U_PORT_TEST_ASSERT(gAsyncClosedCallbackCalledUdp);
 
-#ifndef __XTENSA__
-    // Check for memory leaks
-    // TODO: this if'ed out for ESP32 (xtensa compiler) at
-    // the moment as there is an issue with ESP32 hanging
-    // on to memory in the UART drivers that can't easily be
-    // accounted for.
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT(heapUsed <= 0);
-#else
-    (void) heapUsed;
-#endif
-    // Printed for information: asserting happens in the postamble
+    // Check for resource leaks
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 /** Clean-up to be run at the end of this round of tests, just

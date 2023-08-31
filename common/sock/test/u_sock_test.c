@@ -27,9 +27,15 @@
  * configuration information, i.e. cellular or BLE/Wifi for short range).
  * These tests use the network API and the test configuration information
  * from the network API to provide the communication path.
+ *
  * IMPORTANT: see notes in u_cfg_test_platform_specific.h for the
  * naming rules that must be followed when using the U_PORT_TEST_FUNCTION()
  * macro.
+ *
+ * NOTE TO IMPLEMENTERS: the tests in here still do heap checking on each
+ * individual test and resource checking at the end, rather than resource
+ * checking throughout: this is because heap-checking allows more fine-grained
+ * checking and leaving the devices open between tests speeds things up.
  */
 
 #ifdef U_CFG_OVERRIDE
@@ -47,7 +53,7 @@
 #include "u_cfg_sw.h"
 #include "u_cfg_app_platform_specific.h"
 #include "u_cfg_test_platform_specific.h"
-#include "u_cfg_os_platform_specific.h"  // For #define U_CFG_OS_CLIB_LEAKS
+#include "u_cfg_os_platform_specific.h"
 
 #include "u_error_common.h"
 
@@ -2484,13 +2490,7 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAsyncUdpEchoMayFailDueToInternetDatagramLoss
         // Free memory from event queues
         uPortEventQueueCleanUp();
 
-#if !U_CFG_OS_CLIB_LEAKS
-        // Check for memory leaks but only
-        // if we don't have a leaky C library:
-        // if we do there's no telling what
-        // it might have left hanging after
-        // the creation and deletion of the
-        // tasks above.
+        // Check for memory leaks
         heapUsed -= uPortGetHeapFree();
         U_TEST_PRINT_LINE("during this part of the test %d byte(s) of heap"
                           " were lost to the C library and %d byte(s) were"
@@ -2498,11 +2498,6 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAsyncUdpEchoMayFailDueToInternetDatagramLoss
                           " %d byte(s).", heapSockInitLoss + heapXxxSockInitLoss,
                           heapUsed - (heapSockInitLoss + heapXxxSockInitLoss));
         U_PORT_TEST_ASSERT(heapUsed <= heapSockInitLoss + heapXxxSockInitLoss);
-#else
-        (void) heapUsed;
-        (void) heapSockInitLoss;
-        (void) heapXxxSockInitLoss;
-#endif
     }
 
     // Remove each network type
@@ -2734,24 +2729,13 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAsyncTcpEcho")
         // Free memory
         uPortFree(gTestConfig.pBuffer);
 
-#if !U_CFG_OS_CLIB_LEAKS
-        // Check for memory leaks but only
-        // if we don't have a leaky C library:
-        // if we do there's no telling what
-        // it might have left hanging after
-        // the creation and deletion of the
-        // tasks above.
+        // Check for memory leaks
         heapUsed -= uPortGetHeapFree();
         U_TEST_PRINT_LINE("during this part of the test %d byte(s) were lost"
                           " to sockets initialisation; we have leaked %d byte(s).",
                           heapSockInitLoss + heapXxxSockInitLoss,
                           heapUsed - (heapSockInitLoss + heapXxxSockInitLoss));
         U_PORT_TEST_ASSERT(heapUsed <= heapSockInitLoss + heapXxxSockInitLoss);
-#else
-        (void) heapUsed;
-        (void) heapSockInitLoss;
-        (void) heapXxxSockInitLoss;
-#endif
     }
 
     // Remove each network type

@@ -744,14 +744,7 @@ U_PORT_TEST_FUNCTION("[location]", "locationBasic")
     char urlBuffer[64];
     char serialNumber[U_SECURITY_SERIAL_NUMBER_MAX_LENGTH_BYTES];
     volatile int32_t httpStatusCode = 0;
-    int32_t heapUsed;
-    int32_t heapHttpInitLoss = 0;
-    int32_t heapLossFirstCall[U_LOCATION_TYPE_MAX_NUM];
-    int32_t heapLoss = 0;
-
-    for (size_t x = 0; x < sizeof(heapLossFirstCall) / sizeof(heapLossFirstCall[0]); x++) {
-        heapLossFirstCall[x] = INT_MIN;
-    }
+    int32_t resourceCount;
 
     // In case a previous test failed
     uNetworkTestCleanUp();
@@ -761,15 +754,15 @@ U_PORT_TEST_FUNCTION("[location]", "locationBasic")
     // correct initial heap size
     uPortDeinit();
 
+    // Get the initial resource count
+    resourceCount = uTestUtilGetDynamicResourceCount();
+
     // Do the standard preamble to make sure there is
     // a network underneath us
     pList = pStdPreamble();
     if (pList == NULL) {
         U_TEST_PRINT_LINE("*** WARNING *** nothing to do.");
     }
-
-    // Get the initialish heap
-    heapUsed = uPortGetHeapFree();
 
     // Repeat for all network types
     for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
@@ -800,13 +793,6 @@ U_PORT_TEST_FUNCTION("[location]", "locationBasic")
             }
 
             if (gpLocationCfg != NULL) {
-                // The first time a given location type is called it may allocate
-                // memory (e.g for mutexes) which are only released at deinitialisation
-                // of the location API.  Track this so as to take account of it in
-                // the heap check calculation.
-                if (heapLossFirstCall[locationType] == INT_MIN) {
-                    heapLoss = uPortGetHeapFree();
-                }
                 if ((gpLocationCfg->pLocationAssist != NULL) &&
                     (gpLocationCfg->pLocationAssist->pClientIdStr != NULL)) {
                     // If we have a Client ID then we will need to log into the
@@ -829,13 +815,8 @@ U_PORT_TEST_FUNCTION("[location]", "locationBasic")
                     connection.pServerName = urlBuffer;
                     connection.pResponseCallback = httpCallback;
                     connection.pResponseCallbackParam = (void *) &httpStatusCode;
-                    // Opening an HTTP client for the first time creates a mutex
-                    // that is not destroyed for thread-safety reasons; take
-                    // account of that here
-                    heapHttpInitLoss += uPortGetHeapFree();
                     gpHttpContext = pUHttpClientOpen(devHandle, &connection, NULL);
                     U_PORT_TEST_ASSERT(gpHttpContext != NULL);
-                    heapHttpInitLoss -= uPortGetHeapFree();
                 }
             } else {
                 U_TEST_PRINT_LINE("%s is not supported on a %s network.",
@@ -871,10 +852,6 @@ U_PORT_TEST_FUNCTION("[location]", "locationBasic")
                     uLocationTestMqttLogout(gpLocationCfg->pLocationAssist->pMqttClientContext);
                     gpLocationCfg->pLocationAssist->pMqttClientContext = NULL;
                 }
-                // Account for first-call heap usage
-                if (heapLossFirstCall[locationType] == INT_MIN) {
-                    heapLossFirstCall[locationType] = heapLoss - uPortGetHeapFree();
-                }
                 // Free the memory from the location configuration copy
                 uLocationTestCfgDeepCopyFree(gpLocationCfg);
                 gpLocationCfg = NULL;
@@ -886,21 +863,6 @@ U_PORT_TEST_FUNCTION("[location]", "locationBasic")
         uHttpClientClose(gpHttpContext);
         gpHttpContext = NULL;
     }
-
-    // Check for memory leaks
-    heapUsed -= uPortGetHeapFree();
-    heapLoss = 0;
-    for (size_t x = 0; x < sizeof(heapLossFirstCall) / sizeof(heapLossFirstCall[0]); x++) {
-        if (heapLossFirstCall[x] > INT_MIN) {
-            heapLoss += heapLossFirstCall[x];
-        }
-    }
-    U_TEST_PRINT_LINE("we have leaked %d byte(s) and lost %d byte(s)"
-                      " to initialisation.", heapUsed - (heapLoss + heapHttpInitLoss),
-                      heapLoss + heapHttpInitLoss);
-    // heapUsed <= heapLoss for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT(heapUsed <= heapLoss + heapHttpInitLoss);
 
     // Remove each network type
     for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
@@ -920,6 +882,15 @@ U_PORT_TEST_FUNCTION("[location]", "locationBasic")
         }
     }
     uNetworkTestListFree();
+    uDeviceDeinit();
+    uPortSpiDeinit();
+    uPortI2cDeinit();
+    uPortDeinit();
+    // Check for resource leaks
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 /** Clean-up to be run at the end of this round of tests, just

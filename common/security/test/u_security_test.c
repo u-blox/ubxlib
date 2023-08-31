@@ -44,7 +44,7 @@
 #include "u_cfg_sw.h"
 #include "u_cfg_app_platform_specific.h"
 #include "u_cfg_test_platform_specific.h"
-#include "u_cfg_os_platform_specific.h" // For U_CFG_OS_CLIB_LEAKS.
+#include "u_cfg_os_platform_specific.h"
 
 #include "u_error_common.h" // For U_ERROR_COMMON_NOT_SUPPORTED
 
@@ -166,10 +166,19 @@ U_PORT_TEST_FUNCTION("[security]", "securitySeal")
 {
     uNetworkTestList_t *pList;
     uDeviceHandle_t devHandle;
-    int32_t heapUsed;
+    int32_t resourceCount;
     int32_t z;
     char serialNumber[U_SECURITY_SERIAL_NUMBER_MAX_LENGTH_BYTES];
     char rotUid[U_SECURITY_ROOT_OF_TRUST_UID_LENGTH_BYTES];
+
+    // In case a previous test failed
+    uNetworkTestCleanUp();
+
+    // Whatever called us likely initialised the
+    // port so deinitialise it here to obtain the
+    // correct initial heap size
+    uPortDeinit();
+    resourceCount = uTestUtilGetDynamicResourceCount();
 
     // Do the standard preamble to make sure there is
     // a network underneath us
@@ -177,8 +186,6 @@ U_PORT_TEST_FUNCTION("[security]", "securitySeal")
     // Repeat for all bearers
     for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
         devHandle = *pTmp->pDevHandle;
-        // Get the initial-ish heap
-        heapUsed = uPortGetHeapFree();
 
         U_TEST_PRINT_LINE("checking if u-blox security is supported by handle"
                           " 0x%08x...", devHandle);
@@ -250,13 +257,6 @@ U_PORT_TEST_FUNCTION("[security]", "securitySeal")
                 U_PORT_TEST_ASSERT(false);
             }
         }
-
-        // Check for memory leaks
-        heapUsed -= uPortGetHeapFree();
-        U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
-        // heapUsed < 0 for the Zephyr case where the heap can look
-        // like it increases (negative leak)
-        U_PORT_TEST_ASSERT(heapUsed <= 0);
     }
 
     // Close the devices once more and free the list
@@ -269,6 +269,15 @@ U_PORT_TEST_FUNCTION("[security]", "securitySeal")
         }
     }
     uNetworkTestListFree();
+
+    uDeviceDeinit();
+    uPortDeinit();
+
+    // Check for resource leaks
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 /** Test PSK generation.
@@ -281,9 +290,18 @@ U_PORT_TEST_FUNCTION("[security]", "securityPskGeneration")
     // if logging is compiled out
     int32_t z;
     int32_t pskIdSize;
-    int32_t heapUsed;
+    int32_t resourceCount;
     char psk[U_SECURITY_PSK_MAX_LENGTH_BYTES];
     char pskId[U_SECURITY_PSK_ID_MAX_LENGTH_BYTES];
+
+    // In case a previous test failed
+    uNetworkTestCleanUp();
+
+    // Whatever called us likely initialised the
+    // port so deinitialise it here to obtain the
+    // correct initial heap size
+    uPortDeinit();
+    resourceCount = uTestUtilGetDynamicResourceCount();
 
     // Do the standard preamble to make sure there is
     // a network underneath us
@@ -291,8 +309,6 @@ U_PORT_TEST_FUNCTION("[security]", "securityPskGeneration")
     // Repeat for all bearers
     for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
         devHandle = *pTmp->pDevHandle;
-        // Get the initial-ish heap
-        heapUsed = uPortGetHeapFree();
 
         U_TEST_PRINT_LINE("checking if u-blox security is supported by handle"
                           " 0x%08x...", devHandle);
@@ -379,13 +395,6 @@ U_PORT_TEST_FUNCTION("[security]", "securityPskGeneration")
                                   " of PSK generation will be carried out.");
             }
         }
-
-        // Check for memory leaks
-        heapUsed -= uPortGetHeapFree();
-        U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
-        // heapUsed < 0 for the Zephyr case where the heap can look
-        // like it increases (negative leak)
-        U_PORT_TEST_ASSERT(heapUsed <= 0);
     }
 
     // Close the devices once more and free the list
@@ -398,6 +407,15 @@ U_PORT_TEST_FUNCTION("[security]", "securityPskGeneration")
         }
     }
     uNetworkTestListFree();
+
+    uDeviceDeinit();
+    uPortDeinit();
+
+    // Check for resource leaks
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 /** Test reading the certificate/key/authorities from sealing.
@@ -408,8 +426,17 @@ U_PORT_TEST_FUNCTION("[security]", "securityZtp")
     uDeviceHandle_t devHandle;
     int32_t y;
     int32_t z;
-    int32_t heapUsed;
+    int32_t resourceCount;
     char *pData;
+
+    // In case a previous test failed
+    uNetworkTestCleanUp();
+
+    // Whatever called us likely initialised the
+    // port so deinitialise it here to obtain the
+    // correct initial heap size
+    uPortDeinit();
+    resourceCount = uTestUtilGetDynamicResourceCount();
 
     // Do the standard preamble to make sure there is
     // a network underneath us
@@ -417,8 +444,6 @@ U_PORT_TEST_FUNCTION("[security]", "securityZtp")
     // Repeat for all bearers
     for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
         devHandle = *pTmp->pDevHandle;
-        // Get the initial-ish heap
-        heapUsed = uPortGetHeapFree();
 
         U_TEST_PRINT_LINE("checking if u-blox security is supported by handle"
                           " 0x%08x...", devHandle);
@@ -496,13 +521,6 @@ U_PORT_TEST_FUNCTION("[security]", "securityZtp")
                                   " ZTP items can be carried out.");
             }
         }
-
-        // Check for memory leaks
-        heapUsed -= uPortGetHeapFree();
-        U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
-        // heapUsed < 0 for the Zephyr case where the heap can look
-        // like it increases (negative leak)
-        U_PORT_TEST_ASSERT(heapUsed <= 0);
     }
 
     // Close the devices once more and free the list
@@ -515,6 +533,15 @@ U_PORT_TEST_FUNCTION("[security]", "securityZtp")
         }
     }
     uNetworkTestListFree();
+
+    uDeviceDeinit();
+    uPortDeinit();
+
+    // Check for resource leaks
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 /** Clean-up to be run at the end of this round of tests, just

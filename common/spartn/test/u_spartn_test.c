@@ -49,6 +49,8 @@
 #include "u_port_heap.h"
 #include "u_port_debug.h"
 
+#include "u_test_util_resource_check.h"
+
 #include "u_spartn.h"
 #include "u_spartn_crc.h"
 #include "u_spartn_test_data.h"
@@ -259,7 +261,7 @@ static crc24 crc_octets(unsigned char *octets, size_t len)
  */
 U_PORT_TEST_FUNCTION("[spartn]", "spartnCrc")
 {
-    int32_t heapUsed;
+    int32_t resourceCount;
     const uSpartnTestCrc_t *pTestData;
     uint32_t calculated;
     uint32_t expected;
@@ -268,7 +270,7 @@ U_PORT_TEST_FUNCTION("[spartn]", "spartnCrc")
     // port so deinitialise it here to obtain the
     // correct initial heap size
     uPortDeinit();
-    heapUsed = uPortGetHeapFree();
+    resourceCount = uTestUtilGetDynamicResourceCount();
 
     U_TEST_PRINT_LINE("testing CRCs.");
 
@@ -307,12 +309,11 @@ U_PORT_TEST_FUNCTION("[spartn]", "spartnCrc")
     U_TEST_PRINT_LINE("CRC-24: calculated 0x%08x, expected 0x%08x.", calculated, expected);
     U_PORT_TEST_ASSERT(calculated == expected);
 
-    // Check for memory leaks
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT((heapUsed == 0) || (heapUsed == (int32_t)U_ERROR_COMMON_NOT_SUPPORTED));
+    // Check for resource leaks
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 #ifndef __ZEPHYR__
@@ -334,7 +335,7 @@ U_PORT_TEST_FUNCTION("[spartn]", "spartnCrc")
  */
 U_PORT_TEST_FUNCTION("[spartn]", "spartnMessage")
 {
-    int32_t heapUsed;
+    int32_t resourceCount;
     uint32_t messageCount;
     size_t y;
     size_t offset;
@@ -347,7 +348,7 @@ U_PORT_TEST_FUNCTION("[spartn]", "spartnMessage")
     // port so deinitialise it here to obtain the
     // correct initial heap size
     uPortDeinit();
-    heapUsed = uPortGetHeapFree();
+    resourceCount = uTestUtilGetDynamicResourceCount();
 
     U_TEST_PRINT_LINE("testing SPARTN message parsing.");
 
@@ -444,12 +445,11 @@ U_PORT_TEST_FUNCTION("[spartn]", "spartnMessage")
     // Free memory
     uPortFree(pBuffer);
 
-    // Check for memory leaks
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT((heapUsed == 0) || (heapUsed == (int32_t)U_ERROR_COMMON_NOT_SUPPORTED));
+    // Check for resource leaks
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 #endif // __ZEPHYR__
@@ -460,23 +460,9 @@ U_PORT_TEST_FUNCTION("[spartn]", "spartnMessage")
  */
 U_PORT_TEST_FUNCTION("[spartn]", "spartnCleanUp")
 {
-    int32_t x;
-
-    x = uPortTaskStackMinFree(NULL);
-    if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-        U_TEST_PRINT_LINE("main task stack had a minimum of %d byte(s)"
-                          " free at the end of these tests.", x);
-        U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
-    }
-
     uPortDeinit();
-
-    x = uPortGetHeapMinFree();
-    if (x >= 0) {
-        U_TEST_PRINT_LINE("heap had a minimum of %d byte(s) free"
-                          " at the end of these tests.", x);
-        U_PORT_TEST_ASSERT(x >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
-    }
+    // Printed for information: asserting happens in the postamble
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
 // End of file

@@ -376,7 +376,7 @@ static void interfaceSerialInit(struct uDeviceSerial_t *pDeviceSerial)
 
 U_PORT_TEST_FUNCTION("[device]", "deviceSerial")
 {
-    int32_t heapUsed;
+    int32_t resourceCount;
     uDeviceTestSerialCallbackData_t serialCallbackData = {0};
     int32_t bytesToSend;
     int32_t bytesSent = 0;
@@ -388,7 +388,7 @@ U_PORT_TEST_FUNCTION("[device]", "deviceSerial")
     // port so deinitialise it here to obtain the
     // correct initial heap size
     uPortDeinit();
-    heapUsed = uPortGetHeapFree();
+    resourceCount = uTestUtilGetDynamicResourceCount();
 
     U_TEST_PRINT_LINE("testing virtual serial device.");
 
@@ -467,12 +467,11 @@ U_PORT_TEST_FUNCTION("[device]", "deviceSerial")
 
     uPortDeinit();
 
-    // Check for memory leaks
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT((heapUsed == 0) || (heapUsed == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED));
+    // Check for resource leaks
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 /** Clean-up to be run at the end of this round of tests, just

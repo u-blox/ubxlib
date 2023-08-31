@@ -46,6 +46,23 @@ extern "C" {
  * FUNCTIONS
  * -------------------------------------------------------------- */
 
+/** Get the current number of dynamic resources; this includes calls
+ * to pUPortMalloc() less calls to uPortFree(), all outstanding OS
+ * resources (tasks, mutexes, semaphores, queues and timers) and all
+ * open transports (UART, I2C, SPI, etc.) BUT IGNORES any that
+ * have been added perpetually, i.e. those marked by calls to
+ * uPortOsResourcePerpetualAdd() or uPortHeapPerpetualAllocAdd().
+ *
+ * This might be called at the beginning and end of a test: the
+ * differences is the resource leakage.
+ *
+ * @return  the number of heap allocations/tasks/mutexes/semaphores/
+ *          queues/timers outstanding, plus the open UARTs, I2Cs or
+ *          SPIs, minus the number of perpetually OS resources or
+ *          heap allocations.
+ */
+int32_t uTestUtilGetDynamicResourceCount();
+
 /** Check that resources have been cleaned up; to be called at the
  * end of each set of tests.
  *

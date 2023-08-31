@@ -212,9 +212,7 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
     size_t sizeBytes;
     size_t offset;
     int32_t y;
-    int32_t heapUsed;
-    int32_t heapSockInitLoss = 0;
-    int32_t heapXxxSockInitLoss = 0;
+    int32_t resourceCount;
     uSecurityTlsSettings_t settings = U_SECURITY_TLS_SETTINGS_DEFAULT;
     char hash[U_SECURITY_CREDENTIAL_MD5_LENGTH_BYTES];
 
@@ -225,7 +223,7 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
     // port so deinitialise it here to obtain the
     // correct initial heap size
     uPortDeinit();
-    heapUsed = uPortGetHeapFree();
+    resourceCount = uTestUtilGetDynamicResourceCount();
 
     U_PORT_TEST_ASSERT(uPortInit() == 0);
     U_PORT_TEST_ASSERT(uDeviceInit() == 0);
@@ -319,15 +317,10 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
                           U_SOCK_TEST_ECHO_SECURE_TCP_SERVER_DOMAIN_NAME);
 
         // Look up the remoteAddress of the server we use for TCP echo
-        // The first call to a sockets API needs to
-        // initialise the underlying sockets layer; take
-        // account of that initialisation heap cost here.
-        heapSockInitLoss = uPortGetHeapFree();
         // Look up the remoteAddress of the server we use for secure TCP echo
         U_PORT_TEST_ASSERT(uSockGetHostByName(devHandle,
                                               U_SOCK_TEST_ECHO_SECURE_TCP_SERVER_DOMAIN_NAME,
                                               &(remoteAddress.ipAddress)) == 0);
-        heapSockInitLoss -= uPortGetHeapFree();
 
         // Add the port number we will use
         remoteAddress.port = U_SOCK_TEST_ECHO_SECURE_TCP_SERVER_PORT;
@@ -338,19 +331,11 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
         errorCode = -1;
         for (y = 3; (y > 0) && (errorCode < 0); y--) {
             // Create a TCP socket
-            // Creating a secure socket may use heap in the underlying
-            // network layer which will be reclaimed when the
-            // network layer is closed but we don't do that here
-            // to save time so need to allow for it in the heap loss
-            // calculation
-            heapXxxSockInitLoss += uPortGetHeapFree();
             descriptor = uSockCreate(devHandle, U_SOCK_TYPE_STREAM,
                                      U_SOCK_PROTOCOL_TCP);
-
             // Secure the socket
             U_TEST_PRINT_LINE("securing socket...");
             U_PORT_TEST_ASSERT(uSockSecurity(descriptor, &settings) == 0);
-            heapXxxSockInitLoss -= uPortGetHeapFree();
 
             // Connect the socket
             U_TEST_PRINT_LINE("connect socket to \"%s:%d\"...",
@@ -436,28 +421,18 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
     }
     uNetworkTestListFree();
 
+    uSockDeinit();
+    uSockCleanUp();
+    uSecurityTlsCleanUp();
+
     uDeviceDeinit();
     uPortDeinit();
 
-#if !defined(__XTENSA__) && !defined(ARDUINO)
-    // Check for memory leaks
-    // TODO: this if'ed out for ESP32 (xtensa compiler or Arduino)
-    // at the moment as there is an issue with ESP32 hanging
-    // on to memory in the UART drivers that can't easily be
-    // accounted for.
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("%d byte(s) were lost to secure sockets initialisation;"
-                      " we have leaked %d byte(s).",
-                      heapSockInitLoss + heapXxxSockInitLoss,
-                      heapUsed - (heapSockInitLoss + heapXxxSockInitLoss));
-    U_PORT_TEST_ASSERT(heapUsed <= heapSockInitLoss + heapXxxSockInitLoss);
-#else
-    (void) heapSockInitLoss;
-    (void) heapXxxSockInitLoss;
-    (void) heapUsed;
-#endif
-    // Printed for information: asserting happens in the postamble
+    // Check for resource leaks
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 /** UDP socket over a DTLS connection.
@@ -474,9 +449,7 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsUdpSock")
     size_t sizeBytes;
     size_t offset;
     int32_t y;
-    int32_t heapUsed;
-    int32_t heapSockInitLoss = 0;
-    int32_t heapXxxSockInitLoss = 0;
+    int32_t resourceCount;
     uSecurityTlsSettings_t settings = U_SECURITY_TLS_SETTINGS_DEFAULT;
     char hash[U_SECURITY_CREDENTIAL_MD5_LENGTH_BYTES];
 
@@ -487,7 +460,7 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsUdpSock")
     // port so deinitialise it here to obtain the
     // correct initial heap size
     uPortDeinit();
-    heapUsed = uPortGetHeapFree();
+    resourceCount = uTestUtilGetDynamicResourceCount();
 
     U_PORT_TEST_ASSERT(uPortInit() == 0);
     U_PORT_TEST_ASSERT(uDeviceInit() == 0);
@@ -581,15 +554,10 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsUdpSock")
                           U_SOCK_TEST_ECHO_SECURE_UDP_SERVER_DOMAIN_NAME);
 
         // Look up the remoteAddress of the server we use for DTLS echo
-        // The first call to a sockets API needs to
-        // initialise the underlying sockets layer; take
-        // account of that initialisation heap cost here.
-        heapSockInitLoss = uPortGetHeapFree();
         // Look up the remoteAddress of the server we use for secure UDP echo
         U_PORT_TEST_ASSERT(uSockGetHostByName(devHandle,
                                               U_SOCK_TEST_ECHO_SECURE_UDP_SERVER_DOMAIN_NAME,
                                               &(remoteAddress.ipAddress)) == 0);
-        heapSockInitLoss -= uPortGetHeapFree();
 
         // Add the port number we will use
         remoteAddress.port = U_SOCK_TEST_ECHO_SECURE_UDP_SERVER_PORT;
@@ -600,19 +568,11 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsUdpSock")
         errorCode = -1;
         for (y = 3; (y > 0) && (errorCode < 0); y--) {
             // Create a UDP socket
-            // Creating a secure socket may use heap in the underlying
-            // network layer which will be reclaimed when the
-            // network layer is closed but we don't do that here
-            // to save time so need to allow for it in the heap loss
-            // calculation
-            heapXxxSockInitLoss += uPortGetHeapFree();
             descriptor = uSockCreate(devHandle, U_SOCK_TYPE_DGRAM,
                                      U_SOCK_PROTOCOL_UDP);
-
             // Secure the socket
             U_TEST_PRINT_LINE("securing socket...");
             U_PORT_TEST_ASSERT(uSockSecurity(descriptor, &settings) == 0);
-            heapXxxSockInitLoss -= uPortGetHeapFree();
 
             // Connect the socket
             U_TEST_PRINT_LINE("connect socket to \"%s:%d\"...",
@@ -696,28 +656,18 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsUdpSock")
     }
     uNetworkTestListFree();
 
+    uSockDeinit();
+    uSockCleanUp();
+    uSecurityTlsCleanUp();
+
     uDeviceDeinit();
     uPortDeinit();
 
-#if !defined(__XTENSA__) && !defined(ARDUINO)
-    // Check for memory leaks
-    // TODO: this if'ed out for ESP32 (xtensa compiler or Arduino)
-    // at the moment as there is an issue with ESP32 hanging
-    // on to memory in the UART drivers that can't easily be
-    // accounted for.
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("%d byte(s) were lost to secure sockets initialisation;"
-                      " we have leaked %d byte(s).",
-                      heapSockInitLoss + heapXxxSockInitLoss,
-                      heapUsed - (heapSockInitLoss + heapXxxSockInitLoss));
-    U_PORT_TEST_ASSERT(heapUsed <= heapSockInitLoss + heapXxxSockInitLoss);
-#else
-    (void) heapSockInitLoss;
-    (void) heapXxxSockInitLoss;
-    (void) heapUsed;
-#endif
-    // Printed for information: asserting happens in the postamble
+    // Check for resource leaks
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 /** Clean-up to be run at the end of this round of tests, just

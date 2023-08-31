@@ -305,7 +305,7 @@ static void messageReceiveCallback(uDeviceHandle_t gnssHandle,
                     nmeaComprehenderErrorCode = uGnssTestPrivateNmeaComprehender(pMsgReceive->pBuffer,
                                                                                  errorCodeOrLength,
                                                                                  &(pMsgReceive->pNmeaComprehenderContext),
-                                                                                 !U_CFG_OS_CLIB_LEAKS);
+                                                                                 true);
                     if (pMsgReceive->nmeaSequenceHasBegun) {
                         if (nmeaComprehenderErrorCode == (int32_t) U_ERROR_COMMON_NOT_FOUND) {
                             // NMEA sequence is not as expected
@@ -345,7 +345,7 @@ static void messageReceiveCallback(uDeviceHandle_t gnssHandle,
 U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveBlocking")
 {
     uDeviceHandle_t gnssHandle;
-    int32_t heapUsed;
+    int32_t resourceCount;
     char *pBuffer1;
     char *pBuffer2;
     char *pBuffer3;
@@ -360,8 +360,8 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveBlocking")
     // In case a previous test failed
     uGnssTestPrivateCleanup(&gHandles);
 
-    // Obtain the initial heap size
-    heapUsed = uPortGetHeapFree();
+    // Get the initial resource count
+    resourceCount = uTestUtilGetDynamicResourceCount();
 
     // Repeat for all transport types except U_GNSS_TRANSPORT_AT
     iterations = uGnssTestPrivateTransportTypesSet(transportTypes, U_CFG_APP_GNSS_UART,
@@ -462,14 +462,11 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveBlocking")
         }
     }
 
-    // Check for memory leaks
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT(heapUsed <= 0);
-    // Printed for information: asserting happens in the postamble
+    // Check for resource leaks
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 // NRF52, which we use NRF5SDK on, doesn't have enough heap for this test
@@ -481,7 +478,7 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveNonBlocking")
 {
     uDeviceHandle_t gnssHandle;
     const uGnssPrivateModule_t *pModule;
-    int32_t heapUsed;
+    int32_t resourceCount;
     uGnssMsgTestReceive_t *pTmp;
     int32_t a;
     int32_t b;
@@ -498,8 +495,8 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveNonBlocking")
     // In case a previous test failed
     uGnssTestPrivateCleanup(&gHandles);
 
-    // Obtain the initial heap size
-    heapUsed = uPortGetHeapFree();
+    // Get the initial resource count
+    resourceCount = uTestUtilGetDynamicResourceCount();
 
     // Repeat for all transport types except U_GNSS_TRANSPORT_AT
     iterations = uGnssTestPrivateTransportTypesSet(transportTypes, U_CFG_APP_GNSS_UART,
@@ -771,14 +768,11 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveNonBlocking")
         }
     }
 
-    // Check for memory leaks
-    heapUsed -= uPortGetHeapFree();
-    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT(heapUsed <= 0);
-    // Printed for information: asserting happens in the postamble
+    // Check for resource leaks
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 #endif // U_CFG_TEST_USING_NRF5SDK 

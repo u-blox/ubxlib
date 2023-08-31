@@ -48,7 +48,7 @@
 #include "u_cfg_sw.h"
 #include "u_cfg_app_platform_specific.h"
 #include "u_cfg_test_platform_specific.h"
-#include "u_cfg_os_platform_specific.h"  // For #define U_CFG_OS_CLIB_LEAKS
+#include "u_cfg_os_platform_specific.h"
 
 #include "u_error_common.h"
 
@@ -235,10 +235,7 @@ static void messageIndicationCallback(int32_t numUnread, void *pParam)
 {
     int32_t *pNumUnread = (int32_t *) pParam;
 
-#if !U_CFG_OS_CLIB_LEAKS
-    // Only print stuff if the C library isn't going to leak
     U_TEST_PRINT_LINE_MQTT("messageIndicationCallback() called, %d message(s) unread.", numUnread);
-#endif
 
     *pNumUnread = numUnread;
 }
@@ -250,13 +247,8 @@ static void disconnectCallback(int32_t errorCode, void *pParam)
 {
     (void) pParam;
 
-#if !U_CFG_OS_CLIB_LEAKS
-    // Only print stuff if the C library isn't going to leak
     U_TEST_PRINT_LINE_MQTT("disconnectCallback() called.");
     U_TEST_PRINT_LINE_MQTT("last MQTT error code %d.", errorCode);
-#else
-    (void) errorCode;
-#endif
 
     gDisconnectCallbackCalled = true;
 }
@@ -271,8 +263,7 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClient")
 {
     uNetworkTestList_t *pList;
     uDeviceHandle_t devHandle;
-    int32_t heapUsed;
-    int32_t heapXxxSecurityInitLoss = 0;
+    int32_t resourceCount;
     uMqttClientConnection_t connection = U_MQTT_CLIENT_CONNECTION_DEFAULT;
     uSecurityTlsSettings_t tlsSettings = U_SECURITY_TLS_SETTINGS_DEFAULT;
     int32_t y;
@@ -288,6 +279,14 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClient")
     // In case a previous test failed
     uNetworkTestCleanUp();
 
+    // Whatever called us likely initialised the
+    // port so deinitialise it here to obtain the
+    // correct initial heap size
+    uPortDeinit();
+
+    // Get the initial resource count
+    resourceCount = uTestUtilGetDynamicResourceCount();
+
     // Do the standard preamble, which in this case
     // only adds the networks, doesn't bring them up,
     // since SARA-R4 will not connect with a different
@@ -297,8 +296,6 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClient")
     // Repeat for all bearers
     for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
         devHandle = *pTmp->pDevHandle;
-        // Get the initial-ish heap
-        heapUsed = uPortGetHeapFree();
 
         // Get a unique number we can use to stop parallel
         // tests colliding at the MQTT broker
@@ -337,14 +334,7 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClient")
                 gpMqttContextA = pUMqttClientOpen(devHandle, NULL);
             } else {
                 U_TEST_PRINT_LINE_MQTT("opening MQTT client, now with a TLS connection...");
-                // Creating a secure connection may use heap in the underlying
-                // network layer which will be reclaimed when the
-                // network layer is closed but we don't do that here
-                // to save time so need to allow for it in the heap loss
-                // calculation
-                heapXxxSecurityInitLoss += uPortGetHeapFree();
                 gpMqttContextA = pUMqttClientOpen(devHandle, &tlsSettings);
-                heapXxxSecurityInitLoss -= uPortGetHeapFree();
             }
 
             if (gpMqttContextA != NULL) {
@@ -575,13 +565,6 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClient")
         uPortFree(pMessageOut);
         uPortFree(pTopicIn);
         uPortFree(pTopicOut);
-
-        // Check for memory leaks
-        heapUsed -= uPortGetHeapFree();
-        U_TEST_PRINT_LINE_MQTT("%d byte(s) were lost to security initialisation;"
-                               " we have leaked %d byte(s).", heapXxxSecurityInitLoss,
-                               heapUsed - heapXxxSecurityInitLoss);
-        U_PORT_TEST_ASSERT(heapUsed <= heapXxxSecurityInitLoss);
     }
 
     // Close the devices once more and free the list
@@ -594,6 +577,16 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClient")
         }
     }
     uNetworkTestListFree();
+    // Clean-up TLS security mutex; an application wouldn't normally,
+    // do this, we only do it here to make the sums add up
+    uSecurityTlsCleanUp();
+    uDeviceDeinit();
+    uPortDeinit();
+    // Check for resource leaks
+    uTestUtilResourceCheck(U_TEST_PREFIX_MQTT, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE_MQTT("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 #ifndef U_CFG_TEST_MQTT_CLIENT_SN_DISABLE_CONNECTIVITY_TEST
@@ -604,7 +597,7 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClientSn")
 {
     uNetworkTestList_t *pList;
     uDeviceHandle_t devHandle = NULL;
-    int32_t heapUsed;
+    int32_t resourceCount;
     uMqttClientConnection_t connection = U_MQTT_CLIENT_CONNECTION_DEFAULT;
     int32_t y;
     int32_t z;
@@ -621,6 +614,14 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClientSn")
     // In case a previous test failed
     uNetworkTestCleanUp();
 
+    // Whatever called us likely initialised the
+    // port so deinitialise it here to obtain the
+    // correct initial heap size
+    uPortDeinit();
+
+    // Get the initial resource count
+    resourceCount = uTestUtilGetDynamicResourceCount();
+
     U_PORT_TEST_ASSERT(uPortInit() == 0);
     U_PORT_TEST_ASSERT(uDeviceInit() == 0);
 
@@ -632,8 +633,6 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClientSn")
     // Repeat for all bearers
     for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
         devHandle = *pTmp->pDevHandle;
-        // Get the initial-ish heap
-        heapUsed = uPortGetHeapFree();
 
         U_TEST_PRINT_LINE_MQTTSN("bringing up %s...",
                                  gpUNetworkTestTypeName[pTmp->networkType]);
@@ -933,11 +932,6 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClientSn")
         U_TEST_PRINT_LINE_MQTTSN("taking down %s...", gpUNetworkTestTypeName[pTmp->networkType]);
         U_PORT_TEST_ASSERT(uNetworkInterfaceDown(devHandle,
                                                  pTmp->networkType) == 0);
-
-        // Check for memory leaks
-        heapUsed -= uPortGetHeapFree();
-        U_TEST_PRINT_LINE_MQTTSN("we have leaked %d byte(s).", heapUsed);
-        U_PORT_TEST_ASSERT(heapUsed <= 0);
     }
 
     // Close the devices once more and free the list
@@ -950,6 +944,13 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClientSn")
         }
     }
     uNetworkTestListFree();
+    uDeviceDeinit();
+    uPortDeinit();
+    // Check for resource leaks
+    uTestUtilResourceCheck(U_TEST_PREFIX_MQTTSN, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE_MQTTSN("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
 #endif // #ifndef U_CFG_TEST_MQTT_CLIENT_SN_DISABLE_CONNECTIVITY_TEST

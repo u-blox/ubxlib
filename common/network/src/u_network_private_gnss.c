@@ -36,7 +36,7 @@
 #include "stdbool.h"
 #include "string.h"    // memset()
 
-#include "u_cfg_os_platform_specific.h" // For U_CFG_OS_CLIB_LEAKS
+#include "u_cfg_os_platform_specific.h"
 
 #include "u_error_common.h"
 
@@ -321,12 +321,10 @@ int32_t uNetworkPrivateChangeStateGnss(uDeviceHandle_t devHandle,
                                                             pCfg->devicePinDataReady);
                             }
                         }
-#if !U_CFG_OS_CLIB_LEAKS
                         // Set printing of commands sent to the GNSS chip,
                         // which can be useful while debugging, but
                         // only if the C library doesn't leak.
                         uGnssSetUbxMessagePrint(devHandle, true);
-#endif
                         if ((deviceType == U_DEVICE_TYPE_CELL) &&
                             (gnssTransportType == U_GNSS_TRANSPORT_VIRTUAL_SERIAL)) {
                             // Set the intermediate device in GNSS so that it knows
