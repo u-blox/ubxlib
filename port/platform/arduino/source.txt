@@ -106,6 +106,7 @@ common/utils/src/u_hex_bin_convert.c
 common/utils/src/u_time.c
 common/utils/src/u_mempool.c
 common/utils/src/u_interface.c
+common/utils/src/u_linked_list.c
 common/mqtt_client/src/u_mqtt_client.c
 common/mqtt_client/src/u_mqtt_client_stub_cell.c
 common/mqtt_client/src/u_mqtt_client_stub_wifi.c

@@ -19,3 +19,6 @@ A memory pool API used internally by the short-range code for efficient EDM tran
 
 ## [u_interface](api/u_interface.h)
 Functions to help when creating interface types (i.e. jump-tables).
+
+## [u_linked_list](api/u_linked_list.h)
+A linked list utility.

@@ -15,7 +15,7 @@
  */
 
 /** @file
- * @brief Stuff private to the Linux porting layer.
+ * @brief Linked list utilities.
  */
 
 #ifdef U_CFG_OVERRIDE
@@ -25,16 +25,10 @@
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 
-#include "u_cfg_sw.h"
-#include "u_cfg_os_platform_specific.h"
-#include "u_error_common.h"
-#include "u_assert.h"
-#include "u_port.h"
 #include "u_port_os.h"
 #include "u_port_heap.h"
-#include "u_port_debug.h"
-#include "u_port_private.h"
 
+#include "u_linked_list.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -49,15 +43,15 @@
  * -------------------------------------------------------------- */
 
 /* ----------------------------------------------------------------
- * FUNCTIONS SPECIFIC TO THIS PORT, LIST OF POINTERS
+ * FUNCTIONS
  * -------------------------------------------------------------- */
 
-bool uPortPrivateListAdd(uPortPrivateList_t **ppList, void *p)
+bool uLinkedListAdd(uLinkedList_t **ppList, void *p)
 {
     if (ppList == NULL) {
         return false;
     }
-    uPortPrivateList_t *pMember = pUPortMalloc(sizeof(uPortPrivateList_t));
+    uLinkedList_t *pMember = pUPortMalloc(sizeof(uLinkedList_t));
     if (pMember == NULL) {
         return false;
     }
@@ -66,7 +60,7 @@ bool uPortPrivateListAdd(uPortPrivateList_t **ppList, void *p)
     if (*ppList == NULL) {
         *ppList = pMember;
     } else {
-        uPortPrivateList_t *p = *ppList;
+        uLinkedList_t *p = *ppList;
         while (p->pNext != NULL) {
             p = p->pNext;
         }
@@ -75,19 +69,25 @@ bool uPortPrivateListAdd(uPortPrivateList_t **ppList, void *p)
     return true;
 }
 
-uPortPrivateList_t *uPortPrivateListFind(uPortPrivateList_t **ppList, void *p)
+uLinkedList_t *pULinkedListFind(uLinkedList_t **ppList, void *p)
 {
-    uPortPrivateList_t *pList = *ppList;
+    uLinkedList_t *pList = NULL;
+    if (ppList != NULL) {
+        pList = *ppList;
+    }
     while ((pList != NULL) && (pList->p != p)) {
         pList = pList->pNext;
     }
     return pList;
 }
 
-bool uPortPrivateListRemove(uPortPrivateList_t **ppList, void *p)
+bool uLinkedListRemove(uLinkedList_t **ppList, void *p)
 {
-    uPortPrivateList_t *pCurr = *ppList;
-    uPortPrivateList_t *pPrev = pCurr;
+    uLinkedList_t *pCurr = NULL;
+    if (ppList != NULL) {
+        pCurr = *ppList;
+    }
+    uLinkedList_t *pPrev = pCurr;
     while ((pCurr != NULL)) {
         if (pCurr->p == p) {
             if (pCurr == *ppList) {

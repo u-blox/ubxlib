@@ -82,6 +82,7 @@
 #include <u_hex_bin_convert.h>
 #include <u_mempool.h>
 #include <u_ringbuffer.h>
+#include <u_linked_list.h>
 #include <u_time.h>
 #include <u_debug_utils.h>
 #include <u_at_client.h>

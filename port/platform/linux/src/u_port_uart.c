@@ -36,6 +36,7 @@
 #include "sys/ioctl.h"
 #include "sys/param.h"
 #include "u_error_common.h"
+#include "u_linked_list.h"
 
 #include "u_cfg_os_platform_specific.h"
 #include "u_compiler.h" // U_ATOMIC_XXX() macros
@@ -48,7 +49,6 @@
 #include "u_port_heap.h"
 #include "u_port_uart.h"
 #include "u_port_event_queue.h"
-#include "u_port_private.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -118,11 +118,11 @@ static uPortMutexHandle_t gMutex = NULL;
 
 /** Root of linked list of UART data.
  */
-static uPortPrivateList_t *gpUartList = NULL;
+static uLinkedList_t *gpUartList = NULL;
 
 /** Root of linked list of UART prefixes.
  */
-static uPortPrivateList_t *gpUartPrefixList = NULL;
+static uLinkedList_t *gpUartPrefixList = NULL;
 
 /** Variable to keep track of the number of UARTs open.
  */
@@ -216,7 +216,7 @@ static void readTask(void *pParam)
 
 static uPortUartPrefix_t *findPrefix(pthread_t threadId)
 {
-    uPortPrivateList_t *p = gpUartPrefixList;
+    uLinkedList_t *p = gpUartPrefixList;
     while (p != NULL) {
         uPortUartPrefix_t *pUartPrefix = (uPortUartPrefix_t *)(p->p);
         if (pUartPrefix->threadId == threadId) {
@@ -229,7 +229,7 @@ static uPortUartPrefix_t *findPrefix(pthread_t threadId)
 
 static uPortUartData_t *findUart(int32_t handle)
 {
-    uPortPrivateList_t *p = gpUartList;
+    uLinkedList_t *p = gpUartList;
     while (p != NULL) {
         uPortUartData_t *pUart = (uPortUartData_t *)(p->p);
         if (pUart->uartFd == handle) {
@@ -243,7 +243,7 @@ static uPortUartData_t *findUart(int32_t handle)
 static void disposeUartData(uPortUartData_t *p)
 {
     if (p != NULL) {
-        uPortPrivateListRemove(&gpUartList, p);
+        uLinkedListRemove(&gpUartList, p);
         if (p->rxTask != NULL) {
             uPortTaskDelete(p->rxTask);
             // Wait for the task to exit before
@@ -331,7 +331,7 @@ void uPortUartDeinit()
         U_PORT_MUTEX_LOCK(gMutex);
 
         // First, mark all instances for deletion
-        uPortPrivateList_t *pList = gpUartList;
+        uLinkedList_t *pList = gpUartList;
         while (pList != NULL) {
             uPortUartData_t *pUart = (uPortUartData_t *)(pList->p);
             pUart->markedForDeletion = true;
@@ -342,7 +342,7 @@ void uPortUartDeinit()
         while (gpUartPrefixList != NULL) {
             uPortUartPrefix_t *pUartPrefix = (uPortUartPrefix_t *)(gpUartPrefixList->p);
             uPortFree(pUartPrefix);
-            uPortPrivateListRemove(&gpUartPrefixList, pUartPrefix);
+            uLinkedListRemove(&gpUartPrefixList, pUartPrefix);
         }
 
         // Release the mutex so that deletion can occur
@@ -374,12 +374,12 @@ int32_t uPortUartPrefix(const char *pPrefix)
             uPortUartPrefix_t *p;
             while ((p = findPrefix(threadId)) != NULL) {
                 uPortFree(p);
-                uPortPrivateListRemove(&gpUartPrefixList, p);
+                uLinkedListRemove(&gpUartPrefixList, p);
             }
             // Add the new one
             strncpy(pUartPrefix->str, pPrefix, sizeof(pUartPrefix->str));
             pUartPrefix->threadId = threadId;
-            uPortPrivateListAdd(&gpUartPrefixList, (void *)pUartPrefix);
+            uLinkedListAdd(&gpUartPrefixList, (void *)pUartPrefix);
             errorCode = U_ERROR_COMMON_SUCCESS;
             U_PORT_MUTEX_UNLOCK(gMutex);
         }
@@ -495,7 +495,7 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
     // Wait for the read task to start
     uPortTaskBlock(U_PORT_UART_START_STOP_WAIT_MS);
     U_PORT_MUTEX_LOCK(gMutex);
-    uPortPrivateListAdd(&gpUartList, (void *)pUartData);
+    uLinkedListAdd(&gpUartList, (void *)pUartData);
     U_PORT_MUTEX_UNLOCK(gMutex);
     U_ATOMIC_INCREMENT(&gResourceAllocCount);
     return (int32_t)(pUartData->uartFd);

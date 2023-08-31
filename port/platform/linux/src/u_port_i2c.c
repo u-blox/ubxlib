@@ -34,10 +34,11 @@
 
 #include "u_error_common.h"
 
+#include "u_linked_list.h"
+
 #include "u_port.h"
 #include "u_port_os.h"
 #include "u_port_heap.h"
-#include "u_port_private.h"
 #include "u_port_i2c.h"
 
 /* ----------------------------------------------------------------
@@ -68,7 +69,7 @@ static uPortMutexHandle_t gMutex = NULL;
 
 /** Root of linked list for pending no stop bit write data.
  */
-static uPortPrivateList_t *gpI2cPendingDataList = NULL;
+static uLinkedList_t *gpI2cPendingDataList = NULL;
 
 /** Variable to keep track of the number of I2C interfaces open.
  */
@@ -85,7 +86,7 @@ static i2cPendingDataInfo_t *findPendingData(pthread_t threadId,
                                              int32_t handle,
                                              uint16_t address)
 {
-    uPortPrivateList_t *p = gpI2cPendingDataList;
+    uLinkedList_t *p = gpI2cPendingDataList;
     while (p != NULL) {
         i2cPendingDataInfo_t *pI2cData = (i2cPendingDataInfo_t *)(p->p);
         if ((pI2cData->threadId == threadId) &&
@@ -160,7 +161,7 @@ void uPortI2cClose(int32_t handle)
         while ((p = findPendingData(pthread_self(), handle, 0)) != NULL) {
             uPortFree(p->pPendingWriteData);
             uPortFree(p);
-            uPortPrivateListRemove(&gpI2cPendingDataList, p);
+            uLinkedListRemove(&gpI2cPendingDataList, p);
         }
         close(handle);
         U_ATOMIC_DECREMENT(&gResourceAllocCount);
@@ -252,7 +253,7 @@ int32_t uPortI2cControllerSendReceive(int32_t handle, uint16_t address,
                 }
                 uPortFree(pI2cData->pPendingWriteData);
                 uPortFree(pI2cData);
-                uPortPrivateListRemove(&gpI2cPendingDataList, pI2cData);
+                uLinkedListRemove(&gpI2cPendingDataList, pI2cData);
             } else {
                 // Plain write and read.
                 bool ok = true;
@@ -299,7 +300,7 @@ int32_t uPortI2cControllerSend(int32_t handle, uint16_t address,
                     pInfo->address = address;
                     pInfo->pPendingWriteData = pData;
                     pInfo->pendingWriteLength = bytesToSend;
-                    uPortPrivateListAdd(&gpI2cPendingDataList, (void *)pInfo);
+                    uLinkedListAdd(&gpI2cPendingDataList, (void *)pInfo);
                     errorCode = U_ERROR_COMMON_SUCCESS;
                 } else {
                     uPortFree(pInfo);

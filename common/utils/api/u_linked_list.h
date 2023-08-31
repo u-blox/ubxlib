@@ -14,11 +14,13 @@
  * limitations under the License.
  */
 
-#ifndef _U_PORT_PRIVATE_H_
-#define _U_PORT_PRIVATE_H_
+#ifndef _U_LINKED_LIST_H_
+#define _U_LINKED_LIST_H_
 
 /** @file
- * @brief Stuff private to the Linux porting layer.
+ * @brief Linked list utilities.  These functions are NOT thread-safe:
+ * should that be required you must provide it with some form of
+ * mutex before the functions are called.
  */
 
 #ifdef __cplusplus
@@ -35,37 +37,40 @@ extern "C" {
 
 /** Structure to hold a linked-list entry.
  */
-typedef struct uPortPrivateList_t {
+typedef struct uLinkedList_t {
     void *p;
-    struct uPortPrivateList_t *pNext;
-} uPortPrivateList_t;
+    struct uLinkedList_t *pNext;
+} uLinkedList_t;
 
 /* ----------------------------------------------------------------
- * FUNCTIONS SPECIFIC TO THIS PORT, LIST OF POINTERS
+ * FUNCTIONS
  * -------------------------------------------------------------- */
 
-/** Add an entry to a linked list.
+/** Add an entry to a linked list.  This function is NOT thread-safe.
  *
- * @param[in] ppList  a pointer to the root of the linked list.
+ * @param[in] ppList  a pointer to the root of the linked list,
+ *                    cannot be NULL.
  * @param[in] p       the entry to add to the linked list.
  * @return            true if addition of the entry was successful,
  *                    else false (for example if no memory was available
  *                    for the linked-list container).
  */
-bool uPortPrivateListAdd(uPortPrivateList_t **ppList, void *p);
+bool uLinkedListAdd(uLinkedList_t **ppList, void *p);
 
-/** Find an entry in a linked list.
+/** Find an entry in a linked list.  This function is NOT thread-safe.
  *
- * @param[in] ppList  a pointer to the root of the linked list.
+ * @param[in] ppList  a pointer to the root of the linked list,
+ *                    cannot be NULL.
  * @param[in] p       the entry to find.
  * @return            a pointer to the linked list entry if p is found,
  *                    else NULL.
  */
-uPortPrivateList_t *uPortPrivateListFind(uPortPrivateList_t **ppList, void *p);
+uLinkedList_t *pULinkedListFind(uLinkedList_t **ppList, void *p);
 
-/** Remove an entry from a linked list.
+/** Remove an entry from a linked list.  This function is NOT thread-safe.
  *
- * @param[in] ppList  a pointer to the root of the linked list.
+ * @param[in] ppList  a pointer to the root of the linked list,
+ *                    cannot be NULL.
  * @param[in] p       the entry to remove; note that the memory pointed
  *                    to by p is not touched in any way: if the caller
  *                    had allocated memory from the heap it is up to the
@@ -73,12 +78,12 @@ uPortPrivateList_t *uPortPrivateListFind(uPortPrivateList_t **ppList, void *p);
  * @return            true if removal was successful, else false (for
  *                    example if the entry could not be found in the list).
  */
-bool uPortPrivateListRemove(uPortPrivateList_t **ppList, void *p);
+bool uLinkedListRemove(uLinkedList_t **ppList, void *p);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif  // _U_PORT_PRIVATE_H_
+#endif  // _U_LINKED_LIST_H_
 
 // End of file

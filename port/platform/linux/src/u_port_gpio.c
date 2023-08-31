@@ -32,7 +32,6 @@
 #include "u_error_common.h"
 #include "u_port.h"
 #include "u_port_gpio.h"
-#include "u_port_private.h"
 #include "u_compiler.h"
 
 /* ----------------------------------------------------------------

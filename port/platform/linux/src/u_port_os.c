@@ -84,6 +84,8 @@
 
 #include "u_error_common.h"
 
+#include "u_linked_list.h"
+
 #include "u_port_clib_platform_specific.h" /* Integer stdio, must be included
                                               before the other port files if
                                               any print or scan function is used. */
@@ -92,7 +94,6 @@
 #include "u_port_debug.h"
 
 #include "u_port_os_private.h"
-#include "u_port_private.h"
 
 // Prototypes for the _ versions of uPortMutexXxx() in case U_CFG_MUTEX_DEBUG is defined
 int32_t _uPortMutexCreate(uPortMutexHandle_t *pMutexHandle);
@@ -157,10 +158,10 @@ typedef struct {
 
 // Linked lists and their mutexes. These are needed for cleanup.
 uPortMutexHandle_t gMutexThread = NULL;
-uPortPrivateList_t *gpThreadList = NULL;
+uLinkedList_t *gpThreadList = NULL;
 
 uPortMutexHandle_t gMutexTimer = NULL;
-uPortPrivateList_t *gpTimerList = NULL;
+uLinkedList_t *gpTimerList = NULL;
 
 // Posix has no suspend/resume functions for threads and this is needed
 // for the critical section implementation of the port layer. We therefore
@@ -226,7 +227,7 @@ static int32_t suspendOrResumeAllTasks(bool suspend)
     MTX_FN(uPortMutexLock(gMutexThread));
     if (suspend) {
         errorCode = MTX_FN(uPortMutexTryLock(gMutexCriticalSection, 0));
-        uPortPrivateList_t *p = gpThreadList;
+        uLinkedList_t *p = gpThreadList;
         // Signal all tasks to suspend.
         while ((errorCode == U_ERROR_COMMON_SUCCESS) && (p != NULL)) {
             pthread_t threadId = (pthread_t)(p->p);
@@ -363,12 +364,12 @@ void uPortOsPrivateDeinit(void)
     if (gMutexTimer != NULL) {
         MTX_FN(uPortMutexLock(gMutexTimer));
         // Tidy away the timers
-        uPortPrivateList_t *p = gpTimerList;
+        uLinkedList_t *p = gpTimerList;
         while (p != NULL) {
             uPortTimer_t *pTimer = (uPortTimer_t *)(p->p);
             uPortTimerDelete(pTimer);
-            uPortPrivateList_t *pNext = p->pNext;
-            uPortPrivateListRemove(&gpTimerList, p);
+            uLinkedList_t *pNext = p->pNext;
+            uLinkedListRemove(&gpTimerList, p);
             p = pNext;
         }
         MTX_FN(uPortMutexUnlock(gMutexTimer));
@@ -382,10 +383,10 @@ void uPortOsPrivateDeinit(void)
         // that must be up to the user. Still we delete
         // the list and the mutex
         MTX_FN(uPortMutexLock(gMutexThread));
-        uPortPrivateList_t *p = gpThreadList;
+        uLinkedList_t *p = gpThreadList;
         while (p != NULL) {
-            uPortPrivateList_t *pNext = p->pNext;
-            uPortPrivateListRemove(&gpThreadList, p);
+            uLinkedList_t *pNext = p->pNext;
+            uLinkedListRemove(&gpThreadList, p);
             p = pNext;
         }
         MTX_FN(uPortMutexUnlock(gMutexThread));
@@ -441,7 +442,7 @@ int32_t uPortTaskCreate(void (*pFunction)(void *),
             *pTaskHandle = (void *)threadId;
             errorCode = U_ERROR_COMMON_SUCCESS;
             MTX_FN(uPortMutexLock(gMutexThread));
-            uPortPrivateListAdd(&gpThreadList, (void *)threadId);
+            uLinkedListAdd(&gpThreadList, (void *)threadId);
             MTX_FN(uPortMutexUnlock(gMutexThread));
             U_ATOMIC_INCREMENT(&gResourceAllocCount);
             U_PORT_OS_DEBUG_PRINT_TASK_CREATE(*pTaskHandle, pName, stackSizeBytes, priority);
@@ -464,7 +465,7 @@ int32_t uPortTaskDelete(const uPortTaskHandle_t taskHandle)
         U_PORT_OS_DEBUG_PRINT_TASK_DELETE(tread);
     }
     MTX_FN(uPortMutexLock(gMutexThread));
-    uPortPrivateListRemove(&gpThreadList, (void *)tread);
+    uLinkedListRemove(&gpThreadList, (void *)tread);
     MTX_FN(uPortMutexUnlock(gMutexThread));
     return (int32_t)errorCode;
 }
