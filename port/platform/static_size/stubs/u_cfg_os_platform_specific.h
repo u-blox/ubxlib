@@ -31,7 +31,7 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
-#define U_CFG_OS_CLIB_LEAKS 1
+#define U_CFG_OS_CLIB_LEAKS 0
 #define U_CFG_OS_PRIORITY_MIN 0
 #define U_CFG_OS_PRIORITY_MAX 15
 #define U_CFG_OS_APP_TASK_STACK_SIZE_BYTES 1024
