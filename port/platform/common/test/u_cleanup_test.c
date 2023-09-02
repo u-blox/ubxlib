@@ -88,10 +88,6 @@ U_PORT_TEST_FUNCTION("[example]", "example{CleanUp}")
     uSockDeinit();
     uSockCleanUp();
 
-    // Clean-up the sockets thread-safety mutexes and the TLS
-    // security mutex; an application wouldn't normally,
-    // do this, we only do it here to make the sums add up
-    uSockFree();
     uSecurityTlsCleanUp();
 
     uDeviceDeinit();

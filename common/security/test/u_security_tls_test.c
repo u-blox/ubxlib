@@ -731,10 +731,7 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsCleanUp")
     uSockCleanUp();
     uSockDeinit();
 
-    // Clean-up the sockets thread-safety mutexes and the TLS
-    // security mutex; an application wouldn't normally,
-    // do this, we only do it here to make the sums add up
-    uSockFree();
+    // Clean-up the TLS security mutex
     uSecurityTlsCleanUp();
 
     // The network test configuration is shared between

@@ -361,7 +361,6 @@ U_PORT_TEST_FUNCTION("[wifiLoc]", "wifiLocBasic")
             }
         }
         uWifiLocGetStop(gHandles.devHandle);
-        uWifiLocFree(gHandles.devHandle);
         U_TEST_PRINT_LINE("gCallback was %d after %d second(s).", gCallback,
                           (uPortGetTickTimeMs() - startTimeMs) / 1000);
         U_PORT_TEST_ASSERT(gCallback >= 0);

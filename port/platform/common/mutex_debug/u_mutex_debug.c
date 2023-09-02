@@ -385,6 +385,9 @@ static void watchdogTask(void *pParam)
 
     U_MUTEX_DEBUG_PORT_MUTEX_LOCK(gWatchdogTaskRunningMutex);
 
+    // Mark this as a perpetual task for accounting purposes
+    uPortOsResourcePerpetualAdd(U_PORT_OS_RESOURCE_TYPE_TASK);
+
     while (gWatchdogTaskKeepGoingFlag) {
 
         U_MUTEX_DEBUG_PORT_MUTEX_LOCK(gMutexList);
@@ -605,6 +608,10 @@ int32_t uMutexDebugInit(void)
         memset(gMutexInfo, 0, sizeof(gMutexInfo));
         memset(gMutexFunctionInfo, 0, sizeof(gMutexFunctionInfo));
         errorCode = _uPortMutexCreate(&gMutexList);
+        if (errorCode == 0) {
+            // Mark this as a perpetual mutex for accounting purposes
+            uPortOsResourcePerpetualAdd(U_PORT_OS_RESOURCE_TYPE_MUTEX);
+        }
     }
 
     return errorCode;
@@ -665,6 +672,8 @@ int32_t uMutexDebugWatchdog(void (*pCallback) (void *),
         if (gpWatchdogCallback != NULL) {
             errorCode = _uPortMutexCreate(&gWatchdogTaskRunningMutex);
             if (errorCode == 0) {
+                // Mark the "watchdog task running" mutex as perpetual for accounting purposes
+                uPortOsResourcePerpetualAdd(U_PORT_OS_RESOURCE_TYPE_MUTEX);
                 gWatchdogTaskKeepGoingFlag = true;
                 errorCode = uPortTaskCreate(watchdogTask,
                                             "mutexWatchdog",

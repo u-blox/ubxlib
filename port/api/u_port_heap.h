@@ -52,27 +52,6 @@ extern "C" {
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
-#ifdef U_CFG_HEAP_MONITOR
-# if defined(__linux__) && !defined(__ZEPHYR__)
-/** The number of OS resources (tasks, mutexes, etc.) that
- * this code requires when monitoring heap: though there is still
- * a mutex in the native Linux case, it is implemented outside
- * the resource monitoring code.
- */
-#  define U_PORT_HEAP_MONITOR_OS_RESOURCES 0
-# else
-/** The number of OS resources (tasks, mutexes, etc.) that
- * this code requires when monitoring heap: just a mutex.
- */
-#  define U_PORT_HEAP_MONITOR_OS_RESOURCES 1
-# endif
-#else
-/** The number of OS resources (tasks, mutexes, etc.) that
- * this code requires when not monitoring heap: none.
- */
-# define U_PORT_HEAP_MONITOR_OS_RESOURCES 0
-#endif
-
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -137,13 +116,33 @@ void uPortFree(void *pMemory);
  * testing.
  *
  * You do not need to implement this function: where it is not
- * implemented a #U_WEAK implementation provided in u_port_resource.c
- * will return zero.
+ * implemented a #U_WEAK implementation will return zero.
  *
  * @return   the number of pUPortMalloc() calls minus the number
  *           of uPortFree() calls.
  */
 int32_t uPortHeapAllocCount();
+
+/** Used ONLY for heap accounting: this function allows the
+ * code to indicate that a heap allocation has been made that
+ * will NEVER be free'd.
+ *
+ * If this function is not implemented a #U_WEAK implementation
+ * will take over; this should be fine in all cases, i.e. you
+ * do not need to implement this function yourself if you have
+ * your own port.
+ */
+void uPortHeapPerpetualAllocAdd();
+
+/** Get the number of calls that have been made to
+ * uPortHeapPerpetualAllocAdd().
+ *
+ * If this function is not implemented a #U_WEAK implementation
+ * will take over; this should be fine in all cases, i.e. you
+ * do not need to implement this function yourself if you have
+ * your own port.
+ */
+int32_t uPortHeapPerpetualAllocCount();
 
 /** Print out the contents of the heap; only useful if
  * U_CFG_HEAP_MONITOR is defined.

@@ -360,6 +360,10 @@ static int32_t ensureMutex(uShortRangePrivateInstance_t *pInstance)
 
     if (pInstance->locMutex == NULL) {
         errorCode = uPortMutexCreate(&(pInstance->locMutex));
+        if (errorCode == 0) {
+            // Mark this as a perpetual mutex for accounting purposes
+            uPortOsResourcePerpetualAdd(U_PORT_OS_RESOURCE_TYPE_MUTEX);
+        }
     }
 
     return errorCode;

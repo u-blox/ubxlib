@@ -1410,11 +1410,6 @@ U_PORT_TEST_FUNCTION("[network]", "networkCleanUp")
     uSockDeinit();
     uSockCleanUp();
 
-    // Clean-up the sockets thread-safety mutexes; an
-    // application wouldn't normally, do this, we only
-    // do it here to make the sums add up
-    uSockFree();
-
     // The network test configuration is shared between
     // the network, sockets, security and location tests
     // so must reset the handles here in case the

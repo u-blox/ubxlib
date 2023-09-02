@@ -128,6 +128,11 @@ typedef struct uPortHeapBlock_t {
  */
 static int32_t gHeapAllocCount = 0;
 
+/** Variable to keep track of the total number of perpetual heap
+ * allocations.
+ */
+static int32_t gHeapPerpetualAllocCount = 0;
+
 #ifdef U_CFG_HEAP_MONITOR
 /** Root of linked list of blocks on the heap.
  */
@@ -320,6 +325,16 @@ U_WEAK int32_t uPortHeapAllocCount()
     return gHeapAllocCount;
 }
 
+U_WEAK void uPortHeapPerpetualAllocAdd()
+{
+    gHeapPerpetualAllocCount++;
+}
+
+U_WEAK int32_t uPortHeapPerpetualAllocCount()
+{
+    return gHeapPerpetualAllocCount;
+}
+
 // Print out the contents of the heap.
 int32_t uPortHeapDump(const char *pPrefix)
 {
@@ -352,12 +367,16 @@ int32_t uPortHeapMonitorInit(int32_t (*pMutexCreate) (uPortMutexHandle_t *),
 
 #ifdef U_CFG_HEAP_MONITOR
     if (gMutex == NULL) {
-        if (pMutexCreate) {
+        if (pMutexCreate != NULL) {
             errorCode = pMutexCreate(&gMutex);
         } else {
             errorCode = uPortMutexCreate(&gMutex);
         }
         if (errorCode == 0) {
+            if (pMutexCreate == NULL) {
+                // Mark the call to uPortMutexCreate() as perpetual for accounting purposes
+                uPortOsResourcePerpetualAdd(U_PORT_OS_RESOURCE_TYPE_MUTEX);
+            }
             gpMutexLock = pMutexLock;
             gpMutexUnlock = pMutexUnlock;
         }

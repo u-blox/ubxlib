@@ -87,6 +87,51 @@
  */
 #define U_CFG_OS_APP_TASK_PRIORITY   7
 
+/* ----------------------------------------------------------------
+ * COMPILE-TIME MACROS FOR LINUX: OS RESOURCE MONITORING
+ * -------------------------------------------------------------- */
+
+#ifndef U_CFG_OS_RESOURCES_PER_SEMAPHORE
+/** A semaphore requires mutex protection, hence this is 2.
+ */
+# define U_CFG_OS_RESOURCES_PER_SEMAPHORE 2
+#endif
+
+#ifndef U_CFG_OS_MALLOCS_PER_TASK
+/** A task's heap is allocated with a call to pUPortMalloc(), hence
+ * this is 1.
+ */
+# define U_CFG_OS_MALLOCS_PER_TASK 1
+#endif
+
+#ifndef U_CFG_OS_MALLOCS_PER_QUEUE
+/** Memory for a queue is allocated with a call to pUPortMalloc(),
+ * hence this is 1.
+ */
+# define U_CFG_OS_MALLOCS_PER_QUEUE 1
+#endif
+
+#ifndef U_CFG_OS_MALLOCS_PER_MUTEX
+/** Memory for a mutex is allocated with a call to pUPortMalloc(),
+ * hence this is 1.
+ */
+# define U_CFG_OS_MALLOCS_PER_MUTEX 1
+#endif
+
+#ifndef U_CFG_OS_MALLOCS_PER_SEMAPHORE
+/** Memory for a semaphore is allocated with a call to pUPortMalloc(),
+ * hence this is 1.
+ */
+# define U_CFG_OS_MALLOCS_PER_SEMAPHORE 1
+#endif
+
+#ifndef U_CFG_OS_MALLOCS_PER_TIMER
+/** Memory for a timer is allocated with a call to pUPortMalloc(),
+ * hence this is 1.
+ */
+# define U_CFG_OS_MALLOCS_PER_TIMER 1
+#endif
+
 #endif // _U_CFG_OS_PLATFORM_SPECIFIC_H_
 
 // End of file

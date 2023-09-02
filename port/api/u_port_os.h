@@ -201,6 +201,16 @@ typedef uint32_t uPortExeChunkFlags_t;
  */
 typedef void (pTimerCallback_t) (const uPortTimerHandle_t, void *);
 
+/** The possible types of OS resource.
+ */
+typedef enum {
+    U_PORT_OS_RESOURCE_TYPE_TASK,
+    U_PORT_OS_RESOURCE_TYPE_QUEUE,
+    U_PORT_OS_RESOURCE_TYPE_MUTEX,
+    U_PORT_OS_RESOURCE_TYPE_SEMAPHORE,
+    U_PORT_OS_RESOURCE_TYPE_TIMER
+} uPortOsResourceType_t;
+
 /* ----------------------------------------------------------------
  * FUNCTIONS: TASKS
  * -------------------------------------------------------------- */
@@ -646,6 +656,30 @@ void *uPortAcquireExecutableChunk(void *pChunkToMakeExecutable,
  *           mutexes or timers) currently in use.
  */
 int32_t uPortOsResourceAllocCount();
+
+/** Used ONLY for resource accounting: this function allows the code
+ * to indicate that an OS resource (task, queue, semaphore, mutex or
+ * timer) of the given type has been created and will NEVER be destroyed.
+ *
+ * This function is implemented in the common file u_port_resource.c,
+ * it does not need to be implemented separately by each port.
+ *
+ * @param type the resource type.
+ */
+void uPortOsResourcePerpetualAdd(uPortOsResourceType_t type);
+
+/** Get the number of resources that have been logged as "perpetual"
+ * by calls to uPortOsResourcePerpetualAdd(); this is ONLY intended to
+ * be used by the ubxlib test code.
+ *
+ * This function is implemented in the common file u_port_resource.c,
+ * it does not need to be implemented separately by each port.
+ *
+ * @return the number of OS resources (tasks, queues, semaphores,
+ *         mutexes or timers) that have been created that will
+ *         not destroyed.
+ */
+int32_t uPortOsResourcePerpetualCount();
 
 #ifdef __cplusplus
 }

@@ -85,6 +85,8 @@ static void inactivityTask(void *pParam)
     int32_t lastActivityCounter = -1;
     int32_t inactiveCounter = 0;
     volatile  int32_t *pActivityCounter = (volatile  int32_t *)pParam;
+    // Mark this as a perpetual task for accounting purposes
+    uPortOsResourcePerpetualAdd(U_PORT_OS_RESOURCE_TYPE_TASK);
     while (1) {
         uPortTaskBlock(1000 * U_DEBUG_UTILS_INACTIVITY_TASK_CHECK_PERIOD_SEC);
         if (*pActivityCounter == lastActivityCounter) {

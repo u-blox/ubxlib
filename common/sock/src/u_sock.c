@@ -461,9 +461,17 @@ static int32_t init()
     // The mutexes are set up once only
     if (gMutexContainer == NULL) {
         errorCode = uPortMutexCreate(&gMutexContainer);
+        if (errorCode == 0) {
+            // Mark this as a perpetual mutex for accounting purposes
+            uPortOsResourcePerpetualAdd(U_PORT_OS_RESOURCE_TYPE_MUTEX);
+        }
     }
     if ((errorCode == 0) && (gMutexCallbacks == NULL)) {
         errorCode = uPortMutexCreate(&gMutexCallbacks);
+        if (errorCode == 0) {
+            // Mark this as a perpetual mutex for accounting purposes
+            uPortOsResourcePerpetualAdd(U_PORT_OS_RESOURCE_TYPE_MUTEX);
+        }
     }
 
     if (errorCode == 0) {

@@ -127,15 +127,6 @@ extern "C" {
 # define U_MUTEX_DEBUG_WATCHDOG_MAX_BARK_SECONDS 10
 #endif
 
-#ifndef U_MUTEX_DEBUG_OS_RESOURCES
-/** The number of OS resources (tasks, mutexes, etc.) that
- * this code requires and never frees: a task with a mutex
- * to monitor whether the task is running, and also a mutex
- * to protect the list of mutexes that this code maintains.
- */
-# define U_MUTEX_DEBUG_OS_RESOURCES 3
-#endif
-
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */

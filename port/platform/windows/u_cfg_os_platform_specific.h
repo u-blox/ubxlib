@@ -87,6 +87,24 @@
  */
 #define U_CFG_OS_APP_TASK_PRIORITY   7
 
+/* ----------------------------------------------------------------
+ * COMPILE-TIME MACROS FOR WINDOWS: OS RESOURCE MONITORING
+ * -------------------------------------------------------------- */
+
+#ifndef U_CFG_OS_MALLOCS_PER_QUEUE
+/** Memory for a queue and, separately, a buffer, is allocated with
+ * calls to pUPortMalloc(), hence this is 2.
+ */
+# define U_CFG_OS_MALLOCS_PER_QUEUE 2
+#endif
+
+#ifndef U_CFG_OS_MALLOCS_PER_TIMER
+/** Memory for a timer is allocated with a call to pUPortMalloc(),
+ * hence this is 1.
+ */
+# define U_CFG_OS_MALLOCS_PER_TIMER 1
+#endif
+
 #endif // _U_CFG_OS_PLATFORM_SPECIFIC_H_
 
 // End of file

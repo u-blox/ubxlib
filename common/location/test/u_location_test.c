@@ -69,7 +69,6 @@
 // Needed only to effect a reset of a short-range module
 #include "u_short_range_module_type.h"
 #include "u_short_range.h"
-# include "u_wifi_loc.h" // For uWifiLocFree()
 #endif
 
 // These are needed to test HTTP/LOC simultaneity on Wi-Fi
@@ -907,15 +906,6 @@ U_PORT_TEST_FUNCTION("[location]", "locationBasic")
     for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
         U_TEST_PRINT_LINE("taking down %s...",
                           gpUNetworkTestTypeName[pTmp->networkType]);
-#ifdef U_CFG_TEST_SHORT_RANGE_MODULE_TYPE
-        if (pTmp->networkType == U_NETWORK_TYPE_WIFI) {
-            // Wifi location can result in a mutex being created;
-            // get the memory back; this carries a risk thread-safety-wise
-            // if there's a late reply landing from the network but we need
-            // to do it to make the sums add up
-            uWifiLocFree(*pTmp->pDevHandle);
-        }
-#endif
         U_PORT_TEST_ASSERT(uNetworkInterfaceDown(*pTmp->pDevHandle,
                                                  pTmp->networkType) == 0);
     }

@@ -229,11 +229,6 @@ U_PORT_TEST_FUNCTION("[wifiCaptivePortal]", "wifiCaptivePortalCleanUp")
         uDeviceClose(gDeviceHandle, false);
     }
 
-    // Clean-up the sockets thread-safety mutexes and the TLS
-    // security mutex; an application wouldn't normally,
-    // do this, we only do it here to make the sums add up
-    uSockFree();
-
     uDeviceDeinit();
     uPortDeinit();
     // Printed for information: asserting happens in the postamble

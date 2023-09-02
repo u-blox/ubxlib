@@ -78,7 +78,7 @@ bool uTestUtilResourceCheck(const char *pPrefix,
 {
     bool resourcesClean = true;
     int32_t x;
-    int32_t osShouldBeOutstanding = 0;
+    int32_t osShouldBeOutstanding = uPortOsResourcePerpetualCount();
 
     if (pPrefix == NULL) {
         pPrefix = "";
@@ -87,14 +87,6 @@ bool uTestUtilResourceCheck(const char *pPrefix,
     if (pErrorMarker == NULL) {
         pErrorMarker = "";
     }
-
-#if defined(U_CFG_TEST_ENABLE_INACTIVITY_DETECTOR) && !defined(ARDUINO)
-    osShouldBeOutstanding += U_DEBUG_UTILS_OS_RESOURCES;
-#endif
-#ifdef U_CFG_MUTEX_DEBUG
-    osShouldBeOutstanding += U_MUTEX_DEBUG_OS_RESOURCES;
-#endif
-    osShouldBeOutstanding += U_PORT_HEAP_MONITOR_OS_RESOURCES;
 
     // Check main task stack against our limit
     x = uPortTaskStackMinFree(NULL);
@@ -140,8 +132,9 @@ bool uTestUtilResourceCheck(const char *pPrefix,
     if (x != osShouldBeOutstanding) {
         if (printIt) {
             uPortLog("%s%sexpected %d outstanding OS resource(s) (tasks etc.)"
-                     " but got %d; they might yet be cleaned up.\n",
-                     pPrefix, pErrorMarker, osShouldBeOutstanding, x);
+                     " but got %d%s.\n",
+                     pPrefix, pErrorMarker, osShouldBeOutstanding, x,
+                     (x > osShouldBeOutstanding) ? "; they might yet be cleaned up" : "");
         }
         resourcesClean = false;
     }
