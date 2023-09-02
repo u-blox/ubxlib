@@ -60,7 +60,7 @@
 /** The string to put at the start of all prints from this test, with
  * an iteration on the end.
  */
-#define U_TEST_PREFIX_X "U_AT_CLIENT_TEST_%d: "
+#define U_TEST_PREFIX_X "U_AT_CLIENT_TEST_%03d: "
 
 /** Print a whole line, with iteration and terminator, prefixed for
  * this test file.

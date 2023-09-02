@@ -82,7 +82,7 @@
 /** The string to put at the start of all prints from this test
  * where an iteration is required.
  */
-#define U_TEST_PREFIX_X U_TEST_PREFIX_BASE "_%d: "
+#define U_TEST_PREFIX_X U_TEST_PREFIX_BASE "_%03d: "
 
 /** Print a whole line, with iteration and terminator, prefixed for
  * this test file.
