@@ -36,3 +36,14 @@
   fun:runFunction
   ...
 }
+{
+  task that is the inactivity detector
+  Memcheck:Leak
+  match-leak-kinds: possible
+  ...
+  fun:allocate_stack
+  ...
+  fun:uPortTaskCreate
+  fun:uDebugUtilsInitInactivityDetector
+  ...
+}
