@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 u-blox
+ * Copyright 2019-2023 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -124,8 +124,15 @@ func handler(response http.ResponseWriter, request *http.Request) {
                 if file, err := os.Create(path); err == nil {
                     defer file.Close()
                     var written int64
-                    written, err = io.Copy(file, request.Body)
-                    fmt.Printf("%d byte(s) written to \"%s\".\n", written, path)
+                    var tries = 0
+                    for written, err = io.Copy(file, request.Body); err != nil && tries < 3; tries++ {
+                        fmt.Printf("WARNING only %d byte(s) written to \"%s\" then error %s, retrying...\n", written, path, err)
+                    }
+                    if err == nil {
+                        fmt.Printf("%d byte(s) written to \"%s\".\n", written, path)
+                    } else {
+                        fmt.Printf("WARNING io.Copy() was unable to write \"%s\" after %d tries (%s).\n", path, tries, err)
+                    }
                     if request.Method == "POST" {
                         // For a POST we return the file in the body of the response
                         http.ServeFile(response, request, path)
