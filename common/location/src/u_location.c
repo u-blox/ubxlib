@@ -264,17 +264,18 @@ static void wifiPosCallback(uDeviceHandle_t wifiHandle,
                 // so give it a few goes and make sure to yield so that OS
                 // things sort themselves out before even trying
                 uPortTaskBlock(U_CFG_OS_YIELD_MS);
-                while ((x = startAsync(wifiHandle, pEntry->desiredRateMs,
-                                       pEntry->type, &locationAssist,
-                                       pApiKey, pEntry->pCallback) < 0) && (retryCount < 10)) {
+                do {
+                    x = startAsync(wifiHandle, pEntry->desiredRateMs,
+                                   pEntry->type, &locationAssist,
+                                   pApiKey, pEntry->pCallback);
                     if (x < 0) {
-                        retryCount++;
                         uPortTaskBlock(1000);
                     }
-                }
+                    retryCount++;
+                } while ((x < 0) && (retryCount < 10));
             }
+            uPortFree(pEntry);
         }
-        uPortFree(pEntry);
 
         U_PORT_MUTEX_UNLOCK(gULocationMutex);
     }
@@ -367,6 +368,8 @@ int32_t startAsync(uDeviceHandle_t devHandle, int32_t desiredRateMs,
                             if (errorCode != 0) {
                                 uPortFree(pULocationSharedRequestPop(U_LOCATION_SHARED_FIFO_WIFI));
                             }
+                        } else {
+                            uPortFree(pWifiSettings);
                         }
                     }
                 }
