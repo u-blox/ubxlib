@@ -37,6 +37,7 @@
 #include "string.h"    // memcpy(), strcmp(), strcspn(), strspm()
 #include "stdio.h"     // snprintf()
 #include "ctype.h"     // isprint()
+#include "time.h"      // time_t and struct tm
 
 #include "u_cfg_sw.h"
 #include "u_cfg_os_platform_specific.h"  // For #define U_CFG_OS_CLIB_LEAKS
@@ -45,9 +46,10 @@
 
 #include "u_assert.h"
 
-#include "u_port_clib_platform_specific.h" /* Integer stdio, must be included
-                                              before the other port files if
-                                              any print or scan function is used. */
+#include "u_port_clib_platform_specific.h" /* Integer stdio and on some platforms
+                                              gmtime_r, must be included before
+                                              the other port files if any print
+                                              or scan function is used. */
 #include "u_port.h"
 #include "u_port_os.h"
 #include "u_port_heap.h"
@@ -65,7 +67,6 @@
 #include "u_short_range_edm_stream.h"
 
 #include "u_hex_bin_convert.h"
-
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -253,6 +254,10 @@
  */
 #define U_AT_CLIENT_HANDLE_FOR_PRINT(pClient) (pClient->stream.type == U_AT_CLIENT_STREAM_TYPE_VIRTUAL_SERIAL ? (int) (uintptr_t) pClient->stream.handle.pDeviceSerial : pClient->stream.handle.int32)
 
+/** The minimum size of buffer to pass to pPrintTimestamp.
+ */
+#define U_AT_CLIENT_PRINT_TIMESTAMP_BUFFER_SIZE_BYTES 27
+
 // Do some cross-checking
 #if (U_AT_CLIENT_CALLBACK_TASK_PRIORITY >= U_AT_CLIENT_URC_TASK_PRIORITY)
 # error U_AT_CLIENT_CALLBACK_TASK_PRIORITY must be less than U_AT_CLIENT_URC_TASK_PRIORITY
@@ -422,6 +427,7 @@ typedef struct uAtClientInstance_t {
     uAtClientReceiveBuffer_t *pReceiveBuffer; /** Pointer to the receive buffer structure. */
     bool debugOn; /** Whether general debug is on or off. */
     bool printAtOn; /** Whether printing of AT commands and responses is on or off. */
+    bool newSendNextTime; /** Flag used when printing timestamps in the log. */
     int32_t atTimeoutMs; /** The current AT timeout in milliseconds. */
     int32_t atTimeoutSavedMs; /** The saved AT timeout in milliseconds. */
     int32_t numConsecutiveAtTimeouts; /** The number of consecutive AT timeouts. */
@@ -552,6 +558,21 @@ static int32_t gEventQueueHandle;
  */
 static uPortMutexHandle_t gMutexEventQueue = NULL;
 
+/** The origin for timestamps on debug and AT prints
+ * in seconds, set by uAtClientTimestampSet(), -1
+ * for "not set, do not print timestamps".
+ */
+static int64_t gPrintTimestampOriginSeconds = -1;
+
+/** The tick time that matches gPrintTimestampOriginSeconds,
+ * only valid if gPrintTimestampOriginSeconds >= 0.
+ */
+static int32_t gPrintTimestampOriginTickTimeMs = -1;
+
+/** To handle wrap in tick times.
+ */
+static int64_t gPrintTimestampOriginTickTimeWrapMs = 0;
+
 #ifdef U_CFG_AT_CLIENT_DETAILED_DEBUG
 /** Array for detailed debugging.
  */
@@ -569,6 +590,63 @@ static bool gDebugOn = false;
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
+
+#if U_CFG_ENABLE_LOGGING
+// Print a timestamp, only if gPrintTimestampOriginSeconds >= 0.
+// pBuffer should point to a buffer of size at least
+// U_AT_CLIENT_PRINT_TIMESTAMP_BUFFER_SIZE_BYTES, longer if pPrefix
+// plus pPostfix are more than three characters.
+static char *pPrintTimestamp(const char *pPrefix, const char *pPostfix,
+                             char *pBuffer, size_t size)
+{
+    int64_t x;
+    time_t time;
+    struct tm tmStruct = {0};
+
+    if ((pBuffer != NULL) && (size > 0)) {
+        *pBuffer = 0;
+        if (pPrefix == NULL) {
+            pPrefix = "";
+        }
+        if (pPostfix == NULL) {
+            pPostfix = "";
+        }
+        if (gPrintTimestampOriginSeconds >= 0) {
+            x = uPortGetTickTimeMs() - gPrintTimestampOriginTickTimeMs;
+            // Handle wrap
+            if (x < 0) {
+                gPrintTimestampOriginTickTimeWrapMs += INT_MAX;
+            }
+            x += gPrintTimestampOriginTickTimeWrapMs;
+            // Add absolute origin in seconds since the start of 1970
+            x += gPrintTimestampOriginSeconds * 1000;
+            // x is now milliseconds since the start of 1970
+            time = x / 1000;
+            gmtime_r(&time, &tmStruct);
+            // gmtime() returns years since 1900
+            if (gPrintTimestampOriginSeconds == 0) {
+                // Not an actual timestamp so make our offset zero
+                tmStruct.tm_year -= 70;
+            } else {
+                // Convert to calender years
+                tmStruct.tm_year += 1900;
+            }
+            // Months counting from 1 instead of 0
+            tmStruct.tm_mon++;
+            x %= 1000;
+            int32_t ignored = snprintf(pBuffer, size, "%s%04d/%02d/%02d %02d:%02d:%02d.%03d%s",
+                                       pPrefix, tmStruct.tm_year, tmStruct.tm_mon,
+                                       tmStruct.tm_mday, tmStruct.tm_hour,
+                                       tmStruct.tm_min, tmStruct.tm_sec,
+                                       (int) x, pPostfix);
+            // This to stop GCC 12.3.0 complaining that variables printed into pBuffer are being truncated
+            (void) ignored;
+        }
+    }
+
+    return pBuffer;
+}
+#endif
 
 #ifdef U_CFG_AT_CLIENT_DETAILED_DEBUG
 // Log the detailed debug.
@@ -618,11 +696,15 @@ static void printLogDebug(const uAtClientDetailedDebug_t *pDebug,
                           size_t number)
 {
     char c;
+#if U_CFG_ENABLE_LOGGING
+    char timestampBuffer[U_AT_CLIENT_PRINT_TIMESTAMP_BUFFER_SIZE_BYTES];
+#endif
 
     for (size_t x = 0; x < number; x++) {
-        uPortLog("U_AT_CLIENT_%d-%d: %4d %3d",
+        uPortLog("U_AT_CLIENT_%d-%d%s: %4d %3d",
                  pDebug->pClient->stream.type,
                  U_AT_CLIENT_HANDLE_FOR_PRINT(pDebug->pClient),
+                 pPrintTimestamp(" ", NULL, timestampBuffer, sizeof(timestampBuffer)),
                  x, pDebug->place);
         c = ' ';
         if (pDebug->inUrc == 0) {
@@ -1040,13 +1122,50 @@ static const char *pMemStr(const char *pBuffer,
 }
 
 // Print out AT commands and responses.
-static void printAt(const uAtClientInstance_t *pClient,
-                    const char *pAt, size_t length)
+static void printAt(uAtClientInstance_t *pClient,
+                    const char *pAt, size_t length, bool sending)
 {
     char c;
+    bool timestamp = true;
+    char prefixBuffer[32];
+#if U_CFG_ENABLE_LOGGING
+    char timestampBuffer[U_AT_CLIENT_PRINT_TIMESTAMP_BUFFER_SIZE_BYTES];
+#endif
 
     if (pClient->printAtOn) {
+        prefixBuffer[0] = 0;
+        if (gPrintTimestampOriginSeconds >= 0) {
+            if (sending) {
+                timestamp = false;
+                if (pClient->newSendNextTime) {
+                    timestamp = true;
+                    pClient->newSendNextTime = false;
+                }
+                if ((length == U_AT_CLIENT_COMMAND_DELIMITER_LENGTH_BYTES) &&
+                    (memcmp(pAt, U_AT_CLIENT_COMMAND_DELIMITER, length) == 0)) {
+                    // If we're just sending the delimiter, which happens at the
+                    // end of a sent line, don't print a timestamp before it,
+                    // that would be silly, but remember that the next send will
+                    // require a timestamp
+                    timestamp = false;
+                    pClient->newSendNextTime = true;
+                }
+            }
+            if (pClient->debugOn) {
+                // If debug printing is on, put the usual prefix before the
+                // timestamped AT print, otherwise things look wrong in the log
+                snprintf(prefixBuffer, sizeof(prefixBuffer), "U_AT_CLIENT_%d-%d",
+                         pClient->stream.type,
+                         (int) U_AT_CLIENT_HANDLE_FOR_PRINT(pClient));
+            }
+        }
         for (size_t x = 0; x < length; x++) {
+            if (timestamp) {
+                uPortLog("%s%s", prefixBuffer,
+                         pPrintTimestamp(pClient->debugOn ? " " : NULL,
+                                         ": ", timestampBuffer, sizeof(timestampBuffer)));
+                timestamp = false;
+            }
             c = *pAt++;
             if (!isprint((int32_t) c)) {
 #ifdef U_AT_CLIENT_PRINT_CONTROL_CHARACTERS
@@ -1056,7 +1175,7 @@ static void printAt(const uAtClientInstance_t *pClient,
                     // Convert \r\n into \n
                     uPortLog("%c", '\n');
                 } else if (c == '\n') {
-                    // Do nothing
+                    timestamp = true;
                 } else {
                     // Print the hex
                     uPortLog("[%02x]", (unsigned char) c);
@@ -1074,11 +1193,16 @@ static void printAt(const uAtClientInstance_t *pClient,
 static void setError(uAtClientInstance_t *pClient,
                      uErrorCode_t error)
 {
+#if U_CFG_ENABLE_LOGGING
+    char timestampBuffer[U_AT_CLIENT_PRINT_TIMESTAMP_BUFFER_SIZE_BYTES];
+#endif
+
     if (error != U_ERROR_COMMON_SUCCESS) {
         if (pClient->debugOn) {
-            uPortLog("U_AT_CLIENT_%d-%d: AT error %d.\n",
+            uPortLog("U_AT_CLIENT_%d-%d%s: AT error %d.\n",
                      pClient->stream.type,
                      U_AT_CLIENT_HANDLE_FOR_PRINT(pClient),
+                     pPrintTimestamp(" ", NULL, timestampBuffer, sizeof(timestampBuffer)),
                      error);
         }
     }
@@ -1151,6 +1275,9 @@ static int32_t pollTimeRemaining(int32_t atTimeoutMs,
 static void bufferReset(const uAtClientInstance_t *pClient,
                         bool totalReset)
 {
+#if U_CFG_ENABLE_LOGGING
+    char timestampBuffer[U_AT_CLIENT_PRINT_TIMESTAMP_BUFFER_SIZE_BYTES];
+#endif
     uAtClientReceiveBuffer_t *pBuffer = pClient->pReceiveBuffer;
 
     LOG_IF(totalReset, 200);
@@ -1166,9 +1293,10 @@ static void bufferReset(const uAtClientInstance_t *pClient,
             // This should never occur, but if it did
             // it would not be good so best be safe.
             if (pClient->debugOn) {
-                uPortLog("U_AT_CLIENT_%d-%d: *** WARNING ***"
+                uPortLog("U_AT_CLIENT_%d-%d%s: *** WARNING ***"
                          " lengthBuffered (%d) > length (%d).\n",
                          pClient->stream.type, U_AT_CLIENT_HANDLE_FOR_PRINT(pClient),
+                         pPrintTimestamp(" ", NULL, timestampBuffer, sizeof(timestampBuffer)),
                          pBuffer->lengthBuffered, pBuffer->length);
             }
             pBuffer->length = pBuffer->lengthBuffered;
@@ -1190,6 +1318,9 @@ static void bufferReset(const uAtClientInstance_t *pClient,
 static void bufferRewind(const uAtClientInstance_t *pClient)
 {
     uAtClientReceiveBuffer_t *pBuffer = pClient->pReceiveBuffer;
+#if U_CFG_ENABLE_LOGGING
+    char timestampBuffer[U_AT_CLIENT_PRINT_TIMESTAMP_BUFFER_SIZE_BYTES];
+#endif
 
     LOG(100);
     if ((pBuffer->readIndex > 0) &&
@@ -1198,9 +1329,10 @@ static void bufferRewind(const uAtClientInstance_t *pClient)
             // This should never occur, but if it did
             // it would not be good so best be safe.
             if (pClient->debugOn) {
-                uPortLog("U_AT_CLIENT_%d-%d: *** WARNING ***"
+                uPortLog("U_AT_CLIENT_%d-%d%s: *** WARNING ***"
                          " lengthBuffered (%d) < readIndex (%d).\n",
                          pClient->stream.type, U_AT_CLIENT_HANDLE_FOR_PRINT(pClient),
+                         pPrintTimestamp(" ", NULL, timestampBuffer, sizeof(timestampBuffer)),
                          pBuffer->lengthBuffered, pBuffer->readIndex);
             }
             pBuffer->lengthBuffered = pBuffer->readIndex;
@@ -1294,6 +1426,9 @@ static bool bufferFill(uAtClientInstance_t *pClient,
     // is if detailed debugging is on
     char *pDataIntercept = NULL;
     uAtClientBlockState_t blockState = U_AT_CLIENT_BLOCK_STATE_DO_NOT_BLOCK;
+#if U_CFG_ENABLE_LOGGING
+    char timestampBuffer[U_AT_CLIENT_PRINT_TIMESTAMP_BUFFER_SIZE_BYTES];
+#endif
 
     // Determine if we're in a callback or not
     switch (pClient->stream.type) {
@@ -1317,9 +1452,10 @@ static bool bufferFill(uAtClientInstance_t *pClient,
         if (pClient->debugOn) {
             // Let the world know, even if we're in a callback,
             // as this is important.
-            uPortLog("U_AT_CLIENT_%d-%d: *** WARNING ***"
+            uPortLog("U_AT_CLIENT_%d-%d%s: *** WARNING ***"
                      " lengthBuffered (%d) < length (%d).\n",
                      pClient->stream.type, U_AT_CLIENT_HANDLE_FOR_PRINT(pClient),
+                     pPrintTimestamp(" ", NULL, timestampBuffer, sizeof(timestampBuffer)),
                      pReceiveBuffer->lengthBuffered,
                      pReceiveBuffer->length);
         }
@@ -1369,11 +1505,12 @@ static bool bufferFill(uAtClientInstance_t *pClient,
         if (!eventIsCallback) {
 #endif
             if (pClient->debugOn) {
-                uPortLog("U_AT_CLIENT_%d-%d: !!! overflow.\n",
-                         pClient->stream.type, U_AT_CLIENT_HANDLE_FOR_PRINT(pClient));
+                uPortLog("U_AT_CLIENT_%d-%d%s: !!! overflow.\n",
+                         pClient->stream.type, U_AT_CLIENT_HANDLE_FOR_PRINT(pClient),
+                         pPrintTimestamp(" ", NULL, timestampBuffer, sizeof(timestampBuffer)));
             }
             printAt(pClient, U_AT_CLIENT_DATA_BUFFER_PTR(pReceiveBuffer),
-                    pReceiveBuffer->length);
+                    pReceiveBuffer->length, false);
 #if U_CFG_OS_CLIB_LEAKS
         }
 #endif
@@ -1555,7 +1692,7 @@ static bool bufferFill(uAtClientInstance_t *pClient,
 #endif
             printAt(pClient, U_AT_CLIENT_DATA_BUFFER_PTR(pReceiveBuffer) +
                     pReceiveBuffer->length + pReceiveBuffer->readIndex,
-                    readLength);
+                    readLength, false);
 #if U_CFG_OS_CLIB_LEAKS
         }
 #endif
@@ -1576,6 +1713,9 @@ static bool bufferFill(uAtClientInstance_t *pClient,
 static int32_t bufferReadChar(uAtClientInstance_t *pClient)
 {
     uAtClientReceiveBuffer_t *pReceiveBuffer = pClient->pReceiveBuffer;
+#if U_CFG_ENABLE_LOGGING
+    char timestampBuffer[U_AT_CLIENT_PRINT_TIMESTAMP_BUFFER_SIZE_BYTES];
+#endif
     int32_t character = -1;
 
     // Note that we need to distinguish two cases here:
@@ -1602,8 +1742,9 @@ static int32_t bufferReadChar(uAtClientInstance_t *pClient)
         } else {
             // Timeout
             if (pClient->debugOn) {
-                uPortLog("U_AT_CLIENT_%d-%d: timeout.\n",
-                         pClient->stream.type, U_AT_CLIENT_HANDLE_FOR_PRINT(pClient));
+                uPortLog("U_AT_CLIENT_%d-%d%s: timeout.\n",
+                         pClient->stream.type, U_AT_CLIENT_HANDLE_FOR_PRINT(pClient),
+                         pPrintTimestamp(" ", NULL, timestampBuffer, sizeof(timestampBuffer)));
             }
             setError(pClient, U_ERROR_COMMON_DEVICE_ERROR);
             consecutiveTimeout(pClient);
@@ -1726,6 +1867,9 @@ static bool consumeToString(uAtClientInstance_t *pClient,
 static bool consumeToStopTag(uAtClientInstance_t *pClient)
 {
     bool found = true;
+#if U_CFG_ENABLE_LOGGING
+    char timestampBuffer[U_AT_CLIENT_PRINT_TIMESTAMP_BUFFER_SIZE_BYTES];
+#endif
 
     if (!pClient->stopTag.found &&
         (pClient->error == U_ERROR_COMMON_SUCCESS)) {
@@ -1739,8 +1883,9 @@ static bool consumeToStopTag(uAtClientInstance_t *pClient)
             if (!found) {
                 setError(pClient, U_ERROR_COMMON_DEVICE_ERROR);
                 if (pClient->debugOn) {
-                    uPortLog("U_AT_CLIENT_%d-%d: stop tag not found.\n",
-                             pClient->stream.type, U_AT_CLIENT_HANDLE_FOR_PRINT(pClient));
+                    uPortLog("U_AT_CLIENT_%d-%d%s: stop tag not found.\n",
+                             pClient->stream.type, U_AT_CLIENT_HANDLE_FOR_PRINT(pClient),
+                             pPrintTimestamp(" ", NULL, timestampBuffer, sizeof(timestampBuffer)));
                 }
             }
         }
@@ -1940,6 +2085,9 @@ static void setDeviceError(uAtClientInstance_t *pClient,
                            uAtClientDeviceErrorType_t errorType)
 {
     int32_t errorCode;
+#if U_CFG_ENABLE_LOGGING
+    char timestampBuffer[U_AT_CLIENT_PRINT_TIMESTAMP_BUFFER_SIZE_BYTES];
+#endif
 
     pClient->deviceError.type = errorType;
     pClient->deviceError.code = 0;
@@ -1953,8 +2101,9 @@ static void setDeviceError(uAtClientInstance_t *pClient,
         if (errorCode >= 0) {
             pClient->deviceError.code = errorCode;
             if (pClient->debugOn) {
-                uPortLog("U_AT_CLIENT_%d-%d: CME/CMS error code %d.\n",
+                uPortLog("U_AT_CLIENT_%d-%d%s: CME/CMS error code %d.\n",
                          pClient->stream.type, U_AT_CLIENT_HANDLE_FOR_PRINT(pClient),
+                         pPrintTimestamp(" ", NULL, timestampBuffer, sizeof(timestampBuffer)),
                          errorCode);
             }
         }
@@ -2248,7 +2397,7 @@ static size_t write(uAtClientInstance_t *pClient,
     // exactly what was written, we can only check
     // if *everything* was written
     if (pClient->error == U_ERROR_COMMON_SUCCESS) {
-        printAt(pClient, pDataStart, length);
+        printAt(pClient, pDataStart, length, true);
     } else {
         length = 0;
     }
@@ -2467,6 +2616,9 @@ static void urcCallback(const uAtClientStreamHandle_t *pStream,
     uPortMutexHandle_t streamMutex;
     int32_t sizeOrError;
     int32_t x;
+#if U_CFG_ENABLE_LOGGING
+    char timestampBuffer[U_AT_CLIENT_PRINT_TIMESTAMP_BUFFER_SIZE_BYTES];
+#endif
 
     pClient = (uAtClientInstance_t *) pParameters;
 
@@ -2500,9 +2652,12 @@ static void urcCallback(const uAtClientStreamHandle_t *pStream,
                             // Don't do this if CLIB is leaky on this platform since
                             // it is the printf() that leaks
                             if (pClient->debugOn) {
-                                uPortLog("U_AT_CLIENT_%d-%d: possible URC data readable %d,"
-                                         " already buffered %u.\n", pClient->stream.type,
-                                         U_AT_CLIENT_HANDLE_FOR_PRINT(pClient), sizeOrError,
+                                uPortLog("U_AT_CLIENT_%d-%d%s: possible URC data readable %d,"
+                                         " already buffered %u.\n",
+                                         pClient->stream.type,
+                                         U_AT_CLIENT_HANDLE_FOR_PRINT(pClient),
+                                         pPrintTimestamp(" ", NULL, timestampBuffer, sizeof(timestampBuffer)),
+                                         sizeOrError,
                                          pReceiveBuffer->length - pReceiveBuffer->readIndex);
                             }
 #endif
@@ -2545,9 +2700,10 @@ static void urcCallback(const uAtClientStreamHandle_t *pStream,
                             // Don't do this if CLIB is leaky on this platform since
                             // it is the printf() that leaks
                             if (pClient->debugOn) {
-                                uPortLog("U_AT_CLIENT_%d-%d: URC checking done.\n",
+                                uPortLog("U_AT_CLIENT_%d-%d%s: URC checking done.\n",
                                          pClient->stream.type,
-                                         U_AT_CLIENT_HANDLE_FOR_PRINT(pClient));
+                                         U_AT_CLIENT_HANDLE_FOR_PRINT(pClient),
+                                         pPrintTimestamp(" ", NULL, timestampBuffer, sizeof(timestampBuffer)));
                             }
 #endif
                         }
@@ -2667,6 +2823,7 @@ static uAtClientHandle_t clientAdd(const uAtClientStreamHandle_t *pStream,
                         (uPortMutexCreate(&(pClient->urcPermittedMutex)) == 0)) {
                         // Set all the non-zero initial values before we set
                         // the event handlers which might call us
+                        pClient->newSendNextTime = true;
                         pClient->stream = *pStream;
                         pClient->atTimeoutMs = U_AT_CLIENT_DEFAULT_TIMEOUT_MS;
                         pClient->atTimeoutSavedMs = -1;
@@ -2799,7 +2956,15 @@ int32_t uAtClientInit()
             if (errorCodeOrHandle == 0) {
                 // Create the mutex that protects the linked list
                 errorCodeOrHandle = uPortMutexCreate(&gMutex);
-                if (errorCodeOrHandle != 0) {
+                if (errorCodeOrHandle == 0) {
+#ifdef U_AT_CLIENT_PRINT_WITH_TIMESTAMP
+                    // The user wants timestamps
+                    if (gPrintTimestampOriginSeconds < 0) {
+                        gPrintTimestampOriginSeconds = 0;
+                        gPrintTimestampOriginTickTimeMs = uPortGetTickTimeMs();
+                    }
+#endif
+                } else {
                     // Failed, release the callbacks event queue again
                     // and its mutex
                     uPortEventQueueClose(gEventQueueHandle);
@@ -2934,6 +3099,14 @@ void uAtClientPrintAtSet(uAtClientHandle_t atHandle, bool onNotOff)
     if (atHandle != NULL) {
         ((uAtClientInstance_t *) atHandle)->printAtOn = onNotOff;
     }
+}
+
+// Se the origin time for printing of timestamps with AT and debug prints.
+void uAtClientTimestampSet(int64_t timestampSeconds)
+{
+    gPrintTimestampOriginSeconds = timestampSeconds;
+    gPrintTimestampOriginTickTimeMs = uPortGetTickTimeMs();
+    gPrintTimestampOriginTickTimeWrapMs = 0;
 }
 
 // Return the current AT timeout.
@@ -3802,6 +3975,9 @@ int32_t uAtClientSetUrcHandler(uAtClientHandle_t atHandle,
     uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
     size_t prefixLength;
     char *pDest;
+#if U_CFG_ENABLE_LOGGING
+    char timestampBuffer[U_AT_CLIENT_PRINT_TIMESTAMP_BUFFER_SIZE_BYTES];
+#endif
 
     U_AT_CLIENT_LOCK_CLIENT_MUTEX(pClient);
 
@@ -3834,9 +4010,11 @@ int32_t uAtClientSetUrcHandler(uAtClientHandle_t atHandle,
         } else {
             errorCode = U_ERROR_COMMON_SUCCESS;
             if (pClient->debugOn) {
-                uPortLog("U_AT_CLIENT_%d-%d: URC already added with prefix"
-                         " \"%s\".\n", pClient->stream.type,
-                         U_AT_CLIENT_HANDLE_FOR_PRINT(pClient), pPrefix);
+                uPortLog("U_AT_CLIENT_%d-%d%s: URC already added with prefix \"%s\".\n",
+                         pClient->stream.type,
+                         U_AT_CLIENT_HANDLE_FOR_PRINT(pClient),
+                         pPrintTimestamp(" ", NULL, timestampBuffer, sizeof(timestampBuffer)),
+                         pPrefix);
             }
         }
     }
@@ -4089,11 +4267,16 @@ int32_t uAtClientUrcDirect(uAtClientHandle_t atHandle,
 void uAtClientFlush(uAtClientHandle_t atHandle)
 {
     uAtClientInstance_t *pClient = (uAtClientInstance_t *) atHandle;
+#if U_CFG_ENABLE_LOGGING
+    char timestampBuffer[U_AT_CLIENT_PRINT_TIMESTAMP_BUFFER_SIZE_BYTES];
+#endif
 
     U_AT_CLIENT_LOCK_CLIENT_MUTEX(pClient);
 
     if (pClient->debugOn) {
-        uPortLog("U_AT_CLIENT_%d-%d: flush.\n", pClient->stream.type,
+        uPortLog("%sU_AT_CLIENT_%d-%d: flush.\n",
+                 pPrintTimestamp(" ", NULL, timestampBuffer, sizeof(timestampBuffer)),
+                 pClient->stream.type,
                  U_AT_CLIENT_HANDLE_FOR_PRINT(pClient));
     }
 

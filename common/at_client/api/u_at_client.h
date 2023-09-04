@@ -587,6 +587,10 @@ bool uAtClientDebugGet(const uAtClientHandle_t atHandle);
 
 /** Switch general debug prints on or off.
  *
+ * Note: to add a timestamp before each debug print,
+ * add the define U_AT_CLIENT_PRINT_WITH_TIMESTAMP to
+ * your build or call uAtClientTimestampSet().
+ *
  * @param atHandle  the handle of the AT client.
  * @param onNotOff  set to true to cause debug prints,
  *                  false to switch them off.
@@ -604,6 +608,10 @@ bool uAtClientPrintAtGet(const uAtClientHandle_t atHandle);
 
 /** Switch printing of AT commands and responses on or off.
  *
+ * Note: to add a timestamp before each AT print,
+ * either add the define U_AT_CLIENT_PRINT_WITH_TIMESTAMP to
+ * your build or call uAtClientTimestampSet().
+ *
  * @param atHandle  the handle of the AT client.
  * @param onNotOff  set to true to cause AT commands
  *                  and responses to be printed, false to
@@ -611,6 +619,21 @@ bool uAtClientPrintAtGet(const uAtClientHandle_t atHandle);
  */
 void uAtClientPrintAtSet(uAtClientHandle_t atHandle,
                          bool onNotOff);
+
+/** Call this to set the current Unix time in seconds, which
+ * will then be used to add a timestamp (in milliseconds)
+ * to every debug or AT print.
+ *
+ * If this is not called, no timestamp will be added to AT
+ * or debug prints unless U_AT_CLIENT_PRINT_WITH_TIMESTAMP
+ * is defined for the build (in which case the timestamp
+ * will be relative to when uAtClientInit() was first called).
+ *
+ * @param timestampSeconds the current Unix time in seconds;
+ *                         use -1 to switch off printing of
+ *                         timestamps (which is the default).
+ */
+void uAtClientTimestampSet(int64_t timestampSeconds);
 
 /** Get the timeout for completion of an AT command.
  *
