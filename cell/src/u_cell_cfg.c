@@ -819,7 +819,7 @@ static int32_t setRatRankSaraRx(uCellPrivateInstance_t *pInstance,
  * -------------------------------------------------------------- */
 
 // Set, or unset, a greeting message.
-int32_t setGreeting(uAtClientHandle_t atHandle, const char *pStr)
+static int32_t setGreeting(uAtClientHandle_t atHandle, const char *pStr)
 {
     int32_t mode = 0;
 
@@ -839,7 +839,7 @@ int32_t setGreeting(uAtClientHandle_t atHandle, const char *pStr)
 
 // Get the current greeting message; a null
 // terminator will be included.
-int32_t getGreeting(uAtClientHandle_t atHandle, char *pStr, size_t size)
+static int32_t getGreeting(uAtClientHandle_t atHandle, char *pStr, size_t size)
 {
     int32_t errorCodeOrSize;
     int32_t mode;
@@ -973,8 +973,8 @@ static void removeGreetingUrc(uCellPrivateInstance_t *pInstance,
  * -------------------------------------------------------------- */
 
 // Set the baud rate in the cellular module and store it in NVM.
-int32_t setAndStoreBaudRate(const uCellPrivateInstance_t *pInstance,
-                            int32_t baudRate)
+static int32_t setAndStoreBaudRate(const uCellPrivateInstance_t *pInstance,
+                                   int32_t baudRate)
 {
     int32_t errorCode;
     uAtClientHandle_t atHandle = pInstance->atHandle;
