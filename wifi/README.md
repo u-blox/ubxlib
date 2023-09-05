@@ -15,7 +15,22 @@ location client API.
 
 The module types supported by this implementation are listed in [u_wifi_module_type.h](api/u_wifi_module_type.h).
 
-**NOTES:**
+# WiFi captive portal
+
+Included in this directory is also functionality for starting a captive portal for wifi credentials provisioning at runtime instead of adding these in the source code at build time.
+
+The principle here is that the WiFi module is setup as an access point with an automatic redirect to a built-in web server. The top page of this web server shows input fields were a client can enter the SSID and password that the module should connect to. A list of available SSIDs is automatically generated in an input drop box.
+
+![Captive portal web page](/readme_images/CaptivePortalLogin.jpg)
+
+An example of an application using this ubxlib functionality can be [found here](https://github.com/u-blox/ubxlib_examples_xplr_iot/blob/master/examples/captive_portal/src/main.c)
+
+A client is typically a phone which connects to the captive portal access point and then enter the credentials. It can also be an application running on another module. An example of such an application can be [found here](test/test_peer/captive_portal_test_peer.ino).
+
+A full description of the theory for this can be [found here](https://en.wikipedia.org/wiki/Captive_portal)
+
+
+# NOTES
 * Secure and server sockets not yet supported for Wi-Fi
 * Wi-Fi UDP sockets has some limitations (also documented in [u_wifi_sock.h](api/u_wifi_sock.h)):
    - Each UDP socket can only be used for communicating with a *single* remote peer.

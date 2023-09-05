@@ -17,7 +17,7 @@ Unity
 ubxlib
 ```
 
-Note: you may put this repo in a different location but if you do so you will need to tell the build where it is by setting an environment variable named `UNITY_PATH` , e.g. `UNITY_PATH=c:/Unity`, before you build.
+Note: you may put this repo in a different location but if you do so you will need to tell the build where it is by setting an environment variable named `UNITY_PATH` , e.g. `UNITY_PATH=~/Unity`, before you build.
 
 
 Before building you must tell the tests which module(s) you are using and the UARTs they are connected on.  For instance, to do so using the `U_FLAGS` mechanism, if you were using a SARA-R5 cellular module on COM3, you would set:

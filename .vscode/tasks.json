@@ -16,7 +16,7 @@
             "windows": {
                 "command": "rd -r ${input:getBuildRoot}",
             },
-            "group": {"kind": "build", "isDefault": true},
+            "group": {"kind": "build"},
             "problemMatcher": []
         },
         {
@@ -62,7 +62,7 @@
             "type": "shell",
             "options": { "cwd": "${input:getBuildRoot}" },
             "command": "inv -r ${workspaceFolder}/port/platform/common/automation nrfconnect.build --board-name=nrf5340dk_nrf5340_cpuapp --output-name=runner_nrf5340dk_nrf5340_cpuapp",
-            "group": { "kind": "build", "isDefault": true },
+            "group": { "kind": "build" },
             "presentation": { "group": "ubxlib" },
             "problemMatcher": { "base": "$gcc", "fileLocation": "absolute" }
         },
@@ -101,7 +101,7 @@
             "type": "shell",
             "options": {"cwd": "${input:getBuildRoot}"},
             "command": "inv -r ${workspaceFolder}/port/platform/common/automation nrf5.build",
-            "group": { "kind": "build", "isDefault": true },
+            "group": { "kind": "build" },
             "presentation": { "group": "ubxlib" },
             "problemMatcher": { "base": "$gcc", "fileLocation": "absolute" }
         },
@@ -109,7 +109,7 @@
             "label": "Build windows runner [win32]",
             "type": "shell",
             "command": "cmake ${workspaceFolder}/port/platform/windows/mcu/win32/runner",
-            "group": { "kind": "build", "isDefault": true },
+            "group": { "kind": "build" },
             "presentation": { "group": "ubxlib" },
             "problemMatcher": { "base": "$msCompile", "fileLocation": "absolute" }
         },
@@ -117,7 +117,7 @@
             "label": "Build Linux runner",
             "type": "shell",
             "command": "inv -r ${workspaceFolder}/port/platform/common/automation linux.build",
-            "group": { "kind": "build", "isDefault": true },
+            "group": { "kind": "build" },
             "presentation": { "group": "ubxlib" },
             "problemMatcher": { "base": "$gcc", "fileLocation": "absolute" }
         },
@@ -126,7 +126,7 @@
             "type": "shell",
             "options": { "cwd": "${input:getBuildRoot}" },
             "command": "inv -r ${workspaceFolder}/port/platform/common/automation nrfconnect.build --board-name=native_posix --output-name=runner_linux",
-            "group": { "kind": "build", "isDefault": true },
+            "group": { "kind": "build" },
             "presentation": { "group": "ubxlib" },
             "problemMatcher": { "base": "$gcc", "fileLocation": "absolute" }
         },
@@ -150,7 +150,7 @@
             "type": "shell",
             "options": { "cwd": "${input:getBuildRoot}" },
             "command": "inv -r ${workspaceFolder}/port/platform/common/automation nrfconnect.build --board-name=ubx_evkninab3_nrf52840 --output-name=runner_ubx_evkninab3_nrf52840",
-            "group": { "kind": "build", "isDefault": true },
+            "group": { "kind": "build" },
             "presentation": { "group": "ubxlib" },
             "problemMatcher": { "base": "$gcc", "fileLocation": "absolute" }
         },
@@ -159,7 +159,7 @@
             "type": "shell",
             "options": { "cwd": "${input:getBuildRoot}" },
             "command": "inv -r ${workspaceFolder}/port/platform/common/automation stm32cubef4.build",
-            "group": { "kind": "build", "isDefault": true },
+            "group": { "kind": "build" },
             "problemMatcher": { "base": "$gcc", "fileLocation": "absolute" }
         },
         {
@@ -167,7 +167,7 @@
             "type": "shell",
             "options": { "cwd": "${input:getBuildRoot}" },
             "command": "inv -r ${workspaceFolder}/port/platform/common/automation esp-idf.build",
-            "group": { "kind": "build", "isDefault": true },
+            "group": { "kind": "build" },
             "problemMatcher": { "base": "$gcc", "fileLocation": "absolute" }
         },
         {
@@ -175,7 +175,7 @@
             "type": "shell",
             "options": {"cwd": "${input:getBuildRoot}"},
             "command": "inv -r ${workspaceFolder}/port/platform/common/automation arduino.build",
-            "group": { "kind": "build", "isDefault": true },
+            "group": { "kind": "build" },
             "presentation": { "group": "ubxlib" },
             "problemMatcher": { "base": "$gcc", "fileLocation": "absolute" }
         },

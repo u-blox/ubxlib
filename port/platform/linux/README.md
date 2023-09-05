@@ -1,6 +1,29 @@
 # Introduction
 These directories provide the implementation of the porting layer on native Linux.
 
+# Building
+All software building for this platform is intended to be made using [CMake](https://cmake.org/).
+
+There are typically two scenarios when it comes to building Linux application which includes ubxlib.
+
+The first case is to build the test runner application within this repo. More information about this can be [found here](mcu/posix/runner/README.md).
+
+On the other hand if you want to add ubxlib to an existing or new Linux application of your own you just have to add the following text your *CMakeLists.txt* file
+
+    include(DIRECTORY_WHERE_YOU_HAVE_PUT_UBXLIB/port/platform/linux/linux.cmake)
+    target_link_libraries(YOUR_APPLICATION_NAME ubxlib ${UBXLIB_REQUIRED_LINK_LIBS})
+    target_include_directories(YOUR_APPLICATION_NAME PUBLIC ${UBXLIB_INC} ${UBXLIB_PUBLIC_INC_PORT})
+
+
+# Visual Studio Code
+Both case listed above can also be made from within Visual Studio Code (on the Linux platform).
+
+In the first case you can just open the predefined Visual Studio project file available in the root directory of this repository, *ubxlib-runner.code-workspace*. You can then select the *Build Linux runner* build target to start a build, and then the *Linux runner* debug target to start debugging.
+
+In the second case you have to install the [Cmake extension for Visual Studio Code](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cmake-tools).
+
+More information on how to use CMake in Visual Studio Code can be [found here](https://code.visualstudio.com/docs/cpp/CMake-linux).
+
 # Limitations
 Some limitations apply on this platform:
 
