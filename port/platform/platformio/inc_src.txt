@@ -15,7 +15,6 @@
 [EXCLUDE]
 /port/platform/(?!common|$FRAMEWORK)
 /example/
-u_port_clib.c
 /common/lib_common
 
 # A module directory is one which contains one or more of
@@ -123,3 +122,21 @@ common/device/src/u_device_private_short_range.c
 common/network/src/u_network_private_ble_extmod_link.c
 common/network/src/u_network_private_wifi_link.c
 common/device/src/u_device_private_short_range_link.c
+
+# Source files brought in only for Zephyr
+[zephyr]
+# Ubxlib by default uses the Zephyr minimal C library
+# and hence some functions which are missing there needs to be added.
+# If you use another library you may have to remove the files below.
+port/clib/u_port_clib_isblank.c
+port/clib/u_port_clib_mktime.c
+
+# Ubxlib also by default uses its own wrapper of malloc which calls
+# k_malloc. The heap size is controlled by the kconfig variable
+# CONFIG_HEAP_MEM_POOL_SIZE. The variable CONFIG_MINIMAL_LIBC_MALLOC
+# must also be set. All this is done in prj.conf
+# If you want to use the default heap manager from the C library you
+# should remove the file below. Please note that you also need to set
+# the config variable CONFIG_MINIMAL_LIBC_MALLOC_ARENA_SIZE to the
+# desired size for the heap in this case.
+port/platform/zephyr/src/u_port_clib.c
