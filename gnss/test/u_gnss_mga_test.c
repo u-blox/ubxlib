@@ -1024,6 +1024,9 @@ U_PORT_TEST_FUNCTION("[gnssMga]", "gnssMgaServer")
     }
     uNetworkTestListFree();
 
+    // Clean-up the TLS security mutex used for HTTPS
+    uSecurityTlsCleanUp();
+
     uDeviceDeinit();
     uPortSpiDeinit();
     uPortI2cDeinit();
@@ -1048,6 +1051,9 @@ U_PORT_TEST_FUNCTION("[gnssMga]", "gnssMgaCleanUp")
     uPortFree(gpHttpBufferIn);
     uPortFree(gpHttpBufferOut);
     uPortFree(gpDatabase);
+
+    // Clean-up the TLS security mutex used for HTTPS
+    uSecurityTlsCleanUp();
 
     uGnssTestPrivateCleanup(&gHandles);
 
