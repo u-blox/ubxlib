@@ -531,7 +531,9 @@ U_PORT_TEST_FUNCTION("[gnssMga]", "gnssMgaBasic")
     int32_t y;
     int32_t z;
     bool a;
+#ifndef U_GNSS_MGA_TEST_ASSIST_NOW_AUTONOMOUS_NOT_SUPPORTED
     bool b;
+#endif
     size_t iterations;
     uGnssTransportType_t transportTypes[U_GNSS_TRANSPORT_MAX_NUM];
     uDeviceHandle_t intermediateHandle = NULL;
