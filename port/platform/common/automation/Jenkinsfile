@@ -21,9 +21,9 @@ default_build_sub_dir = "build"
 // tests running forever or a board getting into a boot-loop
 timeout_overall_seconds = 60 * 60 * 12
 timeout_checkout_seconds = 60 * 5
-timeout_build_seconds = 60 * 20 // Long because on first run tools may have to be installed
+timeout_build_seconds = 60 * 30 // Long because on first run tools may have to be installed
 timeout_power_up_seconds = 60
-timeout_flash_seconds = 60 * 20 // Long because on first run tools may have to be installed
+timeout_flash_seconds = 60 * 30 // Long because on first run tools may have to be installed
 timeout_test_seconds = 60 * 60
 check_instance_max = 9
 dut_start_time_seconds = 10

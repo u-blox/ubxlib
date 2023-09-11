@@ -19,4 +19,7 @@ set(COMPONENTS "driver" "esptool_py" "unity" "ubxlib" "main" "ubxlib_runner" "he
 set(TEST_COMPONENTS "replace-me"  CACHE STRING "Component to test")
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
+# Warnings as errors, while we're testing
+idf_build_set_property(COMPILE_OPTIONS "-Werror" APPEND)
+
 project(ubxlib)
