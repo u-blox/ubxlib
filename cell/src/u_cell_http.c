@@ -101,7 +101,7 @@
 /** The stack size for the task in which an asynchronous callback
  * will run; shouldn't need much.
  */
-# define U_CELL_HTTP_CALLBACK_TASK_STACK_SIZE_BYTES 2304
+# define U_CELL_HTTP_CALLBACK_TASK_STACK_SIZE_BYTES 2560
 #endif
 
 #ifndef U_CELL_HTTP_CALLBACK_TASK_PRIORITY

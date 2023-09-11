@@ -379,7 +379,7 @@ extern "C" {
  * or STM32F4 and more again in the version pre-built for
  * Arduino/PlatformIO.
  */
-# define U_AT_CLIENT_CALLBACK_TASK_STACK_SIZE_BYTES 2100
+# define U_AT_CLIENT_CALLBACK_TASK_STACK_SIZE_BYTES 2304
 #endif
 
 #ifndef U_AT_CLIENT_CALLBACK_TASK_PRIORITY
