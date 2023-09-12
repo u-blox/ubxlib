@@ -165,13 +165,13 @@ int32_t uGnssPosGet(uDeviceHandle_t gnssHandle,
  * with any transport, however see uGnssPosGetStreamedStart() if you want
  * streamed position.
  *
- * Should you wish to cancel a request, or start a new request without
- * waiting for the answer to the previous request, then you must call
- * uGnssPosGetStop() first (otherwise #U_ERROR_COMMON_NO_MEMORY will
- * be returned).  uGnssPosGetStart() creates a mutex for thread-safety
- * which remains in memory until the GNSS API is deinitialised; should
- * you wish to free the memory occupied by the mutex then calling
- * uGnssPosGetStop() will also do that.
+ * Should you wish to cancel a request, call uGnssPosGetStop().  If
+ * uGnssPosGetStart() is called again before position has been established,
+ * the previous attempt will be stopped and a new one started.
+ * uGnssPosGetStart() creates a mutex for thread-safety which remains
+ * in memory until the GNSS API is deinitialised; should you wish to free
+ * the memory occupied by the mutex then calling uGnssPosGetStop() will
+ * also do that.
  *
  * @param gnssHandle     the handle of the GNSS instance to use.
  * @param[in] pCallback  a callback that will be called when a fix has been

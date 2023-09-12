@@ -472,6 +472,9 @@ int32_t uGnssPosGetStart(uDeviceHandle_t gnssHandle,
         pInstance = pUGnssPrivateGetInstance(gnssHandle);
         if ((pInstance != NULL) && (pCallback != NULL)) {
             errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
+            if (pInstance->posTaskFlags & U_GNSS_POS_TASK_FLAG_HAS_RUN) {
+                uGnssPrivateCleanUpPosTask(pInstance);
+            }
             if (pInstance->posTaskFlags == 0) {
                 errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
                 // Create a mutex to allow us to monitor whether the
