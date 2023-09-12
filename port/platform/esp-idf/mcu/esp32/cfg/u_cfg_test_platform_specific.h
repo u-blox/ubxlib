@@ -86,7 +86,7 @@
 
 /** The stack size to use for the test task created during OS testing.
  */
-#define U_CFG_TEST_OS_TASK_STACK_SIZE_BYTES 1782
+#define U_CFG_TEST_OS_TASK_STACK_SIZE_BYTES 2048
 
 /** The task priority to use for the task created during OS
  * testing: make sure that the priority of the task RUNNING
