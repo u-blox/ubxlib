@@ -119,7 +119,7 @@ typedef struct {
 /** Table to convert U_GNSS_RRLP_MODE_MEASxxx into a message class
  * of UBX-RXM-MEASxxx.
  */
-int32_t gRrlpModeToUbxRxmMessageClass[] = {
+static const int32_t gRrlpModeToUbxRxmMessageClass[] = {
     0x14, // UBX-RXM-MEASX
     0x86, // UBX_RXM_MEAS50
     0x84, // UBX_RXM_MEAS20
@@ -592,11 +592,9 @@ int32_t uGnssPosGetStreamedStart(uDeviceHandle_t gnssHandle,
     uGnssPrivateMessageId_t ubxNavPvtMessageId =  {.type = U_GNSS_PROTOCOL_UBX,
                                                    .id.ubx = 0x0107
                                                   };
-    uint32_t keyId = U_GNSS_CFG_VAL_KEY_ID_MSGOUT_UBX_NAV_PVT_I2C_U1;
+    uint32_t keyId;
     uGnssCfgVal_t *pCfgVal = NULL;
-    uGnssCfgVal_t cfgVal = {.keyId = U_GNSS_CFG_VAL_KEY_ID_MSGOUT_UBX_NAV_PVT_I2C_U1,
-                            .value = 1
-                           };
+    uGnssCfgVal_t cfgVal;
 #ifdef U_CFG_SARA_R5_M8_WORKAROUND
     uint8_t message[4]; // Room for the body of a UBX-CFG-ANT message
 #endif
@@ -610,6 +608,11 @@ int32_t uGnssPosGetStreamedStart(uDeviceHandle_t gnssHandle,
         if ((pInstance != NULL) && (pCallback != NULL) && (rateMs != 0)) {
             errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
             if (uGnssPrivateGetStreamType(pInstance->transportType) >= 0) {
+                // The keyId for the msgout rates is port dependent but, neatly,
+                // it is always the I2C value plus the port number (uGnssPort_t)
+                keyId = U_GNSS_CFG_VAL_KEY_ID_MSGOUT_UBX_NAV_PVT_I2C_U1 + pInstance->portNumber;
+                cfgVal.keyId = keyId;
+                cfgVal.value = 1;
                 errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
                 if (pInstance->pStreamedPosition == NULL) {
                     // Malloc memory to copy the parameters into:
