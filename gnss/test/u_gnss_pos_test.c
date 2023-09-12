@@ -104,10 +104,21 @@
  * -------------------------------------------------------------- */
 
 #ifndef U_GNSS_POS_TEST_REPEATS
-/** How many times to repeat the body of the gnssPosPos test
- * (i.e. it will be run this number of times + 1).
+/** How many times to repeat the body of the gnssPosPos() test
+ * tests (i.e. it will be run this number of times + 1).
  */
 # define U_GNSS_POS_TEST_REPEATS 2
+#endif
+
+#ifndef U_GNSS_POS_TEST_STREAMED_REPEATS
+/** How many times to repeat the body of the gnssPosStreamed() test
+ * (i.e. it will be run this number of times + 1).  While it would be
+ * nice if this were greater than 0, the problem is that the high
+ * message rate we use in the test hammers the interface to the GNSS
+ * device and control messages can get stuck behind a slew of location
+ * messages, leading to timeouts and test failues.
+ */
+# define U_GNSS_POS_TEST_STREAMED_REPEATS 0
 #endif
 
 #ifndef U_GNSS_POS_TEST_TIMEOUT_SECONDS
@@ -734,7 +745,7 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosStreamed")
             if (gMsgRate < 0) {
                 gMsgRate = 0;
                 if (uGnssCfgValGet(gnssHandle,
-                                   U_GNSS_CFG_VAL_KEY_ID_MSGOUT_UBX_NAV_PVT_I2C_U1,
+                                   U_GNSS_CFG_VAL_KEY_ID_MSGOUT_UBX_NAV_PVT_I2C_U1 + uGnssGetPortNumber(gnssHandle),
                                    (void *) &gMsgRate, sizeof(gMsgRate),
                                    U_GNSS_CFG_VAL_LAYER_RAM) != 0) {
                     gMsgRate = -1;
@@ -746,67 +757,80 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosStreamed")
             // Switch off message printing as we can't afford the time
             uGnssSetUbxMessagePrint(gnssHandle, false);
 
-            gErrorCode = 0xFFFFFFFF;
-            startTimeMs = uPortGetTickTimeMs();
-            gStopTimeMs = startTimeMs + U_GNSS_POS_TEST_TIMEOUT_SECONDS * 1000;
-            U_PORT_TEST_ASSERT(uGnssPosGetStreamedStart(gnssHandle,
-                                                        U_GNSS_POS_TEST_STREAMED_RATE_MS,
-                                                        posCallback) == 0);
-            U_TEST_PRINT_LINE("waiting up to %d second(s) for first valid result from streamed API...",
-                              U_GNSS_POS_TEST_TIMEOUT_SECONDS);
-            while ((gErrorCode != 0) && (uPortGetTickTimeMs() < gStopTimeMs)) {
-                uPortTaskBlock(1000);
+            // Do this a few times so that we can check if calling uGnssPosGetStreamedStart()
+            // without having called uGnssPosGetStreamedStop() etc. is a problem.
+            U_TEST_PRINT_LINE("testing streamed position API %d time(s).",
+                              U_GNSS_POS_TEST_STREAMED_REPEATS + 1);
+            for (size_t z = 0; z < U_GNSS_POS_TEST_STREAMED_REPEATS + 1; z++) {
+                if (z == 0) {
+                    // Check that calling stop first causes no problem
+                    uGnssPosGetStreamedStop(gnssHandle);
+                }
+                gErrorCode = 0xFFFFFFFF;
+                startTimeMs = uPortGetTickTimeMs();
+                gStopTimeMs = startTimeMs + U_GNSS_POS_TEST_TIMEOUT_SECONDS * 1000;
+                y = uGnssPosGetStreamedStart(gnssHandle, U_GNSS_POS_TEST_STREAMED_RATE_MS, posCallback);
+                U_TEST_PRINT_LINE_X("uGnssPosGetStreamedStart() returned %d.", z + 1, y);
+                U_PORT_TEST_ASSERT(y == 0);
+                U_TEST_PRINT_LINE_X("waiting up to %d second(s) for first valid result from streamed API...",
+                                    z + 1, U_GNSS_POS_TEST_TIMEOUT_SECONDS);
+                while ((gErrorCode != 0) && (uPortGetTickTimeMs() < gStopTimeMs)) {
+                    uPortTaskBlock(1000);
+                }
+
+                if (gErrorCode == 0) {
+                    posTimeMs = uPortGetTickTimeMs();
+                    U_TEST_PRINT_LINE_X("waiting %d second(s) for rate change to take effect...",
+                                        z + 1, U_GNSS_POS_TEST_STREAMED_WAIT_SECONDS);
+                    uPortTaskBlock(1000 * U_GNSS_POS_TEST_STREAMED_WAIT_SECONDS);
+                    // gGoodPosCount should now be building up
+                    gGoodPosCount = 0;
+                    U_TEST_PRINT_LINE_X("waiting %d second(s) for streamed position calls to accumulate...",
+                                        z + 1, U_GNSS_POS_TEST_STREAMED_SECONDS);
+                    uPortTaskBlock(1000 * U_GNSS_POS_TEST_STREAMED_SECONDS);
+                    // See what we're doing again now
+                    uGnssSetUbxMessagePrint(gnssHandle, true);
+
+                    U_PORT_TEST_ASSERT(gGnssHandle == gnssHandle);
+                    U_TEST_PRINT_LINE_X("streamed position callback received error code %d.", z + 1, gErrorCode);
+                    U_PORT_TEST_ASSERT(gErrorCode == 0);
+                    if (gGoodPosCount > 0) {
+                        U_TEST_PRINT_LINE_X("position establishment took %d second(s).", z + 1,
+                                            (posTimeMs - startTimeMs) / 1000);
+                        U_TEST_PRINT_LINE_X("the streamed position callback was called with a good position %d time(s)"
+                                            " in %d second(s), average every %d millisecond(s) (expected every"
+                                            " %d milliseconds).", z + 1,
+                                            gGoodPosCount, U_GNSS_POS_TEST_STREAMED_SECONDS,
+                                            (U_GNSS_POS_TEST_STREAMED_SECONDS * 1000) / gGoodPosCount,
+                                            U_GNSS_POS_TEST_STREAMED_RATE_MS);
+                        U_PORT_TEST_ASSERT(gGoodPosCount >= (((U_GNSS_POS_TEST_STREAMED_SECONDS * 1000) /
+                                                              U_GNSS_POS_TEST_STREAMED_RATE_MS) *
+                                                             U_GNSS_POS_TEST_STREAMED_RATE_MARGIN_PERCENT) / 100);
+                        prefix[0] = latLongToBits(gLatitudeX1e7, &(whole[0]), &(fraction[0]));
+                        prefix[1] = latLongToBits(gLongitudeX1e7, &(whole[1]), &(fraction[1]));
+                        U_TEST_PRINT_LINE_X("location %c%d.%07d/%c%d.%07d (radius %d metre(s)), %d metre(s) high,"
+                                            " moving at %d metre(s)/second, %d satellite(s) visible, time %d.", z + 1,
+                                            prefix[0], whole[0], fraction[0], prefix[1], whole[1], fraction[1],
+                                            gRadiusMillimetres / 1000, gAltitudeMillimetres / 1000,
+                                            gSpeedMillimetresPerSecond / 1000, gSvs, (int32_t) gTimeUtc);
+                        U_TEST_PRINT_LINE_X("paste this into a browser https://maps.google.com/?q=%c%d.%07d,%c%d.%07d",
+                                            z + 1, prefix[0], whole[0], fraction[0], prefix[1], whole[1], fraction[1]);
+
+                        U_PORT_TEST_ASSERT(gLatitudeX1e7 > INT_MIN);
+                        U_PORT_TEST_ASSERT(gLongitudeX1e7 > INT_MIN);
+                        // Don't test altitude as we may only have a 2D fix
+                        U_PORT_TEST_ASSERT(gRadiusMillimetres > INT_MIN);
+                        U_PORT_TEST_ASSERT(gSpeedMillimetresPerSecond > INT_MIN);
+                        // Inertial fixes will be reported with no satellites, hence >= 0
+                        U_PORT_TEST_ASSERT(gSvs >= 0);
+                        U_PORT_TEST_ASSERT(gTimeUtc > 0);
+                    }
+                }
+                // Don't, stop, me, now.
             }
 
-            if (gErrorCode == 0) {
-                posTimeMs = uPortGetTickTimeMs();
-                U_TEST_PRINT_LINE("waiting %d second(s) for rate change to take effect...",
-                                  U_GNSS_POS_TEST_STREAMED_WAIT_SECONDS);
-                uPortTaskBlock(1000 * U_GNSS_POS_TEST_STREAMED_WAIT_SECONDS);
-                // gGoodPosCount should now be building up
-                gGoodPosCount = 0;
-                U_TEST_PRINT_LINE("waiting %d second(s) for streamed position calls to accumulate...",
-                                  U_GNSS_POS_TEST_STREAMED_SECONDS);
-                uPortTaskBlock(1000 * U_GNSS_POS_TEST_STREAMED_SECONDS);
-            }
+            // Now stop
             uGnssPosGetStreamedStop(gnssHandle);
-
-            // See what we're doing again now
-            uGnssSetUbxMessagePrint(gnssHandle, true);
-
-            U_PORT_TEST_ASSERT(gGnssHandle == gnssHandle);
-            U_TEST_PRINT_LINE("streamed position callback received error code %d.", gErrorCode);
-            U_PORT_TEST_ASSERT(gErrorCode == 0);
-            if (gGoodPosCount > 0) {
-                U_TEST_PRINT_LINE("position establishment took %d second(s).", (posTimeMs - startTimeMs) / 1000);
-                U_TEST_PRINT_LINE("the streamed position callback was called with a good position %d time(s)"
-                                  " in %d second(s), average every %d millisecond(s) (expected every"
-                                  " %d milliseconds).",
-                                  gGoodPosCount, U_GNSS_POS_TEST_STREAMED_SECONDS,
-                                  (U_GNSS_POS_TEST_STREAMED_SECONDS * 1000) / gGoodPosCount,
-                                  U_GNSS_POS_TEST_STREAMED_RATE_MS);
-                U_PORT_TEST_ASSERT(gGoodPosCount >= (((U_GNSS_POS_TEST_STREAMED_SECONDS * 1000) /
-                                                      U_GNSS_POS_TEST_STREAMED_RATE_MS) *
-                                                     U_GNSS_POS_TEST_STREAMED_RATE_MARGIN_PERCENT) / 100);
-                prefix[0] = latLongToBits(gLatitudeX1e7, &(whole[0]), &(fraction[0]));
-                prefix[1] = latLongToBits(gLongitudeX1e7, &(whole[1]), &(fraction[1]));
-                U_TEST_PRINT_LINE("location %c%d.%07d/%c%d.%07d (radius %d metre(s)), %d metre(s) high,"
-                                  " moving at %d metre(s)/second, %d satellite(s) visible, time %d.",
-                                  prefix[0], whole[0], fraction[0], prefix[1], whole[1], fraction[1],
-                                  gRadiusMillimetres / 1000, gAltitudeMillimetres / 1000,
-                                  gSpeedMillimetresPerSecond / 1000, gSvs, (int32_t) gTimeUtc);
-                U_TEST_PRINT_LINE("paste this into a browser https://maps.google.com/?q=%c%d.%07d,%c%d.%07d",
-                                  prefix[0], whole[0], fraction[0], prefix[1], whole[1], fraction[1]);
-
-                U_PORT_TEST_ASSERT(gLatitudeX1e7 > INT_MIN);
-                U_PORT_TEST_ASSERT(gLongitudeX1e7 > INT_MIN);
-                // Don't test altitude as we may only have a 2D fix
-                U_PORT_TEST_ASSERT(gRadiusMillimetres > INT_MIN);
-                U_PORT_TEST_ASSERT(gSpeedMillimetresPerSecond > INT_MIN);
-                // Inertial fixes will be reported with no satellites, hence >= 0
-                U_PORT_TEST_ASSERT(gSvs >= 0);
-                U_PORT_TEST_ASSERT(gTimeUtc > 0);
-            }
 
             U_TEST_PRINT_LINE("waiting %d second(s) for things to calm down and then flushing...",
                               U_GNSS_POS_TEST_STREAMED_WAIT_SECONDS);
@@ -834,7 +858,7 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosStreamed")
             if (y < 0) {
                 y = 0;
                 U_PORT_TEST_ASSERT(uGnssCfgValGet(gnssHandle,
-                                                  U_GNSS_CFG_VAL_KEY_ID_MSGOUT_UBX_NAV_PVT_I2C_U1,
+                                                  U_GNSS_CFG_VAL_KEY_ID_MSGOUT_UBX_NAV_PVT_I2C_U1 + uGnssGetPortNumber(gnssHandle),
                                                   (void *) &y, sizeof(y),
                                                   U_GNSS_CFG_VAL_LAYER_RAM) == 0);
             }

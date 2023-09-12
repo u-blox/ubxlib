@@ -586,8 +586,8 @@ int32_t uGnssPosGetStreamedStart(uDeviceHandle_t gnssHandle,
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uGnssPrivateInstance_t *pInstance;
     uGnssPrivateStreamedPosition_t *pStreamedPosition;
-    int32_t measurementPeriodMs;
-    int32_t navigationCount;
+    int32_t measurementPeriodMs = -1;
+    int32_t navigationCount = -1;
     int32_t messageRate = -1;
     uGnssPrivateMessageId_t ubxNavPvtMessageId =  {.type = U_GNSS_PROTOCOL_UBX,
                                                    .id.ubx = 0x0107
@@ -613,111 +613,118 @@ int32_t uGnssPosGetStreamedStart(uDeviceHandle_t gnssHandle,
                 keyId = U_GNSS_CFG_VAL_KEY_ID_MSGOUT_UBX_NAV_PVT_I2C_U1 + pInstance->portNumber;
                 cfgVal.keyId = keyId;
                 cfgVal.value = 1;
+                bool temp = pInstance->printUbxMessages;
+                pInstance->printUbxMessages = true;
+                pStreamedPosition = pInstance->pStreamedPosition;
+                if (pStreamedPosition != NULL) {
+                    // Stop the previous streamed position
+                    uGnssPrivateCleanUpStreamedPos(pInstance);
+                }
+                // Malloc memory to copy the parameters into:
+                // this memory will be free'd when
+                // uGnssPosGetStreamedStop() is called
                 errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
-                if (pInstance->pStreamedPosition == NULL) {
-                    // Malloc memory to copy the parameters into:
-                    // this memory will be free'd when
-                    // uGnssPosGetStreamedStop() is called
-                    pStreamedPosition = (uGnssPrivateStreamedPosition_t *) pUPortMalloc(sizeof(*pStreamedPosition));
-                    if (pStreamedPosition != NULL) {
-                        pInstance->pStreamedPosition = pStreamedPosition;
-                        memset(pStreamedPosition, 0, sizeof(*pStreamedPosition));
-                        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-                        // Put defaults in place so that we know
-                        // to change things back only if necessary
-                        pStreamedPosition->measurementPeriodMs = -1;
-                        pStreamedPosition->navigationCount = -1;
-                        pStreamedPosition->messageRate = -1;
-                        pStreamedPosition->asyncHandle = -1;
-                        pStreamedPosition->pCallback = pCallback;
-                        if (rateMs >= 0) {
-                            // Get the existing measurement/navigation rate
-                            // and, if it is not rateMs, set it to rateMs
-                            if (uGnssPrivateGetRate(pInstance,
-                                                    &measurementPeriodMs,
-                                                    &navigationCount,
-                                                    NULL) != rateMs) {
-                                // Set the measurement rate, with a navigation count of 1
-                                // and leaving the time system unchanged
-                                errorCode = uGnssPrivateSetRate(pInstance, rateMs, 1,
-                                                                U_GNSS_TIME_SYSTEM_NONE);
-                                if (errorCode == 0) {
-                                    pStreamedPosition->measurementPeriodMs = measurementPeriodMs;
-                                    pStreamedPosition->navigationCount = navigationCount;
-                                }
+                pStreamedPosition = (uGnssPrivateStreamedPosition_t *) pUPortMalloc(sizeof(*pStreamedPosition));
+                if (pStreamedPosition != NULL) {
+                    memset(pStreamedPosition, 0, sizeof(*pStreamedPosition));
+                    // Put defaults in place so that we know
+                    // to change things back only if necessary
+                    pStreamedPosition->measurementPeriodMs = -1;
+                    pStreamedPosition->navigationCount = -1;
+                    pStreamedPosition->messageRate = -1;
+                    pStreamedPosition->asyncHandle = -1;
+                    pStreamedPosition->pCallback = pCallback;
+                    pInstance->pStreamedPosition = pStreamedPosition;
+                    errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                    if (rateMs >= 0) {
+                        // Get the existing measurement/navigation rate
+                        // and, if it is not rateMs, set it to rateMs
+                        if (uGnssPrivateGetRate(pInstance,
+                                                &measurementPeriodMs,
+                                                &navigationCount,
+                                                NULL) != rateMs) {
+                            // Set the measurement rate, with a navigation count of 1
+                            // and leaving the time system unchanged
+                            errorCode = uGnssPrivateSetRate(pInstance, rateMs, 1,
+                                                            U_GNSS_TIME_SYSTEM_NONE);
+                            if (errorCode == 0) {
+                                pStreamedPosition->measurementPeriodMs = measurementPeriodMs;
+                                pStreamedPosition->navigationCount = navigationCount;
                             }
-                        }
-                        if (errorCode == 0) {
-                            // Make sure that the UBX-NAV-PVT message
-                            // is enabled at once per measurement
-                            if (U_GNSS_PRIVATE_HAS(pInstance->pModule,
-                                                   U_GNSS_PRIVATE_FEATURE_OLD_CFG_API)) {
-                                messageRate = uGnssPrivateGetMsgRate(pInstance,
-                                                                     &ubxNavPvtMessageId);
-                                if (messageRate != 1) {
-                                    errorCode = uGnssPrivateSetMsgRate(pInstance,
-                                                                       &ubxNavPvtMessageId, 1);
-                                    if (errorCode == 0) {
-                                        pStreamedPosition->messageRate = messageRate;
-                                    }
-                                }
-                            } else {
-                                if (uGnssCfgPrivateValGetListAlloc(pInstance,
-                                                                   &keyId, 1,
-                                                                   &pCfgVal,
-                                                                   U_GNSS_CFG_VAL_LAYER_RAM) == 1) {
-                                    messageRate = (int32_t) pCfgVal->value;
-                                    uPortFree(pCfgVal);
-                                }
-                                if (messageRate != (int32_t) cfgVal.value) {
-                                    errorCode = uGnssCfgPrivateValSetList(pInstance, &cfgVal, 1,
-                                                                          U_GNSS_CFG_VAL_TRANSACTION_NONE,
-                                                                          U_GNSS_CFG_LAYERS_SET);
-                                    if (errorCode == 0) {
-                                        pStreamedPosition->messageRate = messageRate;
-                                    }
-                                }
-                            }
-                        }
-                        if (errorCode == 0) {
-#ifdef U_CFG_SARA_R5_M8_WORKAROUND
-                            if (uGnssPrivateGetIntermediateAtHandle(pInstance) != NULL) {
-                                // Temporary change: on prototype versions of the
-                                // SARA-R510M8S module (production week (printed on the
-                                // module label, upper right) earlier than 20/27)
-                                // the LNA in the GNSS chip is not automatically switched
-                                // on by the firmware in the cellular module, so we need
-                                // to switch it on ourselves by sending UBX-CFG-ANT
-                                // with contents 02000f039
-                                message[0] = 0x02;
-                                message[1] = 0;
-                                message[2] = 0xf0;
-                                message[3] = 0x39;
-                                uGnssPrivateSendUbxMessage(pInstance, 0x06, 0x13,
-                                                           (const char *) message, 4);
-                            }
-#endif
-                            // Start a message received for the UBX-NAV-PVT message,
-                            // which will ultimately call pCallback
-                            errorCode = uGnssMsgPrivateReceiveStart(pInstance,
-                                                                    &ubxNavPvtMessageId,
-                                                                    messageCallback,
-                                                                    pInstance);
-                            if (errorCode >= 0) {
-                                // And we're off
-                                pStreamedPosition->gnssHandle = gnssHandle;
-                                pStreamedPosition->asyncHandle = errorCode;
-                            } else {
-                                // If we couldn't create the asynchronous
-                                // message receiver, clean up
-                                uGnssPrivateCleanUpStreamedPos(pInstance);
-                            }
-                        } else {
-                            // If we couldn't set the rate, clean up
-                            uGnssPrivateCleanUpStreamedPos(pInstance);
                         }
                     }
+                    if (errorCode == 0) {
+                        // Make sure that the UBX-NAV-PVT message
+                        // is enabled at once per measurement
+                        if (U_GNSS_PRIVATE_HAS(pInstance->pModule,
+                                               U_GNSS_PRIVATE_FEATURE_OLD_CFG_API)) {
+                            messageRate = uGnssPrivateGetMsgRate(pInstance,
+                                                                 &ubxNavPvtMessageId);
+                            if (messageRate != 1) {
+                                errorCode = uGnssPrivateSetMsgRate(pInstance,
+                                                                   &ubxNavPvtMessageId, 1);
+                                if (errorCode == 0) {
+                                    pStreamedPosition->messageRate = messageRate;
+                                }
+                            }
+                        } else {
+                            if (uGnssCfgPrivateValGetListAlloc(pInstance,
+                                                               &keyId, 1,
+                                                               &pCfgVal,
+                                                               U_GNSS_CFG_VAL_LAYER_RAM) == 1) {
+                                messageRate = (int32_t) pCfgVal->value;
+                                uPortFree(pCfgVal);
+                            }
+                            if (messageRate != (int32_t) cfgVal.value) {
+                                errorCode = uGnssCfgPrivateValSetList(pInstance, &cfgVal, 1,
+                                                                      U_GNSS_CFG_VAL_TRANSACTION_NONE,
+                                                                      U_GNSS_CFG_LAYERS_SET);
+                                if (errorCode == 0) {
+                                    pStreamedPosition->messageRate = messageRate;
+                                }
+                            }
+                        }
+                    }
+                    if (errorCode == 0) {
+#ifdef U_CFG_SARA_R5_M8_WORKAROUND
+                        if (uGnssPrivateGetIntermediateAtHandle(pInstance) != NULL) {
+                            // Temporary change: on prototype versions of the
+                            // SARA-R510M8S module (production week (printed on the
+                            // module label, upper right) earlier than 20/27)
+                            // the LNA in the GNSS chip is not automatically switched
+                            // on by the firmware in the cellular module, so we need
+                            // to switch it on ourselves by sending UBX-CFG-ANT
+                            // with contents 02000f039
+                            message[0] = 0x02;
+                            message[1] = 0;
+                            message[2] = 0xf0;
+                            message[3] = 0x39;
+                            uGnssPrivateSendUbxMessage(pInstance, 0x06, 0x13,
+                                                       (const char *) message, 4);
+                        }
+#endif
+                        pInstance->printUbxMessages = temp;
+                        // Start a message received for the UBX-NAV-PVT message,
+                        // which will ultimately call pCallback
+                        errorCode = uGnssMsgPrivateReceiveStart(pInstance,
+                                                                &ubxNavPvtMessageId,
+                                                                messageCallback,
+                                                                pInstance);
+                        if (errorCode >= 0) {
+                            // And we're off
+                            pStreamedPosition->gnssHandle = gnssHandle;
+                            pStreamedPosition->asyncHandle = errorCode;
+                        } else {
+                            // If we couldn't create the asynchronous
+                            // message receiver, clean up
+                            uGnssPrivateCleanUpStreamedPos(pInstance);
+                        }
+                    } else {
+                        // If we couldn't set the rate, clean up
+                        uGnssPrivateCleanUpStreamedPos(pInstance);
+                    }
                 }
+                pInstance->printUbxMessages = temp;
             }
         }
     }

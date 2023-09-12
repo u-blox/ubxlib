@@ -1668,7 +1668,7 @@ void uGnssPrivateCleanUpStreamedPos(uGnssPrivateInstance_t *pInstance)
     uGnssPrivateMessageId_t privateMessageId =  {.type = U_GNSS_PROTOCOL_UBX,
                                                  .id.ubx = 0x0107
                                                 };
-    uGnssCfgVal_t cfgVal = {.keyId = U_GNSS_CFG_VAL_KEY_ID_MSGOUT_UBX_NAV_PVT_I2C_U1};
+    uGnssCfgVal_t cfgVal;
 
     if ((pInstance != NULL) && (pInstance->pStreamedPosition != NULL)) {
         pStreamedPosition = pInstance->pStreamedPosition;
@@ -1700,6 +1700,9 @@ void uGnssPrivateCleanUpStreamedPos(uGnssPrivateInstance_t *pInstance)
                                                &privateMessageId,
                                                pStreamedPosition->messageRate);
                 } else {
+                    // The keyId for the msgout rates is port dependent:
+                    // a base of the I2C value plus the port number (uGnssPort_t)
+                    cfgVal.keyId = U_GNSS_CFG_VAL_KEY_ID_MSGOUT_UBX_NAV_PVT_I2C_U1 + pInstance->portNumber;
                     cfgVal.value = pStreamedPosition->messageRate;
                     y = uGnssCfgPrivateValSetList(pInstance, &cfgVal, 1,
                                                   U_GNSS_CFG_VAL_TRANSACTION_NONE,

@@ -325,7 +325,8 @@ int32_t uGnssAdd(uGnssModuleType_t moduleType,
                             pInstance->portNumber = U_GNSS_PORT_SPI;
                         }
 #if defined(_WIN32) || (defined(__ZEPHYR__) && defined(CONFIG_UART_NATIVE_POSIX))
-                        // For Windows and Linux the GNSS-side connection is assumed to be USB
+                        // For Windows and Posix-Zephyr the GNSS-side connection is assumed to be USB
+                        // (for Linux, on a Raspberry Pi, it's not forced, just good 'ole UART)
                         pInstance->portNumber = 3;
 #endif
 #ifdef U_CFG_GNSS_PORT_NUMBER
@@ -815,6 +816,28 @@ int32_t uGnssGetRetries(uDeviceHandle_t gnssHandle)
     }
 
     return errorCodeOrRetries;
+}
+
+// Get the internal port number that we are using inside GNSS.
+int32_t uGnssGetPortNumber(uDeviceHandle_t gnssHandle)
+{
+    int32_t errorCodeOrPortNumber = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uGnssPrivateInstance_t *pInstance;
+
+    if (gUGnssPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
+
+        errorCodeOrPortNumber = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        pInstance = pUGnssPrivateGetInstance(gnssHandle);
+        if (pInstance != NULL) {
+            errorCodeOrPortNumber = pInstance->portNumber;
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
+    }
+
+    return errorCodeOrPortNumber;
 }
 
 // End of file

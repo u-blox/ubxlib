@@ -211,7 +211,7 @@ void uGnssPosGetStop(uDeviceHandle_t gnssHandle);
 /** Get position readings streamed constantly to a callback; this will
  * only work with one of the streamed transports (for instance UART, I2C,
  * SPI or Virtual Serial), it will NOT work with AT-command-based transport
- * (#U_GNSS_TRANSPORT_AT).  uGnssPosGetStart() allocates some storage
+ * (#U_GNSS_TRANSPORT_AT).  uGnssPosGetStreamedStart() allocates some storage
  * which remains in memory until the GNSS API is deinitialised; should
  * you wish to free that memory then calling uGnssPosGetStreamedStop()
  * will also do that.
@@ -226,7 +226,10 @@ void uGnssPosGetStop(uDeviceHandle_t gnssHandle);
  * Note: this uses one of the #U_GNSS_MSG_RECEIVER_MAX_NUM message
  * handles from the uGnssMsg API.
  *
- * To cancel streamed position, call uGnssPosGetStreamedStop().
+ * To cancel streamed position, call uGnssPosGetStreamedStop().  If
+ * uGnssPosGetStreamedStart() is called again without calling
+ * uGnssPosGetStreamedStop() first, the new settings will be applied (i.e.
+ * as if uGnssPosGetStreamedStop() had been called first).
  *
  * @param gnssHandle       the handle of the GNSS instance to use.
  * @param rateMs           the desired time between position fixes in
@@ -235,7 +238,7 @@ void uGnssPosGetStop(uDeviceHandle_t gnssHandle);
  *                         the navigation count (i.e. the number of measurements
  *                         required to make a navigation solution) will
  *                         be 1.  If you want to use a navigation count
- *                         greater 1 one you may set that by calling
+ *                         greater than 1 you may set that by calling
  *                         uGnssCfgSetRate() before this function and
  *                         then setting rateMs here to -1, which will leave
  *                         the rate settings unchanged.
@@ -245,7 +248,7 @@ void uGnssPosGetStop(uDeviceHandle_t gnssHandle);
  *                         Note: don't call back into this API from your
  *                         pCallback, it could lead to recursion.
  *                         IMPORTANT: you should check the value of
- *                         errorCode before treating rhe parameters:
+ *                         errorCode before treating the parameters:
  *                         a value of zero means that a position fix
  *                         has been achieved but a value of
  *                         #U_ERROR_COMMON_TIMEOUT may be used to

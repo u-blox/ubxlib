@@ -219,18 +219,46 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssAddStream")
         case U_GNSS_TRANSPORT_UART:
             U_PORT_TEST_ASSERT(transportType == U_GNSS_TRANSPORT_UART);
             U_PORT_TEST_ASSERT(transportHandle.uart == transportHandleA.uart);
+#if defined(_WIN32) || (defined(__ZEPHYR__) && defined(CONFIG_UART_NATIVE_POSIX))
+            U_PORT_TEST_ASSERT(uGnssGetPortNumber(gnssHandleA) == U_GNSS_PORT_USB);
+#else
+# ifndef U_CFG_GNSS_PORT_NUMBER
+            U_PORT_TEST_ASSERT(uGnssGetPortNumber(gnssHandleA) == U_GNSS_PORT_UART1);
+# else
+            U_PORT_TEST_ASSERT(uGnssGetPortNumber(gnssHandleA) == U_CFG_GNSS_PORT_NUMBER);
+# endif
+#endif
             break;
         case U_GNSS_TRANSPORT_UART_2:
             U_PORT_TEST_ASSERT(transportType == U_GNSS_TRANSPORT_UART_2);
             U_PORT_TEST_ASSERT(transportHandle.uart == transportHandleA.uart);
+#if defined(_WIN32) || (defined(__ZEPHYR__) && defined(CONFIG_UART_NATIVE_POSIX))
+            U_PORT_TEST_ASSERT(uGnssGetPortNumber(gnssHandleA) == U_GNSS_PORT_USB);
+#else
+# ifndef U_CFG_GNSS_PORT_NUMBER
+            U_PORT_TEST_ASSERT(uGnssGetPortNumber(gnssHandleA) == U_GNSS_PORT_UART2);
+# else
+            U_PORT_TEST_ASSERT(uGnssGetPortNumber(gnssHandleA) == U_CFG_GNSS_PORT_NUMBER);
+# endif
+#endif
             break;
         case U_GNSS_TRANSPORT_I2C:
             U_PORT_TEST_ASSERT(transportType == U_GNSS_TRANSPORT_I2C);
             U_PORT_TEST_ASSERT(transportHandle.i2c == transportHandleA.i2c);
+#ifndef U_CFG_GNSS_PORT_NUMBER
+            U_PORT_TEST_ASSERT(uGnssGetPortNumber(gnssHandleA) == U_GNSS_PORT_I2C);
+#else
+            U_PORT_TEST_ASSERT(uGnssGetPortNumber(gnssHandleA) == U_CFG_GNSS_PORT_NUMBER);
+#endif
             break;
         case U_GNSS_TRANSPORT_SPI:
             U_PORT_TEST_ASSERT(transportType == U_GNSS_TRANSPORT_SPI);
             U_PORT_TEST_ASSERT(transportHandle.spi == transportHandleA.spi);
+#ifndef U_CFG_GNSS_PORT_NUMBER
+            U_PORT_TEST_ASSERT(uGnssGetPortNumber(gnssHandleA) == U_GNSS_PORT_SPI);
+#else
+            U_PORT_TEST_ASSERT(uGnssGetPortNumber(gnssHandleA) == U_CFG_GNSS_PORT_NUMBER);
+#endif
             break;
         default:
             U_PORT_TEST_ASSERT(false);
@@ -334,18 +362,46 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssAddStream")
         case U_GNSS_TRANSPORT_UART:
             U_PORT_TEST_ASSERT(transportType == U_GNSS_TRANSPORT_UART);
             U_PORT_TEST_ASSERT(transportHandle.uart == transportHandleA.uart);
+#if defined(_WIN32) || (defined(__ZEPHYR__) && defined(CONFIG_UART_NATIVE_POSIX))
+            U_PORT_TEST_ASSERT(uGnssGetPortNumber(gnssHandleA) == U_GNSS_PORT_USB);
+#else
+# ifndef U_CFG_GNSS_PORT_NUMBER
+            U_PORT_TEST_ASSERT(uGnssGetPortNumber(gnssHandleA) == U_GNSS_PORT_UART1);
+# else
+            U_PORT_TEST_ASSERT(uGnssGetPortNumber(gnssHandleA) == U_CFG_GNSS_PORT_NUMBER);
+# endif
+#endif
             break;
         case U_GNSS_TRANSPORT_UART_2:
             U_PORT_TEST_ASSERT(transportType == U_GNSS_TRANSPORT_UART_2);
             U_PORT_TEST_ASSERT(transportHandle.uart == transportHandleA.uart);
+#if defined(_WIN32) || (defined(__ZEPHYR__) && defined(CONFIG_UART_NATIVE_POSIX))
+            U_PORT_TEST_ASSERT(uGnssGetPortNumber(gnssHandleA) == U_GNSS_PORT_USB);
+#else
+# ifndef U_CFG_GNSS_PORT_NUMBER
+            U_PORT_TEST_ASSERT(uGnssGetPortNumber(gnssHandleA) == U_GNSS_PORT_UART2);
+# else
+            U_PORT_TEST_ASSERT(uGnssGetPortNumber(gnssHandleA) == U_CFG_GNSS_PORT_NUMBER);
+# endif
+#endif
             break;
         case U_GNSS_TRANSPORT_I2C:
             U_PORT_TEST_ASSERT(transportType == U_GNSS_TRANSPORT_I2C);
             U_PORT_TEST_ASSERT(transportHandle.i2c == transportHandleA.i2c);
+#ifndef U_CFG_GNSS_PORT_NUMBER
+            U_PORT_TEST_ASSERT(uGnssGetPortNumber(gnssHandleA) == U_GNSS_PORT_I2C);
+#else
+            U_PORT_TEST_ASSERT(uGnssGetPortNumber(gnssHandleA) == U_CFG_GNSS_PORT_NUMBER);
+#endif
             break;
         case U_GNSS_TRANSPORT_SPI:
             U_PORT_TEST_ASSERT(transportType == U_GNSS_TRANSPORT_SPI);
             U_PORT_TEST_ASSERT(transportHandle.spi == transportHandleA.spi);
+#ifndef U_CFG_GNSS_PORT_NUMBER
+            U_PORT_TEST_ASSERT(uGnssGetPortNumber(gnssHandleA) == U_GNSS_PORT_SPI);
+#else
+            U_PORT_TEST_ASSERT(uGnssGetPortNumber(gnssHandleA) == U_CFG_GNSS_PORT_NUMBER);
+#endif
             break;
         default:
             U_PORT_TEST_ASSERT(false);

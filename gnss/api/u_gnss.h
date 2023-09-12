@@ -313,6 +313,21 @@ void uGnssSetRetries(uDeviceHandle_t gnssHandle, int32_t retries);
  */
 int32_t uGnssGetRetries(uDeviceHandle_t gnssHandle);
 
+/** Get the internal port number that we are using inside the
+ * GNSS device; this is dictated by the physical transport that
+ * is in use (NOT necessarily the #uGnssTransportType_t as, for
+ * instance, UART interfaces may be delivered as USB and Virtual
+ * Serial ports may be absolutely anything).  It may be useful to
+ * know this port number if you are using the uGnssCfgValXxx()
+ * functions to set or get a value which is dependent upon it
+ * (e.g. the one of the U_GNSS_CFG_VAL_KEY_ID_MSGOUT_XXX key IDs).
+ *
+ * @param gnssHandle  the handle of the GNSS instance.
+ * @return            on success the port number, else negative
+ *                    error code.
+ */
+int32_t uGnssGetPortNumber(uDeviceHandle_t gnssHandle);
+
 #ifdef __cplusplus
 }
 #endif
