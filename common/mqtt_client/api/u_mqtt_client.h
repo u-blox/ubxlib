@@ -292,13 +292,11 @@ int32_t uMqttClientDisconnect(const uMqttClientContext_t *pContext);
 bool uMqttClientIsConnected(const uMqttClientContext_t *pContext);
 
 /** Set a callback to be called when new messages are available to be
- * read; the callback may then call uMqttClientGetUnread() to get
- * the number of unread messages.  There is a single, static,
- * callback, hence a second call here will simple replace the previous
- * callback. Your callback will only be called when the number of
- * unread messages has increased.
+ * read.  There is a single, static, callback, hence a second call here
+ * will simple replace the previous callback. Your callback will only
+ * be called when the number of unread messages has increased.
  *
- * NOTE: it would be tempting to read a new unread message in your message
+ * IMPORTANT: it would be tempting to read a new unread message in your message
  * callback.  However, note that if your device has been out of coverage
  * while you are subscribed to an MQTT topic and then returns to coverage,
  * there could be a deluge of messages that land all at once.  Hence it is

@@ -237,6 +237,12 @@ static void messageIndicationCallback(int32_t numUnread, void *pParam)
 
     U_TEST_PRINT_LINE_MQTT("messageIndicationCallback() called, %d message(s) unread.", numUnread);
 
+    if (gpMqttContextA != NULL) {
+        // To prove that it is possible to do it, rather than for any
+        // practical reason, call back into the MQTT API here
+        U_PORT_TEST_ASSERT(uMqttClientGetUnread(gpMqttContextA) >= numUnread);
+    }
+
     *pNumUnread = numUnread;
 }
 

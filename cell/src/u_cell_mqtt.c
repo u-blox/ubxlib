@@ -289,6 +289,16 @@ typedef struct {
     bool mqttSn; /**< true if this is an MQTT-SN session, else false. */
 } uCellMqttContext_t;
 
+/** Structure to hold all of the data needed by messageIndicationCallback()
+ * so that we can call it in a thread-safe way without having to lock
+ * a mutex.
+ */
+typedef struct {
+    size_t numUnreadMessages;
+    void (*pCallback) (int32_t, void *);
+    void *pCallbackParam;
+} uCellMessageIndicationCallbackData_t;
+
 /* ----------------------------------------------------------------
  * VARIABLES
  * -------------------------------------------------------------- */
@@ -338,54 +348,59 @@ static int32_t getLastMqttErrorCode(const uCellPrivateInstance_t *pInstance)
 // A local "trampoline" for the message indication callback,
 // here so that it can call pMessageIndicationCallback
 // in a separate task.
-static void messageIndicationCallback(uAtClientHandle_t atHandle,
-                                      void *pParam)
+static void messageIndicationCallback(uAtClientHandle_t atHandle, void *pParam)
 {
-    //lint -e(507) Suppress size incompatibility due to the compiler
-    // we use for Linting being a 64 bit one where the pointer
-    // is 64 bit.
-    volatile uCellMqttContext_t *pContext = (volatile uCellMqttContext_t *) pParam;
+    uCellMessageIndicationCallbackData_t *pMessageIndicationCallbackData =
+        (uCellMessageIndicationCallbackData_t *) pParam;
 
     (void) atHandle;
 
-    // This task can lock the mutex to ensure we are thread-safe
-    // for the call below
-    U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
-
-    if ((pContext != NULL) && (pContext->pMessageIndicationCallback != NULL)) {
-        pContext->pMessageIndicationCallback((int32_t) pContext->numUnreadMessages,
-                                             pContext->pMessageIndicationCallbackParam);
+    // No need to lock any mutexes here: we have all the data we need
+    if (pMessageIndicationCallbackData->pCallback != NULL) {
+        pMessageIndicationCallbackData->pCallback(pMessageIndicationCallbackData->numUnreadMessages,
+                                                  pMessageIndicationCallbackData->pCallbackParam);
     }
 
-    U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    // Must free the memory we were handed
+    uPortFree(pMessageIndicationCallbackData);
 }
 
 // A local "trampoline" for the disconnect callback,
-// here so that it can call pDisconnectCallback
-// in a separate task.
+// here so that it can obtain the last MQTT error code from
+// the module outside of the URC task.
 //lint -esym(818, pParam) Suppress "could be pointing to const",
 // gotta follow the function signature
-static void disconnectCallback(uAtClientHandle_t atHandle,
-                               void *pParam)
+static void disconnectCallback(uAtClientHandle_t atHandle, void *pParam)
 {
-    //lint -e(507) Suppress size incompatibility due to the compiler
-    // we use for Linting being a 64 bit one where the pointer
-    // is 64 bit.
-    const uCellPrivateInstance_t *pInstance = (const uCellPrivateInstance_t *) pParam;
-    volatile uCellMqttContext_t *pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
+    const uCellPrivateInstance_t *pInstance = NULL;
+    volatile uCellMqttContext_t *pContext;
+    int32_t lastMqttErrorCode = -1;
+    void (*pDisconnectCallback) (int32_t, void *) = NULL;
+    void *pDisconnectCallbackParam = NULL;
 
     (void) atHandle;
 
-    // This task can lock the mutex to ensure we are thread-safe
-    // for the call below
+    // Lock the mutex so that we are thread-safe
+    // while retrieving the last MQTT error code and
+    // while we populate the parameters for the callback
     U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
 
-    if ((pContext != NULL) && (pContext->pDisconnectCallback != NULL)) {
-        pContext->pDisconnectCallback(getLastMqttErrorCode(pInstance),
-                                      pContext->pDisconnectCallbackParam);
+    pInstance = (const uCellPrivateInstance_t *) pParam;
+    if (pInstance != NULL) {
+        pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
+        if (pContext != NULL) {
+            pDisconnectCallback = pContext->pDisconnectCallback;
+            pDisconnectCallbackParam = pContext->pDisconnectCallbackParam;
+            lastMqttErrorCode = getLastMqttErrorCode(pInstance);
+        }
     }
 
     U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+
+    // Now call the callback outside the mutex lock
+    if (pDisconnectCallback != NULL) {
+        pDisconnectCallback(lastMqttErrorCode, pDisconnectCallbackParam);
+    }
 }
 
 // "+UUMQTTC:"/"+UUMQTTSNC" URC handler, called by the UUMQTT_urc()
@@ -400,6 +415,7 @@ static void UUMQTTC_UUMQTTSNC_urc(uAtClientHandle_t atHandle,
     int32_t urcType;
     int32_t urcParam1;
     int32_t urcParam2;
+    uCellMessageIndicationCallbackData_t *pMessageIndicationCallbackData;
 
     urcType = uAtClientReadInt(atHandle);
     // All of the MQTTC/MQTTSNC URC types have at least one parameter
@@ -419,9 +435,8 @@ static void UUMQTTC_UUMQTTSNC_urc(uAtClientHandle_t atHandle,
             // Launch the local callback via the AT
             // parser's callback facility.
             //lint -e(1773) Suppress complaints about
-            // passing the pointer as non-volatile
-            uAtClientCallback(atHandle, disconnectCallback,
-                              (void *) pInstance);
+            // passing the pointer as non-const
+            uAtClientCallback(atHandle, disconnectCallback, (void *) pInstance);
         }
         pContext->connected = false;
         // Keep alive returns to "off" when the session ends,
@@ -500,16 +515,20 @@ static void UUMQTTC_UUMQTTSNC_urc(uAtClientHandle_t atHandle,
             invokeMessageIndCb = (urcParam1 >= (int32_t) (pContext->numUnreadMessages));
             pContext->numUnreadMessages = urcParam1;
             if ((pContext->pMessageIndicationCallback != NULL) && (invokeMessageIndCb)) {
-                // Launch our local callback via the AT
-                // parser's callback facility.
-                // GCC can complain here that
-                // we're discarding volatile
-                // from the pointer: just need to follow
-                // the function signature guys...
-                //lint -e(1773) Suppress complaints about
-                // passing the pointer as non-volatile
-                uAtClientCallback(atHandle, messageIndicationCallback,
-                                  (void *) pContext);
+                // Allocate memory for the data the message indication callback
+                // will need; messageIndicationCallback() will free this
+                pMessageIndicationCallbackData = (uCellMessageIndicationCallbackData_t *) pUPortMalloc(sizeof(
+                                                                                                           *pMessageIndicationCallbackData));
+                if (pMessageIndicationCallbackData != NULL) {
+                    pMessageIndicationCallbackData->numUnreadMessages = pContext->numUnreadMessages;
+                    pMessageIndicationCallbackData->pCallback = pContext->pMessageIndicationCallback;
+                    pMessageIndicationCallbackData->pCallbackParam = pContext->pMessageIndicationCallbackParam;
+                    if (uAtClientCallback(atHandle, messageIndicationCallback,
+                                          (void *) pMessageIndicationCallbackData) != 0) {
+                        // Free memory on failure to send
+                        uPortFree(pMessageIndicationCallbackData);
+                    }
+                }
             }
             pUrcStatus->flagsBitmap |= 1 << U_CELL_MQTT_URC_FLAG_UNREAD_MESSAGES_UPDATED;
         } else {
@@ -645,6 +664,7 @@ static void UUMQTTCM_urc(uAtClientHandle_t atHandle,
     char *pStr;
     bool gotLengthAndQos = false;
     char delimiter = uAtClientDelimiterGet(atHandle);
+    uCellMessageIndicationCallbackData_t *pMessageIndicationCallbackData;
 
     // Skip the op code
     uAtClientSkipParameters(atHandle, 1);
@@ -733,12 +753,20 @@ static void UUMQTTCM_urc(uAtClientHandle_t atHandle,
         // If there was no topic name this must be just an indication
         // of the number of messages read so call the callback
         if (pContext->pMessageIndicationCallback != NULL) {
-            // Launch our local callback via the AT
-            // parser's callback facility
-            //lint -e(1773) Suppress complaints about
-            // passing the pointer as non-volatile
-            uAtClientCallback(atHandle, messageIndicationCallback,
-                              (void *) pContext);
+            // Allocate memory for the data the message indication callback
+            // will need; messageIndicationCallback() will free this
+            pMessageIndicationCallbackData = (uCellMessageIndicationCallbackData_t *) pUPortMalloc(sizeof(
+                                                                                                       *pMessageIndicationCallbackData));
+            if (pMessageIndicationCallbackData != NULL) {
+                pMessageIndicationCallbackData->numUnreadMessages = pContext->numUnreadMessages;
+                pMessageIndicationCallbackData->pCallback = pContext->pMessageIndicationCallback;
+                pMessageIndicationCallbackData->pCallbackParam = pContext->pMessageIndicationCallbackParam;
+                if (uAtClientCallback(atHandle, messageIndicationCallback,
+                                      (void *) pMessageIndicationCallbackData) != 0) {
+                    // Free memory on failure to send
+                    uPortFree(pMessageIndicationCallbackData);
+                }
+            }
         }
     }
     uAtClientRestoreStopTag(atHandle);
