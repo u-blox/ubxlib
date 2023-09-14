@@ -18,7 +18,7 @@ Currently the thread dumper only supports ARM in Thumb mode on FreeRTOS or Zephy
     Backtrace: 0x0004200a 0x0005c586 0x0001e68e 0x0001e6ea 0x0004d8e0 0x0001e704 0x0003e1aa 0x0005c4d4 0x0003e21e 0x0004d048 0x0005d724 0x00041014 
 ```
 
-The back traces can then be converted to source code lines with line numbers by the use of `addr2line` (for ARM that would be `arm-none-eabi-addr2line'). If you use our PyInvoke commands for viewing the output we will convert the back trace lines automatically if you have specified the .elf file. In this case the above output will look like this:
+The back traces can then be converted to source code lines with line numbers by the use of `addr2line` (for ARM that would be `arm-none-eabi-addr2line`). If you use our PyInvoke commands for viewing the output we will convert the back trace lines automatically if you have specified the .elf file. In this case the above output will look like this:
 
 ```
   timerEvent (pending): bottom: 200064e0, top: 20006ce0, sp: 20006bd8
