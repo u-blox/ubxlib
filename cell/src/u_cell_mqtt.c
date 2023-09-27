@@ -1427,11 +1427,13 @@ static int32_t connect(const uCellPrivateInstance_t *pInstance,
 
 // Return true if the given string is allowed
 // in a message for mqttSn.
-static bool isAllowedMqttSn(const char *pBuffer, size_t bufferLength)
+static bool isAllowedMqttSn(const char *pBuffer, size_t bufferLength,
+                            bool retain)
 {
     bool isAllowed = false;
 
-    if (pBuffer != NULL) {
+    // Retain messages are allowed to be NULL
+    if ((pBuffer != NULL) || (retain && (bufferLength == 0))) {
         isAllowed = true;
         // Must be printable and not contain a quotation mark
         for (size_t x = 0; (x < bufferLength) && isAllowed; x++) {
@@ -1447,12 +1449,14 @@ static bool isAllowedMqttSn(const char *pBuffer, size_t bufferLength)
 
 // Return true if the given string is allowed for
 // SARA-R41x modules
-static bool isAllowedMqttSaraR41x(const char *pBuffer, size_t bufferLength)
+static bool isAllowedMqttSaraR41x(const char *pBuffer, size_t bufferLength,
+                                  bool retain)
 {
     bool isAllowed = false;
     bool inQuotes = false;
 
-    if (pBuffer != NULL) {
+    // Retain messages are allowed to be NULL
+    if ((pBuffer != NULL) || (retain && (bufferLength == 0))) {
         isAllowed = true;
         // Must be printable and not include a "," or a ";"
         // character within a pair of quotation marks
@@ -1538,11 +1542,11 @@ static int32_t publish(const uCellPrivateInstance_t *pInstance,
     mqttSn = pContext->mqttSn;
     pUrcStatus = &(pContext->urcStatus);
     if (mqttSn) {
-        isAscii = isAllowedMqttSn(pMessage, messageSizeBytes);
+        isAscii = isAllowedMqttSn(pMessage, messageSizeBytes, retain);
     } else {
         // This will be ignored for module types that support binary
         // publish, which eveything except SARA-R41x does
-        isAscii = isAllowedMqttSaraR41x(pMessage, messageSizeBytes);
+        isAscii = isAllowedMqttSaraR41x(pMessage, messageSizeBytes, retain);
     }
     //lint -e(568) Suppress value never being negative, who knows
     // what warnings levels a customer might compile with
@@ -1550,7 +1554,7 @@ static int32_t publish(const uCellPrivateInstance_t *pInstance,
         ((mqttSn && (qos < U_CELL_MQTT_QOS_SN_PUBLISH_MAX_NUM)) || (qos <  U_CELL_MQTT_QOS_MAX_NUM)) &&
         (pTopicNameStr != NULL) &&
         (strlen(pTopicNameStr) <= U_CELL_MQTT_WRITE_TOPIC_MAX_LENGTH_BYTES) &&
-        (pMessage != NULL) &&
+        (retain || (pMessage != NULL)) &&
         ((U_CELL_PRIVATE_HAS(pInstance->pModule,
                              U_CELL_PRIVATE_FEATURE_MQTT_BINARY_PUBLISH) &&
           (messageSizeBytes <= U_CELL_MQTT_PUBLISH_BIN_MAX_LENGTH_BYTES)) ||
@@ -1561,7 +1565,8 @@ static int32_t publish(const uCellPrivateInstance_t *pInstance,
         errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
         if (!U_CELL_PRIVATE_HAS(pInstance->pModule,
                                 U_CELL_PRIVATE_FEATURE_MQTT_BINARY_PUBLISH) ||
-            mqttSn) {
+            mqttSn ||
+            ((messageSizeBytes == 0) && retain)) { // Zero length retain messages always sent as ASCII
             // Note: the MQTT-SN AT interface never supports binary
             // publishing (even where the MQTT one does)
             // If we aren't able to publish a message as a binary
@@ -1570,8 +1575,11 @@ static int32_t publish(const uCellPrivateInstance_t *pInstance,
             if (isAscii) {
                 pTextMessage = (char *) pUPortMalloc(messageSizeBytes + 1);
                 if (pTextMessage != NULL) {
-                    // Just copy in the text and add a terminator
-                    memcpy(pTextMessage, pMessage, messageSizeBytes);
+                    if (pMessage != NULL) {
+                        // Copy in the text
+                        memcpy(pTextMessage, pMessage, messageSizeBytes);
+                    }
+                    // Add a terminator
                     *(pTextMessage + messageSizeBytes) = '\0';
                 }
             } else {
@@ -2736,7 +2744,7 @@ int32_t uCellMqttSetWill(uDeviceHandle_t cellHandle,
                  (strlen(pTopicNameStr) <= U_CELL_MQTT_WRITE_TOPIC_MAX_LENGTH_BYTES)) &&
                 ((pMessage == NULL) ||
                  ((mqttSn && (strlen(pMessage) == messageSizeBytes) &&
-                   isAllowedMqttSn(pMessage, messageSizeBytes)) ||
+                   isAllowedMqttSn(pMessage, messageSizeBytes, retain)) ||
                   (messageSizeBytes <= U_CELL_MQTT_WILL_MESSAGE_MAX_LENGTH_BYTES)))) {
                 atHandle = pInstance->atHandle;
                 errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
@@ -3616,7 +3624,7 @@ int32_t uCellMqttSnSetWillMessaage(uDeviceHandle_t cellHandle,
             pContext->mqttSn) {
             errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
             if (messageSizeBytes == strlen(pMessage) &&
-                isAllowedMqttSn(pMessage, messageSizeBytes)) {
+                isAllowedMqttSn(pMessage, messageSizeBytes, false)) {
                 errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
                 pUrcStatus = &(pContext->urcStatus);
                 atHandle = pInstance->atHandle;

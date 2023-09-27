@@ -410,6 +410,13 @@ int32_t uMqttClientSetDisconnectCallback(const uMqttClientContext_t *pContext,
  * @param retain            if true the message will be kept
  *                          by the broker across MQTT disconnects/
  *                          connects, else it will be cleared.
+ *                          Note: MQTT permits a single retained
+ *                          message per topic, if this flag is
+ *                          true you are setting that single
+ *                          retained message; to clear it, send
+ *                          an empty message (pMessage NULL,
+ *                          messageSizeBytes zero) with retain
+ *                          set to true.
  * @return                  zero on success else negative error code.
  */
 int32_t uMqttClientPublish(uMqttClientContext_t *pContext,

@@ -842,8 +842,11 @@ static void flushUart(int32_t uartHandle)
 
 static int32_t uartWrite(const void *pData, size_t length)
 {
-    return uPortUartWrite(gEdmStream.uartHandle,
-                          pData, length);
+    int32_t x = 0;
+    if (pData != NULL) {
+        x = uPortUartWrite(gEdmStream.uartHandle, pData, length);
+    }
+    return x;
 }
 
 // Do an EDM send.  Returns the amount written, including
@@ -1318,8 +1321,6 @@ int32_t uShortRangeEdmStreamAtWrite(int32_t handle, const void *pBuffer,
         U_PORT_MUTEX_LOCK(gMutex);
         sizeOrErrorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
         if (gEdmStream.handle == handle && pBuffer != NULL && sizeBytes != 0) {
-            sizeOrErrorCode = (int32_t)U_ERROR_COMMON_PLATFORM;
-
             int32_t result;
             uint32_t sent = 0;
 
@@ -1330,9 +1331,7 @@ int32_t uShortRangeEdmStreamAtWrite(int32_t handle, const void *pBuffer,
                 }
             } while (result > 0 && sent < sizeBytes);
 
-            if (sent > 0) {
-                sizeOrErrorCode = (int32_t)sent;
-            }
+            sizeOrErrorCode = (int32_t)sent;
         }
 
         U_PORT_MUTEX_UNLOCK(gMutex);
@@ -1389,7 +1388,7 @@ int32_t uShortRangeEdmStreamWrite(int32_t handle, int32_t channel,
         U_PORT_MUTEX_LOCK(gMutex);
         sizeOrErrorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
         if (gEdmStream.handle == handle && channel >= 0 &&
-            pBuffer != NULL && sizeBytes != 0) {
+            (pBuffer != NULL || sizeBytes == 0)) {
             uShortRangeEdmStreamConnections_t *pConnection = findConnection(channel);
             if (pConnection != NULL) {
                 int32_t sent;

@@ -468,7 +468,9 @@ int32_t uMqttClientPublish(uMqttClientContext_t *pContext,
     int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
 
     if ((pContext != NULL) && (pTopicNameStr != NULL) &&
-        (pMessage != NULL) && (messageSizeBytes > 0)) {
+        // If retain is true an empty message sent to the broker means
+        // "clear the single allowed retained message from the topic"
+        (retain || ((pMessage != NULL) && (messageSizeBytes > 0)))) {
         errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
 
         U_PORT_MUTEX_LOCK((uPortMutexHandle_t) (pContext->mutexHandle));
@@ -754,8 +756,11 @@ int32_t uMqttClientSnPublish(uMqttClientContext_t *pContext,
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
 
+
     if ((pContext != NULL) && (pTopicName != NULL) &&
-        (pMessage != NULL) && (messageSizeBytes > 0)) {
+        // If retain is true an empty message sent to the broker means
+        // "clear the single allowed retained message from the topic"
+        (retain || ((pMessage != NULL) && (messageSizeBytes > 0)))) {
         errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
 
         U_PORT_MUTEX_LOCK((uPortMutexHandle_t) (pContext->mutexHandle));

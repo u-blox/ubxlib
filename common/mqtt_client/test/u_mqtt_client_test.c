@@ -521,6 +521,22 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClient")
                     U_TEST_PRINT_LINE_MQTT("attempting to read a message when there are none returned %d.", y);
                     U_PORT_TEST_ASSERT(y == (int32_t) U_ERROR_COMMON_EMPTY);
 
+                    // Check that we can send an empty message with the retain flag set to true,
+                    // which can be used to remove the single-allowed retained message from a topic.
+                    U_TEST_PRINT_LINE_MQTT("attempting to send a NULL message with retain set.", y);
+                    y = uMqttClientPublish(gpMqttContextA, pTopicOut, NULL, 0, U_MQTT_QOS_EXACTLY_ONCE, true);
+                    if (y == 0) {
+                        U_TEST_PRINT_LINE_MQTT("publish of empty message with retain set was successful.");
+                        // We've just sent a message
+                        U_PORT_TEST_ASSERT(uMqttClientGetTotalMessagesSent(gpMqttContextA) > 0);
+                    } else {
+                        U_TEST_PRINT_LINE_MQTT("publishing an empty message with retain set"
+                                               " returned error %d, module error %d.", y,
+                                               uMqttClientGetLastErrorCode(gpMqttContextA));
+                        //lint -e(506, 774) Suppress constant value Boolean
+                        U_PORT_TEST_ASSERT(false);
+                    }
+
                     // Cancel the subscribe
                     U_TEST_PRINT_LINE_MQTT("unsubscribing from topic \"%s\"...", pTopicOut);
                     gStopTimeMs = uPortGetTickTimeMs() +
@@ -842,6 +858,22 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClientSn")
                         U_PORT_TEST_ASSERT(uMqttClientSnGetTopicId(&topicNameOut) >= 0);
                         U_PORT_TEST_ASSERT(uMqttClientSnGetTopicNameShort(&topicNameOut, topicNameShortStr) < 0);
                     }
+                }
+
+                // Check that we can send an empty message with the retain flag set to true,
+                // which can be used to remove the single-allowed retained message from a topic.
+                U_TEST_PRINT_LINE_MQTTSN("attempting to send a NULL message with retain set.", y);
+                y = uMqttClientSnPublish(gpMqttContextA, &topicNameOut, NULL, 0, U_MQTT_QOS_EXACTLY_ONCE, true);
+                if (y == 0) {
+                    U_TEST_PRINT_LINE_MQTTSN("publish of empty message with retain set was successful.");
+                    // We've just sent a message
+                    U_PORT_TEST_ASSERT(uMqttClientGetTotalMessagesSent(gpMqttContextA) > 0);
+                } else {
+                    U_TEST_PRINT_LINE_MQTTSN("publishing an empty message with retain set"
+                                             " returned error %d, module error %d.", y,
+                                             uMqttClientGetLastErrorCode(gpMqttContextA));
+                    //lint -e(506, 774) Suppress constant value Boolean
+                    U_PORT_TEST_ASSERT(false);
                 }
 
                 // Cancel the subscribe
