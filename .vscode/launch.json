@@ -62,15 +62,13 @@
             "name": "windows runner [win32]: Run",
             "type": "cppvsdbg",
             "request": "launch",
-            "program": "${input:getBuildDir}/windows/ubxlib.exe",
-            "args": [],
+            "program": "${command:cmake.buildDirectory}/Debug/ubxlib_test_main.exe",
             "stopAtEntry": true,
-            "cwd": "${fileDirname}",
             "environment": [{
                 "name": "ASAN_SAVE_DUMPS",
-                "value": "${input:getBuildDir}/windows/ubxlib.dmp"
+                "value": "${command:cmake.buildDirectory/ubxlib.dmp"
             }],
-            "console": "externalTerminal",
+            "console": "integratedTerminal",
             "requireExactSource": false,
             "preLaunchTask": "Build windows runner [win32]"
         },
@@ -79,11 +77,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${input:getBuildDir}/runner_linux/ubxlib_test_main",
-            "args": [],
             "stopAtEntry": true,
-            "cwd": "${fileDirname}",
-            "console": "externalTerminal",
-            "requireExactSource": false,
             "preLaunchTask": "Build Linux runner",
             "setupCommands": [{"text": "handle SIGUSR1 nostop noprint"}]
         },

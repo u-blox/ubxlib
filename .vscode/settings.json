@@ -17,5 +17,6 @@
         "*.h": "c",
         "type_traits": "c"
     },
-    "cmake.configureOnOpen": false
+    "cmake.configureOnOpen": false,
+    "cmake.sourceDirectory": "${workspaceFolder}/port/platform/windows/mcu/win32/runner"
 }

@@ -107,11 +107,12 @@
         },
         {
             "label": "Build windows runner [win32]",
-            "type": "shell",
-            "command": "cmake ${workspaceFolder}/port/platform/windows/mcu/win32/runner",
-            "group": { "kind": "build" },
-            "presentation": { "group": "ubxlib" },
-            "problemMatcher": { "base": "$msCompile", "fileLocation": "absolute" }
+            "type": "cmake",
+            "command": "build",
+            "targets": ["ALL_BUILD"],
+            "group": {"kind": "build"},
+            "presentation": {"group": "ubxlib"},
+            "problemMatcher": [],
         },
         {
             "label": "Build Linux runner",
