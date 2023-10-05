@@ -734,13 +734,14 @@ int32_t uWifiStationConnect(uDeviceHandle_t devHandle, const char *pSsid,
 
         // Read connection status
         int32_t conStatus = readWifiStaStatusInt(atHandle, 3);
-        if ((conStatus == 2) && (pSsid != NULL)) {
+        if (conStatus == 2) {
             // Wifi already connected. Check if the SSID is the same
             char ssid[32 + 1];
             errorCode = (int32_t) U_WIFI_ERROR_ALREADY_CONNECTED;
             int32_t tmp = readWifiStaStatusString(atHandle, 0, ssid, sizeof(ssid));
             if (tmp >= 0) {
-                if (strcmp(ssid, pSsid) == 0) {
+                // Always accept the current connection if no SSID specified
+                if ((pSsid == NULL) || (strcmp(ssid, pSsid) == 0)) {
                     errorCode = (int32_t) U_WIFI_ERROR_ALREADY_CONNECTED_TO_SSID;
                 }
             }
@@ -752,7 +753,7 @@ int32_t uWifiStationConnect(uDeviceHandle_t devHandle, const char *pSsid,
             uPortLog(LOG_TAG "Activating wifi STA mode\n");
             errorCode = writeWifiStaCfgInt(atHandle, 0, 0, 0);
         }
-        if (pSsid == NULL) {
+        if ((pSsid == NULL) && (conStatus != 2)) {
             errorCode = writeWifiStaCfgAction(atHandle, 0, CFG_ACTION_LOAD);
         } else {
             if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
