@@ -266,6 +266,10 @@ def build(clean, unity_dir, defines, env, reporter):
         call_list += ["cmake", "-G", CMAKE_GENERATOR]
         call_list += ["-T", "host=x86", "-A", "win32"]
         call_list += ["-B", output_dir]
+        # Add any UBXLIB_FEATURES from the environment, escaping the
+        # semicolons in it
+        if "UBXLIB_FEATURES" in os.environ:
+            call_list += [f"-DUBXLIB_FEATURES={os.environ['UBXLIB_FEATURES'].replace(' ', ';')}"]
         call_list += ["--no-warn-unused-cli"]
         call_list += [cmakelist_dir]
 

@@ -1,6 +1,7 @@
 # Include ubxlib src and inc
 UBXLIB_BASE ?= $(realpath $(MAKEFILE_PATH)/../../../../../..)
-UBXLIB_FEATURES = cell gnss short_range
+UBXLIB_FEATURES ?= cell gnss short_range
+$(info UBXLIB_FEATURES is "${UBXLIB_FEATURES}")
 
 # ubxlib.mk will define the following for us:
 # UBXLIB_INC

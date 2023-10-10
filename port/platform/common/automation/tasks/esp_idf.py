@@ -80,11 +80,11 @@ def build(ctx, cmake_dir=DEFAULT_CMAKE_DIR, output_name=DEFAULT_OUTPUT_NAME,
     else:
         # Read U_FLAGS from esp_idf.u_flags
         u_flags = get_cflags_from_u_flags_yml(ctx.config.vscode_dir, "esp_idf", output_name)
-        # If the flags has been modified we trigger a rebuild
-        if u_flags['modified']:
+        # If the flags has been modified, or we're getting the
+        # features from the environment, we trigger a rebuild
+        if u_flags['modified'] or "UBXLIB_FEATURES" in os.environ:
             clean(ctx, output_name, build_dir)
         ctx.config.run.env["U_FLAGS"] = u_flags["cflags"]
-
 
     cmake_dir = os.path.abspath(cmake_dir)
     build_dir = os.path.abspath(os.path.join(build_dir, output_name))
@@ -93,6 +93,13 @@ def build(ctx, cmake_dir=DEFAULT_CMAKE_DIR, output_name=DEFAULT_OUTPUT_NAME,
     # TODO: Move -DTEST_COMPONENTS=ubxlib_runner out from this file
     idf_py_text = f'{ctx.esp_idf_pre_command} idf.py -C {cmake_dir} -B {build_dir} '\
                   f'-DSDKCONFIG:STRING={build_dir}/sdkconfig -DTEST_COMPONENTS=ubxlib_runner '
+
+    # Add any UBXLIB_FEATURES from the environment
+    if "UBXLIB_FEATURES" in os.environ:
+        idf_py_text += f'-DUBXLIB_FEATURES={os.environ["UBXLIB_FEATURES"].replace(" ", ";")} '
+        if u_utils.is_linux():
+            # A semicolon is a special character on Linux
+            idf_py_text = idf_py_text.replace(";", "\\;")
 
     # The ESP-IDF MCU type (ESP32, ESP32S3) should have been set in the
     # environment: need to set it here otherwise, if the previous target

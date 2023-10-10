@@ -2,8 +2,10 @@ get_filename_component(UBXLIB_BASE ${CMAKE_CURRENT_LIST_DIR}/../../../../../../.
 get_filename_component(PLATFORM_DIR ${CMAKE_CURRENT_LIST_DIR}/../../../.. ABSOLUTE)
 set(ENV{UBXLIB_BASE} ${UBXLIB_BASE})
 
-# Set the ubxlib features to compile (all needs to be enabled at the moment)
-set(UBXLIB_FEATURES short_range cell gnss)
+# Set the ubxlib features if the user hasn't
+if (NOT DEFINED UBXLIB_FEATURES)
+   set(UBXLIB_FEATURES short_range cell gnss)
+endif()
 
 # From this line we will get back:
 # - UBXLIB_SRC
@@ -64,3 +66,5 @@ if (DEFINED ENV{U_FLAGS})
     target_compile_options(${COMPONENT_TARGET} PUBLIC ${U_FLAGS})
     message("ubxlib: added ${U_FLAGS} due to environment variable U_FLAGS.")
 endif()
+
+message("UBXLIB_FEATURES will be ${UBXLIB_FEATURES}")

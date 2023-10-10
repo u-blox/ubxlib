@@ -43,6 +43,7 @@ def build(ctx, cmake_dir=DEFAULT_CMAKE_DIR,
           u_flags=None):
     """Build a Linux based application"""
     rebuild = False
+    ubxlib_features = None
 
     # Handle u_flags
     if u_flags:
@@ -51,8 +52,9 @@ def build(ctx, cmake_dir=DEFAULT_CMAKE_DIR,
         # Read U_FLAGS from Linux u_flags
         u_flags = get_cflags_from_u_flags_yml(ctx.config.vscode_dir, "linux", output_name)
         ctx.config.run.env["U_FLAGS"] = u_flags["cflags"]
-        # If the flags has been modified we trigger a rebuild
-        if u_flags['modified']:
+        # If the flags has been modified, or we're getting the
+        # features from the environment, we trigger a rebuild
+        if u_flags['modified'] or "UBXLIB_FEATURES" in os.environ:
             rebuild = True
 
     build_dir = os.path.join(build_dir, output_name)
@@ -61,7 +63,13 @@ def build(ctx, cmake_dir=DEFAULT_CMAKE_DIR,
     if not os.path.exists(build_dir):
         os.makedirs(build_dir)
     with u_utils.ChangeDir(build_dir):
-        ctx.run(f'cmake {cmake_dir}')
+        cmake_cmd = 'cmake '
+        # Add any UBXLIB_FEATURES from the environment, escaping the
+        # semicolons in it
+        if "UBXLIB_FEATURES" in os.environ:
+            cmake_cmd += '-DUBXLIB_FEATURES=' + os.environ["UBXLIB_FEATURES"].replace(" ", "\\;") + ' '
+        cmake_cmd += cmake_dir
+        ctx.run(cmake_cmd)
         if rebuild:
             ctx.run(f'make clean')
         ctx.run(f'make')

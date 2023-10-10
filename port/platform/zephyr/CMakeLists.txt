@@ -17,16 +17,20 @@ if (DEFINED ENV{U_FLAGS})
 endif()
 
 # Set the features for ubxlib.cmake
-list(APPEND UBXLIB_FEATURES u_lib)
-if (CONFIG_UBXLIB_SHORTRANGE)
-    list(APPEND UBXLIB_FEATURES short_range)
+if (NOT DEFINED UBXLIB_FEATURES)
+    list(APPEND UBXLIB_FEATURES u_lib)
+    if (CONFIG_UBXLIB_SHORTRANGE)
+        list(APPEND UBXLIB_FEATURES short_range)
+    endif()
+    if (CONFIG_UBXLIB_CELL)
+        list(APPEND UBXLIB_FEATURES cell)
+    endif()
+    if (CONFIG_UBXLIB_GNSS)
+        list(APPEND UBXLIB_FEATURES gnss)
+    endif()
 endif()
-if (CONFIG_UBXLIB_CELL)
-    list(APPEND UBXLIB_FEATURES cell)
-endif()
-if (CONFIG_UBXLIB_GNSS)
-    list(APPEND UBXLIB_FEATURES gnss)
-endif()
+
+message("UBXLIB_FEATURES will be \"${UBXLIB_FEATURES}\"")
 
 # From this line we will get back:
 # - UBXLIB_SRC

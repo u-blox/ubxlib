@@ -101,12 +101,20 @@ def build(ctx, cmake_dir=DEFAULT_CMAKE_DIR, board_name=DEFAULT_BOARD_NAME,
         # Read U_FLAGS from nrfconnect.u_flags
         u_flags = get_cflags_from_u_flags_yml(ctx.config.vscode_dir, "nrfconnect", output_name)
         ctx.config.run.env["U_FLAGS"] = u_flags["cflags"]
-        # If the flags has been modified we trigger a rebuild
-        if u_flags['modified']:
+        # If the flags has been modified, or we're getting the
+        # features from the environment, we trigger a rebuild
+        if u_flags['modified'] or "UBXLIB_FEATURES" in os.environ:
             pristine = "always"
 
     build_dir = os.path.join(build_dir, output_name)
-    ctx.run(f'{ctx.zephyr_pre_command}west build -p {pristine} -b {board_name} {cmake_dir} --build-dir {build_dir}')
+    west_cmd = f'{ctx.zephyr_pre_command}west build -p {pristine} -b {board_name} {cmake_dir} --build-dir {build_dir}'
+    # Add UBXLIB_FEATURES from the environment
+    if "UBXLIB_FEATURES" in os.environ:
+        west_cmd += f' -- -DUBXLIB_FEATURES={os.environ["UBXLIB_FEATURES"].replace(" ", ";")}'
+        if u_utils.is_linux():
+            # A semicolon is a special character on Linux
+            west_cmd = west_cmd.replace(";", "\\;")
+    ctx.run(west_cmd)
     # This specific case gives a return code so that automation.py can call it directly for instance 8
     return 0
 

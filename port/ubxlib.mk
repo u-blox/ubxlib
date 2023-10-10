@@ -96,6 +96,10 @@ UBXLIB_PRIVATE_INC += \
 	${UBXLIB_BASE}/common/short_range/src \
 	${UBXLIB_BASE}/ble/src \
 	${UBXLIB_BASE}/wifi/src
+UBXLIB_TEST_INC += \
+	${UBXLIB_BASE}/common/short_range/test \
+	${UBXLIB_BASE}/ble/test \
+	${UBXLIB_BASE}/wifi/test
 endif
 
 # Optional cell related files and directories
@@ -114,6 +118,8 @@ UBXLIB_INC += \
 	${UBXLIB_BASE}/cell/api
 UBXLIB_PRIVATE_INC += \
 	${UBXLIB_BASE}/cell/src
+UBXLIB_TEST_INC += \
+	${UBXLIB_BASE}/cell/test
 endif
 
 # Optional GNSS related files and directories
@@ -133,6 +139,8 @@ UBXLIB_INC += \
 	${UBXLIB_BASE}/gnss/api
 UBXLIB_PRIVATE_INC += \
 	${UBXLIB_BASE}/gnss/src
+UBXLIB_TEST_INC += \
+	${UBXLIB_BASE}/gnss/test
 endif
 # The lib_mga subdirectory won't be added by the UBXLIB_MODULE_DIRS, so add it explicitly here for all cases
 UBXLIB_PRIVATE_INC += \

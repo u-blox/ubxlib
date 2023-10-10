@@ -54,7 +54,8 @@ DEF = $(filter -DUBXLIB_FEATURES=%,$(CFLAGS))
 ifneq "$(DEF)" ""
 UBXLIB_FEATURES = $(subst -DUBXLIB_FEATURES=,,$(DEF))
 else
-UBXLIB_FEATURES = cell gnss short_range
+# Defaults if there isn't an environment variable of this name set
+UBXLIB_FEATURES ?= cell gnss short_range
 endif
 $(info UBXLIB_FEATURES is ${UBXLIB_FEATURES})
 # ubxlib.mk will define UBXLIB_INC, UBXLIB_PRIVATE_INC and UBXLIB_SRC for us

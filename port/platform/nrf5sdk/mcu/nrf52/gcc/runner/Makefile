@@ -41,7 +41,9 @@ $(OUTPUT_DIRECTORY)/nrf52840_xxaa.out: \
 
 # Include ubxlib src and inc
 UBXLIB_BASE = $(UBXLIB_PATH)
-UBXLIB_FEATURES = cell gnss short_range
+UBXLIB_FEATURES ?= cell gnss short_range
+$(info UBXLIB_FEATURES is "${UBXLIB_FEATURES}")
+
 # ubxlib.mk will define UBXLIB_INC, UBXLIB_PRIVATE_INC and UBXLIB_SRC for us
 include $(UBXLIB_PATH)/port/ubxlib.mk
 

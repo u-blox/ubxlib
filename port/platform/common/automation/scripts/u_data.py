@@ -9,13 +9,12 @@ from scripts import u_settings
 # The instance data must be the only table in the file
 # and must be in Markdown format as follows:
 #
-# | instance | description | duration | MCU | board | platform | toolchain | module(s) | APIs supported | #defines |
+# | instance | description | MCU | board | platform | toolchain | module(s) | APIs supported | UBXLIB_FEATURES | #defines |
 #
 # ... where:
 #
 # instance          is a set of integers x or x.y or x.y.z,
 # description       is a textual description,
-# duration          the estimated run-time of the instance in minutes,
 # MCU               is the name of the MCU, e.g. ESP32 or NRF52 or STM32F4,
 # board             the name of the board, only used by the Zephyr platform,
 # platform          is the name of the platform, e.g. ESP-IDF or STM32Cube,
@@ -25,6 +24,7 @@ from scripts import u_settings
 #                   than one spaces should be used as separators,
 # APIs supported    are the APIs that should run on that platform separated by
 #                   spaces, e.g. port net mqtt
+# UBXLIB_FEATURES   are the ubxlib features to include (gnss cell, short_range, etc.); if empty then use defaults (which is all)
 # #defines          are the #defines to be applied for this instance, separated by
 #                   spaces, e.g. MY_FLAG U_CFG_APP_PIN_CELLULAR_ENABLE_POWER=-1
 #
@@ -90,32 +90,32 @@ def get(filename):
                         row["description"] = stripped
                         index += 1
                     elif index == 2:
-                        # Duration
-                        row["duration"] = stripped
-                        index += 1
-                    elif index == 3:
                         # MCU
                         row["mcu"] = stripped
                         index += 1
-                    elif index == 4:
+                    elif index == 3:
                         # Board
                         row["board"] = stripped
                         index += 1
-                    elif index == 5:
+                    elif index == 4:
                         # Platform
                         row["platform"] = stripped
                         index += 1
-                    elif index == 6:
+                    elif index == 5:
                         # Toolchain
                         row["toolchain"] = stripped
                         index += 1
-                    elif index == 7:
+                    elif index == 6:
                         # Modules
                         row["modules"] = stripped.split()
                         index += 1
-                    elif index == 8:
+                    elif index == 7:
                         # APIs
                         row["apis"] = stripped.split()
+                        index += 1
+                    elif index == 8:
+                        # Featuress
+                        row["UBXLIB_FEATURES"] = stripped.split()
                         index += 1
                     elif index == 9:
                         # #defines
@@ -141,11 +141,6 @@ def display(database):
         item = item.rjust(8)
         # Then description
         item += f": \"{row['description']}\""
-        # Then duration
-        if row["duration"] != "":
-            item += f" {row['duration']} duration with"
-        else:
-            item += " with"
         # Then MCU
         if row["mcu"] != "":
             item += f" {row['mcu']} MCU with"
@@ -187,6 +182,16 @@ def display(database):
                     item += ", \"" + api + "\""
         else:
             item += " no APIs"
+        # Then UBXLIB_FEATURES
+        if row["UBXLIB_FEATURES"]:
+            item += " the UBXLIB_FEATURES"
+            for idx, ubxlib_feature in enumerate(row["UBXLIB_FEATURES"]):
+                if idx == 0:
+                    item += " \"" + ubxlib_feature + "\""
+                else:
+                    item += ", \"" + ubxlib_feature + "\""
+        else:
+            item += " default UBXLIB_FEATURES"
         # Then the #defines
         if row["defines"]:
             item += " with required #define(s)"
@@ -321,6 +326,16 @@ def get_gnss_module_for_instance(database, instance):
                         break
     return module_name
 
+def get_ubxlib_features_for_instance(database, instance):
+    '''Return the ubxlib features that should be built for the given instance'''
+    ubxlib_features = None
+
+    for row in database:
+        if instance == row["instance"]:
+            ubxlib_features = row["UBXLIB_FEATURES"]
+
+    return ubxlib_features
+
 def get_defines_for_instance(database, instance):
     '''Return the defines that are required by the given instance'''
     defines = None
@@ -414,16 +429,6 @@ def get_description_for_instance(database, instance):
             description = row["description"]
 
     return description
-
-def get_duration_for_instance(database, instance):
-    '''Return the expected run duration for the given instance'''
-    duration = None
-
-    for row in database:
-        if instance == row["instance"]:
-            duration = int(row["duration"])
-
-    return duration
 
 def api_in_database(database, api):
     '''Return true if the given api is in the database'''
