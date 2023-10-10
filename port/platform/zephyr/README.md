@@ -98,6 +98,14 @@ If you want to find out more about device tree please see Zephyr [Introduction t
 
 You will, though, still need to pass into `ubxlib` the HW block that is used: e.g. UART 0, UART 1, etc.  The UARTs, for instance, will be named `uart0`, `uart1`... in the device tree; the ending number is the value you should use to tell `ubxlib` what device to open.
 
+If this is a problem, e.g. if your board uses its own naming of the devices you can add a device tree overlay file to your build and in this define aliases in order to get the correct mapping. Ubxlib will always check if there is an alias named ubxlib-xyz and use it when present. Example:
+
+    / {
+      aliases {
+        ubxlib-uart1 = &usart1;
+      };
+    };
+
 ## Additional Notes
 - Always clean the build directory when upgrading to a new `ubxlib` version.
 - You may override or provide conditional compilation flags to CMake without modifying `CMakeLists.txt`.  Do this by setting an environment variable `U_FLAGS`, e.g.:

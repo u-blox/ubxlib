@@ -288,11 +288,11 @@ int32_t uPortPrivateGetGpioPort(const struct device *pGpioDevice,
             portNumber = 1;
         }
 #else
-        if ((pGpioDevice == DEVICE_DT_GET_OR_NULL(DT_NODELABEL(gpio0))) ||
-            (pGpioDevice == DEVICE_DT_GET_OR_NULL(DT_NODELABEL(porta)))) {
+        if ((pGpioDevice == U_DEVICE_DT_GET_OR_NULL(gpio0)) ||
+            (pGpioDevice == U_DEVICE_DT_GET_OR_NULL(porta))) {
             portNumber = 0;
-        } else if ((pGpioDevice == DEVICE_DT_GET_OR_NULL(DT_NODELABEL(gpio1))) ||
-                   (pGpioDevice == DEVICE_DT_GET_OR_NULL(DT_NODELABEL(portb)))) {
+        } else if ((pGpioDevice == U_DEVICE_DT_GET_OR_NULL(gpio1)) ||
+                   (pGpioDevice == U_DEVICE_DT_GET_OR_NULL(portb))) {
             portNumber = 1;
         }
 #endif
@@ -327,14 +327,14 @@ const struct device *pUPortPrivateGetGpioDevice(int32_t pin)
     }
 #else
     if (portNo == 0) {
-        pDev = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(gpio0));
+        pDev = U_DEVICE_DT_GET_OR_NULL(gpio0);
         if (!pDev) {
-            pDev = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(porta));
+            pDev = U_DEVICE_DT_GET_OR_NULL(porta);
         }
     } else if (portNo == 1) {
-        pDev = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(gpio1));
+        pDev = U_DEVICE_DT_GET_OR_NULL(gpio1);
         if (!pDev) {
-            pDev = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(portb));
+            pDev = U_DEVICE_DT_GET_OR_NULL(portb);
         }
     }
 #endif

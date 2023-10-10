@@ -27,6 +27,23 @@
  * the Zephyr platform.
  */
 
+/** This macro is used for all ubxlib device structure retrieval from the Zephyr
+   device tree. It enables use of aliases in possible user overlay files.
+   Ubxlib normally uses labels like "uart1" but will through this macro always
+   first check for a possible alias named "ubxlib-uart1". This applies to
+   uart, i2c and spi.
+   Overlay example:
+    / {
+        aliases {
+            ubxlib-uart1 = &usart1;
+        };
+      };
+*/
+#define U_DEVICE_DT_GET_OR_NULL(id)                                      \
+    COND_CODE_1(DT_NODE_HAS_STATUS(DT_ALIAS(DT_CAT(ubxlib_, id)), okay), \
+                (DEVICE_DT_GET(DT_ALIAS(DT_CAT(ubxlib_, id)))),          \
+                (DEVICE_DT_GET_OR_NULL(DT_NODELABEL(id))))
+
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS FOR ZEPHYR: HEAP
  * -------------------------------------------------------------- */

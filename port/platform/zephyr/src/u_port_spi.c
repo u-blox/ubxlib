@@ -41,6 +41,7 @@
 #include "u_port_gpio.h"
 #include "u_port_spi.h"
 #include "u_port_private.h"
+#include "u_cfg_os_platform_specific.h"
 #include "version.h"
 
 /* ----------------------------------------------------------------
@@ -430,35 +431,35 @@ int32_t uPortSpiOpen(int32_t spi, int32_t pinMosi, int32_t pinMiso,
 # if KERNEL_VERSION_MAJOR < 3
                     pDevice = device_get_binding("SPI_0");
 # else
-                    pDevice = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(spi0));
+                    pDevice = U_DEVICE_DT_GET_OR_NULL(spi0);
 # endif
                     break;
                 case 1:
 # if KERNEL_VERSION_MAJOR < 3
                     pDevice = device_get_binding("SPI_1");
 # else
-                    pDevice = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(spi1));
+                    pDevice = U_DEVICE_DT_GET_OR_NULL(spi1);
 # endif
                     break;
                 case 2:
 # if KERNEL_VERSION_MAJOR < 3
                     pDevice = device_get_binding("SPI_2");
 # else
-                    pDevice = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(spi2));
+                    pDevice = U_DEVICE_DT_GET_OR_NULL(spi2);
 # endif
                     break;
                 case 3:
 # if KERNEL_VERSION_MAJOR < 3
                     pDevice = device_get_binding("SPI_3");
 # else
-                    pDevice = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(spi3));
+                    pDevice = U_DEVICE_DT_GET_OR_NULL(spi3);
 # endif
                     break;
                 case 4:
 # if KERNEL_VERSION_MAJOR < 3
                     pDevice = device_get_binding("SPI_4");
 # else
-                    pDevice = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(spi4));
+                    pDevice = U_DEVICE_DT_GET_OR_NULL(spi4);
 # endif
                     break;
 #endif

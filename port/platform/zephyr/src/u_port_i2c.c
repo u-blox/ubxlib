@@ -35,6 +35,7 @@
 
 #include "u_port.h"
 #include "u_port_os.h"
+#include "u_cfg_os_platform_specific.h"
 #include "u_port_i2c.h"
 #include "version.h"
 
@@ -144,14 +145,14 @@ static int32_t openI2c(int32_t i2c, int32_t pinSda, int32_t pinSdc,
 # if KERNEL_VERSION_MAJOR < 3
                     pDevice = device_get_binding("I2C_0");
 # else
-                    pDevice = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(i2c0));
+                    pDevice = U_DEVICE_DT_GET_OR_NULL(i2c0);
 # endif
                     break;
                 case 1:
 # if KERNEL_VERSION_MAJOR < 3
                     pDevice = device_get_binding("I2C_1");
 # else
-                    pDevice = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(i2c1));
+                    pDevice = U_DEVICE_DT_GET_OR_NULL(i2c1);
 # endif
                     break;
 #endif

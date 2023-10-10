@@ -340,16 +340,16 @@ int32_t uPortUartInit()
                     break;
 # else
                 case 0:
-                    dev = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(uart0));
+                    dev = U_DEVICE_DT_GET_OR_NULL(uart0);
                     break;
                 case 1:
-                    dev = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(uart1));
+                    dev = U_DEVICE_DT_GET_OR_NULL(uart1);
                     break;
                 case 2:
-                    dev = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(uart2));
+                    dev = U_DEVICE_DT_GET_OR_NULL(uart2);
                     break;
                 case 3:
-                    dev = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(uart3));
+                    dev = U_DEVICE_DT_GET_OR_NULL(uart3);
                     break;
 # endif
 #endif
