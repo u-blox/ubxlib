@@ -522,7 +522,7 @@ int32_t uPortSemaphoreGiveIrq(const uPortSemaphoreHandle_t semaphoreHandle)
 
 int32_t uPortTimerCreate(uPortTimerHandle_t *pTimerHandle,
                          const char *pName,
-                         pTimerCallback_t pCallback,
+                         pTimerCallback_t *pCallback,
                          void *pCallbackParam,
                          uint32_t intervalMs,
                          bool periodic)

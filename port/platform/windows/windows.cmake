@@ -27,7 +27,8 @@ if (MSVC)
     # These warnings needs to be disable as well for 64-bit Windows for now
     add_compile_options(/wd4312 /wd4267 /wd4244 /wd4311 /wd4477)
     # Switch off warning about duplicate functions since we use WEAK which MSVC doesn't _need_ but then complains about there being two objects...
-    set(CMAKE_STATIC_LINKER_FLAGS "${CMAKE_STATIC_LINKER_FLAGS} /IGNORE:4006" CACHE STRING "Linker flag" FORCE)
+    # Turn off 4221 to get rid of bogus warnings from 64-bit linker.
+    set(CMAKE_STATIC_LINKER_FLAGS "${CMAKE_STATIC_LINKER_FLAGS} /IGNORE:4006,4221" CACHE STRING "Linker flag" FORCE)
 else()
     # GCC-compatible options
     add_compile_options(-Wall -Wextra -Werror)
