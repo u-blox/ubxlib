@@ -476,6 +476,7 @@ U_PORT_TEST_FUNCTION("[network]", "networkSock")
     uNetworkTestList_t *pList;
     uDeviceHandle_t devHandle;
     int32_t resourceCount;
+    const char *pContext = "A";
 
     // Make sure we start fresh for this test case
     uNetworkTestCleanUp();
@@ -498,6 +499,13 @@ U_PORT_TEST_FUNCTION("[network]", "networkSock")
                               gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType],
                               gpUNetworkTestTypeName[pTmp->networkType]);
             U_PORT_TEST_ASSERT(uDeviceOpen(pTmp->pDeviceCfg, pTmp->pDevHandle) == 0);
+            // Test that we can set a user context
+            devHandle = *pTmp->pDevHandle;
+            U_PORT_TEST_ASSERT(pUDeviceGetUserContext(devHandle) == NULL);
+            uDeviceSetUserContext(devHandle, (void *) pContext);
+            U_PORT_TEST_ASSERT(pUDeviceGetUserContext(devHandle) == (void *) pContext);
+            uDeviceSetUserContext(devHandle, NULL);
+            U_PORT_TEST_ASSERT(pUDeviceGetUserContext(devHandle) == NULL);
         }
     }
 

@@ -54,6 +54,15 @@
  * TYPES
  * -------------------------------------------------------------- */
 
+// Optionally, define a user context which you can use to pass
+// information to a callback that does not have a dedicated
+// void * callback parameter (this is the case with
+// uGnssPosGetStreamedStart()).
+typedef struct {
+    char *pSomething;
+    int32_t somethingElse;
+} MyContext_t;
+
 /* ----------------------------------------------------------------
  * VARIABLES
  * -------------------------------------------------------------- */
@@ -216,6 +225,9 @@ static void callback(uDeviceHandle_t gnssHandle,
     int32_t whole[2] = {0};
     int32_t fraction[2] = {0};
 
+    // Pick up our user context
+    MyContext_t *pContext = (MyContext_t *) pUDeviceGetUserContext(gnssHandle);
+
     // Not using these, just keep the compiler happy
     (void) gnssHandle;
     (void) altitudeMillimetres;
@@ -223,6 +235,9 @@ static void callback(uDeviceHandle_t gnssHandle,
     (void) speedMillimetresPerSecond;
     (void) svs;
     (void) timeUtc;
+    // We don't actually use the user context here, but
+    // of course _you_ could
+    (void) pContext;
 
     if (errorCode == 0) {
         prefix[0] = latLongToBits(longitudeX1e7, &(whole[0]), &(fraction[0]));
@@ -245,6 +260,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleGnssPos")
     uDeviceHandle_t devHandle = NULL;
     int32_t returnCode;
     int32_t guardCount = 0;
+    MyContext_t context = {0};
 
     // Initialise the APIs we will need
     uPortInit();
@@ -259,6 +275,13 @@ U_PORT_TEST_FUNCTION("[example]", "exampleGnssPos")
     if (returnCode == 0) {
         // Since we are not using the common APIs we do not need
         // to call uNetworkInteraceUp()/uNetworkInteraceDown().
+
+        // If you need to pass context data to
+        // uGnssPosGetStreamedStart(), which does not include
+        // a user parameter in its function signature, set
+        // a user context for ourselves in the device, which
+        // we can pick up in callback()
+        uDeviceSetUserContext(devHandle, (void *) &context);
 
         // Start to get position
         uPortLog("Starting position stream.\n");

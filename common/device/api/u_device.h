@@ -433,7 +433,9 @@ int32_t uDeviceClose(uDeviceHandle_t devHandle, bool powerOff);
  * Note: This is NOT thread-safe and should NOT be called when any
  * other uDevice API function might be called.  Best call it just
  * after calling uDeviceOpen() and before calling anything else.
- *
+ * The data at pUserContext should be valid for the entire life
+ * of the device and it is up to you to manage the thread-safety
+ * of any reads from or writes to the context.
  *
  * @param devHandle    handle to a previously opened device.
  * @param pUserContext a user context to set.
@@ -442,7 +444,9 @@ void uDeviceSetUserContext(uDeviceHandle_t devHandle, void *pUserContext);
 
 /** Get device attached user context.
  *
- * @return User context that was set using uDeviceSetUserContext().
+ * @param devHandle handle to a previously opened device.
+ * @return          user context that was set using
+ *                  uDeviceSetUserContext().
  */
 void *pUDeviceGetUserContext(uDeviceHandle_t devHandle);
 
