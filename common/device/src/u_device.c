@@ -346,4 +346,24 @@ int32_t uDeviceClose(uDeviceHandle_t devHandle, bool powerOff)
     return errorCode;
 }
 
+void uDeviceSetUserContext(uDeviceHandle_t devHandle, void *pUserContext)
+{
+    if (devHandle != NULL) {
+        U_DEVICE_INSTANCE(devHandle)->pUserContext = pUserContext;
+    }
+}
+
+/** Get device attached user context.
+ *
+ * @return User context that was set using @ref uDeviceSetUserContext.
+ */
+void *pUDeviceGetUserContext(uDeviceHandle_t devHandle)
+{
+    if (devHandle == NULL) {
+        return NULL;
+    } else {
+        return U_DEVICE_INSTANCE(devHandle)->pUserContext;
+    }
+}
+
 // End of file
