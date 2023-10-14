@@ -83,6 +83,7 @@ typedef struct {
     uDeviceType_t deviceType;   /**< type of device. */
     int32_t moduleType;         /**< module identification (when applicable). */
     void *pContext;             /**< private instance data for the device. */
+    void *pUserContext;         /**< user context attached to device. */
     uDeviceNetworkData_t networkData[U_DEVICE_NETWORKS_MAX_NUM]; /**< network cfg and private data. */
     // Note: In the future structs of function pointers for socket, MQTT etc.
     // implementations may be added here.
