@@ -258,6 +258,8 @@ int32_t uDeviceOpen(const uDeviceCfg_t *pDeviceCfg, uDeviceHandle_t *pDeviceHand
     // Lock the API
     int32_t errorCode = uDeviceLock();
 
+    uDeviceHandle_t deviceHandleCandidate = NULL;
+
     if (errorCode == 0 && pDeviceCfg != NULL) {
         errorCode = uDeviceCallback("open", (void *)pDeviceCfg->deviceType, NULL);
     }
@@ -267,27 +269,27 @@ int32_t uDeviceOpen(const uDeviceCfg_t *pDeviceCfg, uDeviceHandle_t *pDeviceHand
         if ((pDeviceCfg != NULL) && (pDeviceCfg->version == 0) && (pDeviceHandle != NULL)) {
             switch (pDeviceCfg->deviceType) {
                 case U_DEVICE_TYPE_CELL:
-                    errorCode = uDevicePrivateCellAdd(pDeviceCfg, pDeviceHandle);
+                    errorCode = uDevicePrivateCellAdd(pDeviceCfg, &deviceHandleCandidate);
                     if (errorCode == 0) {
-                        U_DEVICE_INSTANCE(*pDeviceHandle)->moduleType = pDeviceCfg->deviceCfg.cfgCell.moduleType;
+                        U_DEVICE_INSTANCE(deviceHandleCandidate)->moduleType = pDeviceCfg->deviceCfg.cfgCell.moduleType;
                     }
                     break;
                 case U_DEVICE_TYPE_GNSS:
-                    errorCode = uDevicePrivateGnssAdd(pDeviceCfg, pDeviceHandle);
+                    errorCode = uDevicePrivateGnssAdd(pDeviceCfg, &deviceHandleCandidate);
                     if (errorCode == 0) {
-                        U_DEVICE_INSTANCE(*pDeviceHandle)->moduleType = pDeviceCfg->deviceCfg.cfgGnss.moduleType;
+                        U_DEVICE_INSTANCE(deviceHandleCandidate)->moduleType = pDeviceCfg->deviceCfg.cfgGnss.moduleType;
                     }
                     break;
                 case U_DEVICE_TYPE_SHORT_RANGE:
-                    errorCode = uDevicePrivateShortRangeAdd(pDeviceCfg, pDeviceHandle);
+                    errorCode = uDevicePrivateShortRangeAdd(pDeviceCfg, &deviceHandleCandidate);
                     if (errorCode == 0) {
-                        U_DEVICE_INSTANCE(*pDeviceHandle)->moduleType = pDeviceCfg->deviceCfg.cfgSho.moduleType;
+                        U_DEVICE_INSTANCE(deviceHandleCandidate)->moduleType = pDeviceCfg->deviceCfg.cfgSho.moduleType;
                     }
                     break;
                 case U_DEVICE_TYPE_SHORT_RANGE_OPEN_CPU:
-                    errorCode = uDevicePrivateShortRangeOpenCpuAdd(pDeviceCfg, pDeviceHandle);
+                    errorCode = uDevicePrivateShortRangeOpenCpuAdd(pDeviceCfg, &deviceHandleCandidate);
                     if (errorCode == 0) {
-                        U_DEVICE_INSTANCE(*pDeviceHandle)->moduleType = pDeviceCfg->deviceCfg.cfgSho.moduleType;
+                        U_DEVICE_INSTANCE(deviceHandleCandidate)->moduleType = pDeviceCfg->deviceCfg.cfgSho.moduleType;
                     }
                     break;
                 default:
@@ -297,6 +299,10 @@ int32_t uDeviceOpen(const uDeviceCfg_t *pDeviceCfg, uDeviceHandle_t *pDeviceHand
 
         // ...and done
         uDeviceUnlock();
+    }
+
+    if (errorCode == 0) {
+        *pDeviceHandle = deviceHandleCandidate;
     }
 
     return errorCode;
