@@ -428,6 +428,24 @@ int32_t uDeviceOpen(const uDeviceCfg_t *pDeviceCfg,
  */
 int32_t uDeviceClose(uDeviceHandle_t devHandle, bool powerOff);
 
+/** Attach user context to device.
+ *
+ * Note: This is NOT thread-safe and should NOT be called when any
+ * other uDevice API function might be called.  Best call it just
+ * after calling uDeviceOpen() and before calling anything else.
+ *
+ *
+ * @param devHandle    handle to a previously opened device.
+ * @param pUserContext a user context to set.
+ */
+void uDeviceSetUserContext(uDeviceHandle_t devHandle, void *pUserContext);
+
+/** Get device attached user context.
+ *
+ * @return User context that was set using uDeviceSetUserContext().
+ */
+void *pUDeviceGetUserContext(uDeviceHandle_t devHandle);
+
 #ifdef __cplusplus
 }
 #endif
