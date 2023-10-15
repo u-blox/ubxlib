@@ -129,6 +129,7 @@ static int32_t removeDevice(uDeviceHandle_t devHandle, bool powerOff)
                 uPortFree(pContext);
             }
         } else {
+            uGnssRemove(devHandle);
             uPortFree(pContext);
         }
     }
