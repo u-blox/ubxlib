@@ -81,11 +81,12 @@ int32_t uPortPlatformStart(void (*pEntryPoint)(void *),
 #endif
 
     if (pEntryPoint != NULL) {
-        errorCode = U_ERROR_COMMON_PLATFORM;
 #ifndef ARDUINO
+        errorCode = U_ERROR_COMMON_SUCCESS;
         // RTOS is already running, just call pEntryPoint
         pEntryPoint(pParameter);
 #else
+        errorCode = U_ERROR_COMMON_PLATFORM;
         // Under Arduino it is not possible to set the stack size
         // we would like for the main task since there is only one
         // global sdkconfig file that cannot be overridden, so in that
@@ -95,6 +96,7 @@ int32_t uPortPlatformStart(void (*pEntryPoint)(void *),
         if (xTaskCreate(pEntryPoint, "EntryPoint",
                         stackSizeBytes, pParameter,
                         priority, &taskHandle) == pdPASS) {
+            errorCode = U_ERROR_COMMON_SUCCESS;
             vTaskDelete(NULL);
         }
 #endif
