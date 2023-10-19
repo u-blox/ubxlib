@@ -553,8 +553,7 @@ int32_t uPortSpiControllerGetDevice(int32_t handle,
 
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if ((handle >= 0) && (handle < sizeof(gSpiCfg) / sizeof(gSpiCfg[0])) &&
-            (gSpiCfg[handle].pDevice != NULL) && (pDevice != NULL))
-        {
+            (gSpiCfg[handle].pDevice != NULL) && (pDevice != NULL)) {
             pSpiCfg = &(gSpiCfg[handle]);
             // Note: we don't return the index, it is not worth the macro madness,
             // and the amount of code that would generate, we just return pinSelect
