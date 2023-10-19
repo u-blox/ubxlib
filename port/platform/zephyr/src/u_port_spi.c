@@ -325,7 +325,7 @@ static int32_t setSpiConfig(int32_t spi, uPortSpiCfg_t *pSpiCfg,
     pSpiCfg->spiCsControl.gpio_dev = NULL;
 #else
 #   if KERNEL_VERSION_MAJOR == 3 && KERNEL_VERSION_MINOR < 4
-        pSpiCfg->spiConfig.cs = NULL;
+    pSpiCfg->spiConfig.cs = NULL;
 #   endif
     pSpiCfg->spiCsControl.gpio.port = NULL;
 #endif
@@ -576,7 +576,7 @@ int32_t uPortSpiControllerGetDevice(int32_t handle,
 #if ((KERNEL_VERSION_MAJOR == 3 && KERNEL_VERSION_MINOR < 4))
             if (pSpiCfg->spiConfig.cs != NULL) {
 #endif // ((KERNEL_VERSION_MAJOR == 3 && KERNEL_VERSION_MINOR < 4))
-       // Have a chip select pin, work out what it is
+                // Have a chip select pin, work out what it is
                 pDevice->pinSelect = uPortPrivateGetGpioPort(pSpiCfg->spiCsControl.gpio.port,
                                                              pSpiCfg->spiCsControl.gpio.pin);
                 if (!(pSpiCfg->spiCsControl.gpio.dt_flags & GPIO_ACTIVE_LOW)) {
