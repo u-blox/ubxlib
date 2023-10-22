@@ -18,5 +18,4 @@ jobs:
           sudo apt install doxygen astyle python3
       - name: check
         run: |
-          python3 astyle.py
-          UBX_WORKDIR="$(pwd)" doxygen
+          python3 astyle.py && UBX_WORKDIR="$(pwd)" doxygen

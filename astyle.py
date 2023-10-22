@@ -13,11 +13,11 @@ with subprocess.Popen(["astyle", "--options=astyle.cfg", "--suffix=none", "--ver
                       stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                       universal_newlines=True) as astyle:
     fail = False
-    output = astyle.communicate()
-    for line in output:
+    output, _ = astyle.communicate()
+    for line in output.splitlines():
         if line.startswith("Formatted"):
             fail = True
-        print (line, end="")
+        print (line)
     if astyle.returncode != 0:
         fail = True
     sys.exit(1 if fail else 0)
