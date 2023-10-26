@@ -244,7 +244,9 @@ uMqttClientContext_t *pUMqttClientOpen(uDeviceHandle_t devHandle,
 int32_t uMqttClientOpenResetLastError();
 
 /** Close the given MQTT client session.  If the session is
- * connected it will be disconnected first.
+ * connected it will be disconnected first.  pContext should NOT
+ * BE USED after this function has returned; you may wish to set
+ * it to NULL for safety.
  *
  * Note: when MQTT is deinitialised not all memory associated with it
  * is always immediately reclaimed; if you wish to reclaim memory before
