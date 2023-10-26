@@ -6,6 +6,7 @@ These directories provide examples that are specific to u-blox GNSS chips, e.g. 
 - [msg_main.c](msg_main.c) contains an example of how to exchange messages of your choice with a GNSS chip that is connected directly to this MCU, i.e. not via an intermediate [cellular] module.  It uses the `uGnssMsg` API which can be found in [u_gnss_msg.h](/gnss/api/u_gnss_msg.h).
 - [pos_main.c](pos_main.c) contains an example of how to obtain streamed position fixes from a GNSS chip.  It uses the `uGnssPos` API which can be found in [u_gnss_pos.h](/gnss/api/u_gnss_pos.h).
 - [assist_now_main.c](assist_now_main.c) contains an example of how achieve a faster time to first fix by using the u-blox AssistNow services.  It uses the `uGnssMga` API which can be found in [u_gnss_mga.h](/gnss/api/u_gnss_mga.h).
+- [geofence_main.c](geofence_main.c) contains an example of how to use the common [geofence](/common/geofence/api/u_geofence.h) API with a GNSS chip; the conditional compilation flag `U_CFG_GEOFENCE` MUST be passed into your build for this exampe to do anything useful.  Note that the same common [geofence](/common/geofence/api/u_geofence.h) API can be used with [cellular](/cell/api/u_cell_geofence.h) (CellLocate) and [Wi-Fi](/wifi/api/u_wifi_geofence.h) (Google, Skyhook and Here). ZEPHYR USERS should note that the Zephyr minimal C library is NOT sufficient to build this example: maths functions are required and hence newlib MUST be used.
 
 # Usage: `cfg_val_main.c`, `msg_main.c` And `pos_main.c`
 To build and run these examples on a supported platform you need to travel down into the `port/platform/<platform>/mcu/<mcu>` directory of your choice and find the `runner` build.  The instructions there will tell you how to set/override defines.  The following \#defines are relevant:
@@ -21,6 +22,9 @@ For the remainder of the \#defines you may either override their values in the s
 `U_CFG_APP_PIN_GNSS_xxx`: the default values for the MCU pins connecting your GNSS module to your MCU are \#defined in the file [port/platform](/port/platform)`/<platform>/mcu/<mcu>/cfg/cfg_app_platform_specific.h`.  You should check if these are correct for your board and, if not, override the values of the \#defines (where -1 means "not connected").
 
 You will also need an antenna connected to the GNSS chip.
+
+# Usage: `geofence_main.c`
+For this example, in addition to the GNSS settings above, you must pass the conditional compilation flag `U_CFG_GEOFENCE` into your build.
 
 # Usage: `assist_now_main.c`
 For this example, in addition to the GNSS settings above, you will need a means of sending a HTTP request to a u-blox server.  The example assumes you will do this using the `uHttpClient` with a cellular module.

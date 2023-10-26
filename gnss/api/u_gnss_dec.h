@@ -173,6 +173,11 @@ typedef int32_t (uGnssDecFunction_t) (uGnssMessageId_t *pId,
  * caller to uGnssDecFree() the pointer when done (and it is always
  * safe to do so, even if the pointer is NULL).
  *
+ * Note: this function will not pass any position that it decodes
+ * into a check against any fences associated with any GNSS devices;
+ * you may do that by calling uGnssGeofencePosition() with the decoded
+ * position if you wish.
+ *
  * @param[in] pBuffer     the buffer containing the message to be
  *                        decoded; cannot be NULL.
  * @param size            the amount of data at pBuffer.

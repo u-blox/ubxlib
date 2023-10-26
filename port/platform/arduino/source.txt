@@ -28,6 +28,7 @@ cell/src/u_cell_time.c
 cell/src/u_cell_gpio.c
 cell/src/u_cell_fota.c
 cell/src/u_cell_mux.c
+cell/src/u_cell_geofence.c
 cell/src/u_cell_private.c
 cell/src/u_cell_mux_private.c
 cell/src/u_cell_mno_db.c
@@ -41,6 +42,7 @@ gnss/src/u_gnss_dec.c
 gnss/src/u_gnss_dec_ubx_nav_hpposllh.c
 gnss/src/u_gnss_dec_ubx_nav_pvt.c
 gnss/src/u_gnss_mga.c
+gnss/src/u_gnss_geofence.c
 gnss/src/u_gnss_util.c
 gnss/src/u_gnss_private.c
 gnss/src/lib_mga/u_lib_mga.c
@@ -51,6 +53,7 @@ wifi/src/u_wifi_mqtt.c
 wifi/src/u_wifi_http.c
 wifi/src/u_wifi_private.c
 wifi/src/u_wifi_loc.c
+wifi/src/u_wifi_geofence.c
 common/device/src/u_device.c
 common/device/src/u_device_serial.c
 common/device/src/u_device_shared.c
@@ -114,6 +117,8 @@ common/http_client/src/u_http_client.c
 common/http_client/src/u_http_client_stub_cell.c
 common/http_client/src/u_http_client_stub_wifi.c
 common/assert/src/u_assert.c
+common/geofence/src/u_geofence.c
+common/geofence/src/dummy/u_geofence_geodesic.c
 port/u_port_heap.c
 port/u_port_resource.c
 port/platform/common/event_queue/u_port_event_queue.c

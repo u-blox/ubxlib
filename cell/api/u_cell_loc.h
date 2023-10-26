@@ -150,6 +150,15 @@ extern "C" {
 # define U_CELL_LOC_GNSS_SYSTEM_TYPES 0x7f
 #endif
 
+#ifndef U_CELL_LOC_GEOFENCE_NUM_CACHED
+/** The number of cached geofence structures to keep
+ * and update: one is required by each cellular instance,
+ * so, for instance, a 3 here is good if you have a maximum
+ * of three cellular instances active at any one time.
+ */
+# define U_CELL_LOC_GEOFENCE_NUM_CACHED 3
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */

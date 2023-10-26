@@ -49,6 +49,11 @@
 
 #include "u_at_client.h"
 
+#include "u_linked_list.h"
+
+#include "u_geofence.h"
+#include "u_geofence_shared.h"
+
 #include "u_short_range_module_type.h"
 #include "u_short_range_pbuf.h"
 #include "u_short_range.h"
@@ -897,6 +902,8 @@ void uShortRangeClose(uDeviceHandle_t devHandle)
         uPortTaskBlock(U_SHORT_RANGE_AT_CLIENT_CLOSE_DELAY_MS);
         uAtClientRemoveUrcHandler(pInstance->atHandle, "+STARTUP");
         uAtClientRemove(pInstance->atHandle);
+        // Unlink any geofences and free the fence context
+        uGeofenceContextFree((uGeofenceContext_t **) &pInstance->pFenceContext);
         uPortUartClose(pInstance->uartHandle);
         removeShortRangeInstance(pInstance);
         uDeviceDestroyInstance(U_DEVICE_INSTANCE(devHandle));

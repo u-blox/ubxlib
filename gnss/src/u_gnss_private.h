@@ -271,6 +271,7 @@ typedef struct uGnssPrivateInstance_t {
                                                             here so that we can free it */
     uGnssRrlpMode_t rrlpMode; /**< The type of MEASX to use with RRLP capture. */
     uGnssPrivateMga_t *pMga; /**< Storage for AssistNow. */
+    void *pFenceContext; /**< Storage for a uGeofenceContext_t. */
     struct uGnssPrivateInstance_t *pNext;
 } uGnssPrivateInstance_t;
 // *INDENT-ON*

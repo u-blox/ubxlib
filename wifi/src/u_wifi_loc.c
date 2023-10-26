@@ -52,6 +52,11 @@
 
 #include "u_location.h"
 
+#include "u_linked_list.h"
+
+#include "u_geofence.h"
+#include "u_geofence_shared.h"
+
 #include "u_short_range_module_type.h"
 #include "u_short_range.h"
 #include "u_short_range_private.h"
@@ -97,8 +102,17 @@ typedef struct {
     uDeviceHandle_t wifiHandle;
     int32_t errorCode;
     uLocation_t location;
+    uGeofenceContext_t *pFenceContext;
     uWifiLocCallback_t *pCallback;
 } uWifiLocCallbackContext_t;
+
+/** Structure to hold a #uGeofenceDynamicStatus_t, plus the
+ * associated device handle.
+ */
+typedef struct {
+    uDeviceHandle_t wifiHandle;
+    uGeofenceDynamicStatus_t lastStatus;
+} uWifiLocGeofenceDynamicStatus_t;
 
 /* ----------------------------------------------------------------
  * VARIABLES
@@ -114,9 +128,91 @@ static int32_t gULocationTypeToUConnectType[] = {
         -1 // U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE
     };
 
+static uWifiLocGeofenceDynamicStatus_t gFenceDynamicsStatus[U_WIFI_LOC_GEOFENCE_NUM_CACHED] = {0};
+
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
+
+static uGeofenceDynamicStatus_t *pGetFenceDynamicStatus(uDeviceHandle_t wifiHandle)
+{
+    uGeofenceDynamicStatus_t *pStatus = NULL;
+
+    for (size_t x = 0; (x < sizeof(gFenceDynamicsStatus) / sizeof(gFenceDynamicsStatus[0])) &&
+         (pStatus == NULL); x++) {
+        if (wifiHandle == gFenceDynamicsStatus[x].wifiHandle) {
+            pStatus = &(gFenceDynamicsStatus[x].lastStatus);
+        }
+    }
+
+    return pStatus;
+}
+
+static bool setFenceDynamicStatus(uDeviceHandle_t wifiHandle,
+                                  const uGeofenceDynamicStatus_t *pStatus)
+{
+    uWifiLocGeofenceDynamicStatus_t *pTmp = NULL;
+
+    if (wifiHandle != NULL) {
+        for (size_t x = 0; (x < sizeof(gFenceDynamicsStatus) / sizeof(gFenceDynamicsStatus[0])) &&
+             (pTmp == NULL); x++) {
+            if (wifiHandle == gFenceDynamicsStatus[x].wifiHandle) {
+                pTmp = &(gFenceDynamicsStatus[x]);
+            }
+        }
+        // If we did not find the entry, get an empty one so that
+        // we can add it
+        for (size_t x = 0; (x < sizeof(gFenceDynamicsStatus) / sizeof(gFenceDynamicsStatus[0])) &&
+             (pTmp == NULL); x++) {
+            if (gFenceDynamicsStatus[x].wifiHandle == 0) {
+                pTmp = &(gFenceDynamicsStatus[x]);
+            }
+        }
+        if (pTmp != NULL) {
+            // Update/add the entry
+            if (pStatus != NULL) {
+                pTmp->wifiHandle = wifiHandle;
+                pTmp->lastStatus = *pStatus;
+            } else {
+                memset(pTmp, 0, sizeof(*pTmp));
+            }
+        }
+    } else {
+        // Reset the lot
+        memset(&gFenceDynamicsStatus, 0, sizeof(gFenceDynamicsStatus));
+    }
+
+    return (wifiHandle == NULL) || (pTmp != NULL);
+}
+
+// Test a location against any geofences.
+static void testGeofence(uDeviceHandle_t wifiHandle,
+                         uGeofenceContext_t *pFenceContext,
+                         const uLocation_t *pLocation)
+{
+    uGeofenceDynamicStatus_t *pStatus;
+
+    if ((pLocation != NULL) && (pFenceContext != NULL)) {
+        // Check out the geofencing
+        // We use a cached fence dynamic status, rather than the ones
+        // we were passed, as we can keep our cache up to date; we
+        // don't have access to the instance pointer here, for
+        // thread-safety reasons
+        pStatus = pGetFenceDynamicStatus(wifiHandle);
+        if (pStatus != NULL) {
+            pFenceContext->dynamic.lastStatus = *pStatus;
+        }
+        uGeofenceContextTest(wifiHandle,
+                             pFenceContext,
+                             U_GEOFENCE_TEST_TYPE_NONE, false,
+                             ((int64_t) pLocation->latitudeX1e7) * 100,
+                             ((int64_t) pLocation->longitudeX1e7) * 100,
+                             pLocation->altitudeMillimetres,
+                             pLocation->radiusMillimetres, -1);
+        // Update our cache with the outcome
+        setFenceDynamicStatus(wifiHandle, &pFenceContext->dynamic.lastStatus);
+    }
+}
 
 // Multiply a number by 10 ^ thePower, returning an int32_t inside
 // an int64_t.
@@ -280,15 +376,20 @@ static void UUDHTTP_urc_callback(uAtClientHandle_t atHandle, void *pParam)
 
     if (pCallbackContext != NULL) {
         if (pCallbackContext->errorCode == 0) {
-            pLocation = &(pCallbackContext->location);
+            pLocation = &pCallbackContext->location;
         }
         if (pCallbackContext->pCallback != NULL) {
             pCallbackContext->pCallback(pCallbackContext->wifiHandle,
                                         pCallbackContext->errorCode,
                                         pLocation);
         }
+        // Check out the geofencing
+        testGeofence(pCallbackContext->wifiHandle,
+                     pCallbackContext->pFenceContext,
+                     pLocation);
 
         // Free the callback context
+        uPortFree(pCallbackContext->pFenceContext);
         uPortFree(pCallbackContext);
     }
 }
@@ -470,8 +571,15 @@ void uWifiLocPrivateUrc(uAtClientHandle_t atHandle, void *pParameter)
                     if (pContext->pLocation != NULL) {
                         pCallbackContext->location = *pContext->pLocation;
                     }
+                    if (pInstance->pFenceContext != NULL) {
+                        pCallbackContext->pFenceContext = (uGeofenceContext_t *) pUPortMalloc(sizeof(uGeofenceContext_t));
+                        if (pCallbackContext->pFenceContext != NULL) {
+                            *pCallbackContext->pFenceContext = *(uGeofenceContext_t *) pInstance->pFenceContext;
+                        }
+                    }
                     pCallbackContext->pCallback = pContext->pCallback;
                     if (uAtClientCallback(atHandle, UUDHTTP_urc_callback, pCallbackContext) != 0) {
+                        uPortFree(pCallbackContext->pFenceContext);
                         uPortFree(pCallbackContext);
                     }
                 }
@@ -504,6 +612,7 @@ int32_t uWifiLocGet(uDeviceHandle_t wifiHandle,
     volatile uWifiLocContext_t *pContext;
     uAtClientHandle_t atHandle;
     int32_t startTimeMs;
+    uLocation_t location;
 
     if (gUShortRangePrivateMutex != NULL) {
 
@@ -527,7 +636,7 @@ int32_t uWifiLocGet(uDeviceHandle_t wifiHandle,
                     errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
                     pContext = pBeginLocationAlloc(pInstance, type, pApiKey,
                                                    accessPointsFilter, rssiDbmFilter,
-                                                   pLocation);
+                                                   &location);
                     if (pContext != NULL) {
                         pInstance->pLocContext = (volatile void *) pContext;
                         // UNLOCK the location mutex to let the URC handler run
@@ -545,7 +654,16 @@ int32_t uWifiLocGet(uDeviceHandle_t wifiHandle,
                                     ((pKeepGoingCallback != NULL) && pKeepGoingCallback(wifiHandle)))) {
                                 uPortTaskBlock(250);
                             }
+                            if (pLocation != NULL) {
+                                *pLocation = location;
+                            }
                             errorCode = pContext->errorCode;
+                            if (errorCode == 0) {
+                                // Check out any geofences
+                                testGeofence(wifiHandle,
+                                             (uGeofenceContext_t *) pInstance->pFenceContext,
+                                             &location);
+                            }
                         }
                         pInstance->pLocContext = NULL;
                         // Free memory

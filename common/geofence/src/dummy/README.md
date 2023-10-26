@@ -1,0 +1,2 @@
+# Why This File Is Here
+This file is here solely to allow those who only have a `make` (rather than `CMake`) based platform, and so are unable to use the third-party GeographicLib integration, to still compile and use the `ubxlib` GNSS geofence feature with a simple spherical earth model.  See the comments at the top of [u_geofence_geodesic.h](/common/geofence/api/u_geofence_geodesic.h) for more information. 

@@ -32,6 +32,7 @@ common/sock
 common/ubx_protocol
 common/spartn
 common/utils
+common/geofence
 port/platform/common/debug_utils
 # Even though the common network and device directories are
 # organised as modules, they contain source files which need
@@ -95,6 +96,7 @@ common/device/src/u_device_private.c
 common/device/src/u_device_private_cell_stub.c
 common/device/src/u_device_private_gnss_stub.c
 common/device/src/u_device_private_short_range_stub.c
+common/geofence/src/u_geofence_geodesic.cpp
 
 [SOURCE cell]
 common/network/src/u_network_private_cell.c

@@ -19,6 +19,7 @@ UBXLIB_MODULE_DIRS = \
 	${UBXLIB_BASE}/common/spartn \
 	${UBXLIB_BASE}/common/utils \
 	${UBXLIB_BASE}/common/dns \
+	${UBXLIB_BASE}/common/geofence \
 	${UBXLIB_BASE}/port/platform/common/debug_utils
 
 # Additional source directories
@@ -128,6 +129,7 @@ UBXLIB_MODULE_DIRS += ${UBXLIB_BASE}/gnss
 UBXLIB_SRC += \
 	${UBXLIB_BASE}/common/network/src/u_network_private_gnss.c \
 	${UBXLIB_BASE}/common/device/src/u_device_private_gnss.c \
+	${UBXLIB_BASE}/common/geofence/src/dummy/u_geofence_geodesic.c \
 	${UBXLIB_BASE}/gnss/src/lib_mga/u_lib_mga.c
 else
 # Make the linker happy

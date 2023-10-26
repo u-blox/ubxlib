@@ -156,6 +156,7 @@ typedef struct uShortRangePrivateInstance_t {
     uWifiHttpCallback_t *pWifiHttpCallBack;
     uPortMutexHandle_t locMutex;
     volatile void *pLocContext;
+    void *pFenceContext; /**< Storage for a uGeofenceContext_t. */
     struct uShortRangePrivateInstance_t *pNext;
 } uShortRangePrivateInstance_t;
 

@@ -18,6 +18,7 @@ common/mqtt_client/test
 common/http_client/test
 common/ubx_protocol/test
 common/spartn/test
+common/geofence/test
 port/test
 port/platform/common/test_util
 

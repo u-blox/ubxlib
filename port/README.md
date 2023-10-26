@@ -42,10 +42,11 @@ To bring the platform-specific files into your CMake file, take a look at, for i
 
 ## UBXLIB_FEATURES
 Available features currently are:
-* `u_lib`: Include the `lib_common` API
-* `short_range`: Include `wifi`, `ble` and `short_range` API
-* `cell`: Include `cell` API
-* `gnss`: Include `gnss` API
+* `u_lib`: include the `lib_common` API
+* `short_range`: include `wifi`, `ble` and `short_range` API
+* `cell`: include `cell` API
+* `gnss`: include `gnss` API
+* `geodesic`: include [GeographicLib](https://github.com/geographiclib/geographiclib), required only if `U_CFG_GEOFENCE` is defined and shapes larger than 1 km in size are being used in the fence, see [u_geofence_geodesic.h](/common/geofence/api/u_geofence_geodesic.h] for details.
 
 ## Example
 ```cmake
@@ -59,6 +60,9 @@ set(UBXLIB_FEATURES short_range cell gnss)
 # - UBXLIB_PRIVATE_INC
 # - UBXLIB_TEST_SRC
 # - UBXLIB_TEST_INC
+# and optionally:
+# - UBXLIB_EXTRA_LIBS
+# - UBXLIB_COMPILE_OPTIONS
 include(${UBXLIB_BASE}/port/ubxlib.cmake)
 ```
 
@@ -88,5 +92,8 @@ UBXLIB_FEATURES = cell gnss short_range
 # - UBXLIB_PRIVATE_INC
 # - UBXLIB_TEST_SRC
 # - UBXLIB_TEST_INC
+# and optionally:
+# - UBXLIB_EXTRA_LIBS
+# - UBXLIB_COMPILE_OPTIONS
 include $(UBXLIB_BASE)/port/ubxlib.mk
 ```

@@ -8,3 +8,6 @@
 u_lib.h
 u_lib_internal.h
 lib_fibonacci.h
+
+# Contains no user-callable functions
+u_geofence_geodesic.h

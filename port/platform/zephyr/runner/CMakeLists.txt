@@ -29,3 +29,6 @@ target_sources(app PRIVATE
 target_include_directories(app PRIVATE
     ${UBXLIB_BASE}/port/platform/common/runner
 )
+
+# Link any additional UBXLIB libraries that have been brought in
+target_link_libraries(app PRIVATE ${UBXLIB_EXTRA_LIBS})

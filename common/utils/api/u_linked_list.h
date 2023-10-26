@@ -46,7 +46,8 @@ typedef struct uLinkedList_t {
  * FUNCTIONS
  * -------------------------------------------------------------- */
 
-/** Add an entry to a linked list.  This function is NOT thread-safe.
+/** Add an entry to the END of the linked list.  This function is
+ * NOT thread-safe.
  *
  * @param[in] ppList  a pointer to the root of the linked list,
  *                    cannot be NULL.

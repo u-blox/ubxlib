@@ -118,8 +118,9 @@ int32_t uGnssCfgPrivateValSetList(uGnssPrivateInstance_t *pInstance,
 
 /** Delete several configuration items at once; only applicable
  * to M9 modules and beyond, uses the UBX-CFG-VALDEL mechanism.
- * Note if you want to perform a deletion using an existing array of
- * uGnssCfgVal_t items then use uGnssCfgValDelListX() instead.
+ *
+ * Note: if you want to perform a deletion using an existing array of
+ * #uGnssCfgVal_t items then use uGnssCfgValDelListX() instead.
  *
  * @param[in] pInstance  a pointer to the GNSS instance, cannot be NULL.
  * @param[in] pKeyIdList a pointer to an array of key IDs to delete; must be
@@ -157,6 +158,14 @@ int32_t uGnssCfgPrivateValDelList(uGnssPrivateInstance_t *pInstance,
                                   size_t numKeyIds,
                                   uGnssCfgValTransaction_t transaction,
                                   uint32_t layers);
+
+/** Get the dynamic platform model from the GNSS chip.
+ *
+ * @param[in] pInstance  a pointer to the GNSS instance, cannot be NULL.
+ * @return               the number of the dynamic platform model or
+ *                       negative error code.
+ */
+int32_t uGnssCfgPrivateGetDynamic(uGnssPrivateInstance_t *pInstance);
 
 #ifdef __cplusplus
 }

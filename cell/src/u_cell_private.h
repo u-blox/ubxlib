@@ -462,6 +462,7 @@ typedef struct uCellPrivateInstance_t {
                             avoid spreading its types all over. */
     void *pCellTimeContext;  /**< Hook for CellTime context. */
     void *pCellTimeCellSyncContext;   /**< Hook for CellTime cell synchronisation context. */
+    void *pFenceContext; /**< Storage for a uGeofenceContext_t. */
     struct uCellPrivateInstance_t *pNext;
 } uCellPrivateInstance_t;
 

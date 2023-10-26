@@ -426,7 +426,7 @@ def buildAndTestPipeline(instance_str, json_entry, filter) {
                                     }
                                 } finally {
                                     // Store summary-, debug- and test report file as artifacts
-                                    archiveArtifacts artifacts: "${instance_workdir}/**/${summary_file}, ${instance_workdir}/**/${test_report_file}, ${instance_workdir}/**/${debug_file}, ${instance_workdir}/**/*.hex, ${instance_workdir}/**/*.bin, ${instance_workdir}/**/*.elf, ${instance_workdir}/**/*.exe, ${instance_workdir}/**/*.map, ${instance_workdir}/**/analyze_html/*", allowEmptyArchive: true
+                                    archiveArtifacts artifacts: "${instance_workdir}/**/${summary_file}, ${instance_workdir}/**/${test_report_file}, ${instance_workdir}/**/${debug_file}, ${instance_workdir}/**/*.hex, ${instance_workdir}/**/*.bin, ${instance_workdir}/**/*.elf, ${instance_workdir}/**/*.exe, ${instance_workdir}/**/*.map, ${instance_workdir}/*.kml, ${instance_workdir}/**/analyze_html/*", allowEmptyArchive: true
                                     if (test_report_arg != "") {
                                         // Record the test results
                                         junit(testResults: "${working_dir}/${instance_str}/${test_report_file}", allowEmptyResults: true, skipOldReports: true, skipPublishingChecks: true)

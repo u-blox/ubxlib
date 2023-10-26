@@ -105,6 +105,7 @@
 #include <u_short_range_sec_tls.h>
 #include <u_short_range_module_type.h>
 #include <u_dns_server.h>
+#include <u_geofence.h>
 
 // BLE/cellular/GNSS/Wi-Fi APIs
 #include <u_ble.h>
@@ -129,6 +130,7 @@
 #include <u_cell_sock.h>
 #include <u_cell_fota.h>
 #include <u_cell_mux.h>
+#include <u_cell_geofence.h>
 #include <u_gnss_type.h>
 #include <u_gnss.h>
 #include <u_gnss_cfg_val_key.h>
@@ -141,6 +143,7 @@
 #include <u_gnss_dec_ubx_nav_pvt.h>
 #include <u_gnss_dec_ubx_nav_hpposllh.h>
 #include <u_gnss_mga.h>
+#include <u_gnss_geofence.h>
 #include <u_gnss_util.h>
 #include <u_wifi.h>
 #include <u_wifi_cfg.h>
@@ -149,6 +152,7 @@
 #include <u_wifi_http.h>
 #include <u_wifi_captive_portal.h>
 #include <u_wifi_loc.h>
+#include <u_wifi_geofence.h>
 
 /** @}*/
 

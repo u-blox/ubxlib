@@ -105,6 +105,7 @@ In order for u-blox to support multiple platforms with this code there is also a
 ¦   +---short_range            <-- internal API used by the BLE and Wi-Fi APIs (see below)
 ¦   +---at_client              <-- internal API used by the BLE, cell and Wi-Fi APIs
 ¦   +---ubx_protocol           <-- internal API used by the GNSS API
+¦   +---geofence               <-- common geofence API that can be used with GNSS, cellular and Wi-Fi-based positioning
 ¦   +---spartn                 <-- message validation utilities for SPARTN
 ¦   +---error                  <-- u_error_common.h: error codes common across APIs
 ¦   +---assert                 <-- assert hook
@@ -136,7 +137,7 @@ In order for u-blox to support multiple platforms with this code there is also a
 There are a few possible approaches to adopting `ubxlib`.  If you do not have a fixed environment (MCU, toolchain, RTOS, etc.) then the first two options offer an easy start; if you are constrained in how you must work (i.e. you must use a particular MCU or toolchain or RTOS), or you are happy to dive into the detail from the outset, then the third way is for you.
 
 ## The Easy Way 1: XPLR IoT
-If you would like to explore cellular, positioning, Wifi and BLE, along with a suite of sensors, all at once, you might consider purchasing a u-blox [XPLR-IOT-1 platform](https://www.u-blox.com/en/product/xplr-iot-1) and using the associated [ubxlib examples repo](https://github.com/u-blox/ubxlib_examples_xplr_iot), which allows you to install, build and run [Zephyr](https://www.zephyrproject.org/)-based applications.
+If you would like to explore cellular, positioning, Wi-Fi and BLE, along with a suite of sensors, all at once, you might consider purchasing a u-blox [XPLR-IOT-1 platform](https://www.u-blox.com/en/product/xplr-iot-1) and using the associated [ubxlib examples repo](https://github.com/u-blox/ubxlib_examples_xplr_iot), which allows you to install, build and run [Zephyr](https://www.zephyrproject.org/)-based applications.
 
 ## The Easy Way 2: PlatformIO
 `ubxlib` is supported as a [PlatformIO](https://platformio.org/) library; if you have a board that either (a) runs [Zephyr](https://www.zephyrproject.org/) or (b) contains an ESP32 chip (running [ESP-IDF](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/index.html) or [Arduino](https://www.arduino.cc/)), then just follow the instructions [here](/port/platform/platformio) to load `ubxlib` directly into the [PlatformIO](https://platformio.org/) Visual Studio Code-based IDE.
@@ -173,6 +174,7 @@ A number of examples are provided with this repo:
 | GNSS         | [message](/example/gnss "message example") example communicating directly with a GNSS chip, messages of your choice.|
 | GNSS         | [position](/example/gnss "position example") example obtaining streamed position directly from a GNSS chip.|
 | GNSS         | [position](/example/gnss "AssistNow example") example of how to use the u-blox AssistNow service to improve the time to first fix of GNSS.|
+| GNSS         | [geofence](/example/gnss "geofence example") example of how to use the comon [geofence][/common/geofence/api] API with GNSS; note that it can equally be used with cellular (CellLocate) and Wi-Fi (Google, SkyHook and Here).|
 
 You may use the code from any of these examples as a basis for your work as follows:
 - Copy the source files for the [example](/example) that is closest to your intended application to your project directory.
@@ -221,6 +223,9 @@ The software in this repository is Apache 2.0 licensed and copyright u-blox with
 - The `base64` implementation in [common/utils/src/base64.h](/common/utils/src/base64.h) is copyright [William Sherif](https://github.com/superwills/NibbleAndAHalf).
 - The ARM callstack iterator in [port/platform/common/debug_utils/src/arch/arm/u_stack_frame_cortex.c](/port/platform/common/debug_utils/src/arch/arm/u_print_callstack_cortex.c) is copyright Armink, part of [CmBacktrace](https://github.com/armink/CmBacktrace).
 - The FreeRTOS additions [port/platform/common/debug_utils/src/freertos/additions](/port/platform/common/debug_utils/src/freertos/additions) are copied from the Apache licensed [ESP-IDF](https://github.com/espressif/esp-idf).
+- If you compile-in geofencing by defining the conditional compilation flag `U_CFG_GEOFENCE` for your build:
+  - For shapes larger than about 1 km, to employ a true-earth model you may choose to conditionally link the sub-module [common/geofence/geographiclib](geographiclib) from the MIT licensed [GeographicLib](https://github.com/geographiclib) by Charles A. Karney.
+  - The default functions, which assume a spherical earth, are derived from the valuable advice (though not the code) of https://www.movable-type.co.uk/scripts/latlong.html, MIT licensed and copyright Chris Veness.
 
 In all cases copyright, and our thanks, remain with the original authors.
 

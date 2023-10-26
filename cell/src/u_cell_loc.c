@@ -57,6 +57,11 @@
 
 #include "u_location.h"
 
+#include "u_linked_list.h"
+
+#include "u_geofence.h"
+#include "u_geofence_shared.h"
+
 #include "u_gnss_mga.h" // uGnssMgaDataType_t
 
 #include "u_cell_module_type.h"
@@ -110,7 +115,7 @@
  * be established (monitoring the errorCode field) and then read
  * the result out and release the data block.
  * "callback" type data storage is associated with pCallback and
- * allows asynchronous operation: we only all
+ * allows asynchronous operation.
  */
 typedef enum {
     U_CELL_LOC_FIX_DATA_STORAGE_TYPE_BLOCK,
@@ -168,11 +173,36 @@ typedef struct {
 typedef struct {
     uCellPrivateLocContext_t *pContext;
     uCellLocFixDataStorageBlock_t fixDataStorageBlock;
+    uGeofenceContext_t *pFenceContext;
 } uCellLocUrc_t;
+
+/** Structure to hold a #uGeofenceDynamicStatus_t, plus the
+ * associated device handle.
+ */
+typedef struct {
+    uDeviceHandle_t cellHandle;
+    uGeofenceDynamicStatus_t lastStatus;
+} uCellLocGeofenceDynamicStatus_t;
 
 /* ----------------------------------------------------------------
  * VARIABLES
  * -------------------------------------------------------------- */
+
+/** A cache of #uGeofenceDynamicStatus_t.
+ *
+ * Note: we go to great lengths here to make a copy of things
+ * that get passed to asynchronous calls in order to not be
+ * caught out by instances being disassembled underneath us,
+ * etc., i.e. to ensure thread-safety.  This presents a problem
+ * for the geofence case since the #uGeofenceDynamicStatus_t part of
+ * the geofence context structure needs to be read and then
+ * _updated_ by uGeofenceContextTest(), which obviously
+ * won't work if you have a copy.  Hence what we do here is
+ * keep a cache of up to #U_CELL_LOC_GEOFENCE_NUM_CACHED
+ * #uGeofenceDynamicStatus_t for UULOC_urc_callback() to use and
+ * update.
+ */
+static uCellLocGeofenceDynamicStatus_t gFenceDynamicsStatus[U_CELL_LOC_GEOFENCE_NUM_CACHED] = {0};
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS: URC RELATED
@@ -235,6 +265,59 @@ static int32_t numberToX1e7(const char *pNumber)
     return isNegative ? -(int32_t) x1e7 : (int32_t) x1e7;
 }
 
+// Get the stored fence dynamic status for the given cellular handle.
+static uGeofenceDynamicStatus_t *pGetFenceDynamicStatus(uDeviceHandle_t cellHandle)
+{
+    uGeofenceDynamicStatus_t *pStatus = NULL;
+
+    for (size_t x = 0; (x < sizeof(gFenceDynamicsStatus) / sizeof(gFenceDynamicsStatus[0])) &&
+         (pStatus == NULL); x++) {
+        if (cellHandle == gFenceDynamicsStatus[x].cellHandle) {
+            pStatus = &(gFenceDynamicsStatus[x].lastStatus);
+        }
+    }
+
+    return pStatus;
+}
+
+// Set the stored fence dynamic status for the given cellular handle.
+static bool setFenceDynamicStatus(uDeviceHandle_t cellHandle,
+                                  const uGeofenceDynamicStatus_t *pStatus)
+{
+    uCellLocGeofenceDynamicStatus_t *pTmp = NULL;
+
+    if (cellHandle != NULL) {
+        for (size_t x = 0; (x < sizeof(gFenceDynamicsStatus) / sizeof(gFenceDynamicsStatus[0])) &&
+             (pTmp == NULL); x++) {
+            if (cellHandle == gFenceDynamicsStatus[x].cellHandle) {
+                pTmp = &(gFenceDynamicsStatus[x]);
+            }
+        }
+        // If we did not find the entry, get an empty one so that
+        // we can add it
+        for (size_t x = 0; (x < sizeof(gFenceDynamicsStatus) / sizeof(gFenceDynamicsStatus[0])) &&
+             (pTmp == NULL); x++) {
+            if (gFenceDynamicsStatus[x].cellHandle == 0) {
+                pTmp = &(gFenceDynamicsStatus[x]);
+            }
+        }
+        if (pTmp != NULL) {
+            // Update/add the entry
+            if (pStatus != NULL) {
+                pTmp->cellHandle = cellHandle;
+                pTmp->lastStatus = *pStatus;
+            } else {
+                memset(pTmp, 0, sizeof(*pTmp));
+            }
+        }
+    } else {
+        // Reset the lot
+        memset(&gFenceDynamicsStatus, 0, sizeof(gFenceDynamicsStatus));
+    }
+
+    return (cellHandle == NULL) || (pTmp != NULL);
+}
+
 // Handler that is called via uAtClientCallback()
 // from the UULOC or UULOCIND URCs (the latter in case
 // it indicates a fatal error) and ultimately either calls
@@ -247,6 +330,7 @@ static void UULOC_urc_callback(uAtClientHandle_t atHandle, void *pParam)
     uCellPrivateLocContext_t *pContext;
     uCellLocFixDataStorage_t *pFixDataStorage;
     uCellLocFixDataStorageBlock_t *pFixDataStorageBlock;
+    uGeofenceDynamicStatus_t *pFenceDynamicsStatus;
 
     (void) atHandle;
 
@@ -283,6 +367,29 @@ static void UULOC_urc_callback(uAtClientHandle_t atHandle, void *pParam)
                     default:
                         break;
                 }
+
+                if (pUrcStorage->pFenceContext != NULL) {
+                    // Check out geofencing for this location, using the
+                    // cached fence dynamic status, rather than the one we were
+                    // passed, as it is solely this function that is keeping
+                    // them up to date
+                    pFenceDynamicsStatus = pGetFenceDynamicStatus(pFixDataStorageBlock->cellHandle);
+                    if (pFenceDynamicsStatus != NULL) {
+                        pUrcStorage->pFenceContext->dynamic.lastStatus = *pFenceDynamicsStatus;
+                    }
+                    uGeofenceContextTest(pFixDataStorageBlock->cellHandle,
+                                         pUrcStorage->pFenceContext,
+                                         U_GEOFENCE_TEST_TYPE_NONE, false,
+                                         ((int64_t) pFixDataStorageBlock->latitudeX1e7) * 100,
+                                         ((int64_t) pFixDataStorageBlock->longitudeX1e7) * 100,
+                                         pFixDataStorageBlock->altitudeMillimetres,
+                                         pFixDataStorageBlock->radiusMillimetres, -1);
+                    // Update our cache with the outcome
+                    setFenceDynamicStatus(pFixDataStorageBlock->cellHandle,
+                                          &(pUrcStorage->pFenceContext->dynamic.lastStatus));
+                    uPortFree(pUrcStorage->pFenceContext);
+                }
+
                 // Having called the callback we must free
                 // the data storage; the block is unaffected,
                 // that's the responsibility of whoever called us
@@ -410,7 +517,14 @@ static void UULOC_urc(uAtClientHandle_t atHandle, void *pParam)
             // the callback does that
             pUrcStorage = (uCellLocUrc_t *) pUPortMalloc(sizeof(*pUrcStorage));
             if (pUrcStorage != NULL) {
+                memset(pUrcStorage, 0, sizeof(*pUrcStorage));
                 pUrcStorage->pContext = pContext;
+                if (pInstance->pFenceContext != NULL) {
+                    pUrcStorage->pFenceContext = (uGeofenceContext_t *) pUPortMalloc(sizeof(uGeofenceContext_t));
+                    if (pUrcStorage->pFenceContext != NULL) {
+                        *pUrcStorage->pFenceContext = *(uGeofenceContext_t *) pInstance->pFenceContext;
+                    }
+                }
                 pFixDataStorageBlock = &(pUrcStorage->fixDataStorageBlock);
                 pFixDataStorageBlock->latitudeX1e7 = latitudeX1e7;
                 pFixDataStorageBlock->longitudeX1e7 = longitudeX1e7;
@@ -425,6 +539,7 @@ static void UULOC_urc(uAtClientHandle_t atHandle, void *pParam)
                     pFixDataStorageBlock->errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
                 }
                 if (uAtClientCallback(atHandle, UULOC_urc_callback, pUrcStorage) != 0) {
+                    uPortFree(pUrcStorage->pFenceContext);
                     uPortFree(pUrcStorage);
                 }
             }

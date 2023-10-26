@@ -19,3 +19,9 @@ target_sources(app PRIVATE
 target_include_directories(app PRIVATE
     ${UBXLIB_BASE}/port/platform/common/runner
 )
+
+# Get rid of the irritating warning which doesn't go away
+# with the usual workaround when C++ is switch on, which
+# it is on Linux, and force to 32-bit, 'cos that's what
+# Zephyr does
+target_compile_options(app PRIVATE -Wno-format-truncation -m32)

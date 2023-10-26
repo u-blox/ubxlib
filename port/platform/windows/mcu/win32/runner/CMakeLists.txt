@@ -33,6 +33,7 @@ add_subdirectory(${UNITY_PATH} unity)
 set_source_files_properties(${UBXLIB_TEST_SRC} PROPERTIES LANGUAGE CXX )
 set_source_files_properties(${UBXLIB_TEST_SRC_PORT} PROPERTIES LANGUAGE CXX )
 add_library(ubxlib_test OBJECT ${UBXLIB_TEST_SRC} ${UBXLIB_TEST_SRC_PORT})
+target_compile_options(ubxlib_test PRIVATE ${UBXLIB_COMPILE_OPTIONS})
 target_include_directories(ubxlib_test PRIVATE
                            ${UBXLIB_TEST_INC}
                            ${UBXLIB_PRIVATE_TEST_INC_PORT}
@@ -47,4 +48,5 @@ add_executable(ubxlib_test_main ${UBXLIB_BASE}/port/platform/${UBXLIB_PLATFORM}/
 target_include_directories(ubxlib_test_main PUBLIC ${UBXLIB_INC} ${UBXLIB_PUBLIC_INC_PORT})
 target_include_directories(ubxlib_test_main PRIVATE ${UBXLIB_PRIVATE_TEST_INC_PORT} ${UBXLIB_PRIVATE_INC})
 # Link the ubxlib test target with the ubxlib tests library and Unity
-target_link_libraries(ubxlib_test_main PRIVATE ubxlib unity ubxlib_test)
+# plus any additional libraries that have been brought in
+target_link_libraries (ubxlib_test_main PRIVATE ubxlib unity ubxlib_test ${UBXLIB_EXTRA_LIBS})

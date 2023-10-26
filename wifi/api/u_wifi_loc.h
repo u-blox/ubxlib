@@ -54,6 +54,15 @@ extern "C" {
 # define U_WIFI_LOC_ANSWER_TIMEOUT_SECONDS 30
 #endif
 
+#ifndef U_WIFI_LOC_GEOFENCE_NUM_CACHED
+/** The number of cached geofence structures to keep
+ * and update: one is required by each Wifi instance,
+ * so, for instance, a 3 here is good if you have a maximum
+ * of three wifi instances active at any one time.
+ */
+# define U_WIFI_LOC_GEOFENCE_NUM_CACHED 3
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */

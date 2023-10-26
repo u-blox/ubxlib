@@ -372,6 +372,7 @@ extern "C" {
 #endif
 
 #ifndef U_AT_CLIENT_CALLBACK_TASK_STACK_SIZE_BYTES
+# ifndef U_CFG_GEOFENCE_USE_GEODESIC
 /** The stack size for the task in which any callbacks triggered
  * via uAtClientCallback() will run.  This is chosen to
  * work for all platforms, the governing factor being ESP32,
@@ -379,7 +380,15 @@ extern "C" {
  * or STM32F4 and more again in the version pre-built for
  * Arduino/PlatformIO.
  */
-# define U_AT_CLIENT_CALLBACK_TASK_STACK_SIZE_BYTES 2304
+#  define U_AT_CLIENT_CALLBACK_TASK_STACK_SIZE_BYTES 2304
+# else
+/** If geodesic position, using GeographicLib is to be used, then
+ * it is usually called via an AT Client callback task, so give it
+ * the necessary slack (see common/geofence/api/u_geofence_geodesich
+ * for more information).
+ */
+#  define U_AT_CLIENT_CALLBACK_TASK_STACK_SIZE_BYTES (2304 + (1024 * 5))
+# endif
 #endif
 
 #ifndef U_AT_CLIENT_CALLBACK_TASK_PRIORITY

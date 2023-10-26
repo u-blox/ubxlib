@@ -95,10 +95,21 @@
  */
 #define U_CFG_TEST_OS_TASK_PRIORITY (U_CFG_OS_PRIORITY_MIN + 6)
 
+#ifndef U_CFG_GNSS_FENCE_USE_GEODESIC
 /** The minimum free stack space permitted for the main task,
  * basically what's left as a margin for user code.
  */
-#define U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES (1024 * 5)
+# define U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES (1024 * 5)
+#else
+/** The minimum free stack space permitted for the main task
+ * when we're running GeographicLib; such a test build has high
+ * stack usage.  Rather than unnecessarily increasing the main
+ * application task stack size in the common sdkconfig.defaults
+ * (CONFIG_MAIN_TASK_STACK_SIZE) we just reduce the limit for this
+ * specific case.
+ */
+# define U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES 1024
+#endif
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS: HW RELATED

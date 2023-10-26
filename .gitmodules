@@ -1,0 +1,4 @@
+[submodule "common/geofence/geographiclib"]
+	path = common/geofence/geographiclib
+	branch = devel
+	url = https://github.com/geographiclib/geographiclib

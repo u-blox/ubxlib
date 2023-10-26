@@ -36,6 +36,8 @@
 
 #include "u_at_client.h"
 
+#include "u_device.h"
+
 #include "u_wifi_http_private.h"
 #include "u_wifi_loc_private.h"
 

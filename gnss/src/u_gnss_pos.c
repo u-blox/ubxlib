@@ -50,6 +50,11 @@
 
 #include "u_ubx_protocol.h"
 
+#include "u_linked_list.h"
+
+#include "u_geofence.h"
+#include "u_geofence_shared.h"
+
 #include "u_gnss_module_type.h"
 #include "u_gnss_type.h"
 #include "u_gnss_private.h"
@@ -58,6 +63,8 @@
 #include "u_gnss_cfg_private.h"
 #include "u_gnss_msg.h"
 #include "u_gnss_msg_private.h"
+#include "u_gnss_geofence.h"
+#include "u_geofence_shared.h"
 #include "u_gnss_pos.h"
 
 /* ----------------------------------------------------------------
@@ -137,6 +144,7 @@ static int32_t posDecode(char *pMessage,
                          int32_t *pLatitudeX1e7, int32_t *pLongitudeX1e7,
                          int32_t *pAltitudeMillimetres,
                          int32_t *pRadiusMillimetres,
+                         int32_t *pAltitudeUncertaintyMillimetres,
                          int32_t *pSpeedMillimetresPerSecond,
                          int32_t *pSvs, int64_t *pTimeUtc, bool printIt)
 {
@@ -220,6 +228,13 @@ static int32_t posDecode(char *pMessage,
         if (pRadiusMillimetres != NULL) {
             *pRadiusMillimetres = y;
         }
+        y = (int32_t) uUbxProtocolUint32Decode(pMessage + 44);
+        if (printIt) {
+            uPortLog("U_GNSS_POS: altitude uncertainty = %d (mm).\n", y);
+        }
+        if (pAltitudeUncertaintyMillimetres != NULL) {
+            *pAltitudeUncertaintyMillimetres = y;
+        }
         y = (int32_t) uUbxProtocolUint32Decode(pMessage + 60);
         if (printIt) {
             uPortLog("U_GNSS_POS: speed = %d (mm/s).\n", y);
@@ -239,6 +254,7 @@ static int32_t posGet(uGnssPrivateInstance_t *pInstance,
                       int32_t *pLatitudeX1e7, int32_t *pLongitudeX1e7,
                       int32_t *pAltitudeMillimetres,
                       int32_t *pRadiusMillimetres,
+                      int32_t *pAltitudeUncertaintyMillimetres,
                       int32_t *pSpeedMillimetresPerSecond,
                       int32_t *pSvs, int64_t *pTimeUtc, bool printIt)
 {
@@ -255,6 +271,7 @@ static int32_t posGet(uGnssPrivateInstance_t *pInstance,
                               pLatitudeX1e7, pLongitudeX1e7,
                               pAltitudeMillimetres,
                               pRadiusMillimetres,
+                              pAltitudeUncertaintyMillimetres,
                               pSpeedMillimetresPerSecond,
                               pSvs, pTimeUtc, printIt);
     } else {
@@ -278,6 +295,7 @@ static void posGetTask(void *pParameter)
     int32_t longitudeX1e7 = INT_MIN;
     int32_t altitudeMillimetres = INT_MIN;
     int32_t radiusMillimetres = -1;
+    int32_t altitudeUncertaintyMillimetres = 0;
     int32_t speedMillimetresPerSecond = INT_MIN;
     int32_t svs = -1;
     int64_t timeUtc = -1;
@@ -301,6 +319,7 @@ static void posGetTask(void *pParameter)
                            &longitudeX1e7,
                            &altitudeMillimetres,
                            &radiusMillimetres,
+                           &altitudeUncertaintyMillimetres,
                            &speedMillimetresPerSecond,
                            &svs,
                            &timeUtc, false);
@@ -313,6 +332,18 @@ static void posGetTask(void *pParameter)
     taskParameters.pCallback(taskParameters.gnssHandle, errorCode, latitudeX1e7,
                              longitudeX1e7, altitudeMillimetres, radiusMillimetres,
                              speedMillimetresPerSecond, svs, timeUtc);
+    // As well as the above, test the position against any
+    // fences associated with the instance, which may result
+    // in further callbacks being called and if GEODESIC is
+    // employed, may consume an additional ~5 kbytes of stack
+    uGeofenceContextTest(taskParameters.gnssHandle,
+                         (uGeofenceContext_t *) taskParameters.pInstance->pFenceContext,
+                         U_GEOFENCE_TEST_TYPE_NONE, false,
+                         ((int64_t) latitudeX1e7) * 100,
+                         ((int64_t) longitudeX1e7) * 100,
+                         altitudeMillimetres,
+                         radiusMillimetres,
+                         altitudeUncertaintyMillimetres);
 
     U_PORT_MUTEX_UNLOCK(taskParameters.pInstance->posMutex);
 
@@ -332,6 +363,7 @@ static void messageCallback(uDeviceHandle_t gnssHandle,
     int32_t longitudeX1e7 = INT_MIN;
     int32_t altitudeMillimetres = INT_MIN;
     int32_t radiusMillimetres = -1;
+    int32_t altitudeUncertaintyMillimetres = 0;
     int32_t speedMillimetresPerSecond = INT_MIN;
     int32_t svs = -1;
     int64_t timeUtc = -1;
@@ -351,6 +383,7 @@ static void messageCallback(uDeviceHandle_t gnssHandle,
                                       &latitudeX1e7, &longitudeX1e7,
                                       &altitudeMillimetres,
                                       &radiusMillimetres,
+                                      &altitudeUncertaintyMillimetres,
                                       &speedMillimetresPerSecond,
                                       &svs, &timeUtc, false);
         // Call the callback
@@ -366,6 +399,18 @@ static void messageCallback(uDeviceHandle_t gnssHandle,
                                                 speedMillimetresPerSecond,
                                                 svs,
                                                 timeUtc);
+        // As well as the above, test the position against any
+        // fences associated with the instance, which may result
+        // in further callbacks being called and if GEODESIC is
+        // employed, may consume an additional ~5 kbytes of stack
+        uGeofenceContextTest(gnssHandle,
+                             (uGeofenceContext_t *) pInstance->pFenceContext,
+                             U_GEOFENCE_TEST_TYPE_NONE, false,
+                             ((int64_t) latitudeX1e7) * 100,
+                             ((int64_t) longitudeX1e7) * 100,
+                             altitudeMillimetres,
+                             radiusMillimetres,
+                             altitudeUncertaintyMillimetres);
     }
 }
 
@@ -393,6 +438,11 @@ int32_t uGnssPosGet(uDeviceHandle_t gnssHandle,
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uGnssPrivateInstance_t *pInstance;
+    int32_t latitudeX1e7 = INT_MIN;
+    int32_t longitudeX1e7 = INT_MIN;
+    int32_t altitudeMillimetres = INT_MIN;
+    int32_t radiusMillimetres = -1;
+    int32_t altitudeUncertaintyMillimetres = 0;
 #ifdef U_CFG_SARA_R5_M8_WORKAROUND
     uint8_t message[4]; // Room for the body of a UBX-CFG-ANT message
 #endif
@@ -430,12 +480,39 @@ int32_t uGnssPosGet(uDeviceHandle_t gnssHandle,
                     ((pKeepGoingCallback != NULL) && pKeepGoingCallback(gnssHandle)))) {
                 // Call posGet() to do the work
                 errorCode = posGet(pInstance,
-                                   pLatitudeX1e7,
-                                   pLongitudeX1e7,
-                                   pAltitudeMillimetres,
-                                   pRadiusMillimetres,
+                                   &latitudeX1e7,
+                                   &longitudeX1e7,
+                                   &altitudeMillimetres,
+                                   &radiusMillimetres,
+                                   &altitudeUncertaintyMillimetres,
                                    pSpeedMillimetresPerSecond,
                                    pSvs, pTimeUtc, true);
+                if (errorCode == 0) {
+                    // As well as the above, test the position against any
+                    // fences associated with the instance, which may result
+                    // in further callbacks being called and if GEODESIC is
+                    // employed, may consume an additional ~5 kbytes of stack
+                    uGeofenceContextTest(gnssHandle,
+                                         (uGeofenceContext_t *) pInstance->pFenceContext,
+                                         U_GEOFENCE_TEST_TYPE_NONE, false,
+                                         ((int64_t) latitudeX1e7) * 100,
+                                         ((int64_t) longitudeX1e7) * 100,
+                                         altitudeMillimetres,
+                                         radiusMillimetres,
+                                         altitudeUncertaintyMillimetres);
+                }
+                if (pLatitudeX1e7 != NULL) {
+                    *pLatitudeX1e7 = latitudeX1e7;
+                }
+                if (pLongitudeX1e7 != NULL) {
+                    *pLongitudeX1e7 = longitudeX1e7;
+                }
+                if (pAltitudeMillimetres != NULL) {
+                    *pAltitudeMillimetres = altitudeMillimetres;
+                }
+                if (pRadiusMillimetres != NULL) {
+                    *pRadiusMillimetres = radiusMillimetres;
+                }
             }
         }
 

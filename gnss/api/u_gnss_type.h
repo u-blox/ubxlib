@@ -262,6 +262,7 @@ typedef struct {
 } uGnssMessageId_t;
 
 /** The types of dynamic platform model; not all types are available on all modules.
+ * If you add a new model here, please also add it to u_gnss_fence.c.
  */
 typedef enum {
     U_GNSS_DYNAMIC_PORTABLE = 0,

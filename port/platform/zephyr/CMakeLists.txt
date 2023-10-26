@@ -28,9 +28,18 @@ if (NOT DEFINED UBXLIB_FEATURES)
     if (CONFIG_UBXLIB_GNSS)
         list(APPEND UBXLIB_FEATURES gnss)
     endif()
+    if (CONFIG_UBXLIB_GEODESIC)
+        list(APPEND UBXLIB_FEATURES geodesic)
+    endif()
 endif()
 
 message("UBXLIB_FEATURES will be \"${UBXLIB_FEATURES}\"")
+
+if (CONFIG_ARCH_POSIX)
+  # When compiling for Zephyr on Linux, need to force
+  # compilation of 32-bit objects when we call ubxlib.cmake
+  set(UBXLIB_COMPILE_OPTIONS "-m32")
+endif()
 
 # From this line we will get back:
 # - UBXLIB_SRC
@@ -38,6 +47,9 @@ message("UBXLIB_FEATURES will be \"${UBXLIB_FEATURES}\"")
 # - UBXLIB_PRIVATE_INC
 # - UBXLIB_TEST_SRC
 # - UBXLIB_TEST_INC
+# - UBXLIB_COMPILE_OPTIONS
+# and optionally:
+# - UBXLIB_EXTRA_LIBS
 include(${UBXLIB_BASE}/port/ubxlib.cmake)
 
 # Set ubxlib source files
@@ -68,6 +80,9 @@ zephyr_include_directories(
     ${UBXLIB_BASE}/port/clib
     ${ZEPHYR_BASE}/include/zephyr
 )
+
+# Add any compile options that came out of ubxlib.cmake
+target_compile_options(app PRIVATE ${UBXLIB_COMPILE_OPTIONS})
 
 # Add test source & include dirs if selected
 if (CONFIG_UBXLIB_TEST)
@@ -132,6 +147,11 @@ endif()
 
 if (CONFIG_UBXLIB_EDM_STREAM_DEBUG_DUMP_DATA)
     target_compile_definitions(app PRIVATE U_CFG_SHORT_RANGE_EDM_STREAM_DEBUG_DUMP_DATA)
+endif()
+
+
+if (UBXLIB_EXTRA_LIBS)
+    target_link_libraries(app PRIVATE ${UBXLIB_EXTRA_LIBS})
 endif()
 
 endif() #CONFIG_UBXLIB

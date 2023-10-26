@@ -21,9 +21,9 @@ message("UBXLIB_FEATURES will be \"${UBXLIB_FEATURES}\"")
 # Build for debug by default
 set(CMAKE_BUILD_TYPE Debug)
 # The Posix implementations require these libraries
-set(UBXLIB_REQUIRED_LINK_LIBS -lssl -lcrypto -lpthread -lrt -lgpiod)
+set(UBXLIB_REQUIRED_LINK_LIBS -lm -lssl -lcrypto -lpthread -lrt -lgpiod)
 # Warnings are errors
-add_compile_options(-Wall -Werror -funsigned-char)
+add_compile_options(-Wall -Werror -Wno-format-truncation -funsigned-char)
 
 # Add any #defines specified by the environment variable U_FLAGS
 if (DEFINED ENV{U_FLAGS})
@@ -39,6 +39,9 @@ endif()
 # - UBXLIB_PRIVATE_INC
 # - UBXLIB_TEST_SRC
 # - UBXLIB_TEST_INC
+# and optionally:
+# - UBXLIB_EXTRA_LIBS
+# - UBXLIB_COMPILE_OPTIONS
 include(${UBXLIB_BASE}/port/ubxlib.cmake)
 
 # Linux port specific files
@@ -62,6 +65,8 @@ set(UBXLIB_SRC_PORT
 
 # Generate a library of ubxlib
 add_library(ubxlib OBJECT ${UBXLIB_SRC} ${UBXLIB_SRC_PORT})
+message("UBXLIB_COMPILE_OPTIONS will be \"${UBXLIB_COMPILE_OPTIONS}\"")
+target_compile_options(ubxlib PRIVATE ${UBXLIB_COMPILE_OPTIONS})
 target_include_directories(ubxlib PUBLIC ${UBXLIB_INC} ${UBXLIB_PUBLIC_INC_PORT})
 target_include_directories(ubxlib PRIVATE ${UBXLIB_PRIVATE_INC} ${UBXLIB_PRIVATE_INC_PORT})
 

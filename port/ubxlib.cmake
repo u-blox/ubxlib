@@ -97,12 +97,14 @@ u_add_module_dir(base ${UBXLIB_BASE}/common/ubx_protocol)
 u_add_module_dir(base ${UBXLIB_BASE}/common/spartn)
 u_add_module_dir(base ${UBXLIB_BASE}/common/utils)
 u_add_module_dir(base ${UBXLIB_BASE}/common/dns)
+u_add_module_dir(base ${UBXLIB_BASE}/common/geofence)
 u_add_module_dir(base ${UBXLIB_BASE}/port/platform/common/debug_utils)
 
 # Additional source directories
 u_add_source_dir(base ${UBXLIB_BASE}/port/platform/common/event_queue)
 u_add_source_dir(base ${UBXLIB_BASE}/port/platform/common/mutex_debug)
 u_add_source_dir(base ${UBXLIB_BASE}/port/platform/common/log_ram)
+
 
 # Additional include directories
 list(APPEND UBXLIB_INC
@@ -136,6 +138,9 @@ list(APPEND UBXLIB_SRC ${UBXLIB_BASE}/common/device/src/u_device_private_gnss_st
 list(APPEND UBXLIB_SRC ${UBXLIB_BASE}/common/device/src/u_device_private_short_range_stub.c)
 list(APPEND UBXLIB_INC ${UBXLIB_BASE}/common/device/api)
 list(APPEND UBXLIB_PRIVATE_INC ${UBXLIB_BASE}/common/device/src)
+
+# CPP file required for geofencing
+list(APPEND UBXLIB_SRC ${UBXLIB_BASE}/common/geofence/src/u_geofence_geodesic.cpp)
 
 # Default malloc()/free() implementation
 list(APPEND UBXLIB_SRC ${UBXLIB_BASE}/port/u_port_heap.c)
@@ -211,3 +216,48 @@ u_add_test_source_dir(base ${UBXLIB_BASE}/example/cell/lte_cfg)
 u_add_test_source_dir(base ${UBXLIB_BASE}/example/cell/power_saving)
 u_add_test_source_dir(base ${UBXLIB_BASE}/example/gnss)
 u_add_test_source_dir(base ${UBXLIB_BASE}/example/utilities/c030_module_fw_update)
+
+# If required, bring in the geodesic library and define
+# U_CFG_GNSS_FENCE_USE_GEODESIC, needed if
+# U_CFG_GEOFENCE is defined and shapes > 1 km
+# in size are employed.
+# NOTE: this works fine on "native" CMake systems,
+# exporting a CMake variable UBXLIB_EXTRA_LIBS which
+# can be included in target_link_libraries() to
+# cause any extra libraries to be linked and
+# UBXLIB_COMPILE_OPTIONS, which can be added to
+# target_compile_definitions(). HOWEVER, it doesn't
+# work for ESP-IDF, which has a "helful" component
+# system of its own stuck on top, hence BE AWARE
+# THAT that ESP-IDF doesn't use the bit below...
+#
+# ...except that, for reasons I don't understand, the
+# include path for the ESP-IDF geodesic component simply
+# does not propagate to the ubxlib component as it should;
+# to compensate, we always add the path to the
+# GeographicLib header files to UBXLIB_PRIVATE_INC here.
+set(GEODESIC_DIR ${UBXLIB_BASE}/common/geofence/geographiclib)
+set(GEODESIC_INC ${GEODESIC_DIR}/include
+                 ${GEODESIC_DIR}/include/GeographicLib)
+list(APPEND UBXLIB_PRIVATE_INC ${GEODESIC_INC})
+
+if (geodesic IN_LIST UBXLIB_FEATURES)
+  file(GLOB SRCS ${GEODESIC_DIR}/src/*.cpp)
+  set(GEODESIC_SRC ${SRCS})
+  set(GEOGRAPHICLIB_PRECISION 2)
+  configure_file (
+    ${GEODESIC_DIR}/include/GeographicLib/Config.h.in
+    ${GEODESIC_DIR}/include/GeographicLib/Config.h
+    @ONLY)
+  # List rather than set so that options can be passed
+  # into this script
+  list(APPEND UBXLIB_COMPILE_OPTIONS -DGEOGRAPHICLIB_SHARED_LIB=0
+       -DU_CFG_GEOFENCE_USE_GEODESIC)
+  add_library(geodesic STATIC ${GEODESIC_SRC})
+  SET_TARGET_PROPERTIES(geodesic PROPERTIES CXX_STANDARD 11)
+  target_compile_options(geodesic PRIVATE ${UBXLIB_COMPILE_OPTIONS})
+  target_include_directories(geodesic PRIVATE ${GEODESIC_INC})
+  # List rather than set so that static libaries could,
+  # potentially, be passed into this script
+  list(APPEND UBXLIB_EXTRA_LIBS geodesic)
+endif()

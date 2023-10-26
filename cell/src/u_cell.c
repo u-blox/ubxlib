@@ -48,6 +48,11 @@
 
 #include "u_device_shared.h"
 
+#include "u_linked_list.h"
+
+#include "u_geofence.h"
+#include "u_geofence_shared.h"
+
 #include "u_cell_module_type.h"
 #include "u_cell_file.h"
 #include "u_cell.h"         // Order is
@@ -142,6 +147,8 @@ static void removeCellInstance(uCellPrivateInstance_t *pInstance)
             uCellMuxPrivateRemoveContext(pInstance);
             // Free any CellTime context
             uCellPrivateCellTimeRemoveContext(pInstance);
+            // Unlink any geofences and free the fence context
+            uGeofenceContextFree((uGeofenceContext_t **) &pInstance->pFenceContext);
             uDeviceDestroyInstance(U_DEVICE_INSTANCE(pInstance->cellHandle));
             uPortFree(pInstance);
             pCurrent = NULL;

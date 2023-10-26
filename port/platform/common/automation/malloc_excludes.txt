@@ -22,3 +22,6 @@ port/platform/common/automation/Unity
 
 # Linux port OS file contains one function that has to use malloc()
 port/platform/linux/src/u_port_os.c
+
+# geographiclib submodule
+gnss/geographiclib

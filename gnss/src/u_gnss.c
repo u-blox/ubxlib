@@ -37,10 +37,14 @@
 
 #include "u_error_common.h"
 #include "u_ringbuffer.h"
+#include "u_linked_list.h"
 
 #include "u_device_shared.h"
 
 #include "u_at_client.h"
+
+#include "u_geofence.h"
+#include "u_geofence_shared.h"
 
 #include "u_port_os.h"
 #include "u_port_heap.h"
@@ -51,6 +55,8 @@
 #include "u_gnss_type.h"
 #include "u_gnss.h"
 #include "u_gnss_msg.h"
+#include "u_gnss_geofence.h"
+
 #include "u_gnss_private.h"
 
 // The headers below are necessary to work around an Espressif linker problem, see uGnssInit()
@@ -169,6 +175,8 @@ static void deleteGnssInstance(uGnssPrivateInstance_t *pInstance)
             }
             // This can go now too
             uPortFree(pInstance->pTemporaryBuffer);
+            // Unlink any geofences and free the fence context
+            uGeofenceContextFree((uGeofenceContext_t **) &pInstance->pFenceContext);
             // Delete the transport mutex
             uPortMutexDelete(pInstance->transportMutex);
             // Deallocate the uDevice instance
