@@ -3,6 +3,8 @@ These directories provide the porting layer that allows the high level C APIs to
 
 No attempt is made to create a full MCU porting API; only the APIs necessary to run the high level C APIs are implemented here.
 
+Note: aside from calling `uPortInit()` at start of day, `uPortDeinit()` at end of day, and `uPortFree()` if you are freeing some memory that `ubxlib` has allocated, this API is not intended for customer use.  You may use it if you wish but it is quite restricted and is intended _only_ to provide what `ubxlib` needs in the form that `ubxlib` needs it.  It is used in the `ubxilb` examples but that is only because we need those examples to work on all of our supported platforms.  When writing your application you are better off using the fully-featured native APIs of your platform.
+
 # Usage
 The [api](api) directory defines the port API, each API function documented in the header file.  The [clib](clib) directory contains implementations of C library APIs that may be missing on some platforms (e.g. `strtok_r`, the re-entrant version of the `strtok` library function).  In the [platform](platform) directory you will find the implementation of the porting API on various target SDKs and MCUs and the necessary instructions to create a working binary and tests on each of those target MCUs.  Please refer to the `README.md` files in your chosen target platform directory for more information.
 
