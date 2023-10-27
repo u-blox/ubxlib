@@ -382,9 +382,9 @@ extern "C" {
  */
 #  define U_AT_CLIENT_CALLBACK_TASK_STACK_SIZE_BYTES 2304
 # else
-/** If geodesic position, using GeographicLib is to be used, then
- * it is usually called via an AT Client callback task, so give it
- * the necessary slack (see common/geofence/api/u_geofence_geodesich
+/** If geodesic position, using GeographicLib, is to be used, then
+ * it is usually called via a uAtClientCallback() task, so give it
+ * the necessary slack (see common/geofence/api/u_geofence_geodesic.h
  * for more information).
  */
 #  define U_AT_CLIENT_CALLBACK_TASK_STACK_SIZE_BYTES (2304 + (1024 * 5))
