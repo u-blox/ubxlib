@@ -31,12 +31,13 @@
  *
  * Note: aside from calling uPortInit() at start of day, uPortDeinit() at
  * end of day, and uPortFree() if you are freeing some memory that ubxlib
- * has allocated, this API is not intended for customer use.  You may use
+ * has allocated, this API is NOT INTENDED FOR CUSTOMER USE.  You may use
  * it if you wish but it is quite restricted and is intended _only_ to
- * provide what ubxlib needs in the form that ubxlib needs it.  It is used
- * in the ubxilb examples but that is only because we need those examples
- * to work on all of our supported platforms.  When writing your application
- * you are better off using the fully-featured native APIs of your platform.
+ * provide what ubxlib needs in the form that ubxlib needs it, internally
+ * for ubxlib.  It is used in the ubxlib examples but that is only because
+ * we need those examples to work on all of our supported platforms.  When
+ * writing your application you are better off using the fully-featured
+ * native APIs of your platform.
  */
 
 #ifdef __cplusplus
