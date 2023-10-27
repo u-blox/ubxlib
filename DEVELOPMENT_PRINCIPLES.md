@@ -48,3 +48,10 @@ A corollary of this is that you should try not to combine disparate changes into
 Every line of `ubxlib` core code (i.e. ignoring test code) carries a cost for us and for the customer: for the customer it takes precious space in their MCU's memory and for us it increases test time.  Code that improves thread-safety, code that makes a `ubxlib` API easier to use and code which forms a feature that a customer has _requested_, is fine, but don't add code without being _sure_ it is worth it.  Conversely, remove code when you can: deprecate and then remove things that are either no longer supported in the module or that you believe no one is using, despite seeming like a good idea at the time \[a customer can object that they are using the thing in the deprecation period, so do make the deprecation notices clear\].  This especially applies to common code, which cannot be excluded like `cell`, `gnss`, `wifi` and `ble` code can.
 
 Adding code is putting on weight: make sure it is muscle and not fat.
+
+# Be Careful What You Ezpose
+Only functions/types/#defines that a customer is intended to use should be exposed through  the `api` directory.  These are the ones that must be treated with great care, must only be extended, not broken, etc.
+
+If there are things that another bit of `ubxlib` needs, expose them through a header file named something like `xxx_shared.h` (e.g. [u_geofence_shared.h](/common/geofence/src/u_geofence_shared.h)) and place that header file in the `src` directory, NOT the `api` directory; the `src` directory is included in the header file search path so the `ubxlib` code will find it but, since only header files from the `api` directory are included in `ubxlib.h`, the customer's code will not end up including it by accident.
+
+Similarly, if there are things that another bit of your own code needs, within the same module, expose that through a header file named `xxx_private.h`, again kept in the `src` directory.  See [common/network/src](/common/network/src) for examples of all of these.
