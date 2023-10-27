@@ -195,10 +195,6 @@ static uGnssTestPrivate_t gHandles = U_GNSS_TEST_PRIVATE_DEFAULTS;
  */
 static char *gpDatabase = NULL;
 
-/** Flag to catch whether the database includes a QZSS AUXDB item.
- */
-static bool gDatabaseHasQzss = false;
-
 /** A place to hook our outgoing HTTP buffer, the one to encode into.
  */
 static char *gpHttpBufferOut = NULL;
@@ -212,6 +208,10 @@ static char *gpHttpBufferIn = NULL;
 static const uGnssMgaPos_t gMgaPosFilter = U_GNSS_MGA_TEST_MY_LOCATION;
 
 # ifndef U_GNSS_MGA_TEST_DISABLE_DATABASE
+/** Flag to catch whether the database includes a QZSS AUXDB item.
+ */
+static bool gDatabaseHasQzss = false;
+
 /** A count of how many times databaseCallback() has been called.
  */
 static size_t gDatabaseCalledCount = 0;
@@ -432,8 +432,11 @@ static uNetworkTestList_t *pStdPreamble()
     return pList;
 }
 
-# endif // #if defined(U_CFG_APP_GNSS_ASSIST_NOW_AUTHENTICATION_TOKEN) && defined(U_CFG_TEST_GNSS_MGA) &&
-// (defined(U_CFG_TEST_CELL_MODULE_TYPE) || defined(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE))
+# endif
+
+# if (defined(U_CFG_APP_GNSS_ASSIST_NOW_AUTHENTICATION_TOKEN) && defined(U_CFG_TEST_GNSS_ASSIST_NOW) && \
+      (defined(U_CFG_TEST_CELL_MODULE_TYPE) || defined(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE)))         || \
+      !defined(U_GNSS_MGA_TEST_DISABLE_DATABASE)
 
 // Callback for progress when sending stuff to the GNSS device.
 static bool progressCallback(uDeviceHandle_t devHandle,
@@ -462,6 +465,7 @@ static bool progressCallback(uDeviceHandle_t devHandle,
 
     return true;
 }
+# endif
 
 # ifndef U_GNSS_MGA_TEST_DISABLE_DATABASE
 // Callback for database reads.
@@ -525,11 +529,8 @@ U_PORT_TEST_FUNCTION("[gnssMga]", "gnssMgaBasic")
     uDeviceHandle_t gnssDevHandle = NULL;
     int32_t resourceCount;
     int64_t timeUtc = 1685651437; // Chosen randomly
-    int32_t callbackParameter;
-    int32_t startTimeMs;
     uGnssMgaTimeReference_t timeReference = {U_GNSS_MGA_EXT_INT_0, true, true};
     int32_t y;
-    int32_t z;
     bool a;
 #ifndef U_GNSS_MGA_TEST_ASSIST_NOW_AUTONOMOUS_NOT_SUPPORTED
     bool b;
@@ -542,8 +543,13 @@ U_PORT_TEST_FUNCTION("[gnssMga]", "gnssMgaBasic")
     const char reset[] = {0xFE, 0xFF, 0x01, 0x00};
     // Enough room for a UBX-CFG-RST, with a body of reset[] and overheads
     char buffer[4 + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES];
+#ifndef U_GNSS_MGA_TEST_DISABLE_DATABASE
+    int32_t callbackParameter;
+    int32_t z;
     uGnssCommunicationStats_t communicationStats;
+    int32_t startTimeMs;
     const char *pProtocolName;
+#endif
 
     // In case a previous test failed
     uGnssTestPrivateCleanup(&gHandles);
