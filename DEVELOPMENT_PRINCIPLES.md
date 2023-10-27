@@ -49,9 +49,9 @@ Every line of `ubxlib` core code (i.e. ignoring test code) carries a cost for us
 
 Adding code is putting on weight: make sure it is muscle and not fat.
 
-# Be Careful What You Ezpose
-Only functions/types/#defines that a customer is intended to use should be exposed through  the `api` directory.  These are the ones that must be treated with great care, must only be extended, not broken, etc.
+# Be Careful What You Expose
+Only functions/types/#defines that a customer is intended to use should be exposed through the `api` directory.  Anything exposed through the `api` directory must be treated with great care, must only be extended, not broken, etc.
 
-If there are things that another bit of `ubxlib` needs, expose them through a header file named something like `xxx_shared.h` (e.g. [u_geofence_shared.h](/common/geofence/src/u_geofence_shared.h)) and place that header file in the `src` directory, NOT the `api` directory; the `src` directory is included in the header file search path so the `ubxlib` code will find it but, since only header files from the `api` directory are included in `ubxlib.h`, the customer's code will not end up including it by accident.
+If there are things that another bit of `ubxlib` needs, expose them through a header file named something like `xxx_shared.h` (e.g. [u_geofence_shared.h](/common/geofence/src/u_geofence_shared.h)) and place that header file in the `src` directory, NOT in the `api` directory; the `src` directory is included in the header file search path so the `ubxlib` code will find it but, since only header files from the `api` directory are included in `ubxlib.h`, the customer's code will NOT end up including it by accident.  This gives you freedom to change the functions/types/#defines of that file in future.
 
-Similarly, if there are things that another bit of your own code needs, within the same module, expose that through a header file named `xxx_private.h`, again kept in the `src` directory.  See [common/network/src](/common/network/src) for examples of all of these.
+Similarly, if there are things that another bit of your own code needs, within the same module, expose that through a header file named `xxx_private.h`, again kept in the `src` directory; no other module of `ubxlib` should include an `xxx_private.h` header file from another module, unless there is a very good reason indeed.  See [common/network/src](/common/network/src) for examples of all of these.
