@@ -26,6 +26,7 @@ The key APIs provided by this repo, and their relationships with each other, are
 - If you wish to contact an MQTT broker over that network, use the common [mqtt_client](/common/mqtt_client) API.
 - If you wish to use HTTP, use the common [http_client](/common/http_client) API.
 - If you wish to get a location fix use the common [location](/common/location) API.
+- If you wish to build a geofence that can be used with [gnss](/gnss), [wifi](/wifi) and [cellular](/cell), see the common [geofence](/common/geofence/api) API.
 - If you wish to take finer control of [cellular](/cell), [ble](/ble), [wifi](/wifi) or [gnss](/gnss), use the respective control API directly.
 - GNSS may be used via the [gnss](/gnss) API.
 - The BLE and Wi-Fi APIs are internally common within u-blox and so they both use the common [short_range](/common/short_range) API.
