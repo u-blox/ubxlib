@@ -809,7 +809,6 @@ U_PORT_TEST_FUNCTION("[gnssMga]", "gnssMgaServer")
     int32_t encodeResult;
     size_t flowControlIndex = 0;
     int32_t callbackParameter;
-    uGnssMgaTimeReference_t timeReference = {U_GNSS_MGA_EXT_INT_0, true, true};
     int32_t y;
 
     // In case a previous test failed

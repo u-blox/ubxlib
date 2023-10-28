@@ -274,25 +274,6 @@ static char latLongToBits(int32_t thingX1e7,
     return prefix;
 }
 
-// Print out the position contained in a UBX-NAV_PVT message
-static void printPosition(const char *pBuffer, size_t length)
-{
-    char prefix[2] = {0};
-    int32_t whole[2] = {0};
-    int32_t fraction[2] = {0};
-    int32_t longitudeX1e7;
-    int32_t latitudeX1e7;
-
-    if ((length >= 32) && (*(pBuffer + 21) & 0x01)) {
-        longitudeX1e7 =  uUbxProtocolUint32Decode(pBuffer + 24);
-        latitudeX1e7 = uUbxProtocolUint32Decode(pBuffer + 28);
-        prefix[0] = latLongToBits(longitudeX1e7, &(whole[0]), &(fraction[0]));
-        prefix[1] = latLongToBits(latitudeX1e7, &(whole[1]), &(fraction[1]));
-        uPortLog("I am here: https://maps.google.com/?q=%c%d.%07d,%c%d.%07d\n",
-                 prefix[1], whole[1], fraction[1], prefix[0], whole[0], fraction[0]);
-    }
-}
-
 // Callback for position reception.
 static void positionCallback(uDeviceHandle_t gnssHandle,
                              int32_t errorCode,
