@@ -207,10 +207,10 @@ int32_t uWifiGeofenceSetCallback(uDeviceHandle_t wifiHandle,
  *                                       for them, or set to a specific value
  *                                       to override the setting associated
  *                                       with the callbacks.
- * @param pessimisticNotOptimistic       if true then the test is optimistic
+ * @param pessimisticNotOptimistic       if true then the test is pessimistic
  *                                       with respect to radiusMillimetres
  *                                       and altitudeUncertaintyMillimetres,
- *                                       else it is pessimistic; see the
+ *                                       else it is optimistic; see the
  *                                       description of this parameter to
  *                                       uWifiGeofenceSetCallback() for more
  *                                       information; ignored if testType is

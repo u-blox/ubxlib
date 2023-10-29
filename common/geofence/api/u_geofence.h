@@ -535,10 +535,10 @@ int32_t uGeofenceClearMap(uGeofence_t *pFence);
  * @param[in] pFence                     a pointer to the geofence to test;
  *                                       cannot be NULL.
  * @param testType                       the type of test to perform.
- * @param pessimisticNotOptimistic       if true then the test is optimistic
+ * @param pessimisticNotOptimistic       if true then the test is pessimistic
  *                                       with respect to radiusMillimetres
  *                                       and altitudeUncertaintyMillimetres,
- *                                       else it is pessimistic; see the
+ *                                       else it is optimistic; see the
  *                                       description of this parameter to
  *                                       uGnssGeofenceSetCallback(),
  *                                       uCellGeofenceSetCallback() or
