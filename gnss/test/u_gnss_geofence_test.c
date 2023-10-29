@@ -21,7 +21,7 @@
  */
 
 /** @file
- * @brief Tests for the GNSS fence API: if U_CFG_GEOFENCE is
+ * @brief Tests for the GNSS geofence API: if U_CFG_GEOFENCE is
  * defined, these tests should pass on all platforms that have a
  * GNSS module connected to them.
  *

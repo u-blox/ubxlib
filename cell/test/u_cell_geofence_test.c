@@ -25,8 +25,9 @@
  * all platforms that have a cellular module connected to them and
  * where a CellLocate subscription is available.  They are only
  * compiled if both U_CFG_GEOFENCE and U_CFG_TEST_CELL_MODULE_TYPE are
- * defined and only do anything useful if U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN
- * and U_CFG_TEST_CELL_GEOFENCE are defined.
+ * defined and only do anything useful if
+ * U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN and U_CFG_TEST_CELL_GEOFENCE
+ * are defined.
  *
  * IMPORTANT: see notes in u_cfg_test_platform_specific.h for the
  * naming rules that must be followed when using the
@@ -219,24 +220,27 @@ static void callback(uDeviceHandle_t cellHandle,
     int32_t *pErrorCode = (int32_t *) pCallbackParam;
 
     if (pErrorCode != NULL) {
-        *pErrorCode = 0;
         if (cellHandle != gHandles.cellHandle) {
-            *pErrorCode = 1;
+            *pErrorCode = -100;
         }
         if (pFence == NULL) {
-            *pErrorCode = 2;
+            *pErrorCode = -200;
         } else {
             if ((pFence != gpFenceA) && (pFence != gpFenceB)) {
-                *pErrorCode = 3;
+                *pErrorCode = -300;
             } else {
                 if (pFence == gpFenceA) {
                     if (pNameStr != gpFenceA->pNameStr) {
-                        *pErrorCode = 4;
+                        *pErrorCode = -400;
+                    } else {
+                        (*pErrorCode)++;
                     }
                     gPositionStateA = positionState;
                 } else {
                     if (pNameStr != gpFenceB->pNameStr) {
-                        *pErrorCode = 5;
+                        *pErrorCode = -500;
+                    } else {
+                        (*pErrorCode)++;
                     }
                     gPositionStateB = positionState;
                 }
@@ -350,7 +354,7 @@ U_PORT_TEST_FUNCTION("[cellGeofence]", "cellGeofenceLive")
                                           U_CELL_GEOFENCE_TEST_RADIUS_METRES * 1000) == 0);
 
     // Add a callback
-    gErrorCode = 0xFFFFFFFF;
+    gErrorCode = 0;
     gPositionStateA = U_GEOFENCE_POSITION_STATE_NONE;
     gPositionStateB = U_GEOFENCE_POSITION_STATE_NONE;
     U_PORT_TEST_ASSERT(uCellGeofenceSetCallback(cellHandle,
@@ -377,7 +381,7 @@ U_PORT_TEST_FUNCTION("[cellGeofence]", "cellGeofenceLive")
     }
     U_PORT_TEST_ASSERT(x == 0);
 
-    U_PORT_TEST_ASSERT(gErrorCode == 0);
+    U_PORT_TEST_ASSERT(gErrorCode == 2);
     U_PORT_TEST_ASSERT(gPositionStateA == U_GEOFENCE_POSITION_STATE_INSIDE);
     U_PORT_TEST_ASSERT(gPositionStateB == U_GEOFENCE_POSITION_STATE_OUTSIDE);
 
@@ -386,9 +390,8 @@ U_PORT_TEST_FUNCTION("[cellGeofence]", "cellGeofenceLive")
     // Try this a few times as the Cell Locate AT command can sometimes
     // (e.g. on SARA-R412M-02B) return "generic error" if asked to establish
     // location again quickly after returning an answer
-    gErrorCode = 0xFFFFFFFF;
-    for (int32_t y = 3; (y > 0) && (gErrorCode != 0); y--) {
-        gErrorCode = 0xFFFFFFFF;
+    gErrorCode = 0;
+    for (int32_t y = 3; (y > 0) && (gErrorCode == 0); y--) {
         gPositionStateA = U_GEOFENCE_POSITION_STATE_NONE;
         gPositionStateB = U_GEOFENCE_POSITION_STATE_NONE;
         gStopTimeMs = startTime + U_CELL_GEOFENCE_TEST_TIMEOUT_SECONDS * 1000;
@@ -397,7 +400,8 @@ U_PORT_TEST_FUNCTION("[cellGeofence]", "cellGeofenceLive")
         U_TEST_PRINT_LINE("waiting up to %d second(s) for results from asynchonous API...",
                           U_CELL_GEOFENCE_TEST_TIMEOUT_SECONDS);
         badStatusCount = 0;
-        while ((gErrorCode == 0xFFFFFFFF) && (uPortGetTickTimeMs() < gStopTimeMs) &&
+        while ((gErrorCode >= 0) && (gErrorCode < 2) &&
+               (uPortGetTickTimeMs() < gStopTimeMs) &&
                (badStatusCount < U_CELL_GEOFENCE_TEST_BAD_STATUS_LIMIT)) {
             x = uCellLocGetStatus(cellHandle);
             U_PORT_TEST_ASSERT((x >= U_LOCATION_STATUS_UNKNOWN) &&
@@ -412,7 +416,7 @@ U_PORT_TEST_FUNCTION("[cellGeofence]", "cellGeofenceLive")
             }
             uPortTaskBlock(1000);
         }
-        if (gErrorCode == 0) {
+        if (gErrorCode == 2) {
             U_TEST_PRINT_LINE("location establishment took %d second(s).",
                               (int32_t) (uPortGetTickTimeMs() - startTime) / 1000);
             U_TEST_PRINT_LINE("result was %d, gErrorCode was %d.", x, gErrorCode);
@@ -420,13 +424,13 @@ U_PORT_TEST_FUNCTION("[cellGeofence]", "cellGeofenceLive")
                               gpPositionStateString[gPositionStateA],
                               gpPositionStateString[gPositionStateB]);
         }
-        if ((gErrorCode != 0) && (y >= 1)) {
+        if ((gErrorCode == 0) && (y >= 1)) {
             uCellLocGetStop(cellHandle);
             U_TEST_PRINT_LINE("failed to get an answer, will retry in 30 seconds...");
             uPortTaskBlock(30000);
         }
     }
-    U_PORT_TEST_ASSERT(gErrorCode == 0);
+    U_PORT_TEST_ASSERT(gErrorCode == 2);
     U_PORT_TEST_ASSERT(gPositionStateA == U_GEOFENCE_POSITION_STATE_INSIDE);
     U_PORT_TEST_ASSERT(gPositionStateB == U_GEOFENCE_POSITION_STATE_OUTSIDE);
 

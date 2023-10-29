@@ -30,6 +30,9 @@
 
 #ifdef U_CFG_TEST_GNSS_MODULE_TYPE
 
+// For LLONG_MIN
+# include "limits.h"
+
 // Bring in all of the ubxlib public header files
 # include "ubxlib.h"
 
@@ -275,7 +278,8 @@ static void geofenceCallback(uDeviceHandle_t gnssHandle,
     (void) distanceMillimetres;
     (void) pCallbackParam;
 
-    if (positionState != U_GEOFENCE_POSITION_STATE_NONE) {
+    if ((positionState != U_GEOFENCE_POSITION_STATE_NONE) &&
+        (latitudeX1e9 != LLONG_MIN) && (longitudeX1e9 != LLONG_MIN)) {
         prefix[0] = latLongToBits((int32_t) (longitudeX1e9 / 100), &(whole[0]), &(fraction[0]));
         prefix[1] = latLongToBits((int32_t) (latitudeX1e9 / 100), &(whole[1]), &(fraction[1]));
         uPortLog("https://maps.google.com/?q=%c%d.%07d,%c%d.%07d is %s \"%s\".\n",

@@ -308,6 +308,10 @@ U_PORT_TEST_FUNCTION("[wifiGeofence]", "wifiGeofenceBasic")
            ((uPortGetTickTimeMs() - startTimeMs) < U_WIFI_GEOFENCE_TEST_TIMEOUT_SECONDS * 1000)) {
         uPortTaskBlock(250);
     }
+    // On really fast systems (e.g. Linux machines) it is possible
+    // for the callback to have not quite exitted when we get here, so
+    // give it a moment to do so
+    uPortTaskBlock(250);
     uWifiLocGetStop(gHandles.devHandle);
     U_TEST_PRINT_LINE("gErrorCode was %d after %d second(s).", gErrorCode,
                       (uPortGetTickTimeMs() - startTimeMs) / 1000);
