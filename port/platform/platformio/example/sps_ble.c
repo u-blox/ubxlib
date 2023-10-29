@@ -118,7 +118,7 @@ void main()
         } else {
             printf("* Failed to bring up the network: %d\n", errorCode);
         }
-        uDeviceClose(deviceHandle, true);
+        uDeviceClose(deviceHandle, false);
     } else {
         printf("* Failed to initiate the module: %d\n", errorCode);
     }

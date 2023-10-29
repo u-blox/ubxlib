@@ -125,7 +125,10 @@ int app_start() {
     }
 
     // Close the device
-    uDeviceClose(devHandle, true);
+    if (uDeviceClose(devHandle, true) != 0) {
+        // Device has not responded to power off request, just release resources
+        uDeviceClose(devHandle, false);
+    }
 
     // Tidy up
     uDeviceDeinit();

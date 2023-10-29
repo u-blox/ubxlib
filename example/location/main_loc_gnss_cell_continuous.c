@@ -234,7 +234,10 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocGnssCellContinuous")
         }
 
         // Close the device
-        uDeviceClose(devHandle, true);
+        if (uDeviceClose(devHandle, true) != 0) {
+            // Device has not responded to power off request, just release resources
+            uDeviceClose(devHandle, false);
+        }
     } else {
         uPortLog("Unable to bring up the cellular device!\n");
     }

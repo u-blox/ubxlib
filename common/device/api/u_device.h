@@ -411,6 +411,21 @@ int32_t uDeviceOpen(const uDeviceCfg_t *pDeviceCfg,
 
 /** Close an open device instance, optionally powering it down.
  *
+ * IMPORTANT: if you are calling this function because you have
+ * a misbehaving device and you are attempting recovery, it is
+ * best to call this function with powerOff set to false.  This is
+ * because this function will return an error, and NOT CLOSE
+ * the device, if the process of powering off the device fails.
+ * Alternatively, you may adopt the following logic:
+ *
+ * ```
+ * if (uDeviceClose(devHandle, true) != 0) {
+ *     // Device has not responded to power off request, just
+ *     // release resources
+ *     uDeviceClose(devHandle, false);
+ * }
+ * ```
+ *
  * Note: when a device is closed not all memory associated with it
  * is immediately reclaimed; if you wish to reclaim memory before
  * uPortDeinit() you may do so by calling uPortEventQueueCleanUp().
@@ -423,7 +438,11 @@ int32_t uDeviceOpen(const uDeviceCfg_t *pDeviceCfg,
  *                  uDeviceOpen() very quickly.  Note that Short
  *                  Range devices do not support powering off;
  *                  setting this parameter to true will result in
- *                  an error.
+ *                  an error.  Also note that if this flag is set
+ *                  to true and the device does not respond
+ *                  correctly to the request to power off then
+ *                  this function will return a negative error
+ *                  code and NOT CLOSE the device.
  * @return          zero on success else a negative error code.
  */
 int32_t uDeviceClose(uDeviceHandle_t devHandle, bool powerOff);

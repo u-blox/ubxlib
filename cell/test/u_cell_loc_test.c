@@ -882,6 +882,7 @@ U_PORT_TEST_FUNCTION("[cellLoc]", "cellLocAssistNow")
     uDeviceHandle_t cellHandle = NULL;
     uDeviceHandle_t gnssHandle = NULL;
     int32_t resourceCount;
+    int32_t x;
 
     // In case a previous test failed
     uCellTestPrivateCleanup(&gHandles);
@@ -952,7 +953,13 @@ U_PORT_TEST_FUNCTION("[cellLoc]", "cellLocAssistNow")
                                                      pTmp->networkType) == 0);
             U_TEST_PRINT_LINE("closing and powering off device %s...",
                               gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType]);
-            U_PORT_TEST_ASSERT(uDeviceClose(*pTmp->pDevHandle, true) == 0);
+            x = uDeviceClose(*pTmp->pDevHandle, true);
+            if (x != 0) {
+                // Device has not responded to power off request, just
+                // release resources
+                x = uDeviceClose(*pTmp->pDevHandle, false);
+            }
+            U_PORT_TEST_ASSERT(x == 0);
             *pTmp->pDevHandle = NULL;
         }
     }

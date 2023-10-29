@@ -104,7 +104,7 @@ int main(void)
 
     // Cleanup
     uNetworkInterfaceDown(devHandle, U_NETWORK_TYPE_WIFI);
-    uDeviceClose(devHandle, true);
+    uDeviceClose(devHandle, false);
     uDeviceDeinit();
     uPortDeinit();
 

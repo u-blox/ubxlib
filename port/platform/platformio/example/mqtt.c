@@ -189,7 +189,11 @@ void main()
         } else {
             printf("* Failed to bring up the network: %d\n", errorCode);
         }
-        uDeviceClose(deviceHandle, true);
+        // Close the device
+        if (uDeviceClose(deviceHandle, true) != 0) {
+            // Device has not responded to power off request, just release resources
+            uDeviceClose(deviceHandle, false);
+        }
     } else {
         printf("* Failed to initiate the module: %d\n", errorCode);
     }
