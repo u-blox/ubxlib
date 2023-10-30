@@ -63,7 +63,7 @@
  * code also offers an integration with
  * https://github.com/geographiclib/geographiclib, an extremely useful
  * C library written by the very helpful Charles A Karney of MIT,
- * which provides the necesary functions.
+ * which provides the necessary functions.
  *
  * By default, if the uGeofenceWgs84Xxx functions are not populated,
  * this code uses the harversine formula (look it up), also full of
@@ -87,7 +87,7 @@
  *
  * ...(with the longitude wrap at 180 handled). Floating point maths
  * is still required, since sqrt() is needed to work out distances,
- * but a minimu of trigonometry because everything is close enough
+ * but a minimum of trigonometry because everything is close enough
  * together not to need it; flat earthers r'us.
  *
  * There is one exception to this: if the shape or the radius of
@@ -106,20 +106,20 @@
  * still be possible to eliminate shapes based on the speed that
  * the device is travelling and the previous known distance from
  * a geofence.  For this reason, #uGeofenceCallback_t is given the
- * minimum distance from the edge of the fence, but ONLY if it was
- * necessary to calculate that distance to handle the geofence;
+ * minimum distance from the edge of the geofence, but ONLY if it
+ * was necessary to calculate that distance to handle the geofence;
  * performing a distance calculation is relatively expensive so
  * if you don't need to do it you don't.  The caller may remember
- * this and pass it to testPosition() in the optional pDynamic
- * parameter, along with the timestamp and the maximum speed, on
- * the next call.
+ * this and pass it to the next testPosition() in the optional
+ * pDynamic parameter, along with the timestamp and the maximum
+ * speed.
  *
  * Summarizing:
  * - if radius of position > 100 m and previous distance/speed
- *   from fence is known, see if the whole fence can be eliminated
- *   based on this,
+ *   from geofence is known, see if the whole geofence can be
+ *   eliminated based on this,
  * - otherwise, if radius of position > 100 m, or square extent of
- *   shape under test > 1 km, or either is within 0.5 degrees of a
+ *   shape under test > 1 km, or either is within 10 degrees of a
  *   pole, use expensive spherical maths all of the time (WGS84,
  *   or haversine if WGS84 not available),
  * - otherwise, first use simple lat/long test to eliminate a shape
@@ -791,7 +791,7 @@ static double distanceBetweenPoints(const uGeofenceCoordinates_t *pA,
     return distanceMetres;
 }
 
-// Given a line between two points, popular pLatitude with the
+// Given a line between two points, populate pLatitude with the
 // latitude at which the given line of longitude, at the given
 // azimuth, cuts it; WGS84, spherical or XY, as appropriate.
 static bool latitudeOfIntersection(const uGeofenceCoordinates_t *pA,
