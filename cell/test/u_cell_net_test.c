@@ -245,6 +245,35 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetConnectDisconnectPlus")
 
     U_PORT_TEST_ASSERT(gLastNetStatus == U_CELL_NET_STATUS_UNKNOWN);
 
+    // Read the authentication mode for PDP contexts
+    x = uCellNetGetAuthenticationMode(cellHandle);
+    U_PORT_TEST_ASSERT(x >= 0);
+    U_PORT_TEST_ASSERT(x < U_CELL_NET_AUTHENTICATION_MODE_MAX_NUM);
+    if (U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_AUTHENTICATION_MODE_AUTOMATIC)) {
+        U_PORT_TEST_ASSERT(x == U_CELL_NET_AUTHENTICATION_MODE_AUTOMATIC);
+    } else {
+        U_PORT_TEST_ASSERT(x == U_CELL_NET_AUTHENTICATION_MODE_NONE);
+    }
+
+    // Try setting all of the permitted authentication modes
+    U_PORT_TEST_ASSERT(uCellNetSetAuthenticationMode(cellHandle,
+                                                     U_CELL_NET_AUTHENTICATION_MODE_NONE) < 0);
+    U_PORT_TEST_ASSERT(uCellNetSetAuthenticationMode(cellHandle,
+                                                     U_CELL_NET_AUTHENTICATION_MODE_PAP) == 0);
+    U_PORT_TEST_ASSERT(uCellNetGetAuthenticationMode(cellHandle) == U_CELL_NET_AUTHENTICATION_MODE_PAP);
+    U_PORT_TEST_ASSERT(uCellNetSetAuthenticationMode(cellHandle,
+                                                     U_CELL_NET_AUTHENTICATION_MODE_CHAP) == 0);
+    U_PORT_TEST_ASSERT(uCellNetGetAuthenticationMode(cellHandle) ==
+                       U_CELL_NET_AUTHENTICATION_MODE_CHAP);
+    x = uCellNetSetAuthenticationMode(cellHandle, U_CELL_NET_AUTHENTICATION_MODE_AUTOMATIC);
+    if (U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_AUTHENTICATION_MODE_AUTOMATIC)) {
+        U_PORT_TEST_ASSERT(x == 0);
+        U_PORT_TEST_ASSERT(uCellNetGetAuthenticationMode(cellHandle) ==
+                           U_CELL_NET_AUTHENTICATION_MODE_AUTOMATIC);
+    } else {
+        U_PORT_TEST_ASSERT(x < 0);
+    }
+
     // Connect with a very short time-out to show that aborts work
     gStopTimeMs = uPortGetTickTimeMs() + 1000;
     x = uCellNetConnect(cellHandle, NULL,

@@ -112,8 +112,9 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_AT_PROFILES)                 |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CTS_CONTROL)                 |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SOCK_SET_LOCAL_PORT)         |
-         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UART_POWER_SAVING) /* features */
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UART_POWER_SAVING)           |
          // CMUX is supported here but we do not test it hence it is not marked as supported
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_AUTHENTICATION_MODE_AUTOMATIC)  /* features */
         ),
         6 /* Default CMUX channel for GNSS */
     },
@@ -232,7 +233,8 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_FOTA)                                |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UART_POWER_SAVING)                   |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CMUX)                                |
-         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SNR_REPORTED) /* features */
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SNR_REPORTED)                        |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_AUTHENTICATION_MODE_AUTOMATIC) /* features */
         ),
         4 /* Default CMUX channel for GNSS */
     },

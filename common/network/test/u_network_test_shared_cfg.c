@@ -163,7 +163,22 @@ static const uNetworkCfgCell_t gNetworkCfgCell = {
 # else
     .pApn = NULL,
 # endif
-    .timeoutSeconds = U_CELL_TEST_CFG_CONNECT_TIMEOUT_SECONDS
+    .timeoutSeconds = U_CELL_TEST_CFG_CONNECT_TIMEOUT_SECONDS,
+# ifdef U_CELL_TEST_CFG_USERNAME
+    .pUsername = U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_USERNAME),
+# else
+    .pUsername = NULL,
+# endif
+# ifdef U_CELL_TEST_CFG_PASSWORD
+    .pPassword = U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_PASSWORD),
+# else
+    .pPassword = NULL,
+# endif
+# ifdef U_CELL_TEST_CFG_AUTHENTICATION_MODE
+    .authenticationMode = (int32_t) U_CELL_TEST_CFG_AUTHENTICATION_MODE,
+# else
+    .authenticationMode = 0,
+# endif
 #else
     .type = U_NETWORK_TYPE_NONE
 #endif

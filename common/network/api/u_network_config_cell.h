@@ -77,6 +77,22 @@ typedef struct {
                                                        the field to zero, and
                                                        timeoutSeconds will be
                                                        obeyed instead. */
+    const char *pUsername; /** ONLY REQUIRED if you must use a user name
+                               and password with the APN provided to you
+                               by your service provider; let your compiler
+                               initialised= this to zero otherwise. */
+    const char *pPassword; /** ONLY REQUIRED if you must use a user name
+                               and password with the APN provided to you
+                               by your service provider; let your compiler
+                               initialised= this to zero otherwise. */
+    int32_t authenticationMode; /** ONLY REQUIRED if you must give a user name
+                                    and password with the APN provided to
+                                    you by your service provider and your
+                                    cellular module does NOT support figuring
+                                    out the authentication mode automatically;
+                                    there is no harm in populating this field
+                                    even if your module _does_ support figuring
+                                    out the authentication mode automatically. */
     /* This is the end of version 0 of this
        structure: should any fields be added to
        this structure in future they must be

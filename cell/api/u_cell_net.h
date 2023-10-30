@@ -250,6 +250,16 @@ typedef enum {
     U_CELL_NET_REG_DOMAIN_MAX_NUM
 } uCellNetRegDomain_t;
 
+/** The possible authentication modes for the network connection.
+ */
+typedef enum {
+    U_CELL_NET_AUTHENTICATION_MODE_NONE = 0,
+    U_CELL_NET_AUTHENTICATION_MODE_PAP = 1,
+    U_CELL_NET_AUTHENTICATION_MODE_CHAP = 2,
+    U_CELL_NET_AUTHENTICATION_MODE_AUTOMATIC = 3, /**< not supported by all module types. */
+    U_CELL_NET_AUTHENTICATION_MODE_MAX_NUM
+} uCellNetAuthenticationMode_t;
+
 /** Information on a cell, passed to the callback of uCellNetDeepScan(),
  * could be used in a call to uCellTimeSyncCellEnable().
  */
@@ -278,6 +288,10 @@ typedef struct {
  * the current connection, in which case that PDP context will be
  * deactivated (and potentially deregistration may occur) then
  * [registration will occur and] the new context will be activated.
+ *
+ * Note: if you are required to set a user name and password then
+ * you MAY also need to set the authentication mode that will be
+ * used; see uCellNetSetAuthenticationMode() for this.
  *
  * @param cellHandle             the handle of the cellular instance.
  * @param[in] pMccMnc            pointer to a string giving the MCC and
@@ -363,6 +377,10 @@ int32_t uCellNetRegister(uDeviceHandle_t cellHandle,
  * on SARA-R4 modules the APN is set during registration and so
  * this will result in de-registration and re-registration with the
  * network.
+ *
+ * Note: if you are required to set a user name and password then
+ * you MAY also need to set the authentication mode that will be
+ * used; see uCellNetSetAuthenticationMode() for this.
  *
  * @param cellHandle             the handle of the cellular instance.
  * @param[in] pApn               pointer to a string giving the APN to
@@ -843,6 +861,46 @@ int32_t uCellNetGetDataCounterRx(uDeviceHandle_t cellHandle);
  * @return               zero on success, else negative error code.
  */
 int32_t uCellNetResetDataCounters(uDeviceHandle_t cellHandle);
+
+/** Get the authentication mode that the module will use if a
+ * user name and password is included with uCellNetConnect()
+ * and uCellNetActivate().
+ *
+ * @param cellHandle   the handle of the cellular instance.
+ * @return             on success the authentication mode, from
+ *                     #uCellNetAuthenticationMode_t, else negative
+ *                     error code.
+ */
+int32_t uCellNetGetAuthenticationMode(uDeviceHandle_t cellHandle);
+
+/** Set the authentication mode: this is ONLY relevant if a user name
+ * and password is required by the network (see uCellNetConnect()
+ * and uCellNetActivate()) and the cellular module does NOT support
+ * automatic authentication mode.  You may determine if automatic
+ * authentication mode is supported by calling
+ * uCellNetGetAuthenticationMode(): if automatic authentication mode
+ * is supported then it will be the default and
+ * #U_CELL_NET_AUTHENTICATION_MODE_AUTOMATIC will be returned, else
+ * the default authentication mode will be
+ * #U_CELL_NET_AUTHENTICATION_MODE_NONE and you must call
+ * uCellNetSetAuthenticationMode() to set it.  If the authentication
+ * mode turns out to be #U_CELL_NET_AUTHENTICATION_MODE_NONE then
+ * you MUST call this function before you call uCellNetConnect() or
+ * uCellNetActivate() with a non-NULL user name and password,
+ * otherwise those functions will return an error and no connection
+ * will be made.
+ *
+ * Note: there is no need to set the authentication mode to
+ * #U_CELL_NET_AUTHENTICATION_MODE_NONE; the setting will only be
+ * applied if a username and password are in use, should they not
+ * be in use then the authentiction mode will in any case be "none".
+ *
+ * @param cellHandle   the handle of the cellular instance.
+ * @param mode         the authentication mode.
+ * @return             zero on success, else negative error code.
+ */
+int32_t uCellNetSetAuthenticationMode(uDeviceHandle_t cellHandle,
+                                      uCellNetAuthenticationMode_t mode);
 
 #ifdef __cplusplus
 }

@@ -112,17 +112,36 @@ static const uNetworkCfgCell_t gNetworkCfg = {
     .type = U_NETWORK_TYPE_CELL,
     .pApn = NULL, /* APN: NULL to accept default.  If using a Thingstream SIM enter "tsiot" here */
     .timeoutSeconds = 240 /* Connection timeout in seconds */
-    // There is an additional field here "pKeepGoingCallback",
-    // which we do NOT set, we allow the compiler to set it to 0
-    // and all will be fine. You may set the field to a function
-    // of the form "bool keepGoingCallback(uDeviceHandle_t devHandle)",
-    // e.g.:
-    // .pKeepGoingCallback = keepGoingCallback
-    // ...and your function will be called periodically during an
-    // abortable network operation such as connect/disconnect;
-    // if it returns true the operation will continue else it
-    // will be aborted, allowing you immediate control.  If this
-    // field is set, timeoutSeconds will be ignored.
+    // There are four additional fields here which we do NOT set,
+    // we allow the compiler to set them to 0 and all will be fine.
+    // The fields are:
+    //
+    // - "pKeepGoingCallback": you may set this field to a function
+    //   of the form "bool keepGoingCallback(uDeviceHandle_t devHandle)",
+    //   e.g.:
+    //
+    //   .pKeepGoingCallback = keepGoingCallback;
+    //
+    //   ...and your function will be called periodically during an
+    //   abortable network operation such as connect/disconnect;
+    //   if it returns true the operation will continue else it
+    //   will be aborted, allowing you immediate control.  If this
+    //   field is set, timeoutSeconds will be ignored.
+    //
+    // - "pUsername" and "pPassword": if you are required to set a
+    //   user name and password to go with the APN value that you
+    //   were given by your service provider, set them here.
+    //
+    // - "authenticationMode": if you MUST give a user name and
+    //   password and your cellular module does NOT support figuring
+    //   out the authentication mode automatically (e.g. SARA-R4xx,
+    //   LARA-R6 and LENA-R8 do not) then you must populate this field
+    //   with the authentication mode that should be used, see
+    //   #uCellNetAuthenticationMode_t in u_cell_net.h; there is no
+    //   harm in populating this field even if the module _does_ support
+    //   figuring out the authentication mode automatically but
+    //   you ONLY NEED TO WORRY ABOUT IT if you were given that user
+    //   name and password with the APN (which is thankfully not usual).
 };
 #else
 static const uDeviceCfg_t gDeviceCfg = {.deviceType = U_DEVICE_TYPE_NONE};

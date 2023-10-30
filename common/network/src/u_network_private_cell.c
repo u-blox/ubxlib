@@ -172,12 +172,27 @@ int32_t uNetworkPrivateChangeStateCell(uDeviceHandle_t devHandle,
                                        (((int64_t) pCfg->timeoutSeconds) * 1000);
             }
             if (upNotDown) {
-                // Connect using automatic selection,
-                // default no user name or password for the APN
-                errorCode = uCellNetConnect(devHandle, NULL,
-                                            pCfg->pApn,
-                                            NULL, NULL,
-                                            pKeepGoingCallback);
+                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                if ((pCfg->pUsername != NULL) && (pCfg->pPassword != NULL)) {
+                    // If we have a user name and password then set the
+                    // authentication mode
+                    errorCode = uCellNetSetAuthenticationMode(devHandle, pCfg->authenticationMode);
+                    if (errorCode < 0) {
+                        // uCellNetSetAuthenticationMode() will return "not supported"
+                        // for modules that do not support automatic mode but that is
+                        // a bit confusing as a return value for uNetworkInterfaceUp(),
+                        // so change it to "invalid parameter"
+                        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+                    }
+                }
+                if (errorCode == 0) {
+                    // Connect using automatic selection
+                    errorCode = uCellNetConnect(devHandle, NULL,
+                                                pCfg->pApn,
+                                                pCfg->pUsername,
+                                                pCfg->pPassword,
+                                                pKeepGoingCallback);
+                }
             } else {
                 // Disconnect
                 errorCode = uCellNetDisconnect(devHandle, pKeepGoingCallback);

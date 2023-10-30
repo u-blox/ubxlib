@@ -1337,23 +1337,45 @@ static int32_t setAuthenticationMode(const uCellPrivateInstance_t *pInstance,
                                      const char *pUsername,
                                      const char *pPassword)
 {
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
     uAtClientHandle_t atHandle = pInstance->atHandle;
+    uCellNetAuthenticationMode_t authenticationMode = pInstance->authenticationMode;
 
-    uAtClientLock(atHandle);
-    uAtClientCommandStart(atHandle, "AT+UAUTHREQ=");
-    uAtClientWriteInt(atHandle, contextId);
-    uAtClientWriteInt(atHandle, 3); // Automatic choice of authentication type
-    if (!U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType) &&
-        (pInstance->pModule->moduleType != U_CELL_MODULE_TYPE_LARA_R6)) {
-        uAtClientWriteString(atHandle, pUsername, true);
-        uAtClientWriteString(atHandle, pPassword, true);
-    } else {
-        // For SARA-R4 and LARA-R6 modules the parameters are reversed
-        uAtClientWriteString(atHandle, pPassword, true);
-        uAtClientWriteString(atHandle, pUsername, true);
+    // Only continue if we either have a non-NONE authentication
+    // mode or if we have no credentials to enter
+    if ((authenticationMode != U_CELL_NET_AUTHENTICATION_MODE_NONE) ||
+        ((pUsername == NULL) && (pPassword == NULL))) {
+        if ((pUsername == NULL) && (pPassword == NULL)) {
+            // No authentication is required
+            authenticationMode = U_CELL_NET_AUTHENTICATION_MODE_NONE;
+            if ((pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R5) ||
+                (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_U201)) {
+                // For SARA-R5 and U201 the user name and password cannot
+                // be omitted, must be set to an empty string
+                pUsername = "";
+                pPassword = "";
+            }
+        }
+        uAtClientLock(atHandle);
+        uAtClientCommandStart(atHandle, "AT+UAUTHREQ=");
+        uAtClientWriteInt(atHandle, contextId);
+        uAtClientWriteInt(atHandle, authenticationMode);
+        if ((pUsername != NULL) && (pPassword != NULL)) {
+            if (!U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType) &&
+                (pInstance->pModule->moduleType != U_CELL_MODULE_TYPE_LARA_R6)) {
+                uAtClientWriteString(atHandle, pUsername, true);
+                uAtClientWriteString(atHandle, pPassword, true);
+            } else {
+                // For SARA-R4 and LARA-R6 modules the parameters are reversed
+                uAtClientWriteString(atHandle, pPassword, true);
+                uAtClientWriteString(atHandle, pUsername, true);
+            }
+        }
+        uAtClientCommandStopReadResponse(atHandle);
+        errorCode = uAtClientUnlock(atHandle);
     }
-    uAtClientCommandStopReadResponse(atHandle);
-    return uAtClientUnlock(atHandle);
+
+    return errorCode;
 }
 
 // Get the APN currently in use 3GPP commands, required
@@ -2159,8 +2181,7 @@ int32_t uCellNetConnect(uDeviceHandle_t cellHandle,
                             errorCode = defineContext(pInstance,
                                                       U_CELL_NET_CONTEXT_ID,
                                                       pApn);
-                            if ((errorCode == 0) && (pUsername != NULL) &&
-                                (pPassword != NULL)) {
+                            if (errorCode == 0) {
                                 // Set the authentication mode
                                 errorCode = setAuthenticationMode(pInstance,
                                                                   U_CELL_NET_CONTEXT_ID,
@@ -2425,8 +2446,7 @@ int32_t uCellNetActivate(uDeviceHandle_t cellHandle,
                             errorCode = defineContext(pInstance,
                                                       U_CELL_NET_CONTEXT_ID,
                                                       pApn);
-                            if ((errorCode == 0) && (pUsername != NULL) &&
-                                (pPassword != NULL)) {
+                            if (errorCode == 0) {
                                 // Set the authentication mode
                                 errorCode = setAuthenticationMode(pInstance,
                                                                   U_CELL_NET_CONTEXT_ID,
@@ -3421,6 +3441,59 @@ int32_t uCellNetResetDataCounters(uDeviceHandle_t cellHandle)
                 uAtClientWriteInt(atHandle, 0);
                 uAtClientCommandStopReadResponse(atHandle);
                 errorCode = uAtClientUnlock(atHandle);
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return errorCode;
+}
+
+// Get the authentication mode.
+int32_t uCellNetGetAuthenticationMode(uDeviceHandle_t cellHandle)
+{
+    int32_t errorCodeOrAuthenticationMode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance;
+
+    if (gUCellPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        pInstance = pUCellPrivateGetInstance(cellHandle);
+        errorCodeOrAuthenticationMode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        if (pInstance != NULL) {
+            errorCodeOrAuthenticationMode = (int32_t) pInstance->authenticationMode;
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return errorCodeOrAuthenticationMode;
+}
+
+// Set the authentication mode.
+int32_t uCellNetSetAuthenticationMode(uDeviceHandle_t cellHandle,
+                                      uCellNetAuthenticationMode_t mode)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance;
+
+    if (gUCellPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        pInstance = pUCellPrivateGetInstance(cellHandle);
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        if ((pInstance != NULL) && (mode >= 0) &&
+            (mode != U_CELL_NET_AUTHENTICATION_MODE_NONE) &&
+            (mode < U_CELL_NET_AUTHENTICATION_MODE_MAX_NUM)) {
+            errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+            if ((mode != U_CELL_NET_AUTHENTICATION_MODE_AUTOMATIC) ||
+                U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                   U_CELL_PRIVATE_FEATURE_AUTHENTICATION_MODE_AUTOMATIC)) {
+                pInstance->authenticationMode = mode;
+                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
             }
         }
 

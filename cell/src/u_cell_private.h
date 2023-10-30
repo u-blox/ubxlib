@@ -237,7 +237,8 @@ typedef enum {
     U_CELL_PRIVATE_FEATURE_FOTA,
     U_CELL_PRIVATE_FEATURE_UART_POWER_SAVING,
     U_CELL_PRIVATE_FEATURE_CMUX,
-    U_CELL_PRIVATE_FEATURE_SNR_REPORTED
+    U_CELL_PRIVATE_FEATURE_SNR_REPORTED,
+    U_CELL_PRIVATE_FEATURE_AUTHENTICATION_MODE_AUTOMATIC
 } uCellPrivateFeature_t;
 
 /** The characteristics that may differ between cellular modules.
@@ -441,6 +442,7 @@ typedef struct uCellPrivateInstance_t {
     void (*pGreetingCallback) (uDeviceHandle_t, void *);
     void *pGreetingCallbackParameter;
     uCellPrivateNet_t *pScanResults;    /**< Anchor for list of network scan results. */
+    uCellNetAuthenticationMode_t authenticationMode; /**< Authentication mode for PDP context. */
     int32_t sockNextLocalPort;
     uint32_t gnssAidMode;  /**< A bit-map of the types of aiding to use (AssistNow Online, Offline, Autonomous, etc.). */
     uint32_t gnssSystemTypesBitMap;  /**< A bit-map of the GNSS system types (GPS, GLONASS, etc.) a GNSS chip should use. */
