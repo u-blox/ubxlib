@@ -368,7 +368,7 @@ static void UULOC_urc_callback(uAtClientHandle_t atHandle, void *pParam)
                         break;
                 }
 
-                if (pUrcStorage->pFenceContext != NULL) {
+                if ((pUrcStorage->pFenceContext != NULL) && (pFixDataStorageBlock->errorCode == 0)) {
                     // Check out geofencing for this location, using the
                     // cached fence dynamic status, rather than the one we were
                     // passed, as it is solely this function that is keeping

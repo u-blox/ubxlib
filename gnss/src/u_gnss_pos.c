@@ -332,18 +332,20 @@ static void posGetTask(void *pParameter)
     taskParameters.pCallback(taskParameters.gnssHandle, errorCode, latitudeX1e7,
                              longitudeX1e7, altitudeMillimetres, radiusMillimetres,
                              speedMillimetresPerSecond, svs, timeUtc);
-    // As well as the above, test the position against any
-    // fences associated with the instance, which may result
-    // in further callbacks being called and if GEODESIC is
-    // employed, may consume an additional ~5 kbytes of stack
-    uGeofenceContextTest(taskParameters.gnssHandle,
-                         (uGeofenceContext_t *) taskParameters.pInstance->pFenceContext,
-                         U_GEOFENCE_TEST_TYPE_NONE, false,
-                         ((int64_t) latitudeX1e7) * 100,
-                         ((int64_t) longitudeX1e7) * 100,
-                         altitudeMillimetres,
-                         radiusMillimetres,
-                         altitudeUncertaintyMillimetres);
+    if (errorCode == 0) {
+        // As well as the above, test the position against any
+        // fences associated with the instance, which may result
+        // in further callbacks being called and if GEODESIC is
+        // employed, may consume an additional ~5 kbytes of stack
+        uGeofenceContextTest(taskParameters.gnssHandle,
+                             (uGeofenceContext_t *) taskParameters.pInstance->pFenceContext,
+                             U_GEOFENCE_TEST_TYPE_NONE, false,
+                             ((int64_t) latitudeX1e7) * 100,
+                             ((int64_t) longitudeX1e7) * 100,
+                             altitudeMillimetres,
+                             radiusMillimetres,
+                             altitudeUncertaintyMillimetres);
+    }
 
     U_PORT_MUTEX_UNLOCK(taskParameters.pInstance->posMutex);
 
@@ -399,18 +401,20 @@ static void messageCallback(uDeviceHandle_t gnssHandle,
                                                 speedMillimetresPerSecond,
                                                 svs,
                                                 timeUtc);
-        // As well as the above, test the position against any
-        // fences associated with the instance, which may result
-        // in further callbacks being called and if GEODESIC is
-        // employed, may consume an additional ~5 kbytes of stack
-        uGeofenceContextTest(gnssHandle,
-                             (uGeofenceContext_t *) pInstance->pFenceContext,
-                             U_GEOFENCE_TEST_TYPE_NONE, false,
-                             ((int64_t) latitudeX1e7) * 100,
-                             ((int64_t) longitudeX1e7) * 100,
-                             altitudeMillimetres,
-                             radiusMillimetres,
-                             altitudeUncertaintyMillimetres);
+        if (errorCodeOrLength == 0) {
+            // As well as the above, test the position against any
+            // fences associated with the instance, which may result
+            // in further callbacks being called and if GEODESIC is
+            // employed, may consume an additional ~5 kbytes of stack
+            uGeofenceContextTest(gnssHandle,
+                                 (uGeofenceContext_t *) pInstance->pFenceContext,
+                                 U_GEOFENCE_TEST_TYPE_NONE, false,
+                                 ((int64_t) latitudeX1e7) * 100,
+                                 ((int64_t) longitudeX1e7) * 100,
+                                 altitudeMillimetres,
+                                 radiusMillimetres,
+                                 altitudeUncertaintyMillimetres);
+        }
     }
 }
 

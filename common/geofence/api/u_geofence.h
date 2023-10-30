@@ -224,24 +224,10 @@ typedef enum {
  *                                       and the result can be ignored.
  * @param latitudeX1e9                   the latitude of the position that
  *                                       caused the geofence event in
- *                                       degrees times ten to the power nine;
- *                                       LLONG_MIN is used to indicate a
- *                                       failed position fix, in which
- *                                       case the position state will
- *                                       remain unchanged from the previous
- *                                       call or will be
- *                                       #U_GEOFENCE_POSITION_STATE_NONE if
- *                                       the callback has never been called.
+ *                                       degrees times ten to the power nine.
  * @param longitudeX1e9                  the longitude of the position that
  *                                       caused the geofence event in
- *                                       degrees times ten to the power nine;
- *                                       LLONG_MIN is used to indicate a
- *                                       failed position fix, in which
- *                                       case the position state will
- *                                       remain unchanged from the previous
- *                                       call or will be
- *                                       #U_GEOFENCE_POSITION_STATE_NONE if
- *                                       the callback has never been called.
+ *                                       degrees times ten to the power nine.
  * @param altitudeMillimetres            the altitude of the position that
  *                                       caused the geofence event in
  *                                       millimetres; INT_MIN if only a 2D

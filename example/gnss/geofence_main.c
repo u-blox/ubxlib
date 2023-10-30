@@ -278,8 +278,7 @@ static void geofenceCallback(uDeviceHandle_t gnssHandle,
     (void) distanceMillimetres;
     (void) pCallbackParam;
 
-    if ((positionState != U_GEOFENCE_POSITION_STATE_NONE) &&
-        (latitudeX1e9 != LLONG_MIN) && (longitudeX1e9 != LLONG_MIN)) {
+    if (positionState != U_GEOFENCE_POSITION_STATE_NONE) {
         prefix[0] = latLongToBits((int32_t) (longitudeX1e9 / 100), &(whole[0]), &(fraction[0]));
         prefix[1] = latLongToBits((int32_t) (latitudeX1e9 / 100), &(whole[1]), &(fraction[1]));
         uPortLog("https://maps.google.com/?q=%c%d.%07d,%c%d.%07d is %s \"%s\".\n",
