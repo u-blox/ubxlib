@@ -808,9 +808,9 @@ int32_t uGnssPosGetStreamedStart(uDeviceHandle_t gnssHandle,
                 pInstance->printUbxMessages = temp;
             }
         }
-    }
 
-    U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
+        U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
+    }
 
     return errorCode;
 }
