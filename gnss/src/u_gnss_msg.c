@@ -355,6 +355,7 @@ int32_t uGnssMsgPrivateReceiveStart(uGnssPrivateInstance_t *pInstance,
                                 uPortMutexDelete(pMsgReceive->readerMutexHandle);
                             }
                             uPortFree(pInstance->pTemporaryBuffer);
+                            pInstance->pTemporaryBuffer = NULL;
                             uRingBufferGiveReadHandle(&(pInstance->ringBuffer),
                                                       pMsgReceive->ringBufferReadHandle);
                             uPortFree(pInstance->pMsgReceive);
