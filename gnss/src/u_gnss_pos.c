@@ -795,6 +795,7 @@ int32_t uGnssPosGetStreamedStart(uDeviceHandle_t gnssHandle,
                             // And we're off
                             pStreamedPosition->gnssHandle = gnssHandle;
                             pStreamedPosition->asyncHandle = errorCode;
+                            errorCode = 0;
                         } else {
                             // If we couldn't create the asynchronous
                             // message receiver, clean up
