@@ -29,6 +29,7 @@
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
 
+#include "limits.h"    // INT_MIN
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
@@ -148,6 +149,13 @@ static void gnssPosCallback(uDeviceHandle_t devHandle,
         if (pEntry != NULL) {
             if (pEntry->pCallback != NULL) {
                 location.type = U_LOCATION_TYPE_GNSS;
+                location.latitudeX1e7 = INT_MIN;
+                location.longitudeX1e7 = INT_MIN;
+                location.altitudeMillimetres = INT_MIN;
+                location.radiusMillimetres = -1;
+                location.speedMillimetresPerSecond = INT_MIN;
+                location.svs = -1;
+                location.timeUtc = -1;
                 if (errorCode == 0) {
                     location.latitudeX1e7 = latitudeX1e7;
                     location.longitudeX1e7 = longitudeX1e7;

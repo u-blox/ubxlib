@@ -174,14 +174,14 @@ int32_t uGnssPosGet(uDeviceHandle_t gnssHandle,
  * also do that.
  *
  * @param gnssHandle     the handle of the GNSS instance to use.
- * @param[in] pCallback  a callback that will be called when a fix has been
- *                       obtained.  The parameters to the callback are as
- *                       described in uGnssPosGet() except that they are
- *                       not pointers.  The position fix is only valid
- *                       if the second int32_t, errorCode, is zero but
- *                       a timeUtc value may still be included even
- *                       if a position fix has failed (timeUtc will be
- *                       set to -1 if the UTC time is not valid).
+ * @param[in] pCallback  a callback that will be called when a navigation
+ *                       a message arrives.  The parameters to the
+ *                       callback are as described in uGnssPosGet()
+ *                       except that they are not pointers.  The position
+ *                       fix is only valid if the second int32_t, errorCode,
+ *                       is zero but a timeUtc value may still be included
+ *                       even if a position fix has failed (timeUtc will
+ *                       be set to -1 if the UTC time is not valid).
  *                       Note: don't call back into this API from your
  *                       pCallback, it could lead to recursion.
  * @return               zero on success or negative error code on
@@ -242,9 +242,9 @@ void uGnssPosGetStop(uDeviceHandle_t gnssHandle);
  *                         uGnssCfgSetRate() before this function and
  *                         then setting rateMs here to -1, which will leave
  *                         the rate settings unchanged.
- * @param[in] pCallback    a callback that will be called when fixes are
- *                         obtained.  The parameters to the callback are as
- *                         described in uGnssPosGetStart().
+ * @param[in] pCallback    a callback that will be called when navigation
+ *                         messages arrive.  The parameters to the callback
+ *                         are as described in uGnssPosGetStart().
  *                         Note: don't call back into this API from your
  *                         pCallback, it could lead to recursion.
  *                         IMPORTANT: you should check the value of

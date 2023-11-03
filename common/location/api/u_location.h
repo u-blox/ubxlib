@@ -252,8 +252,10 @@ typedef struct {
  */
 typedef struct {
     uLocationType_t type; /**< the location mechanism that was used. */
-    int32_t latitudeX1e7; /**< latitude in ten millionths of a degree. */
-    int32_t longitudeX1e7; /**< longitude in ten millionths of a degree. */
+    int32_t latitudeX1e7; /**< latitude in ten millionths of a degree,
+                               INT_MIN if not populated. */
+    int32_t longitudeX1e7; /**< longitude in ten millionths of a degree,
+                                INT_MIN if not populated. */
     int32_t altitudeMillimetres; /**< altitude in millimetres; if the
                                       altitude is unknown INT_MIN will be
                                       returned. */
@@ -271,7 +273,10 @@ typedef struct {
                                             irrelevant -1 will be
                                             returned. */
     int64_t timeUtc; /**< the UTC time at which the location fix was made;
-                          if this is not available -1 will be returned. */
+                          if this is not available -1 will be returned.
+                          Note that, where the location is derived from GNSS,
+                          it is possible for JUST THIS FIELD, out of the
+                          whole structure, to be valid. */
 } uLocation_t;
 
 /** The possible states a location establishment
@@ -533,15 +538,20 @@ int32_t uLocationGetStart(uDeviceHandle_t devHandle, uLocationType_t type,
  *                                required by some cloud services (for example
  *                                Cell Locate, Google Maps, Skyhook and Here).
  * @param pCallback               a callback that will be called when
- *                                location has been determined.  The
- *                                first parameter to the callback is the
- *                                device handle, the second parameter is the
- *                                error code from the location establishment
- *                                process and the third parameter is a pointer
- *                                to a #uLocation_t structure (which may be NULL
- *                                if the error code is non-zero), the contents
- *                                of which must be COPIED as it will be destroyed
- *                                once the callback returns.
+ *                                a location has been determined and, in the
+ *                                GNSS case, will also be called if a GNSS
+ *                                navigation message arrives that does not
+ *                                contain a fix (in which case the error code
+ *                                parameter passed to the callback will be
+ *                                non-zero).  The first parameter to the
+ *                                callback is the device handle, the second
+ *                                parameter is the error code from the location
+ *                                establishment process and the third parameter
+ *                                is a pointer to a #uLocation_t structure
+ *                                (which may be NULL if the error code is
+ *                                non-zero), the contents of which must be
+ *                                COPIED as it will be destroyed once the
+ *                                callback returns.
  * @return                        zero on success or negative error code on
  *                                failure.
  */
