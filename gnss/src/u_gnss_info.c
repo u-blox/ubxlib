@@ -144,7 +144,7 @@ int32_t uGnssInfoGetVersions(uDeviceHandle_t gnssHandle,
                 memset(pVer, 0, sizeof(*pVer));
                 strncpy(pVer->ver, message.sw, sizeof(pVer->ver));
                 strncpy(pVer->hw, message.hw, sizeof(pVer->hw));
-                size_t n = (errorCodeOrLength - sizeof(message.sw) + sizeof(message.hw)) / sizeof(message.ext[0]);
+                size_t n = (errorCodeOrLength - (sizeof(message.sw) + sizeof(message.hw))) / sizeof(message.ext[0]);
                 for (size_t i = 0; i < n; i++) {
                     if (0 == strncmp(message.ext[i], "ROM BASE ", 9)) {
                         strncpy(pVer->rom, message.ext[i] + 9, sizeof(pVer->rom));
