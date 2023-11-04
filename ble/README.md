@@ -27,5 +27,7 @@ Communication with an external module uses the binary EDM protocol. The app can 
 
 It is not in the scope of this API to support the full range short range module (AT) API. However, using the BLE `cfg` API as a prototype it is easy to add additional commands to your application. Make sure your code locks the short range mutex. 
 
+The operation of `ubxlib` does not rely on a particular version of uConnectExpress; the versions that we test with are listed in the short-range [test](/common/short_range/test) directory.
+
 # Usage
 The [api](api) directory contains the files that define the BLE APIs, each API function documented in its header file.  In the [src](src) directory you will find the implementation of the APIs and in the [test](test) directory the tests for the APIs that can be run on any platform.

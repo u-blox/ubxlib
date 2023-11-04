@@ -26,6 +26,8 @@ HOWEVER, this is the detailed API; if all you would like to do is bring up a bea
 
 This API relies upon the [common/at_client](/common/at_client) component to send commands to and parse responses received from a cellular module.
 
+The operation of `ubxlib` does not rely on a particular FW version of the cellular module; the module FW versions that we test with are listed in the [test](test) directory.
+
 # Usage
 The [api](api) directory contains the files that define the cellular APIs, each API function documented in its header file.  In the [src](src) directory you will find the implementation of the APIs and in the [test](test) directory the tests for the APIs that can be run on any platform.
 

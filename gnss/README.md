@@ -18,6 +18,8 @@ The module types supported by this implementation are listed in [u_gnss_module_t
 
 This API relies upon the [common/ubx_protocol](/common/ubx_protocol) component to encode commands for and decode responses from a u-blox GNSS module and the [common/at_client](/common/at_client) component when an intermediate AT (e.g. cellular) module is employed between this MCU and the GNSS module.
 
+The operation of `ubxlib` does not rely on a particular FW version of the GNSS chip; the FW versions that we test with are listed in the [test](test) directory.
+
 # Sub-module [geographiclib](https://github.com/geographiclib)
 If you do not provide your own geodesic functions and intend to use fences with shapes greated than 1 km in size, where the non-spherical nature of the earth has an impact, [GeographicLib](https://github.com/geographiclib) should be used.  To obtain this as a sub-module, make sure that you have done:
 

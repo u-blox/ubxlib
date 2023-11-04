@@ -15,6 +15,8 @@ location client API.
 
 The module types supported by this implementation are listed in [u_wifi_module_type.h](api/u_wifi_module_type.h).
 
+The operation of `ubxlib` does not rely on a particular version of uConnectExpress; the versions that we test with are listed in the short-range [test](/common/short_range/test) directory.
+
 # WiFi captive portal
 
 Included in this directory is also functionality for starting a captive portal for wifi credentials provisioning at runtime instead of adding these in the source code at build time.
