@@ -499,6 +499,14 @@ int32_t uLocationGetStart(uDeviceHandle_t devHandle, uLocationType_t type,
  * the cellular device handle (as once it is "claimed" by Cell Locate it
  * won't be available for GNSS calls until the module is power cycled).
  *
+ * Note: if you are just getting a GNSS device working you probably want
+ * to use uLocationGet() instead of this function: since this function is
+ * expected to be called continuously it won't print out a lot of debug,
+ * while, for a GNSS-type location, uLocationGet() _will_ print out the
+ * whole UBX-NAV-PVT message contents (which you can look up in the
+ * interface manual for your GNSS chip) while it is waiting for a
+ * position fix.
+ *
  * Note: where the GNSS chip is inside or connected via a SARA-R5 module,
  * there is a known issue where, if a GNSS multiplexer channel (required for
  * streamed position) is opened, closed, and then re-opened the GNSS chip will
