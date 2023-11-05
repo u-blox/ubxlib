@@ -415,7 +415,7 @@ int32_t uGeofenceAddCircle(uGeofence_t *pFence,
  * The geofence does not become active until one of
  * uGnssGeofenceApply(), uCellGeofenceApply() or uWifiGeofenceApply()
  * is called; once a geofence is applied to one or more devices
- * uGeofenceAddCircle() cannot be called on it again until the
+ * uGeofenceAddVertex() cannot be called on it again until the
  * geofence is removed from those instances by a call to
  * uGnssGeofenceRemove(), uCellGeofenceRemove() or
  * uWifiGeofenceRemove().
@@ -449,8 +449,9 @@ int32_t uGeofenceAddVertex(uGeofence_t *pFence,
 
 /** Set the maximum altitude of a geofence; if this is not called there
  * is no maximum altitude.  If the geofence is currently applied to any
- * devices an error will be returned; call uGeofenceRemove() to remove
- * it from those devices first.
+ * devices an error will be returned; call uGnssGeofenceRemove(),
+ * uCellGeofenceRemove() or uWifiGeofenceRemove() to remove it from
+ * those device(s) first.
  *
  * IMPORTANT: if a maximum altitude is set but only 2D position is
  * achieved then that position will be IGNORED for this geofence; do
