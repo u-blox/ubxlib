@@ -183,6 +183,19 @@ static const uCellNetRegTypes_t gRegTypes[] = {
     },
 };
 
+#if U_CFG_ENABLE_LOGGING
+/** Strings that describe the possible authentication modes;
+ * used in a debug print only, MUST have the same number of
+ * entries as #uCellNetAuthenticationMode_t.
+ */
+static const char *gpAuthenticationModeStr[] = {
+    "\"not set\"",  // U_CELL_NET_AUTHENTICATION_MODE_NOT_SET
+    "PAP",          // U_CELL_NET_AUTHENTICATION_MODE_PAP
+    "CHAP",         // U_CELL_NET_AUTHENTICATION_MODE_CHAP
+    "automatic"     // U_CELL_NET_AUTHENTICATION_MODE_AUTOMATIC
+};
+#endif
+
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS: FORWARD DECLARATIONS
  * -------------------------------------------------------------- */
@@ -1335,19 +1348,32 @@ static int32_t defineContext(const uCellPrivateInstance_t *pInstance,
 static int32_t setAuthenticationMode(const uCellPrivateInstance_t *pInstance,
                                      int32_t contextId,
                                      const char *pUsername,
-                                     const char *pPassword)
+                                     const char *pPassword,
+                                     uCellNetAuthenticationMode_t overrideAuthenticationMode)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
     uAtClientHandle_t atHandle = pInstance->atHandle;
     uCellNetAuthenticationMode_t authenticationMode = pInstance->authenticationMode;
 
-    // Only continue if we either have a non-NONE authentication
+    if ((authenticationMode == U_CELL_NET_AUTHENTICATION_MODE_NOT_SET) &&
+        U_CELL_PRIVATE_HAS(pInstance->pModule,
+                           U_CELL_PRIVATE_FEATURE_AUTHENTICATION_MODE_AUTOMATIC)) {
+        // Set automatic authentication mode where supported
+        authenticationMode = U_CELL_NET_AUTHENTICATION_MODE_AUTOMATIC;
+    }
+
+    if ((authenticationMode == U_CELL_NET_AUTHENTICATION_MODE_NOT_SET) &&
+        (overrideAuthenticationMode != U_CELL_NET_AUTHENTICATION_MODE_NOT_SET)) {
+        authenticationMode = overrideAuthenticationMode;
+    }
+
+    // Only continue if we either have an authentication
     // mode or if we have no credentials to enter
-    if ((authenticationMode != U_CELL_NET_AUTHENTICATION_MODE_NONE) ||
+    if ((authenticationMode != U_CELL_NET_AUTHENTICATION_MODE_NOT_SET) ||
         ((pUsername == NULL) && (pPassword == NULL))) {
         if ((pUsername == NULL) && (pPassword == NULL)) {
             // No authentication is required
-            authenticationMode = U_CELL_NET_AUTHENTICATION_MODE_NONE;
+            authenticationMode = U_CELL_NET_AUTHENTICATION_MODE_NOT_SET;
             if ((pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R5) ||
                 (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_U201)) {
                 // For SARA-R5 and U201 the user name and password cannot
@@ -1355,6 +1381,9 @@ static int32_t setAuthenticationMode(const uCellPrivateInstance_t *pInstance,
                 pUsername = "";
                 pPassword = "";
             }
+        } else {
+            uPortLog("U_CELL_NET: authentication mode will be %s.\n",
+                     gpAuthenticationModeStr[authenticationMode]);
         }
         uAtClientLock(atHandle);
         uAtClientCommandStart(atHandle, "AT+UAUTHREQ=");
@@ -2104,6 +2133,7 @@ int32_t uCellNetConnect(uDeviceHandle_t cellHandle,
     uCellPrivateInstance_t *pInstance;
     char buffer[15];  // At least 15 characters for the IMSI
     const char *pApnConfig = NULL;
+    uCellNetAuthenticationMode_t overrideAuthenticationMode = U_CELL_NET_AUTHENTICATION_MODE_NOT_SET;
 
     if (gUCellPrivateMutex != NULL) {
 
@@ -2143,6 +2173,17 @@ int32_t uCellNetConnect(uDeviceHandle_t cellHandle,
                             pPassword = _APN_GET(pApnConfig);
                             uPortLog("U_CELL_NET: APN from database is"
                                      " \"%s\".\n", pApn);
+                            if ((pUsername != NULL) && (pPassword != NULL)) {
+                                // If we've picked a username and password from the database
+                                // then an authentication mode needs to be chosen also.  For
+                                // modules that support automatic choice that's easy, but for
+                                // ones that do not it is pop-quiz-punk time
+                                overrideAuthenticationMode = U_CELL_NET_APN_DB_AUTHENTICATION_MODE;
+                                if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                                       U_CELL_PRIVATE_FEATURE_AUTHENTICATION_MODE_AUTOMATIC)) {
+                                    overrideAuthenticationMode = U_CELL_NET_AUTHENTICATION_MODE_AUTOMATIC;
+                                }
+                            }
                         } else {
                             if (pApn != NULL) {
                                 if (uCellMnoDbProfileHas(pInstance,
@@ -2186,7 +2227,8 @@ int32_t uCellNetConnect(uDeviceHandle_t cellHandle,
                                 errorCode = setAuthenticationMode(pInstance,
                                                                   U_CELL_NET_CONTEXT_ID,
                                                                   pUsername,
-                                                                  pPassword);
+                                                                  pPassword,
+                                                                  overrideAuthenticationMode);
                             }
                         }
                         if (errorCode == 0) {
@@ -2392,6 +2434,7 @@ int32_t uCellNetActivate(uDeviceHandle_t cellHandle,
     const char *pMccMnc = NULL;
     char imsi[15];
     const char *pApnConfig = NULL;
+    uCellNetAuthenticationMode_t overrideAuthenticationMode = U_CELL_NET_AUTHENTICATION_MODE_NOT_SET;
 
     if (gUCellPrivateMutex != NULL) {
 
@@ -2425,6 +2468,17 @@ int32_t uCellNetActivate(uDeviceHandle_t cellHandle,
                             pPassword = _APN_GET(pApnConfig);
                             uPortLog("U_CELL_NET: APN from database is \"%s\".\n",
                                      pApn);
+                            if ((pUsername != NULL) && (pPassword != NULL)) {
+                                // If we've picked a username and password from the database
+                                // then an authentication mode needs to be chosen also.  For
+                                // modules that support automatic choice that's easy, but for
+                                // ones that do not it is pop-quiz-punk time
+                                overrideAuthenticationMode = U_CELL_NET_APN_DB_AUTHENTICATION_MODE;
+                                if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                                       U_CELL_PRIVATE_FEATURE_AUTHENTICATION_MODE_AUTOMATIC)) {
+                                    overrideAuthenticationMode = U_CELL_NET_AUTHENTICATION_MODE_AUTOMATIC;
+                                }
+                            }
                         } else {
                             if (pApn != NULL) {
                                 uPortLog("U_CELL_NET: user-specified APN is"
@@ -2451,7 +2505,8 @@ int32_t uCellNetActivate(uDeviceHandle_t cellHandle,
                                 errorCode = setAuthenticationMode(pInstance,
                                                                   U_CELL_NET_CONTEXT_ID,
                                                                   pUsername,
-                                                                  pPassword);
+                                                                  pPassword,
+                                                                  overrideAuthenticationMode);
                             }
                             if (errorCode == 0) {
                                 if (!uCellPrivateIsRegistered(pInstance)) {
@@ -3450,6 +3505,10 @@ int32_t uCellNetResetDataCounters(uDeviceHandle_t cellHandle)
     return errorCode;
 }
 
+/* ----------------------------------------------------------------
+ * PUBLIC FUNCTIONS: AUTHENTICATION MODE
+ * -------------------------------------------------------------- */
+
 // Get the authentication mode.
 int32_t uCellNetGetAuthenticationMode(uDeviceHandle_t cellHandle)
 {
@@ -3486,7 +3545,6 @@ int32_t uCellNetSetAuthenticationMode(uDeviceHandle_t cellHandle,
         pInstance = pUCellPrivateGetInstance(cellHandle);
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if ((pInstance != NULL) && (mode >= 0) &&
-            (mode != U_CELL_NET_AUTHENTICATION_MODE_NONE) &&
             (mode < U_CELL_NET_AUTHENTICATION_MODE_MAX_NUM)) {
             errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
             if ((mode != U_CELL_NET_AUTHENTICATION_MODE_AUTOMATIC) ||

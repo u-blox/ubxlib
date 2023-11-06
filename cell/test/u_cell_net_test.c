@@ -252,12 +252,10 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetConnectDisconnectPlus")
     if (U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_AUTHENTICATION_MODE_AUTOMATIC)) {
         U_PORT_TEST_ASSERT(x == U_CELL_NET_AUTHENTICATION_MODE_AUTOMATIC);
     } else {
-        U_PORT_TEST_ASSERT(x == U_CELL_NET_AUTHENTICATION_MODE_NONE);
+        U_PORT_TEST_ASSERT(x == U_CELL_NET_AUTHENTICATION_MODE_NOT_SET);
     }
 
     // Try setting all of the permitted authentication modes
-    U_PORT_TEST_ASSERT(uCellNetSetAuthenticationMode(cellHandle,
-                                                     U_CELL_NET_AUTHENTICATION_MODE_NONE) < 0);
     U_PORT_TEST_ASSERT(uCellNetSetAuthenticationMode(cellHandle,
                                                      U_CELL_NET_AUTHENTICATION_MODE_PAP) == 0);
     U_PORT_TEST_ASSERT(uCellNetGetAuthenticationMode(cellHandle) == U_CELL_NET_AUTHENTICATION_MODE_PAP);

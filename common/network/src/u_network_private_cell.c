@@ -172,18 +172,14 @@ int32_t uNetworkPrivateChangeStateCell(uDeviceHandle_t devHandle,
                                        (((int64_t) pCfg->timeoutSeconds) * 1000);
             }
             if (upNotDown) {
-                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-                if ((pCfg->pUsername != NULL) && (pCfg->pPassword != NULL)) {
-                    // If we have a user name and password then set the
-                    // authentication mode
-                    errorCode = uCellNetSetAuthenticationMode(devHandle, pCfg->authenticationMode);
-                    if (errorCode < 0) {
-                        // uCellNetSetAuthenticationMode() will return "not supported"
-                        // for modules that do not support automatic mode but that is
-                        // a bit confusing as a return value for uNetworkInterfaceUp(),
-                        // so change it to "invalid parameter"
-                        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-                    }
+                // Set the authentication mode
+                errorCode = uCellNetSetAuthenticationMode(devHandle, pCfg->authenticationMode);
+                if (errorCode < 0) {
+                    // uCellNetSetAuthenticationMode() will return "not supported"
+                    // if automatic mode is set for a module that does not support
+                    // automatic mode but that is a bit confusing as a return value
+                    // for uNetworkInterfaceUp(), so change it to "invalid parameter"
+                    errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
                 }
                 if (errorCode == 0) {
                     // Connect using automatic selection
