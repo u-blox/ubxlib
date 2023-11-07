@@ -49,7 +49,7 @@ extern TX_BYTE_POOL *pHeapPool;
  * stack size should be equal to or less than this.
  * Maximum 8 threads of 4 KB of stack size are allowed.
  */
-#define THREAD_STACK_MAXIMUM (1024 * 10)
+#define THREAD_STACK_MAXIMUM (1024 * 16)
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS FOR SARAR5UCPU: HEAP
