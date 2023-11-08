@@ -120,11 +120,13 @@ U_PORT_TEST_FUNCTION("[cell]", "cellAdd")
 # if (U_CFG_TEST_UART_B >= 0)
     uAtClientHandle_t atClientHandleB;
     uDeviceHandle_t devHandleB;
+    int32_t y;
 # endif
     uDeviceHandle_t dummyHandle;
     uAtClientHandle_t atClientHandle = NULL;
     int32_t resourceCount;
     int32_t errorCode;
+    int32_t x;
 
     // Whatever called us likely initialised the
     // port so deinitialise it here to obtain the
@@ -167,6 +169,20 @@ U_PORT_TEST_FUNCTION("[cell]", "cellAdd")
                                               &atClientHandle) == 0);
     U_PORT_TEST_ASSERT(atClientHandle == atClientHandleA);
 
+    // Check that we can get and set the inter-AT command delay
+    // of this cellular instance
+    x = uCellAtCommandDelayGet(devHandleA);
+    U_TEST_PRINT_LINE("inter AT-command delay is %d ms.", x);
+    U_PORT_TEST_ASSERT(x >= 0);
+    x++;
+    errorCode = uCellAtCommandDelaySet(devHandleA, x);
+    U_PORT_TEST_ASSERT(errorCode == (int32_t) U_ERROR_COMMON_SUCCESS);
+    errorCode = uCellAtCommandDelayGet(devHandleA);
+    U_TEST_PRINT_LINE("inter AT-command delay is now %d ms.", errorCode);
+    U_PORT_TEST_ASSERT(errorCode == x);
+    x--;
+    U_PORT_TEST_ASSERT(uCellAtCommandDelaySet(devHandleA, x) == 0);
+
     U_TEST_PRINT_LINE("adding another instance on the same AT client, should fail...");
     U_PORT_TEST_ASSERT(uCellAdd(U_CELL_MODULE_TYPE_SARA_U201, atClientHandleA,
                                 -1, -1, -1, false, &dummyHandle) < 0);
@@ -202,6 +218,24 @@ U_PORT_TEST_FUNCTION("[cell]", "cellAdd")
                       " should fail...");
     U_PORT_TEST_ASSERT(uCellAdd(U_CELL_MODULE_TYPE_SARA_R5, atClientHandleB,
                                 -1, -1, -1, false, &dummyHandle) < 0);
+
+    // Check that we can get and set the inter-AT command delay
+    // of this cellular instance without affecting the other
+    y = uCellAtCommandDelayGet(devHandleA);
+    U_PORT_TEST_ASSERT(y >= 0);
+    x = uCellAtCommandDelayGet(devHandleB);
+    U_TEST_PRINT_LINE("inter AT-command delay is %d ms.", x);
+    U_PORT_TEST_ASSERT(x >= 0);
+    x++;
+    errorCode = uCellAtCommandDelaySet(devHandleB, x);
+    U_PORT_TEST_ASSERT(errorCode == (int32_t) U_ERROR_COMMON_SUCCESS);
+    errorCode = uCellAtCommandDelayGet(devHandleB);
+    U_TEST_PRINT_LINE("inter AT-command delay is now %d ms.", errorCode);
+    U_PORT_TEST_ASSERT(errorCode == x);
+    errorCode = uCellAtCommandDelayGet(devHandleA);
+    U_PORT_TEST_ASSERT(errorCode == y);
+    x--;
+    U_PORT_TEST_ASSERT(uCellAtCommandDelaySet(devHandleB, x) == 0);
 
     // Don't remove this one, let uCellDeinit() do it
 # endif

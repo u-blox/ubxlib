@@ -272,9 +272,9 @@ typedef struct {
     int32_t atTimeoutSeconds; /**< The time to wait for completion of an
                                    AT command, i.e. from sending ATblah to
                                    receiving OK or ERROR back. */
-    int32_t commandDelayMs; /**< How long to wait between the end of
-                                 one AT command and the start of the
-                                 next. */
+    int32_t commandDelayDefaultMs; /**< How long to wait between the end of
+                                        one AT command and the start of the
+                                        next, default value. */
     int32_t responseMaxWaitMs; /**< The maximum response time one can
                                     expect from the cellular module.
                                     This is usually quite large since,

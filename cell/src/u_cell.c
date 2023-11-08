@@ -410,7 +410,7 @@ int32_t uCellAdd(uCellModuleType_t moduleType,
                         uAtClientTimeoutSet(atHandle,
                                             pInstance->pModule->atTimeoutSeconds * 1000);
                         uAtClientDelaySet(atHandle,
-                                          pInstance->pModule->commandDelayMs);
+                                          pInstance->pModule->commandDelayDefaultMs);
 #ifndef U_CFG_CELL_DISABLE_UART_POWER_SAVING
                         // Here we set the power-saving wake-up handler but note
                         // that this might be _removed_ during the power-on
@@ -476,6 +476,51 @@ int32_t uCellAtClientHandleGet(uDeviceHandle_t cellHandle,
         pInstance = pUCellPrivateGetInstance(cellHandle);
         if ((pInstance != NULL) && (pAtHandle != NULL)) {
             *pAtHandle = pInstance->atHandle;
+            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return errorCode;
+}
+
+// Get the inter-AT command delay.
+int32_t uCellAtCommandDelayGet(uDeviceHandle_t cellHandle)
+{
+    int32_t errorCodeOrDelayMs = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance;
+
+    if (gUCellPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        errorCodeOrDelayMs = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        pInstance = pUCellPrivateGetInstance(cellHandle);
+        if (pInstance != NULL) {
+            errorCodeOrDelayMs = uAtClientDelayGet(pInstance->atHandle);
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return errorCodeOrDelayMs;
+}
+
+// Set the inter-AT command delay.
+int32_t uCellAtCommandDelaySet(uDeviceHandle_t cellHandle, int32_t delayMs)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance;
+
+    if (gUCellPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        pInstance = pUCellPrivateGetInstance(cellHandle);
+        if ((pInstance != NULL) && (delayMs >= 0)) {
+            uAtClientDelaySet(pInstance->atHandle, delayMs);
             errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
         }
 

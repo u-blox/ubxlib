@@ -259,6 +259,41 @@ void uCellRemove(uDeviceHandle_t cellHandle);
 int32_t uCellAtClientHandleGet(uDeviceHandle_t cellHandle,
                                uAtClientHandle_t *pAtHandle);
 
+/** Get the delay between the end of one AT command and the
+ * start of the next AT command.
+ *
+ * @param cellHandle      the handle of the cellular instance.
+ * @return                on success the delay in milliseconds,
+ *                        else negative error code.
+ */
+int32_t uCellAtCommandDelayGet(uDeviceHandle_t cellHandle);
+
+/** Set the delay between the end of one AT command and the
+ * start of the next AT command.  A safe default value is
+ * set on a per-module basis but you may wish to optimise the
+ * speed of exchange of AT command in your product, your use-case.
+ * THIS SHOULD BE DONE WITH GREAT CARE; a delay that is too
+ * short may lead to AT interface failures, commands being
+ * confused with one another, etc., and these issues may occur
+ * in random places, at random times, dependent upon the AT
+ * command that was just executed and, potentially, external
+ * factors (network searching, GNSS chip interaction, etc.).
+ * You should only reduce the value from the default if you
+ * have a good set of regression tests for your product solution
+ * that you can run to verify that a shortened delay does not
+ * introduce problems for the AT commands that you end up using
+ * in the situations that you use them.
+ *
+ * @param cellHandle  the handle of the cellular instance.
+ * @param delayMs     the minimum time from "OK" or "ERROR"
+ *                    being received for one AT command to
+ *                    the next AT command being issued.
+ * @return            zero on success, else negative error
+ *                    code.
+ */
+int32_t uCellAtCommandDelaySet(uDeviceHandle_t cellHandle,
+                               int32_t delayMs);
+
 #ifdef __cplusplus
 }
 #endif
