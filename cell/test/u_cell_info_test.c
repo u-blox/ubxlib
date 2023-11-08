@@ -281,6 +281,7 @@ U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoImeiEtc")
 U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoRadioParameters")
 {
     uDeviceHandle_t cellHandle;
+    const uCellPrivateModule_t *pModule;
     int32_t x;
     int32_t snrDb;
     size_t count;
@@ -297,27 +298,46 @@ U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoRadioParameters")
                                                 &gHandles, true) == 0);
     cellHandle = gHandles.cellHandle;
 
-    U_TEST_PRINT_LINE("checking values before a refresh (should return errors)...");
-    U_PORT_TEST_ASSERT(uCellInfoGetRssiDbm(cellHandle) == 0);
-    U_PORT_TEST_ASSERT(uCellInfoGetRsrpDbm(cellHandle) == 0);
-    U_PORT_TEST_ASSERT(uCellInfoGetRsrqDb(cellHandle) == 0x7FFFFFFF);
-    U_PORT_TEST_ASSERT(uCellInfoGetSnrDb(cellHandle, &snrDb) != 0);
-    U_PORT_TEST_ASSERT(uCellInfoGetCellId(cellHandle) == -1);
-    U_PORT_TEST_ASSERT(uCellInfoGetCellIdLogical(cellHandle) == -1);
-    U_PORT_TEST_ASSERT(uCellInfoGetCellIdPhysical(cellHandle) == -1);
-    U_PORT_TEST_ASSERT(uCellInfoGetEarfcn(cellHandle) == -1);
+    // Get the private module data as we need it for testing
+    pModule = pUCellPrivateGetModule(gHandles.cellHandle);
+    U_PORT_TEST_ASSERT(pModule != NULL);
+    //lint -esym(613, pModule) Suppress possible use of NULL pointer
+    // for pModule from now on
 
-    U_TEST_PRINT_LINE("checking values after a refresh but before"
-                      " network registration (should return errors)...");
-    U_PORT_TEST_ASSERT(uCellInfoRefreshRadioParameters(cellHandle) != 0);
-    U_PORT_TEST_ASSERT(uCellInfoGetRssiDbm(cellHandle) == 0);
-    U_PORT_TEST_ASSERT(uCellInfoGetRsrpDbm(cellHandle) == 0);
-    U_PORT_TEST_ASSERT(uCellInfoGetRsrqDb(cellHandle) == 0x7FFFFFFF);
-    U_PORT_TEST_ASSERT(uCellInfoGetSnrDb(cellHandle, &snrDb) != 0);
-    U_PORT_TEST_ASSERT(uCellInfoGetCellId(cellHandle) == -1);
-    U_PORT_TEST_ASSERT(uCellInfoGetCellIdLogical(cellHandle) == -1);
-    U_PORT_TEST_ASSERT(uCellInfoGetCellIdPhysical(cellHandle) == -1);
-    U_PORT_TEST_ASSERT(uCellInfoGetEarfcn(cellHandle) == -1);
+    if (pModule->moduleType != U_CELL_MODULE_TYPE_LENA_R8) {
+        U_TEST_PRINT_LINE("checking values before a refresh (should return errors)...");
+        U_PORT_TEST_ASSERT(uCellInfoGetRssiDbm(cellHandle) == 0);
+        U_PORT_TEST_ASSERT(uCellInfoGetRsrpDbm(cellHandle) == 0);
+        U_PORT_TEST_ASSERT(uCellInfoGetRsrqDb(cellHandle) == 0x7FFFFFFF);
+        U_PORT_TEST_ASSERT(uCellInfoGetSnrDb(cellHandle, &snrDb) != 0);
+        U_PORT_TEST_ASSERT(uCellInfoGetCellId(cellHandle) == -1);
+        U_PORT_TEST_ASSERT(uCellInfoGetCellIdLogical(cellHandle) == -1);
+        U_PORT_TEST_ASSERT(uCellInfoGetCellIdPhysical(cellHandle) == -1);
+        U_PORT_TEST_ASSERT(uCellInfoGetEarfcn(cellHandle) == -1);
+
+        U_TEST_PRINT_LINE("checking values after a refresh but before"
+                          " network registration (should return errors)...");
+        U_PORT_TEST_ASSERT(uCellInfoRefreshRadioParameters(cellHandle) != 0);
+        U_PORT_TEST_ASSERT(uCellInfoGetRssiDbm(cellHandle) == 0);
+        U_PORT_TEST_ASSERT(uCellInfoGetRsrpDbm(cellHandle) == 0);
+        U_PORT_TEST_ASSERT(uCellInfoGetRsrqDb(cellHandle) == 0x7FFFFFFF);
+        U_PORT_TEST_ASSERT(uCellInfoGetSnrDb(cellHandle, &snrDb) != 0);
+        U_PORT_TEST_ASSERT(uCellInfoGetCellId(cellHandle) == -1);
+        U_PORT_TEST_ASSERT(uCellInfoGetCellIdLogical(cellHandle) == -1);
+        U_PORT_TEST_ASSERT(uCellInfoGetCellIdPhysical(cellHandle) == -1);
+        U_PORT_TEST_ASSERT(uCellInfoGetEarfcn(cellHandle) == -1);
+    } else {
+        U_TEST_PRINT_LINE("LENA-R8 only supports RSSI and logical cell ID, only testing them.");
+        U_PORT_TEST_ASSERT(uCellInfoGetRssiDbm(cellHandle) == 0);
+        U_PORT_TEST_ASSERT(uCellInfoGetRsrpDbm(cellHandle) == 0);
+        U_PORT_TEST_ASSERT(uCellInfoGetRsrqDb(cellHandle) == 0x7FFFFFFF);
+        U_PORT_TEST_ASSERT(uCellInfoGetSnrDb(cellHandle, &snrDb) == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED);
+        U_PORT_TEST_ASSERT(uCellInfoGetCellId(cellHandle) ==  -1);
+        U_PORT_TEST_ASSERT(uCellInfoGetCellIdLogical(cellHandle) == -1);
+        U_PORT_TEST_ASSERT(uCellInfoGetCellIdPhysical(cellHandle) ==  (int32_t)
+                           U_ERROR_COMMON_NOT_SUPPORTED);
+        U_PORT_TEST_ASSERT(uCellInfoGetEarfcn(cellHandle) ==  (int32_t) U_ERROR_COMMON_NOT_SUPPORTED);
+    }
 
     U_TEST_PRINT_LINE("checking values after registration...");
     gStopTimeMs = uPortGetTickTimeMs() +
@@ -334,12 +354,21 @@ U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoRadioParameters")
     U_PORT_TEST_ASSERT(count > 0);
     // Should now have everything
     if (U_CELL_PRIVATE_RAT_IS_EUTRAN(uCellNetGetActiveRat(cellHandle))) {
-        // Only get these with AT+UCGED on EUTRAN
-        U_PORT_TEST_ASSERT(uCellInfoGetRsrpDbm(cellHandle) < 0);
-        U_PORT_TEST_ASSERT(uCellInfoGetRsrqDb(cellHandle) != 0x7FFFFFFF);
-        U_PORT_TEST_ASSERT(uCellInfoGetCellId(cellHandle) >= 0);
-        U_PORT_TEST_ASSERT(uCellInfoGetCellIdPhysical(cellHandle) >= 0);
-        U_PORT_TEST_ASSERT(uCellInfoGetEarfcn(cellHandle) >= 0);
+        if (pModule->moduleType != U_CELL_MODULE_TYPE_LENA_R8) {
+            // Only get these with AT+UCGED on EUTRAN and not at all with LENA-R8
+            U_PORT_TEST_ASSERT(uCellInfoGetRsrpDbm(cellHandle) < 0);
+            U_PORT_TEST_ASSERT(uCellInfoGetRsrqDb(cellHandle) != 0x7FFFFFFF);
+            U_PORT_TEST_ASSERT(uCellInfoGetCellId(cellHandle) >= 0);
+            U_PORT_TEST_ASSERT(uCellInfoGetCellIdPhysical(cellHandle) >= 0);
+            U_PORT_TEST_ASSERT(uCellInfoGetEarfcn(cellHandle) >= 0);
+        } else {
+            U_PORT_TEST_ASSERT(uCellInfoGetRsrpDbm(cellHandle) == 0);
+            U_PORT_TEST_ASSERT(uCellInfoGetRsrqDb(cellHandle) == 0x7FFFFFFF);
+            U_PORT_TEST_ASSERT(uCellInfoGetCellId(cellHandle) >= 0);
+            U_PORT_TEST_ASSERT(uCellInfoGetCellIdPhysical(cellHandle) ==  (int32_t)
+                               U_ERROR_COMMON_NOT_SUPPORTED);
+            U_PORT_TEST_ASSERT(uCellInfoGetEarfcn(cellHandle) == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED);
+        }
     }
     // ...however RSSI can take a long time to
     // get so keep trying if it has not arrived
@@ -350,14 +379,19 @@ U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoRadioParameters")
     }
     U_PORT_TEST_ASSERT(uCellInfoGetRssiDbm(cellHandle) < 0);
     U_PORT_TEST_ASSERT(uCellInfoGetCellIdLogical(cellHandle) >= 0);
-    if (U_CELL_PRIVATE_RAT_IS_EUTRAN(uCellNetGetActiveRat(cellHandle))) {
-        // Only get this if we have RSRP as well
-        x = uCellInfoGetSnrDb(cellHandle, &snrDb);
-        if (x == 0) {
-            U_TEST_PRINT_LINE("SNR is %d dB.", snrDb);
+    if (pModule->moduleType != U_CELL_MODULE_TYPE_LENA_R8) {
+        if (U_CELL_PRIVATE_RAT_IS_EUTRAN(uCellNetGetActiveRat(cellHandle))) {
+            // Only get this if we have RSRP as well
+            x = uCellInfoGetSnrDb(cellHandle, &snrDb);
+            if (x == 0) {
+                U_TEST_PRINT_LINE("SNR is %d dB.", snrDb);
+            }
+            U_PORT_TEST_ASSERT((x == 0) || (x == (int32_t) U_CELL_ERROR_VALUE_OUT_OF_RANGE) ||
+                               (x == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED));
         }
-        U_PORT_TEST_ASSERT((x == 0) || (x == (int32_t) U_CELL_ERROR_VALUE_OUT_OF_RANGE) ||
-                           (x == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED));
+    } else {
+        U_PORT_TEST_ASSERT(uCellInfoGetSnrDb(cellHandle,
+                                             &snrDb) ==  (int32_t) U_ERROR_COMMON_NOT_SUPPORTED);
     }
 
     // Disconnect

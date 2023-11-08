@@ -463,7 +463,6 @@ static int32_t connectNetwork(uDeviceHandle_t cellHandle)
 {
     gStopTimeMs = uPortGetTickTimeMs() +
                   (U_CELL_TEST_CFG_CONNECT_TIMEOUT_SECONDS * 1000);
-
     return uCellNetConnect(cellHandle, NULL,
 # ifdef U_CELL_TEST_CFG_APN
                            U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_APN),

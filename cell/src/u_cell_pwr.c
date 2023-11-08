@@ -99,7 +99,7 @@ typedef enum {
     U_CELL_PWR_PSV_MODE_DATA = 1,        /**< Module wakes up on TXD line activity, SARA-U201/SARA-R5 version. */
     U_CELL_PWR_PSV_MODE_RTS = 2,         /**< Module wakes up on RTS line being asserted (not used in this code). */
     U_CELL_PWR_PSV_MODE_DTR = 3,         /**< Module wakes up on DTR line being asserted. */
-    U_CELL_PWR_PSV_MODE_DATA_SARA_R4 = 4 /**< Module wakes up on TXD line activity, SARA-R4 version. */
+    U_CELL_PWR_PSV_MODE_DATA_SARA_R4_LENA_R8 = 4 /**< Module wakes up on TXD line activity, SARA-R4/LENA-R8 version. */
 } uCellPwrPsvMode_t;
 
 /** All the parameters for a wake-up-from-deep sleep callback.
@@ -940,6 +940,7 @@ static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance,
     }
 
     if (success &&
+        U_CELL_PRIVATE_HAS(pInstance->pModule, U_CELL_PRIVATE_FEATURE_UCGED) &&
         (U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType) ||
          (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_LARA_R6))) {
         // SARA-R4 and LARA-R6 only: switch on the right UCGED mode
@@ -1011,7 +1012,8 @@ static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance,
     }
 
     if (uAtClientWakeUpHandlerIsSet(atHandle) &&
-        U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType)) {
+        (U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType) ||
+         pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_LENA_R8)) {
         // SARA-R4 doesn't support modes 1, 2 or 3 but
         // does support the functionality of mode 1
         // though numbered as mode 4 and without the
@@ -1021,12 +1023,17 @@ static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance,
         // module: it would appear the module incoming
         // flow control line (CTS) is held low ("on") even
         // while the module is asleep in the SARA-R4 case.
-        uartPowerSavingMode = U_CELL_PWR_PSV_MODE_DATA_SARA_R4;
+        // Meanwhile, LENA-R8 supports all of the modes, including
+        // the timing parameter, but renumbers 1 as 4, just to
+        // be different
+        uartPowerSavingMode = U_CELL_PWR_PSV_MODE_DATA_SARA_R4_LENA_R8;
     }
 
     if (success) {
         // Assemble the UART power saving mode AT command
-        if (uartPowerSavingMode == U_CELL_PWR_PSV_MODE_DATA) {
+        if ((uartPowerSavingMode == U_CELL_PWR_PSV_MODE_DATA) ||
+            ((uartPowerSavingMode == U_CELL_PWR_PSV_MODE_DATA_SARA_R4_LENA_R8) &&
+             (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_LENA_R8))) {
             snprintf(buffer, sizeof(buffer), "AT+UPSV=%d,%d",
                      (int) uartPowerSavingMode,
                      U_CELL_PWR_UART_POWER_SAVING_GSM_FRAMES);
@@ -1092,15 +1099,18 @@ static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance,
     }
 
     if (success) {
-        // Retrieve and store the current MNO profile
         pInstance->mnoProfile = -1;
-        uAtClientLock(atHandle);
-        uAtClientCommandStart(atHandle, "AT+UMNOPROF?");
-        uAtClientCommandStop(atHandle);
-        uAtClientResponseStart(atHandle, "+UMNOPROF:");
-        pInstance->mnoProfile = uAtClientReadInt(atHandle);
-        uAtClientResponseStop(atHandle);
-        uAtClientUnlock(atHandle);
+        if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                               U_CELL_PRIVATE_FEATURE_MNO_PROFILE)) {
+            // Retrieve and store the current MNO profile
+            uAtClientLock(atHandle);
+            uAtClientCommandStart(atHandle, "AT+UMNOPROF?");
+            uAtClientCommandStop(atHandle);
+            uAtClientResponseStart(atHandle, "+UMNOPROF:");
+            pInstance->mnoProfile = uAtClientReadInt(atHandle);
+            uAtClientResponseStop(atHandle);
+            uAtClientUnlock(atHandle);
+        }
         // The module may have a GNSS module inside it or
         // connected via it, in which case, if we are to use
         // that module via CMUX rather than via the clunky
@@ -1926,12 +1936,7 @@ int32_t uCellPwrReboot(uDeviceHandle_t cellHandle,
             // Clear the dynamic parameters
             uCellPrivateClearDynamicParameters(pInstance);
             uAtClientCommandStart(atHandle, "AT+CFUN=");
-            if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R5) {
-                // SARA-R5 doesn't support 15 (which doesn't reset the SIM)
-                uAtClientWriteInt(atHandle, 16);
-            } else {
-                uAtClientWriteInt(atHandle, 15);
-            }
+            uAtClientWriteInt(atHandle, pInstance->pModule->atCFunRebootCommand);
             uAtClientCommandStopReadResponse(atHandle);
             errorCode = uAtClientUnlock(atHandle);
             if (errorCode == 0) {
@@ -2812,8 +2817,11 @@ int32_t uCellPwrDisableUartSleep(uDeviceHandle_t cellHandle)
                 uAtClientCommandStop(atHandle);
                 uAtClientResponseStart(atHandle, "+UPSV:");
                 pUartSleepCache->mode = uAtClientReadInt(atHandle);
-                if (pUartSleepCache->mode == 1) {
-                    // Mode 1 has a time attached
+                if ((pUartSleepCache->mode == 1) ||
+                    ((pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_LENA_R8) &&
+                     (pUartSleepCache->mode == 4))) {
+                    // Mode 1 has a time attached, as does mode 4 but only if this
+                    // is LENA-R8
                     pUartSleepCache->sleepTime = uAtClientReadInt(atHandle);
                 }
                 uAtClientResponseStop(atHandle);

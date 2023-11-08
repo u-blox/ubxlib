@@ -93,7 +93,8 @@ int32_t uCellInfoGetRssiDbm(uDeviceHandle_t cellHandle);
 /** Get the RSRP that pertained after the last call to
  * uCellInfoRefreshRadioParameters().  Note that RSRP may not
  * be available unless the module has successfully registered
- * with the cellular network.
+ * with the cellular network.  Also note that LENA-R8 does
+ * not support reading RSRP.
  *
  * @param cellHandle  the handle of the cellular instance.
  * @return            the RSRP in dBm, or zero if no RSRP
@@ -105,7 +106,8 @@ int32_t uCellInfoGetRsrpDbm(uDeviceHandle_t cellHandle);
 /** Get the RSRQ that pertained after the last call to
  * uCellInfoRefreshRadioParameters().  Note that RSRQ may not be
  * available unless the module has successfully registered with the
- * cellular network.
+ * cellular network.  Also note that LENA-R8 does not support
+ * reading RSRQ.
  *
  * @param cellHandle  the handle of the cellular instance.
  * @return            the RSRQ in dB, or 0x7FFFFFFF if no RSRQ
@@ -183,6 +185,7 @@ int32_t uCellInfoGetCellIdLogical(uDeviceHandle_t cellHandle);
  * call to uCellInfoRefreshRadioParameters(); only relevant
  * for LTE networks and really does require
  * uCellInfoRefreshRadioParameters() to have been issued.
+ * Note that LENA-R8 does not support reading the physical cell ID.
  *
  * @param cellHandle  the handle of the cellular instance.
  * @return            the physical cell ID, or negative error
@@ -191,7 +194,8 @@ int32_t uCellInfoGetCellIdLogical(uDeviceHandle_t cellHandle);
 int32_t uCellInfoGetCellIdPhysical(uDeviceHandle_t cellHandle);
 
 /** Get the EARFCN that pertained after the last call to
- * uCellInfoRefreshRadioParameters().
+ * uCellInfoRefreshRadioParameters(). Note that LENA-R8 does
+ * not support reading the EARFCN.
  *
  * @param cellHandle  the handle of the cellular instance.
  * @return            the EARFCN, or -1 if the module is not

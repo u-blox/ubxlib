@@ -209,6 +209,8 @@ static const uint32_t gFlagAllKeyId[] = {U_GNSS_CFG_VAL_KEY_ID_PM_EXTINTWAKE_L,
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
+#ifndef U_CFG_TEST_GNSS_POWER_SAVING_NOT_SUPPORTED
+
 // Set or clear power saving flags, returning the new setting.
 // Note: each operation has to return success but we may allow
 // a retry if the GNSS device did not action the request for
@@ -247,6 +249,8 @@ static int32_t setOrClearPwrSavingFlag(uDeviceHandle_t gnssHandle,
 
     return y;
 }
+
+#endif
 
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS

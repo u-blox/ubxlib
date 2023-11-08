@@ -30,6 +30,7 @@
 
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
+#include "stdbool.h"
 
 #ifdef U_SECURITY_CREDENTIAL_TEST_FORMATS
 #include "u_security_credential.h"

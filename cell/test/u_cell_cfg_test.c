@@ -169,7 +169,9 @@ static void testBandMask(uDeviceHandle_t cellHandle,
                          uCellNetRat_t rat,
                          const char *pRatString,
                          uint32_t supportedRatsBitmap,
-                         uCellModuleType_t moduleType)
+                         uCellModuleType_t moduleType,
+                         uint64_t *pBandmask1,
+                         uint64_t *pBandmask2)
 {
     int32_t errorCode;
     uint64_t originalBandMask1 = 0;
@@ -199,16 +201,14 @@ static void testBandMask(uDeviceHandle_t cellHandle,
     // Take the existing values and mask off every other bit
     U_TEST_PRINT_LINE("setting band mask for %s to"
                       " 0x%08x%08x %08x%08x...", pRatString,
-                      (uint32_t) (U_CELL_TEST_CFG_ALT_BANDMASK2 >> 32),
-                      (uint32_t) (U_CELL_TEST_CFG_ALT_BANDMASK2),
-                      (uint32_t) (U_CELL_TEST_CFG_ALT_BANDMASK1 >> 32),
-                      (uint32_t) (U_CELL_TEST_CFG_ALT_BANDMASK1));
+                      (uint32_t) (*pBandmask2 >> 32),
+                      (uint32_t) (*pBandmask2),
+                      (uint32_t) (*pBandmask1 >> 32),
+                      (uint32_t) (*pBandmask1));
 
     U_PORT_TEST_ASSERT(!uCellPwrRebootIsRequired(cellHandle));
 
-    errorCode = uCellCfgSetBandMask(cellHandle, rat,
-                                    U_CELL_TEST_CFG_ALT_BANDMASK1,
-                                    U_CELL_TEST_CFG_ALT_BANDMASK2);
+    errorCode = uCellCfgSetBandMask(cellHandle, rat, *pBandmask1, *pBandmask2);
     if (supportedRatsBitmap & (1UL << (int32_t) rat)) {
         U_PORT_TEST_ASSERT(errorCode == 0);
         U_PORT_TEST_ASSERT(uCellPwrRebootIsRequired(cellHandle));
@@ -228,8 +228,8 @@ static void testBandMask(uDeviceHandle_t cellHandle,
             U_TEST_PRINT_LINE("new %s band mask is 0x%08x%08x %08x%08x...",
                               pRatString, (uint32_t) (bandMask2 >> 32), (uint32_t) bandMask2,
                               (uint32_t) (bandMask1 >> 32), (uint32_t) bandMask1);
-            U_PORT_TEST_ASSERT(bandMask1 == U_CELL_TEST_CFG_ALT_BANDMASK1);
-            U_PORT_TEST_ASSERT(bandMask2 == U_CELL_TEST_CFG_ALT_BANDMASK2);
+            U_PORT_TEST_ASSERT(bandMask1 == *pBandmask1);
+            U_PORT_TEST_ASSERT(bandMask2 == *pBandmask2);
             U_TEST_PRINT_LINE("putting original band masks back...");
             U_PORT_TEST_ASSERT(uCellCfgSetBandMask(cellHandle, rat,
                                                    originalBandMask1,
@@ -274,6 +274,8 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgBandMask")
 {
     const uCellPrivateModule_t *pModule;
     int32_t resourceCount;
+    uint64_t bandMask1 = U_CELL_TEST_CFG_ALT_BANDMASK1;
+    uint64_t bandMask2 = U_CELL_TEST_CFG_ALT_BANDMASK2;
 
     // In case a previous test failed
     uCellTestPrivateCleanup(&gHandles);
@@ -293,15 +295,27 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgBandMask")
 
     // Test cat-M1
     testBandMask(gHandles.cellHandle, U_CELL_NET_RAT_CATM1, "cat-M1",
-                 pModule->supportedRatsBitmap, pModule->moduleType);
+                 pModule->supportedRatsBitmap, pModule->moduleType,
+                 &bandMask1, &bandMask2);
 
     // Test NB1
     testBandMask(gHandles.cellHandle, U_CELL_NET_RAT_NB1, "NB1",
-                 pModule->supportedRatsBitmap, pModule->moduleType);
+                 pModule->supportedRatsBitmap, pModule->moduleType,
+                 &bandMask1, &bandMask2);
 
     // Test LTE
     testBandMask(gHandles.cellHandle, U_CELL_NET_RAT_LTE, "LTE",
-                 pModule->supportedRatsBitmap, pModule->moduleType);
+                 pModule->supportedRatsBitmap, pModule->moduleType,
+                 &bandMask1, &bandMask2);
+
+    if (pModule->moduleType == U_CELL_MODULE_TYPE_LENA_R8) {
+        // For LENA-R8, check that we can set an empty band-mask, which means "all bands"
+        bandMask1 = 0;
+        bandMask2 = 0;
+        testBandMask(gHandles.cellHandle, U_CELL_NET_RAT_LTE, "LTE",
+                     pModule->supportedRatsBitmap, pModule->moduleType,
+                     &bandMask1, &bandMask2);
+    }
 
     // Do the standard postamble, leaving the module on for the next
     // test to speed things up

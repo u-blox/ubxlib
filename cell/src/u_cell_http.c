@@ -208,12 +208,16 @@ static void entryFunction(uDeviceHandle_t cellHandle,
 
         pCellInstance = pUCellPrivateGetInstance(cellHandle);
         if (pCellInstance != NULL) {
-            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-            if (ppHttpInstance != NULL) {
-                errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-                *ppHttpInstance = pFindHttpInstance(pCellInstance, httpHandle);
-                if (*ppHttpInstance != NULL) {
-                    errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+            errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+            if (U_CELL_PRIVATE_HAS(pCellInstance->pModule,
+                                   U_CELL_PRIVATE_FEATURE_HTTP)) {
+                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                if (ppHttpInstance != NULL) {
+                    errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+                    *ppHttpInstance = pFindHttpInstance(pCellInstance, httpHandle);
+                    if (*ppHttpInstance != NULL) {
+                        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                    }
                 }
             }
         }

@@ -23,13 +23,14 @@
 /** @file
  * @brief Tests for the cellular GPIO API: these should pass on all
  * platforms that have a cellular module connected to them.  They
- * are only compiled if U_CFG_TEST_CELL_MODULE_TYPE is defined.
+ * are only compiled if U_CFG_TEST_CELL_MODULE_TYPE is defined and
+ * U_CELL_GPIO_DISABLE_TEST is not defined.
  * IMPORTANT: see notes in u_cfg_test_platform_specific.h for the
  * naming rules that must be followed when using the U_PORT_TEST_FUNCTION()
  * macro.
  */
 
-#ifdef U_CFG_TEST_CELL_MODULE_TYPE
+#if defined(U_CFG_TEST_CELL_MODULE_TYPE) && !defined(U_CELL_GPIO_DISABLE_TEST)
 
 # ifdef U_CFG_OVERRIDE
 #  include "u_cfg_override.h" // For a customer's configuration override
@@ -139,6 +140,7 @@ U_PORT_TEST_FUNCTION("[cellGpio]", "cellGpioBasic")
                       U_CFG_TEST_GPIO_NAME);
     U_PORT_TEST_ASSERT(uCellGpioConfig(cellHandle, U_CFG_TEST_GPIO_NAME,
                                        true, 1) == 0);
+    // Allow GPIO reads to be disabled as they don't work on LENA-R8
     x = uCellGpioGet(cellHandle, U_CFG_TEST_GPIO_NAME);
     U_TEST_PRINT_LINE("GPIO ID %d is %d.", U_CFG_TEST_GPIO_NAME, x);
     U_PORT_TEST_ASSERT(x == 1);
@@ -191,6 +193,6 @@ U_PORT_TEST_FUNCTION("[cellGpio]", "cellGpioCleanUp")
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
-#endif // #ifdef U_CFG_TEST_CELL_MODULE_TYPE
+#endif // #if defined(U_CFG_TEST_CELL_MODULE_TYPE) && !defined(U_CELL_GPIO_DISABLE_TEST)
 
 // End of file

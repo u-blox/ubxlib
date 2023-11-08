@@ -2666,7 +2666,7 @@ U_PORT_TEST_FUNCTION("[port]", "portI2cRequiresSpecificWiring")
 
     // Enough room for the fixed part of a UBX-MON-VER message
     // plus 10 segments
-    gpI2cBuffer = pUPortMalloc(U_PORT_TEST_I2C_BUFFER_LENGTH_BYTES);
+    gpI2cBuffer = (char *) pUPortMalloc(U_PORT_TEST_I2C_BUFFER_LENGTH_BYTES);
     U_PORT_TEST_ASSERT(gpI2cBuffer != NULL);
     // I2C can suffer issues due to pull-ups, speed, the responsiveness
     // of the device at the far end, etc., hence we allow retries of

@@ -1296,9 +1296,11 @@ static int32_t setSecurity(uDeviceHandle_t cellHandle, bool onNotOff,
 
     if ((errorCode == 0) && (pInstance != NULL)) {
         errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+        pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
         if (U_CELL_PRIVATE_HAS(pInstance->pModule,
-                               U_CELL_PRIVATE_FEATURE_MQTT_SECURITY)) {
-            pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
+                               U_CELL_PRIVATE_FEATURE_MQTT_SECURITY) &&
+            (!pContext->mqttSn || U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                                     U_CELL_PRIVATE_FEATURE_MQTTSN_SECURITY))) {
             mqttSn = pContext->mqttSn;
             atHandle = pInstance->atHandle;
             uAtClientLock(atHandle);
@@ -2012,7 +2014,13 @@ static int32_t readMessage(const uCellPrivateInstance_t *pInstance,
             errorCode = (int32_t) U_ERROR_COMMON_EMPTY;
             uAtClientWriteInt(atHandle, 1);
             uAtClientCommandStop(atHandle);
-            uAtClientResponseStart(atHandle, MQTT_COMMAND_AT_RESPONSE_STRING(mqttSn));
+            if (pInstance->pModule->moduleType != U_CELL_MODULE_TYPE_LENA_R8) {
+                uAtClientResponseStart(atHandle, MQTT_COMMAND_AT_RESPONSE_STRING(mqttSn));
+            } else {
+                // LENA-R8 workaround: LENA-R8 uses the prefix "+UMQTT:", instead
+                // of the prefix "+UMQTTSN:", for the read command
+                uAtClientResponseStart(atHandle, MQTT_COMMAND_AT_RESPONSE_STRING(false));
+            }
             // The message now arrives directly
             // Skip the first parameter, which is just
             // our UMQTTC command number again

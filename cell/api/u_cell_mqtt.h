@@ -379,10 +379,14 @@ bool uCellMqttIsRetained(uDeviceHandle_t cellHandle);
  * in the call to uCellMqttInit() for example "mybroker.com:8883".
  * IMPORTANT: a re-boot of the module will lose your
  * setting.
+ *
  * Note that SARA-R4 modules do not support changing MQTT
  * TLS security mode once an MQTT session has been used
  * without powering the module down and up again.
- * Note that SARA-R4xxx-02B doesn't support MQTT TLS security.
+ *
+ * Note that SARA-R4xxx-02B does not support MQTT TLS security.
+ *
+ * Note that LENA-R8 does not support TLS security for MQTT-SN.
  *
  * @param cellHandle        the handle of the cellular instance
  *                          to be used.

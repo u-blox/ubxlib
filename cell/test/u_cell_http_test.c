@@ -23,8 +23,8 @@
 /** @file
  * @brief Tests for the configuration calls of the cellular HTTP API.
  * These test should pass on all platforms that have a cellular module
- * connected to them.  They are only compiled if U_CFG_TEST_CELL_MODULE_TYPE
- * is defined.
+ * connected to them that supports HTTP (all except LENA-R8).  They
+ * are only compiled if U_CFG_TEST_CELL_MODULE_TYPE is defined.
  *
  * IMPORTANT: see notes in u_cfg_test_platform_specific.h for the
  * naming rules that must be followed when using the
@@ -281,7 +281,7 @@ static void callback(uDeviceHandle_t cellHandle, int32_t httpHandle,
     pCallbackData->contentsMismatch = !checkFile(cellHandle,
                                                  pFileNameResponse,
                                                  pCallbackData->pExpectedFirstLine,
-                                                 false);
+                                                 true);
     pCallbackData->called = true;
 }
 
@@ -369,6 +369,7 @@ static bool waitCheckHttpResponse(int32_t timeoutSeconds,
 U_PORT_TEST_FUNCTION("[cellHttp]", "cellHttp")
 {
     uDeviceHandle_t cellHandle;
+    const uCellPrivateModule_t *pModule;
     int32_t httpHandle;
     int32_t y;
     int32_t resourceCount;
@@ -387,235 +388,245 @@ U_PORT_TEST_FUNCTION("[cellHttp]", "cellHttp")
                                                 &gHandles, true) == 0);
     cellHandle = gHandles.cellHandle;
 
-    // Create the complete URL from the IP address of the server
-    // and the port number; testing with the domain name of the
-    // server is done in the tests of u_http_client_test.c.
-    snprintf(urlBuffer, sizeof(urlBuffer), "%s:%d",
-             U_HTTP_CLIENT_TEST_SERVER_IP_ADDRESS, U_HTTP_CLIENT_TEST_SERVER_PORT);
+    // Get the private module data as we need it for testing
+    pModule = pUCellPrivateGetModule(cellHandle);
+    U_PORT_TEST_ASSERT(pModule != NULL);
+    //lint -esym(613, pModule) Suppress possible use of NULL pointer
+    // for pModule from now on
 
-    // Use the cellular module's IMEI as a "uniquifier" to avoid
-    // collisions with other devices using the same HTTP test server
-    U_PORT_TEST_ASSERT(uCellInfoGetImei(cellHandle, imeiBuffer) == 0);
-    imeiBuffer[sizeof(imeiBuffer) - 1] = 0;
+    if (U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_HTTP)) {
+        // Create the complete URL from the IP address of the server
+        // and the port number; testing with the domain name of the
+        // server is done in the tests of u_http_client_test.c.
+        snprintf(urlBuffer, sizeof(urlBuffer), "%s:%d",
+                 U_HTTP_CLIENT_TEST_SERVER_IP_ADDRESS, U_HTTP_CLIENT_TEST_SERVER_PORT);
 
-    // Make a cellular connection, since we will need to do a
-    // DNS look-up on the HTTP server domain name
-    gStopTimeMs = uPortGetTickTimeMs() +
-                  (U_CELL_TEST_CFG_CONNECT_TIMEOUT_SECONDS * 1000);
-    y = uCellNetConnect(cellHandle, NULL,
+        // Use the cellular module's IMEI as a "uniquifier" to avoid
+        // collisions with other devices using the same HTTP test server
+        U_PORT_TEST_ASSERT(uCellInfoGetImei(cellHandle, imeiBuffer) == 0);
+        imeiBuffer[sizeof(imeiBuffer) - 1] = 0;
+
+        // Make a cellular connection, since we will need to do a
+        // DNS look-up on the HTTP server domain name
+        gStopTimeMs = uPortGetTickTimeMs() +
+                      (U_CELL_TEST_CFG_CONNECT_TIMEOUT_SECONDS * 1000);
+        y = uCellNetConnect(cellHandle, NULL,
 #ifdef U_CELL_TEST_CFG_APN
-                        U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_APN),
+                            U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_APN),
 #else
-                        NULL,
+                            NULL,
 #endif
 #ifdef U_CELL_TEST_CFG_USERNAME
-                        U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_USERNAME),
+                            U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_USERNAME),
 #else
-                        NULL,
+                            NULL,
 #endif
 #ifdef U_CELL_TEST_CFG_PASSWORD
-                        U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_PASSWORD),
+                            U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_PASSWORD),
 #else
-                        NULL,
+                            NULL,
 #endif
-                        keepGoingCallback);
-    U_PORT_TEST_ASSERT(y == 0);
+                            keepGoingCallback);
+        U_PORT_TEST_ASSERT(y == 0);
 
-    // Try using NULL parameters where they are not permitted in the open() call
-    U_PORT_TEST_ASSERT(uCellHttpOpen(cellHandle, NULL, NULL, NULL,
-                                     U_CELL_HTTP_TIMEOUT_SECONDS_MIN,
-                                     callback, NULL) < 0);
-    U_PORT_TEST_ASSERT(uCellHttpOpen(cellHandle, urlBuffer, NULL, NULL,
-                                     U_CELL_HTTP_TIMEOUT_SECONDS_MIN,
-                                     NULL, NULL) < 0);
-    U_PORT_TEST_ASSERT(uCellHttpOpen(cellHandle, urlBuffer, NULL, "pw",
-                                     U_CELL_HTTP_TIMEOUT_SECONDS_MIN,
-                                     callback, NULL) < 0);
+        // Try using NULL parameters where they are not permitted in the open() call
+        U_PORT_TEST_ASSERT(uCellHttpOpen(cellHandle, NULL, NULL, NULL,
+                                         U_CELL_HTTP_TIMEOUT_SECONDS_MIN,
+                                         callback, NULL) < 0);
+        U_PORT_TEST_ASSERT(uCellHttpOpen(cellHandle, urlBuffer, NULL, NULL,
+                                         U_CELL_HTTP_TIMEOUT_SECONDS_MIN,
+                                         NULL, NULL) < 0);
+        U_PORT_TEST_ASSERT(uCellHttpOpen(cellHandle, urlBuffer, NULL, "pw",
+                                         U_CELL_HTTP_TIMEOUT_SECONDS_MIN,
+                                         callback, NULL) < 0);
 
-    // Now do it properly, and give it a pointer to the
-    // callback data storage as a parameter
-    U_TEST_PRINT_LINE("HTTP test server will be %s.", urlBuffer);
-    httpHandle = uCellHttpOpen(cellHandle, urlBuffer, NULL, NULL,
-                               U_CELL_HTTP_TIMEOUT_SECONDS_MIN,
-                               callback, (void *) &gCallbackData);
-    U_PORT_TEST_ASSERT(httpHandle >= 0);
-    U_PORT_TEST_ASSERT(!uCellHttpIsSecured(cellHandle, httpHandle, NULL));
+        // Now do it properly, and give it a pointer to the
+        // callback data storage as a parameter
+        U_TEST_PRINT_LINE("HTTP test server will be %s.", urlBuffer);
+        httpHandle = uCellHttpOpen(cellHandle, urlBuffer, NULL, NULL,
+                                   U_CELL_HTTP_TIMEOUT_SECONDS_MIN,
+                                   callback, (void *) &gCallbackData);
+        U_PORT_TEST_ASSERT(httpHandle >= 0);
+        U_PORT_TEST_ASSERT(!uCellHttpIsSecured(cellHandle, httpHandle, NULL));
 
-    // Note: we don't test with HTTPS here, that's done when the
-    // code is tested from the common HTTP Client level.
+        // Note: we don't test with HTTPS here, that's done when the
+        // code is tested from the common HTTP Client level.
 
-    // POST something
-    gCallbackData.pExpectedFirstLine = U_CELL_HTTP_TEST_FIRST_LINE_200;
-    snprintf(pathBuffer, sizeof(pathBuffer), "/%s.html", imeiBuffer);
-    U_TEST_PRINT_LINE("HTTP POST file %s containing string \"%s\"...",
-                      pathBuffer, gSendData);
-    U_PORT_TEST_ASSERT(uCellHttpRequest(cellHandle, httpHandle,
-                                        U_CELL_HTTP_REQUEST_POST,
-                                        pathBuffer, NULL, gSendData,
-                                        "application/text") == 0);
-    U_PORT_TEST_ASSERT(waitCheckHttpResponse(U_CELL_HTTP_TIMEOUT_SECONDS_MIN,
-                                             &gCallbackData, cellHandle,
-                                             httpHandle,
-                                             U_CELL_HTTP_REQUEST_POST, NULL));
-
-    // GET it
-    U_TEST_PRINT_LINE("HTTP GET file %s...", pathBuffer);
-    U_PORT_TEST_ASSERT(uCellHttpRequest(cellHandle, httpHandle,
-                                        U_CELL_HTTP_REQUEST_GET,
-                                        pathBuffer, NULL, NULL, NULL) == 0);
-    U_PORT_TEST_ASSERT(waitCheckHttpResponse(U_CELL_HTTP_TIMEOUT_SECONDS_MIN,
-                                             &gCallbackData, cellHandle,
-                                             httpHandle,
-                                             U_CELL_HTTP_REQUEST_GET, NULL));
-
-    // GET it again but using an explicit response file name this time
-    U_TEST_PRINT_LINE("HTTP GET file %s again...", pathBuffer);
-    U_PORT_TEST_ASSERT(uCellHttpRequest(cellHandle, httpHandle,
-                                        U_CELL_HTTP_REQUEST_GET,
-                                        pathBuffer,
-                                        U_CELL_HTTP_TEST_RESPONSE_FILE_NAME,
-                                        NULL, NULL) == 0);
-    U_PORT_TEST_ASSERT(waitCheckHttpResponse(U_CELL_HTTP_TIMEOUT_SECONDS_MIN,
-                                             &gCallbackData, cellHandle,
-                                             httpHandle,
-                                             U_CELL_HTTP_REQUEST_GET,
-                                             U_CELL_HTTP_TEST_RESPONSE_FILE_NAME));
-
-    // GET just the headers
-    U_TEST_PRINT_LINE("HTTP HEAD for file %s...", pathBuffer);
-    U_PORT_TEST_ASSERT(uCellHttpRequest(cellHandle, httpHandle,
-                                        U_CELL_HTTP_REQUEST_HEAD,
-                                        pathBuffer, NULL, NULL, NULL) == 0);
-    U_PORT_TEST_ASSERT(waitCheckHttpResponse(U_CELL_HTTP_TIMEOUT_SECONDS_MIN,
-                                             &gCallbackData, cellHandle,
-                                             httpHandle,
-                                             U_CELL_HTTP_REQUEST_HEAD, NULL));
-
-    // DELETE it
-    U_TEST_PRINT_LINE("HTTP DELETE file %s...", pathBuffer);
-    U_PORT_TEST_ASSERT(uCellHttpRequest(cellHandle, httpHandle,
-                                        U_CELL_HTTP_REQUEST_DELETE,
-                                        pathBuffer, NULL, NULL, NULL) == 0);
-    U_PORT_TEST_ASSERT(waitCheckHttpResponse(U_CELL_HTTP_TIMEOUT_SECONDS_MIN,
-                                             &gCallbackData, cellHandle,
-                                             httpHandle,
-                                             U_CELL_HTTP_REQUEST_DELETE, NULL));
-
-    // Try to GET it again
-    gCallbackData.pExpectedFirstLine = U_CELL_HTTP_TEST_FIRST_LINE_404;
-    U_TEST_PRINT_LINE("HTTP GET deleted file %s...", pathBuffer);
-    U_PORT_TEST_ASSERT(uCellHttpRequest(cellHandle, httpHandle,
-                                        U_CELL_HTTP_REQUEST_GET,
-                                        pathBuffer, NULL, NULL, NULL) == 0);
-    U_PORT_TEST_ASSERT(waitCheckHttpResponse(U_CELL_HTTP_TIMEOUT_SECONDS_MIN,
-                                             &gCallbackData, cellHandle,
-                                             httpHandle,
-                                             U_CELL_HTTP_REQUEST_GET, NULL));
-
-    // Now call uCellHttpRequestFile() with the various request types
-
-    // First, write our data to the file system; delete it first as
-    // as uCellFileWrite() always appends
-    uCellFileDelete(cellHandle, U_CELL_HTTP_TEST_DATA_FILE_NAME);
-    U_PORT_TEST_ASSERT(uCellFileWrite(cellHandle, U_CELL_HTTP_TEST_DATA_FILE_NAME,
-                                      gSendDataFile, sizeof(gSendDataFile)) == sizeof(gSendDataFile));
-
-    // PUT something
-    gCallbackData.pExpectedFirstLine = U_CELL_HTTP_TEST_FIRST_LINE_200;
-    U_TEST_PRINT_LINE("HTTP PUT file %s from file %s in the module file system...",
-                      pathBuffer, U_CELL_HTTP_TEST_DATA_FILE_NAME);
-    U_PORT_TEST_ASSERT(uCellHttpRequestFile(cellHandle, httpHandle,
-                                            U_CELL_HTTP_REQUEST_PUT,
-                                            pathBuffer, NULL,
-                                            U_CELL_HTTP_TEST_DATA_FILE_NAME,
-                                            "application/text") == 0);
-    U_PORT_TEST_ASSERT(waitCheckHttpResponse(U_CELL_HTTP_TIMEOUT_SECONDS_MIN,
-                                             &gCallbackData, cellHandle,
-                                             httpHandle,
-                                             U_CELL_HTTP_REQUEST_PUT, NULL));
-
-    // GET it, using uCellHttpRequest() and with an explicit response file name
-    U_TEST_PRINT_LINE("HTTP GET file %s...", pathBuffer);
-    U_PORT_TEST_ASSERT(uCellHttpRequest(cellHandle, httpHandle,
-                                        U_CELL_HTTP_REQUEST_GET,
-                                        pathBuffer, U_CELL_HTTP_TEST_RESPONSE_FILE_NAME,
-                                        NULL, NULL) == 0);
-    U_PORT_TEST_ASSERT(waitCheckHttpResponse(U_CELL_HTTP_TIMEOUT_SECONDS_MIN,
-                                             &gCallbackData, cellHandle,
-                                             httpHandle,
-                                             U_CELL_HTTP_REQUEST_GET,
-                                             U_CELL_HTTP_TEST_RESPONSE_FILE_NAME));
-
-    // POST something
-    U_TEST_PRINT_LINE("HTTP POST file %s from file %s in the module file system...",
-                      pathBuffer, U_CELL_HTTP_TEST_DATA_FILE_NAME);
-    U_PORT_TEST_ASSERT(uCellHttpRequestFile(cellHandle, httpHandle,
+        // POST something
+        gCallbackData.pExpectedFirstLine = U_CELL_HTTP_TEST_FIRST_LINE_200;
+        snprintf(pathBuffer, sizeof(pathBuffer), "/%s.html", imeiBuffer);
+        U_TEST_PRINT_LINE("HTTP POST file %s containing string \"%s\"...",
+                          pathBuffer, gSendData);
+        U_PORT_TEST_ASSERT(uCellHttpRequest(cellHandle, httpHandle,
                                             U_CELL_HTTP_REQUEST_POST,
-                                            pathBuffer, NULL,
-                                            U_CELL_HTTP_TEST_DATA_FILE_NAME,
+                                            pathBuffer, NULL, gSendData,
                                             "application/text") == 0);
-    U_PORT_TEST_ASSERT(waitCheckHttpResponse(U_CELL_HTTP_TIMEOUT_SECONDS_MIN,
-                                             &gCallbackData, cellHandle,
-                                             httpHandle,
-                                             U_CELL_HTTP_REQUEST_POST, NULL));
+        U_PORT_TEST_ASSERT(waitCheckHttpResponse(U_CELL_HTTP_TIMEOUT_SECONDS_MIN,
+                                                 &gCallbackData, cellHandle,
+                                                 httpHandle,
+                                                 U_CELL_HTTP_REQUEST_POST, NULL));
 
-    // GET it, with uCellHttpRequestFile() and an explicit response file name
-    U_TEST_PRINT_LINE("HTTP GET file %s...", pathBuffer);
-    U_PORT_TEST_ASSERT(uCellHttpRequestFile(cellHandle, httpHandle,
+        // GET it
+        U_TEST_PRINT_LINE("HTTP GET file %s...", pathBuffer);
+        U_PORT_TEST_ASSERT(uCellHttpRequest(cellHandle, httpHandle,
+                                            U_CELL_HTTP_REQUEST_GET,
+                                            pathBuffer, NULL, NULL, NULL) == 0);
+        U_PORT_TEST_ASSERT(waitCheckHttpResponse(U_CELL_HTTP_TIMEOUT_SECONDS_MIN,
+                                                 &gCallbackData, cellHandle,
+                                                 httpHandle,
+                                                 U_CELL_HTTP_REQUEST_GET, NULL));
+
+        // GET it again but using an explicit response file name this time
+        U_TEST_PRINT_LINE("HTTP GET file %s again...", pathBuffer);
+        U_PORT_TEST_ASSERT(uCellHttpRequest(cellHandle, httpHandle,
                                             U_CELL_HTTP_REQUEST_GET,
                                             pathBuffer,
                                             U_CELL_HTTP_TEST_RESPONSE_FILE_NAME,
                                             NULL, NULL) == 0);
-    U_PORT_TEST_ASSERT(waitCheckHttpResponse(U_CELL_HTTP_TIMEOUT_SECONDS_MIN,
-                                             &gCallbackData, cellHandle,
-                                             httpHandle,
-                                             U_CELL_HTTP_REQUEST_GET,
-                                             U_CELL_HTTP_TEST_RESPONSE_FILE_NAME));
+        U_PORT_TEST_ASSERT(waitCheckHttpResponse(U_CELL_HTTP_TIMEOUT_SECONDS_MIN,
+                                                 &gCallbackData, cellHandle,
+                                                 httpHandle,
+                                                 U_CELL_HTTP_REQUEST_GET,
+                                                 U_CELL_HTTP_TEST_RESPONSE_FILE_NAME));
 
-    // GET just the headers
-    U_TEST_PRINT_LINE("HTTP HEAD for file %s...", pathBuffer);
-    U_PORT_TEST_ASSERT(uCellHttpRequestFile(cellHandle, httpHandle,
+        // GET just the headers
+        U_TEST_PRINT_LINE("HTTP HEAD for file %s...", pathBuffer);
+        U_PORT_TEST_ASSERT(uCellHttpRequest(cellHandle, httpHandle,
                                             U_CELL_HTTP_REQUEST_HEAD,
                                             pathBuffer, NULL, NULL, NULL) == 0);
-    U_PORT_TEST_ASSERT(waitCheckHttpResponse(U_CELL_HTTP_TIMEOUT_SECONDS_MIN,
-                                             &gCallbackData, cellHandle,
-                                             httpHandle,
-                                             U_CELL_HTTP_REQUEST_HEAD, NULL));
+        U_PORT_TEST_ASSERT(waitCheckHttpResponse(U_CELL_HTTP_TIMEOUT_SECONDS_MIN,
+                                                 &gCallbackData, cellHandle,
+                                                 httpHandle,
+                                                 U_CELL_HTTP_REQUEST_HEAD, NULL));
 
-    // DELETE it, with an explicit response file name again
-    U_TEST_PRINT_LINE("HTTP DELETE file %s...", pathBuffer);
-    U_PORT_TEST_ASSERT(uCellHttpRequestFile(cellHandle, httpHandle,
+        // DELETE it
+        U_TEST_PRINT_LINE("HTTP DELETE file %s...", pathBuffer);
+        U_PORT_TEST_ASSERT(uCellHttpRequest(cellHandle, httpHandle,
                                             U_CELL_HTTP_REQUEST_DELETE,
-                                            pathBuffer,
-                                            U_CELL_HTTP_TEST_RESPONSE_FILE_NAME,
-                                            NULL, NULL) == 0);
-    U_PORT_TEST_ASSERT(waitCheckHttpResponse(U_CELL_HTTP_TIMEOUT_SECONDS_MIN,
-                                             &gCallbackData, cellHandle,
-                                             httpHandle,
-                                             U_CELL_HTTP_REQUEST_DELETE,
-                                             U_CELL_HTTP_TEST_RESPONSE_FILE_NAME));
+                                            pathBuffer, NULL, NULL, NULL) == 0);
+        U_PORT_TEST_ASSERT(waitCheckHttpResponse(U_CELL_HTTP_TIMEOUT_SECONDS_MIN,
+                                                 &gCallbackData, cellHandle,
+                                                 httpHandle,
+                                                 U_CELL_HTTP_REQUEST_DELETE, NULL));
 
-    // Try to GET it again
-    gCallbackData.pExpectedFirstLine = U_CELL_HTTP_TEST_FIRST_LINE_404;
-    U_TEST_PRINT_LINE("HTTP GET deleted file %s...", pathBuffer);
-    U_PORT_TEST_ASSERT(uCellHttpRequestFile(cellHandle, httpHandle,
+        // Try to GET it again
+        gCallbackData.pExpectedFirstLine = U_CELL_HTTP_TEST_FIRST_LINE_404;
+        U_TEST_PRINT_LINE("HTTP GET deleted file %s...", pathBuffer);
+        U_PORT_TEST_ASSERT(uCellHttpRequest(cellHandle, httpHandle,
                                             U_CELL_HTTP_REQUEST_GET,
                                             pathBuffer, NULL, NULL, NULL) == 0);
-    U_PORT_TEST_ASSERT(waitCheckHttpResponse(U_CELL_HTTP_TIMEOUT_SECONDS_MIN,
-                                             &gCallbackData, cellHandle,
-                                             httpHandle,
-                                             U_CELL_HTTP_REQUEST_GET, NULL));
+        U_PORT_TEST_ASSERT(waitCheckHttpResponse(U_CELL_HTTP_TIMEOUT_SECONDS_MIN,
+                                                 &gCallbackData, cellHandle,
+                                                 httpHandle,
+                                                 U_CELL_HTTP_REQUEST_GET, NULL));
 
-    // Obtain the last error code - there's no way to check its validity
-    // since it is utterly module-specific, just really checking that it
-    // doesn't bring the roof down
-    uCellHttpGetLastErrorCode(cellHandle, httpHandle);
+        // Now call uCellHttpRequestFile() with the various request types
 
-    // Close the HTTP instance once more
-    uCellHttpClose(cellHandle, httpHandle);
+        // First, write our data to the file system; delete it first as
+        // as uCellFileWrite() always appends
+        uCellFileDelete(cellHandle, U_CELL_HTTP_TEST_DATA_FILE_NAME);
+        U_PORT_TEST_ASSERT(uCellFileWrite(cellHandle, U_CELL_HTTP_TEST_DATA_FILE_NAME,
+                                          gSendDataFile, sizeof(gSendDataFile)) == sizeof(gSendDataFile));
 
-    // Delete our data file for neatness
-    uCellFileDelete(cellHandle, U_CELL_HTTP_TEST_DATA_FILE_NAME);
+        // PUT something
+        gCallbackData.pExpectedFirstLine = U_CELL_HTTP_TEST_FIRST_LINE_200;
+        U_TEST_PRINT_LINE("HTTP PUT file %s from file %s in the module file system...",
+                          pathBuffer, U_CELL_HTTP_TEST_DATA_FILE_NAME);
+        U_PORT_TEST_ASSERT(uCellHttpRequestFile(cellHandle, httpHandle,
+                                                U_CELL_HTTP_REQUEST_PUT,
+                                                pathBuffer, NULL,
+                                                U_CELL_HTTP_TEST_DATA_FILE_NAME,
+                                                "application/text") == 0);
+        U_PORT_TEST_ASSERT(waitCheckHttpResponse(U_CELL_HTTP_TIMEOUT_SECONDS_MIN,
+                                                 &gCallbackData, cellHandle,
+                                                 httpHandle,
+                                                 U_CELL_HTTP_REQUEST_PUT, NULL));
+
+        // GET it, using uCellHttpRequest() and with an explicit response file name
+        U_TEST_PRINT_LINE("HTTP GET file %s...", pathBuffer);
+        U_PORT_TEST_ASSERT(uCellHttpRequest(cellHandle, httpHandle,
+                                            U_CELL_HTTP_REQUEST_GET,
+                                            pathBuffer, U_CELL_HTTP_TEST_RESPONSE_FILE_NAME,
+                                            NULL, NULL) == 0);
+        U_PORT_TEST_ASSERT(waitCheckHttpResponse(U_CELL_HTTP_TIMEOUT_SECONDS_MIN,
+                                                 &gCallbackData, cellHandle,
+                                                 httpHandle,
+                                                 U_CELL_HTTP_REQUEST_GET,
+                                                 U_CELL_HTTP_TEST_RESPONSE_FILE_NAME));
+
+        // POST something
+        U_TEST_PRINT_LINE("HTTP POST file %s from file %s in the module file system...",
+                          pathBuffer, U_CELL_HTTP_TEST_DATA_FILE_NAME);
+        U_PORT_TEST_ASSERT(uCellHttpRequestFile(cellHandle, httpHandle,
+                                                U_CELL_HTTP_REQUEST_POST,
+                                                pathBuffer, NULL,
+                                                U_CELL_HTTP_TEST_DATA_FILE_NAME,
+                                                "application/text") == 0);
+        U_PORT_TEST_ASSERT(waitCheckHttpResponse(U_CELL_HTTP_TIMEOUT_SECONDS_MIN,
+                                                 &gCallbackData, cellHandle,
+                                                 httpHandle,
+                                                 U_CELL_HTTP_REQUEST_POST, NULL));
+
+        // GET it, with uCellHttpRequestFile() and an explicit response file name
+        U_TEST_PRINT_LINE("HTTP GET file %s...", pathBuffer);
+        U_PORT_TEST_ASSERT(uCellHttpRequestFile(cellHandle, httpHandle,
+                                                U_CELL_HTTP_REQUEST_GET,
+                                                pathBuffer,
+                                                U_CELL_HTTP_TEST_RESPONSE_FILE_NAME,
+                                                NULL, NULL) == 0);
+        U_PORT_TEST_ASSERT(waitCheckHttpResponse(U_CELL_HTTP_TIMEOUT_SECONDS_MIN,
+                                                 &gCallbackData, cellHandle,
+                                                 httpHandle,
+                                                 U_CELL_HTTP_REQUEST_GET,
+                                                 U_CELL_HTTP_TEST_RESPONSE_FILE_NAME));
+
+        // GET just the headers
+        U_TEST_PRINT_LINE("HTTP HEAD for file %s...", pathBuffer);
+        U_PORT_TEST_ASSERT(uCellHttpRequestFile(cellHandle, httpHandle,
+                                                U_CELL_HTTP_REQUEST_HEAD,
+                                                pathBuffer, NULL, NULL, NULL) == 0);
+        U_PORT_TEST_ASSERT(waitCheckHttpResponse(U_CELL_HTTP_TIMEOUT_SECONDS_MIN,
+                                                 &gCallbackData, cellHandle,
+                                                 httpHandle,
+                                                 U_CELL_HTTP_REQUEST_HEAD, NULL));
+
+        // DELETE it, with an explicit response file name again
+        U_TEST_PRINT_LINE("HTTP DELETE file %s...", pathBuffer);
+        U_PORT_TEST_ASSERT(uCellHttpRequestFile(cellHandle, httpHandle,
+                                                U_CELL_HTTP_REQUEST_DELETE,
+                                                pathBuffer,
+                                                U_CELL_HTTP_TEST_RESPONSE_FILE_NAME,
+                                                NULL, NULL) == 0);
+        U_PORT_TEST_ASSERT(waitCheckHttpResponse(U_CELL_HTTP_TIMEOUT_SECONDS_MIN,
+                                                 &gCallbackData, cellHandle,
+                                                 httpHandle,
+                                                 U_CELL_HTTP_REQUEST_DELETE,
+                                                 U_CELL_HTTP_TEST_RESPONSE_FILE_NAME));
+
+        // Try to GET it again
+        gCallbackData.pExpectedFirstLine = U_CELL_HTTP_TEST_FIRST_LINE_404;
+        U_TEST_PRINT_LINE("HTTP GET deleted file %s...", pathBuffer);
+        U_PORT_TEST_ASSERT(uCellHttpRequestFile(cellHandle, httpHandle,
+                                                U_CELL_HTTP_REQUEST_GET,
+                                                pathBuffer, NULL, NULL, NULL) == 0);
+        U_PORT_TEST_ASSERT(waitCheckHttpResponse(U_CELL_HTTP_TIMEOUT_SECONDS_MIN,
+                                                 &gCallbackData, cellHandle,
+                                                 httpHandle,
+                                                 U_CELL_HTTP_REQUEST_GET, NULL));
+
+        // Obtain the last error code - there's no way to check its validity
+        // since it is utterly module-specific, just really checking that it
+        // doesn't bring the roof down
+        uCellHttpGetLastErrorCode(cellHandle, httpHandle);
+
+        // Close the HTTP instance once more
+        uCellHttpClose(cellHandle, httpHandle);
+
+        // Delete our data file for neatness
+        uCellFileDelete(cellHandle, U_CELL_HTTP_TEST_DATA_FILE_NAME);
+    } else {
+        U_TEST_PRINT_LINE("module does not support HTTP, not testing it.");
+    }
 
     // Do the standard postamble, leaving the module on for the next
     // test to speed things up

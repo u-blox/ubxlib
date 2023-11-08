@@ -756,6 +756,7 @@ static int32_t getUgps(const uCellPrivateInstance_t *pInstance,
                        uint32_t *pGnssSystemBitMap)
 {
     uAtClientHandle_t atHandle = pInstance->atHandle;
+    bool gnssIsOn;
     int32_t x;
 
     uAtClientLock(atHandle);
@@ -767,12 +768,16 @@ static int32_t getUgps(const uCellPrivateInstance_t *pInstance,
     if (pOnNotOff != NULL) {
         *pOnNotOff = (x == 1);
     }
+    // Track whether GNSS is on or not as LENA-R8 still reports
+    // the following two parameters (as zeroes) if GNSS is
+    // off when it really means "I can't tell, GNSS is off"
+    gnssIsOn = (x == 1);
     x = uAtClientReadInt(atHandle);
-    if ((pAidMode != NULL) && (x >= 0)) {
+    if ((pAidMode != NULL) && (x >= 0) && gnssIsOn) {
         *pAidMode = (uint32_t) x;
     }
     x = uAtClientReadInt(atHandle);
-    if ((pGnssSystemBitMap != NULL) && (x >= 0)) {
+    if ((pGnssSystemBitMap != NULL) && (x >= 0) && gnssIsOn) {
         *pGnssSystemBitMap = (uint32_t) x;
     }
     uAtClientResponseStop(atHandle);

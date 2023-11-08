@@ -135,9 +135,13 @@
 # define  U_CELL_MUX_TEST_HTTP_DATA_FILE_NAME "ubxlib_test_http_putpost"
 #endif
 
-/** The first line of an HTTP response indicating success.
+/** The first line of an HTTP response indicating success, normal case.
  */
-#define U_CELL_MUX_TEST_HTTP_FIRST_LINE_200 "HTTP/1.0 200 OK"
+#define U_CELL_MUX_TEST_HTTP_FIRST_LINE_200_DEFAULT "HTTP/1.0 200 OK"
+
+/** The first line of an HTTP response indicating success, LENA-R8 case.
+ */
+#define U_CELL_MUX_TEST_HTTP_FIRST_LINE_200_LENA_R8 "HTTP/1.1 200 OK"
 
 /* ----------------------------------------------------------------
  * TYPES
@@ -859,7 +863,11 @@ U_PORT_TEST_FUNCTION("[cellMux]", "cellMuxHttp")
     //lint -esym(613, pModule) Suppress possible use of NULL pointer
     // for pModule from now on
 
-    if (U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_CMUX)) {
+    // For some reason clang complains about the two conditions in the
+    // if() check below being equivalent when they really not
+    // NOLINTNEXTLINE(misc-redundant-expression)
+    if (U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_CMUX) &&
+        U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_HTTP)) {
         // Create the complete URL from the IP address of the server
         // and the port number; testing with the domain name of the
         // server is done in the tests of u_http_client_test.c.
@@ -889,7 +897,10 @@ U_PORT_TEST_FUNCTION("[cellMux]", "cellMuxHttp")
                                           gAllChars, sizeof(gAllChars)) == sizeof(gAllChars));
 
         // PUT something
-        gHttpCallbackData.pExpectedFirstLine = U_CELL_MUX_TEST_HTTP_FIRST_LINE_200;
+        gHttpCallbackData.pExpectedFirstLine = U_CELL_MUX_TEST_HTTP_FIRST_LINE_200_DEFAULT;
+        if (pModule->moduleType == U_CELL_MODULE_TYPE_LENA_R8) {
+            gHttpCallbackData.pExpectedFirstLine = U_CELL_MUX_TEST_HTTP_FIRST_LINE_200_LENA_R8;
+        }
         snprintf(pathBuffer, sizeof(pathBuffer), "/%s.html", imeiBuffer);
         U_TEST_PRINT_LINE("HTTP PUT file %s from file %s in the module file system...",
                           pathBuffer, U_CELL_MUX_TEST_HTTP_DATA_FILE_NAME);
@@ -939,8 +950,7 @@ U_PORT_TEST_FUNCTION("[cellMux]", "cellMuxHttp")
 
         U_PORT_TEST_ASSERT(uCellNetDisconnect(cellHandle, NULL) == 0);
     } else {
-        U_TEST_PRINT_LINE("CMUX is not supported, not running tests.");
-        U_PORT_TEST_ASSERT(uCellMuxEnable(cellHandle) < 0);
+        U_TEST_PRINT_LINE("CMUX or HTTP is not supported, not running tests.");
     }
 
     gTestPassed = true;

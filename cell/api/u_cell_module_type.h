@@ -80,6 +80,7 @@ typedef enum {
                                                 the "3" is significant. */
     U_CELL_MODULE_TYPE_SARA_R422 = 6,
     U_CELL_MODULE_TYPE_LARA_R6 = 7,
+    U_CELL_MODULE_TYPE_LENA_R8 = 8,
     U_CELL_MODULE_TYPE_MAX_NUM
 } uCellModuleType_t;
 

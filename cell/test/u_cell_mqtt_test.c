@@ -603,22 +603,27 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqttSn")
             U_PORT_TEST_ASSERT(x == -1);
         } else {
             x = 0;
-            U_TEST_PRINT_LINE_SN("security is off, switching it on"
+            U_TEST_PRINT_LINE_SN("security is off, trying to switch it on"
                                  " with profile %d...", x);
-            U_PORT_TEST_ASSERT(uCellMqttSetSecurityOn(cellHandle, x) == 0);
-            x = -1;
-            y = uCellMqttIsSecured(cellHandle, &x);
-            U_TEST_PRINT_LINE_SN("security is now %s, profile is"
-                                 " %d.", y ? "on" : "off", x);
-            U_PORT_TEST_ASSERT(y);
-            U_PORT_TEST_ASSERT(x == 0);
+            y = uCellMqttSetSecurityOn(cellHandle, x);
+            if (U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_MQTTSN_SECURITY)) {
+                U_PORT_TEST_ASSERT(y == 0);
+                x = -1;
+                y = uCellMqttIsSecured(cellHandle, &x);
+                U_TEST_PRINT_LINE_SN("security is now %s, profile is"
+                                     " %d.", y ? "on" : "off", x);
+                U_PORT_TEST_ASSERT(y);
+                U_PORT_TEST_ASSERT(x == 0);
+                // Switch security off again before we continue
+                U_PORT_TEST_ASSERT(uCellMqttSetSecurityOff(cellHandle) == 0);
+                y = uCellMqttIsSecured(cellHandle, &x);
+                U_TEST_PRINT_LINE_SN("security is now %s.", y ? "on" : "off");
+                U_PORT_TEST_ASSERT(!y);
+            } else {
+                U_TEST_PRINT_LINE_SN("security is not supported on MQTT-SN.");
+                U_PORT_TEST_ASSERT(y == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED);
+            }
         }
-
-        // Switch security off again before we continue
-        U_PORT_TEST_ASSERT(uCellMqttSetSecurityOff(cellHandle) == 0);
-        y = uCellMqttIsSecured(cellHandle, &x);
-        U_TEST_PRINT_LINE_SN("security is now %s.", y ? "on" : "off");
-        U_PORT_TEST_ASSERT(!y);
 
         // Can't set/get a "will" message as the test broker we use
         // doesn't connect if you set one

@@ -1770,16 +1770,19 @@ int32_t uCellMuxAddChannel(uDeviceHandle_t cellHandle,
             if (pInstance->pMuxContext != NULL) {
                 pContext = (uCellMuxPrivateContext_t *) pInstance->pMuxContext;
                 if (pContext->savedAtHandle != NULL) {
+                    errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
                     if (channel == U_CELL_MUX_CHANNEL_ID_GNSS) {
                         channel = pContext->channelGnss;
                     }
-                    errorCode = openChannel(pContext, channel,
-                                            U_CELL_MUX_PRIVATE_VIRTUAL_SERIAL_BUFFER_LENGTH_BYTES);
-                    if (errorCode == 0) {
+                    if (channel >= 0) {
+                        errorCode = openChannel(pContext, channel,
+                                                U_CELL_MUX_PRIVATE_VIRTUAL_SERIAL_BUFFER_LENGTH_BYTES);
+                        if (errorCode == 0) {
 #ifdef U_CELL_MUX_ENABLE_DEBUG
-                        uPortLog("U_CELL_CMUX_%d: channel added.\n", channel);
+                            uPortLog("U_CELL_CMUX_%d: channel added.\n", channel);
 #endif
-                        *ppDeviceSerial = pUCellMuxPrivateGetDeviceSerial(pContext, channel);
+                            *ppDeviceSerial = pUCellMuxPrivateGetDeviceSerial(pContext, channel);
+                        }
                     }
                 }
             }

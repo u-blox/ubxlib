@@ -70,7 +70,9 @@ CONNECTION_LIST = [
     {"lock": None, "id": 27, **u_settings.CONNECTION_INSTANCE_27},
     # Note: Linux has no serial port to download code/receive debug
     # etc. but we need the lock field to permit parallel operations.
-    {"lock": None, "id": 28}
+    {"lock": None, "id": 28},
+    # Instance 29, HPG C214 board (ESP32), LENA-R8
+    {"lock": None, "id": 29, **u_settings.CONNECTION_INSTANCE_29}
 ]
 
 def init_locks(manager):

@@ -599,6 +599,9 @@ int32_t uCellTimeDisable(uDeviceHandle_t cellHandle)
                     uAtClientWriteInt(atHandle, 0);
                     uAtClientCommandStopReadResponse(atHandle);
                     errorCode = uAtClientUnlock(atHandle);
+                    if (errorCode < 0) {
+                        uPortTaskBlock(1000);
+                    }
                 }
                 // Leave the context to avoid race conditions:
                 // it will be cleaned-up when the cellular

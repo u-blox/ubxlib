@@ -46,7 +46,8 @@ extern "C" {
  * -------------------------------------------------------------- */
 
 /** The channel ID to use for access to a GNSS chip embedded inside
- * or attached via a cellular module; this will be translated into
+ * or attached via a cellular module; where access to a GNSS device
+ * over CMUX is supported (so not LENA-R8) this will be translated into
  * the correct channel number for the cellular module in use.
  */
 #define U_CELL_MUX_CHANNEL_ID_GNSS 0xFF
@@ -104,7 +105,8 @@ void uCellMuxPrivateLink(void);
  * should enable multiplexer mode _before_ calling uGnssAdd()
  * (and, likewise, remove any GNSS instance before disabling
  * multiplexer mode).  However, if you have enabled multiplexer
- * mode it is much better to call uCellMuxAddChannel() with
+ * mode on a device where GNSS can be accessed via CMUX (i.e. NOT
+ * LENA-R8) then it is much better to call uCellMuxAddChannel() with
  * #U_CELL_MUX_CHANNEL_ID_GNSS and then you can pass the
  * #uDeviceSerial_t handle that returns to uGnssAdd() (with the
  * transport type #U_GNSS_TRANSPORT_VIRTUAL_SERIAL) and you will
@@ -125,11 +127,12 @@ bool uCellMuxIsEnabled(uDeviceHandle_t cellHandle);
 /** Add a multiplexer channel; may be called after uCellMuxEnable()
  * has returned success in order to, for instance, create a virtual
  * serial port to a GNSS chip inside a SARA-R422M8S or SARA-R510M8S
- * module.  The virtual serial port handle returned in *ppDeviceSerial
- * can be used in #uDeviceCfg_t to open the GNSS device using the
- * uDevice API, or it can be passed to uGnssAdd() (with the transport
- * type #U_GNSS_TRANSPORT_VIRTUAL_SERIAL) if you prefer to use the
- * uGnss API the hard way.
+ * module (but not a LENA-R8001M10 module, where access to the built-in
+ * GNSS device over CMUX is not supported).  The virtual serial port
+ * handle returned in *ppDeviceSerial can be used in #uDeviceCfg_t to
+ * open the GNSS device using the uDevice API, or it can be passed to
+ * uGnssAdd() (with the transport type #U_GNSS_TRANSPORT_VIRTUAL_SERIAL)
+ * if you prefer to use the uGnss API the hard way.
  *
  * If the channel is already open, this function returns success
  * without doing anything.  An error is returned if uCellMuxEnable()
@@ -178,11 +181,12 @@ bool uCellMuxIsEnabled(uDeviceHandle_t cellHandle);
  * @param channel             the channel number to open; channel
  *                            numbers are module-specific, however
  *                            the value #U_CELL_MUX_CHANNEL_ID_GNSS
- *                            can be used, in all cases, to open a
- *                            channel to an embedded GNSS chip.
- *                            Note that channel zero is reserved
- *                            for management operations and channel
- *                            one is the existing AT interface;
+ *                            can be used, in all cases except LENA-R8
+ *                            (which does not support access to GNSS
+ *                            over CMUX), to open a channel to an
+ *                            embedded GNSS chip.  Note that channel
+ *                            zero is reserved for management operations
+ *                            and channel one is the existing AT interface;
  *                            neither value can be used here.
  * @param[out] ppDeviceSerial a pointer to a place to put the
  *                            handle of the virtual serial port

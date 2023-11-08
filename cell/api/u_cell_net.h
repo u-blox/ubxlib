@@ -249,6 +249,13 @@ typedef enum {
                                     u-blox modules. */
     U_CELL_NET_RAT_CATM1 = 10,
     U_CELL_NET_RAT_NB1 = 11,
+    U_CELL_NET_RAT_GSM_UMTS = 12, /**< this dual-RAT is not supported by any
+                                       u-blox modules that are supported by ubxlib. */
+    U_CELL_NET_RAT_GSM_UMTS_LTE = 13, /**< this tri-RAT is not supported by any
+                                           u-blox modules that are supported by ubxlib. */
+    U_CELL_NET_RAT_GSM_LTE = 14, /**< supported by LENA-R8. */
+    U_CELL_NET_RAT_UMTS_LTE = 15, /**< this dual-RAT is not supported by any u-blox
+                                       modules that are supported by ubxlib. */
     U_CELL_NET_RAT_MAX_NUM
 } uCellNetRat_t;
 
@@ -820,7 +827,9 @@ int32_t uCellNetGetIpAddressStr(uDeviceHandle_t cellHandle, char *pStr);
 
 /** Return the IP addresses of the first and second DNS assigned
  * by the network.  Without a DNS the module is unable to
- * use hostnames in these API functions, only IP addresses.
+ * use hostnames in these API functions, only IP addresses.  Note
+ * that some modules do not support reading out the DNS address
+ * (e.g. LENA-R8 does not).
  *
  * @param cellHandle    the handle of the cellular instance.
  * @param v6            set this to true if IPV6 DNS addresses
@@ -853,7 +862,8 @@ int32_t uCellNetGetIpAddressStr(uDeviceHandle_t cellHandle, char *pStr);
 int32_t uCellNetGetDnsStr(uDeviceHandle_t cellHandle, bool v6,
                           char *pStrDns1, char *pStrDns2);
 
-/** Get the APN currently in use.
+/** Get the APN currently in use.  Not all modules support this
+ * (e.g. LENA-R8 does not).
  *
  * @param cellHandle  the handle of the cellular instance.
  * @param[out] pStr   a pointer to size bytes of storage into which

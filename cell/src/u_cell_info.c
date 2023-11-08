@@ -647,7 +647,10 @@ int32_t getCellId(uDeviceHandle_t cellHandle, bool logicalNotPhysical)
             if (logicalNotPhysical) {
                 errorCodeOrValue = pInstance->radioParameters.cellIdLogical;
             } else {
-                errorCodeOrValue = pInstance->radioParameters.cellIdPhysical;
+                errorCodeOrValue = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+                if (pInstance->pModule->moduleType != U_CELL_MODULE_TYPE_LENA_R8) {
+                    errorCodeOrValue = pInstance->radioParameters.cellIdPhysical;
+                }
             }
         }
 
@@ -688,36 +691,40 @@ int32_t uCellInfoRefreshRadioParameters(uDeviceHandle_t cellHandle)
                 // doesn't return a reading.  Collect what we can
                 // with it
                 errorCode = getRadioParamsCsq(atHandle, pRadioParameters);
-                // Note that AT+UCGED is used next rather than AT+CESQ
-                // as, in my experience, it is more reliable in
-                // reporting answers.
-                // Allow a little sleepy-byes here, don't want to overtask
-                // the module if this is being called repeatedly
-                uPortTaskBlock(500);
-                if (U_CELL_PRIVATE_HAS(pInstance->pModule, U_CELL_PRIVATE_FEATURE_UCGED5)) {
-                    // SARA-R4 (except 422) only supports UCGED=5, and it only
-                    // supports it in EUTRAN mode
-                    rat = uCellPrivateGetActiveRat(pInstance);
-                    if (U_CELL_PRIVATE_RAT_IS_EUTRAN(rat)) {
-                        errorCode = getRadioParamsUcged5(atHandle, pRadioParameters);
+                // Note that none of the mechanisms below are supported by
+                // LENA-R8: if you can't get it with AT+CSQ then you can't get it
+                if (U_CELL_PRIVATE_HAS(pInstance->pModule, U_CELL_PRIVATE_FEATURE_UCGED)) {
+                    // Note that AT+UCGED is used next rather than AT+CESQ
+                    // as, in my experience, it is more reliable in
+                    // reporting answers.
+                    // Allow a little sleepy-byes here, don't want to overtask
+                    // the module if this is being called repeatedly
+                    uPortTaskBlock(500);
+                    if (U_CELL_PRIVATE_HAS(pInstance->pModule, U_CELL_PRIVATE_FEATURE_UCGED5)) {
+                        // SARA-R4 (except 422) only supports UCGED=5, and it only
+                        // supports it in EUTRAN mode
+                        rat = uCellPrivateGetActiveRat(pInstance);
+                        if (U_CELL_PRIVATE_RAT_IS_EUTRAN(rat)) {
+                            errorCode = getRadioParamsUcged5(atHandle, pRadioParameters);
+                        } else {
+                            // Can't use AT+UCGED, that's all we can get
+                            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                        }
                     } else {
-                        // Can't use AT+UCGED, that's all we can get
-                        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-                    }
-                } else {
-                    // The AT+UCGED=2 formats are module-specific
-                    switch (pInstance->pModule->moduleType) {
-                        case U_CELL_MODULE_TYPE_SARA_R5:
-                            errorCode = getRadioParamsUcged2SaraR5(atHandle, pRadioParameters);
-                            break;
-                        case U_CELL_MODULE_TYPE_SARA_R422:
-                            errorCode = getRadioParamsUcged2SaraR422(atHandle, pRadioParameters);
-                            break;
-                        case U_CELL_MODULE_TYPE_LARA_R6:
-                            errorCode = getRadioParamsUcged2LaraR6(atHandle, pRadioParameters);
-                            break;
-                        default:
-                            break;
+                        // The AT+UCGED=2 formats are module-specific
+                        switch (pInstance->pModule->moduleType) {
+                            case U_CELL_MODULE_TYPE_SARA_R5:
+                                errorCode = getRadioParamsUcged2SaraR5(atHandle, pRadioParameters);
+                                break;
+                            case U_CELL_MODULE_TYPE_SARA_R422:
+                                errorCode = getRadioParamsUcged2SaraR422(atHandle, pRadioParameters);
+                                break;
+                            case U_CELL_MODULE_TYPE_LARA_R6:
+                                errorCode = getRadioParamsUcged2LaraR6(atHandle, pRadioParameters);
+                                break;
+                            default:
+                                break;
+                        }
                     }
                 }
             }
@@ -779,7 +786,8 @@ int32_t uCellInfoGetRsrpDbm(uDeviceHandle_t cellHandle)
         U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
 
         pInstance = pUCellPrivateGetInstance(cellHandle);
-        if (pInstance != NULL) {
+        if ((pInstance != NULL) &&
+            (pInstance->pModule->moduleType != U_CELL_MODULE_TYPE_LENA_R8)) {
             errorCodeOrValue = pInstance->radioParameters.rsrpDbm;
         }
 
@@ -802,7 +810,8 @@ int32_t uCellInfoGetRsrqDb(uDeviceHandle_t cellHandle)
         U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
 
         pInstance = pUCellPrivateGetInstance(cellHandle);
-        if (pInstance != NULL) {
+        if ((pInstance != NULL) &&
+            (pInstance->pModule->moduleType != U_CELL_MODULE_TYPE_LENA_R8)) {
             errorCodeOrValue = pInstance->radioParameters.rsrqDb;
         }
 
@@ -903,34 +912,36 @@ int32_t uCellInfoGetSnrDb(uDeviceHandle_t cellHandle, int32_t *pSnrDb)
         if ((pInstance != NULL) && (pSnrDb != NULL)) {
             pRadioParameters = &(pInstance->radioParameters);
             errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
-            rat = uCellPrivateGetActiveRat(pInstance);
-            if ((rat == U_CELL_NET_RAT_GSM_GPRS_EGPRS) ||
-                (rat == U_CELL_NET_RAT_EGPRS)) {
-                // Don't have SNR in 2G, just calculate it from RSSI and RSRP
-                errorCode = (int32_t) U_CELL_ERROR_VALUE_OUT_OF_RANGE;
-                // SNR = RSRP / (RSSI - RSRP).
-                if ((pRadioParameters->rssiDbm != 0) &&
-                    (pRadioParameters->rssiDbm <= pRadioParameters->rsrpDbm)) {
-                    *pSnrDb = INT_MAX;
-                    errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-                } else if ((pRadioParameters->rssiDbm != 0) && (pRadioParameters->rsrpDbm != 0)) {
-                    int32_t ix = pRadioParameters->rssiDbm - (pRadioParameters->rsrpDbm + 1);
-                    if (ix >= 0) {
-                        const signed char snrLut[] = {6, 2, 0, -2, -3, -5, -6, -7, -8, -10};
-                        *pSnrDb = (ix < (int32_t) sizeof(snrLut)) ? snrLut[ix] : (- ix - 1);
+            if (pInstance->pModule->moduleType != U_CELL_MODULE_TYPE_LENA_R8) {
+                rat = uCellPrivateGetActiveRat(pInstance);
+                if ((rat == U_CELL_NET_RAT_GSM_GPRS_EGPRS) ||
+                    (rat == U_CELL_NET_RAT_EGPRS)) {
+                    // Don't have SNR in 2G, just calculate it from RSSI and RSRP
+                    errorCode = (int32_t) U_CELL_ERROR_VALUE_OUT_OF_RANGE;
+                    // SNR = RSRP / (RSSI - RSRP).
+                    if ((pRadioParameters->rssiDbm != 0) &&
+                        (pRadioParameters->rssiDbm <= pRadioParameters->rsrpDbm)) {
+                        *pSnrDb = INT_MAX;
                         errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                    } else if ((pRadioParameters->rssiDbm != 0) && (pRadioParameters->rsrpDbm != 0)) {
+                        int32_t ix = pRadioParameters->rssiDbm - (pRadioParameters->rsrpDbm + 1);
+                        if (ix >= 0) {
+                            const signed char snrLut[] = {6, 2, 0, -2, -3, -5, -6, -7, -8, -10};
+                            *pSnrDb = (ix < (int32_t) sizeof(snrLut)) ? snrLut[ix] : (- ix - 1);
+                            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                        }
                     }
-                }
-            } else {
-                if (U_CELL_PRIVATE_HAS(pInstance->pModule,
-                                       U_CELL_PRIVATE_FEATURE_SNR_REPORTED)) {
-                    errorCode = (int32_t) U_ERROR_COMMON_NOT_FOUND;
-                    if (pRadioParameters->snrDb != 0x7FFFFFFF) {
-                        // If we have a stored SNIR value that we've been
-                        // able to read directly out of the module, then
-                        // report that
-                        *pSnrDb = pRadioParameters->snrDb;
-                        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                } else {
+                    if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                           U_CELL_PRIVATE_FEATURE_SNR_REPORTED)) {
+                        errorCode = (int32_t) U_ERROR_COMMON_NOT_FOUND;
+                        if (pRadioParameters->snrDb != 0x7FFFFFFF) {
+                            // If we have a stored SNIR value that we've been
+                            // able to read directly out of the module, then
+                            // report that
+                            *pSnrDb = pRadioParameters->snrDb;
+                            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                        }
                     }
                 }
             }
@@ -955,7 +966,8 @@ U_DEPRECATED int32_t uCellInfoGetCellId(uDeviceHandle_t cellHandle)
         pInstance = pUCellPrivateGetInstance(cellHandle);
         errorCodeOrValue = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if (pInstance != NULL) {
-            if (pInstance->radioParameters.cellIdPhysical >= 0) {
+            if ((pInstance->radioParameters.cellIdPhysical >= 0) &&
+                (pInstance->pModule->moduleType != U_CELL_MODULE_TYPE_LENA_R8)) {
                 errorCodeOrValue = pInstance->radioParameters.cellIdPhysical;
             } else {
                 errorCodeOrValue = pInstance->radioParameters.cellIdLogical;
@@ -993,7 +1005,10 @@ int32_t uCellInfoGetEarfcn(uDeviceHandle_t cellHandle)
         pInstance = pUCellPrivateGetInstance(cellHandle);
         errorCodeOrValue = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if (pInstance != NULL) {
-            errorCodeOrValue = pInstance->radioParameters.earfcn;
+            errorCodeOrValue = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+            if (pInstance->pModule->moduleType != U_CELL_MODULE_TYPE_LENA_R8) {
+                errorCodeOrValue = pInstance->radioParameters.earfcn;
+            }
         }
 
         U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);

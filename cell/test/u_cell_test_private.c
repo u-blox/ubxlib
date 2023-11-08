@@ -374,7 +374,8 @@ int32_t uCellTestPrivatePreamble(uCellModuleType_t moduleType,
                             // correctly for the Nutaq network box we use for testing
                             if ((errorCode == 0) &&
                                 ((primaryRat == U_CELL_NET_RAT_CATM1) ||
-                                 (primaryRat == U_CELL_NET_RAT_NB1))) {
+                                 (primaryRat == U_CELL_NET_RAT_NB1) ||
+                                 (primaryRat == U_CELL_NET_RAT_LTE))) {
                                 errorCode = uCellCfgGetBandMask(cellHandle, primaryRat,
                                                                 &bandMask1, &bandMask2);
                                 if (errorCode == 0) {
@@ -532,39 +533,43 @@ int32_t uCellTestPrivateLwm2mDisable(uDeviceHandle_t cellHandle)
         pInstance = pUCellPrivateGetInstance(cellHandle);
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if (pInstance != NULL) {
-            errorCode = (int32_t) U_CELL_ERROR_AT;
-            atHandle = pInstance->atHandle;
-            uAtClientLock(atHandle);
-            uAtClientCommandStart(atHandle, "AT+ULWM2M?");
-            uAtClientCommandStop(atHandle);
-            uAtClientResponseStart(atHandle, "+ULWM2M:");
-            lwm2mClientState = uAtClientReadInt(atHandle);
-            uAtClientResponseStop(atHandle);
-            uAtClientUnlock(atHandle);
-            // 0 means enabled, 1 means disabled; some modules
-            // don't support reading the LWM2M client state at all,
-            // in which case we just need to blindly switch it
-            // off each time, there's nothing else we can do
-            if (lwm2mClientState != 1) {
+            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+            if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                   U_CELL_PRIVATE_FEATURE_LWM2M)) {
+                errorCode = (int32_t) U_CELL_ERROR_AT;
+                atHandle = pInstance->atHandle;
                 uAtClientLock(atHandle);
-                uAtClientCommandStart(atHandle, "AT+ULWM2M=");
-                uAtClientWriteInt(atHandle, 1);
-                uAtClientCommandStopReadResponse(atHandle);
-                if (uAtClientUnlock(atHandle) == 0) {
-                    if (lwm2mClientState == 0) {
-                        // If the LWM2M client was previously enabled
-                        // then we should reboot to effect the
-                        // change; if the module was the kind which
-                        // doesn't support reading the LWM2M client
-                        // state, we can't tell if it was on or off
-                        // before, then we don't do a reboot here as
-                        // we would be rebooting the module every time
-                        pInstance->rebootIsRequired = true;
+                uAtClientCommandStart(atHandle, "AT+ULWM2M?");
+                uAtClientCommandStop(atHandle);
+                uAtClientResponseStart(atHandle, "+ULWM2M:");
+                lwm2mClientState = uAtClientReadInt(atHandle);
+                uAtClientResponseStop(atHandle);
+                uAtClientUnlock(atHandle);
+                // 0 means enabled, 1 means disabled; some modules
+                // don't support reading the LWM2M client state at all,
+                // in which case we just need to blindly switch it
+                // off each time, there's nothing else we can do
+                if (lwm2mClientState != 1) {
+                    uAtClientLock(atHandle);
+                    uAtClientCommandStart(atHandle, "AT+ULWM2M=");
+                    uAtClientWriteInt(atHandle, 1);
+                    uAtClientCommandStopReadResponse(atHandle);
+                    if (uAtClientUnlock(atHandle) == 0) {
+                        if (lwm2mClientState == 0) {
+                            // If the LWM2M client was previously enabled
+                            // then we should reboot to effect the
+                            // change; if the module was the kind which
+                            // doesn't support reading the LWM2M client
+                            // state, we can't tell if it was on or off
+                            // before, then we don't do a reboot here as
+                            // we would be rebooting the module every time
+                            pInstance->rebootIsRequired = true;
+                        }
+                        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
                     }
+                } else {
                     errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
                 }
-            } else {
-                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
             }
         }
 

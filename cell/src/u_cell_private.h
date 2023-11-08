@@ -232,13 +232,17 @@ typedef enum {
     U_CELL_PRIVATE_FEATURE_DEEP_SLEEP_URC,
     U_CELL_PRIVATE_FEATURE_EDRX,
     U_CELL_PRIVATE_FEATURE_MQTTSN,
+    U_CELL_PRIVATE_FEATURE_MQTTSN_SECURITY,
     U_CELL_PRIVATE_FEATURE_CTS_CONTROL,
     U_CELL_PRIVATE_FEATURE_SOCK_SET_LOCAL_PORT,
     U_CELL_PRIVATE_FEATURE_FOTA,
     U_CELL_PRIVATE_FEATURE_UART_POWER_SAVING,
     U_CELL_PRIVATE_FEATURE_CMUX,
     U_CELL_PRIVATE_FEATURE_SNR_REPORTED,
-    U_CELL_PRIVATE_FEATURE_AUTHENTICATION_MODE_AUTOMATIC
+    U_CELL_PRIVATE_FEATURE_AUTHENTICATION_MODE_AUTOMATIC,
+    U_CELL_PRIVATE_FEATURE_LWM2M,
+    U_CELL_PRIVATE_FEATURE_UCGED,
+    U_CELL_PRIVATE_FEATURE_HTTP
 } uCellPrivateFeature_t;
 
 /** The characteristics that may differ between cellular modules.
@@ -292,7 +296,8 @@ typedef struct {
                                        module. */
     uint64_t featuresBitmap; /**< a bit-map of the uCellPrivateFeature_t
                                   characteristics of this module. */
-    int32_t defaultMuxChannelGnss; /**< the default mux channel to use for attached/embedded GNSS. */
+    int32_t defaultMuxChannelGnss; /**< the default mux channel to use for attached/embedded GNSS, -1 if not supported. */
+    int32_t atCFunRebootCommand; /** Normally 15, but in some cases 16. */
 } uCellPrivateModule_t;
 
 /** The radio parameters.
@@ -318,6 +323,20 @@ typedef struct uCellPrivateNet_t {
     uCellNetRat_t rat;
     struct uCellPrivateNet_t *pNext;
 } uCellPrivateNet_t;
+
+/** Private version of the possible registration types:
+ * this separates out the packet switched domains for CEREG and CGREG,
+ * necessary since LENA-R8 always reports both separately in all cases
+ * and so we need to record both and decide on the truth afterwards.
+ */
+//lint -estring(788, uCellPrivateNetRegType_t::U_CELL_PRIVATE_NET_REG_TYPE_MAX_NUM)
+// Suppress not used within defaulted switch
+typedef enum {
+    U_CELL_PRIVATE_NET_REG_TYPE_CREG, /**< circuit switched (AT+CREG). */
+    U_CELL_PRIVATE_NET_REG_TYPE_CGREG,
+    U_CELL_PRIVATE_NET_REG_TYPE_CEREG,
+    U_CELL_PRIVATE_NET_REG_TYPE_MAX_NUM
+} uCellPrivateNetRegType_t;
 
 /** Context for the cell loc API.
  */
@@ -423,8 +442,9 @@ typedef struct uCellPrivateInstance_t {
                                      or back was performed. */
     int32_t lastDtrPinToggleTimeMs; /**< The last time DTR was toggled for power-saving. */
     uCellNetStatus_t
-    networkStatus[U_CELL_NET_REG_DOMAIN_MAX_NUM]; /**< Registation status in each domain. */
-    uCellNetRat_t rat[U_CELL_NET_REG_DOMAIN_MAX_NUM];  /**< The active RAT for each domain. */
+    networkStatus[U_CELL_PRIVATE_NET_REG_TYPE_MAX_NUM]; /**< Registation status for each type, separating CREG, CGREG and CEREG. */
+    uCellNetRat_t
+    rat[U_CELL_PRIVATE_NET_REG_TYPE_MAX_NUM];  /**< The active RAT for each registration type. */
     uCellPrivateRadioParameters_t radioParameters; /**< The radio parameters. */
     int32_t startTimeMs;     /**< Used while connecting and scanning. */
     int32_t connectedAtMs;   /**< When a connection was last established,

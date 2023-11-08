@@ -206,8 +206,8 @@ typedef struct {
  *                             for a PKCS8 encrypted private key, of
  *                             maximum length
  *                             #U_SECURITY_CREDENTIAL_PASSWORD_MAX_LENGTH_BYTES;
- *                             SARA-U201 and SARA-R4xx modules do not support
- *                             use of a password.
+ *                             SARA-U201, SARA-R4xx and LENA-R8 modules do not
+ *                             support use of a password.
  * @param pMd5                 pointer to #U_SECURITY_CREDENTIAL_MD5_LENGTH_BYTES
  *                             of storage where the MD5 hash of the DER-format
  *                             credential as stored in the module can be

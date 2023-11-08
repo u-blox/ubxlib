@@ -52,7 +52,7 @@
 #include "u_security.h"
 
 #include "u_cell_module_type.h"
-#include "u_cell_file.h" // U_CELL_FILE_NAME_MAX_LENGTH
+#include "u_cell_file.h"    // U_CELL_FILE_NAME_MAX_LENGTH
 #include "u_cell.h"         // Order is
 #include "u_cell_net.h"     // important here
 #include "u_cell_private.h" // don't change it
@@ -109,14 +109,17 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          // have this in our regression test farm and hence it is not marked
          // as supported for now
          // (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_DTR_POWER_SAVING)
-         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_AT_PROFILES)                 |
-         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CTS_CONTROL)                 |
-         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SOCK_SET_LOCAL_PORT)         |
-         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UART_POWER_SAVING)           |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_AT_PROFILES)                   |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CTS_CONTROL)                   |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SOCK_SET_LOCAL_PORT)           |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UART_POWER_SAVING)             |
          // CMUX is supported here but we do not test it hence it is not marked as supported
-         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_AUTHENTICATION_MODE_AUTOMATIC)  /* features */
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UCGED)                         |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_AUTHENTICATION_MODE_AUTOMATIC) |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_HTTP) /* features */
         ),
-        6 /* Default CMUX channel for GNSS */
+        6, /* Default CMUX channel for GNSS */
+        15 /* AT+CFUN reboot command */
     },
     {
         U_CELL_MODULE_TYPE_SARA_R410M_02B, 300 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
@@ -139,9 +142,13 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_EDRX)                    |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_FOTA)                    |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UART_POWER_SAVING)       |
-         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CMUX)  /* features */
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CMUX)                    |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_LWM2M)                   |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UCGED)                   |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_HTTP) /* features */
         ),
-        3 /* Default CMUX channel for GNSS */
+        3, /* Default CMUX channel for GNSS */
+        15 /* AT+CFUN reboot command */
     },
     {
         U_CELL_MODULE_TYPE_SARA_R412M_02B, 300 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
@@ -169,9 +176,13 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_EDRX)                                |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_FOTA)                                |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UART_POWER_SAVING)                   |
-         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CMUX)  /* features */
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CMUX)                                |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_LWM2M)                               |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UCGED)                               |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_HTTP) /* features */
         ),
-        3 /* Default CMUX channel for GNSS */
+        3, /* Default CMUX channel for GNSS */
+        15 /* AT+CFUN reboot command */
     },
     {
         U_CELL_MODULE_TYPE_SARA_R412M_03B, 300 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
@@ -190,9 +201,12 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING)                   |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_EDRX)                                |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UART_POWER_SAVING)                   |
-         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CMUX) /* features */
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CMUX)                                |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UCGED)                               |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_HTTP) /* features */
         ),
-        3 /* Default CMUX channel for GNSS */
+        3, /* Default CMUX channel for GNSS */
+        15 /* AT+CFUN reboot command */
     },
     {
         U_CELL_MODULE_TYPE_SARA_R5, 1500 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
@@ -228,15 +242,20 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING_PAGING_WINDOW_SET) |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_EDRX)                                |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTTSN)                              |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTTSN_SECURITY)                     |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CTS_CONTROL)                         |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SOCK_SET_LOCAL_PORT)                 |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_FOTA)                                |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UART_POWER_SAVING)                   |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CMUX)                                |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SNR_REPORTED)                        |
-         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_AUTHENTICATION_MODE_AUTOMATIC) /* features */
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_AUTHENTICATION_MODE_AUTOMATIC)       |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_LWM2M)                               |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UCGED)                               |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_HTTP) /* features */
         ),
-        4 /* Default CMUX channel for GNSS */
+        4, /* Default CMUX channel for GNSS */
+        16 /* AT+CFUN reboot command */
     },
     {
         U_CELL_MODULE_TYPE_SARA_R410M_03B, 300 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
@@ -257,9 +276,13 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING)                   |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_EDRX)                                |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UART_POWER_SAVING)                   |
-         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CMUX)   /* features */
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CMUX)                                |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_LWM2M)                               |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UCGED)                               |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_HTTP) /* features */
         ),
-        3 /* Default CMUX channel for GNSS */
+        3, /* Default CMUX channel for GNSS */
+        15 /* AT+CFUN reboot command */
     },
     {
         U_CELL_MODULE_TYPE_SARA_R422, 300 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
@@ -291,12 +314,17 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          //(1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING_PAGING_WINDOW_SET) |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_EDRX)                                  |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTTSN)                                |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTTSN_SECURITY)                       |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_FOTA)                                  |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UART_POWER_SAVING)                     |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CMUX)                                  |
-         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SNR_REPORTED) /* features */
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SNR_REPORTED)                          |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_LWM2M)                                 |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UCGED)                                 |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_HTTP) /* features */
         ),
-        3 /* Default CMUX channel for GNSS */
+        3, /* Default CMUX channel for GNSS */
+        15 /* AT+CFUN reboot command */
     },
     {
         U_CELL_MODULE_TYPE_LARA_R6, 300 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
@@ -319,12 +347,48 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_FILE_SYSTEM_TAG)                     |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_DTR_POWER_SAVING)                    |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTTSN)                              |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTTSN_SECURITY)                     |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SOCK_SET_LOCAL_PORT)                 |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_FOTA)                                |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CMUX)                                |
-         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SNR_REPORTED) /* features */
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SNR_REPORTED)                        |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_LWM2M)                               |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UCGED)                               |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_HTTP) /* features */
         ),
-        3 /* Default CMUX channel for GNSS */
+        3, /* Default CMUX channel for GNSS */
+        15 /* AT+CFUN reboot command */
+    },
+    {
+        U_CELL_MODULE_TYPE_LENA_R8, 2000 /* Pwr On pull ms */, 3100 /* Pwr off pull ms */,
+        5 /* Boot wait */, 30 /* Min awake */, 35 /* Pwr down wait */, 5 /* Reboot wait */, 10 /* AT timeout */,
+        20 /* Cmd wait ms */, 3000 /* Resp max wait ms */, 4 /* radioOffCfun */,  50 /* resetHoldMilliseconds */,
+        2 /* Simultaneous RATs */,
+        ((1ULL << (int32_t) U_CELL_NET_RAT_GSM_GPRS_EGPRS) |
+         (1ULL << (int32_t) U_CELL_NET_RAT_LTE)) /* RATs */,
+        ((1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CSCON)                               |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_ASYNC_SOCK_CLOSE)                    |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_IANA_NUMBERING)         |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_SERVER_NAME_INDICATION) |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT)                                |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_BINARY_PUBLISH)                 |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_WILL)                           |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_KEEP_ALIVE)                     |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SECURITY)                       |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_FILE_SYSTEM_TAG)                     |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_DTR_POWER_SAVING)                    |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTTSN)                              |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SOCK_SET_LOCAL_PORT)                 |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UART_POWER_SAVING)                   |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CMUX) /* features */
+         // LENA-R8 does, in theory, support HTTP, however the implementation is such that,
+         // should the HTTP server respond with a non-2xx error code, the module does not
+         // save the response to file (in fact it leaves any previous response file there,
+         // unchanged) and returns error rather than success.  This makes it impossible to
+         // support proper HTTP operation.
+        ),
+        -1, /* Default CMUX channel for GNSS */
+        16 /* AT+CFUN reboot command */
     }
 };
 
@@ -386,6 +450,19 @@ static const uCellNetRat_t gModuleRatToCellRatR6[] = {
     U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED, // 7: LTE cat-M1
     U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED, // 8: LTE NB1
     U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED  // 9: 2G again
+};
+
+/** Table to convert the RAT values used in the
+ * module to uCellNetRat_t, R8 version.
+ */
+static const uCellNetRat_t gModuleRatToCellRatR8[] = {
+    U_CELL_NET_RAT_GSM_GPRS_EGPRS,      // 0: 2G
+    U_CELL_NET_RAT_GSM_UMTS,            // 1: GSM/UMTS dual mode
+    U_CELL_NET_RAT_UTRAN,               // 2: UMTS single mode
+    U_CELL_NET_RAT_LTE,                 // 3: LTE single mode
+    U_CELL_NET_RAT_GSM_UMTS_LTE,        // 4: GSM/UMTS/LTE tri-mode
+    U_CELL_NET_RAT_GSM_LTE,             // 5: GSM/LTE dual mode
+    U_CELL_NET_RAT_UMTS_LTE             // 6: UMTS/LTE dual mode
 };
 
 /* ----------------------------------------------------------------
@@ -828,7 +905,9 @@ int32_t uCellPrivateGetImei(const uCellPrivateInstance_t *pInstance,
 // no use for this API.
 bool uCellPrivateIsRegistered(const uCellPrivateInstance_t *pInstance)
 {
-    return U_CELL_NET_STATUS_MEANS_REGISTERED(pInstance->networkStatus[U_CELL_NET_REG_DOMAIN_PS]);
+    return U_CELL_NET_STATUS_MEANS_REGISTERED(
+               pInstance->networkStatus[U_CELL_PRIVATE_NET_REG_TYPE_CGREG]) ||
+           U_CELL_NET_STATUS_MEANS_REGISTERED(pInstance->networkStatus[U_CELL_PRIVATE_NET_REG_TYPE_CEREG]);
 }
 
 // Convert module RAT to our RAT.
@@ -849,6 +928,11 @@ uCellNetRat_t uCellPrivateModuleRatToCellRat(uCellModuleType_t moduleType,
                     cellRat = gModuleRatToCellRatR6[moduleRat];
                 }
                 break;
+            case U_CELL_MODULE_TYPE_LENA_R8:
+                if (moduleRat < (int32_t) (sizeof(gModuleRatToCellRatR8) / sizeof(gModuleRatToCellRatR8[0]))) {
+                    cellRat = gModuleRatToCellRatR8[moduleRat];
+                }
+                break;
             default:
                 if (moduleRat < (int32_t) (sizeof(gModuleRatToCellRatR4R5) / sizeof(gModuleRatToCellRatR4R5[0]))) {
                     cellRat = gModuleRatToCellRatR4R5[moduleRat];
@@ -861,14 +945,21 @@ uCellNetRat_t uCellPrivateModuleRatToCellRat(uCellModuleType_t moduleType,
 }
 
 // Get the active RAT.
-// Uses the packet switched domain, circuit switched is no use
-// for this API.
 uCellNetRat_t uCellPrivateGetActiveRat(const uCellPrivateInstance_t *pInstance)
 {
-    // The active RAT is the RAT for the packet switched
-    // domain, the circuit switched domain is not relevant
-    // to this API
-    return pInstance->rat[U_CELL_NET_REG_DOMAIN_PS];
+    uCellNetRat_t rat = pInstance->rat[U_CELL_PRIVATE_NET_REG_TYPE_CREG];
+
+    // Return the RAT for the registration type we have, prioritising the
+    // packet-switched domain, LTE first
+    if (U_CELL_NET_STATUS_MEANS_REGISTERED(
+            pInstance->networkStatus[U_CELL_PRIVATE_NET_REG_TYPE_CEREG])) {
+        rat = pInstance->rat[U_CELL_PRIVATE_NET_REG_TYPE_CEREG];
+    } else if (U_CELL_NET_STATUS_MEANS_REGISTERED(
+                   pInstance->networkStatus[U_CELL_PRIVATE_NET_REG_TYPE_CGREG])) {
+        rat = pInstance->rat[U_CELL_PRIVATE_NET_REG_TYPE_CGREG];
+    }
+
+    return rat;
 }
 
 // Get the operator name.

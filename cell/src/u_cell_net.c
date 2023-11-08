@@ -35,7 +35,7 @@
 #include "stdbool.h"
 #include "string.h"    // memcpy(), memcmp(), strlen(), strtol()
 #include "stdio.h"     // snprintf()
-#include "ctype.h"     // isblank()
+#include "ctype.h"     // isspace()
 
 #include "u_cfg_sw.h"
 #include "u_cfg_os_platform_specific.h"
@@ -99,7 +99,6 @@
 /** Type to accommodate the types of registration query.
  */
 typedef struct {
-    uCellNetRegDomain_t domain;
     const char *pSetStr;
     const char *pQueryStr;
     const char *pResponseStr;
@@ -159,30 +158,38 @@ static const uCellNetRat_t g3gppRatToCellRat[] = {
  * command into a uCellNetStatus_t value.
  */
 static const uCellNetStatus_t g3gppStatusToCellStatus[] = {
-    U_CELL_NET_STATUS_NOT_REGISTERED,              // +CEREG: 0
-    U_CELL_NET_STATUS_REGISTERED_HOME,             // +CEREG: 1
-    U_CELL_NET_STATUS_SEARCHING,                   // +CEREG: 2
-    U_CELL_NET_STATUS_REGISTRATION_DENIED,         // +CEREG: 3
-    U_CELL_NET_STATUS_OUT_OF_COVERAGE,             // +CEREG: 4
-    U_CELL_NET_STATUS_REGISTERED_ROAMING,          // +CEREG: 5
-    U_CELL_NET_STATUS_REGISTERED_SMS_ONLY_HOME,    // +CEREG: 6
-    U_CELL_NET_STATUS_REGISTERED_SMS_ONLY_ROAMING, // +CEREG: 7
-    U_CELL_NET_STATUS_EMERGENCY_ONLY,              // +CEREG: 8
-    U_CELL_NET_STATUS_REGISTERED_NO_CSFB_HOME,     // +CEREG: 9
-    U_CELL_NET_STATUS_REGISTERED_NO_CSFB_ROAMING   // +CEREG: 10
+    U_CELL_NET_STATUS_NOT_REGISTERED,              // +CxREG: 0
+    U_CELL_NET_STATUS_REGISTERED_HOME,             // +CxREG: 1
+    U_CELL_NET_STATUS_SEARCHING,                   // +CxREG: 2
+    U_CELL_NET_STATUS_REGISTRATION_DENIED,         // +CxREG: 3
+    U_CELL_NET_STATUS_OUT_OF_COVERAGE,             // +CxREG: 4
+    U_CELL_NET_STATUS_REGISTERED_ROAMING,          // +CxREG: 5
+    U_CELL_NET_STATUS_REGISTERED_SMS_ONLY_HOME,    // +CxREG: 6
+    U_CELL_NET_STATUS_REGISTERED_SMS_ONLY_ROAMING, // +CxREG: 7
+    U_CELL_NET_STATUS_EMERGENCY_ONLY,              // +CxREG: 8
+    U_CELL_NET_STATUS_REGISTERED_NO_CSFB_HOME,     // +CxREG: 9
+    U_CELL_NET_STATUS_REGISTERED_NO_CSFB_ROAMING   // +CxREG: 10
 };
 
-/** The possible registration query strings.
+/** The possible registration query strings; order is important,
+ * must follow the order of #uCellPrivateNetRegType_t.
  */
 static const uCellNetRegTypes_t gRegTypes[] = {
-    {U_CELL_NET_REG_DOMAIN_CS, "AT+CREG=", "AT+CREG?", "+CREG:", U_CELL_NET_CREG_OR_CGREG_TYPE, INT_MAX /* All RATs */},
-    {U_CELL_NET_REG_DOMAIN_PS, "AT+CGREG=", "AT+CGREG?", "+CGREG:", U_CELL_NET_CREG_OR_CGREG_TYPE, INT_MAX /* All RATs */},
+    {"AT+CREG=", "AT+CREG?", "+CREG:", U_CELL_NET_CREG_OR_CGREG_TYPE, INT_MAX /* All RATs */},
+    {"AT+CGREG=", "AT+CGREG?", "+CGREG:", U_CELL_NET_CREG_OR_CGREG_TYPE, INT_MAX /* All RATs */},
     {
-        U_CELL_NET_REG_DOMAIN_PS, "AT+CEREG=", "AT+CEREG?", "+CEREG:", U_CELL_NET_CEREG_TYPE,
+        "AT+CEREG=", "AT+CEREG?", "+CEREG:", U_CELL_NET_CEREG_TYPE,
         (1UL << (int32_t) U_CELL_NET_RAT_LTE) | (1UL << (int32_t) U_CELL_NET_RAT_CATM1) | (1UL << (int32_t) U_CELL_NET_RAT_NB1)
     },
 };
 
+/** Return the domain for a given registration type.
+ */
+static const uCellNetRegDomain_t gRegTypeToDomain[] = {
+    U_CELL_NET_REG_DOMAIN_CS, // U_CELL_PRIVATE_NET_REG_TYPE_CREG
+    U_CELL_NET_REG_DOMAIN_PS, // U_CELL_PRIVATE_NET_REG_TYPE_CGREG
+    U_CELL_NET_REG_DOMAIN_PS // U_CELL_PRIVATE_NET_REG_TYPE_CEREG
+};
 #if U_CFG_ENABLE_LOGGING
 /** Strings that describe the possible authentication modes;
  * used in a debug print only, MUST have the same number of
@@ -265,8 +272,8 @@ static void activateContextCallback(uAtClientHandle_t atHandle,
 // Deliberately using VERY short debug strings as this
 // might be called from a URC.
 static void setNetworkStatus(uCellPrivateInstance_t *pInstance,
-                             uCellNetStatus_t status, int32_t rat,
-                             uCellNetRegDomain_t domain,
+                             uCellNetStatus_t status, int32_t rat3gpp,
+                             uCellPrivateNetRegType_t regType,
                              bool fromUrc)
 {
     uCellNetRegistationStatus_t *pStatus;
@@ -287,103 +294,103 @@ static void setNetworkStatus(uCellPrivateInstance_t *pInstance,
         case U_CELL_NET_STATUS_NOT_REGISTERED:
             // Not (yet) registered (+CxREG: 0)
             if (printAllowed) {
-                uPortLog("%d: NReg\n", rat);
+                uPortLog("%d: NReg\n", rat3gpp);
             }
             break;
         case U_CELL_NET_STATUS_REGISTERED_HOME:
             // Registered on the home network (+CxREG: 1)
             if (printAllowed) {
-                uPortLog("%d: RegH\n", rat);
+                uPortLog("%d: RegH\n", rat3gpp);
             }
             break;
         case U_CELL_NET_STATUS_SEARCHING:
             // Searching for a network (+CxREG: 2)
             if (printAllowed) {
-                uPortLog("%d: Search\n", rat);
+                uPortLog("%d: Search\n", rat3gpp);
             }
             break;
         case U_CELL_NET_STATUS_REGISTRATION_DENIED:
             // Registeration denied (+CxREG: 3)
             if (printAllowed) {
-                uPortLog("%d: Deny\n", rat);
+                uPortLog("%d: Deny\n", rat3gpp);
             }
             break;
         case U_CELL_NET_STATUS_OUT_OF_COVERAGE:
             // Out of coverage (+CxREG: 4)
             if (printAllowed) {
-                uPortLog("%d: OoC\n", rat);
+                uPortLog("%d: OoC\n", rat3gpp);
             }
             break;
         case U_CELL_NET_STATUS_REGISTERED_ROAMING:
             // Registered on a roaming network (+CxREG: 5)
             if (printAllowed) {
-                uPortLog("%d: RegR\n", rat);
+                uPortLog("%d: RegR\n", rat3gpp);
             }
             break;
         case U_CELL_NET_STATUS_REGISTERED_SMS_ONLY_HOME:
             // Registered for SMS only on the home network
             // (+CxREG: 6)
             if (printAllowed) {
-                uPortLog("%d: RegS\n", rat);
+                uPortLog("%d: RegS\n", rat3gpp);
             }
             break;
         case U_CELL_NET_STATUS_REGISTERED_SMS_ONLY_ROAMING:
             // Registered for SMS only on a roaming network
             // (+CxREG: 7)
             if (printAllowed) {
-                uPortLog("%d: RegS\n", rat);
+                uPortLog("%d: RegS\n", rat3gpp);
             }
             break;
         case U_CELL_NET_STATUS_EMERGENCY_ONLY:
             // Registered for emergency service only (+CxREG: 8)
             if (printAllowed) {
-                uPortLog("%d: RegE\n", rat);
+                uPortLog("%d: RegE\n", rat3gpp);
             }
             break;
         case U_CELL_NET_STATUS_REGISTERED_NO_CSFB_HOME:
             // Registered on the home network, CFSB not preferred
             // (+CxREG: 9)
             if (printAllowed) {
-                uPortLog("%d: RegNC\n", rat);
+                uPortLog("%d: RegNC\n", rat3gpp);
             }
             break;
         case U_CELL_NET_STATUS_REGISTERED_NO_CSFB_ROAMING:
             // Registered on a roaming network, CFSB not preferred
             // (+CxREG: 10)
             if (printAllowed) {
-                uPortLog("%d: RegNC\n", rat);
+                uPortLog("%d: RegNC\n", rat3gpp);
             }
             break;
         case U_CELL_NET_STATUS_TEMPORARY_NETWORK_BARRING:
             // Temporary barring
             if (printAllowed) {
-                uPortLog("%d: NRegB\n", rat);
+                uPortLog("%d: NRegB\n", rat3gpp);
             }
             break;
         case U_CELL_NET_STATUS_UNKNOWN:
         default:
             // Unknown registration status
             if (printAllowed) {
-                uPortLog("%d: Unk %d\n", rat, status);
+                uPortLog("%d: Unk %d\n", rat3gpp, status);
             }
             break;
     }
 
-    pInstance->networkStatus[domain] = status;
+    pInstance->networkStatus[regType] = status;
 
-    pInstance->rat[domain] = U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED;
+    pInstance->rat[regType] = U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED;
     if (U_CELL_NET_STATUS_MEANS_REGISTERED(status) &&
-        (rat >= 0) &&
-        (rat < (int32_t) (sizeof(g3gppRatToCellRat) /
-                          sizeof(g3gppRatToCellRat[0])))) {
-        pInstance->rat[domain] = (uCellNetRat_t) g3gppRatToCellRat[rat];
-        if ((pInstance->rat[domain] == U_CELL_NET_RAT_LTE) &&
+        (rat3gpp >= 0) &&
+        (rat3gpp < (int32_t) (sizeof(g3gppRatToCellRat) /
+                              sizeof(g3gppRatToCellRat[0])))) {
+        pInstance->rat[regType] = (uCellNetRat_t) g3gppRatToCellRat[rat3gpp];
+        if ((pInstance->rat[regType] == U_CELL_NET_RAT_LTE) &&
             !(pInstance->pModule->supportedRatsBitmap & (1UL << (int32_t) U_CELL_NET_RAT_LTE)) &&
             (pInstance->pModule->supportedRatsBitmap & (1UL << (int32_t) U_CELL_NET_RAT_CATM1))) {
             // The RAT on the end of the network status indication doesn't
             // differentiate between LTE and Cat-M1 so, if the device doesn't
             // support LTE but does support Cat-M1, switch it
-            pInstance->rat[domain] = U_CELL_NET_RAT_CATM1;
+            pInstance->rat[regType] = U_CELL_NET_RAT_CATM1;
         }
         if (pInstance->profileState == U_CELL_PRIVATE_PROFILE_STATE_REQUIRES_REACTIVATION) {
             // This flag will be set if we had been knocked out
@@ -412,14 +419,37 @@ static void setNetworkStatus(uCellPrivateInstance_t *pInstance,
         // to decouple it from any URC handler.
         // Note: it is up to registrationStatusCallback() to free the
         // allocated memory
-        pStatus = (uCellNetRegistationStatus_t *) pUPortMalloc(sizeof(*pStatus));
-        if (pStatus != NULL) {
-            pStatus->domain = domain;
-            pStatus->networkStatus = status;
-            pStatus->pCallback = pInstance->pRegistrationStatusCallback;
-            pStatus->pCallbackParameter = pInstance->pRegistrationStatusCallbackParameter;
-            uAtClientCallback(pInstance->atHandle,
-                              registrationStatusCallback, pStatus);
+        //
+        // HOWEVER, it is possible (at least with LENA-R8), to get the
+        // following sequence:
+        //
+        // +CEREG: 5,"2046","07ba7016",7
+        // +CREG: 5,"2046","07BA"
+        // +CGREG: 0,"0000","0000"
+        //
+        // The final result is that we are registered on LTE, however the
+        // last thing to pass by was a "not-registered on GPRS" and both of
+        // these are in the packet switched domain.  We don't want to tell
+        // the user we're not registered when we are, so don't call the
+        // callback for a "not registered" +CGREG/+CEREG if there is still
+        // a "registered" +CGREG/+CEREG.
+        if (((regType == U_CELL_PRIVATE_NET_REG_TYPE_CGREG) &&
+             !U_CELL_NET_STATUS_MEANS_REGISTERED(pInstance->networkStatus[U_CELL_PRIVATE_NET_REG_TYPE_CGREG]) &&
+             U_CELL_NET_STATUS_MEANS_REGISTERED(pInstance->networkStatus[U_CELL_PRIVATE_NET_REG_TYPE_CEREG])) ||
+            ((regType == U_CELL_PRIVATE_NET_REG_TYPE_CEREG) &&
+             !U_CELL_NET_STATUS_MEANS_REGISTERED(pInstance->networkStatus[U_CELL_PRIVATE_NET_REG_TYPE_CEREG]) &&
+             U_CELL_NET_STATUS_MEANS_REGISTERED(pInstance->networkStatus[U_CELL_PRIVATE_NET_REG_TYPE_CGREG]))) {
+            // We remain registered on a PS domain, nothing more to do
+        } else {
+            pStatus = (uCellNetRegistationStatus_t *) pUPortMalloc(sizeof(*pStatus));
+            if (pStatus != NULL) {
+                pStatus->domain = gRegTypeToDomain[regType];
+                pStatus->networkStatus = status;
+                pStatus->pCallback = pInstance->pRegistrationStatusCallback;
+                pStatus->pCallbackParameter = pInstance->pRegistrationStatusCallbackParameter;
+                uAtClientCallback(pInstance->atHandle,
+                                  registrationStatusCallback, pStatus);
+            }
         }
     }
 }
@@ -431,14 +461,14 @@ static void setNetworkStatus(uCellPrivateInstance_t *pInstance,
 // ...in response to an AT+CEREG? query. For these cases assumed3gppRat
 // must be provided so that this function can do something useful.
 static inline uCellNetStatus_t CXREG_urc(uCellPrivateInstance_t *pInstance,
-                                         uCellNetRegDomain_t domain,
+                                         uCellPrivateNetRegType_t regType,
                                          int32_t assumed3gppRat)
 {
     uAtClientHandle_t atHandle = pInstance->atHandle;
     int32_t status3gpp;
     uCellNetStatus_t status = U_CELL_NET_STATUS_UNKNOWN;
     int32_t secondInt;
-    int32_t rat = -1;
+    int32_t rat3gpp = -1;
     int32_t skippedParameters = 0;
     bool responseToCommandNotUrc = false;
     char buffer[U_CELL_PRIVATE_CELL_ID_LOGICAL_SIZE + 1]; // +1 for terminator
@@ -508,45 +538,42 @@ static inline uCellNetStatus_t CXREG_urc(uCellPrivateInstance_t *pInstance,
             pInstance->radioParameters.cellIdLogical = strtol(buffer, NULL, 16);
         }
         // Read the RAT that we're on
-        rat = uAtClientReadInt(atHandle);
+        rat3gpp = uAtClientReadInt(atHandle);
         // Use the assumed 3GPP RAT if no RAT is included
-        if (rat < 0) {
-            rat = assumed3gppRat;
+        if (rat3gpp < 0) {
+            rat3gpp = assumed3gppRat;
         }
     }
-    setNetworkStatus(pInstance, status, rat, domain, true);
+    setNetworkStatus(pInstance, status, rat3gpp, regType, true);
 
     return status;
 }
 
-// Registration on a network in the circuit switched
-// domain (AT+CREG).
-static void CREG_urc(uAtClientHandle_t atHandle,
-                     void *pParameter)
+// Registration on a network in the circuit switched domain (AT+CREG).
+static void CREG_urc(uAtClientHandle_t atHandle, void *pParameter)
 {
     (void) atHandle;
-    // Doesn't really matter what the assumed3gppRat parameter
-    // is here, it is only used in the LTE/Cat-M1 case
+    // The assumed3gppRat parameter is populated and used
+    // for LENA-R8 only; LENA-R8 frequently omits the AcT
+    // parameter from the end of +CREG.
     CXREG_urc((uCellPrivateInstance_t *) pParameter,
-              U_CELL_NET_REG_DOMAIN_CS, -1);
+              U_CELL_PRIVATE_NET_REG_TYPE_CREG, 0 /* GSM */);
 }
 
-// Registration on a network in the packet-switched
-// domain (AT+CGREG).
-static void CGREG_urc(uAtClientHandle_t atHandle,
-                      void *pParameter)
+// Registration on a network in the packet-switched domain (AT+CGREG).
+static void CGREG_urc(uAtClientHandle_t atHandle, void *pParameter)
 {
     (void) atHandle;
-    // Doesn't really matter what the assumed3gppRat parameter
-    // is here, it is only used in the LTE/Cat-M1 case
+    // The assumed3gppRat parameter is populated and used
+    // for LENA-R8 only; LENA-R8 frequently omits the AcT
+    // parameter from the end of +CGREG.
     CXREG_urc((uCellPrivateInstance_t *) pParameter,
-              U_CELL_NET_REG_DOMAIN_PS, -1);
+              U_CELL_PRIVATE_NET_REG_TYPE_CGREG, 3 /* GSM/GPRS/EDGE */);
 }
 
 // Registration on an EUTRAN (LTE) network (AT+CEREG)
 // in the packet-switched domain.
-static void CEREG_urc(uAtClientHandle_t atHandle,
-                      void *pParameter)
+static void CEREG_urc(uAtClientHandle_t atHandle, void *pParameter)
 {
     uCellNetStatus_t status;
     uCellPrivateInstance_t *pInstance = (uCellPrivateInstance_t *) pParameter;
@@ -565,7 +592,7 @@ static void CEREG_urc(uAtClientHandle_t atHandle,
         assumed3gppRat = 8; // Cat-M1
     }
 
-    status = CXREG_urc(pInstance, U_CELL_NET_REG_DOMAIN_PS, assumed3gppRat);
+    status = CXREG_urc(pInstance, U_CELL_PRIVATE_NET_REG_TYPE_CEREG, assumed3gppRat);
     if (U_CELL_NET_STATUS_MEANS_REGISTERED(status) &&
         (pSleepContext != NULL)) {
         // If we have a sleep context, try to read the
@@ -640,8 +667,7 @@ static void connectionStatusCallback(uAtClientHandle_t atHandle,
 // Base station connection URC.
 //lint -esym(818, pParameter) Suppress pParameter could be const, need to
 // follow prototype
-static void CSCON_urc(uAtClientHandle_t atHandle,
-                      void *pParameter)
+static void CSCON_urc(uAtClientHandle_t atHandle, void *pParameter)
 {
     const uCellPrivateInstance_t *pInstance = (uCellPrivateInstance_t *) pParameter;
     bool isConnected;
@@ -860,6 +886,14 @@ static int32_t setAutomaticMode(const uCellPrivateInstance_t *pInstance)
     return errorCode;
 }
 
+// Move a pointer on if it is pointing to whitespace.
+static void stripWhitespace(char **ppStr)
+{
+    while (isspace((int32_t) **ppStr)) {
+        (*ppStr)++;
+    }
+}
+
 // Store a network scan result and return the
 // number stored
 static int32_t storeNextScanItem(uCellPrivateInstance_t *pInstance,
@@ -876,15 +910,21 @@ static int32_t storeNextScanItem(uCellPrivateInstance_t *pInstance,
 
     // Should have:
     // (<stat>,<long_name>,<short_name>,<numeric>[,<AcT>]
-    // However, there can be  gunk on the end of the AT+COPS=?
+    // However, there can be gunk on the end of the AT+COPS=?
     // response string, for instance the "test" response:
     // ,(0-6),(0-2)
     // ...may appear there, so check for errors;
     // the <stat> and <numeric> fields must be present, the
-    // rest could be absent or zero length strings
+    // rest could be absent or zero length strings.
+    // Oh, and LENA-R8 inserts 0x0a, 0x0d before each item
+    // for no apparent reason
     // Malloc() memory to store this item
     pNet = (uCellPrivateNet_t *) pUPortMalloc(sizeof(*pNet));
     if (pNet != NULL) {
+        // Remove any whitespace inserted by LENA-R8
+        if (pBuffer != NULL) {
+            stripWhitespace(&pBuffer);
+        }
         // Check that "(<stat>" is there and throw it away
         pStr = strtok_r(pBuffer, ",", &pSaved);
         success = ((pStr != NULL) && (*pStr == '('));
@@ -1019,7 +1059,7 @@ static int32_t registerNetwork(uCellPrivateInstance_t *pInstance,
     int32_t status3gpp;
     uCellNetStatus_t status;
     int32_t skippedParameters = 1;
-    int32_t rat = (int32_t) U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED;
+    int32_t rat3gpp = -1;
     bool gotUrc;
     size_t errorCount = 0;
     char buffer[U_CELL_PRIVATE_CELL_ID_LOGICAL_SIZE + 1]; // +1 for terminator
@@ -1126,22 +1166,31 @@ static int32_t registerNetwork(uCellPrivateInstance_t *pInstance,
                 // (b) if the first integer does not match <n> then this
                 //     is a URC and the first integer is the <status> value.
 
+                // ...except if this is LENA-R8 which, just to be different,
+                // and only for the +CREG command, omits the <n> for both the
+                // information response and the URC cases.
                 gotUrc = false;
-                firstInt = uAtClientReadInt(atHandle);
-                status3gpp = uAtClientReadInt(atHandle);
-                if ((firstInt == U_CELL_NET_CREG_OR_CGREG_TYPE) ||
-                    (firstInt == U_CELL_NET_CEREG_TYPE)) {
-                    // case (a.i) or (a.ii)
-                    if (status3gpp < 0) {
-                        // case (a.ii)
+                if ((regType != 0 /* not CREG */) ||
+                    (pInstance->pModule->moduleType != U_CELL_MODULE_TYPE_LENA_R8)) {
+                    firstInt = uAtClientReadInt(atHandle);
+                    status3gpp = uAtClientReadInt(atHandle);
+                    if ((firstInt == U_CELL_NET_CREG_OR_CGREG_TYPE) ||
+                        (firstInt == U_CELL_NET_CEREG_TYPE)) {
+                        // case (a.i) or (a.ii)
+                        if (status3gpp < 0) {
+                            // case (a.ii)
+                            gotUrc = true;
+                            status3gpp = firstInt;
+                            uAtClientClearError(atHandle);
+                        }
+                    } else {
+                        // case (b), it's the URC
                         gotUrc = true;
                         status3gpp = firstInt;
-                        uAtClientClearError(atHandle);
                     }
                 } else {
-                    // case (b), it's the URC
-                    gotUrc = true;
-                    status3gpp = firstInt;
+                    // LENA-R8 +CREG information response
+                    status3gpp = uAtClientReadInt(atHandle);
                 }
                 if (gotUrc) {
                     // Read the actual response, which should follow
@@ -1174,17 +1223,21 @@ static int32_t registerNetwork(uCellPrivateInstance_t *pInstance,
                         pInstance->radioParameters.cellIdLogical = strtol(buffer, NULL, 16);
                     }
                     // Read the RAT that we're on
-                    rat = uAtClientReadInt(atHandle);
-                    if ((rat < 0) && (regType == 2 /* CEREG */)) {
-                        // LARA-R6 sometime misses out the RAT in the +CEREG
-                        // response; we need something...
-                        rat = 7; // LTE
+                    rat3gpp = uAtClientReadInt(atHandle);
+                    if (rat3gpp < 0) {
+                        if (regType == 2 /* CEREG */) {
+                            // LARA-R6 sometime misses out the RAT in the +CEREG
+                            // response; we need something...
+                            rat3gpp = 7; // LTE
+                        } else if (regType == 1 /* CGREG */) {
+                            // LENA-R8 frequently misses out the RAT in the +CGREG
+                            // response; we need something...
+                            rat3gpp = 3; // GSM/GPRS/EDGE
+                        }
                     }
                 }
                 // Set the status
-                setNetworkStatus(pInstance, status, rat,
-                                 gRegTypes[regType].domain,
-                                 false);
+                setNetworkStatus(pInstance, status, rat3gpp, regType, false);
                 uAtClientResponseStop(atHandle);
                 if (uAtClientUnlock(atHandle) != 0) {
                     // We're prodding the module pretty often
@@ -1282,7 +1335,7 @@ static int32_t disconnectNetwork(uCellPrivateInstance_t *pInstance,
                                                  sizeof(g3gppStatusToCellStatus[0])))) {
                         setNetworkStatus(pInstance,
                                          g3gppStatusToCellStatus[status3gpp],
-                                         -1, gRegTypes[x].domain, false);
+                                         -1, x, false);
                     }
                     uAtClientResponseStop(atHandle);
                     uAtClientUnlock(atHandle);
@@ -1305,7 +1358,8 @@ static int32_t disconnectNetwork(uCellPrivateInstance_t *pInstance,
             if (uAtClientReadInt(atHandle) == 0) {
                 setNetworkStatus(pInstance,
                                  U_CELL_NET_STATUS_NOT_REGISTERED,
-                                 -1, U_CELL_NET_REG_DOMAIN_PS, false);
+                                 -1, U_CELL_PRIVATE_NET_REG_TYPE_CEREG,
+                                 false);
             }
             uAtClientResponseStop(atHandle);
             uAtClientUnlock(atHandle);
@@ -1375,9 +1429,11 @@ static int32_t setAuthenticationMode(const uCellPrivateInstance_t *pInstance,
             // No authentication is required
             authenticationMode = U_CELL_NET_AUTHENTICATION_MODE_NOT_SET;
             if ((pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R5) ||
-                (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_U201)) {
-                // For SARA-R5 and U201 the user name and password cannot
-                // be omitted, must be set to an empty string
+                (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_U201) ||
+                (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_LENA_R8)) {
+                // For SARA-R5, SARA-U201 and LENA-R8 the user name
+                // and password cannot be omitted, must be set to an
+                // empty string
                 pUsername = "";
                 pPassword = "";
             }
@@ -2053,14 +2109,6 @@ static int32_t getDnsStrUpsd(const uCellPrivateInstance_t *pInstance,
     return errorCode;
 }
 
-// Move a pointer on if it is pointing to a blank.
-static void stripBlanks(char **ppStr)
-{
-    while (isblank((int32_t) **ppStr)) {
-        (*ppStr)++;
-    }
-}
-
 // Parse a line returned by AT+COPS=5.
 // Returns 1 if a line is found, U_ERROR_COMMON_TIMEOUT otherwise.
 static int32_t parseDeepScanLine(uAtClientHandle_t atHandle,
@@ -2077,7 +2125,7 @@ static int32_t parseDeepScanLine(uAtClientHandle_t atHandle,
     while ((errorCodeOrNumber == (int32_t) U_ERROR_COMMON_TIMEOUT) &&
            (uAtClientReadString(atHandle, buffer, sizeof(buffer), false) > 0)) {
         pStr = buffer;
-        stripBlanks(&pStr);
+        stripWhitespace(&pStr);
         if (strstr(pStr, "MCC:") == pStr) {
             pCell->mcc = strtol(pStr + 4, NULL, 10);
             numParameters++;
@@ -3056,7 +3104,16 @@ uCellNetStatus_t uCellNetGetNetworkStatus(uDeviceHandle_t cellHandle,
         pInstance = pUCellPrivateGetInstance(cellHandle);
         errorCodeOrStatus = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if ((pInstance != NULL) && (domain < U_CELL_NET_REG_DOMAIN_MAX_NUM)) {
-            errorCodeOrStatus = (int32_t) pInstance->networkStatus[domain];
+            // Assume circuit switched
+            errorCodeOrStatus = (int32_t) pInstance->networkStatus[0];
+            if (domain == U_CELL_NET_REG_DOMAIN_PS) {
+                // See if we're registered on LTE
+                errorCodeOrStatus = (int32_t) pInstance->networkStatus[2];
+                if (!U_CELL_NET_STATUS_MEANS_REGISTERED(errorCodeOrStatus)) {
+                    // Nope, just GPRS
+                    errorCodeOrStatus = (int32_t) pInstance->networkStatus[1];
+                }
+            }
         }
 
         U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);

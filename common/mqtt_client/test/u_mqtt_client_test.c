@@ -521,6 +521,7 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClient")
                     U_TEST_PRINT_LINE_MQTT("attempting to read a message when there are none returned %d.", y);
                     U_PORT_TEST_ASSERT(y == (int32_t) U_ERROR_COMMON_EMPTY);
 
+#ifndef U_MQTT_CLIENT_TEST_NO_NULL_SEND
                     // Check that we can send an empty message with the retain flag set to true,
                     // which can be used to remove the single-allowed retained message from a topic.
                     U_TEST_PRINT_LINE_MQTT("attempting to send a NULL message with retain set.", y);
@@ -536,6 +537,7 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClient")
                         //lint -e(506, 774) Suppress constant value Boolean
                         U_PORT_TEST_ASSERT(false);
                     }
+#endif
 
                     // Cancel the subscribe
                     U_TEST_PRINT_LINE_MQTT("unsubscribing from topic \"%s\"...", pTopicOut);

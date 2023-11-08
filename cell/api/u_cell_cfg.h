@@ -108,8 +108,14 @@ typedef enum {
  * re-booted afterwards (with a call to uCellPwrReboot()) for it to
  * take effect.
  *
+ * Note: for LENA-R8, and LENA-R8 alone, setting an empty
+ * bandmask means "enable all bands".
+ *
  * @param cellHandle  the handle of the cellular instance.
- * @param rat         the RAT to set the band mask for.
+ * @param rat         the RAT to set the band mask for; must represent
+ *                    a single RAT, for example #U_CELL_NET_RAT_LTE or
+ *                    #U_CELL_NET_RAT_GSM_GPRS_EGPRS, rather than a
+ *                    multi-mode RAT (for example #U_CELL_NET_RAT_GSM_UMTS).
  * @param bandMask1   the first band mask where bit 0 is band 1
  *                    and bit 63 is band 64.
  * @param bandMask2   the second band mask where bit 0 is band 65
@@ -125,9 +131,16 @@ int32_t uCellCfgSetBandMask(uDeviceHandle_t cellHandle,
 /** Get the bands being used by the cellular module.
  * The module must be powered on for this to work.
  *
+ * Note: for LENA-R8, and LENA-R8 alone, if *pBandMask1 and
+ * *pBandMask2 are both zero, this means that all bands are enabled.
+ *
  * @param cellHandle      the handle of the cellular instance.
  * @param rat             the radio access technology to obtain the
- *                        band mask for.
+ *                        band mask for; must represent a single
+ *                        RAT, for example #U_CELL_NET_RAT_LTE or
+ *                        #U_CELL_NET_RAT_GSM_GPRS_EGPRS, rather than
+ *                        a multi-mode RAT (for example
+ *                        #U_CELL_NET_RAT_GSM_UMTS).
  * @param[out] pBandMask1 pointer to a place to store band mask 1,
  *                        where bit 0 is band 1 and bit 63 is band 64,
  *                        cannot be NULL.

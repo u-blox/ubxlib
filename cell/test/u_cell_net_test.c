@@ -273,6 +273,7 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetConnectDisconnectPlus")
     }
 
     // Connect with a very short time-out to show that aborts work
+    U_TEST_PRINT_LINE("testing abort of connection attempt due to timeout.");
     gStopTimeMs = uPortGetTickTimeMs() + 1000;
     x = uCellNetConnect(cellHandle, NULL,
 #ifdef U_CELL_TEST_CFG_APN
@@ -320,10 +321,12 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetConnectDisconnectPlus")
 
     // Check that the status is registered
     status = uCellNetGetNetworkStatus(cellHandle, U_CELL_NET_REG_DOMAIN_PS);
+    U_TEST_PRINT_LINE("uCellNetGetNetworkStatus() returned %d.", status);
     U_PORT_TEST_ASSERT((status == U_CELL_NET_STATUS_REGISTERED_HOME) ||
                        (status == U_CELL_NET_STATUS_REGISTERED_ROAMING) ||
                        (status == U_CELL_NET_STATUS_REGISTERED_NO_CSFB_HOME) ||
                        (status == U_CELL_NET_STATUS_REGISTERED_NO_CSFB_ROAMING));
+    U_TEST_PRINT_LINE("gLastNetStatus is %d.", gLastNetStatus);
     U_PORT_TEST_ASSERT(gLastNetStatus == status);
 
     // Check that the RAT we're registered on
@@ -335,6 +338,7 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetConnectDisconnectPlus")
         // Check that the connect status callback has been called.
         U_PORT_TEST_ASSERT(gConnectCallbackCalled);
         U_PORT_TEST_ASSERT(gHasBeenConnected);
+        U_TEST_PRINT_LINE("gCallbackErrorCode is %d.", gCallbackErrorCode);
         U_PORT_TEST_ASSERT(gCallbackErrorCode == 0);
     } else {
         U_PORT_TEST_ASSERT(!gConnectCallbackCalled);
@@ -374,33 +378,40 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetConnectDisconnectPlus")
     U_PORT_TEST_ASSERT(x > 0);
     U_PORT_TEST_ASSERT(strlen(buffer) == x);
 
-    // Get the DNS addresses with a NULL buffer
-    memset(buffer, '|', sizeof(buffer));
-    U_PORT_TEST_ASSERT(uCellNetGetDnsStr(cellHandle, false, NULL, NULL) == 0);
-    // Get the DNS addresses with a proper buffer
-    U_PORT_TEST_ASSERT(uCellNetGetDnsStr(cellHandle, false,
-                                         buffer,
-                                         buffer + U_CELL_NET_IP_ADDRESS_SIZE) == 0);
-    x = strlen(buffer);
-    U_PORT_TEST_ASSERT(x > 0);
-    U_PORT_TEST_ASSERT(x < U_CELL_NET_IP_ADDRESS_SIZE);
-    // There may not be a secondary IP address so can't check that
+    if (pModule->moduleType != U_CELL_MODULE_TYPE_LENA_R8) {
+        // Get the DNS addresses with a NULL buffer
+        memset(buffer, '|', sizeof(buffer));
+        U_PORT_TEST_ASSERT(uCellNetGetDnsStr(cellHandle, false, NULL, NULL) == 0);
+        // Get the DNS addresses with a proper buffer
+        U_PORT_TEST_ASSERT(uCellNetGetDnsStr(cellHandle, false,
+                                             buffer,
+                                             buffer + U_CELL_NET_IP_ADDRESS_SIZE) == 0);
+        x = strlen(buffer);
+        U_PORT_TEST_ASSERT(x > 0);
+        U_PORT_TEST_ASSERT(x < U_CELL_NET_IP_ADDRESS_SIZE);
+        // There may not be a secondary IP address so can't check that
 
-    // Get the APN with a short buffer and check for overrun
-    memset(buffer, '|', sizeof(buffer));
-    U_PORT_TEST_ASSERT(uCellNetGetApnStr(cellHandle, buffer, 2) == 1);
-    U_PORT_TEST_ASSERT(strlen(buffer) == 1);
-    U_PORT_TEST_ASSERT(buffer[2] == '|');
+        // Get the APN with a short buffer and check for overrun
+        memset(buffer, '|', sizeof(buffer));
+        U_PORT_TEST_ASSERT(uCellNetGetApnStr(cellHandle, buffer, 2) == 1);
+        U_PORT_TEST_ASSERT(strlen(buffer) == 1);
+        U_PORT_TEST_ASSERT(buffer[2] == '|');
 
-    // Get the APN with a proper buffer length
-    memset(buffer, '|', sizeof(buffer));
-    x = uCellNetGetApnStr(cellHandle, buffer, sizeof(buffer));
-    U_PORT_TEST_ASSERT(x > 0);
-    U_PORT_TEST_ASSERT(strlen(buffer) == x);
+        // Get the APN with a proper buffer length
+        memset(buffer, '|', sizeof(buffer));
+        x = uCellNetGetApnStr(cellHandle, buffer, sizeof(buffer));
+        U_PORT_TEST_ASSERT(x > 0);
+        U_PORT_TEST_ASSERT(strlen(buffer) == x);
+    } else {
+        U_TEST_PRINT_LINE("reading DNS address and APN not supported, not testing them.");
+    }
 
     // Check that we can connect again with the same APN,
-    // should return pretty much immediately
-    gStopTimeMs = uPortGetTickTimeMs() + 5000;
+    // should return pretty much immediately, unless this is
+    // LENA-R8 which does not support reading the current APN
+    // and hence can't tell if we're on the right one or not,
+    // hence the timeout is larger than the 5 seconds it used to be
+    gStopTimeMs = uPortGetTickTimeMs() + 60000;
     U_TEST_PRINT_LINE("connecting again with same APN...");
     x = uCellNetConnect(cellHandle, NULL,
 #ifdef U_CELL_TEST_CFG_APN
@@ -470,6 +481,7 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetConnectDisconnectPlus")
 
     // Note: can't check that gHasBeenConnected is false here as the RRC
     // connection may not yet be closed.
+    U_TEST_PRINT_LINE("gCallbackErrorCode is %d.", gCallbackErrorCode);
     U_PORT_TEST_ASSERT(gCallbackErrorCode == 0);
 
     // Do the standard postamble, leaving the module on for the next
@@ -665,7 +677,12 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetScanRegActDeact")
     // Check that we can activate the PDP context again with
     // the same APN
     U_TEST_PRINT_LINE("activating context again with same APN...");
-    gStopTimeMs = uPortGetTickTimeMs() + 10000;
+    // This timer used to be 10 seconds but on LENA-R8 there is
+    // no way to read the current APN and hence the check that
+    // uCellNetActivate() performs to see if the current context
+    // is fine will fail and so we will detach and reattach here,
+    // which takes longer
+    gStopTimeMs = uPortGetTickTimeMs() + 60000;
     y = uCellNetActivate(cellHandle,
 #ifdef U_CELL_TEST_CFG_APN
                          U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_APN),
