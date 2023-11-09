@@ -243,6 +243,13 @@ There are a few global variables and a label to set in Jenkines:
 - Add N `Lockable Resources` named `ubxlib_tokenX` (i.e. the value of `UBXLIB_TOKEN` above with a `0` after it, then another with a `1` after it, etc.), where N is at least as many as there are test instances with HW attached in [DATABASE.md](DATABASE.md), and give them all the label `ubxlib_token`; `Jenkinsfile` and the clean-up script [jenkins_ubxlib_clean_up.txt](scripts/jenkins_ubxlib_clean_up.txt) will lock this label to coordinate their activities.
 - Press `Save`.
 
+## Configure Global Jenkins Build Discarder
+The global Jenkins build discarder has a default "keep" time of 30 days; you may find this is a bit too relaxed for a 32 gigabyte Raspberry Pi SD card, so:
+
+- Select `Manage Jenkins` -> `Configure System` and scroll down to `Global Build Discarders`.
+- Under `Default Build Discarder` set `Days to keep builds` and `Days to keep artifacts` to 7.
+- Press `Save`.
+
 # Jenkins Agents
 Here we configure Jenkins agents that will run all instances.
 
