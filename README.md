@@ -1,5 +1,7 @@
 <img src="/readme_images/ubxlib-logo.svg" width="400">
 
+[![important message](/readme_images/important_msg.svg)](/UPCOMING.md)
+
 <i>Note: if you are reading this from a package-file created by a third-party \[e.g. PlatformIO\] and the links do not work, please try reading it at the original [ubxlib Github site](https://github.com/u-blox/ubxlib) instead.</i>
 
 # Introduction to `ubxlib`
