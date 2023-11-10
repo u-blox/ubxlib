@@ -1528,6 +1528,22 @@ static int32_t getApnStrUpsd(const uCellPrivateInstance_t *pInstance,
     return errorCodeOrSize;
 }
 
+// Called by activateContext().
+static void sendCgact(uAtClientHandle_t atHandle, int32_t contextId,
+                      uAtClientDeviceError_t *pDeviceError)
+{
+    uAtClientLockExtend(atHandle);
+    uAtClientCommandStart(atHandle, "AT+CGACT=");
+    uAtClientWriteInt(atHandle, 1);
+    uAtClientWriteInt(atHandle, contextId);
+    uAtClientCommandStopReadResponse(atHandle);
+    // If we get back ERROR then the module wasn't
+    // ready, if we get back CMS/CME error then
+    // likely the network has actively rejected us,
+    // e.g. due to an invalid APN
+    uAtClientDeviceErrorGet(atHandle, pDeviceError);
+}
+
 // Activate context using 3GPP commands, required
 // for SARA-R4/R5/R6 and TOBY modules.
 // IMPORTANT: this function must run a single uAtClientLock(),
@@ -1546,6 +1562,7 @@ static int32_t activateContext(const uCellPrivateInstance_t *pInstance,
     uAtClientDeviceError_t deviceError;
     bool activated = false;
     bool ours;
+    bool cgActCalled;
 
     deviceError.type = U_AT_CLIENT_DEVICE_ERROR_TYPE_NO_ERROR;
     uAtClientLock(atHandle);
@@ -1553,6 +1570,19 @@ static int32_t activateContext(const uCellPrivateInstance_t *pInstance,
          (errorCode != 0) &&
          ((deviceError.type == U_AT_CLIENT_DEVICE_ERROR_TYPE_NO_ERROR) ||
           (deviceError.type == U_AT_CLIENT_DEVICE_ERROR_TYPE_ERROR)); x--) {
+        cgActCalled = false;
+        if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R422) {
+            // Note: it seems a bit strange to do this first,
+            // rather than just querying the +CGACT status,
+            // but a specific case has been found where SARA-R422
+            // indicated that it was activated whereas in fact,
+            // at least for the internal clients (so sockets, HTTP
+            // and MQTT), it was not.  Forcing with AT+CGACT=1,x has
+            // been shown to fix that.  We don't do it in all
+            // cases as SARA-R41x modules object to that.
+            sendCgact(atHandle, contextId, &deviceError);
+            cgActCalled = true;
+        }
         uAtClientLockExtend(atHandle);
         uAtClientTimeoutSet(atHandle,
                             pInstance->pModule->responseMaxWaitMs);
@@ -1575,18 +1605,12 @@ static int32_t activateContext(const uCellPrivateInstance_t *pInstance,
             errorCode = uCellPrivateActivateProfileNoAtLock(pInstance, contextId,
                                                             profileId, 5, keepGoingLocalCb);
         } else {
+            if (!cgActCalled) {
+                // If AT+CGACT wasn't called above, do it now
+                sendCgact(atHandle, contextId, &deviceError);
+            }
+            // Don't hit the module too hard
             uPortTaskBlock(2000);
-            // Help it on its way.
-            uAtClientLockExtend(atHandle);
-            uAtClientCommandStart(atHandle, "AT+CGACT=");
-            uAtClientWriteInt(atHandle, 1);
-            uAtClientWriteInt(atHandle, contextId);
-            uAtClientCommandStopReadResponse(atHandle);
-            // If we get back ERROR then the module wasn't
-            // ready, if we get back CMS/CME error then
-            // likely the network has actively rejected us,
-            // e.g. due to an invalid APN
-            uAtClientDeviceErrorGet(atHandle, &deviceError);
         }
     }
     uAtClientUnlock(atHandle);
