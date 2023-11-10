@@ -73,13 +73,16 @@
 #include "u_http_client.h"
 #include "u_device_shared.h"
 
-// For uCellPwrReboot()
+// For uCellPwrReboot() and MUX
 #include "u_at_client.h"
 #include "u_cell_module_type.h"
 #include "u_cell.h"
 #include "u_cell_file.h"
 #include "u_cell_net.h"
 #include "u_cell_pwr.h"
+#ifdef U_CELL_TEST_MUX_ALWAYS
+#include "u_cell_mux.h"
+#endif
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -280,6 +283,11 @@ static uNetworkTestList_t *pStdPreamble()
                               gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType],
                               gpUNetworkTestTypeName[pTmp->networkType]);
             U_PORT_TEST_ASSERT(uDeviceOpen(pTmp->pDeviceCfg, pTmp->pDevHandle) == 0);
+#ifdef U_CELL_TEST_MUX_ALWAYS
+            if (pTmp->pDeviceCfg->deviceType == U_DEVICE_TYPE_CELL) {
+                U_PORT_TEST_ASSERT(uCellMuxEnable(*pTmp->pDevHandle) == 0);
+            }
+#endif
         }
     }
 
