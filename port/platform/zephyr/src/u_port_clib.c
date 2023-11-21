@@ -27,7 +27,11 @@
 #include <version.h>
 
 #if KERNEL_VERSION_NUMBER >= ZEPHYR_VERSION(3,1,0)
+#if KERNEL_VERSION_NUMBER >= ZEPHYR_VERSION(3,5,0)
+#include <zephyr/random/random.h>
+#else
 #include <zephyr/random/rand32.h>
+#endif
 #else
 #include <random/rand32.h>
 #endif
