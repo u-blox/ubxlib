@@ -24,7 +24,14 @@
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
 
-#include "random/rand32.h"
+#include <version.h>
+
+#if KERNEL_VERSION_NUMBER >= ZEPHYR_VERSION(3,1,0)
+#include <zephyr/random/rand32.h>
+#else
+#include <random/rand32.h>
+#endif
+
 #include "string.h"
 
 #include "u_assert.h"

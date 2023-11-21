@@ -33,10 +33,17 @@
 #include "u_port_heap.h"
 #include "u_port_event_queue.h"
 
-#include "kernel.h"
-#include "device.h"
-#include "drivers/gpio.h"
-#include "version.h"
+#include <version.h>
+
+#if KERNEL_VERSION_NUMBER >= ZEPHYR_VERSION(3,1,0)
+#include <zephyr/kernel.h>
+#include <zephyr/device.h>
+#include <zephyr/drivers/gpio.h>
+#else
+#include <kernel.h>
+#include <device.h>
+#include <drivers/gpio.h>
+#endif
 
 #include "u_port_private.h"  // Down here because it needs to know about the Zephyr device tree
 

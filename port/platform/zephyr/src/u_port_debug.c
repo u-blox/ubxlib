@@ -33,7 +33,13 @@
 
 #include "u_error_common.h"
 
-#include "sys/printk.h"
+#include <version.h>
+
+#if KERNEL_VERSION_NUMBER >= ZEPHYR_VERSION(3,1,0)
+#include <zephyr/sys/printk.h>
+#else
+#include <sys/printk.h>
+#endif
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS

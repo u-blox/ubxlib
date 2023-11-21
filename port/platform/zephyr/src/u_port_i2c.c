@@ -18,11 +18,20 @@
  * @brief Implementation of the port I2C API for the Zephyr platform.
  */
 
+#include <version.h>
+
+#if KERNEL_VERSION_NUMBER >= ZEPHYR_VERSION(3,1,0)
+#include <zephyr/types.h>
+#include <zephyr/kernel.h>
+#include <zephyr/device.h>
+#include <zephyr/drivers/i2c.h>
+#else
 #include <zephyr/types.h>
 #include <kernel.h>
-#include <drivers/i2c.h>
-
 #include <device.h>
+#include <drivers/i2c.h>
+#endif
+
 #include <soc.h>
 
 #include "stddef.h"
@@ -37,7 +46,6 @@
 #include "u_port_os.h"
 #include "u_cfg_os_platform_specific.h"
 #include "u_port_i2c.h"
-#include "version.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS

@@ -24,10 +24,18 @@
 
 #ifdef CONFIG_BT
 
+#include <version.h>
+
+#if KERNEL_VERSION_NUMBER >= ZEPHYR_VERSION(3,1,0)
+#include <zephyr/types.h>
+#include <zephyr/kernel.h>
+#include <zephyr/device.h>
+#else
 #include <zephyr/types.h>
 #include <kernel.h>
-
 #include <device.h>
+#endif
+
 #include <soc.h>
 
 #include "stddef.h"    // NULL, size_t etc.
@@ -44,9 +52,15 @@
 #include "u_port_os.h"
 #include "u_port_event_queue.h"
 
+#if KERNEL_VERSION_NUMBER >= ZEPHYR_VERSION(3,1,0)
+#include <zephyr/bluetooth/conn.h>
+#include <zephyr/bluetooth/uuid.h>
+#include <zephyr/bluetooth/gatt.h>
+#else
 #include <bluetooth/conn.h>
 #include <bluetooth/uuid.h>
 #include <bluetooth/gatt.h>
+#endif
 
 #include "string.h" // For memcpy()
 

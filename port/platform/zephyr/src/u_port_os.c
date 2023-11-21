@@ -75,8 +75,15 @@
 #include "u_port.h"
 #include "u_port_os.h"
 
+#include <version.h>
+
+#if KERNEL_VERSION_NUMBER >= ZEPHYR_VERSION(3,1,0)
+#include <zephyr/kernel.h>
+#include <zephyr/device.h>
+#else
 #include <kernel.h>
-#include "device.h"
+#include <device.h>
+#endif
 
 #include "u_port_private.h"  // Down here because it needs to know about the Zephyr device tree
 
