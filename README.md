@@ -177,7 +177,7 @@ A number of examples are provided with this repo:
 | GNSS         | [message](/example/gnss "message example") example communicating directly with a GNSS chip, messages of your choice.|
 | GNSS         | [position](/example/gnss "position example") example obtaining streamed position directly from a GNSS chip.|
 | GNSS         | [position](/example/gnss "AssistNow example") example of how to use the u-blox AssistNow service to improve the time to first fix of GNSS.|
-| GNSS         | [geofence](/example/gnss "geofence example") example of how to use the comon [geofence](/common/geofence/api/u_geofence.h) API with GNSS; note that it can equally be used with cellular (CellLocate) and Wi-Fi (Google, SkyHook and Here).|
+| GNSS         | [geofence](/example/gnss "geofence example") example of how to use the comon [geofence](/common/geofence "geofence API") API with GNSS; note that it can equally be used with cellular (CellLocate) and Wi-Fi (Google, SkyHook and Here).|
 
 You may use the code from any of these examples as a basis for your work as follows:
 - Copy the source files for the [example](/example) that is closest to your intended application to your project directory.
