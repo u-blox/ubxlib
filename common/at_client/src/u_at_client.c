@@ -430,6 +430,8 @@ typedef struct uAtClientInstance_t {
     bool newSendNextTime; /** Flag used when printing timestamps in the log. */
     int32_t atTimeoutMs; /** The current AT timeout in milliseconds. */
     int32_t atTimeoutSavedMs; /** The saved AT timeout in milliseconds. */
+    int32_t atUrcTimeoutMs; /** The AT timeout that will be used when in a URC. */
+    int32_t atStreamReadRetryDelayMs; /**< The delay before re-reading the UART to avoid stutter. */
     int32_t numConsecutiveAtTimeouts; /** The number of consecutive AT timeouts. */
     /** Callback to call if numConsecutiveAtTimeouts > 0. */
     void (*pConsecutiveTimeoutsCallback) (uAtClientHandle_t, int32_t *);
@@ -1387,7 +1389,7 @@ static int32_t serialReadNoStutter(uAtClientInstance_t *pClient,
             if (blockState == U_AT_CLIENT_BLOCK_STATE_NOTHING_RECEIVED) {
                 // Got something: now wait for more
                 blockState = U_AT_CLIENT_BLOCK_STATE_WAIT_FOR_MORE;
-                uPortTaskBlock(U_AT_CLIENT_STREAM_READ_RETRY_DELAY_MS);
+                uPortTaskBlock(pClient->atStreamReadRetryDelayMs);
             }
         } else {
             if (blockState == U_AT_CLIENT_BLOCK_STATE_WAIT_FOR_MORE) {
@@ -1395,7 +1397,7 @@ static int32_t serialReadNoStutter(uAtClientInstance_t *pClient,
                 // so stop blocking now
                 blockState = U_AT_CLIENT_BLOCK_STATE_DO_NOT_BLOCK;
             } else {
-                uPortTaskBlock(U_AT_CLIENT_STREAM_READ_RETRY_DELAY_MS);
+                uPortTaskBlock(pClient->atStreamReadRetryDelayMs);
             }
 
         }
@@ -1493,7 +1495,7 @@ static bool bufferFill(uAtClientInstance_t *pClient,
         atTimeoutMs = pClient->atTimeoutMs;
         if (eventIsCallback) {
             // Short timeout if we're in a URC callback
-            atTimeoutMs = U_AT_CLIENT_URC_TIMEOUT_MS;
+            atTimeoutMs = pClient->atUrcTimeoutMs;
         }
     }
 
@@ -1671,7 +1673,7 @@ static bool bufferFill(uAtClientInstance_t *pClient,
         }
 
         LOG_BUFFER_FILL(14);
-        uPortTaskBlock(U_AT_CLIENT_STREAM_READ_RETRY_DELAY_MS);
+        uPortTaskBlock(pClient->atStreamReadRetryDelayMs);
     } while ((readLength == 0) &&
              (pollTimeRemaining(atTimeoutMs, pClient->lockTimeMs) > 0));
 
@@ -2803,6 +2805,8 @@ static uAtClientHandle_t clientAdd(const uAtClientStreamHandle_t *pStream,
                         pClient->stream = *pStream;
                         pClient->atTimeoutMs = U_AT_CLIENT_DEFAULT_TIMEOUT_MS;
                         pClient->atTimeoutSavedMs = -1;
+                        pClient->atUrcTimeoutMs = U_AT_CLIENT_URC_TIMEOUT_MS;
+                        pClient->atStreamReadRetryDelayMs = U_AT_CLIENT_STREAM_READ_RETRY_DELAY_MS;
                         pClient->delimiter = U_AT_CLIENT_DEFAULT_DELIMITER;
                         mutexStackInit(&(pClient->lockedStreamMutexStack));
                         pClient->delayMs = U_AT_CLIENT_DEFAULT_DELAY_MS;
@@ -3135,6 +3139,48 @@ void uAtClientTimeoutSet(uAtClientHandle_t atHandle, int32_t timeoutMs)
     }
 
     U_AT_CLIENT_UNLOCK_CLIENT_MUTEX(pClient);
+}
+
+// Get the timeout that is applied when reading URCs.
+int32_t uAtClientTimeoutUrcGet(const uAtClientHandle_t atHandle)
+{
+    int32_t errorCodeOrTimeoutUrc = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+
+    if (atHandle != NULL) {
+        errorCodeOrTimeoutUrc = ((uAtClientInstance_t *) atHandle)->atUrcTimeoutMs;
+    }
+
+    return errorCodeOrTimeoutUrc;
+}
+
+// Set the timeout that is applied when reading URCs.
+void uAtClientTimeoutUrcSet(uAtClientHandle_t atHandle,
+                            int32_t timeoutMs)
+{
+    if (atHandle != NULL) {
+        ((uAtClientInstance_t *) atHandle)->atUrcTimeoutMs = timeoutMs;
+    }
+}
+
+// Get the delay applied before a UART is re-read.
+int32_t uAtClientReadRetryDelayGet(const uAtClientHandle_t atHandle)
+{
+    int32_t errorCodeOrReadRetryDelay = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+
+    if (atHandle != NULL) {
+        errorCodeOrReadRetryDelay = ((uAtClientInstance_t *) atHandle)->atStreamReadRetryDelayMs;
+    }
+
+    return errorCodeOrReadRetryDelay;
+}
+
+// Set the delay applied before a UART is re-read.
+void uAtClientReadRetryDelaySet(uAtClientHandle_t atHandle,
+                                int32_t readRetryDelayMs)
+{
+    if (atHandle != NULL) {
+        ((uAtClientInstance_t *) atHandle)->atStreamReadRetryDelayMs = readRetryDelayMs;
+    }
 }
 
 // Set a callback to be called on consecutive AT timeouts.

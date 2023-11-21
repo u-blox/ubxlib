@@ -1117,6 +1117,26 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientConfiguration")
     U_TEST_PRINT_LINE("timeout is now %d ms.", x);
     U_PORT_TEST_ASSERT(x == U_AT_CLIENT_DEFAULT_TIMEOUT_MS + 1);
 
+    x = uAtClientTimeoutUrcGet(atClientHandle);
+    U_TEST_PRINT_LINE("URC timeout is %d ms.", x);
+    U_PORT_TEST_ASSERT(x == U_AT_CLIENT_URC_TIMEOUT_MS);
+
+    x++;
+    uAtClientTimeoutUrcSet(atClientHandle, x);
+    x = uAtClientTimeoutUrcGet(atClientHandle);
+    U_TEST_PRINT_LINE("URC timeout is now %d ms.", x);
+    U_PORT_TEST_ASSERT(x == U_AT_CLIENT_URC_TIMEOUT_MS + 1);
+
+    x = uAtClientReadRetryDelayGet(atClientHandle);
+    U_TEST_PRINT_LINE("read retry delay is %d ms.", x);
+    U_PORT_TEST_ASSERT(x == U_AT_CLIENT_STREAM_READ_RETRY_DELAY_MS);
+
+    x++;
+    uAtClientReadRetryDelaySet(atClientHandle, x);
+    x = uAtClientReadRetryDelayGet(atClientHandle);
+    U_TEST_PRINT_LINE("read retry delay is now %d ms.", x);
+    U_PORT_TEST_ASSERT(x == U_AT_CLIENT_STREAM_READ_RETRY_DELAY_MS + 1);
+
     c = uAtClientDelimiterGet(atClientHandle);
     U_TEST_PRINT_LINE("delimiter is '%c'.", c);
     U_PORT_TEST_ASSERT(c == U_AT_CLIENT_DEFAULT_DELIMITER);

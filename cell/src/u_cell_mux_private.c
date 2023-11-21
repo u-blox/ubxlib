@@ -478,6 +478,8 @@ int32_t uCellMuxPrivateCopyAtClient(uAtClientHandle_t atHandleSource,
         uAtClientDebugSet(atHandleDestination, uAtClientDebugGet(atHandleSource));
         uAtClientPrintAtSet(atHandleDestination, uAtClientPrintAtGet(atHandleSource));
         uAtClientTimeoutSet(atHandleDestination, uAtClientTimeoutGet(atHandleSource));
+        uAtClientTimeoutUrcSet(atHandleDestination, uAtClientTimeoutUrcGet(atHandleSource));
+        uAtClientReadRetryDelaySet(atHandleDestination, uAtClientReadRetryDelayGet(atHandleSource));
         uAtClientDelimiterSet(atHandleDestination, uAtClientDelimiterGet(atHandleSource));
         uAtClientDelaySet(atHandleDestination, uAtClientDelayGet(atHandleSource));
         a = uAtClientGetActivityPinSettings(atHandleSource, &b, &c, &d);

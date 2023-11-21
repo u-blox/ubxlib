@@ -127,6 +127,10 @@ U_PORT_TEST_FUNCTION("[cell]", "cellAdd")
     int32_t resourceCount;
     int32_t errorCode;
     int32_t x;
+    int32_t a[4];
+    int32_t b[4];
+    int32_t c[4];
+    int32_t d[4];
 
     // Whatever called us likely initialised the
     // port so deinitialise it here to obtain the
@@ -183,6 +187,42 @@ U_PORT_TEST_FUNCTION("[cell]", "cellAdd")
     x--;
     U_PORT_TEST_ASSERT(uCellAtCommandDelaySet(devHandleA, x) == 0);
 
+    // Check that we can get and set all of the AT timings
+    // of this cellular instance
+    U_PORT_TEST_ASSERT(uCellAtCommandTimingGet(devHandleA, NULL, NULL, NULL, NULL) == 0);
+    a[0] = -1;
+    U_PORT_TEST_ASSERT(uCellAtCommandTimingGet(devHandleA, &(a[0]), NULL, NULL, NULL) == 0);
+    U_PORT_TEST_ASSERT(a[0] > 0);
+    b[0] = -1;
+    U_PORT_TEST_ASSERT(uCellAtCommandTimingGet(devHandleA, NULL, &(b[0]), NULL, NULL) == 0);
+    U_PORT_TEST_ASSERT(b[0] > 0);
+    c[0] = -1;
+    U_PORT_TEST_ASSERT(uCellAtCommandTimingGet(devHandleA, NULL, NULL, &(c[0]), NULL) == 0);
+    U_PORT_TEST_ASSERT(c[0] > 0);
+    d[0] = -1;
+    U_PORT_TEST_ASSERT(uCellAtCommandTimingGet(devHandleA, NULL, NULL, NULL, &(d[0])) == 0);
+    U_PORT_TEST_ASSERT(d[0] > 0);
+    U_PORT_TEST_ASSERT(uCellAtCommandTimingSet(devHandleA, -1, -1, -1, -1) == 0);
+    U_PORT_TEST_ASSERT(uCellAtCommandTimingGet(devHandleA, &(a[1]), &(b[1]), &(c[1]), &(d[1])) == 0);
+    U_PORT_TEST_ASSERT(a[1] == a[0]);
+    U_PORT_TEST_ASSERT(b[1] == b[0]);
+    U_PORT_TEST_ASSERT(c[1] == c[0]);
+    U_PORT_TEST_ASSERT(d[1] == d[0]);
+    U_PORT_TEST_ASSERT(uCellAtCommandTimingSet(devHandleA, a[0] + 1, b[0] + 1, c[0] + 1,
+                                               d[0] + 1) == 0);
+    U_PORT_TEST_ASSERT(uCellAtCommandTimingGet(devHandleA, &(a[1]), &(b[1]), &(c[1]), &(d[1])) == 0);
+    U_PORT_TEST_ASSERT(a[1] == a[0] + 1);
+    uPortLog("### b[1] %d, b[0] %d.\n", b[1], b[0]);
+    U_PORT_TEST_ASSERT(b[1] == b[0] + 1);
+    U_PORT_TEST_ASSERT(c[1] == c[0] + 1);
+    U_PORT_TEST_ASSERT(d[1] == d[0] + 1);
+    U_PORT_TEST_ASSERT(uCellAtCommandTimingSetDefault(devHandleA) == 0);
+    U_PORT_TEST_ASSERT(uCellAtCommandTimingGet(devHandleA, &(a[1]), &(b[1]), &(c[1]), &(d[1])) == 0);
+    U_PORT_TEST_ASSERT(a[1] == a[0]);
+    U_PORT_TEST_ASSERT(b[1] == b[0]);
+    U_PORT_TEST_ASSERT(c[1] == c[0]);
+    U_PORT_TEST_ASSERT(d[1] == d[0]);
+
     U_TEST_PRINT_LINE("adding another instance on the same AT client, should fail...");
     U_PORT_TEST_ASSERT(uCellAdd(U_CELL_MODULE_TYPE_SARA_U201, atClientHandleA,
                                 -1, -1, -1, false, &dummyHandle) < 0);
@@ -236,6 +276,31 @@ U_PORT_TEST_FUNCTION("[cell]", "cellAdd")
     U_PORT_TEST_ASSERT(errorCode == y);
     x--;
     U_PORT_TEST_ASSERT(uCellAtCommandDelaySet(devHandleB, x) == 0);
+
+    // Check that we can get and set all of the AT timings
+    // of this cellular instance without affecting the other
+    U_PORT_TEST_ASSERT(uCellAtCommandTimingGet(devHandleA, &(a[0]), &(b[0]), &(c[0]), &(d[0])) == 0);
+    U_PORT_TEST_ASSERT(uCellAtCommandTimingGet(devHandleB, &(a[1]), &(b[1]), &(c[1]), &(d[1])) == 0);
+    a[1]++;
+    b[1]++;
+    c[1]++;
+    d[1]++;
+    U_PORT_TEST_ASSERT(uCellAtCommandTimingSet(devHandleB, a[1], b[1], c[1], d[1]) == 0);
+    U_PORT_TEST_ASSERT(uCellAtCommandTimingGet(devHandleB, &(a[2]), &(b[2]), &(c[2]), &(d[2])) == 0);
+    U_PORT_TEST_ASSERT(a[2] == a[1]);
+    U_PORT_TEST_ASSERT(b[2] == b[1]);
+    U_PORT_TEST_ASSERT(c[2] == c[1]);
+    U_PORT_TEST_ASSERT(d[2] == d[1]);
+    U_PORT_TEST_ASSERT(uCellAtCommandTimingGet(devHandleA, &(a[3]), &(b[3]), &(c[3]), &(d[3])) == 0);
+    U_PORT_TEST_ASSERT(a[3] == a[0]);
+    U_PORT_TEST_ASSERT(b[3] == b[0]);
+    U_PORT_TEST_ASSERT(c[3] == c[0]);
+    U_PORT_TEST_ASSERT(d[3] == d[0]);
+    a[1]--;
+    b[1]--;
+    c[1]--;
+    d[1]--;
+    U_PORT_TEST_ASSERT(uCellAtCommandTimingSet(devHandleB, a[1], b[1], c[1], d[1]) == 0);
 
     // Don't remove this one, let uCellDeinit() do it
 # endif

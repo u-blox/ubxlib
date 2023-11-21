@@ -669,6 +669,49 @@ int32_t uAtClientTimeoutGet(const uAtClientHandle_t atHandle);
 void uAtClientTimeoutSet(uAtClientHandle_t atHandle,
                          int32_t timeoutMs);
 
+/** Get the timeout that is applied when reading items
+ * that form part of a URC.
+ *
+ * @param atHandle  the handle of the AT client.
+ * @return          the URC timeout in milliseconds.
+ */
+int32_t uAtClientTimeoutUrcGet(const uAtClientHandle_t atHandle);
+
+/** Set the timeout that is applied when reading items
+ * that form part of a URC.  This needs to be relatively
+ * short; the default if this is not called is
+ * #U_AT_CLIENT_URC_TIMEOUT_MS.
+ *
+ * @param atHandle   the handle of the AT client.
+ * @param timeoutMs  the URC timeout in milliseconds.
+ */
+void uAtClientTimeoutUrcSet(uAtClientHandle_t atHandle,
+                            int32_t timeoutMs);
+
+/** Get the delay applied before a UART is re-read (once)
+ * on receipt of no data, increasing the chances that a
+ * complete chunk of incoming data is available to parse,
+ * avoiding "stutter".
+ *
+ * @param atHandle  the handle of the AT client.
+ * @return          the read retry delay in milliseconds.
+ */
+int32_t uAtClientReadRetryDelayGet(const uAtClientHandle_t atHandle);
+
+/** Set the delay applied before a UART is re-read (once)
+ * on receipt of no data, increasing the chances that a
+ * complete chunk of incoming data is available to parse,
+ * avoiding "stutter".  This needs to be very short;
+ * the default if this is not called is
+ * #U_AT_CLIENT_STREAM_READ_RETRY_DELAY_MS.
+ *
+ * @param atHandle         the handle of the AT client.
+ * @param readRetryDelayMs the read retry delay in
+ *                         milliseconds.
+ */
+void uAtClientReadRetryDelaySet(uAtClientHandle_t atHandle,
+                                int32_t readRetryDelayMs);
+
 /** Set a callback that will be called when there has been
  * one or more consecutive AT command timeouts.  The callback
  * is called internally by the AT client using

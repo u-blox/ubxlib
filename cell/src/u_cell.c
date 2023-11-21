@@ -530,4 +530,115 @@ int32_t uCellAtCommandDelaySet(uDeviceHandle_t cellHandle, int32_t delayMs)
     return errorCode;
 }
 
+// Get the detailed timings used at the AT interface.
+int32_t uCellAtCommandTimingGet(uDeviceHandle_t cellHandle,
+                                int32_t *pDelayMs,
+                                int32_t *pDefaultCommandTimeoutSeconds,
+                                int32_t *pUrcTimeoutMs,
+                                int32_t *pReadRetryDelayMs)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance;
+    uAtClientHandle_t atHandle;
+
+    if (gUCellPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        pInstance = pUCellPrivateGetInstance(cellHandle);
+        if (pInstance != NULL) {
+            atHandle = pInstance->atHandle;
+            if (pDelayMs != NULL) {
+                *pDelayMs = uAtClientDelayGet(atHandle);
+            }
+            if (pDefaultCommandTimeoutSeconds != NULL) {
+                *pDefaultCommandTimeoutSeconds = uAtClientTimeoutGet(atHandle) / 1000;
+            }
+            if (pUrcTimeoutMs != NULL) {
+                *pUrcTimeoutMs = uAtClientTimeoutUrcGet(atHandle);
+            }
+            if (pReadRetryDelayMs != NULL) {
+                *pReadRetryDelayMs = uAtClientReadRetryDelayGet(atHandle);
+            }
+            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return errorCode;
+}
+
+// Set the detailed timings used at the AT interface.
+int32_t uCellAtCommandTimingSet(uDeviceHandle_t cellHandle,
+                                int32_t delayMs,
+                                int32_t defaultCommandTimeoutSeconds,
+                                int32_t urcTimeoutMs,
+                                int32_t readRetryDelayMs)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance;
+    uAtClientHandle_t atHandle;
+
+    if (gUCellPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        pInstance = pUCellPrivateGetInstance(cellHandle);
+        if (pInstance != NULL) {
+            atHandle = pInstance->atHandle;
+            if (delayMs >= 0) {
+                uAtClientDelaySet(atHandle, delayMs);
+            }
+            if (defaultCommandTimeoutSeconds >= 0) {
+                uAtClientTimeoutSet(atHandle,
+                                    defaultCommandTimeoutSeconds * 1000);
+            }
+            if (urcTimeoutMs >= 0) {
+                uAtClientTimeoutUrcSet(atHandle, urcTimeoutMs);
+            }
+            if (readRetryDelayMs >= 0) {
+                uAtClientReadRetryDelaySet(atHandle, readRetryDelayMs);
+            }
+            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return errorCode;
+}
+
+// Set the detailed timings to default values.
+int32_t uCellAtCommandTimingSetDefault(uDeviceHandle_t cellHandle)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance;
+    uAtClientHandle_t atHandle;
+
+    if (gUCellPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        pInstance = pUCellPrivateGetInstance(cellHandle);
+        if (pInstance != NULL) {
+            atHandle = pInstance->atHandle;
+            uAtClientDelaySet(atHandle,
+                              pInstance->pModule->commandDelayDefaultMs);
+            uAtClientTimeoutSet(atHandle,
+                                pInstance->pModule->atTimeoutSeconds * 1000);
+            uAtClientTimeoutUrcSet(atHandle, U_AT_CLIENT_URC_TIMEOUT_MS);
+            uAtClientReadRetryDelaySet(atHandle, U_AT_CLIENT_STREAM_READ_RETRY_DELAY_MS);
+            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return errorCode;
+}
+
 // End of file

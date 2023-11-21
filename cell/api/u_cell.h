@@ -259,8 +259,12 @@ void uCellRemove(uDeviceHandle_t cellHandle);
 int32_t uCellAtClientHandleGet(uDeviceHandle_t cellHandle,
                                uAtClientHandle_t *pAtHandle);
 
-/** Get the delay between the end of one AT command and the
- * start of the next AT command.
+/** \deprecated Get the delay between the end of one AT command
+ * and the start of the next AT command.
+ *
+ * This function is deprecated and may be removed at some
+ * point in the future; please use uCellAtCommandTimingGet()
+ * instead.
  *
  * @param cellHandle      the handle of the cellular instance.
  * @return                on success the delay in milliseconds,
@@ -268,21 +272,26 @@ int32_t uCellAtClientHandleGet(uDeviceHandle_t cellHandle,
  */
 int32_t uCellAtCommandDelayGet(uDeviceHandle_t cellHandle);
 
-/** Set the delay between the end of one AT command and the
- * start of the next AT command.  A safe default value is
- * set on a per-module basis but you may wish to optimise the
- * speed of exchange of AT command in your product, your use-case.
- * THIS SHOULD BE DONE WITH GREAT CARE; a delay that is too
- * short may lead to AT interface failures, commands being
- * confused with one another, etc., and these issues may occur
- * in random places, at random times, dependent upon the AT
- * command that was just executed and, potentially, external
- * factors (network searching, GNSS chip interaction, etc.).
- * You should only reduce the value from the default if you
- * have a good set of regression tests for your product solution
- * that you can run to verify that a shortened delay does not
- * introduce problems for the AT commands that you end up using
- * in the situations that you use them.
+/** \deprecated Set the delay between the end of one AT command
+ * and the start of the next AT command.
+ *
+ * This function is deprecated and may be removed at some
+ * point in the future; please use uCellAtCommandTimingSet()
+ * or  uCellAtCommandTimingSetDefault() instead.
+ *
+ * A safe default value is set on a per-module basis but you may
+ * wish to optimise the speed of exchange of AT command in your
+ * product, your use-case. THIS SHOULD BE DONE WITH GREAT CARE;
+ * a delay that is too short may lead to AT interface failures,
+ * commands being confused with one another, etc., and these
+ * issues may occur in random places, at random times, dependent
+ * upon the AT command that was just executed and, potentially,
+ * external factors (network searching, GNSS chip interaction,
+ * etc.). You should only reduce the value from the default if
+ * you have a good set of regression tests for your product
+ * solution that you can run to verify that a shortened delay
+ * does not introduce problems for the AT commands that you end
+ * up using in the situations that you use them.
  *
  * @param cellHandle  the handle of the cellular instance.
  * @param delayMs     the minimum time from "OK" or "ERROR"
@@ -293,6 +302,144 @@ int32_t uCellAtCommandDelayGet(uDeviceHandle_t cellHandle);
  */
 int32_t uCellAtCommandDelaySet(uDeviceHandle_t cellHandle,
                                int32_t delayMs);
+
+/** Get the detailed timings used with the cellular module
+ * at the AT interface.
+ *
+ * @param cellHandle                         the handle of the cellular
+ *                                           instance.
+ * @param[out] pDelayMs                      a place to put the delay in
+ *                                           milliseconds between the end
+ *                                           of one AT command and the start
+ *                                           of the next AT command; may
+ *                                           be NULL.
+ * @param[out] pDefaultCommandTimeoutSeconds a place to put the default
+      *                                      timeout, in SECONDS,
+ *                                           when waiting for a response
+ *                                           to an AT command; note that
+ *                                           this may be modified, on a
+ *                                           per command basis, by this
+ *                                           code, all that is returned
+ *                                           here is the value employed
+ *                                           when no special circumstances
+ *                                           apply; may be NULL.
+ * @param[out] pUrcTimeoutMs                 a place to put the AT timeout
+ *                                           that is employed when waiting
+ *                                           for all of the elements of an
+ *                                           unsolicited result code or URC,
+ *                                           e.g. +CREG, that may arrive
+ *                                           from the cellular module at
+ *                                           any time (on a line-buffered
+ *                                           basis); the value is in
+ *                                           milliseconds, may be NULL.
+ * @param[out] pReadRetryDelayMs             a place to put the delay between
+ *                                           reading the AT transport channel
+ *                                           and getting no data before
+ *                                           retrying that read one more time;
+ *                                           this avoids "stutter" on the read,
+ *                                           increasing the chances that a
+ *                                           complete chunk of incoming data
+ *                                           is available to parse.  Value is
+ *                                           in milliseconds, may be NULL.
+ * @return                                   zero on success else negative error
+ *                                           code.
+ */
+int32_t uCellAtCommandTimingGet(uDeviceHandle_t cellHandle,
+                                int32_t *pDelayMs,
+                                int32_t *pDefaultCommandTimeoutSeconds,
+                                int32_t *pUrcTimeoutMs,
+                                int32_t *pReadRetryDelayMs);
+
+/** Set the detailed timings used with the cellular module
+ * at the AT interface.  See also uCellAtCommandTimingSetDefault().
+ *
+ *   IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT
+ *
+ *                   HERE BE DRAGONS
+ *
+ * Default values are applied for all of these timings which
+ * are tested and known to work.  You should only reduce any
+ * of these values in a brief/rare period where high
+ * performance/throughput is so important that it is worth
+ * taking chances; reduced values may lead to the cellular
+ * module missing AT commands sent to it or this code
+ * missing responses from the cellular module, with AT
+ * exchanges timing out or, worse, unsolicited response codes
+ * (URCs) which carry vital information about the state of
+ * the cellular module (e.g. registration state in +CREG and
+ * the like) going missing.
+ *
+ * To confirm that a reduction in any of these timings has no
+ * adverse effect you must be able to create regression test
+ * scenarios for the relevant stress situations with your
+ * product code, i.e. the AT commands that you use in the
+ * worst-case situation you expect to use them.  You will
+ * also need to have the relevant equipment to debug problems
+ * (e.g. a Saleae probe) on the UART in real time.
+ *
+ * Putting it another way: don't change these values lightly.
+ *
+ * @param cellHandle                   the handle of the cellular
+ *                                     instance.
+ * @param delayMs                      the delay in milliseconds
+ *                                     between the end of one AT
+ *                                     command and the start of
+ *                                     the next AT command; use
+ *                                     -1 to leave this value
+ *                                     unchanged.
+ * @param defaultCommandTimeoutSeconds the default timeout, in
+ *                                     SECONDS, when waiting
+ *                                     for a response to an AT
+ *                                     command; note that
+ *                                     this may be modified, on a
+ *                                     per command basis, by this
+ *                                     code, this only sets the
+ *                                     value employed when no
+ *                                     special circumstances
+ *                                     apply;  use -1 to leave
+ *                                     this value unchanged.
+ * @param urcTimeoutMs                 the AT timeout that is
+ *                                     employed when waiting for
+ *                                     all of the elements of an
+ *                                     unsolicited result code or
+ *                                     URC, e.g. +CREG, that may
+ *                                     arrive from the cellular
+ *                                     module at any time (on a
+ *                                     line-buffered basis); the
+ *                                     value is in milliseconds,
+ *                                     use -1 to leave this value
+ *                                     unchanged.
+ * @param readRetryDelayMs             the delay between reading
+ *                                     the AT transport channel
+ *                                     and getting no data before
+ *                                     retrying that read one more
+ *                                     time; this avoids "stutter"
+ *                                     on the read, increasing the
+ *                                     chances that a complete chunk
+ *                                     of incoming data is available
+ *                                     to parse.  Value is in
+ *                                     milliseconds, use -1 to leave
+ *                                     this value unchanged.
+ * @return                             zero on success else negative
+ *                                     error code.
+ */
+int32_t uCellAtCommandTimingSet(uDeviceHandle_t cellHandle,
+                                int32_t delayMs,
+                                int32_t defaultCommandTimeoutSeconds,
+                                int32_t urcTimeoutMs,
+                                int32_t readRetryDelayMs);
+
+/** Set the detailed timings used with the cellular module
+ * to their default values.  The value of the default AT command
+ * timeout and the delay between AT commands are module-specific,
+ * while the value for the URC timeout will be
+ * #U_AT_CLIENT_URC_TIMEOUT_MS and the value for the read retry
+ * delay will be #U_AT_CLIENT_STREAM_READ_RETRY_DELAY_MS.
+ *
+ * @param cellHandle   the handle of the cellular instance.
+ * @return             zero on success else negative error code.
+ */
+int32_t uCellAtCommandTimingSetDefault(uDeviceHandle_t cellHandle);
 
 #ifdef __cplusplus
 }
