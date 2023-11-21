@@ -78,7 +78,7 @@ zephyr_include_directories(
     cfg
     src
     ${UBXLIB_BASE}/port/clib
-    ${ZEPHYR_BASE}/include/zephyr
+    ${ZEPHYR_BASE}/include
 )
 
 # Add any compile options that came out of ubxlib.cmake

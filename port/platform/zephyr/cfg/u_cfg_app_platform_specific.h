@@ -17,14 +17,18 @@
 #ifndef _U_CFG_APP_PLATFORM_SPECIFIC_H_
 #define _U_CFG_APP_PLATFORM_SPECIFIC_H_
 
+/* This inclusion is required to get the Zephyr version.
+ */
+#include <version.h>
+
 /* This inclusion is required to get the UART CTS/RTS pin assignments
  * from the Zephyr device tree.
  */
-#include "devicetree.h"
-
-/* This inclusion is required to get the Zephyr version.
- */
-#include "version.h"
+#if KERNEL_VERSION_NUMBER >= ZEPHYR_VERSION(3,1,0)
+#include <zephyr/devicetree.h>
+#else
+#include <devicetree.h>
+#endif
 
 /** @file
  * @brief This header file contains configuration information for

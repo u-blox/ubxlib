@@ -26,11 +26,20 @@
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
 
+#include <version.h>
+
+#if KERNEL_VERSION_NUMBER >= ZEPHYR_VERSION(3,1,0)
+#include <zephyr/types.h>
+#include <zephyr/kernel.h>
+#include <zephyr/device.h>
+#include <zephyr/drivers/uart.h>
+#else
 #include <zephyr/types.h>
 #include <kernel.h>
-#include <drivers/uart.h>
-
 #include <device.h>
+#include <drivers/uart.h>
+#endif
+
 #include <soc.h>
 
 #include "stddef.h"    // NULL, size_t etc.
@@ -50,7 +59,6 @@
 #include "u_port_os.h"
 #include "u_port_event_queue.h"
 #include "u_port_uart.h"
-#include "version.h"
 
 #include "string.h" // For memcpy()
 

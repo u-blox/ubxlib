@@ -17,8 +17,14 @@
 #ifndef _U_SECTIONS_ZEPHYR_H_
 #define _U_SECTIONS_ZEPHYR_H_
 
+#include <version.h>
+
 /* No other #includes allowed here. */
-#include "linker/linker-defs.h"
+#if KERNEL_VERSION_NUMBER >= ZEPHYR_VERSION(3,1,0)
+#include <zephyr/linker/linker-defs.h>
+#else
+#include <linker/linker-defs.h>
+#endif
 
 /** @file
  * @brief This file is internally used to map Zephyr linker sections.
