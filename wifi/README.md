@@ -12,6 +12,7 @@ MQTT client API.
 HTTP client API.
 - `loc`: location over wifi network, requires an API key for one of Google Maps, Skyhook or Here. Refer to [common/location](/common/location) component for generic
 location client API.
+- `geofence`: flexible MCU-based geofencing, using the common [geofence](/common/geofence/api/u_geofence.h) API with Google Maps, Skyhook or Here, only included if `U_CFG_GEOFENCE` is defined since maths and floating point operations are required; to use WGS84 coordinates and a true-earth model rather than a sphere, see instructions at the top of [u_geofence_geodesic.h](/common/geofence/api/u_geofence_geodesic.h) and the note below about [GeographicLib](https://github.com/geographiclib).
 
 The module types supported by this implementation are listed in [u_wifi_module_type.h](api/u_wifi_module_type.h).
 
