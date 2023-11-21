@@ -238,23 +238,54 @@ int32_t uDevicePrivateGnssAdd(const uDeviceCfg_t *pDevCfg,
                     if (pCfgUart->pPrefix != NULL) {
                         uPortUartPrefix(pCfgUart->pPrefix);
                     }
-                    // Open a UART with the recommended buffer length
-                    // and default baud rate.
-                    errorCode = uPortUartOpen(pCfgUart->uart,
-                                              pCfgUart->baudRate, NULL,
-                                              U_GNSS_UART_BUFFER_LENGTH_BYTES,
-                                              pCfgUart->pinTxd,
-                                              pCfgUart->pinRxd,
-                                              pCfgUart->pinCts,
-                                              pCfgUart->pinRts);
-                    if (errorCode >= 0) {
-                        gnssTransportHandle.uart = errorCode;
-                        errorCode = addDevice(gnssTransportHandle,
-                                              pDevCfg->transportType,
-                                              pCfgGnss, pDeviceHandle);
-                        if (errorCode < 0) {
-                            // Clean up on error
-                            uPortUartClose(gnssTransportHandle.uart);
+                    if (0 == pCfgUart->baudRate) {
+                        // Negotiate baud rate
+                        const unsigned baudRates[] = { 1200, 2400, 4800, 9600, 14400,
+                                                       19200, 38400, 57600, 115200,
+                                                       230400, 460800, 921600
+                                                     };
+
+                        for (int32_t i = ((sizeof(baudRates) / sizeof(baudRates[0])) - 1); i >= 0; --i) {
+                            errorCode = uPortUartOpen(pCfgUart->uart,
+                                                      baudRates[i], NULL,
+                                                      U_GNSS_UART_BUFFER_LENGTH_BYTES,
+                                                      pCfgUart->pinTxd,
+                                                      pCfgUart->pinRxd,
+                                                      pCfgUart->pinCts,
+                                                      pCfgUart->pinRts);
+                            if (errorCode >= 0) {
+                                gnssTransportHandle.uart = errorCode;
+                                errorCode = addDevice(gnssTransportHandle,
+                                                      pDevCfg->transportType,
+                                                      pCfgGnss, pDeviceHandle);
+                                if (errorCode < 0) {
+                                    // Clean up on error
+                                    uPortUartClose(gnssTransportHandle.uart);
+                                } else {
+                                    // Found acceptable baudrate
+                                    break;
+                                }
+                            }
+                        }
+                    } else {
+                        // Open a UART with the recommended buffer length
+                        // and default baud rate.
+                        errorCode = uPortUartOpen(pCfgUart->uart,
+                                                  pCfgUart->baudRate, NULL,
+                                                  U_GNSS_UART_BUFFER_LENGTH_BYTES,
+                                                  pCfgUart->pinTxd,
+                                                  pCfgUart->pinRxd,
+                                                  pCfgUart->pinCts,
+                                                  pCfgUart->pinRts);
+                        if (errorCode >= 0) {
+                            gnssTransportHandle.uart = errorCode;
+                            errorCode = addDevice(gnssTransportHandle,
+                                                  pDevCfg->transportType,
+                                                  pCfgGnss, pDeviceHandle);
+                            if (errorCode < 0) {
+                                // Clean up on error
+                                uPortUartClose(gnssTransportHandle.uart);
+                            }
                         }
                     }
                     break;
