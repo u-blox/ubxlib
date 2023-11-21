@@ -12,14 +12,13 @@ MQTT client API.
 HTTP client API.
 - `loc`: location over wifi network, requires an API key for one of Google Maps, Skyhook or Here. Refer to [common/location](/common/location) component for generic
 location client API.
-- `geofence`: flexible MCU-based geofencing, using the common [geofence](/common/geofence/api/u_geofence.h) API with Google Maps, Skyhook or Here, only included if `U_CFG_GEOFENCE` is defined since maths and floating point operations are required; to use WGS84 coordinates and a true-earth model rather than a sphere, see instructions at the top of [u_geofence_geodesic.h](/common/geofence/api/u_geofence_geodesic.h) and the note below about [GeographicLib](https://github.com/geographiclib).
+- `geofence`: flexible MCU-based geofencing, using the common [geofence](/common/geofence/api/u_geofence.h) API with Google Maps, Skyhook or Here, only included if `U_CFG_GEOFENCE` is defined since maths and floating point operations are required; to use WGS84 coordinates and a true-earth model rather than a sphere, see instructions at the top of [u_geofence_geodesic.h](/common/geofence/api/u_geofence_geodesic.h) and the note in the [README.md](/common/geofence) there about [GeographicLib](https://github.com/geographiclib).
 
 The module types supported by this implementation are listed in [u_wifi_module_type.h](api/u_wifi_module_type.h).
 
 The operation of `ubxlib` does not rely on a particular version of uConnectExpress; the versions that we test with are listed in the short-range [test](/common/short_range/test) directory.
 
-# WiFi captive portal
-
+# WiFi Captive Portal
 Included in this directory is also functionality for starting a captive portal for wifi credentials provisioning at runtime instead of adding these in the source code at build time.
 
 The principle here is that the WiFi module is setup as an access point with an automatic redirect to a built-in web server. The top page of this web server shows input fields were a client can enter the SSID and password that the module should connect to. A list of available SSIDs is automatically generated in an input drop box.
