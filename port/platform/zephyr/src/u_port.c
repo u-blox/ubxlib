@@ -189,9 +189,14 @@ int32_t uPortGetTimezoneOffsetSeconds()
     return offset;
 }
 
+#if KERNEL_VERSION_NUMBER >= ZEPHYR_VERSION(3,4,0)
+static int ubxlib_preinit(void)
+{
+#else
 static int ubxlib_preinit(const struct device *arg)
 {
     ARG_UNUSED(arg);
+#endif
 
     k_thread_system_pool_assign(k_current_get());
     return 0;
