@@ -149,7 +149,8 @@ static const uDeviceCfg_t gGnssDeviceCfg = {
     .transportCfg = {
         .cfgUart = {
             .uart = U_CFG_APP_GNSS_UART,
-            .baudRate = U_GNSS_UART_BAUD_RATE,
+            .baudRate = U_GNSS_UART_BAUD_RATE, /* For GNSS 0 will try the possible
+                                                  baud rates to find correct one */
             .pinTxd = U_CFG_APP_PIN_GNSS_TXD,
             .pinRxd = U_CFG_APP_PIN_GNSS_RXD,
             .pinCts = U_CFG_APP_PIN_GNSS_CTS,

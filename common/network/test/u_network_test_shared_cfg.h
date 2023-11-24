@@ -49,6 +49,12 @@ extern "C" {
 #define U_NETWORK_TEST_TYPE_HAS_LOCATION(type) ((type == U_NETWORK_TYPE_CELL) || \
                                                 (type == U_NETWORK_TYPE_GNSS))
 
+#ifndef U_NETWORK_TEST_GNSS_BAUD_RATE
+/** The baud rate to use while testing GNSS operation with the device/network API.
+ */
+# define U_NETWORK_TEST_GNSS_BAUD_RATE 0
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
