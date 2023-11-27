@@ -101,6 +101,33 @@ typedef enum {
  * FUNCTIONS
  * -------------------------------------------------------------- */
 
+/** Sets the bands to be used by the cellular module. It builds the
+ * bandmask itself.
+ * Any existing bands are replaced by the bands provided to this API.
+ * The module must be powered on for this to work but must NOT be
+ * connected to the cellular network (e.g. by calling
+ * uCellNetDisconnect() to be sure) and the module must be
+ * re-booted afterwards (with a call to uCellPwrReboot()) for it to
+ * take effect.
+ *
+ * Note: Only for LENA-R8, setting band 0 means "enable all bands".
+ *
+ * @param cellHandle  the handle of the cellular instance.
+ * @param rat         the RAT to set the band mask for; must represent
+ *                    a single RAT, for example #U_CELL_NET_RAT_LTE or
+ *                    #U_CELL_NET_RAT_GSM_GPRS_EGPRS, rather than a
+ *                    multi-mode RAT (for example #U_CELL_NET_RAT_GSM_UMTS).
+ * @param numBands    specify the number of bands to be set.
+ * @param[in] pBands  pointer to the array containing the bands that are desired
+ *                    to be set. (For example, band numbers 2, 3, 71, and 85.)
+ * @return            zero on success or negative error code
+ *                    on failure.
+ */
+int32_t uCellCfgSetBands(uDeviceHandle_t cellHandle,
+                         uCellNetRat_t rat,
+                         size_t numBands,
+                         uint8_t *pBands);
+
 /** Set the bands to be used by the cellular module.
  * The module must be powered on for this to work but must NOT be
  * connected to the cellular network (e.g. by calling

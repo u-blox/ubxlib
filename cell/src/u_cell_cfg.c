@@ -1074,6 +1074,43 @@ static int32_t setAndStoreBaudRate(const uCellPrivateInstance_t *pInstance,
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
+// Set the bands to be used by the cellular module: building the bandmask itself.
+int32_t uCellCfgSetBands(uDeviceHandle_t cellHandle,
+                         uCellNetRat_t rat,
+                         size_t numBands,
+                         uint8_t *pBands)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    uint64_t bandMask1 = 0;
+    uint64_t bandMask2 = 0;
+    bool isValid = true;
+
+    if (pBands != NULL) {
+        for (size_t i = 0; i < numBands; i++) {
+            if (pBands[i] > 0) { //Valid band
+                if (pBands[i] <= 64) { //Populate Bandmask 1
+                    //subtracting 1 is due to the fact that band 1 maps on bit 0 and band 64 to bit 63
+                    bandMask1 |= 1ULL << ((pBands[i]) - 1);
+
+                } else if ((pBands[i] > 64) && (pBands[i] <= 128)) { //Populate bandmask 2
+                    //subtracting 1 is due to the fact that band 1 maps on bit 0
+                    bandMask2 |= 1ULL << ((pBands[i] - (sizeof(uint64_t) * 8)) - 1);
+                } else {
+                    uPortLog("U_CELL_CFG: invalid band: %d at location %d in the array.\n", pBands[i], i);
+                    isValid = false;
+                }
+            }
+        }
+    } else {
+        isValid = false;
+    }
+    if (isValid) {
+        errorCode = uCellCfgSetBandMask(cellHandle, rat, bandMask1, bandMask2);
+    }
+
+    return errorCode;
+}
+
 // Set the bands to be used by the cellular module.
 int32_t uCellCfgSetBandMask(uDeviceHandle_t cellHandle,
                             uCellNetRat_t rat,

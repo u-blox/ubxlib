@@ -178,6 +178,7 @@ static void testBandMask(uDeviceHandle_t cellHandle,
     uint64_t originalBandMask2 = 0;
     uint64_t bandMask1;
     uint64_t bandMask2;
+    uint8_t desiredBands[10] = {2, 4, 8, 20};
 
     U_TEST_PRINT_LINE("getting band masks for %s...", pRatString);
     errorCode = uCellCfgGetBandMask(cellHandle, rat,
@@ -230,6 +231,43 @@ static void testBandMask(uDeviceHandle_t cellHandle,
                               (uint32_t) (bandMask1 >> 32), (uint32_t) bandMask1);
             U_PORT_TEST_ASSERT(bandMask1 == *pBandmask1);
             U_PORT_TEST_ASSERT(bandMask2 == *pBandmask2);
+
+            //Test case 1: The all fine condition, with pre-defined bandmask for testing
+            U_PORT_TEST_ASSERT(uCellCfgSetBands(cellHandle, rat, sizeof(desiredBands) / sizeof(desiredBands[0]),
+                                                desiredBands) == 0);
+
+            //Test case 2: The all fine condition, added the band 66 for bandmask2
+            if (rat == U_CELL_NET_RAT_CATM1) {
+#ifndef U_CELL_CFG_SARA_R5_00B
+                memset(desiredBands, 0, sizeof(desiredBands));
+                desiredBands[0] = 2;
+                desiredBands[1] = 4;
+                desiredBands[2] = 8;
+                desiredBands[4] = 20;
+                desiredBands[5] = 66;
+                U_PORT_TEST_ASSERT(uCellCfgSetBands(cellHandle, rat, 10, desiredBands) == 0);
+#endif
+            }
+            //Test case 3: The null pointer case
+            uint8_t *pTmp = NULL;
+            U_PORT_TEST_ASSERT(uCellCfgSetBands(cellHandle, rat, 6, pTmp) < 0);
+
+            //Test case 4: The invalid band case
+            memset(desiredBands, 0, sizeof(desiredBands));
+            desiredBands[0] = 1;
+            desiredBands[2] = 130;
+            desiredBands[6] = 2;
+            U_PORT_TEST_ASSERT(uCellCfgSetBands(cellHandle, rat, 6, desiredBands) < 0);
+
+            //Test case 5: Disable all bands case (Except for lena R8)
+
+            //Some cellular modules allow to disable the bands and some do not, e.g. SARA_R5 don't
+            //allow to write zero band but LARA R6 allows it.
+            if (moduleType == U_CELL_MODULE_TYPE_LARA_R6) {
+                memset(desiredBands, 0, sizeof(desiredBands));
+                U_PORT_TEST_ASSERT(uCellCfgSetBands(cellHandle, rat,
+                                                    sizeof(desiredBands) / sizeof(desiredBands[0]), desiredBands) == 0);
+            }
             U_TEST_PRINT_LINE("putting original band masks back...");
             U_PORT_TEST_ASSERT(uCellCfgSetBandMask(cellHandle, rat,
                                                    originalBandMask1,
