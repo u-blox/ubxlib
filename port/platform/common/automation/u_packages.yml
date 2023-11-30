@@ -5,7 +5,7 @@ unity:
 
 nrfconnectsdk:
     type: nrfconnectsdk
-    version: v2.3.0
+    version: v2.5.0
 
 arm_embedded_gcc:
     type: archive
