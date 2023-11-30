@@ -19,7 +19,6 @@ port/platform/common/log_ram
 port/api
 port/clib
 port/platform/common/event_queue
-port/platform/common/mbedtls
 port/platform/esp-idf/src
 port/platform/common/runner
 port/platform/common/debug_utils/api

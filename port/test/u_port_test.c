@@ -67,7 +67,6 @@
 #if (U_CFG_APP_GNSS_I2C >= 0) || (U_CFG_APP_GNSS_SPI >= 0)
 # include "u_ubx_protocol.h"
 #endif
-#include "u_port_crypto.h"
 #include "u_port_event_queue.h"
 #include "u_error_common.h"
 
@@ -452,64 +451,6 @@ static uPortTestTimeData_t timeTestData[] = {
     {{0,  0, 0,  1, 0, 137,  4,   0, 0}, 2114380800LL},
     {{0,  0, 0,  1, 0, 150,  4,   0, 0}, 2524608000LL}
 };
-
-/** SHA256 test vector, input, RC4.55 from:
- * https://www.dlitz.net/crypto/shad256-test-vectors/
- */
-static char const gSha256Input[] =
-    "\xde\x18\x89\x41\xa3\x37\x5d\x3a\x8a\x06\x1e\x67\x57\x6e\x92\x6d"
-    "\xc7\x1a\x7f\xa3\xf0\xcc\xeb\x97\x45\x2b\x4d\x32\x27\x96\x5f\x9e"
-    "\xa8\xcc\x75\x07\x6d\x9f\xb9\xc5\x41\x7a\xa5\xcb\x30\xfc\x22\x19"
-    "\x8b\x34\x98\x2d\xbb\x62\x9e";
-
-/** SHA256 test vector, output, RC4.55 from:
- * https://www.dlitz.net/crypto/shad256-test-vectors/
- */
-static const char gSha256Output[] =
-    "\x03\x80\x51\xe9\xc3\x24\x39\x3b\xd1\xca\x19\x78\xdd\x09\x52\xc2"
-    "\xaa\x37\x42\xca\x4f\x1b\xd5\xcd\x46\x11\xce\xa8\x38\x92\xd3\x82";
-
-/** HMAC SHA256 test vector, key, test 1 from:
- * https://tools.ietf.org/html/rfc4231#page-3
- */
-static const char gHmacSha256Key[] =
-    "\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b"
-    "\x0b\x0b\x0b\x0b";
-
-/** HMAC SHA256 test vector, input data, test 1 from:
- * https://tools.ietf.org/html/rfc4231#page-3
- */
-static const char gHmacSha256Input[] = "\x48\x69\x20\x54\x68\x65\x72\x65";
-
-/** HMAC SHA256 test vector, output data, test 1 from:
- * https://tools.ietf.org/html/rfc4231#page-3
- */
-static const char gHmacSha256Output[] =
-    "\xb0\x34\x4c\x61\xd8\xdb\x38\x53\x5c\xa8\xaf\xce\xaf\x0b\xf1\x2b"
-    "\x88\x1d\xc2\x00\xc9\x83\x3d\xa7\x26\xe9\x37\x6c\x2e\x32\xcf\xf7";
-
-/** AES CBC 128 test vector, key, test 1 from:
- * https://tools.ietf.org/html/rfc3602#page-6
- */
-static const char gAes128CbcKey[] =
-    "\x06\xa9\x21\x40\x36\xb8\xa1\x5b\x51\x2e\x03\xd5\x34\x12\x00\x06";
-
-/** AES CBC 128 test vector, initial vector, test 1 from:
- * https://tools.ietf.org/html/rfc3602#page-6
- */
-static const char gAes128CbcIV[] =
-    "\x3d\xaf\xba\x42\x9d\x9e\xb4\x30\xb4\x22\xda\x80\x2c\x9f\xac\x41";
-
-/** AES CBC 128 test vector, clear text, test 1 from:
- * https://tools.ietf.org/html/rfc3602#page-6
- */
-static const char gAes128CbcClear[] = "Single block msg";
-
-/** AES CBC 128 test vector, encrypted text, test 1 from:
- * https://tools.ietf.org/html/rfc3602#page-6
- */
-static const char gAes128CbcEncrypted[] =
-    "\xe3\x53\x77\x9c\x10\x79\xae\xb8\x27\x08\x94\x2d\xbe\x77\x18\x1a";
 
 /** Timer parameter value array; must have the same number of
  * entries as gTimerHandle.
@@ -3089,89 +3030,6 @@ U_PORT_TEST_FUNCTION("[port]", "portSpiRequiresSpecificWiring")
     U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 #endif
-
-/** Test crypto: not a rigorous test, more a "hello world".
- */
-U_PORT_TEST_FUNCTION("[port]", "portCrypto")
-{
-    char buffer[64];
-    char iv[U_PORT_CRYPTO_AES128_INITIALISATION_VECTOR_LENGTH_BYTES];
-    int32_t resourceCount;
-    int32_t x;
-
-    // Whatever called us likely initialised the
-    // port so deinitialise it here to obtain the
-    // correct initial heap size
-    uPortDeinit();
-
-    memset(buffer, 0, sizeof(buffer));
-
-    resourceCount = uTestUtilGetDynamicResourceCount();
-    U_PORT_TEST_ASSERT(uPortInit() == 0);
-
-    U_TEST_PRINT_LINE("testing SHA256...");
-    x = uPortCryptoSha256(gSha256Input,
-                          sizeof(gSha256Input) - 1,
-                          buffer);
-    if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-        U_PORT_TEST_ASSERT(x == (int32_t) U_ERROR_COMMON_SUCCESS);
-        U_PORT_TEST_ASSERT(memcmp(buffer, gSha256Output,
-                                  U_PORT_CRYPTO_SHA256_OUTPUT_LENGTH_BYTES) == 0);
-    } else {
-        U_TEST_PRINT_LINE("SHA256 not supported.");
-    }
-
-    U_TEST_PRINT_LINE("testing HMAC SHA256...");
-    x = uPortCryptoHmacSha256(gHmacSha256Key,
-                              sizeof(gHmacSha256Key) - 1,
-                              gHmacSha256Input,
-                              sizeof(gHmacSha256Input) - 1,
-                              buffer);
-    if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-        U_PORT_TEST_ASSERT(x == (int32_t) U_ERROR_COMMON_SUCCESS);
-        U_PORT_TEST_ASSERT(memcmp(buffer, gHmacSha256Output,
-                                  U_PORT_CRYPTO_SHA256_OUTPUT_LENGTH_BYTES) == 0);
-    } else {
-        U_TEST_PRINT_LINE("HMAC SHA256 not supported.");
-    }
-
-    U_TEST_PRINT_LINE("testing AES CBC 128...");
-    memcpy(iv, gAes128CbcIV, sizeof(iv));
-    x = uPortCryptoAes128CbcEncrypt(gAes128CbcKey,
-                                    sizeof(gAes128CbcKey) - 1,
-                                    iv, gAes128CbcClear,
-                                    sizeof(gAes128CbcClear) - 1,
-                                    buffer);
-    if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-        U_PORT_TEST_ASSERT(x == (int32_t) U_ERROR_COMMON_SUCCESS);
-        U_PORT_TEST_ASSERT(memcmp(buffer, gAes128CbcEncrypted,
-                                  sizeof(gAes128CbcEncrypted) - 1) == 0);
-    } else {
-        U_TEST_PRINT_LINE("AES CBC 128 encryption not supported.");
-    }
-
-    memcpy(iv, gAes128CbcIV, sizeof(iv));
-    x = uPortCryptoAes128CbcDecrypt(gAes128CbcKey,
-                                    sizeof(gAes128CbcKey) - 1,
-                                    iv, gAes128CbcEncrypted,
-                                    sizeof(gAes128CbcEncrypted) - 1,
-                                    buffer);
-    if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-        U_PORT_TEST_ASSERT(x == (int32_t) U_ERROR_COMMON_SUCCESS);
-        U_PORT_TEST_ASSERT(memcmp(buffer, gAes128CbcClear,
-                                  sizeof(gAes128CbcClear) - 1) == 0);
-    } else {
-        U_TEST_PRINT_LINE("AES CBC 128 decryption not supported.");
-    }
-
-    uPortDeinit();
-
-    // Check for resource leaks
-    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
-    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
-    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
-    U_PORT_TEST_ASSERT(resourceCount <= 0);
-}
 
 /** Test timers.
  */

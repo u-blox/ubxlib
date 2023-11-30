@@ -217,7 +217,6 @@ New features can be requested and up-voted [here](https://github.com/u-blox/ubxl
 The software in this repository is Apache 2.0 licensed and copyright u-blox with the following exceptions:
 
 - The heap management code (`heap_useNewlib.c`), required because the [nRF5 SDK](/port/platform/nrf5sdk) and [STM32Cube](/port/platform/stm32cube) platforms don't provide the necessary memory management for [newlib](https://sourceware.org/newlib/libc.html) and [FreeRTOS](https://www.freertos.org) to play together, is copyright Dave Nadler.
-- The `mbedtls_platform_zeroize()` function in [mbedtls_platform_zeroize.c](/port/platform/nrf5sdk/src/mbedtls_platform_zeroize.c) is copied from the Apache licensed [mbedTLS](https://www.trustedfirmware.org/projects/mbed-tls/) and is copyright Arm Limited.
 - The SEGGER RTT logging files in [port/platform/nrf5sdk/src/segger_rtt](/port/platform/nrf5sdk/src/segger_rtt) are copyright SEGGER MICROCONTROLLER GmbH & Co. KG.
 - The AT client code in [common/at_client](/common/at_client) is derived from the Apache 2.0 licensed AT parser of [mbed-os](https://github.com/ARMmbed/mbed-os).
 - The [stm32cube platform directory](/port/platform/stm32cube/src) necessarily includes porting files from the STM32F4 SDK that are copyright ST Microelectronics.

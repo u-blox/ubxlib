@@ -58,6 +58,10 @@ extern "C" {
 
 /** Perform a SHA256 calculation on a block of data.
  *
+ * Note: support for this API was required by a now removed
+ * feature of the cellular API (C2C encryption), hence there is
+ * currently no requirement to implement it.
+ *
  * @param pInput           a pointer to the input data; cannot be
  *                         NULL unless inputLengthBytes is zero.
  * @param inputLengthBytes the length of the input data.
@@ -74,6 +78,10 @@ int32_t uPortCryptoSha256(const char *pInput,
                           char *pOutput);
 
 /** Perform a HMAC SHA256 calculation on a block of data.
+ *
+ * Note: support for this API was required by a now removed
+ * feature of the cellular API (C2C encryption), hence there is
+ * currently no requirement to implement it.
  *
  * @param pKey             a pointer to the key; cannot be NULL.
  * @param keyLengthBytes   the length of the key.
@@ -95,6 +103,10 @@ int32_t uPortCryptoHmacSha256(const char *pKey,
                               char *pOutput);
 
 /** Perform AES 128 CBC encryption of a block of data.
+ *
+ * Note: support for this API was required by a now removed
+ * feature of the cellular API (C2C encryption), hence there is
+ * currently no requirement to implement it.
  *
  * @param pKey                a pointer to the key; cannot be NULL.
  * @param keyLengthBytes      the length of the key; must be 16, 24
@@ -123,6 +135,10 @@ int32_t uPortCryptoAes128CbcEncrypt(const char *pKey,
                                     char *pOutput);
 
 /** Perform AES 128 CBC decryption of a block of data.
+ *
+ * Note: support for this API was required by a now removed
+ * feature of the cellular API (C2C encryption), hence there is
+ * currently no requirement to implement it.
  *
  * @param pKey                a pointer to the key; cannot be NULL.
  * @param keyLengthBytes      the length of the key; must be 16, 24

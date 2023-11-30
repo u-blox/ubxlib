@@ -63,7 +63,6 @@ OBJ_DIR = $(OUTPUT_DIRECTORY)/obj
 PLATFORM_PATH = $(realpath ../../..)
 STM32_HAL_PATH = $(STM32CUBE_FW_PATH)/Drivers/STM32F4xx_HAL_Driver
 FREERTOS_PATH = $(STM32CUBE_FW_PATH)/Middlewares/Third_Party/FreeRTOS
-MBEDTLS_PATH = $(STM32CUBE_FW_PATH)/Middlewares/Third_Party/mbedTLS
 
 # Compiler flags
 DEFINES += \
@@ -71,7 +70,6 @@ DEFINES += \
 	-DUSE_FULL_LL_DRIVER \
 	-DSTM32F437xx \
 	-DDEBUG \
-	-DMBEDTLS_USER_CONFIG_FILE=\"user_mbedtls_config.h\" \
 	-DCMSIS_device_header=\"${CMSIS_DEVICE_HEADER}\"
 
 override CFLAGS += \
@@ -139,18 +137,6 @@ STM32CUBE_FW_SRC += \
 STM32CUBE_FW_INC += \
 	$(FREERTOS_PATH)/Source/CMSIS_RTOS
 endif
-
-# mbedTLS
-STM32CUBE_FW_SRC += \
-	$(MBEDTLS_PATH)/library/sha256.c \
-	$(MBEDTLS_PATH)/library/md.c \
-	$(MBEDTLS_PATH)/library/md_wrap.c \
-	$(MBEDTLS_PATH)/library/md5.c \
-	$(MBEDTLS_PATH)/library/aes.c \
-	$(MBEDTLS_PATH)/library/platform_util.c
-
-STM32CUBE_FW_INC += \
-	$(MBEDTLS_PATH)/include
 
 # Unity
 UNITY_SRC = \

@@ -33,7 +33,6 @@
 #include "u_port_i2c.h"
 #include "u_port_spi.h"
 #include "u_port_event_queue.h"
-#include "u_port_crypto.h"
 
 // From u_port.h.
 int32_t uPortPlatformStart(void (*pEntryPoint)(void *),
@@ -575,60 +574,6 @@ int32_t uPortSpiControllerSendReceiveBlock(int32_t handle, const char *pSend,
     (void) pReceive;
     (void) bytesToReceive;
 
-    return 0;
-}
-
-// From u_port_crypto.h.
-int32_t uPortCryptoSha256(const char *pInput,
-                          size_t inputLengthBytes,
-                          char *pOutput)
-{
-    (void) pInput;
-    (void) inputLengthBytes;
-    (void) pOutput;
-    return 0;
-}
-int32_t uPortCryptoHmacSha256(const char *pKey,
-                              size_t keyLengthBytes,
-                              const char *pInput,
-                              size_t inputLengthBytes,
-                              char *pOutput)
-{
-    (void) pKey;
-    (void) keyLengthBytes;
-    (void) pInput;
-    (void) inputLengthBytes;
-    (void) pOutput;
-    return 0;
-}
-int32_t uPortCryptoAes128CbcEncrypt(const char *pKey,
-                                    size_t keyLengthBytes,
-                                    char *pInitVector,
-                                    const char *pInput,
-                                    size_t lengthBytes,
-                                    char *pOutput)
-{
-    (void) pKey;
-    (void) keyLengthBytes;
-    (void) pInitVector;
-    (void) pInput;
-    (void) lengthBytes;
-    (void) pOutput;
-    return 0;
-}
-int32_t uPortCryptoAes128CbcDecrypt(const char *pKey,
-                                    size_t keyLengthBytes,
-                                    char *pInitVector,
-                                    const char *pInput,
-                                    size_t lengthBytes,
-                                    char *pOutput)
-{
-    (void) pKey;
-    (void) keyLengthBytes;
-    (void) pInitVector;
-    (void) pInput;
-    (void) lengthBytes;
-    (void) pOutput;
     return 0;
 }
 

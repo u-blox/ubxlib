@@ -17,7 +17,6 @@ PLATFORM_PATH = $(UBXLIB_BASE)/platform/stm32cube/mcu/stm32f4
 UBXLIB_SRC += \
 	$(UBXLIB_BASE)/port/clib/u_port_clib_mktime64.c \
 	$(UBXLIB_BASE)/port/u_port_timezone.c \
-	$(UBXLIB_BASE)/port/platform/common/mbedtls/u_port_crypto.c \
 	$(PLATFORM_PATH)/src/u_port_debug.c \
 	$(PLATFORM_PATH)/src/u_port_gpio.c \
 	$(PLATFORM_PATH)/src/u_port_os.c \

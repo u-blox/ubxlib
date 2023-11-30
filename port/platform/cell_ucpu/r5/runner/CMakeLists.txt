@@ -60,10 +60,6 @@ target_include_directories(ucpulib INTERFACE ${UCPULIB_INCLUDES} )
 
 message("Adding \"ubxlib\"...")
 
-# Tell everyone where mbedtls is
-set(MBEDTLS_SUBDIR "${UBXLIB_BASE}/../mbedtls" CACHE PATH "the path to the mbedtls directory")
-message("CMake variable MBEDTLS_SUBDIR will be \"${MBEDTLS_SUBDIR}\"")
-
 # Tell everyone where the directory Unity is (used in testing)
 set(UNITY_SUBDIR "${UBXLIB_BASE}/../Unity" CACHE PATH "the path to the Unity directory")
 message("CMake variable UNITY_SUBDIR will be \"${UNITY_SUBDIR}\"")
@@ -103,17 +99,8 @@ set(UBXLIB_SRC_PORT
     ${UBXLIB_BASE}/port/platform/${UBXLIB_PLATFORM}/src/u_port_spi.c
     ${UBXLIB_BASE}/port/platform/${UBXLIB_PLATFORM}/src/u_port_clib.c
     ${UBXLIB_BASE}/port/platform/${UBXLIB_PLATFORM}/src/u_port_private.c
-    ${UBXLIB_BASE}/port/platform/common/mbedtls/u_port_crypto.c
     ${UBXLIB_BASE}/port/clib/u_port_clib_mktime64.c
     ${UBXLIB_BASE}/port/clib/u_port_clib_strtok_r.c
-    ${MBEDTLS_SUBDIR}/library/sha256.c
-    ${MBEDTLS_SUBDIR}/library/md.c
-    ${MBEDTLS_SUBDIR}/library/md5.c
-    ${MBEDTLS_SUBDIR}/library/aes.c  
-    ${MBEDTLS_SUBDIR}/library/sha1.c
-    ${MBEDTLS_SUBDIR}/library/platform_util.c
-    ${MBEDTLS_SUBDIR}/library/ripemd160.c
-    ${MBEDTLS_SUBDIR}/library/sha512.c)
 set(UBXLIB_TEST_SRC_PORT
     ${UBXLIB_BASE}/port/platform/common/runner/u_runner.c)
 set(UBXLIB_PRIVATE_TEST_INC_PORT

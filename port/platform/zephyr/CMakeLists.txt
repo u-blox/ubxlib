@@ -64,7 +64,6 @@ target_sources(app PRIVATE
     src/u_port_spi.c
     src/u_port_private.c
     ${UBXLIB_BASE}/port/clib/u_port_clib_mktime64.c
-    ${UBXLIB_BASE}/port/platform/common/mbedtls/u_port_crypto.c
 )
 
 if (CONFIG_UBXLIB_OPEN_CPU_BLE)

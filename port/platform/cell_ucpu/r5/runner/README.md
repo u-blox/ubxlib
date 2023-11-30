@@ -11,7 +11,7 @@ To run examples and test with SARAR5UCPU following tools must be installed and o
 # Usage
 Follow the instructions to build examples and test for SARAR5UCPU platform:
 
-Create a directory `BUILD` to the same directory level as `ubxlib` and you will also need a copy of cell_ucpu_sdk, unity, the unit test framework, and mbedtls (u-blox/mbedtls, fork of mbedtls), for cryptographic functions, get the branch `v2.26.0_modifications`. which can be Git cloned as mentioned below:
+Create a directory `BUILD` to the same directory level as `ubxlib` and you will also need a copy of cell_ucpu_sdk and unity, the unit test framework, get the branch `v2.26.0_modifications`, which can be Git cloned as mentioned below:
 
 Clone cell_ucpu_sdk:
 ```
@@ -23,11 +23,6 @@ Clone Unity:
 git clone https://github.com/ThrowTheSwitch/Unity.git
 ```
 
-Clone mbedtls:
-```
-git clone --single-branch --branch v2.26.0_modifications https://github.com/u-blox/mbedtls.git
-```
-
 Clone it to the same directory level as `ubxlib`, i.e.:
 
 ```
@@ -36,7 +31,6 @@ Clone it to the same directory level as `ubxlib`, i.e.:
 BUILD
 cell_ucpu_sdk
 Unity
-mbedtls
 ubxlib
 ```
 After following the above steps, run the following command to generate build files.

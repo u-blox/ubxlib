@@ -6,17 +6,6 @@ config UBXLIB
 
 if UBXLIB
 
-if !NRF_SECURITY
-config UBXLIB_CRYPTO
-        bool "Crypto libraries required for some parts of ubxlib"
-        default y
-        select MBEDTLS
-        select MBEDTLS_MAC_SHA256_ENABLED
-        select MBEDTLS_CIPHER_AES_ENABLED
-        help
-          Bring in TLS libraries required by some parts of ubxlib
-endif # !NRF_SECURITY
-
 config UBXLIB_CELL
         bool "Cellular support"
         default y

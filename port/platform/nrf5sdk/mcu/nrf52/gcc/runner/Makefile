@@ -96,7 +96,6 @@ SRC_FILES += \
   $(UBXLIB_PATH)/port/clib/u_port_clib_mktime64.c \
   $(UBXLIB_PATH)/port/u_port_timezone.c \
   $(UBXLIB_PATH)/port/platform/common/heap_check/u_heap_check.c \
-  $(UBXLIB_BASE)/port/platform/common/mbedtls/u_port_crypto.c \
   $(NRF5_PORT_PATH)/src/u_port.c \
   $(NRF5_PORT_PATH)/src/u_port_debug.c \
   $(NRF5_PORT_PATH)/src/u_port_gpio.c \
@@ -107,7 +106,6 @@ SRC_FILES += \
   $(NRF5_PORT_PATH)/src/u_port_private.c \
   $(NRF5_PORT_PATH)/src/u_exception_handler.c \
   $(NRF5_PORT_PATH)/src/heap_useNewlib.c \
-  $(NRF5_PORT_PATH)/src/mbedtls_platform_zeroize.c \
   $(NRF5_PORT_PATH)/src/segger_rtt/RTT/SEGGER_RTT.c \
   $(NRF5_PORT_PATH)/src/segger_rtt/RTT/SEGGER_RTT_printf.c \
   $(NRF5_PORT_PATH)/src/segger_rtt/Syscalls/SEGGER_RTT_Syscalls_GCC.c \
@@ -184,7 +182,6 @@ override CFLAGS += -ffunction-sections -fdata-sections -fno-strict-aliasing
 override CFLAGS += -fno-builtin -fshort-enums
 override CFLAGS += -DUNITY_INCLUDE_CONFIG_H
 override CFLAGS += -DDEBUG_NRF
-override CFLAGS += -DMBEDTLS_USER_CONFIG_FILE=\"user_mbedtls_config.h\"
 
 # C++ flags common to all targets
 CXXFLAGS += $(OPT)
