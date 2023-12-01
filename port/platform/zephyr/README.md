@@ -31,17 +31,16 @@ https://docs.zephyrproject.org/latest/boards/posix/native_posix/doc/index.html
 
 To add `ubxlib` to your Zephyr application you can either add it to your west.yml, or make use of [ZEPHYR_EXTRA_MODULES](https://docs.zephyrproject.org/latest/guides/modules.html#integrate-modules-in-zephyr-build-system).
 
-To add it to your west.yml, add the u-blox remote to your remotes section and the ubxlib module to the projects section:
+To add it to your `west.yml`, add the u-blox remote to your `remotes` section and the `ubxlib` module to the `projects` section:
 ```yml
   remotes:
     - name: u-blox
-      url-base: git@github.com:u-blox
+      url-base: https://github.com/u-blox
 
   projects:
     - name: ubxlib
       remote: u-blox
       path: ubxlib
-      revision: v1.2.0
       import: true
       clone-depth: 1
 ```
