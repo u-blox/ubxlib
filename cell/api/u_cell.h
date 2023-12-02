@@ -200,7 +200,7 @@ void uCellDeinit();
  *                         for this atHandle an error will be returned.
  * @param pinEnablePower   the pin that switches on the power
  *                         supply to the cellular module. The
- *                         Sense of the pin should be such that
+ *                         sense of the pin should be such that
  *                         low means off and high means on.
  *                         Set to -1 if there is no such pin.  If there
  *                         is an inverter between the pin of this MCU
@@ -231,7 +231,8 @@ void uCellDeinit();
  *                         is low to disable power to the module and pinPwrOn
  *                         is high so that it can be pulled low to logically
  *                         power the module on.
- * @param[out] pCellHandle a pointer to the output handle. Will only be set on success.
+ * @param[out] pCellHandle a pointer a place to put the handle.  Will only be
+ *                         populated on success.
  * @return                 zero on success or negative error code on failure.
  */
 int32_t uCellAdd(uCellModuleType_t moduleType,
@@ -253,7 +254,8 @@ void uCellRemove(uDeviceHandle_t cellHandle);
  * cellular instance.
  *
  * @param cellHandle      the handle of the cellular instance.
- * @param[out] pAtHandle  a place to put the AT client handle.
+ * @param[out] pAtHandle  a pointer to a place to put the AT client
+ *                        handle.
  * @return                zero on success else negative error code.
  */
 int32_t uCellAtClientHandleGet(uDeviceHandle_t cellHandle,

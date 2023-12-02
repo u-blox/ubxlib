@@ -181,11 +181,11 @@ As described in the previous section Jenkins uses the `automation.<command>` PyI
 ```
   "CONNECTION_INSTANCE_16": {
     "serial_port": "COM3",
-    "debugger": None
+    "debugger": "none"
   }
 ```
 
-By setting `debugger` to `None`, the script will simply pick the one and only connected board. Should there be multiple boards connected to the PC, one must specify the correct serial number for the debugger.
+By setting `debugger` to `"none"`, the script will simply pick the one and only connected board. Should there be multiple boards connected to the PC, one must specify the correct serial number for the debugger.
 
 # Jenkins Test Selection
 As a first step in the Jenkins pipeline there is a script that decides what instances and tests suites to run. This is handled by the `automation.get-test-selection` PyInvoke task. This task returns a JSON struct with a list of instances to run and a test filter. The input to this script is the last commit message and what files have been modified like (for more details on how to use PyInvoke tasks see [PyInvoke Tasks](#pyinvoke-tasks) section):

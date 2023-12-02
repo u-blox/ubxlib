@@ -121,8 +121,8 @@ int32_t uCellFileWrite(uDeviceHandle_t cellHandle,
                        const char *pData,
                        size_t dataSize);
 
-/** Read the contents of a file from the file system. If the file does not exist,
- * error will be return. In order to avoid character loss it is recommended
+/** Read the contents of a file from the file system. If the file does not exist
+ * an error will be return. In order to avoid character loss it is recommended
  * that flow control lines are connected on the interface to the module.
  *
  * @param cellHandle     the handle of the cellular instance.
@@ -140,7 +140,7 @@ int32_t uCellFileRead(uDeviceHandle_t cellHandle,
                       size_t dataSize);
 
 /** Read partial contents of a file from the file system, based on given
- * offset and size.  If the file does not exist, error will be returned.
+ * offset and size.  If the file does not exist an error will be returned.
  * In order to avoid character loss it is recommended that flow control
  * lines are connected on the interface to the module.  Note that this
  * functions does NOT support use of tags, i.e. only files from the
@@ -162,8 +162,8 @@ int32_t uCellFileBlockRead(uDeviceHandle_t cellHandle,
                            size_t offset,
                            size_t dataSize);
 
-/** Read size of file on the file system. If the file does not exists,
- * error will be return.
+/** Read size of file on the file system. If the file does not exists
+ * an error will be return.
  *
  * @param cellHandle     the handle of the cellular instance.
  * @param[in] pFileName  a pointer to the file name to read the size of.
@@ -223,7 +223,7 @@ int32_t uCellFileListFirst(uDeviceHandle_t cellHandle,
  * then call this "number of results" times to read out all of
  * the file names in the link list. Calling this "number of results"
  * times will free the memory that held the list after the final call
- * (can be freed with a call to uCellFileListLast()). This function
+ * (can also be freed with a call to uCellFileListLast()). This function
  * is not thread-safe in that there is a single list for all threads.
  *
  * If a tag has been set using uCellFileSetTag() then only

@@ -31,7 +31,7 @@
  * the ubxlib code to identify special behaviours, ones implied
  * by the currently-set MNO profile.  For instance, the Verizon
  * Wireless (VZW) profile, number 3, requires that the AT+CGDCONT
- * command should not be accepted; a cellulat module set to
+ * command should not be accepted; a cellular module set to
  * MNO profile 3 will return "operation not allowed" if the
  * command is sent.
  */
