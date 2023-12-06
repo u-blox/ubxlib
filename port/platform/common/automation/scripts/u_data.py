@@ -37,7 +37,7 @@ PROMPT = "u_data: "
 CELLULAR_MODULE_STARTS_WITH = ["SARA", "LARA", "LENA"]
 
 # The prefix(es) that identify a short-range module
-SHORT_RANGE_MODULE_STARTS_WITH = ["NINA", "ANNA", "ODIN"]
+SHORT_RANGE_MODULE_STARTS_WITH = ["NINA", "NORA", "ANNA", "ODIN"]
 
 # The file that contains the instance data as a table
 # in Markdown format
