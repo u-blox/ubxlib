@@ -44,23 +44,33 @@ def check_installation(ctx):
         "output_name": f"An output name (build sub folder, default: {DEFAULT_OUTPUT_NAME})",
         "build_dir": f"Output build directory (default: {DEFAULT_BUILD_DIR})",
         "u_flags": "Extra u_flags (when this is specified u_flags.yml will not be used)",
-        "jobs": f"The number of Makefile jobs (default: {DEFAULT_JOB_COUNT})"
+        "jobs": f"The number of Makefile jobs (default: {DEFAULT_JOB_COUNT})",
+        "features": "Feature list, e.g. \"cell short_range\" to leave out gnss; overrides the environment variable UBXLIB_FEATURES and u_flags.yml"
     }
 )
 def build(ctx, makefile_dir=DEFAULT_MAKEFILE_DIR, output_name=DEFAULT_OUTPUT_NAME,
-          build_dir=DEFAULT_BUILD_DIR, u_flags=None, jobs=DEFAULT_JOB_COUNT):
+          build_dir=DEFAULT_BUILD_DIR, u_flags=None, jobs=DEFAULT_JOB_COUNT,
+          features=None):
     """Build a nRF5 SDK based application"""
+    cflags = ""
 
-    # Handle u_flags
+    # Read U_FLAGS and features from nrf5.u_flags, if it is there
+    u_flags_yml = get_cflags_from_u_flags_yml(ctx.config.vscode_dir, "nrf5", output_name)
+    if u_flags_yml:
+        cflags = u_flags_yml["cflags"]
+        if not features and "features" in u_flags_yml:
+            features = u_flags_yml["features"]
+        # If the flags have been modified we trigger a rebuild
+        if u_flags_yml['modified']:
+            clean(ctx, output_name, build_dir)
+
+    # Let any passed-in u_flags override the .yml file
     if u_flags:
         cflags = u_flags_to_cflags(u_flags)
-    else:
-        # Read U_FLAGS from nrf5.u_flags
-        u_flags = get_cflags_from_u_flags_yml(ctx.config.vscode_dir, "nrf5", output_name)
-        # If the flags has been modified we trigger a rebuild
-        if u_flags['modified']:
-            clean(ctx, output_name, build_dir)
-        cflags = u_flags["cflags"]
+
+    # Add any UBXLIB_FEATURES from the features parameter
+    if features:
+        os.environ["UBXLIB_FEATURES"] = features
 
     build_dir = os.path.abspath(os.path.join(build_dir, output_name))
     os.makedirs(build_dir, exist_ok=True)

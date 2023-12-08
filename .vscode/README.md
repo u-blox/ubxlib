@@ -19,7 +19,7 @@ Note: currently building/running/debugging is only supported on the following pl
 
 ## `u_flags.yml`
 When you try to build any of the targets a `u_flags.yml` will be created in the `.vscode` directory. This can be used for setting `U_FLAGS` defines (or any C define for that matter).
-You can set different flags for each boards. Here is an example that will enable EDM stream colored logging for `nrfconnect` target `runner_nrf5340dk_nrf5340_cpuapp`:
+You can set different flags for each boards and you can also override the feature list that is otherwise taken from the `UBXLIB_FEATURES` environment variable. Here is an example that will enable EDM stream colored logging for `nrfconnect` target `runner_nrf5340dk_nrf5340_cpuapp` and include in the build only `cell` and `gnss`:
 
 ```yml
 nrfconnect:
@@ -27,6 +27,9 @@ nrfconnect:
     u_flags:
       - U_CFG_SHORT_RANGE_EDM_STREAM_DEBUG
       - U_CFG_SHORT_RANGE_EDM_STREAM_DEBUG_COLOR
+    features:
+      - cell
+      - gnss
 ```
 
 ## Tasks

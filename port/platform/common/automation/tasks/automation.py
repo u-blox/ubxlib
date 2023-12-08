@@ -69,12 +69,6 @@ def instance_command(ctx, instance_str, cmd):
     description = u_data.get_description_for_instance(db_data, instance)
     ubxlib_features = u_data.get_ubxlib_features_for_instance(db_data, instance)
 
-    # CodeChecker needs some special handling but will only change the
-    # "TEST" command to "STATIC_ANALYZE"
-    if platform.lower().startswith("codechecker:") and cmd == Command.TEST:
-        cmd = Command.STATIC_ANALYZE
-        platform = platform.split(":", 2)[1]
-
     # Defines may be provided via an environment
     # variable, in a list separated with semicolons, e.g.:
     # set U_UBXLIB_DEFINES=THING_1;ANOTHER_THING=123;ONE_MORE=boo
@@ -83,7 +77,17 @@ def instance_command(ctx, instance_str, cmd):
         defines.extend(environ[UBXLIB_DEFINES_VAR].strip().split(";"))
 
     # Add the UBXLIB_FEATURES for this instances, if present, as an
-    # environment veriable, space-separated,
+    # environment veriable, space-separated, allowing it to be
+    # overridden by the passed-in context variable,
+    # Also merge in any filter string for the build
+    if (cmd == Command.BUILD or cmd == Command.TEST):
+        if ctx.features:
+            ubxlib_features = ctx.features.split()
+        # Merge in any filter string we might have
+        if ctx.filter:
+            defines = u_utils.merge_filter(defines, ctx.filter)
+
+    # Turn ubxlib_features into a space-separated string of features
     if ubxlib_features:
         environment_variable = ""
         for feature in ubxlib_features:
@@ -91,10 +95,13 @@ def instance_command(ctx, instance_str, cmd):
                 environment_variable += " "
             environment_variable += feature;
         environ["UBXLIB_FEATURES"] = environment_variable
+        ubxlib_features = environment_variable
 
-    # Merge in any filter string we might have
-    if (cmd == Command.BUILD or cmd == Command.TEST) and ctx.filter:
-        defines = u_utils.merge_filter(defines, ctx.filter)
+    # CodeChecker needs some special handling but will only change the
+    # "TEST" command to "STATIC_ANALYZE"
+    if platform.lower().startswith("codechecker:") and cmd == Command.TEST:
+        cmd = Command.STATIC_ANALYZE
+        platform = platform.split(":", 2)[1]
 
     # For ESP targets: Check if RTS and DTR should be set when opening log UART
     monitor_dtr_rts_on = None
@@ -111,7 +118,7 @@ def instance_command(ctx, instance_str, cmd):
     if platform == "nrf5sdk":
         nrf5.check_installation(ctx)
         if cmd == Command.BUILD:
-            nrf5.build(ctx, output_name="", build_dir=ctx.build_dir, u_flags=defines)
+            nrf5.build(ctx, output_name="", build_dir=ctx.build_dir, u_flags=defines, features=ubxlib_features)
         elif cmd == Command.FLASH:
             nrf5.flash(ctx, output_name="", build_dir=ctx.build_dir, debugger_serial=serial)
         elif cmd == Command.LOG:
@@ -126,7 +133,8 @@ def instance_command(ctx, instance_str, cmd):
         if mcu.lower() != "linux32":
             # Normal embedded target stuff
             if cmd == Command.BUILD:
-                nrfconnect.build(ctx, board_name=board, output_name="", build_dir=ctx.build_dir, u_flags=defines)
+                nrfconnect.build(ctx, board_name=board, output_name="", build_dir=ctx.build_dir, u_flags=defines,
+                                 features=ubxlib_features)
             elif cmd == Command.FLASH:
                 hex_file = None
                 if mcu.lower() == "nrf5340":
@@ -142,7 +150,8 @@ def instance_command(ctx, instance_str, cmd):
             elif cmd == Command.TEST:
                 check_return_code(u_run_log.run(instance, ctx.build_dir, ctx.reporter, ctx.test_report))
             elif cmd == Command.STATIC_ANALYZE:
-                nrfconnect.analyze(ctx, board_name=board, output_name="", build_dir=ctx.build_dir, u_flags=defines)
+                nrfconnect.analyze(ctx, board_name=board, output_name="", build_dir=ctx.build_dir, u_flags=defines,
+                                   features=ubxlib_features)
             else:
                 raise Exit(f"Unsupported command for MCU '{mcu}' on platform: '{platform}'")
         else:
@@ -153,7 +162,8 @@ def instance_command(ctx, instance_str, cmd):
                                                   board_name=board,
                                                   build_dir=f'{DEFAULT_BUILD_LOCATION}/{instance_str}',
                                                   output_name="", defines=defines,
-                                                  connection=connection, connection_lock=None))
+                                                  connection=connection, connection_lock=None,
+                                                  features=ubxlib_features))
             else:
                 raise Exit(f"MCU '{mcu}' on platform: '{platform}' only supports 'test' command")
 
@@ -162,7 +172,7 @@ def instance_command(ctx, instance_str, cmd):
         # Set the target chip using the environment variable IDF_TARGET
         environ["IDF_TARGET"]=mcu.lower()
         if cmd == Command.BUILD:
-            esp_idf.build(ctx, output_name="", build_dir=ctx.build_dir, u_flags=defines)
+            esp_idf.build(ctx, output_name="", build_dir=ctx.build_dir, u_flags=defines, features=ubxlib_features)
         elif cmd == Command.FLASH:
             esp_idf.flash(ctx, serial_port=connection["serial_port"],
                           output_name="", build_dir=ctx.build_dir,
@@ -180,7 +190,7 @@ def instance_command(ctx, instance_str, cmd):
     elif platform == "stm32cube":
         stm32cubef4.check_installation(ctx)
         if cmd == Command.BUILD:
-            stm32cubef4.build(ctx, output_name="", build_dir=ctx.build_dir, u_flags=defines)
+            stm32cubef4.build(ctx, output_name="", build_dir=ctx.build_dir, u_flags=defines, features=ubxlib_features)
         elif cmd == Command.FLASH:
             stm32cubef4.flash(ctx, output_name="", build_dir=ctx.build_dir, debugger_serial=serial)
         elif cmd == Command.LOG:
@@ -189,7 +199,8 @@ def instance_command(ctx, instance_str, cmd):
         elif cmd == Command.TEST:
             check_return_code(u_run_log.run(instance, ctx.build_dir, ctx.reporter, ctx.test_report))
         elif cmd == Command.STATIC_ANALYZE:
-            stm32cubef4.analyze(ctx, output_name="", build_dir=ctx.build_dir, u_flags=defines)
+            stm32cubef4.analyze(ctx, output_name="", build_dir=ctx.build_dir, u_flags=defines,
+                                features=ubxlib_features)
         else:
             raise Exit(f"Unsupported command for platform: '{platform}'")
 
@@ -197,7 +208,8 @@ def instance_command(ctx, instance_str, cmd):
         arduino.check_installation(ctx)
         if cmd == Command.BUILD:
             arduino.build(ctx, libraries_dir=f"{ctx.build_dir}/libraries", board=board,
-                          output_name="", build_dir=ctx.build_dir, u_flags=defines)
+                          output_name="", build_dir=ctx.build_dir, u_flags=defines,
+                          features=ubxlib_features)
         elif cmd == Command.FLASH:
             arduino.flash(ctx, serial_port=connection["serial_port"], board=board,
                           output_name="app", build_dir=ctx.build_dir)
@@ -216,7 +228,7 @@ def instance_command(ctx, instance_str, cmd):
             check_return_code(u_run_windows.run(instance, toolchain, connection,
                                                 None, False, defines,
                                                 ctx.reporter, ctx.test_report,
-                                                None))
+                                                None, ubxlib_features))
         else:
             raise Exit(f"'{platform}' only supports 'test' command")
 
@@ -227,7 +239,8 @@ def instance_command(ctx, instance_str, cmd):
                                               board_name=board,
                                               build_dir=f'{DEFAULT_BUILD_LOCATION}/{instance_str}',
                                               output_name="", defines=defines,
-                                              connection=connection, connection_lock=None))
+                                              connection=connection, connection_lock=None,
+                                              features=ubxlib_features))
         else:
             raise Exit(f"'{platform}' only supports 'test' command")
 
@@ -235,7 +248,8 @@ def instance_command(ctx, instance_str, cmd):
         platformio.check_installation(ctx)
         if cmd == Command.BUILD:
             platformio.build(ctx, platform=None, board=board, framework=toolchain,
-                            output_name="", build_dir=ctx.build_dir, u_flags=defines)
+                            output_name="", build_dir=ctx.build_dir, u_flags=defines,
+                            features=ubxlib_features)
         elif cmd == Command.FLASH:
             platformio.flash(ctx, serial_port=connection["serial_port"],
                              output_name="", build_dir=ctx.build_dir)
@@ -293,7 +307,7 @@ def instance_command(ctx, instance_str, cmd):
                 nrfconnect.check_installation(ctx)
                 return_code = nrfconnect.build(ctx, cmake_dir=f"{u_utils.UBXLIB_DIR}/zephyr/test",
                                                board_name=board, output_name="", build_dir=ctx.build_dir,
-                                               u_flags=defines)
+                                               u_flags=defines, features=ubxlib_features)
             else:
                 raise Exit(f"Unsupported command for mcu: '{mcu}'")
         check_return_code(return_code)
@@ -318,13 +332,21 @@ def install_all(ctx):
         pkg_names.append(pkg_name)
     u_package.load(ctx, pkg_names)
 
-@task()
-def build(ctx, instance, build_dir=None, filter=None):
+@task(
+    help={
+        "instance": f"The test instance to run, e.g. 20",
+        "build_dir": f"Output build directory (default: {DEFAULT_BUILD_LOCATION})",
+        "filter": "Filter that will be applied to determine which tests are run, e.g. cellCfg or cellCfg.gnss",
+        "features": "Feature list, e.g. \"cell short_range\" to leave out gnss; overrides the environment variable UBXLIB_FEATURES and u_flags.yml"
+    }
+)
+def build(ctx, instance, build_dir=None, filter=None, features=None):
     """Build the firmware for an automation instance"""
     if not build_dir:
         build_dir = f'{DEFAULT_BUILD_LOCATION}/{instance}'
     ctx.build_dir = build_dir
     ctx.filter = filter
+    ctx.features = features
     instance_command(ctx, instance, Command.BUILD)
 
 @task()
@@ -343,10 +365,20 @@ def log(ctx, instance, build_dir=None):
     ctx.build_dir = build_dir
     instance_command(ctx, instance, Command.LOG)
 
-@task()
+@task(
+    help={
+        "instance": f"The test instance to run, e.g. 20",
+        "build_dir": f"Output build directory (default: {DEFAULT_BUILD_LOCATION})",
+        "summary_file": "Filename for test summary output (default summary.txt)",
+        "debug_file": "Filename for detailed debug output (default debug.log)",
+        "test_report": "Filename for the XML test report",
+        "filter": "ONLY FOR WINDOWS/LINUX: filter that will be applied to determine which tests are run, e.g. cellCfg or cellCfg.gnss",
+        "features": "ONLY FOR WINDOWS/LINUX: feature list, e.g. \"cell short_range\" to leave out gnss; overrides the environment variable UBXLIB_FEATURES and u_flags.yml"
+    }
+)
 def test(ctx, instance, build_dir=None,
          summary_file="summary.txt", debug_file="debug.log",
-         test_report=None, filter=None):
+         test_report=None, filter=None, features=None):
     """Start the tests for an automation instance"""
     # The testing phase uses the logging facility
     ULog.setup_logging(debug_file=debug_file)
@@ -354,21 +386,33 @@ def test(ctx, instance, build_dir=None,
     if not build_dir:
         build_dir = f'{DEFAULT_BUILD_LOCATION}/{instance}'
     ctx.build_dir = build_dir
+    ctx.filter = filter
+    ctx.features = features
 
     # With a reporter
     with open(summary_file, 'w', encoding='utf8') as summary_handle:
         with u_report.ReportToQueue(None, _instance,
                                     summary_handle) as reporter:
-            ctx.filter = filter
             ctx.reporter = reporter
             ctx.test_report = test_report
             instance_command(ctx, instance, Command.TEST)
 
-@task()
+@task(
+    help={
+        "instance": f"The test instance to run, e.g. 20",
+        "build_dir": f"Output build directory (default: {DEFAULT_BUILD_LOCATION})",
+        "summary_file": "Filename for test summary output (default summary.txt)",
+        "debug_file": "Filename for detailed debug output (default debug.log)",
+        "test_report": "Filename for the XML test report",
+        "filter": "Filter that will be applied to determine which tests are run, e.g. cellCfg or cellCfg.gnss",
+        "features": "Feature list, e.g. \"cell short_range\" to leave out gnss; overrides the environment variable UBXLIB_FEATURES and u_flags.yml"
+    }
+)
 def run(ctx, instance, build_dir=None, summary_file="summary.txt",
-        debug_file="debug.log", test_report=None, filter=None):
+        debug_file="debug.log", test_report=None, filter=None,
+        features=None):
     """This will build, flash and start test in one command"""
-    build(ctx, instance, build_dir=build_dir, filter=filter)
+    build(ctx, instance, build_dir=build_dir, filter=filter, features=features)
     flash(ctx, instance, build_dir=build_dir)
     test(ctx, instance, build_dir=build_dir, filter=filter,
          summary_file=summary_file, debug_file=debug_file,
@@ -415,6 +459,8 @@ def get_test_selection(ctx, message="", files="", run_everything=False):
 
     json_data = json.dumps({
         "filter": filter_string,
+        # This will cause the default features to be included
+        "features": None,
         "instances": instance_entries
     })
 

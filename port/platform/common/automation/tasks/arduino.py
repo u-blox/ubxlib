@@ -86,6 +86,7 @@ def check_installation(ctx):
         "output_name": f"An output name (build sub folder, default: {DEFAULT_OUTPUT_NAME})",
         "build_dir": f"Output build directory (default: {DEFAULT_BUILD_DIR})",
         "u_flags": "Extra u_flags (when this is specified u_flags.yml will not be used)",
+        "features": "Feature list, e.g. \"cell short_range\" to leave out gnss; overrides the environment variable UBXLIB_FEATURES and u_flags.yml"
     }
 )
 def build(ctx, sketch_path=DEFAULT_SKETCH_PATH,
@@ -93,8 +94,29 @@ def build(ctx, sketch_path=DEFAULT_SKETCH_PATH,
           board=DEFAULT_BOARD_NAME,
           toolchain=DEFAULT_TOOLCHAIN,
           output_name=DEFAULT_OUTPUT_NAME,
-          build_dir=DEFAULT_BUILD_DIR, u_flags=None):
+          build_dir=DEFAULT_BUILD_DIR, u_flags=None,
+          features=None):
     """Build an Arduino based application"""
+    cflags = ""
+
+    # Read U_FLAGS and features from arduino.u_flags, if it is there
+    u_flags_yml = get_cflags_from_u_flags_yml(ctx.config.vscode_dir, "arduino", output_name)
+    if u_flags_yml:
+        cflags = u_flags_yml["cflags"]
+        if not features and "features" in u_flags_yml:
+            features = u_flags_yml["features"]
+        # If the flags have been modified we trigger a rebuild
+        if u_flags_yml['modified']:
+            clean(ctx, output_name, build_dir)
+
+    # Let any passed-in u_flags override the .yml file
+    if u_flags:
+        cflags = u_flags_to_cflags(u_flags)
+
+    # Add any UBXLIB_FEATURES from the features parameter
+    if features:
+        os.environ["UBXLIB_FEATURES"] = features
+
     check_board(ctx, board)
     mcu = board.split(":")[0]
     build_dir = os.path.abspath(os.path.join(build_dir, output_name))
@@ -109,17 +131,6 @@ def build(ctx, sketch_path=DEFAULT_SKETCH_PATH,
     for fn in glob(f"{library_dir}/examples/**/*.ino", recursive=True):
         sketch_paths.append(os.path.abspath(fn))
     print(f"{len(sketch_paths)} thing(s) to build.")
-
-    # Handle u_flags
-    if u_flags:
-        cflags = u_flags_to_cflags(u_flags)
-    else:
-        # Read U_FLAGS from arduino.u_flags
-        u_flags = get_cflags_from_u_flags_yml(ctx.config.vscode_dir, "arduino", output_name)
-        # If the flags has been modified we trigger a rebuild
-        if u_flags['modified']:
-            clean(ctx, output_name, build_dir)
-        cflags = u_flags["cflags"]
 
     # Note: we set build partitions to "minimal" for compatibility with the
     # smaller [2 Mbyte] flash size on NINA-W102

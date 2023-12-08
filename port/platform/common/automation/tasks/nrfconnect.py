@@ -85,30 +85,35 @@ def check_installation(ctx):
         "board_name": f"Zephyr board name (default: {DEFAULT_BOARD_NAME})",
         "output_name": f"An output name (build sub folder, default: {DEFAULT_OUTPUT_NAME})",
         "build_dir": f"Output build directory (default: {DEFAULT_BUILD_DIR})",
-        "u_flags": "Extra u_flags (when this is specified u_flags.yml will not be used)"
+        "u_flags": "Extra u_flags (when this is specified u_flags.yml will not be used)",
+        "features": "Feature list, e.g. \"cell short_range\" to leave out gnss; overrides the environment variable UBXLIB_FEATURES and u_flags.yml"
     }
 )
 def build(ctx, cmake_dir=DEFAULT_CMAKE_DIR, board_name=DEFAULT_BOARD_NAME,
           output_name=DEFAULT_OUTPUT_NAME, build_dir=DEFAULT_BUILD_DIR,
-          u_flags=None):
+          u_flags=None, features=None):
     """Build a nRF connect SDK based application"""
     pristine = "auto"
 
-    # Handle u_flags
+    # Read U_FLAGS and features from nrfconnect.u_flags, if it is there
+    u_flags_yml = get_cflags_from_u_flags_yml(ctx.config.vscode_dir, "nrfconnect", output_name)
+    if u_flags_yml:
+        ctx.config.run.env["U_FLAGS"] = u_flags_yml["cflags"]
+        if not features and "features" in u_flags_yml:
+            features = u_flags_yml["features"]
+        # If the flags have been modified we trigger a rebuild
+        if u_flags_yml['modified']:
+            pristine = "always"
+
+    # Let any passed-in u_flags override the .yml file
     if u_flags:
         ctx.config.run.env["U_FLAGS"] = u_flags_to_cflags(u_flags)
-    else:
-        # Read U_FLAGS from nrfconnect.u_flags
-        u_flags = get_cflags_from_u_flags_yml(ctx.config.vscode_dir, "nrfconnect", output_name)
-        ctx.config.run.env["U_FLAGS"] = u_flags["cflags"]
-        # If the flags has been modified, or we're getting the
-        # features from the environment, we trigger a rebuild
-        if u_flags['modified'] or "UBXLIB_FEATURES" in os.environ:
-            pristine = "always"
 
     build_dir = os.path.join(build_dir, output_name)
     west_cmd = f'{ctx.zephyr_pre_command}west build -p {pristine} -b {board_name} {cmake_dir} --build-dir {build_dir}'
-    # Add UBXLIB_FEATURES from the environment
+    # Add UBXLIB_FEATURES from the parameter passed-in or the environment
+    if features:
+        os.environ["UBXLIB_FEATURES"] = features
     if "UBXLIB_FEATURES" in os.environ:
         west_cmd += f' -- -DUBXLIB_FEATURES={os.environ["UBXLIB_FEATURES"].replace(" ", ";")}'
         if u_utils.is_linux():
@@ -214,23 +219,30 @@ def parse_backtrace(ctx, elf_file, line):
         "board_name": f"Zephyr board name (default: {DEFAULT_BOARD_NAME})",
         "output_name": f"An output name (build sub folder, default: {DEFAULT_OUTPUT_NAME})",
         "build_dir": f"Output build directory (default: {DEFAULT_BUILD_DIR})",
-        "u_flags": "Extra u_flags (when this is specified u_flags.yml will not be used)"
+        "u_flags": "Extra u_flags (when this is specified u_flags.yml will not be used)",
+        "features": "Feature list, e.g. \"cell short_range\" to leave out gnss; overrides the environment variable UBXLIB_FEATURES"
     }
 )
 def analyze(ctx, cmake_dir=DEFAULT_CMAKE_DIR, board_name=DEFAULT_BOARD_NAME,
             output_name=DEFAULT_OUTPUT_NAME, build_dir=DEFAULT_BUILD_DIR,
-            u_flags=None):
+            u_flags=None, features=None):
     """Run CodeChecker static code analyzer (clang-analyze + clang-tidy)"""
     build_dir = os.path.abspath(os.path.join(build_dir, output_name))
+    features_string = ""
     os.makedirs(build_dir, exist_ok=True)
 
     if u_flags:
         ctx.config.run.env["U_FLAGS"] = u_flags_to_cflags(u_flags)
 
+    if features:
+        os.environ["UBXLIB_FEATURES"] = features
+    if "UBXLIB_FEATURES" in os.environ:
+        features_string = f'-DUBXLIB_FEATURES={os.environ["UBXLIB_FEATURES"].replace(" ", ";")}'
+
     # Start by getting the compile commands by using the CMAKE_EXPORT_COMPILE_COMMANDS setting
     # This will generate compile_commands.json
     with ctx.prefix(u_pkg_utils.change_dir_prefix(build_dir)):
-        ctx.run(f'{ctx.zephyr_pre_command}cmake -DBOARD={board_name} -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -G Ninja {cmake_dir}')
+        ctx.run(f'{ctx.zephyr_pre_command}cmake -DBOARD={board_name} {features_string} -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -G Ninja {cmake_dir}')
 
     # Now when we got all compile commands we filter out only the relevant (i.e. commands for compiling ubxlib source)
     filter_compile_commands(input_json_file=f"{build_dir}/compile_commands.json",

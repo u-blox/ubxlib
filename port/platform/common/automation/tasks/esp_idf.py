@@ -68,23 +68,28 @@ def check_installation(ctx):
         "cmake_dir": f"CMake project directory to build (default: {DEFAULT_CMAKE_DIR})",
         "output_name": f"An output name (build sub folder, default: {DEFAULT_OUTPUT_NAME}",
         "build_dir": f"Output build directory (default: {DEFAULT_BUILD_DIR})",
-        "u_flags": "Extra u_flags (when this is specified u_flags.yml will not be used)"
+        "u_flags": "Extra u_flags (when this is specified u_flags.yml will not be used)",
+        "features": "Feature list, e.g. \"cell short_range\" to leave out gnss; overrides the environment variable UBXLIB_FEATURES and u_flags.yml"
     }
 )
 def build(ctx, cmake_dir=DEFAULT_CMAKE_DIR, output_name=DEFAULT_OUTPUT_NAME,
-          build_dir=DEFAULT_BUILD_DIR, u_flags=None):
+          build_dir=DEFAULT_BUILD_DIR, u_flags=None, features=None):
     """Build an ESP-IDF SDK based application"""
-    # Handle u_flags
+
+    # Read U_FLAGS and features from esp_idf.u_flags, if it is there
+    u_flags_yml = get_cflags_from_u_flags_yml(ctx.config.vscode_dir, "esp_idf", output_name)
+    if u_flags_yml:
+        ctx.config.run.env["U_FLAGS"] = u_flags_yml["cflags"]
+        if not features and "features" in u_flags_yml:
+            features = u_flags_yml["features"]
+        # If the flags have been modified, or we're getting the
+        # features from the environment, we trigger a rebuild
+        if u_flags_yml['modified']:
+            clean(ctx, output_name, build_dir)
+
+    # Let any passed-in u_flags override the .yml file
     if u_flags:
         ctx.config.run.env["U_FLAGS"] = u_flags_to_cflags(u_flags)
-    else:
-        # Read U_FLAGS from esp_idf.u_flags
-        u_flags = get_cflags_from_u_flags_yml(ctx.config.vscode_dir, "esp_idf", output_name)
-        # If the flags has been modified, or we're getting the
-        # features from the environment, we trigger a rebuild
-        if u_flags['modified'] or "UBXLIB_FEATURES" in os.environ:
-            clean(ctx, output_name, build_dir)
-        ctx.config.run.env["U_FLAGS"] = u_flags["cflags"]
 
     cmake_dir = os.path.abspath(cmake_dir)
     build_dir = os.path.abspath(os.path.join(build_dir, output_name))
@@ -94,7 +99,10 @@ def build(ctx, cmake_dir=DEFAULT_CMAKE_DIR, output_name=DEFAULT_OUTPUT_NAME,
     idf_py_text = f'{ctx.esp_idf_pre_command} idf.py -C {cmake_dir} -B {build_dir} '\
                   f'-DSDKCONFIG:STRING={build_dir}/sdkconfig -DTEST_COMPONENTS=ubxlib_runner '
 
-    # Add any UBXLIB_FEATURES from the environment
+    # Add any UBXLIB_FEATURES from the features parameter or, if
+    # none, from the environment
+    if features:
+        os.environ["UBXLIB_FEATURES"] = features
     if "UBXLIB_FEATURES" in os.environ:
         idf_py_text += f'-DUBXLIB_FEATURES={os.environ["UBXLIB_FEATURES"].replace(" ", ";")} '
         if u_utils.is_linux():

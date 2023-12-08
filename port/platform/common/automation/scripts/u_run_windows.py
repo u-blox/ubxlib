@@ -222,8 +222,7 @@ def callback(match, switch_list, results, reporter):
                            u_report.EVENT_INFORMATION,
                            message)
 
-
-def build(clean, unity_dir, defines, env, reporter):
+def build(clean, unity_dir, defines, env, reporter, features=None):
     '''Build using MSVC'''
     defines_text = ""
     call_list = []
@@ -266,8 +265,9 @@ def build(clean, unity_dir, defines, env, reporter):
         call_list += ["cmake", "-G", CMAKE_GENERATOR]
         call_list += ["-T", "host=x86", "-A", "win32"]
         call_list += ["-B", output_dir]
-        # Add any UBXLIB_FEATURES from the environment, escaping the
-        # semicolons in it
+        # Add any UBXLIB_FEATURES from the passed-in parameter or the environment
+        if features:
+            os.environ['UBXLIB_FEATURES'] = features
         if "UBXLIB_FEATURES" in os.environ:
             call_list += [f"-DUBXLIB_FEATURES={os.environ['UBXLIB_FEATURES'].replace(' ', ';')}"]
         call_list += ["--no-warn-unused-cli"]
@@ -306,7 +306,7 @@ def build(clean, unity_dir, defines, env, reporter):
 
 def run(instance, toolchain, connection, connection_lock,
         clean, defines, reporter, test_report_file_path,
-        unity_dir=None):
+        unity_dir=None, features=None):
     '''Build/run on Windows'''
     return_value = -1
     exe_file = None
@@ -359,7 +359,7 @@ def run(instance, toolchain, connection, connection_lock,
             if unity_dir:
                 # Do the build
                 build_start_time = time()
-                exe_file = build(clean, unity_dir, defines, returned_env, reporter)
+                exe_file = build(clean, unity_dir, defines, returned_env, reporter, features)
                 if exe_file:
                     # Build succeeded, need to lock some things before we can run it
                     reporter.event(u_report.EVENT_TYPE_BUILD,

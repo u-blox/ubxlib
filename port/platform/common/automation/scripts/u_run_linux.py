@@ -295,7 +295,8 @@ def redirect_uart_fixed(uart_to_device_list, reporter):
                                message)
 
 def run(ctx, instance, platform, board_name=DEFAULT_BOARD_NAME, build_dir=DEFAULT_BUILD_DIR,
-        output_name=DEFAULT_OUTPUT_NAME, defines=None, connection=None, connection_lock=None):
+        output_name=DEFAULT_OUTPUT_NAME, defines=None, connection=None, connection_lock=None,
+        features=None):
     '''Build/run on Linux'''
     return_value = -1
     instance_text = u_utils.get_instance_text(instance)
@@ -315,7 +316,8 @@ def run(ctx, instance, platform, board_name=DEFAULT_BOARD_NAME, build_dir=DEFAUL
         if os.path.isfile(exe_path):
             os.remove(exe_path)
         nrfconnect.build(ctx, cmake_dir=DEFAULT_CMAKE_DIR, board_name=board_name,
-                         output_name=output_name, build_dir=build_dir, u_flags=defines)
+                         output_name=output_name, build_dir=build_dir,
+                         u_flags=defines, features=features)
         # Build has succeeded, we should have an executable
         if os.path.isfile(exe_path):
             # Lock the connection in order to run
@@ -379,7 +381,8 @@ def run(ctx, instance, platform, board_name=DEFAULT_BOARD_NAME, build_dir=DEFAUL
         if os.path.isfile(exe_path):
             os.remove(exe_path)
         linux.build(ctx, cmake_dir=f"{u_utils.UBXLIB_DIR}/port/platform/linux/mcu/posix/runner",
-                    output_name="runner", build_dir=build_dir, u_flags=defines)
+                    output_name="runner", build_dir=build_dir, u_flags=defines,
+                    features=features)
         # Build has succeeded, we should have an executable
         if os.path.isfile(exe_path):
             # Lock the connection in order to run

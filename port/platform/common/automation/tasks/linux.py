@@ -34,28 +34,30 @@ def check_installation(ctx):
         "cmake_dir": f"CMake project directory to build (default: {DEFAULT_CMAKE_DIR})",
         "output_name": f"An output name (build sub folder, default: {DEFAULT_OUTPUT_NAME})",
         "build_dir": f"Output build directory (default: {DEFAULT_BUILD_DIR})",
-        "u_flags": "Extra u_flags (when this is specified u_flags.yml will not be used)"
+        "u_flags": "Extra u_flags (when this is specified u_flags.yml will not be used)",
+        "features": "Feature list, e.g. \"cell short_range\" to leave out gnss; overrides the environment variable UBXLIB_FEATURES and u_flags.yml"
     }
 )
 def build(ctx, cmake_dir=DEFAULT_CMAKE_DIR,
           output_name=DEFAULT_OUTPUT_NAME,
           build_dir=DEFAULT_BUILD_DIR,
-          u_flags=None):
+          u_flags=None, features=None):
     """Build a Linux based application"""
     rebuild = False
-    ubxlib_features = None
 
-    # Handle u_flags
+    # Read U_FLAGS and features from Linux u_flags, if it is there
+    u_flags_yml = get_cflags_from_u_flags_yml(ctx.config.vscode_dir, "linux", output_name)
+    if u_flags_yml:
+        ctx.config.run.env["U_FLAGS"] = u_flags_yml["cflags"]
+        if not features and "features" in u_flags_yml:
+            features = u_flags_yml["features"]
+        # If the flags have been modified we trigger a rebuild
+        if u_flags_yml['modified']:
+            rebuild = True
+
+    # Let any passed-in u_flags override the .yml file
     if u_flags:
         ctx.config.run.env["U_FLAGS"] = u_flags_to_cflags(u_flags)
-    else:
-        # Read U_FLAGS from Linux u_flags
-        u_flags = get_cflags_from_u_flags_yml(ctx.config.vscode_dir, "linux", output_name)
-        ctx.config.run.env["U_FLAGS"] = u_flags["cflags"]
-        # If the flags has been modified, or we're getting the
-        # features from the environment, we trigger a rebuild
-        if u_flags['modified'] or "UBXLIB_FEATURES" in os.environ:
-            rebuild = True
 
     build_dir = os.path.join(build_dir, output_name)
 
@@ -66,6 +68,8 @@ def build(ctx, cmake_dir=DEFAULT_CMAKE_DIR,
         cmake_cmd = 'cmake '
         # Add any UBXLIB_FEATURES from the environment, escaping the
         # semicolons in it
+        if features:
+            os.environ["UBXLIB_FEATURES"] = features
         if "UBXLIB_FEATURES" in os.environ:
             cmake_cmd += '-DUBXLIB_FEATURES=' + os.environ["UBXLIB_FEATURES"].replace(" ", "\\;") + ' '
         cmake_cmd += cmake_dir

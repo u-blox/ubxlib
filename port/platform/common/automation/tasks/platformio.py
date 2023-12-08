@@ -196,13 +196,15 @@ def check_installation(ctx):
         "output_name": f"An output name (build sub folder, default: {DEFAULT_OUTPUT_NAME})",
         "build_dir": f"Output build directory (default: {DEFAULT_BUILD_DIR})",
         "u_flags": "build flags, separated with spaces",
+        "features": "Feature list, e.g. \"cell short_range\" to leave out gnss; overrides the environment variable UBXLIB_FEATURES and u_flags.yml"
     }
 )
 def build(ctx, platform=DEFAULT_PLATFORM,
           board=DEFAULT_BOARD_NAME,
           framework=DEFAULT_FRAMEWORK,
           output_name=DEFAULT_OUTPUT_NAME,
-          build_dir=DEFAULT_BUILD_DIR, u_flags=None):
+          build_dir=DEFAULT_BUILD_DIR, u_flags=None,
+          features=None):
     """Build with Platform IO"""
     pkgs = u_package.get_u_packages_config(ctx)
     build_dir = os.path.abspath(os.path.join(build_dir, output_name))
@@ -225,6 +227,10 @@ def build(ctx, platform=DEFAULT_PLATFORM,
     # Turn u_flags into an array of build flags
     if u_flags:
         build_flags = u_flags_to_cflags(u_flags).split()
+
+    # Add any UBXLIB_FEATURES from the features parameter
+    if features:
+        os.environ["UBXLIB_FEATURES"] = features
 
     # If we're on Espressif then unity is already included and we'll
     # get a conflict if we try to include it again
