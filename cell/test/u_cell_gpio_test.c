@@ -152,8 +152,9 @@ U_PORT_TEST_FUNCTION("[cellGpio]", "cellGpioBasic")
 
     // For toggling the CTS pin we need to know that it is not
     // already in use for flow control and this command is also not
-    // supported on SARA-R4
+    // supported on SARA-R4 or LARA-R6
     if (!U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType) &&
+        (pInstance->pModule->moduleType != U_CELL_MODULE_TYPE_LARA_R6) &&
         !uCellInfoIsCtsFlowControlEnabled(cellHandle)) {
         U_TEST_PRINT_LINE("getting CTS...");
         x = uCellGpioGetCts(cellHandle);

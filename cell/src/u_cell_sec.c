@@ -50,6 +50,7 @@
 #include "u_cell_net.h"     // Order is important
 #include "u_cell_private.h" // here don't change it
 #include "u_cell_info.h"    // For the IMEI
+#include "u_cell_pwr_private.h"
 
 #include "u_cell_sec.h"
 
@@ -203,6 +204,8 @@ bool uCellSecIsSupported(uDeviceHandle_t cellHandle)
 {
     bool isSupported = false;
     uCellPrivateInstance_t *pInstance;
+    uAtClientHandle_t atHandle;
+    int32_t x;
 
     if (gUCellPrivateMutex != NULL) {
 
@@ -210,10 +213,26 @@ bool uCellSecIsSupported(uDeviceHandle_t cellHandle)
 
         pInstance = pUCellPrivateGetInstance(cellHandle);
         if (pInstance != NULL) {
-            // No need to contact the module, this is something
-            // we know in advance for a given module type
             isSupported = U_CELL_PRIVATE_HAS(pInstance->pModule,
                                              U_CELL_PRIVATE_FEATURE_ROOT_OF_TRUST);
+            // If the module is powered-on, check that it
+            // _really_ has security services support
+            if (isSupported && (uCellPwrPrivateIsAlive(pInstance, 1) == 0)) {
+                isSupported = false;
+                atHandle = pInstance->atHandle;
+                uAtClientLock(atHandle);
+                // Poll the module for the UID of its root of trust
+                uAtClientCommandStart(atHandle, "AT+USECROTUID");
+                uAtClientCommandStop(atHandle);
+                uAtClientResponseStart(atHandle, "+USECROTUID:");
+                // Don't actually care about the answer, just that
+                // there is one
+                x = uAtClientReadString(atHandle, NULL, 0, false);
+                uAtClientResponseStop(atHandle);
+                if ((uAtClientUnlock(atHandle) == 0) && (x > 0)) {
+                    isSupported = true;
+                }
+            }
         }
 
         U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);

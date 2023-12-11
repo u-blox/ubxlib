@@ -857,51 +857,6 @@ static void UUPSMR_urc(uAtClientHandle_t atHandle, void *pParameter)
  * STATIC FUNCTIONS: POWERING UP/DOWN
  * -------------------------------------------------------------- */
 
-// Check that the cellular module is alive.
-static int32_t moduleIsAlive(uCellPrivateInstance_t *pInstance,
-                             int32_t attempts)
-{
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_RESPONDING;
-    uAtClientDeviceError_t deviceError;
-    uAtClientHandle_t atHandle = pInstance->atHandle;
-    bool isAlive = false;
-
-    // It may be that we have been called when an AT client
-    // has just been instantiated (so it has no knowledge of
-    // previous transmit events against which to measure an
-    // inactivity time-out) and yet the module is already
-    // powered-on but is in UART power saving mode; call the
-    // wake-up call-back here to handle that case
-    if (!pInstance->inWakeUpCallback &&
-        (uCellPrivateWakeUpCallback(atHandle, pInstance) == 0)) {
-        // If it responds at this point then it must be alive,
-        // job done
-        isAlive = true;
-    } else {
-        // See if the cellular module is responding at the AT interface
-        // by poking it with "AT" up to "attempts" times.
-        // The response can be "OK" or it can also be "CMS/CMS ERROR"
-        // if the modem happened to be awake and in the middle
-        // of something from a previous command.
-        for (int32_t x = 0; !isAlive && (x < attempts); x++) {
-            uAtClientLock(atHandle);
-            uAtClientTimeoutSet(atHandle,
-                                pInstance->pModule->responseMaxWaitMs);
-            uAtClientCommandStart(atHandle, "AT");
-            uAtClientCommandStopReadResponse(atHandle);
-            uAtClientDeviceErrorGet(atHandle, &deviceError);
-            isAlive = (uAtClientUnlock(atHandle) == 0) ||
-                      (deviceError.type != U_AT_CLIENT_DEVICE_ERROR_TYPE_NO_ERROR);
-        }
-    }
-
-    if (isAlive) {
-        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-    }
-
-    return errorCode;
-}
-
 // Configure one item in the cellular module.
 static bool moduleConfigureOne(uAtClientHandle_t atHandle,
                                const char *pAtString,
@@ -1309,7 +1264,7 @@ int32_t uCellPwrPrivateOn(uCellPrivateInstance_t *pInstance,
     if (((pInstance->pinVInt >= 0) &&
          (uPortGpioGet(pInstance->pinVInt) == U_CELL_PRIVATE_VINT_PIN_ON_STATE(pInstance->pinStates))) ||
         ((pInstance->pinVInt < 0) &&
-         (moduleIsAlive(pInstance, 1) == 0))) {
+         (uCellPwrPrivateIsAlive(pInstance, 1) == 0))) {
         uPortLog("U_CELL_PWR: powering on, module is already on.\n");
         // Configure the module.  Since it was already
         // powered on we might have been called from
@@ -1370,7 +1325,7 @@ int32_t uCellPwrPrivateOn(uCellPrivateInstance_t *pInstance,
                  (y > 0) && (errorCode != 0) &&
                  ((pKeepGoingCallback == NULL) || pKeepGoingCallback(cellHandle));
                  y--) {
-                errorCode = moduleIsAlive(pInstance, 1);
+                errorCode = uCellPwrPrivateIsAlive(pInstance, 1);
             }
             if (errorCode == 0) {
                 // Configure the module, only putting into radio-off
@@ -1416,6 +1371,51 @@ int32_t uCellPwrPrivateOn(uCellPrivateInstance_t *pInstance,
             pCallback->pCallbackParam = pSleepContext->pWakeUpCallbackParam;
             uAtClientCallback(pInstance->atHandle, deepSleepWakeUpCallback, pCallback);
         }
+    }
+
+    return errorCode;
+}
+
+// Check that the cellular module is alive.
+int32_t uCellPwrPrivateIsAlive(uCellPrivateInstance_t *pInstance,
+                               int32_t attempts)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_RESPONDING;
+    uAtClientDeviceError_t deviceError;
+    uAtClientHandle_t atHandle = pInstance->atHandle;
+    bool isAlive = false;
+
+    // It may be that we have been called when an AT client
+    // has just been instantiated (so it has no knowledge of
+    // previous transmit events against which to measure an
+    // inactivity time-out) and yet the module is already
+    // powered-on but is in UART power saving mode; call the
+    // wake-up call-back here to handle that case
+    if (!pInstance->inWakeUpCallback &&
+        (uCellPrivateWakeUpCallback(atHandle, pInstance) == 0)) {
+        // If it responds at this point then it must be alive,
+        // job done
+        isAlive = true;
+    } else {
+        // See if the cellular module is responding at the AT interface
+        // by poking it with "AT" up to "attempts" times.
+        // The response can be "OK" or it can also be "CMS/CMS ERROR"
+        // if the modem happened to be awake and in the middle
+        // of something from a previous command.
+        for (int32_t x = 0; !isAlive && (x < attempts); x++) {
+            uAtClientLock(atHandle);
+            uAtClientTimeoutSet(atHandle,
+                                pInstance->pModule->responseMaxWaitMs);
+            uAtClientCommandStart(atHandle, "AT");
+            uAtClientCommandStopReadResponse(atHandle);
+            uAtClientDeviceErrorGet(atHandle, &deviceError);
+            isAlive = (uAtClientUnlock(atHandle) == 0) ||
+                      (deviceError.type != U_AT_CLIENT_DEVICE_ERROR_TYPE_NO_ERROR);
+        }
+    }
+
+    if (isAlive) {
+        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
     }
 
     return errorCode;
@@ -1750,7 +1750,7 @@ bool uCellPwrIsAlive(uDeviceHandle_t cellHandle)
 
         pInstance = pUCellPrivateGetInstance(cellHandle);
         if (pInstance != NULL) {
-            isAlive = (moduleIsAlive(pInstance, 1) == 0);
+            isAlive = (uCellPwrPrivateIsAlive(pInstance, 1) == 0);
         }
 
         U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
@@ -1957,8 +1957,8 @@ int32_t uCellPwrReboot(uDeviceHandle_t cellHandle,
                         uAtClientFlush(atHandle);
                     }
                     // Wait for the module to return to life and configure it
-                    errorCode = moduleIsAlive(pInstance,
-                                              U_CELL_PWR_IS_ALIVE_ATTEMPTS_POWER_ON);
+                    errorCode = uCellPwrPrivateIsAlive(pInstance,
+                                                       U_CELL_PWR_IS_ALIVE_ATTEMPTS_POWER_ON);
                     if (errorCode == 0) {
                         // Sleep is no longer available
                         pInstance->deepSleepState = U_CELL_PRIVATE_DEEP_SLEEP_STATE_UNAVAILABLE;
@@ -2098,8 +2098,8 @@ int32_t uCellPwrResetHard(uDeviceHandle_t cellHandle, int32_t pinReset)
                     }
                     // Wait for the module to return to life and configure it
                     pInstance->lastCfunFlipTimeMs = uPortGetTickTimeMs();
-                    errorCode = moduleIsAlive(pInstance,
-                                              U_CELL_PWR_IS_ALIVE_ATTEMPTS_POWER_ON);
+                    errorCode = uCellPwrPrivateIsAlive(pInstance,
+                                                       U_CELL_PWR_IS_ALIVE_ATTEMPTS_POWER_ON);
                     if (errorCode == 0) {
                         pInstance->deepSleepState = U_CELL_PRIVATE_DEEP_SLEEP_STATE_UNKNOWN;
                         // Configure the module

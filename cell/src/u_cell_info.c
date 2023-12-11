@@ -467,17 +467,35 @@ static int32_t getRadioParamsUcged2LaraR6(uAtClientHandle_t atHandle,
             pRadioParameters->cellIdPhysical = uAtClientReadInt(atHandle);
             // Skip <mTmsi>, <mmeGrId> and <mmeCode>
             uAtClientSkipParameters(atHandle, 3);
-            // RSRP is element 11, as a plain-old dBm value
+            // In the LARA-R6 00B FW RSRP (element 11) and RSRQ (element 12)
+            // are plain-old dBm values, while in the LARA-R6 01B FW they are
+            // both 3GPP coded values.  Since RSRP is negative in plain-old
+            // form and positive in 3GPP form we can, thankfully, tell the
+            // difference
             x = uAtClientReadInt(atHandle);
-            // RSRQ is element 12, as a plain-old dB value.
-            y = uAtClientReadInt(atHandle);
-            if (uAtClientErrorGet(atHandle) == 0) {
-                // Note that these last two are usually negative
-                // integers, hence we check for errors here so as
-                // not to mix up what might be a negative error
-                // code with a negative return value.
-                pRadioParameters->rsrpDbm = x;
-                pRadioParameters->rsrqDb = y;
+            if (x >= 0) {
+                // RSRP is coded as specified in TS 36.133
+                pRadioParameters->rsrpDbm = uCellPrivateRsrpToDbm(x);
+                // RSRQ is coded as specified in TS 36.133.
+                x = uAtClientReadInt(atHandle);
+                if (uAtClientErrorGet(atHandle) == 0) {
+                    // Note that this can be a negative integer, hence
+                    // we check for errors here so as not to mix up
+                    // what might be a negative error code with a
+                    // negative return value.
+                    pRadioParameters->rsrqDb = uCellPrivateRsrqToDb(x);
+                }
+            } else {
+                // RSRP and RSRQ are plain-old dB values.
+                y = uAtClientReadInt(atHandle);
+                if (uAtClientErrorGet(atHandle) == 0) {
+                    // Note that these last two are usually negative
+                    // integers, hence we check for errors here so as
+                    // not to mix up what might be a negative error
+                    // code with a negative return value.
+                    pRadioParameters->rsrpDbm = x;
+                    pRadioParameters->rsrqDb = y;
+                }
             }
             // SINR is element 13, directly in tenths of a dB, a
             // decimal number with a mantissa, 255 if unknown.

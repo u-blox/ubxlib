@@ -40,6 +40,7 @@ extern "C" {
 /** Power the cellular module on or wakeit from deep sleep.  If this
  * function returns success then the cellular module is ready to
  * receive configuration commands and register with the cellular network.
+ *
  * Note: gUCellPrivateMutex should be locked before this is called.
  *
  * @param pInstance          a pointer to the instance.
@@ -76,6 +77,18 @@ extern "C" {
 int32_t uCellPwrPrivateOn(uCellPrivateInstance_t *pInstance,
                           bool (*pKeepGoingCallback) (uDeviceHandle_t),
                           bool allowPrinting);
+
+/** Determine if the cellular module is alive.
+ *
+ * Note: gUCellPrivateMutex should be locked before this is called.
+ *
+ * @param pInstance     a pointer to the instance.
+ * @param attempts      the number of times to try poking it.
+ * @return              zero if the module is alive, else negative
+ *                      error code.
+ */
+int32_t uCellPwrPrivateIsAlive(uCellPrivateInstance_t *pInstance,
+                               int32_t attempts);
 
 /** Decode a string representing the binary value of a 3GPP power
  * saving active time (T3324) as a GPRS Timer 2 IE into seconds.
