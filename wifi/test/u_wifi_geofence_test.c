@@ -194,6 +194,13 @@ static void callback(uDeviceHandle_t wifiHandle,
 {
     int32_t *pErrorCode = (int32_t *) pCallbackParam;
 
+    (void) latitudeX1e9;
+    (void) longitudeX1e9;
+    (void) altitudeMillimetres;
+    (void) radiusMillimetres;
+    (void) altitudeUncertaintyMillimetres;
+    (void) distanceMillimetres;
+
     if (pErrorCode != NULL) {
         (*pErrorCode)++;
         if (wifiHandle != gHandles.devHandle) {

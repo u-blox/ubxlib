@@ -276,7 +276,7 @@ uint16_t uSpartnCrc16(const char *pData, size_t size)
     // Divide each byte of the message by the corresponding polynomial
     for (size_t x = 0; x < size; x++) {
         u16TableRemainder = pU8Msg[x] ^ (u16Remainder >> (u8NumBitsInCrc - 8));
-        u16Remainder = u16Crc16Table[u16TableRemainder] ^ (u16Remainder << 8);
+        u16Remainder = u16Crc16Table[u16TableRemainder] ^ (uint16_t) (u16Remainder << 8);
     }
 
     return u16Remainder;

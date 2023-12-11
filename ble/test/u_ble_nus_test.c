@@ -255,6 +255,7 @@ U_PORT_TEST_FUNCTION("[bleNus]", "bleNusClient")
 U_PORT_TEST_FUNCTION("[bleNus]", "bleNusServer")
 {
     int32_t x;
+    int32_t y;
     preamble(U_BLE_CFG_ROLE_PERIPHERAL);
     U_TEST_PRINT_LINE("init NUS Service");
     x = uBleNusInit(gDeviceHandle, NULL, peerIncoming);
@@ -265,11 +266,15 @@ U_PORT_TEST_FUNCTION("[bleNus]", "bleNusServer")
         uint8_t advData[32];
         uint8_t respData[32];
         gAdvCfg.pRespData = respData;
-        gAdvCfg.respDataLength = uBleNusSetAdvData(respData, sizeof(respData));
+        y = uBleNusSetAdvData(respData, sizeof(respData));
+        U_PORT_TEST_ASSERT(y >= 0);
+        gAdvCfg.respDataLength = (uint8_t)y;
         gAdvCfg.pAdvData = advData;
-        gAdvCfg.advDataLength = uBleGapSetAdvData(INT_SERVER_NAME,
-                                                  manufData, sizeof(manufData),
-                                                  advData, sizeof(advData));
+        y = uBleGapSetAdvData(INT_SERVER_NAME,
+                              manufData, sizeof(manufData),
+                              advData, sizeof(advData));
+        U_PORT_TEST_ASSERT(y >= 0);
+        gAdvCfg.advDataLength = (uint8_t)y;
         U_PORT_TEST_ASSERT(gAdvCfg.respDataLength > 0 && gAdvCfg.advDataLength > 0);
         U_TEST_PRINT_LINE("start advertising");
         U_PORT_TEST_ASSERT(uBleGapAdvertiseStart(gDeviceHandle, &gAdvCfg) == 0);

@@ -77,11 +77,17 @@ static void notifyUrc(uAtClientHandle_t atHandle,
                       void *pParameter)
 {
     uBleGattNotificationCallback_t cb = (uBleGattNotificationCallback_t)pParameter;
-    uint8_t connHandle = uAtClientReadInt(atHandle);
-    uint16_t valueHandle = uAtClientReadInt(atHandle);
+    int32_t x = uAtClientReadInt(atHandle);
+    bool ok = (x >= 0);
+    uint8_t connHandle = (uint8_t) x;
+    x = uAtClientReadInt(atHandle);
+    ok = ok && (x >= 0);
+    uint16_t valueHandle = (uint16_t) x;
     uint8_t value[25];
-    uint16_t valueSize = uAtClientReadHexData(atHandle, value, sizeof(value));
-    if (valueSize > 0) {
+    x = uAtClientReadHexData(atHandle, value, sizeof(value));
+    ok = ok && (x >= 0);
+    uint16_t valueSize = (uint16_t) x;
+    if (ok && valueSize > 0) {
         cb(connHandle, valueHandle, value, (uint8_t)valueSize);
     }
 }
@@ -90,11 +96,17 @@ static void writeUrc(uAtClientHandle_t atHandle,
                      void *pParameter)
 {
     uBleGattWriteCallback_t cb = (uBleGattWriteCallback_t)pParameter;
-    uint8_t connHandle = uAtClientReadInt(atHandle);
-    uint16_t valueHandle = uAtClientReadInt(atHandle);
+    int32_t x = uAtClientReadInt(atHandle);
+    bool ok = (x >= 0);
+    uint8_t connHandle = (uint8_t) x;
+    x = uAtClientReadInt(atHandle);
+    ok = ok && (x >= 0);
+    uint16_t valueHandle = (uint16_t) x;
     uint8_t value[25];
-    uint16_t valueSize = uAtClientReadHexData(atHandle, value, sizeof(value));
-    if (valueSize > 0) {
+    x = uAtClientReadHexData(atHandle, value, sizeof(value));
+    ok = ok && (x >= 0);
+    uint16_t valueSize = (uint16_t) x;
+    if (ok && valueSize > 0) {
         cb(connHandle, valueHandle, value, (uint8_t)valueSize);
     }
 }
@@ -143,8 +155,10 @@ int32_t uBleGattDiscoverServices(uDeviceHandle_t devHandle,
             errorCode = (int32_t)U_ERROR_COMMON_SUCCESS;
             int32_t respConnHandle = uAtClientReadInt(atHandle);
             if (respConnHandle == connHandle) {
-                uint16_t startHandle = uAtClientReadInt(atHandle);
-                uint16_t endHandle = uAtClientReadInt(atHandle);
+                // Don't care about errors in the first two reads as we
+                // test for errors afterwards
+                uint16_t startHandle = (uint16_t) uAtClientReadInt(atHandle);
+                uint16_t endHandle = (uint16_t) uAtClientReadInt(atHandle);
                 ok = uAtClientErrorGet(atHandle) == 0;
                 char uuid[33];
                 ok = ok && uAtClientReadString(atHandle,
@@ -152,7 +166,7 @@ int32_t uBleGattDiscoverServices(uDeviceHandle_t devHandle,
                                                sizeof(uuid),
                                                false) >= 0;
                 if (ok && cb) {
-                    cb(connHandle, startHandle, endHandle, uuid);
+                    cb((uint8_t) connHandle, startHandle, endHandle, uuid);
                 }
             }
             if (!ok) {
@@ -187,10 +201,12 @@ int32_t uBleGattDiscoverChar(uDeviceHandle_t devHandle,
             errorCode = (int32_t)U_ERROR_COMMON_SUCCESS;
             int32_t respConnHandle = uAtClientReadInt(atHandle);
             if (respConnHandle == connHandle) {
-                uint16_t attrHandle = uAtClientReadInt(atHandle);
+                // Don't care about errors in the first two reads as we
+                // test for errors afterwards
+                uint16_t attrHandle = (uint16_t) uAtClientReadInt(atHandle);
                 uint8_t prop;
                 ok = uAtClientReadHexData(atHandle, &prop, 1) > 0;
-                uint16_t valueHandle = uAtClientReadInt(atHandle);
+                uint16_t valueHandle = (uint16_t) uAtClientReadInt(atHandle);
                 ok = ok && uAtClientErrorGet(atHandle) == 0;
                 char uuid[33];
                 ok = ok && uAtClientReadString(atHandle,
@@ -198,7 +214,7 @@ int32_t uBleGattDiscoverChar(uDeviceHandle_t devHandle,
                                                sizeof(uuid),
                                                false) >= 0;
                 if (ok && cb) {
-                    cb(connHandle, attrHandle, prop, valueHandle, uuid);
+                    cb((uint8_t) connHandle, attrHandle, prop, valueHandle, uuid);
                 }
             }
             if (!ok) {
@@ -400,7 +416,12 @@ int32_t uBleGattAddCharacteristic(uDeviceHandle_t devHandle,
                 uAtClientCommandStop(atHandle);
                 errorCode = uAtClientResponseStart(atHandle, "+UBTGCHA:");
                 if (errorCode == (int32_t)U_ERROR_COMMON_SUCCESS) {
-                    *pValueHandle = uAtClientReadInt(atHandle);
+                    errorCode = (int32_t)U_ERROR_COMMON_DEVICE_ERROR;
+                    int32_t x = uAtClientReadInt(atHandle);
+                    if (x >= 0) {
+                        *pValueHandle = (uint16_t) x;;
+                        errorCode = (int32_t)U_ERROR_COMMON_SUCCESS;
+                    }
                     uAtClientReadInt(atHandle);
                 }
                 uAtClientResponseStop(atHandle);

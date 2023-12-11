@@ -363,7 +363,6 @@ static size_t makeNmeaMessage(char *pBuffer, const char *pTalkerSentenceStr,
     *pBuffer = '\r';
     pBuffer++;
     *pBuffer = '\n';
-    pBuffer++;
 
     return size;
 }
@@ -465,7 +464,7 @@ static bool checkDecodeUbx(uRingBuffer_t *pRingBuffer, int32_t readHandle,
     int32_t errorCodeOrSize;
 
     msgId.type = U_GNSS_PROTOCOL_UBX;
-    msgId.id.ubx = (((uint16_t) messageClass) << 8) + messageId;
+    msgId.id.ubx = (uint16_t) ((((uint16_t) messageClass) << 8) + messageId);
 
     // Add pBuffer to the ring buffer and attempt to decode the message
     U_PORT_TEST_ASSERT(uRingBufferAdd(pRingBuffer, pBuffer, bufferSize));

@@ -375,10 +375,10 @@ static int32_t setSpiConfig(int32_t spi, uPortSpiCfg_t *pSpiCfg,
                 if (!pinSelectInverted) {
                     gpioFlags |= GPIO_ACTIVE_LOW;
                 }
-                if (gpio_pin_configure(pGpioPort, pinSelect, gpioFlags) == 0) {
+                if (gpio_pin_configure(pGpioPort, (gpio_pin_t) pinSelect, gpioFlags) == 0) {
                     pSpiCfg->spiCsControl.gpio.port = pGpioPort;
-                    pSpiCfg->spiCsControl.gpio.pin = pinSelect;
-                    pSpiCfg->spiCsControl.gpio.dt_flags = gpioFlags;
+                    pSpiCfg->spiCsControl.gpio.pin = (gpio_pin_t) pinSelect;
+                    pSpiCfg->spiCsControl.gpio.dt_flags = (gpio_dt_flags_t) gpioFlags;
 #if ((KERNEL_VERSION_MAJOR < 3) || (KERNEL_VERSION_MAJOR == 3 && KERNEL_VERSION_MINOR < 4))
                     pSpiCfg->spiConfig.cs = &pSpiCfg->spiCsControl;
 #else

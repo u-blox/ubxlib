@@ -245,7 +245,7 @@ int32_t uCellMuxPrivateEncode(uint8_t address, uCellMuxPrivateFrameType_t type,
         pOutput++;
         // Write the 6-bit address and C/R bit, ensuring
         // that the extension bit is set
-        *pOutput = address << 2;
+        *pOutput = (uint8_t) (address << 2);
         if (isCommandEncode(type)) {
             *pOutput |= U_CELL_MUX_PRIVATE_COMMAND_RESPONSE_BIT_MASK;
         }

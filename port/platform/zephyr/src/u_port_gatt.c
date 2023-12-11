@@ -590,7 +590,7 @@ static uint8_t onDiscovery(struct bt_conn *conn,
                            const struct bt_gatt_attr *attr,
                            struct bt_gatt_discover_params *params)
 {
-    uint8_t returnValue = BT_GATT_ITER_STOP;
+    uPortGattIter_t returnValue = BT_GATT_ITER_STOP;
     int32_t connHandle = findConnHandle(conn);
 
     if (connHandle != U_PORT_GATT_GAP_INVALID_CONNHANDLE) {
@@ -644,7 +644,7 @@ static uint8_t onDiscovery(struct bt_conn *conn,
         }
     }
 
-    return returnValue;
+    return (uint8_t) returnValue;
 }
 
 static int32_t startDiscovery(int32_t connHandle, const uPortGattUuid_t *pUuid,
@@ -907,20 +907,20 @@ static struct bt_conn *connectGapAsCentral(const bt_addr_le_t *pPeer, int32_t *p
     if (pGapParams == NULL) {
         createParam.interval = uPortGattGapParamsDefault.scanInterval;
         createParam.window = uPortGattGapParamsDefault.scanWindow;
-        createParam.timeout = uPortGattGapParamsDefault.createConnectionTmo / 10;
+        createParam.timeout = (uint16_t) (uPortGattGapParamsDefault.createConnectionTmo / 10);
         connParam.interval_min = uPortGattGapParamsDefault.connIntervalMin;
         connParam.interval_max = uPortGattGapParamsDefault.connIntervalMax;
         connParam.latency = uPortGattGapParamsDefault.connLatency;
-        connParam.timeout = uPortGattGapParamsDefault.linkLossTimeout;
+        connParam.timeout = (uint16_t) uPortGattGapParamsDefault.linkLossTimeout;
     } else {
         createParam.interval = pGapParams->scanInterval;
         createParam.window = pGapParams->scanWindow;
-        createParam.timeout = pGapParams->createConnectionTmo / 10;
+        createParam.timeout = (uint16_t) (pGapParams->createConnectionTmo / 10);
 
         connParam.interval_min = pGapParams->connIntervalMin;
         connParam.interval_max = pGapParams->connIntervalMax;
         connParam.latency = pGapParams->connLatency;
-        connParam.timeout = pGapParams->linkLossTimeout;
+        connParam.timeout = (uint16_t) pGapParams->linkLossTimeout;
     }
 
     *pErrorCode = bt_conn_le_create(pPeer, &createParam, &connParam, &pConn);

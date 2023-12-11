@@ -733,7 +733,7 @@ static int32_t remoteWritesCreditCcc(int32_t gapConnHandle, const void *pBuf, ui
 static bool parseSpsCccWriteData(spsWriteEvt_t *evt, uint16_t *data)
 {
     if ((evt->length == 2) && (evt->offset == 0)) {
-        *data = evt->data[0] | (evt->data[1] << 8);
+        *data = evt->data[0] | (uint16_t) (evt->data[1] << 8);
         return true;
     }
     return false;

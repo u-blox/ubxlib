@@ -593,7 +593,7 @@ int32_t uPortUartWrite(int32_t handle, const void *pBuffer,
 
     if (gMutex != NULL) {
         errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
-        if ((pBuffer != NULL) && (sizeBytes > 0) && (handle >= 0) &&
+        if ((pBuffer != NULL) && (sizeBytes > 0) && (sizeBytes < UINT16_MAX) && (handle >= 0) &&
             (handle < sizeof(gUartData) / sizeof(gUartData[0])) &&
             (gUartData[handle].pDevice != NULL)) {
 
@@ -613,7 +613,7 @@ int32_t uPortUartWrite(int32_t handle, const void *pBuffer,
             struct uartData_t data;
             data.handle = handle;
             data.pData = (void *)pBuffer;
-            data.len = sizeBytes;
+            data.len = (uint16_t) sizeBytes;
 
             k_fifo_put(&gUartData[handle].fifoTxData, &data);
             uart_irq_tx_enable(gUartData[handle].pDevice);

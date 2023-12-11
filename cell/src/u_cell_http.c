@@ -566,7 +566,7 @@ int32_t uCellHttpOpen(uDeviceHandle_t cellHandle, const char *pServerName,
                                     // and then remove it from the string
                                     y = uSockDomainGetPort(pServerNameTmp);
                                     if (y >= 0) {
-                                        address.port = y;
+                                        address.port = (uint16_t) y;
                                     }
                                     pTmp = pUSockDomainRemovePort(pServerNameTmp);
                                     // Set the domain name address

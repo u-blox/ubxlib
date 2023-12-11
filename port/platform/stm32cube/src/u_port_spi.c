@@ -471,7 +471,8 @@ static bool configIsDifferent(int32_t spi,
            (deviceCurrent.mode != pDevice->mode) ||
            (deviceCurrent.wordSizeBytes != pDevice->wordSizeBytes) ||
            (deviceCurrent.lsbFirst != pDevice->lsbFirst) ||
-           fillWordIsDifferent(deviceCurrent.fillWord, pDevice->fillWord,
+           fillWordIsDifferent((uint16_t) deviceCurrent.fillWord,
+                               (uint16_t) pDevice->fillWord,
                                pDevice->wordSizeBytes);
 }
 

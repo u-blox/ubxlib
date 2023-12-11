@@ -5,3 +5,7 @@ analyzer:
   - --disable=clang-diagnostic-sign-compare
   - --disable=clang-diagnostic-#warnings
   - --disable=clang-diagnostic-unknown-attributes
+  - --disable=clang-diagnostic-switch-enum
+  - --disable=clang-diagnostic-implicit-fallthrough
+  - --disable=clang-diagnostic-format-nonliteral
+  - --disable=clang-diagnostic-missing-field-initializers

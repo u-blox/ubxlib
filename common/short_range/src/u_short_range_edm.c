@@ -152,8 +152,8 @@ static uShortRangeEdmEvent_t *parseConnectBtEvent(uint8_t channel, char *pBuffer
         pEvtData->channel = channel;
         pEvtData->connection.profile = profile;
         memcpy(pEvtData->connection.address, &pBuffer[2], U_SHORT_RANGE_BT_ADDRESS_LENGTH);
-        pEvtData->connection.framesize = ((uint16_t)(uint8_t)pBuffer[8] << 8) |
-                                         (uint16_t)(uint8_t)pBuffer[9];
+        pEvtData->connection.framesize = (uint16_t)((uint8_t)pBuffer[8] << 8) |
+                                         (uint8_t)pBuffer[9];
     }
 
     return pEvent;
@@ -175,12 +175,12 @@ static uShortRangeEdmEvent_t *parseConnectIpv4Event(uint8_t channel, char *pBuff
         pEvtData->connection.protocol = protocol;
         memcpy(pEvtData->connection.remoteAddress, &pBuffer[2],
                U_SHORT_RANGE_IPv4_ADDRESS_LENGTH);
-        pEvtData->connection.remotePort = ((uint16_t)(uint8_t)pBuffer[6] << 8) |
-                                          (uint16_t)(uint8_t)pBuffer[7];
+        pEvtData->connection.remotePort = (uint16_t)((uint8_t)pBuffer[6] << 8) |
+                                          (uint8_t)pBuffer[7];
         memcpy(pEvtData->connection.localAddress, &pBuffer[8],
                U_SHORT_RANGE_IPv4_ADDRESS_LENGTH);
-        pEvtData->connection.localPort = ((uint16_t)(uint8_t)pBuffer[12] << 8) |
-                                         (uint16_t)(uint8_t)pBuffer[13];
+        pEvtData->connection.localPort = (uint16_t)((uint8_t)pBuffer[12] << 8) |
+                                         (uint8_t)pBuffer[13];
     }
 
     return pEvent;
@@ -202,12 +202,12 @@ static uShortRangeEdmEvent_t *parseConnectIpv6Event(uint8_t channel, char *pBuff
         pEvtData->connection.protocol = protocol;
         memcpy(pEvtData->connection.remoteAddress, &pBuffer[2],
                U_SHORT_RANGE_IPv6_ADDRESS_LENGTH);
-        pEvtData->connection.remotePort = ((uint16_t)(uint8_t)pBuffer[18] << 8) |
-                                          (uint16_t)(uint8_t)pBuffer[19];
+        pEvtData->connection.remotePort = (uint16_t)((uint8_t)pBuffer[18] << 8) |
+                                          (uint8_t)pBuffer[19];
         memcpy(pEvtData->connection.localAddress, &pBuffer[20],
                U_SHORT_RANGE_IPv6_ADDRESS_LENGTH);
-        pEvtData->connection.localPort = ((uint16_t)(uint8_t)pBuffer[36] << 8) |
-                                         (uint16_t)(uint8_t)pBuffer[37];
+        pEvtData->connection.localPort = (uint16_t)((uint8_t)pBuffer[36] << 8) |
+                                         (uint8_t)pBuffer[37];
     }
 
     return pEvent;
@@ -361,7 +361,7 @@ bool uShortRangeEdmParse(char c, uShortRangeEdmEvent_t **ppResultEvent, bool *pM
 
         case EDM_PARSER_STATE_PARSE_PAYLOAD_LENGTH:
             if (headerIndex == 0) {
-                payloadLength = (uint16_t)(uint8_t)c << 8;
+                payloadLength = (uint16_t)((uint8_t)c << 8);
                 headerIndex++;
             } else {
                 payloadLength |= (uint16_t)(uint8_t)c;
@@ -381,7 +381,7 @@ bool uShortRangeEdmParse(char c, uShortRangeEdmEvent_t **ppResultEvent, bool *pM
 
             if (headerIndex == 2) {
 
-                idAndType = ((uint16_t)(uint8_t)header[0] << 8) | (uint16_t)(uint8_t)header[1];
+                idAndType = (uint16_t)((uint8_t)header[0] << 8) | (uint8_t)header[1];
 
                 if ((idAndType == U_SHORT_RANGE_EDM_TYPE_AT_RESPONSE) ||
                     (idAndType == U_SHORT_RANGE_EDM_TYPE_AT_EVENT)    ||

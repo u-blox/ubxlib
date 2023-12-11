@@ -144,7 +144,7 @@
 
 /** Make a UBX message type from a message class and message ID.
  */
-#define U_GNSS_UBX_MESSAGE(class, id) ((((uint16_t) (class)) << 8) | ((uint8_t) (id)))
+#define U_GNSS_UBX_MESSAGE(class, id) ((uint16_t) ((((uint16_t) (class)) << 8) | ((uint8_t) (id))))
 
 /* ----------------------------------------------------------------
  * TYPES

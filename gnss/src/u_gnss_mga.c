@@ -562,7 +562,7 @@ int32_t uGnssMgaOnlineRequestEncode(const uGnssMgaOnlineRequest_t *pRequest,
         errorCodeOrLength = (int32_t) U_ERROR_COMMON_NO_MEMORY;
         serverConfig.strServerToken = pRequest->pTokenStr;
         // This field is a direct mapping
-        serverConfig.dataTypeFlags = pRequest->dataTypeBitMap;
+        serverConfig.dataTypeFlags = (MGA_DATA_TYPE_FLAGS) pRequest->dataTypeBitMap;
         serverConfig.gnssTypeFlags = setGnssTypeFlags(pRequest->systemBitMap);
         serverConfig.useFlags |= MGA_FLAGS_USE_LATENCY | MGA_FLAGS_USE_TIMEACC;
         pMgaPosFilter = pRequest->pMgaPosFilter;
@@ -685,12 +685,13 @@ int32_t uGnssMgaIniTimeSend(uDeviceHandle_t gnssHandle,
                         }
                     }
                     message[3] = 0x80; // Leap seconds unknown
-                    *((uint16_t *) (message + 4)) = uUbxProtocolUint16Encode(structTm.tm_year + 1900); // Year
-                    message[6] = structTm.tm_mon + 1; // Month starting at 1
-                    message[7] = structTm.tm_mday; // Day starting at 1
-                    message[8] = structTm.tm_hour; // Hour
-                    message[9] = structTm.tm_min;  // Minute
-                    message[10] = structTm.tm_sec; // Seconds
+                    *((uint16_t *) (message + 4)) = uUbxProtocolUint16Encode((uint16_t) (structTm.tm_year +
+                                                                                         1900)); // Year
+                    message[6] = (char) (structTm.tm_mon + 1); // Month starting at 1
+                    message[7] = (char) structTm.tm_mday; // Day starting at 1
+                    message[8] = (char) structTm.tm_hour; // Hour
+                    message[9] = (char) structTm.tm_min;  // Minute
+                    message[10] = (char) structTm.tm_sec; // Seconds
                     // Nanoseconds
                     *((uint32_t *) (message + 12)) = uUbxProtocolUint32Encode((int32_t) (timeUtcNanoseconds %
                                                                                          1000000000LL));

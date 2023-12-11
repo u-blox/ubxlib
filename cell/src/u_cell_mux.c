@@ -204,7 +204,7 @@ static void eventHandler(void *pParam, size_t paramLength)
     // main context since only the main context can be guaranteed to be still
     // around when this event eventually occurs
     if (pContext != NULL) {
-        pDeviceSerial = pUCellMuxPrivateGetDeviceSerial(pContext, pEventTrampoline->channel);
+        pDeviceSerial = pUCellMuxPrivateGetDeviceSerial(pContext, (uint8_t) pEventTrampoline->channel);
         if (pDeviceSerial != NULL) {
             pChannelContext = (uCellMuxPrivateChannelContext_t *) pUInterfaceContext(pDeviceSerial);
             if ((pChannelContext != NULL) && !pChannelContext->markedForDeletion) {
@@ -447,7 +447,7 @@ static int32_t sendFlowControl(uCellMuxPrivateContext_t *pContext,
     // in controlChannelInformation()
     buffer[0] = 0xe3; // MSC command
     buffer[1] = 0x05; // 2 bytes in the information field, EA bit set
-    buffer[2] = (channel << 2) | 0x03; // the channel
+    buffer[2] = (char) ((channel << 2) | 0x03); // the channel
     buffer[3] = 0x8d;  // RTR (AKA CTS), RTC (AKA DTR), DV (data valid) and EA bits set
     if (stopNotGo) {
         buffer[3] |= 0x02;   // Flow control is set to "please Mr Modem, do not send to us"
@@ -1008,7 +1008,7 @@ static void initSerialInterface(struct uDeviceSerial_t *pDeviceSerial)
 // Get the channel to use for GNSS
 static uint8_t getChannelGnss(const uCellPrivateInstance_t *pInstance)
 {
-    uint8_t channel = pInstance->pModule->defaultMuxChannelGnss;
+    uint8_t channel = (uint8_t) pInstance->pModule->defaultMuxChannelGnss;
 
     if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R5) {
         // For the SARA-R5 case the CMUX channel for GNSS is different
@@ -1775,13 +1775,13 @@ int32_t uCellMuxAddChannel(uDeviceHandle_t cellHandle,
                         channel = pContext->channelGnss;
                     }
                     if (channel >= 0) {
-                        errorCode = openChannel(pContext, channel,
+                        errorCode = openChannel(pContext, (uint8_t) channel,
                                                 U_CELL_MUX_PRIVATE_VIRTUAL_SERIAL_BUFFER_LENGTH_BYTES);
                         if (errorCode == 0) {
 #ifdef U_CELL_MUX_ENABLE_DEBUG
                             uPortLog("U_CELL_CMUX_%d: channel added.\n", channel);
 #endif
-                            *ppDeviceSerial = pUCellMuxPrivateGetDeviceSerial(pContext, channel);
+                            *ppDeviceSerial = pUCellMuxPrivateGetDeviceSerial(pContext, (uint8_t) channel);
                         }
                     }
                 }

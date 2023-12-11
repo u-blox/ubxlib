@@ -216,7 +216,7 @@ int32_t uBleNusSetAdvData(uint8_t *pAdvData, uint8_t advDataSize)
     // Reverse order
     for (int32_t i = 0; i < size / 2; i++) {
         uint8_t temp = pAdvData[i];
-        uint8_t pos = size - i - 1;
+        uint8_t pos = (uint8_t) (size - i - 1);
         pAdvData[i] = pAdvData[pos];
         pAdvData[pos] = temp;
     }

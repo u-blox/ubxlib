@@ -445,10 +445,11 @@ static int32_t receiveUbxMessageStream(uGnssPrivateInstance_t *pInstance,
         privateMessageId.type = U_GNSS_PROTOCOL_UBX;
         privateMessageId.id.ubx = (U_GNSS_UBX_MESSAGE_CLASS_ALL << 8) | U_GNSS_UBX_MESSAGE_ID_ALL;
         if (pResponse->cls >= 0) {
-            privateMessageId.id.ubx = (privateMessageId.id.ubx & 0x00ff) | (((uint16_t) pResponse->cls) << 8);
+            privateMessageId.id.ubx = (privateMessageId.id.ubx & 0x00ff) | (uint16_t) (((
+                                                                                            uint16_t) pResponse->cls) << 8);
         }
         if (pResponse->id >= 0) {
-            privateMessageId.id.ubx = (privateMessageId.id.ubx & 0xff00) | pResponse->id;
+            privateMessageId.id.ubx = (privateMessageId.id.ubx & 0xff00) | (uint16_t) pResponse->id;
         }
         // Now wait for the message, allowing a buffer to be allocated by
         // the message receive function
@@ -762,7 +763,7 @@ static int32_t parseUbx(uParseHandle_t parseHandle, void *pUserParam)
     uRingBufferGetByteUnprotected(parseHandle, &id); // id
     cka += id;
     ckb += cka;
-    pMsgId->id.ubx = (cls << 8) + id;
+    pMsgId->id.ubx = (uint16_t) ((((uint16_t) cls) << 8) + id);
     uRingBufferGetByteUnprotected(parseHandle, &by); // len low
     cka += by;
     ckb += cka;
@@ -936,7 +937,7 @@ static int32_t parseRtcm(uParseHandle_t parseHandle, void *pUserParam)
     if ((0xFC & by) != 0) {
         return U_ERROR_COMMON_NOT_FOUND;
     }
-    uint16_t l = (by & 0x3) << 8;
+    uint16_t l = (uint16_t) ((by & 0x3) << 8);
     crc = RTCM_CRC(crc, by);
     if (!uRingBufferGetByteUnprotected(parseHandle, &by)) {
         return U_ERROR_COMMON_TIMEOUT;
@@ -960,7 +961,7 @@ static int32_t parseRtcm(uParseHandle_t parseHandle, void *pUserParam)
     }
     l--;
     crc = RTCM_CRC(crc, idHi);
-    pMsgId->id.rtcm = (idHi >> 4) + (idLo << 4);
+    pMsgId->id.rtcm = (idHi >> 4) + (uint16_t) (idLo << 4);
     while (l--) {
         uRingBufferGetByteUnprotected(parseHandle, &by);
         crc = RTCM_CRC(crc, by);
@@ -1590,7 +1591,7 @@ int32_t uGnssPrivateSetMsgRate(uGnssPrivateInstance_t *pInstance,
                 // and the rate in the right slot
                 message[0] = pPrivateMessageId->id.ubx >> 8;
                 message[1] = pPrivateMessageId->id.ubx & 0xFF;
-                message[2 + pInstance->portNumber] = rate;
+                message[2 + pInstance->portNumber] = (char) rate;
                 // Send UBX-CFG-MSG
                 errorCode = uGnssPrivateSendUbxMessage(pInstance, 0x06, 0x01,
                                                        message, sizeof(message));
@@ -1954,11 +1955,11 @@ int32_t uGnssPrivateStreamGetReceiveSize(uGnssPrivateInstance_t *pInstance)
                 // should get us the [big-endian] length
                 buffer[0] = 0xFD;
                 errorCodeOrReceiveSize = uPortI2cControllerSend(pInstance->transportHandle.i2c,
-                                                                i2cAddress,
+                                                                (uint16_t) i2cAddress,
                                                                 buffer, 1, true);
                 if (errorCodeOrReceiveSize == 0) {
                     errorCodeOrReceiveSize = uPortI2cControllerSendReceive(pInstance->transportHandle.i2c,
-                                                                           i2cAddress,
+                                                                           (uint16_t) i2cAddress,
                                                                            NULL, 0, buffer, sizeof(buffer));
                     if (errorCodeOrReceiveSize == sizeof(buffer)) {
                         errorCodeOrReceiveSize = (int32_t) ((((uint32_t) buffer[0]) << 8) + (uint32_t) buffer[1]);
@@ -2053,7 +2054,7 @@ int32_t uGnssPrivateStreamDecodeRingBuffer(uRingBuffer_t *pRingBuffer,
                     (msg.id.ubx == 0x0500/*ACK-NACK*/) && (errorCodeOrLength == 10)) {
                     uint8_t msg[10];
                     if (10 == uRingBufferReadHandle(pRingBuffer, readHandle, (char *)msg, 10)) {
-                        uint16_t ubxId = (msg[6]/*CLS*/ << 8) | msg[7]/*ID*/;
+                        uint16_t ubxId = (uint16_t) ((((uint16_t) msg[6]) /*CLS*/ << 8) | msg[7] /*ID*/);
                         if (ubxIdMatch(ubxId, pPrivateMessageId->id.ubx)) {
 #ifdef U_GNSS_PRIVATE_DEBUG_PARSING
                             uPortLog("** ...but noting a UBX ACK-NACK for %04x => U_GNSS_ERROR_NACK\n", ubxId);

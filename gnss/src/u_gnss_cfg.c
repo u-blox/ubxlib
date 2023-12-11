@@ -521,8 +521,8 @@ int32_t uGnssCfgPrivateValSetList(uGnssPrivateInstance_t *pInstance,
             if (pMessage != NULL) {
                 // Assemble the message
                 *pMessage       = 0x01; // Version
-                *(pMessage + 1) = layers;
-                *(pMessage + 2) = transaction;
+                *(pMessage + 1) = (char) layers;
+                *(pMessage + 2) = (char) transaction;
                 *(pMessage + 3) = 0; // Reserved
                 // Add the values
                 packMessage(pList, numValues, pMessage + 4, messageSize - 4);
@@ -564,8 +564,8 @@ int32_t uGnssCfgPrivateValDelList(uGnssPrivateInstance_t *pInstance,
             if (pMessage != NULL) {
                 // Assemble the message
                 *pMessage       = 0x01; // Version
-                *(pMessage + 1) = layers;
-                *(pMessage + 2) = transaction;
+                *(pMessage + 1) = (char) layers;
+                *(pMessage + 2) = (char) transaction;
                 *(pMessage + 3) = 0; // Reserved
                 // Add the key IDs
                 pUintBuffer = (uint32_t *) (pMessage + 4);

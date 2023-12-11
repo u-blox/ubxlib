@@ -544,7 +544,7 @@ int32_t uGnssSetI2cAddress(uDeviceHandle_t gnssHandle, int32_t i2cAddress)
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         pInstance = pUGnssPrivateGetInstance(gnssHandle);
         if ((pInstance != NULL) && (i2cAddress > 0)) {
-            pInstance->i2cAddress = i2cAddress;
+            pInstance->i2cAddress = (uint16_t) i2cAddress;
             errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
         }
 

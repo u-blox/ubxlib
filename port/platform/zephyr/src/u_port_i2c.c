@@ -411,7 +411,7 @@ int32_t uPortI2cControllerSendReceive(int32_t handle, uint16_t address,
                 }
                 x++;
             }
-            if (i2c_transfer(pDevice, message, x, address) == 0) {
+            if (i2c_transfer(pDevice, message, (uint8_t) x, address) == 0) {
                 errorCodeOrLength = (int32_t) bytesToReceive;
             }
         }

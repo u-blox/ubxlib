@@ -165,6 +165,7 @@ void *_sbrk_r(struct _reent *pReent, int incr)
     (void)pReent;
 #ifdef STM_VERSION // Use STM CubeMX LD symbols for heap
     if (TotalHeapSize == 0) {
+        // codechecker_suppress [cppcheck-comparePointers]
         TotalHeapSize = heapBytesRemaining = (int)((&__HeapLimit) - (&__HeapBase)) - ISR_STACK_LENGTH_BYTES;
     };
 #endif

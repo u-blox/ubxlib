@@ -818,7 +818,7 @@ static bool latitudeOfIntersection(const uGeofenceCoordinates_t *pA,
                                                       longitude,
                                                       &intersectLatitude);
         }
-        success = (intersectLatitude == intersectLatitude); // nan test
+        success = success && (intersectLatitude == intersectLatitude); // nan test
     } else {
         success = true;
         // Cut latitude (y) = start latitude (yA) + difference in longitude (xADelta) * slope (yAB/xAB)
@@ -827,6 +827,7 @@ static bool latitudeOfIntersection(const uGeofenceCoordinates_t *pA,
         // during the calculation
         double aLatitude = pA->latitude;
         double aLongitude = pA->longitude;
+        // codechecker_suppress [readability-suspicious-call-argument]
         double longitudeDelta = longitudeSubtract(longitude, aLongitude);
         double slope = (pB->latitude - aLatitude) / longitudeSubtract(pB->longitude, aLongitude);
         intersectLatitude = aLatitude + (longitudeDelta * slope);
@@ -1585,6 +1586,7 @@ bool testPosition(const uGeofence_t *pFence,
             // in which case we need WGS84 calculations all-round
             wgs84Required = (radiusMillimetres > U_GEOFENCE_WGS84_THRESHOLD_METRES * 1000) ||
                             atAPole(coordinates.latitude,
+                                    // codechecker_suppress [bugprone-integer-division]
                                     (double) (radiusMillimetres / 1000) + 1); // +1 to round up;
             // Need this for the non-WGS84 world
             metresPerDegreeLongitude = longitudeMetresPerDegree(coordinates.latitude);

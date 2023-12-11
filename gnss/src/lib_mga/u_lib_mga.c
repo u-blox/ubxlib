@@ -2090,7 +2090,8 @@ static MGA_API_RESULT handleFlashAckMsg(const UBX_U1* pPayload)
     UBX_U1 type = pPayload[0];
     UBX_U1 typeVersion = pPayload[1];
     UBX_U1 ackType = pPayload[2];
-    UBX_U2 sequence = pPayload[4] + (pPayload[5] << 8);
+    // MODIFIED: make CppCheck happy with cast
+    UBX_U2 sequence = (UBX_U2) (pPayload[4] + (pPayload[5] << 8));
 
     (void)typeVersion; // unreferenced
 
@@ -2953,7 +2954,8 @@ static MgaMsgInfo* buildMsgList(const UBX_U1* pMgaData, unsigned int uNumEntries
     unsigned int i = 0;
     while (i < uNumEntries)
     {
-        UBX_U2 payloadSize = pMgaData[4] + (pMgaData[5] << 8);
+        // MODIFIED: make CppCheck happy with cast
+        UBX_U2 payloadSize = (UBX_U2) (pMgaData[4] + (pMgaData[5] << 8));
         UBX_U2 msgSize = payloadSize + UBX_MSG_FRAME_SIZE;
         bool bProcessMsg = false;
 

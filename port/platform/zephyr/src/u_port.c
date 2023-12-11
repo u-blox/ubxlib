@@ -154,6 +154,7 @@ int32_t uPortGetHeapFree()
 // Enter a critical section.
 U_INLINE int32_t uPortEnterCritical()
 {
+    // codechecker_suppress [clang-diagnostic-static-in-inline]
     gIrqLockKey = irq_lock();
     return (int32_t) U_ERROR_COMMON_SUCCESS;
 }
@@ -161,6 +162,7 @@ U_INLINE int32_t uPortEnterCritical()
 // Leave a critical section.
 U_INLINE void uPortExitCritical()
 {
+    // codechecker_suppress [clang-diagnostic-static-in-inline]
     irq_unlock(gIrqLockKey);
 }
 

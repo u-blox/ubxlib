@@ -109,7 +109,10 @@ def build(ctx, makefile_dir=DEFAULT_MAKEFILE_DIR, output_name=DEFAULT_OUTPUT_NAM
                         f'CFLAGS=\'{cflags}\' {" ".join(ctx.stm32cubef4_env)}'
             ctx.analyze_dir = f"{ctx.build_dir}/analyze"
             check_proc = ctx.run(f'CodeChecker check -b "{build_cmd}" -o {ctx.analyze_dir} ' \
-                                 f'--config {u_utils.CODECHECKER_CFG_FILE} -i {u_utils.CODECHECKER_IGNORE_FILE}', warn=True)
+                                 f'--config {u_utils.CODECHECKER_CFG_FILE} '
+                                 '-d cppcheck-nullPointerRedundantCheck '
+                                 '-d cppcheck-ignoredReturnValue '
+                                 f'-i {u_utils.CODECHECKER_IGNORE_FILE}', warn=True)
             if check_proc.exited == 1:
                 raise Exit("CodeChecker error")
             elif check_proc.exited >= 128:

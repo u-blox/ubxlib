@@ -363,7 +363,8 @@ uGnssDec_t *pUGnssDecAlloc(const char *pBuffer, size_t size)
                     pBufferUint8 += 2;
                     if (size >= 1 /* D3 */ + 2 /* length */ + 2 /* ID */) {
                         // Grab the ID from the next two bytes
-                        pDec->id.id.rtcm = (*(pBufferUint8 + 1) >> 4) + (((uint16_t) *pBufferUint8) << 4); // *NOPAD*
+                        pDec->id.id.rtcm = (*(pBufferUint8 + 1) >> 4) + (uint16_t) (((uint16_t) * pBufferUint8) <<
+                                                                                    4); // *NOPAD*
                         if (size >= 1 /* D3 */ + 2 /* length */ + y /* length includes the message ID */ ) {
                             // Check the length, allowing the CRC bytes to be omitted
                             pDec->errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;

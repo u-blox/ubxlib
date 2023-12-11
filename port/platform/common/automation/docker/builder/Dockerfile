@@ -30,7 +30,7 @@ RUN apt-get update && apt-get install -y \
     update-alternatives --install /usr/bin/clang clang /usr/bin/clang-14 9999 && \
     update-alternatives --install /usr/bin/clang-tidy clang-tidy /usr/bin/clang-tidy-14 9999 && \
     update-alternatives --install /usr/bin/python python /usr/bin/python3 1 && \
-    pip3 install thrift codechecker && \
+    pip3 install codechecker && \
 # Cleanup
     apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 

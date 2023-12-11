@@ -1015,7 +1015,7 @@ int32_t uGnssPosGetRrlp(uDeviceHandle_t gnssHandle, char *pBuffer,
                     *pBufferUint8 = 0xb5;
                     *(pBufferUint8 + 1) = 0x62;
                     *(pBufferUint8 + 2) = 0x02;
-                    *(pBufferUint8 + 3) = messageClass;
+                    *(pBufferUint8 + 3) = (char) messageClass;
                     // Little-endian length of the body
                     *(pBufferUint8 + 4) = (uint8_t) numBytes;
                     *(pBufferUint8 + 5) = (uint8_t) ((uint32_t) numBytes >> 8);

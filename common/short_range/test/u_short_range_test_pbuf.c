@@ -85,7 +85,7 @@ static int32_t generatePayLoad(uShortRangePbuf_t **ppBuf)
 
     if (errorCode > 0) {
         for (int i = 0; i < errorCode; i++) {
-            (*ppBuf)->data[i] = rand() % 128;
+            (*ppBuf)->data[i] = (char) (rand() % 128);
             (*ppBuf)->length++;
         }
     }

@@ -937,8 +937,7 @@ int32_t uAtClientTestCheckParam(uAtClientHandle_t atClientHandle,
                 break;
             case U_AT_CLIENT_TEST_PARAMETER_RESPONSE_STRING_IGNORE_STOP_TAG:
                 ignoreStopTag = true;
-            // Deliberate fall-through
-            //lint -fallthrough
+            //fall-through
             case U_AT_CLIENT_TEST_PARAMETER_STRING:
                 z = U_AT_CLIENT_TEST_RESPONSE_BUFFER_LENGTH;
                 if (pParameter->length > 0) {
@@ -980,12 +979,10 @@ int32_t uAtClientTestCheckParam(uAtClientHandle_t atClientHandle,
                 break;
             case U_AT_CLIENT_TEST_PARAMETER_RESPONSE_BYTES_IGNORE_STOP_TAG:
                 uAtClientIgnoreStopTag(atClientHandle);
-            // Deliberate fall-through
-            //lint -fallthrough
+            //fall-through
             case U_AT_CLIENT_TEST_PARAMETER_RESPONSE_BYTES_STANDALONE:
                 standalone = true;
-            // Deliberate fall-through
-            //lint -fallthrough
+            //fall-through
             case U_AT_CLIENT_TEST_PARAMETER_BYTES:
                 z = pParameter->length;
                 if (z > U_AT_CLIENT_TEST_RESPONSE_BUFFER_LENGTH) {

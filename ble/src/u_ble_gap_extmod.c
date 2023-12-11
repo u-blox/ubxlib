@@ -237,13 +237,15 @@ int32_t uBleGapScan(uDeviceHandle_t devHandle,
                                                result.name,
                                                sizeof(result.name),
                                                false) >= 0;
-                result.dataType = uAtClientReadInt(atHandle);
+                int32_t x = uAtClientReadInt(atHandle);
+                ok = ok && (x >= 0);
+                result.dataType = (uint8_t) x;
                 ok = ok && (result.dataType == 1 || result.dataType == 2);
                 if (ok) {
                     ok = false;
-                    int32_t dataLength = uAtClientReadHexData(atHandle, result.data, sizeof(result.data));
-                    if (dataLength >= 0) {
-                        result.dataLength = dataLength;
+                    x = uAtClientReadHexData(atHandle, result.data, sizeof(result.data));
+                    if (x >= 0) {
+                        result.dataLength = (uint8_t) x;
                         ok = true;
                     }
                 }

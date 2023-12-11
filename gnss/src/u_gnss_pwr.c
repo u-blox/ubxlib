@@ -370,11 +370,11 @@ static int32_t setUbxCfgPm2(uGnssPrivateInstance_t *pInstance,
             }
             if (onTimeSeconds >= 0) {
                 // onTimeSeconds is an int16 at offset 20
-                *((uint32_t *) (message + 20)) = uUbxProtocolUint16Encode(onTimeSeconds);
+                *((uint32_t *) (message + 20)) = uUbxProtocolUint16Encode((uint16_t) onTimeSeconds);
             }
             if (minAcqTimeSeconds >= 0) {
                 // minAcqTimeSeconds is an int16 at offset 22
-                *((uint32_t *) (message + 22)) = uUbxProtocolUint16Encode(minAcqTimeSeconds);
+                *((uint32_t *) (message + 22)) = uUbxProtocolUint16Encode((uint16_t) minAcqTimeSeconds);
             }
             if (extInactivityMs >= 0) {
                 // extInactivityMs is an int32 at offset 44
