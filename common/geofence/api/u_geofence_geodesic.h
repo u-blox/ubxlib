@@ -218,7 +218,7 @@ int32_t uGeofenceWgs84LatitudeOfIntersection(double aLatitudeDegrees,
 /** Given two points on the surface of the earth, work out the shortest
  * distance from the shortest line between the two points to a third
  * point, in WGS84 coordinates.  The solution must take into account the
- * fact that the line is a segment, i.e. this not the distance to a
+ * fact that the line is a segment, i.e. this is not the distance to a
  * great circle, the line has finite length.
  *
  * If the function is unable to calculate the distance it

@@ -138,13 +138,14 @@ extern "C" {
  * @param gnssHandle             the handle of the GNSS instance.
  * @param[out] pMessageId        a pointer to the message ID that was
  *                               detected.
- * @param errorCodeOrLength      the size of the message or, if
+ * @param errorCodeOrLength      the size of the message, including
+ *                               headers and checksums etc. or, if
  *                               pMessageId specifies a particular
  *                               UBX-format message (i.e. no wild-cards)
  *                               and a NACK was received for that
- *                               message, then #U_GNSS_ERROR_NACK
- *                               will be returned (and there will
- *                               be no message to read).
+ *                               message, then #U_GNSS_ERROR_NACK will
+ *                               be returned (and there will be no
+ *                               message to read).
  * @param[in,out] pCallbackParam the callback parameter that was originally
  *                               given to uGnssMsgReceiveStart().
  */
@@ -281,11 +282,12 @@ int32_t uGnssMsgSend(uDeviceHandle_t gnssHandle,
  *                               uGnssMsgReceiveStart()
  *                               mechanism instead.  Cannot be NULL.
  * @param[in,out] ppBuffer       a pointer to a pointer to a buffer
- *                               in which the message will be placed,
- *                               cannot be NULL.  If ppBuffer points
- *                               to NULL (i.e *ppBuffer is NULL) then
- *                               this function will allocate a buffer
- *                               of the correct size and populate
+ *                               in which the whole message, including
+ *                               headers and checksums etc., will be
+ *                               placed, cannot be NULL.  If ppBuffer
+ *                               points to NULL (i.e *ppBuffer is NULL)
+ *                               then this function will allocate a
+ *                               buffer of the correct size and populate
  *                               *ppBuffer with the allocated buffer
  *                               pointer; in this case IT IS UP TO
  *                               THE CALLER TO uPortFree(*ppBuffer) WHEN
@@ -371,11 +373,12 @@ int32_t uGnssMsgReceiveStart(uDeviceHandle_t gnssHandle,
 
 /** To be called from the pCallback of uGnssMsgReceiveStart() to take
  * a peek at the message data from the internal ring buffer, copying it
- * into your buffer but NOT REMOVING IT from the internal ring buffer,
- * so that it is still there to be passed to any other of your pCallbacks.
- * This is the function you would normally use; if you have a long message
- * of specific interest to a single reader you may wish to use
- * uGnssMsgReceiveCallbackExtract() instead to get it out of the way.
+ * (including any headers and checksums) into your buffer but NOT REMOVING
+ * IT from the internal ring buffer, so that it is still there to be passed
+ * to any other of your pCallbacks. This is the function you would normally
+ * use; if you have a long message of specific interest to a single reader
+ * you may wish to use uGnssMsgReceiveCallbackExtract() instead to get it
+ * out of the way.
  *
  * IMPORTANT: this function can ONLY be called from the message receive
  * pCallback, it is NOT thread-safe to call it from anywhere else.
@@ -392,10 +395,11 @@ int32_t uGnssMsgReceiveCallbackRead(uDeviceHandle_t gnssHandle,
                                     char *pBuffer, size_t size);
 
 /** To be called from the pCallback of uGnssMsgReceiveStart()
- * to REMOVE a message from the internal ring buffer into your buffer;
- * once this is called the message will not be available to any of your
- * other pCallbacks.  Use this if the message you wish to read is very
- * large and you want to get it out of the way; normally you would use
+ * to REMOVE a whole message (including any headers and checksums) from
+ * the internal ring buffer into your buffer; once this is called the
+ * message will not be available to any of your other pCallbacks.  Use
+ * this if the message you wish to read is very large and you want to
+ * get it out of the way; normally you would use
  * uGnssMsgReceiveCallbackRead().
  *
  * IMPORTANT: this function can ONLY be called from the message
