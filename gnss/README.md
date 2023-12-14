@@ -25,7 +25,7 @@ The [api](api) directory contains the files that define the GNSS APIs, each API 
 
 A simple usage example is given below.  Note that, before calling `app_start()` the platform must be initialised (clocks started, heap available, RTOS running), in other words `app_task()` can be thought of as a task entry point.  If you open the `u_main.c` file in the `app` directory of your platform you will see how we do this, with `main()` calling a porting API `uPortPlatformStart()` to sort that all out; you could paste the example code into `app_start()` there (and add the inclusion of `ubxlib.h`) as a quick and dirty test (`runner` will build it).
 
-```
+```c
 #include "ubxlib.h"
 #include "u_cfg_app_platform_specific.h"
 
