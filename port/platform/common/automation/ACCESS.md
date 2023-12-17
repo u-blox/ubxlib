@@ -311,6 +311,16 @@ openssl ca -gencrl -keyfile /etc/ssl/private/ubxlib_test_system.key -cert /etc/s
 docker restart nginx
 ```
 
+- The default OpenSSL configuration file will not allow you to generate a new certificate for one which already exists in the index.  If a client certificate is about to expire and you want to generate a new one to send to the user _before_ the one they have expires, you will need to edit ` /etc/ssl/CA/index.txt.attr` (create it if it doesn't exist) to have the line `unique_subject = no` in it.
+
+- If a client certificate has expired, run the following command:
+
+```
+ sudo openssl ca -updatedb -config /etc/pki/tls/openssl.cnf
+```
+
+This will update `/etc/ssl/CA/index.txt` so that the certificate is marked as expired (with an `E` in the first column).  If you wish, you may then you generate a new certificate from the same `.csr` file using exactly the same command-line as you used to create it in the first place.
+
 #### Installation
 These steps are carried out by the user on the device where they generated their private key.
 
