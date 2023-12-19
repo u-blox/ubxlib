@@ -9,5 +9,5 @@ require (
 
 require (
 	github.com/pion/logging v0.2.2 // indirect
-	golang.org/x/crypto v0.8.0 // indirect
+	golang.org/x/crypto v0.17.0 // indirect
 )
