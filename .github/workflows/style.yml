@@ -24,7 +24,7 @@ jobs:
           cd as-gcc-exe
           cmake ../
           make
-          make install
+          sudo make install
       - name: check
         run: |
           python3 astyle.py && UBX_WORKDIR="$(pwd)" doxygen
