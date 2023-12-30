@@ -25,6 +25,7 @@ jobs:
           cmake ../
           make
           sudo make install
+          cd ../..
           rm -rf astyle-3.4.10
       - name: check
         run: |
