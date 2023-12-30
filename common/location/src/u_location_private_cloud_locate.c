@@ -233,7 +233,7 @@ static char *pFindItem(char *pStr, const char *pKey)
 
 // Parse location out of a message of the form:
 //
-// "{"Lat":52.018749899999996,"Lon":0.2471071,"Alt":120.21600000000001,"Acc":29.877,"MeasTime":"2021-11-09T18:24:11","Epochs":1}"
+// "{"Location":{"Lat":52.2227591,"Lon":-0.0748417,"Unc68":2.18},"DateTime":"2023-12-19T15:52:13","LocationSource":"GNSS"}"
 //
 // Note that pStr is MODIFIED in this process.
 static int32_t parseLocation(char *pStr, uLocation_t *pLocation)
@@ -245,7 +245,7 @@ static int32_t parseLocation(char *pStr, uLocation_t *pLocation)
 
     pStr = pFindItem(pStr, "\"Lat\"");
     if (pStr != NULL) {
-        // pStr should now point at 52.018749899999996
+        // pStr should now point at 52.2227591
         if (stringToInt32(pStr, &x, 7, 7, &pStr) == 0) {
             pLocation->latitudeX1e7 = x;
         } else {
@@ -254,34 +254,25 @@ static int32_t parseLocation(char *pStr, uLocation_t *pLocation)
     }
     pStr = pFindItem(pStr, "\"Lon\"");
     if (pStr != NULL) {
-        // pStr should now point at 0.2471071
+        // pStr should now point at -0.0748417
         if (stringToInt32(pStr, &x, 7, 7, &pStr) == 0) {
             pLocation->longitudeX1e7 = x;
         } else {
             pStr = NULL;
         }
     }
-    pStr = pFindItem(pStr, "\"Alt\"");
+    pStr = pFindItem(pStr, "\"Unc68\"");
     if (pStr != NULL) {
-        // pStr should now point at 120.21600000000001
-        if (stringToInt32(pStr, &x, 3, 3, &pStr) == 0) {
-            pLocation->altitudeMillimetres = x;
-        } else {
-            pStr = NULL;
-        }
-    }
-    pStr = pFindItem(pStr, "\"Acc\"");
-    if (pStr != NULL) {
-        // pStr should now point at 29.877
+        // pStr should now point at 2.18
         if (stringToInt32(pStr, &x, 3, 3, &pStr) == 0) {
             pLocation->radiusMillimetres = x;
         } else {
             pStr = NULL;
         }
     }
-    pStr = pFindItem(pStr, "\"MeasTime\"");
+    pStr = pFindItem(pStr, "\"DateTime\"");
     if (pStr != NULL) {
-        // pStr should now point at \"2021-11-09T18:24:11\",
+        // pStr should now point at \"2023-12-19T15:52:13\",
         // i.e. including the quotes
         // Tokenise on "-"
         pStr = strtok_r(pStr, "-", &pSaved);
