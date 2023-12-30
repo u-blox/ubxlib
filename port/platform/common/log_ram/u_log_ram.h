@@ -64,7 +64,6 @@ typedef struct {
     int32_t parameter;
 } uLogRamEntry_t;
 
-
 /** Type used to store logging context data.
  */
 typedef struct {

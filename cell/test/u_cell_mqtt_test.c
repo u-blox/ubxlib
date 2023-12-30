@@ -362,7 +362,6 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqtt")
             U_PORT_TEST_ASSERT(!y);
         }
 
-
         // Can't set/get a "will" message as the test broker we use
         // doesn't connect if you set one
 #ifdef U_CELL_MQTT_TEST_ENABLE_WILL_TEST

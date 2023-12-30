@@ -103,7 +103,7 @@ static void eventQueueTask(void *pParam)
 {
     uEventQueue_t *pEventQueue = (uEventQueue_t *) pParam;
     char param[U_PORT_EVENT_QUEUE_CONTROL_OR_SIZE_LENGTH_BYTES +
-                                                               U_PORT_EVENT_QUEUE_MAX_PARAM_LENGTH_BYTES];
+               U_PORT_EVENT_QUEUE_MAX_PARAM_LENGTH_BYTES];
     uEventQueueControlOrSize_t *pControlOrSize = (uEventQueueControlOrSize_t *)
                                                  & (param[0]);
 
@@ -458,7 +458,7 @@ int32_t uPortEventQueueSendIrq(int32_t handle, const void *pParam,
     uErrorCode_t errorCode = U_ERROR_COMMON_NOT_INITIALISED;
     uEventQueue_t *pEventQueue;
     char block[paramLengthBytes +
-                                U_PORT_EVENT_QUEUE_CONTROL_OR_SIZE_LENGTH_BYTES];
+               U_PORT_EVENT_QUEUE_CONTROL_OR_SIZE_LENGTH_BYTES];
 
     if (gMutex != NULL) {
         // Can't lock the mutex, we're in an interrupt.

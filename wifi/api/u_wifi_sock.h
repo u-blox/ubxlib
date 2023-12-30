@@ -82,7 +82,6 @@ extern "C" {
 # define U_WIFI_SOCK_DNS_LOOKUP_TIME_SECONDS 60
 #endif
 
-
 /** Size of receive buffer for a connected data channel
  */
 #ifndef U_WIFI_SOCK_BUFFER_SIZE

@@ -248,7 +248,6 @@ static void uartCb(const struct device *uart, void *user_data)
         }
     }
 
-
     if (uart_irq_tx_ready(uart)) {
         if (gUartData[i].pTxData == NULL) {
             gUartData[i].pTxData = k_fifo_get(&gUartData[i].fifoTxData, K_NO_WAIT);

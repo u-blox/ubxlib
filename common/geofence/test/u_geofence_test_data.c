@@ -129,7 +129,7 @@ static const uGeofenceTestData_t gFenceATestData = {
  */
 static const uGeofenceTestVertex_t gVertexOneUpperLeft = {1000000000LL /* latX1e9 */,
                                                           -1000000000LL /* lonX1e9 */
-                                                          };
+                                                         };
 
 /** A vertex at 1.0, 1.0.
  */
@@ -147,7 +147,7 @@ static const uGeofenceTestVertex_t gVertexOneLowerRight = {-1000000000LL /* latX
  */
 static const uGeofenceTestVertex_t gVertexOneLowerLeft = {-1000000000LL /* latX1e9 */,
                                                           -1000000000LL /* lonX1e9 */
-                                                          };
+                                                         };
 
 /** A polygon: a square with vertices at gVertexOne.
  */
@@ -179,7 +179,7 @@ static const uGeofenceTestPoint_t gTestPointFenceBOriginUncertain = {
  */
 static const uGeofenceTestVertex_t gVertexOneLowerLeftInside = {-1000000000LL + 1 /* latX1e9 */,
                                                                 -1000000000LL + 1 /* lonX1e9 */
-                                                                };
+                                                               };
 
 /** 2: a test point for gVertexOneLowerLeftInside with absolute certainty
  * in Fence B (i.e. with polygon "square one").
@@ -208,7 +208,7 @@ static const uGeofenceTestPoint_t gTestPointFenceBVertexOneLowerLeftInsideUncert
  */
 static const uGeofenceTestVertex_t gVertexOneLowerLeftInsideRight = {-1000000000LL + 1 /* latX1e9 */,
                                                                      -1000000000LL + 2 /* lonX1e9 */
-                                                                     };
+                                                                    };
 
 /** 4: a position just inside -1.0, -1.0 and to the right, on the ground, with
  * absolute certainty.
@@ -239,7 +239,7 @@ static const uGeofenceTestPoint_t gTestPointFenceBVertexOneLowerLeftInsideRightU
  */
 static const uGeofenceTestVertex_t gVertexOneLowerLeftInsideUpper = {-1000000000LL + 2 /* latX1e9 */,
                                                                      -1000000000LL + 1 /* lonX1e9 */
-                                                                     };
+                                                                    };
 
 /** 6: a position just inside -1.0, -1.0 and to the top, on the ground,
  * with absolute certainty.
@@ -270,7 +270,7 @@ static const uGeofenceTestPoint_t gTestPointFenceBVertexOneLowerLeftInsideUpperU
  */
 static const uGeofenceTestVertex_t gVertexOneLowerLeftOutside = {-1000000000LL - 1 /* latX1e9 */,
                                                                  -1000000000LL - 1 /* lonX1e9 */
-                                                                 };
+                                                                };
 
 /** 8: a position just outside -1.0, -1.0, on the ground, with absolute certainty.
  */
@@ -301,7 +301,7 @@ static const uGeofenceTestPoint_t gTestPointFenceBVertexOneLowerLeftOutsideUncer
  */
 static const uGeofenceTestVertex_t gVertexOneLowerLeftOutsideRight = {-1000000000LL - 1 /* latX1e9 */,
                                                                       -1000000000LL + 1 /* lonX1e9 */
-                                                                      };
+                                                                     };
 
 /** 10: a position just outside -1.0, -1.0 and to the right, on the ground,
  * with absolute certainty.
@@ -333,7 +333,7 @@ static const uGeofenceTestPoint_t gTestPointFenceBVertexOneLowerLeftOutsideRight
  */
 static const uGeofenceTestVertex_t gVertexOneLowerLeftOutsideUpper = {-1000000000LL + 2 /* latX1e9 */,
                                                                       -1000000000LL - 1 /* lonX1e9 */
-                                                                      };
+                                                                     };
 
 /** 12: a position just outside -1.0, -1.0 and to the bottom, on the ground,
  * with absolute certainty.
@@ -385,7 +385,7 @@ static const uGeofenceTestData_t gFenceBTestData = {
  */
 static const uGeofenceTestVertex_t gVertexLongitudeWrap0 = {0LL /* latX1e9 */,
                                                             -179999999999LL /* lonX1e9 */
-                                                            };
+                                                           };
 
 /** A circle at the longitude wrap, centred to the right of it,
  * with radius large enough to cross it.
@@ -449,7 +449,7 @@ static const uGeofenceTestFence_t gFenceD = {
  */
 static const uGeofenceTestVertex_t gVertexLongitudeWrap0Inside = {-100LL /* latX1e9 */,
                                                                   -179999999999LL /* lonX1e9 */
-                                                                  };
+                                                                 };
 
 /** A vertex at -0.0000001, +179.999999999, which puts it
  * inside the circle when rounding errors are taken into account.
@@ -513,7 +513,7 @@ static const uGeofenceTestPoint_t gTestPointFenceCDEVertexLongitudeWrap1Uncertai
  */
 static const uGeofenceTestVertex_t gVertexLongitudeWrap2 = {0LL /* latX1e9 */,
                                                             -179999000000LL /* lonX1e9 */
-                                                            };
+                                                           };
 
 /** A vertex at 0, +179.999000000.
  */
@@ -554,7 +554,7 @@ static const uGeofenceTestFence_t gFenceE = {
  */
 static const uGeofenceTestVertex_t gVertexLongitudeWrap5 = {0LL /* latX1e9 */,
                                                             -179000000000LL /* lonX1e9 */
-                                                            };
+                                                           };
 
 /** A vertex at 0, +179.
  */
@@ -723,13 +723,13 @@ static const uGeofenceTestVertex_t gVertexLongitudeWrap9 = {-50000000LL /* latX1
  */
 static const uGeofenceTestVertex_t gVertexLongitudeWrap10 = {-50000000LL /* latX1e9 */,
                                                              -179990000000LL /* lonX1e9 */
-                                                             };
+                                                            };
 
 /** A vertex at -0.05, -179.999999990.
  */
 static const uGeofenceTestVertex_t gVertexLongitudeWrap11 = {-50000000LL /* latX1e9 */,
                                                              -179999999990LL /* lonX1e9 */
-                                                             };
+                                                            };
 
 /** 15: a test point for gVertexLongitudeWrap8, firmly inside the left-hand
  * side of the polygon, to check that the spherical maths works out correctly
@@ -1408,7 +1408,7 @@ static const uGeofenceTestVertex_t gVertexSouth2 = {-80000000000LL /* latX1e9 */
  */
 static const uGeofenceTestVertex_t gVertexSouth3 = {-80000000000LL /* latX1e9 */,
                                                     -90000000000LL /* lonX1e9 */
-                                                    };
+                                                   };
 
 /** A polygon (square) who's vertices are less than 10 degrees
  * from the south pole.
@@ -1980,25 +1980,25 @@ static const uGeofenceTestData_t gFenceLTestData = {
  */
 static const uGeofenceTestVertex_t gVertexUbloxCambridge0 = {52222776577LL /* latX1e9 */,
                                                              -74993565LL /* lonX1e9 */
-                                                             };
+                                                            };
 
 /** A vertex at a corner of the u-blox office, Cambridge, UK.
  */
 static const uGeofenceTestVertex_t gVertexUbloxCambridge1 = {52222573470LL /* latX1e9 */,
                                                              -73416999LL /* lonX1e9 */
-                                                             };
+                                                            };
 
 /** A vertex at a corner of the u-blox office, Cambridge, UK.
  */
 static const uGeofenceTestVertex_t gVertexUbloxCambridge2 = {52222362071LL /* latX1e9 */,
                                                              -73484663LL /* lonX1e9 */
-                                                             };
+                                                            };
 
 /** A vertex at a corner of the u-blox office, Cambridge, UK.
  */
 static const uGeofenceTestVertex_t gVertexUbloxCambridge3 = {52222567943LL /* latX1e9 */,
                                                              -75070251LL /* lonX1e9 */
-                                                             };
+                                                            };
 
 /** A polygon (lozenge) whose vertices are the corners of the
  * u-blox office, Cambridge, UK.
@@ -2036,33 +2036,33 @@ static const uGeofenceTestFence_t gFenceN = {
  */
 static const uGeofenceTestVertex_t gVertexUbloxCambridgeEntrance = {52222426597LL /* latX1e9 */,
                                                                     -74241099LL /* lonX1e9 */
-                                                                    };
+                                                                   };
 
 /** A vertex at Rob's desk in the u-blox Cambridge office.
  */
 static const uGeofenceTestVertex_t gVertexRobDesk = {52222565519LL /* latX1e9 */,
                                                      -74422444LL /* lonX1e9 */
-                                                     };
+                                                    };
 
 /** A vertex in Procam, on the floor below the u-blox Cambridge office.
  */
 static const uGeofenceTestVertex_t gVertexProcam = {52222682206LL /* latX1e9 */,
                                                     -74620418LL /* lonX1e9 */
-                                                    };
+                                                   };
 
 /** A vertex at Mediatek Ltd, next door to the u-blox
  * Cambridge office.
  */
 static const uGeofenceTestVertex_t gVertexMediatek = {52222231407LL /* latX1e9 */,
                                                       -72940036LL /* lonX1e9 */
-                                                      };
+                                                     };
 
 /** A vertex in the car park behind and slightly to the left
  * of the u-blox Cambridge office.
  */
 static const uGeofenceTestVertex_t gVertexUbloxCambridgeCarPark = {52222886691LL /* latX1e9 */,
                                                                    -74973189LL /* lonX1e9 */
-                                                                   };
+                                                                  };
 
 /** 1: at the entrance of the u-blox Cambridge office, outside on
  * the ground.
@@ -2238,7 +2238,7 @@ static const uGeofenceTestVertex_t gVertexGreenwichNorthExit = {51500286701LL /*
  */
 static const uGeofenceTestVertex_t gVertexCuttySark = {51486537285LL /* latX1e9 */,
                                                        -515473LL /* lonX1e9 */
-                                                       };
+                                                      };
 
 /** A vertex on the path that surrounds the O2.
  */
@@ -2610,97 +2610,97 @@ static const uGeofenceTestData_t gFencePTestData = {
  */
 static const uGeofenceTestVertex_t gVertexUtah0 = {36998950191LL /* latX1e9 */,
                                                    -109045283306LL /* lonX1e9 */
-                                                   };
+                                                  };
 
 /** A vertex at the next corner of Utah, clockwise.
  */
 static const uGeofenceTestVertex_t gVertexUtah1 = {36998250900LL /* latX1e9 */,
                                                    -110175749300LL /* lonX1e9 */
-                                                   };
+                                                  };
 
 /** A vertex at the next corner of Utah, clockwise.
  */
 static const uGeofenceTestVertex_t gVertexUtah2 = {36997657400LL /* latX1e9 */,
                                                    -110469732700LL /* lonX1e9 */
-                                                   };
+                                                  };
 
 /** A vertex at the next corner of Utah, clockwise.
  */
 static const uGeofenceTestVertex_t gVertexUtah3 = {37003627600LL /* latX1e9 */,
                                                    -110490298800LL /* lonX1e9 */
-                                                   };
+                                                  };
 
 /** A vertex at the next corner of Utah, clockwise.
  */
 static const uGeofenceTestVertex_t gVertexUtah4 = {37000190422LL /* latX1e9 */,
                                                    -114050052350LL /* lonX1e9 */
-                                                   };
+                                                  };
 
 /** A vertex at the next corner of Utah.
  */
 static const uGeofenceTestVertex_t gVertexUtah5 = {38877836500LL /* latX1e9 */,
                                                    -114049586900LL /* lonX1e9 */
-                                                   };
+                                                  };
 
 /** A vertex at the next corner of Utah.
  */
 static const uGeofenceTestVertex_t gVertexUtah6 = {41993872228LL /* latX1e9 */,
                                                    -114041476351LL /* lonX1e9 */
-                                                   };
+                                                  };
 
 /** A vertex at the next corner of Utah.
  */
 static const uGeofenceTestVertex_t gVertexUtah7 = {41993095278LL /* latX1e9 */,
                                                    -113990090177LL /* lonX1e9 */
-                                                   };
+                                                  };
 
 /** A vertex at the next corner of Utah.
  */
 static const uGeofenceTestVertex_t gVertexUtah8 = {41988211854LL /* latX1e9 */,
                                                    -113866751339LL /* lonX1e9 */
-                                                   };
+                                                  };
 
 /** A vertex at the next corner of Utah.
  */
 static const uGeofenceTestVertex_t gVertexUtah9 = {42001701594LL /* latX1e9 */,
                                                    -111046714652LL /* lonX1e9 */
-                                                   };
+                                                  };
 
 /** A vertex at the next corner of Utah.
  */
 static const uGeofenceTestVertex_t gVertexUtah10 = {40997874291LL /* latX1e9 */,
                                                     -111046816176LL /* lonX1e9 */
-                                                    };
+                                                   };
 
 /** A vertex at the next corner of Utah.
  */
 static const uGeofenceTestVertex_t gVertexUtah11 = {40996267206LL /* latX1e9 */,
                                                     -110545271793LL /* lonX1e9 */
-                                                    };
+                                                   };
 
 /** A vertex at the next corner of Utah.
  */
 static const uGeofenceTestVertex_t gVertexUtah12 = {40994803645LL /* latX1e9 */,
                                                     -110505079447LL /* lonX1e9 */
-                                                    };
+                                                   };
 
 /** A vertex at the next corner of Utah.
  */
 static const uGeofenceTestVertex_t gVertexUtah13 = {41000690870LL /* latX1e9 */,
                                                     -109050026567LL /* lonX1e9 */
-                                                    };
+                                                   };
 
 /** A vertex at the next corner of Utah.
  */
 static const uGeofenceTestVertex_t gVertexUtah14 = {38275568872LL /* latX1e9 */,
                                                     -109060193883LL /* lonX1e9 */
-                                                    };
+                                                   };
 
 /** A vertex at the last corner of Utah.
  */
 static const uGeofenceTestVertex_t gVertexUtah15 = {38166265753LL /* latX1e9 */,
                                                     -109042835765LL /* lonX1e9 */
-                                                    };
+                                                   };
 
 /** A polygon whose vertices are the corners of the state of Utah,
  * United States.
@@ -2732,81 +2732,81 @@ static const uGeofenceTestFence_t gFenceQ = {
  */
 static const uGeofenceTestVertex_t gVertexFourCornersMonumentOutside = {36998749227LL /* latX1e9 */,
                                                                         -109044969130LL /* lonX1e9 */
-                                                                        };
+                                                                       };
 
 /** A vertex on the "correct" side of Four Corners monument.
  */
 static const uGeofenceTestVertex_t gVertexFourCornersMonumentInside = {36999190233LL /* latX1e9 */,
                                                                        -109045435502LL /* lonX1e9 */
-                                                                       };
+                                                                      };
 
 /** A vertex in the middle of Patrick Swayze loop.
  */
 static const uGeofenceTestVertex_t gVertexPatrickSwayzeInside = {36998544286LL /* latX1e9 */,
                                                                  -110126919541LL /* lonX1e9 */
-                                                                 };
+                                                                };
 
 /** A vertex wild camping in Beaver Dam Wash, in Nevada about
  * 10 metres outside Utah.
  */
 static const uGeofenceTestVertex_t gVertexBeaverDamWashOutside = {37000115485LL /* latX1e9 */,
                                                                   -114050125118LL /* lonX1e9 */
-                                                                  };
+                                                                 };
 
 /** A vertex on Burbank Back road, at the junction with the 1447,
  * 10 metres inside and half-way up the west side of Utah.
  */
 static const uGeofenceTestVertex_t gVertexBurbankBackRoadInside = {38730427700LL /* latX1e9 */,
                                                                    -114049505200LL /* lonX1e9 */
-                                                                   };
+                                                                  };
 
 /** A vertex on the rather wiggly unnamed road that stops in the middle,
  * of nowhere, 10 metres outside the north-west corner of Utah.
  */
 static const uGeofenceTestVertex_t gVertexUnnamedRoadOutside = {41993961648LL /* latX1e9 */,
                                                                 -114041533887LL /* lonX1e9 */
-                                                                };
+                                                               };
 
 /** A vertex on Birch Creek, 10 metres inside Utah.
  */
 static const uGeofenceTestVertex_t gVertexBirchCreekInside = {41988343924LL /* latX1e9 */,
                                                               -113895635223LL /* lonX1e9 */
-                                                              };
+                                                             };
 
 /** A vertex on Red Mountain, in Wyoming, about 10 metres outside
  * the north-east corner of Utah.
  */
 static const uGeofenceTestVertex_t gVertexRedMountainOutside = {42001758764LL /* latX1e9 */,
                                                                 -111046592057LL /* lonX1e9 */
-                                                                };
+                                                               };
 
 /** A vertex on East Chalk Creek Road, at A V Richard's corner monument,
  * about 10 metres from the corner.
  */
 static const uGeofenceTestVertex_t gVertexEastChalkCreekRoadInside = {40997775522LL /* latX1e9 */,
                                                                       -111046956050LL /* lonX1e9 */
-                                                                      };
+                                                                     };
 
 /** A vertex on the south-west side of Three Corners Triangle,
  * about 10 metres inside Utah.
  */
 static const uGeofenceTestVertex_t gVertexThreeCornersTriangleInside = {41000642710LL /* latX1e9 */,
                                                                         -109050123239LL /* lonX1e9 */
-                                                                        };
+                                                                       };
 
 /** A vertex at the north-east corner of Three Corners Triangle,
  * about 15 metres into Wyoming.
  */
 static const uGeofenceTestVertex_t gVertexThreeCornersTriangleOutside = {41000778679LL /* latX1e9 */,
                                                                          -109049860799LL /* lonX1e9 */
-                                                                         };
+                                                                        };
 
 /** A vertex on highway 46, about 15 metres inside Utah, staring at the
  * back of the "welcome to Utah: life elevated" sign.
  */
 static const uGeofenceTestVertex_t gVertexUtahWelcomeSignInside = {38327596200LL /* latX1e9 */,
                                                                    -109060233100LL /* lonX1e9 */
-                                                                   };
+                                                                  };
 
 /** 1: at Four Corner's Monument, outside Utah, eating fried stuff.
  */
@@ -2994,44 +2994,44 @@ static const uGeofenceTestData_t gFenceQTestData = {&gFenceQ, 0, 0};
  */
 static const uGeofenceTestVertex_t gVertexNWT0 = {60000000000LL /* latX1e9 */,
                                                   -102000000000LL /* lonX1e9 */
-                                                  };
+                                                 };
 
 /** A vertex next along, clockwise, on the edge of the North West
  * Territories.
  */
 static const uGeofenceTestVertex_t gVertexNWT1 = {60000000000LL /* latX1e9 */,
                                                   -141001444000LL /* lonX1e9 */
-                                                  };
+                                                 };
 
 /** The next vertex along, the edge of the North West Territories.
  */
 static const uGeofenceTestVertex_t gVertexNWT2 = {69646614058LL /* latX1e9 */,
                                                   -141001444000LL /* lonX1e9 */
-                                                  };
+                                                 };
 
 /** The next vertex along, the edge of the North West Territories.
  */
 static const uGeofenceTestVertex_t gVertexNWT3 = {70666375231LL /* latX1e9 */,
                                                   -128208337591LL /* lonX1e9 */
-                                                  };
+                                                 };
 
 /** The next vertex along, the edge of the North West Territories.
  */
 static const uGeofenceTestVertex_t gVertexNWT4 = {69724729901LL /* latX1e9 */,
                                                   -120630784504LL /* lonX1e9 */
-                                                  };
+                                                 };
 
 /** The next vertex along, the edge of the North West Territories.
  */
 static const uGeofenceTestVertex_t gVertexNWT5 = {67779957871LL /* latX1e9 */,
                                                   -120630784504LL /* lonX1e9 */
-                                                  };
+                                                 };
 
 /** The last vertex of the North West Territories.
  */
 static const uGeofenceTestVertex_t gVertexNWT6 = {64189050578LL /* latX1e9 */,
                                                   -102000000000LL /* lonX1e9 */
-                                                  };
+                                                 };
 
 /** A polygon whose vertices roughly contain the North West
  * Territories, Canada.
@@ -3062,13 +3062,13 @@ static const uGeofenceTestFence_t gFenceR = {
  */
 static const uGeofenceTestVertex_t gVertexFourCornersCanadaOutside = {59999381652LL /* latX1e9 */,
                                                                       -101999859017LL /* lonX1e9 */
-                                                                      };
+                                                                     };
 
 /** A vertex on the other side of Canadian Four Corners.
  */
 static const uGeofenceTestVertex_t gVertexFourCornersCanadaInside = {60003159319LL /* latX1e9 */,
                                                                      -102000377711LL /* lonX1e9 */
-                                                                     };
+                                                                    };
 
 /** A vertex at the tripoint of Saskatchewan, Alberta and the North
  * West Territories, in Saskatchewan just outside the North West
@@ -3076,20 +3076,20 @@ static const uGeofenceTestVertex_t gVertexFourCornersCanadaInside = {60003159319
  */
 static const uGeofenceTestVertex_t gVertexTripointOutside = {59999991846LL /* latX1e9 */,
                                                              -109999994038LL /* lonX1e9 */
-                                                             };
+                                                            };
 
 /** A vertex on the North West Territories side of the tripoint.
  */
 static const uGeofenceTestVertex_t gVertexTripointInside = {60000028051LL /* latX1e9 */,
                                                             -110000010784LL /* lonX1e9 */
-                                                            };
+                                                           };
 
 /** A vertex at the Fort Smith Animal Shelter, just inside the North
  * West Territories.
  */
 static const uGeofenceTestVertex_t gVertexFortSmithInside = {60000718111LL /* latX1e9 */,
                                                              -111903390638LL /* lonX1e9 */
-                                                             };
+                                                            };
 
 /** A vertex at the "Northbrita" border, which is actually another
  * tripoint, this time between British Columbiam, Alberta and the
@@ -3097,28 +3097,28 @@ static const uGeofenceTestVertex_t gVertexFortSmithInside = {60000718111LL /* la
  */
 static const uGeofenceTestVertex_t gVertexNorthbritaOutside = {59999843596LL /* latX1e9 */,
                                                                -119999988384LL /* lonX1e9 */
-                                                               };
+                                                              };
 
 /** A vertex on the North West Territories side of the "Northbrita"
  * border.
  */
 static const uGeofenceTestVertex_t gVertexNorthbritaInside = {60000087397LL /* latX1e9 */,
                                                               -120000015267LL /* lonX1e9 */
-                                                              };
+                                                             };
 
 /** A vertex on the "The Hump", just outside the south-west corner
  * of the North West Territories side.
  */
 static const uGeofenceTestVertex_t gVertexTheHumpOutside = {60315788615LL /* latX1e9 */,
                                                             -141080125400LL /* lonX1e9 */
-                                                            };
+                                                           };
 
 /** A vertex on Alaska highway, half way up the western edge of the
  * North West Territories, on the inside.
  */
 static const uGeofenceTestVertex_t gVertexAlaskaHighwayInside = {62615197061LL /* latX1e9 */,
                                                                  -141001220500LL /* lonX1e9 */
-                                                                 };
+                                                                };
 
 /** A vertex at the Little Gold Creek border crossing, on Top Of
  * The World highway, further up the western edge of the North
@@ -3126,14 +3126,14 @@ static const uGeofenceTestVertex_t gVertexAlaskaHighwayInside = {62615197061LL /
  */
 static const uGeofenceTestVertex_t gVertexLittleGoldCreekOutside = {64085570983LL /* latX1e9 */,
                                                                     -141001902513LL /* lonX1e9 */
-                                                                    };
+                                                                   };
 
 /** A vertex on the beach in Gordon, just outside the top-left
  * corner of the North West Territories.
  */
 static const uGeofenceTestVertex_t gVertexGordonOutside = {69681989617LL /* latX1e9 */,
                                                            -141207777556LL /* lonX1e9 */
-                                                           };
+                                                          };
 
 /** A vertex on what looks like the edge of a glacier falling
  * into the say, on the north east corner of the North West
@@ -3141,21 +3141,21 @@ static const uGeofenceTestVertex_t gVertexGordonOutside = {69681989617LL /* latX
  */
 static const uGeofenceTestVertex_t gVertexGlacierOutside = {69472381365LL /* latX1e9 */,
                                                             -120476777607LL /* lonX1e9 */
-                                                            };
+                                                           };
 
 /** A vertex where the border does a dogs-leg to the right,
  * outside, on Nunavut side.
  */
 static const uGeofenceTestVertex_t gVertexDogsLegOutside = {67779975806LL /* latX1e9 */,
                                                             -120629405846LL /* lonX1e9 */
-                                                            };
+                                                           };
 
 /** A vertex half way down the eastern border, where it turns
  * south again, on the North West Territories side.
  */
 static const uGeofenceTestVertex_t gVertexTurnsSouthInside = {64188350896LL /* latX1e9 */,
                                                               -102001947527LL /* lonX1e9 */
-                                                              };
+                                                             };
 
 /** 1: at Canadian Four Corner's on the outside.
  */
@@ -3897,7 +3897,7 @@ static const uGeofenceTestVertex_t gVertexEquator180 = {0LL /* latX1e9 */,
  */
 static const uGeofenceTestVertex_t gVertexEquator270 = {0LL /* latX1e9 */,
                                                         -90000000000LL /* lonX1e9 */
-                                                        };
+                                                       };
 
 /** 1: on the equator at 0 longitude.
  */
@@ -4035,105 +4035,105 @@ static const uGeofenceTestData_t gFenceTTestData = {
  */
 static const uGeofenceTestVertex_t gVertexCC0 = {51355161800LL /* latX1e9 */,
                                                  -1855959900LL /* lonX1e9 */
-                                                 };
+                                                };
 /** Vertex 1 of the crop circle, bottom left.
  */
 static const uGeofenceTestVertex_t gVertexCC1 = {51354441600LL /* latX1e9 */,
                                                  -1855970600LL /* lonX1e9 */
-                                                 };
+                                                };
 
 /** Vertex 2 of the crop circle, left of the entrance.
  */
 static const uGeofenceTestVertex_t gVertexCC2 = {51354444900LL /* latX1e9 */,
                                                  -1854884300LL /* lonX1e9 */
-                                                 };
+                                                };
 
 /** Vertex 3 of the crop circle, above point (2).
  */
 static const uGeofenceTestVertex_t gVertexCC3 = {51354527000LL /* latX1e9 */,
                                                  -1854884300LL /* lonX1e9 */
-                                                 };
+                                                };
 
 /** Vertex 4 of the crop circle, inside lower left.
  */
 static const uGeofenceTestVertex_t gVertexCC4 = {51354521100LL /* latX1e9 */,
                                                  -1855768100LL /* lonX1e9 */
-                                                 };
+                                                };
 
 /** Vertex 5 of the crop circle, inside top left.
  */
 static const uGeofenceTestVertex_t gVertexCC5 = {51355044600LL /* latX1e9 */,
                                                  -1855713100LL /* lonX1e9 */
-                                                 };
+                                                };
 
 /** Vertex 6 of the crop circle, the first "tooth".
  */
 static const uGeofenceTestVertex_t gVertexCC6 = {51354597400LL /* latX1e9 */,
                                                  -1855251800LL /* lonX1e9 */
-                                                 };
+                                                };
 
 /** Vertex 7 of the crop circle, between the first
  * tooth and the middle tooth.
  */
 static const uGeofenceTestVertex_t gVertexCC7 = {51355047900LL /* latX1e9 */,
                                                  -1854978200LL /* lonX1e9 */
-                                                 };
+                                                };
 
 /** Vertex 8 of the crop circle, middle tooth.
  */
 static const uGeofenceTestVertex_t gVertexCC8 = {51354585600LL /* latX1e9 */,
                                                  -1854846800LL /* lonX1e9 */
-                                                 };
+                                                };
 
 /** Vertex 9 of the crop circle, between the middle
  * tooth and the third tooth.
  */
 static const uGeofenceTestVertex_t gVertexCC9 = {51355051300LL /* latX1e9 */,
                                                  -1854699300LL /* lonX1e9 */
-                                                 };
+                                                };
 
 /** Vertex 10 of the crop circle, third tooth.
  */
 static const uGeofenceTestVertex_t gVertexCC10 = {51354600700LL /* latX1e9 */,
                                                   -1854436400LL /* lonX1e9 */
-                                                  };
+                                                 };
 
 /** Vertex 11 of the crop circle, inside top right.
  */
 static const uGeofenceTestVertex_t gVertexCC11 = {51355041200LL /* latX1e9 */,
                                                   -1854060900LL /* lonX1e9 */
-                                                  };
+                                                 };
 
 /** Vertex 12 of the crop circle, inside lower right.
  */
 static const uGeofenceTestVertex_t gVertexCC12 = {51354516100LL /* latX1e9 */,
                                                   -1854008600LL /* lonX1e9 */
-                                                  };
+                                                 };
 
 /** Vertex 13 of the crop circle, top of the entrance
  * on the right.
  */
 static const uGeofenceTestVertex_t gVertexCC13 = {51354527800LL /* latX1e9 */,
                                                   -1854805200LL /* lonX1e9 */
-                                                  };
+                                                 };
 
 /** Vertex 14 of the crop circle, below (13).
  */
 static const uGeofenceTestVertex_t gVertexCC14 = {51354447400LL /* latX1e9 */,
                                                   -1854805200LL /* lonX1e9 */
-                                                  };
+                                                 };
 
 /** Vertex 15 of the crop circle, bottom right.
  */
 static const uGeofenceTestVertex_t gVertexCC15 = {51354438200LL /* latX1e9 */,
                                                   -1853873100LL /* lonX1e9 */
-                                                  };
+                                                 };
 
 /** Vertex 16 of the crop circle, top right.
  */
 static const uGeofenceTestVertex_t gVertexCC16 = {51355148400LL /* latX1e9 */,
                                                   -1853862400LL /* lonX1e9 */
-                                                  };
+                                                 };
 
 /** A polygon representing the outer portion of a "crop circle",
  * something like this:
@@ -4165,7 +4165,7 @@ static const uGeofenceTestPolygon_t gPolygonCC = {17,
  */
 static const uGeofenceTestVertex_t gVertexCC17 = {51354627000LL /* latX1e9 */,
                                                   -1855549500LL /* lonX1e9 */
-                                                  };
+                                                 };
 
 /** A circle at vertex 17, small enough not to touch any part
  * of the outer polygon, but only just (10 metre radius).
@@ -4179,7 +4179,7 @@ static const uGeofenceTestCircle_t gCircleCCOne = {&gVertexCC17,
  */
 static const uGeofenceTestVertex_t gVertexCC18 = {51354625300LL /* latX1e9 */,
                                                   -1855069300LL /* lonX1e9 */
-                                                  };
+                                                 };
 
 /** A circle at vertex 18, small enough not to touch any part
  * of the outer polygon, 10 metre radius.
@@ -4193,7 +4193,7 @@ static const uGeofenceTestCircle_t gCircleCCTwo = {&gVertexCC18,
  */
 static const uGeofenceTestVertex_t gVertexCC19 = {51354613400LL /* latX1e9 */,
                                                   -1854651900LL /* lonX1e9 */
-                                                  };
+                                                 };
 
 /** A circle at vertex 19, small enough not to touch any part
  * of the outer polygon, 10 metre radius.
@@ -4207,7 +4207,7 @@ static const uGeofenceTestCircle_t gCircleCCThree = {&gVertexCC19,
  */
 static const uGeofenceTestVertex_t gVertexCC20 = {51354637000LL /* latX1e9 */,
                                                   -1854192300LL /* lonX1e9 */
-                                                  };
+                                                 };
 
 /** A circle at vertex 20, small enough not to touch any part
  * of the outer polygon, 10 metre radius.
@@ -4233,121 +4233,121 @@ static const uGeofenceTestFence_t gFenceU = {
  */
 static const uGeofenceTestVertex_t gVertexCCLeftOuterOutside = {51354387500LL /* latX1e9 */,
                                                                 -1855549400LL /* lonX1e9 */
-                                                                };
+                                                               };
 
 /** A vertex entirely outside the crop circle, below the entrance.
  */
 static const uGeofenceTestVertex_t gVertexCCMiddleOuterOutside = {51354397600LL /* latX1e9 */,
                                                                   -1854846700LL /* lonX1e9 */
-                                                                  };
+                                                                 };
 
 /** A vertex entirely outside the crop circle, below circle four.
  */
 static const uGeofenceTestVertex_t gVertexCCRightOuterOutside = {51354342300LL /* latX1e9 */,
                                                                  -1854028600LL /* lonX1e9 */
-                                                                 };
+                                                                };
 
 /** A vertex within the bounding polygon below circle one but still
  * outside of either shape.
  */
 static const uGeofenceTestVertex_t gVertexCCLeftLowerInnerOutside = {51354531600LL /* latX1e9 */,
                                                                      -1855603000LL /* lonX1e9 */
-                                                                     };
+                                                                    };
 
 /** A vertex within the bounding polygon above circle one and still
  * outside of either shape.
  */
 static const uGeofenceTestVertex_t gVertexCCLeftUpperInnerOutside = {51354838100LL /* latX1e9 */,
                                                                      -1855624500LL /* lonX1e9 */
-                                                                     };
+                                                                    };
 
 /** A vertex within the bounding polygon above circle two and still
  * outside of either shape.
  */
 static const uGeofenceTestVertex_t gVertexCCMiddleLeftUpperInnerOutside = {51354819700LL /* latX1e9 */,
                                                                            -1855021000LL /* lonX1e9 */
-                                                                           };
+                                                                          };
 
 /** A vertex right in the middle of the entrance-way.
  */
 static const uGeofenceTestVertex_t gVertexCCMiddleEntranceOutside = {51354480500LL /* latX1e9 */,
                                                                      -1854841300LL /* lonX1e9 */
-                                                                     };
+                                                                    };
 
 /** A vertex within the bounding polygon above circle three and still
  * outside of either shape.
  */
 static const uGeofenceTestVertex_t gVertexCCMiddleRightUpperInnerOutside = {51354480500LL /* latX1e9 */,
                                                                             -1854841300LL /* lonX1e9 */
-                                                                            };
+                                                                           };
 
 /** A vertex within the bounding polygon below circle four and still
  * outside of either shape.
  */
 static const uGeofenceTestVertex_t gVertexCCRightLowerInnerOutside = {51354539100LL /* latX1e9 */,
                                                                       -1854117100LL /* lonX1e9 */
-                                                                      };
+                                                                     };
 
 /** A vertex within the bounding polygon above circle four and outside
  * of either shape.
  */
 static const uGeofenceTestVertex_t gVertexCCRightUpperInnerOutside = {51354833100LL /* latX1e9 */,
                                                                       -1854152000LL /* lonX1e9 */
-                                                                      };
+                                                                     };
 
 /** A vertex within the wall of the polygon on the lower left.
  */
 static const uGeofenceTestVertex_t gVertexCCLeftLowerInside = {51354478700LL /* latX1e9 */,
                                                                -1855476500LL /* lonX1e9 */
-                                                               };
+                                                              };
 
 /** A vertex within the first tooth.
  */
 static const uGeofenceTestVertex_t gVertexCCToothOneInside = {51354669600LL /* latX1e9 */,
                                                               -1855288700LL /* lonX1e9 */
-                                                              };
+                                                             };
 
 /** A vertex within the middle tooth.
  */
 static const uGeofenceTestVertex_t gVertexCCToothTwoInside = {51354676300LL /* latX1e9 */,
                                                               -1854843500LL /* lonX1e9 */
-                                                              };
+                                                             };
 
 /** A vertex within the third tooth.
  */
 static const uGeofenceTestVertex_t gVertexCCToothThreeInside = {51354669600LL /* latX1e9 */,
                                                                 -1854430400LL /* lonX1e9 */
-                                                                };
+                                                               };
 
 /** A vertex within the wall of the polygon on the lower right.
  */
 static const uGeofenceTestVertex_t gVertexCCRightLowerInside = {51354483700LL /* latX1e9 */,
                                                                 -1854556500LL /* lonX1e9 */
-                                                                };
+                                                               };
 
 /** A vertex within circle one.
  */
 static const uGeofenceTestVertex_t gVertexCCCircleOneInside = {51354632800LL /* latX1e9 */,
                                                                -1855465800LL /* lonX1e9 */
-                                                               };
+                                                              };
 
 /** A vertex within circle two.
  */
 static const uGeofenceTestVertex_t gVertexCCCircleTwoInside = {51354631100LL /* latX1e9 */,
                                                                -1854996400LL /* lonX1e9 */
-                                                               };
+                                                              };
 
 /** A vertex within circle three.
  */
 static const uGeofenceTestVertex_t gVertexCCCircleThreeInside = {51354617700LL /* latX1e9 */,
                                                                  -1854714800LL /* lonX1e9 */
-                                                                 };
+                                                                };
 
 /** A vertex within circle four.
  */
 static const uGeofenceTestVertex_t gVertexCCCircleFourInside = {51354594200LL /* latX1e9 */,
                                                                 -1854105900LL /* lonX1e9 */
-                                                                };
+                                                               };
 
 /** 1: entirely outside the crop circle on the left.
  */

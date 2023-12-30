@@ -211,7 +211,6 @@ int32_t uShortRangeEdmStreamIpEventCallbackSet(int32_t handle,
  */
 void uShortRangeEdmStreamIpEventCallbackRemove(int32_t handle);
 
-
 /** Set a callback to be called when a Bluetooth event occurs.
  * pFunction will be called asynchronously in its own task.
  *
@@ -286,7 +285,6 @@ int32_t uShortRangeEdmStreamDataEventCallbackSet(int32_t handle,
  */
 void uShortRangeEdmStreamDataEventCallbackRemove(int32_t handle,
                                                  uShortRangeConnectionType_t type);
-
 
 /** Send an event to the callback.  This allows the user to
  * re-trigger events: for instance, if a data event has only

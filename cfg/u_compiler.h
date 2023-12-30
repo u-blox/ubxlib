@@ -73,7 +73,6 @@
 # define U_INLINE __attribute__ ((always_inline)) inline
 #endif
 
-
 /** U_PACKED_STRUCT: macro for creating packed structs
  */
 #ifdef _MSC_VER

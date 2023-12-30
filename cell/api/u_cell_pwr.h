@@ -393,7 +393,6 @@ int32_t uCellPwrOff(uDeviceHandle_t cellHandle,
 int32_t uCellPwrOffHard(uDeviceHandle_t cellHandle, bool trulyHard,
                         bool (*pKeepGoingCallback) (uDeviceHandle_t));
 
-
 /** If a reboot of the cellular instance is required, for example
  * due to changes that have been made to the configuration,
  * this will return true. uCellPwrReboot() should be called

@@ -732,7 +732,6 @@ int32_t uSockSelect(int32_t maxDescriptor,
                     uSockDescriptorSet_t *pExceptDescriptorSet,
                     int32_t timeMs);
 
-
 /** Get the number of bytes sent by the socket
  * @param descriptor    the descriptor of the socket to get the sent bytes
  *

@@ -586,7 +586,6 @@ int32_t uGnssCfgPrivateValDelList(uGnssPrivateInstance_t *pInstance,
     return errorCode;
 }
 
-
 // Get the dynamic platform model from the GNSS chip.
 int32_t uGnssCfgPrivateGetDynamic(uGnssPrivateInstance_t *pInstance)
 {

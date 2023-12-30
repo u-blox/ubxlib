@@ -190,7 +190,6 @@
 # define U_CFG_APP_GNSS_I2C                  -1
 #endif
 
-
 #ifndef U_CFG_APP_GNSS_SPI
 /** Not available on Linux.
  */

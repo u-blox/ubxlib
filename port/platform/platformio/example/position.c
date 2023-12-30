@@ -27,7 +27,6 @@
 
 #include "ubxlib.h"
 
-
 // Change all -1 values below to appropriate pin and settings values
 // appropriate for your module connection.
 static const uDeviceCfg_t gDeviceCfg = {

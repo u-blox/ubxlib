@@ -134,7 +134,6 @@ extern "C" {
 # define U_CELL_POWER_SAVING_UART_INACTIVITY_TIMEOUT_SECONDS 6
 #endif
 
-
 #ifndef U_CELL_POWER_SAVING_UART_WAKEUP_MARGIN_MILLISECONDS
 /** The time within #U_CELL_POWER_SAVING_UART_INACTIVITY_TIMEOUT_SECONDS
  * at which this code should comme commence the "please be awake"

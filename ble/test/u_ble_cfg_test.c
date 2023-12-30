@@ -120,7 +120,6 @@ U_PORT_TEST_FUNCTION("[bleCfg]", "bleCfgConfigureModule")
                                                &uart,
                                                &gHandles) == 0);
 
-
     cfg.role = U_BLE_CFG_ROLE_PERIPHERAL;
     cfg.spsServer = true;
     U_PORT_TEST_ASSERT(uBleCfgConfigure(gHandles.devHandle, &cfg) == 0);

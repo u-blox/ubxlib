@@ -204,7 +204,6 @@ static void freeThreadInstance(struct k_thread *threadPtr)
     }
 }
 
-
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS: BUT ONES THAT SHOULD BE CALLED INTERNALLY ONLY
  * -------------------------------------------------------------- */
@@ -531,7 +530,8 @@ int32_t MTX_FN(uPortMutexCreate(uPortMutexHandle_t *pMutexHandle))
         *pMutexHandle = (uPortMutexHandle_t) k_malloc(sizeof(struct k_mutex));
         if (*pMutexHandle != NULL) {
             errorCode = U_ERROR_COMMON_PLATFORM;
-            if (0 == k_mutex_init((struct k_mutex *)*pMutexHandle)) {
+            if (0 == k_mutex_init((struct k_mutex *)
+                                  *pMutexHandle)) {// *NOPAD* stop AStyle making * look like a multiply
                 errorCode = U_ERROR_COMMON_SUCCESS;
                 U_ATOMIC_INCREMENT(&gResourceAllocCount);
                 U_PORT_OS_DEBUG_PRINT_MUTEX_CREATE(*pMutexHandle);
@@ -624,7 +624,8 @@ int32_t uPortSemaphoreCreate(uPortSemaphoreHandle_t *pSemaphoreHandle,
         *pSemaphoreHandle = (uPortSemaphoreHandle_t) k_malloc(sizeof(struct k_sem));
         if (*pSemaphoreHandle != NULL) {
             errorCode = U_ERROR_COMMON_PLATFORM;
-            if (0 == k_sem_init((struct k_sem *)*pSemaphoreHandle, initialCount, limit)) {
+            if (0 == k_sem_init((struct k_sem *) *pSemaphoreHandle, initialCount,
+                                limit)) { // *NOPAD* stop AStyle making * look like a multiply
                 errorCode = U_ERROR_COMMON_SUCCESS;
                 U_ATOMIC_INCREMENT(&gResourceAllocCount);
                 U_PORT_OS_DEBUG_PRINT_SEMAPHORE_CREATE(*pSemaphoreHandle, initialCount, limit);

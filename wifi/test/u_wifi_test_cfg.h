@@ -31,7 +31,6 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
-
 #ifndef U_WIFI_TEST_CFG_SSID
 /** The SSID to connect to for testing WiFi
  * Must be WITHOUT quotes.

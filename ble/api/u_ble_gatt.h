@@ -132,7 +132,6 @@ int32_t uBleGattDiscoverChar(uDeviceHandle_t devHandle,
 int32_t uBleGattSetWriteCallback(uDeviceHandle_t devHandle,
                                  uBleGattWriteCallback_t cb);
 
-
 /* Peripheral (server) role GATT functions */
 
 /** Add a server service when in peripheral mode
@@ -183,7 +182,6 @@ int32_t uBleGattSetNotificationCallback(uDeviceHandle_t devHandle,
  */
 int32_t uBleGattEnableNotification(uDeviceHandle_t devHandle,
                                    int32_t connHandle, uint16_t valueHandle);
-
 
 /* Common read/write GATT functions */
 

@@ -756,7 +756,6 @@ int32_t uMqttClientSnPublish(uMqttClientContext_t *pContext,
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
 
-
     if ((pContext != NULL) && (pTopicName != NULL) &&
         // If retain is true an empty message sent to the broker means
         // "clear the single allowed retained message from the topic"

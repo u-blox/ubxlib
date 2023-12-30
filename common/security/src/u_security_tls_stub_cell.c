@@ -143,5 +143,4 @@ U_WEAK int32_t uCellSecTlsSniSet(const uCellSecTlsContext_t *pContext,
     return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
 }
 
-
 // End of file

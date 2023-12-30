@@ -919,7 +919,6 @@ size_t uAtClientWriteBytes(uAtClientHandle_t atHandle,
                            size_t lengthBytes,
                            bool standalone);
 
-
 /** Write a part of a string argument to AT command sequence.
  * Used after uAtClientCommandStart() has been called to
  * start the AT command sequence.

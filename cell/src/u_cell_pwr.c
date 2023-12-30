@@ -185,7 +185,7 @@ static const int32_t gCellRatToCedrxsRat[] = { -1, // U_CELL_NET_RAT_DUMMY
                                                -1, // U_CELL_NET_RAT_EC_GSM
                                                4,  // U_CELL_NET_RAT_CATM1
                                                5   // U_CELL_NET_RAT_NB1
-                                               };
+                                             };
 
 /** Array to convert E-DRX values for Cat-M1 in seconds into the number
  * value of 24.008 table 10.5.5.34 (the index of the entry in the array
@@ -1902,7 +1902,6 @@ bool uCellPwrRebootIsRequired(uDeviceHandle_t cellHandle)
     return rebootIsRequired;
 }
 
-
 // Re-boot the cellular module.
 int32_t uCellPwrReboot(uDeviceHandle_t cellHandle,
                        bool (*pKeepGoingCallback) (uDeviceHandle_t))
@@ -2908,7 +2907,6 @@ int32_t uCellPwrEnableUartSleep(uDeviceHandle_t cellHandle)
     return errorCode;
 }
 
-
 // Determine whether UART, AKA 32 kHz, sleep is enabled or not.
 bool uCellPwrUartSleepIsEnabled(uDeviceHandle_t cellHandle)
 {
@@ -2929,6 +2927,5 @@ bool uCellPwrUartSleepIsEnabled(uDeviceHandle_t cellHandle)
 
     return isEnabled;
 }
-
 
 // End of file

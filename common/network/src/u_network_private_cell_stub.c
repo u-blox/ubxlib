@@ -173,5 +173,4 @@ U_WEAK int32_t uCellCfgGetGnssProfile(uDeviceHandle_t cellHandle,
 
 // End of file
 
-
 // End of file

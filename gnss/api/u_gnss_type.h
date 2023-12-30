@@ -312,7 +312,6 @@ typedef enum {
     U_GNSS_TIME_SYSTEM_NAVIC = 5
 } uGnssTimeSystem_t;
 
-
 /** The possible modes for RRLP capture; modes beyond
  * U_GNSS_RRLP_MODE_MEASX are only supported on M10 modules or later.
  * For guidance on how these modes may be used, see:

@@ -72,154 +72,154 @@
  */
 static const int8_t gCellRatToModuleRatU201[] = {
     -1,  // Dummy value for U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED
-        0,   // U_CELL_NET_RAT_GSM_GPRS_EGPRS: 2G
-        -1,  // U_CELL_NET_RAT_GSM_COMPACT
-        2,   // U_CELL_NET_RAT_UTRAN: 3G
-        -1,  // U_CELL_NET_RAT_EGPRS
-        -1,  // U_CELL_NET_RAT_HSDPA
-        -1,  // U_CELL_NET_RAT_HSUPA
-        -1,  // U_CELL_NET_RAT_HSDPA_HSUPA
-        -1,  // U_CELL_NET_RAT_LTE
-        -1,  // U_CELL_NET_RAT_EC_GSM
-        -1,  // U_CELL_NET_RAT_CATM1
-        -1,  // U_CELL_NET_RAT_NB1
-        -1,  // U_CELL_NET_RAT_GSM_UMTS
-        -1,  // U_CELL_NET_RAT_GSM_UMTS_LTE
-        -1,  // U_CELL_NET_RAT_GSM_LTE
-        -1   // U_CELL_NET_RAT_UMTS_LTE
-    };
+    0,   // U_CELL_NET_RAT_GSM_GPRS_EGPRS: 2G
+    -1,  // U_CELL_NET_RAT_GSM_COMPACT
+    2,   // U_CELL_NET_RAT_UTRAN: 3G
+    -1,  // U_CELL_NET_RAT_EGPRS
+    -1,  // U_CELL_NET_RAT_HSDPA
+    -1,  // U_CELL_NET_RAT_HSUPA
+    -1,  // U_CELL_NET_RAT_HSDPA_HSUPA
+    -1,  // U_CELL_NET_RAT_LTE
+    -1,  // U_CELL_NET_RAT_EC_GSM
+    -1,  // U_CELL_NET_RAT_CATM1
+    -1,  // U_CELL_NET_RAT_NB1
+    -1,  // U_CELL_NET_RAT_GSM_UMTS
+    -1,  // U_CELL_NET_RAT_GSM_UMTS_LTE
+    -1,  // U_CELL_NET_RAT_GSM_LTE
+    -1   // U_CELL_NET_RAT_UMTS_LTE
+};
 
 /** Table to convert uCellNetRat_t to the value used in
  * CONFIGURING the module, SARA-R4/R5 form.
  */
 static const int8_t gCellRatToModuleRatR4R5[] = {
     -1, // Dummy value for U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED
-        9,  // U_CELL_NET_RAT_GSM_GPRS_EGPRS: 2G
-        -1, // U_CELL_NET_RAT_GSM_COMPACT
-        -1, // U_CELL_NET_RAT_UTRAN: 3G
-        -1, // U_CELL_NET_RAT_EGPRS
-        -1, // U_CELL_NET_RAT_HSDPA
-        -1, // U_CELL_NET_RAT_HSUPA
-        -1, // U_CELL_NET_RAT_HSDPA_HSUPA
-        -1, // U_CELL_NET_RAT_LTE
-        -1, // U_CELL_NET_RAT_EC_GSM
-        7,  // U_CELL_NET_RAT_CATM1
-        8,  // U_CELL_NET_RAT_NB1
-        -1, // U_CELL_NET_RAT_GSM_UMTS
-        -1, // U_CELL_NET_RAT_GSM_UMTS_LTE
-        -1, // U_CELL_NET_RAT_GSM_LTE
-        -1  // U_CELL_NET_RAT_UMTS_LTE
-    };
+    9,  // U_CELL_NET_RAT_GSM_GPRS_EGPRS: 2G
+    -1, // U_CELL_NET_RAT_GSM_COMPACT
+    -1, // U_CELL_NET_RAT_UTRAN: 3G
+    -1, // U_CELL_NET_RAT_EGPRS
+    -1, // U_CELL_NET_RAT_HSDPA
+    -1, // U_CELL_NET_RAT_HSUPA
+    -1, // U_CELL_NET_RAT_HSDPA_HSUPA
+    -1, // U_CELL_NET_RAT_LTE
+    -1, // U_CELL_NET_RAT_EC_GSM
+    7,  // U_CELL_NET_RAT_CATM1
+    8,  // U_CELL_NET_RAT_NB1
+    -1, // U_CELL_NET_RAT_GSM_UMTS
+    -1, // U_CELL_NET_RAT_GSM_UMTS_LTE
+    -1, // U_CELL_NET_RAT_GSM_LTE
+    -1  // U_CELL_NET_RAT_UMTS_LTE
+};
 
 /** Table to convert uCellNetRat_t to the value used in
  * CONFIGURING the module, LARA-R6 form.
  */
 static const int8_t gCellRatToModuleRatR6[] = {
     -1, // Dummy value for U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED
-        0,  // U_CELL_NET_RAT_GSM_GPRS_EGPRS: 2G
-        -1, // U_CELL_NET_RAT_GSM_COMPACT
-        2,  // U_CELL_NET_RAT_UTRAN: 3G
-        -1, // U_CELL_NET_RAT_EGPRS
-        -1, // U_CELL_NET_RAT_HSDPA
-        -1, // U_CELL_NET_RAT_HSUPA
-        -1, // U_CELL_NET_RAT_HSDPA_HSUPA
-        3,  // U_CELL_NET_RAT_LTE
-        -1, // U_CELL_NET_RAT_EC_GSM
-        -1, // U_CELL_NET_RAT_CATM1
-        -1, // U_CELL_NET_RAT_NB1
-        -1, // U_CELL_NET_RAT_GSM_UMTS
-        -1, // U_CELL_NET_RAT_GSM_UMTS_LTE
-        -1, // U_CELL_NET_RAT_GSM_LTE
-        -1  // U_CELL_NET_RAT_UMTS_LTE
-    };
+    0,  // U_CELL_NET_RAT_GSM_GPRS_EGPRS: 2G
+    -1, // U_CELL_NET_RAT_GSM_COMPACT
+    2,  // U_CELL_NET_RAT_UTRAN: 3G
+    -1, // U_CELL_NET_RAT_EGPRS
+    -1, // U_CELL_NET_RAT_HSDPA
+    -1, // U_CELL_NET_RAT_HSUPA
+    -1, // U_CELL_NET_RAT_HSDPA_HSUPA
+    3,  // U_CELL_NET_RAT_LTE
+    -1, // U_CELL_NET_RAT_EC_GSM
+    -1, // U_CELL_NET_RAT_CATM1
+    -1, // U_CELL_NET_RAT_NB1
+    -1, // U_CELL_NET_RAT_GSM_UMTS
+    -1, // U_CELL_NET_RAT_GSM_UMTS_LTE
+    -1, // U_CELL_NET_RAT_GSM_LTE
+    -1  // U_CELL_NET_RAT_UMTS_LTE
+};
 
 /** Table to convert uCellNetRat_t to the value used in
  * CONFIGURING the module, LENA-R8 form.
  */
 static const int8_t gCellRatToModuleRatR8[] = {
     -1, // Dummy value for U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED
-        0,  // U_CELL_NET_RAT_GSM_GPRS_EGPRS: 2G
-        -1, // U_CELL_NET_RAT_GSM_COMPACT
-        2,  // U_CELL_NET_RAT_UTRAN: 3G
-        -1, // U_CELL_NET_RAT_EGPRS
-        -1, // U_CELL_NET_RAT_HSDPA
-        -1, // U_CELL_NET_RAT_HSUPA
-        -1, // U_CELL_NET_RAT_HSDPA_HSUPA
-        3,  // U_CELL_NET_RAT_LTE
-        -1, // U_CELL_NET_RAT_EC_GSM
-        -1, // U_CELL_NET_RAT_CATM1
-        -1, // U_CELL_NET_RAT_NB1
-        1,  // U_CELL_NET_RAT_GSM_UMTS
-        4,  // U_CELL_NET_RAT_GSM_UMTS_LTE
-        5,  // U_CELL_NET_RAT_GSM_LTE
-        6   // U_CELL_NET_RAT_UMTS_LTE
-    };
+    0,  // U_CELL_NET_RAT_GSM_GPRS_EGPRS: 2G
+    -1, // U_CELL_NET_RAT_GSM_COMPACT
+    2,  // U_CELL_NET_RAT_UTRAN: 3G
+    -1, // U_CELL_NET_RAT_EGPRS
+    -1, // U_CELL_NET_RAT_HSDPA
+    -1, // U_CELL_NET_RAT_HSUPA
+    -1, // U_CELL_NET_RAT_HSDPA_HSUPA
+    3,  // U_CELL_NET_RAT_LTE
+    -1, // U_CELL_NET_RAT_EC_GSM
+    -1, // U_CELL_NET_RAT_CATM1
+    -1, // U_CELL_NET_RAT_NB1
+    1,  // U_CELL_NET_RAT_GSM_UMTS
+    4,  // U_CELL_NET_RAT_GSM_UMTS_LTE
+    5,  // U_CELL_NET_RAT_GSM_LTE
+    6   // U_CELL_NET_RAT_UMTS_LTE
+};
 
 /** Table to convert uCellNetRat_t to the value used in
  * setting the bandmask, SARA-R4/R5 form.
  */
 static const int8_t gCellRatToModuleRatBandMaskR4R5[] = {
     -1, // Dummy value for U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED
-        -1,  // U_CELL_NET_RAT_GSM_GPRS_EGPRS: 2G
-        -1, // U_CELL_NET_RAT_GSM_COMPACT
-        -1, // U_CELL_NET_RAT_UTRAN: 3G
-        -1, // U_CELL_NET_RAT_EGPRS
-        -1, // U_CELL_NET_RAT_HSDPA
-        -1, // U_CELL_NET_RAT_HSUPA
-        -1, // U_CELL_NET_RAT_HSDPA_HSUPA
-        -1, // U_CELL_NET_RAT_LTE
-        -1, // U_CELL_NET_RAT_EC_GSM
-        0,  // U_CELL_NET_RAT_CATM1
-        1,  // U_CELL_NET_RAT_NB1
-        -1, // U_CELL_NET_RAT_GSM_UMTS
-        -1, // U_CELL_NET_RAT_GSM_UMTS_LTE
-        -1, // U_CELL_NET_RAT_GSM_LTE
-        -1  // U_CELL_NET_RAT_UMTS_LTE
-    };
+    -1,  // U_CELL_NET_RAT_GSM_GPRS_EGPRS: 2G
+    -1, // U_CELL_NET_RAT_GSM_COMPACT
+    -1, // U_CELL_NET_RAT_UTRAN: 3G
+    -1, // U_CELL_NET_RAT_EGPRS
+    -1, // U_CELL_NET_RAT_HSDPA
+    -1, // U_CELL_NET_RAT_HSUPA
+    -1, // U_CELL_NET_RAT_HSDPA_HSUPA
+    -1, // U_CELL_NET_RAT_LTE
+    -1, // U_CELL_NET_RAT_EC_GSM
+    0,  // U_CELL_NET_RAT_CATM1
+    1,  // U_CELL_NET_RAT_NB1
+    -1, // U_CELL_NET_RAT_GSM_UMTS
+    -1, // U_CELL_NET_RAT_GSM_UMTS_LTE
+    -1, // U_CELL_NET_RAT_GSM_LTE
+    -1  // U_CELL_NET_RAT_UMTS_LTE
+};
 
 /** Table to convert uCellNetRat_t to the value used in
  * setting the bandmask, LARA-R6 form.
  */
 static const int8_t gCellRatToModuleRatBandMaskR6[] = {
     -1, // Dummy value for U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED
-        2,  // U_CELL_NET_RAT_GSM_GPRS_EGPRS: 2G
-        -1, // U_CELL_NET_RAT_GSM_COMPACT
-        2,  // U_CELL_NET_RAT_UTRAN: 3G
-        -1, // U_CELL_NET_RAT_EGPRS
-        -1, // U_CELL_NET_RAT_HSDPA
-        -1, // U_CELL_NET_RAT_HSUPA
-        -1, // U_CELL_NET_RAT_HSDPA_HSUPA
-        3,  // U_CELL_NET_RAT_LTE
-        -1, // U_CELL_NET_RAT_EC_GSM
-        -1, // U_CELL_NET_RAT_CATM1
-        -1, // U_CELL_NET_RAT_NB1
-        -1, // U_CELL_NET_RAT_GSM_UMTS
-        -1, // U_CELL_NET_RAT_GSM_UMTS_LTE
-        -1, // U_CELL_NET_RAT_GSM_LTE
-        -1  // U_CELL_NET_RAT_UMTS_LTE
-    };
+    2,  // U_CELL_NET_RAT_GSM_GPRS_EGPRS: 2G
+    -1, // U_CELL_NET_RAT_GSM_COMPACT
+    2,  // U_CELL_NET_RAT_UTRAN: 3G
+    -1, // U_CELL_NET_RAT_EGPRS
+    -1, // U_CELL_NET_RAT_HSDPA
+    -1, // U_CELL_NET_RAT_HSUPA
+    -1, // U_CELL_NET_RAT_HSDPA_HSUPA
+    3,  // U_CELL_NET_RAT_LTE
+    -1, // U_CELL_NET_RAT_EC_GSM
+    -1, // U_CELL_NET_RAT_CATM1
+    -1, // U_CELL_NET_RAT_NB1
+    -1, // U_CELL_NET_RAT_GSM_UMTS
+    -1, // U_CELL_NET_RAT_GSM_UMTS_LTE
+    -1, // U_CELL_NET_RAT_GSM_LTE
+    -1  // U_CELL_NET_RAT_UMTS_LTE
+};
 
 /** Table to convert uCellNetRat_t to the value used in
  * setting the bandmask, LENA-R8 form.
  */
 static const int8_t gCellRatToModuleRatBandMaskR8[] = {
     -1, // Dummy value for U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED
-        0,  // U_CELL_NET_RAT_GSM_GPRS_EGPRS: 2G
-        -1, // U_CELL_NET_RAT_GSM_COMPACT
-        2,  // U_CELL_NET_RAT_UTRAN: 3G
-        -1, // U_CELL_NET_RAT_EGPRS
-        -1, // U_CELL_NET_RAT_HSDPA
-        -1, // U_CELL_NET_RAT_HSUPA
-        -1, // U_CELL_NET_RAT_HSDPA_HSUPA
-        3,  // U_CELL_NET_RAT_LTE
-        -1, // U_CELL_NET_RAT_EC_GSM
-        -1, // U_CELL_NET_RAT_CATM1
-        -1, // U_CELL_NET_RAT_NB1
-        -1, // U_CELL_NET_RAT_GSM_UMTS
-        -1, // U_CELL_NET_RAT_GSM_UMTS_LTE
-        -1, // U_CELL_NET_RAT_GSM_LTE
-        -1  // U_CELL_NET_RAT_UMTS_LTE
-    };
+    0,  // U_CELL_NET_RAT_GSM_GPRS_EGPRS: 2G
+    -1, // U_CELL_NET_RAT_GSM_COMPACT
+    2,  // U_CELL_NET_RAT_UTRAN: 3G
+    -1, // U_CELL_NET_RAT_EGPRS
+    -1, // U_CELL_NET_RAT_HSDPA
+    -1, // U_CELL_NET_RAT_HSUPA
+    -1, // U_CELL_NET_RAT_HSDPA_HSUPA
+    3,  // U_CELL_NET_RAT_LTE
+    -1, // U_CELL_NET_RAT_EC_GSM
+    -1, // U_CELL_NET_RAT_CATM1
+    -1, // U_CELL_NET_RAT_NB1
+    -1, // U_CELL_NET_RAT_GSM_UMTS
+    -1, // U_CELL_NET_RAT_GSM_UMTS_LTE
+    -1, // U_CELL_NET_RAT_GSM_LTE
+    -1  // U_CELL_NET_RAT_UMTS_LTE
+};
 
 /** Table to convert the RAT values used in the
  * module while reading the bandmask to uCellNetRat_t,

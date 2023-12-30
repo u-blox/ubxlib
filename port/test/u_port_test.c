@@ -407,7 +407,7 @@ static const char gUartTestData[] =  "_____0000:01234567890123456789012345678901
 // U_CFG_TEST_UART_BUFFER_LENGTH_BYTES
 // so that the buffers go "around the corner"
 static char gUartBuffer[(U_CFG_TEST_UART_BUFFER_LENGTH_BYTES / 2) +
-                                                                  (U_CFG_TEST_UART_BUFFER_LENGTH_BYTES / 4)];
+                        (U_CFG_TEST_UART_BUFFER_LENGTH_BYTES / 4)];
 
 #endif // (U_CFG_TEST_UART_A >= 0) && (U_CFG_TEST_UART_B < 0)
 

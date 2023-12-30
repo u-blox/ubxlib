@@ -209,7 +209,6 @@ int32_t uWifiCfgConfigure(uDeviceHandle_t devHandle,
                     }
                 }
 
-
                 if (errorCode >= 0 && restartNeeded) {
                     restart(atHandle, true);
                 }

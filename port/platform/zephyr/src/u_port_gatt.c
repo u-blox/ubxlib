@@ -194,7 +194,6 @@ static struct bt_conn_cb conn_callbacks = {
 static uPortGattGapConnStatusCallback_t pGapConnStatusCallback;
 static void *pGapConnStatusParam;
 
-
 static const struct bt_uuid_16 primaryServiceUuid   = {{BT_UUID_TYPE_16}, 0x2800};
 // not used for the moment: static const struct bt_uuid_16 secondaryServiceUuid = {{BT_UUID_TYPE_16}, 0x2801};
 // not used for the moment: static const struct bt_uuid_16 includeUuid          = {{BT_UUID_TYPE_16}, 0x2802};
@@ -444,7 +443,6 @@ static void writeServiceDeclaration(struct bt_gatt_attr **ppAttr,
 
     *ppAttr = pAttr;
 }
-
 
 static void writeCharDeclaration(struct bt_gatt_attr **ppAttr,
                                  struct bt_gatt_chrc **ppChrc,

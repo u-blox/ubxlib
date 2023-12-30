@@ -42,7 +42,6 @@ typedef struct {
     void *pContext;
 } uStackFrame_t;
 
-
 /* ----------------------------------------------------------------
  * FUNCTIONS
  * -------------------------------------------------------------- */
@@ -88,8 +87,6 @@ bool uDebugUtilsGetNextStackFrame(uint32_t stackTop, uStackFrame_t *pFrame);
 int32_t uDebugUtilsPrintCallStack(uint32_t sp,
                                   uint32_t stackTop,
                                   size_t maxDepth);
-
-
 
 #ifdef __cplusplus
 }

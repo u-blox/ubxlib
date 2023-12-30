@@ -173,7 +173,6 @@ static void wifiNetworkStatusCallback(uDeviceHandle_t devHandle,
     gWifiStatusMask = statusMask;
 }
 
-
 static uWifiTestError_t runWifiTest(const char *pSsid, const char *pPassPhrase)
 {
     uWifiTestError_t testError = U_WIFI_TEST_ERROR_NONE;

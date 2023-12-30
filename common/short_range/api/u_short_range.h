@@ -65,7 +65,6 @@ extern "C" {
 # define U_SHORT_RANGE_UART_BAUD_RATE 115200
 #endif
 
-
 /** Bluetooth address length.
  */
 #define U_SHORT_RANGE_BT_ADDRESS_LENGTH   6
@@ -329,7 +328,6 @@ int32_t uShortRangeSetMqttConnectionStatusCallback(uDeviceHandle_t devHandle,
  */
 int32_t uShortRangeAtClientHandleGet(uDeviceHandle_t devHandle,
                                      uAtClientHandle_t *pAtHandle);
-
 
 const uShortRangeModuleInfo_t *uShortRangeGetModuleInfo(int32_t moduleId);
 

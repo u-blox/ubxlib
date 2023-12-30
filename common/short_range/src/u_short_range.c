@@ -330,7 +330,6 @@ static int32_t parseBdAddr(const char *pStr, uint8_t *pDstAddr)
     return (int32_t)U_ERROR_COMMON_SUCCESS;
 }
 
-
 static int32_t parseIpv4Addr(char *pStr, uint8_t *pDstIp)
 {
     // Parse string: "192.168.0.1"
@@ -390,7 +389,6 @@ static int32_t parseUint16(int32_t value, uint16_t *pDst)
     }
     return (int32_t)U_ERROR_COMMON_UNKNOWN;
 }
-
 
 //+UUDPC:<peer_handle>,<type>,<profile>,<address>,<frame_size>
 //lint -esym(818, pParameter) Suppress pParameter could be const, need to

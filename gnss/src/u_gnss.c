@@ -530,7 +530,6 @@ int32_t uGnssGetIntermediate(uDeviceHandle_t gnssHandle,
     return errorCode;
 }
 
-
 // Set the I2C address of the GNSS device.
 int32_t uGnssSetI2cAddress(uDeviceHandle_t gnssHandle, int32_t i2cAddress)
 {

@@ -24,7 +24,6 @@
  * @brief Test for the ringbuffer API
  */
 
-
 #ifdef U_CFG_OVERRIDE
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif

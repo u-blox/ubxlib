@@ -103,7 +103,6 @@ int32_t uPortGpioConfig(uPortGpioConfig_t *pConfig)
             break;
         }
 
-
         case U_PORT_GPIO_DIRECTION_INPUT_OUTPUT:
         case U_PORT_GPIO_DIRECTION_OUTPUT: {
             flags |= GPIO_OUTPUT;
@@ -201,4 +200,3 @@ int32_t uPortGpioGet(int32_t pin)
 }
 
 // End of file
-

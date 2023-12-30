@@ -34,6 +34,18 @@ RUN apt-get update && apt-get install -y \
 # Cleanup
     apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
+# Install a later version of CMake (required by Zephyr 3 and AStyle 3.4)
+RUN                                                                                          \
+    if [ "$(arch)" != "aarch64" ]; then                                                      \
+        wget -q -P /tmp https://cmake.org/files/v3.24/cmake-3.24.1-linux-x86_64.tar.gz &&    \
+        tar --strip-components=1 -xf /tmp/cmake-3.24.1-linux-x86_64.tar.gz -C /usr/local &&  \
+        rm -rf /tmp/*;                                                                       \
+    else                                                                                     \
+        wget -q -P /tmp https://cmake.org/files/v3.24/cmake-3.24.1-linux-aarch64.tar.gz &&   \
+        tar --strip-components=1 -xf /tmp/cmake-3.24.1-linux-aarch64.tar.gz -C /usr/local && \
+        rm -rf /tmp/*;                                                                       \
+    fi
+
 # Install Zephyr dependencies
 RUN apt-get update && apt-get install --no-install-recommends -y \
         git ninja-build gperf ccache dfu-util wget \
@@ -46,11 +58,21 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
         python3 python3-pip python3-setuptools cmake ninja-build ccache \
         libffi-dev libssl-dev dfu-util libusb-1.0-0 && \
 # Install ubxlib automation stuff
-    apt-get install -y --no-install-recommends  astyle doxygen unzip && \
+    apt-get install -y --no-install-recommends doxygen unzip && \
+# Install AStyle 3.4.10 (apt-get currently installs only 3.1)
+    wget https://sourceforge.net/projects/astyle/files/astyle/astyle%203.4/astyle-3.4.10.tar.bz2/download -O astyle.tar.bz2 && \
+    tar -xf astyle.tar.bz2 && \
+    cd astyle-3.4.10 && \
+    mkdir as-gcc-exe && \
+    cd as-gcc-exe && \
+    cmake ../ && \
+    make && \
+    make install && \
+    cd ../.. && \
 # Install GPIO API library for Linux; gpiod not strictly necessary but useful for debugging
    apt-get install -y --no-install-recommends libgpiod-dev gpiod && \
 # Cleanup
-    apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+    apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* astyle-3.4.10
 
 # Install Nordic command-line tools
 RUN apt-get update && apt-get install -y wget && \
@@ -93,18 +115,6 @@ RUN apt-get update && apt-get install -y wget &&                                
     cp dpkg_status_mod /var/lib/dpkg/status &&                                      \
 # Cleanup
     apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-
-# Install a later version of CMake (required by Zephyr 3)
-RUN                                                                                          \
-    if [ "$(arch)" != "aarch64" ]; then                                                      \
-        wget -q -P /tmp https://cmake.org/files/v3.24/cmake-3.24.1-linux-x86_64.tar.gz &&    \
-        tar --strip-components=1 -xf /tmp/cmake-3.24.1-linux-x86_64.tar.gz -C /usr/local &&  \
-        rm -rf /tmp/*;                                                                       \
-    else                                                                                     \
-        wget -q -P /tmp https://cmake.org/files/v3.24/cmake-3.24.1-linux-aarch64.tar.gz &&   \
-        tar --strip-components=1 -xf /tmp/cmake-3.24.1-linux-aarch64.tar.gz -C /usr/local && \
-        rm -rf /tmp/*;                                                                       \
-    fi
 
 # To gain access to the GPIOs we need the user we create at the end to be part of
 # the gpio group in the underlying system, so we need to create exactly that

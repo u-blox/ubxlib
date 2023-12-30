@@ -31,7 +31,6 @@
 #include <sys/time.h>
 #include <sys/times.h>
 
-
 /* Variables */
 //#undef errno
 extern int errno;
@@ -42,7 +41,6 @@ register char *stack_ptr asm("sp");
 
 char *__env[1] = { 0 };
 char **environ = __env;
-
 
 /* Functions */
 void initialise_monitor_handles()
@@ -94,7 +92,6 @@ int _close(int file)
     (void)file;
     return -1;
 }
-
 
 int _fstat(int file, struct stat *st)
 {

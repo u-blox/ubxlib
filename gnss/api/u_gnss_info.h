@@ -186,8 +186,6 @@ int32_t uGnssInfoGetCommunicationStats(uDeviceHandle_t gnssHandle,
                                        int32_t port,
                                        uGnssCommunicationStats_t *pStats);
 
-
-
 #ifdef __cplusplus
 }
 #endif

@@ -867,7 +867,6 @@ size_t uRingBufferParseHandle(uRingBuffer_t *pRingBuffer, int32_t handle,
     return errorCodeOrLength;
 }
 
-
 bool uRingBufferGetByteUnprotected(uParseHandle_t parseHandle, void *p)
 {
     uRingBufferParseContext_t *pCtx = (uRingBufferParseContext_t *)parseHandle;

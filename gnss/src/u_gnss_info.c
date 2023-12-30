@@ -168,7 +168,6 @@ int32_t uGnssInfoGetVersions(uDeviceHandle_t gnssHandle,
     return errorCodeOrLength;
 }
 
-
 // Get the chip ID from the GNSS chip.
 int32_t uGnssInfoGetIdStr(uDeviceHandle_t gnssHandle,
                           char *pStr, size_t size)
@@ -397,6 +396,5 @@ int32_t uGnssInfoGetCommunicationStats(uDeviceHandle_t gnssHandle,
 
     return errorCode;
 }
-
 
 // End of file

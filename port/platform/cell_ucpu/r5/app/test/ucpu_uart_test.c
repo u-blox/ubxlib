@@ -123,7 +123,6 @@ static uNetworkCfgCell_t gDeviceNetworkCfgCell = {
     .timeoutSeconds = 240
 };
 
-
 // MQTT thread handle
 static uPortTaskHandle_t mqttThreadHandle;
 

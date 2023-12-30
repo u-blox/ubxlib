@@ -189,7 +189,7 @@ static const int32_t localToWinPriority[] = {-2,  // 0
                                              1,   // 13
                                              1,   // 14
                                              1    // 15
-                                             };
+                                            };
 
 /** List of thread IDs.  We only need to keep track of the IDs
  * in order to implement a version of crtitical section

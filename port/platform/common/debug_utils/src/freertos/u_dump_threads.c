@@ -40,7 +40,6 @@
 # include "task_snapshot.h"
 #endif
 
-
 #include "u_port_debug.h"
 
 /* ----------------------------------------------------------------

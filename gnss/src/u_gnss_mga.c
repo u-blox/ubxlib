@@ -146,7 +146,6 @@ static const uErrorCode_t gMgaApiResultToError[] = {
     U_ERROR_COMMON_EMPTY      // MGA_API_NO_DATA_TO_SEND
 };
 
-
 /** The body of the smallest UBX-MGA-FLASH-DATA message, used to erase it.
  */
 static const char gUbxMgaFlashDataBodyErase[] = {0x01, // Message type

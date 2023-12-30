@@ -120,13 +120,13 @@ typedef struct {
 
 static int32_t gULocationTypeToUConnectType[] = {
     -1, // U_LOCATION_TYPE_NONE
-        -1, // U_LOCATION_TYPE_GNSS
-        0, // U_LOCATION_TYPE_CLOUD_CELL_LOCATE
-        1, // U_LOCATION_TYPE_CLOUD_GOOGLE
-        2, // U_LOCATION_TYPE_CLOUD_SKYHOOK
-        3, // U_LOCATION_TYPE_CLOUD_HERE
-        -1 // U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE
-    };
+    -1, // U_LOCATION_TYPE_GNSS
+    0, // U_LOCATION_TYPE_CLOUD_CELL_LOCATE
+    1, // U_LOCATION_TYPE_CLOUD_GOOGLE
+    2, // U_LOCATION_TYPE_CLOUD_SKYHOOK
+    3, // U_LOCATION_TYPE_CLOUD_HERE
+    -1 // U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE
+};
 
 static uWifiLocGeofenceDynamicStatus_t gFenceDynamicsStatus[U_WIFI_LOC_GEOFENCE_NUM_CACHED] = {0};
 

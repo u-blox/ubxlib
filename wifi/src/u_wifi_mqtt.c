@@ -556,7 +556,6 @@ static void edmMqttDataCallback(int32_t edmHandle, int32_t edmChannel,
     U_PORT_MUTEX_UNLOCK(gMqttSessionMutex);
 }
 
-
 static void edmIpConnectionCallback(int32_t edmHandle,
                                     int32_t edmChannel,
                                     uShortRangeConnectionEventType_t eventType,
@@ -1136,7 +1135,6 @@ int32_t uWifiMqttUnsubscribe(const uMqttClientContext_t *pContext,
     uShortRangePrivateInstance_t *pInstance;
     int32_t err = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
 
-
     if (uShortRangeLock() == (int32_t)U_ERROR_COMMON_SUCCESS) {
 
         // Check WiFi SHO handle and MQTT session exists
@@ -1172,7 +1170,6 @@ int32_t uWifiMqttDisconnect(const uMqttClientContext_t *pContext)
 
     isMqttConnected = uWifiMqttIsConnected(pContext);
 
-
     if (uShortRangeLock() == (int32_t)U_ERROR_COMMON_SUCCESS) {
 
         // Check WiFi SHO handle and MQTT session exists
@@ -1197,7 +1194,6 @@ void uWifiMqttClose(uMqttClientContext_t *pContext)
     bool isMqttConnected;
 
     isMqttConnected = uWifiMqttIsConnected(pContext);
-
 
     if (uShortRangeLock() == (int32_t)U_ERROR_COMMON_SUCCESS) {
 

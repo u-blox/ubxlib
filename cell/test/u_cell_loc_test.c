@@ -181,7 +181,6 @@ static uCellLocTestAssistNowOfflineConfig_t gCellLocAssistNowOfflineSettings[] =
     }
 };
 
-
 /** The names of the AssistNow Online data types; must have U_GNSS_MGA_DATA_TYPE_MAX_NUM
  * members, matching uGnssMgaDataType_t.
  */
@@ -310,7 +309,6 @@ static char latLongToBits(int32_t thingX1e7,
 }
 
 #endif //U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN && U_CFG_TEST_CELL_LOCATE
-
 
 // The satellite system configuration tests: pulled out separately so that
 // they can be run when GNSS is powered off and when it is powered on.

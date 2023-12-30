@@ -1519,7 +1519,6 @@ int32_t uWifiSockReceiveFrom(uDeviceHandle_t devHandle,
     return errnoLocal;
 }
 
-
 int32_t uWifiSockRegisterCallbackData(uDeviceHandle_t devHandle,
                                       int32_t sockHandle,
                                       uWifiSockCallback_t pCallback)
@@ -1645,7 +1644,6 @@ int32_t uWifiSockGetHostByName(uDeviceHandle_t devHandle,
 
     return errnoLocal;
 }
-
 
 int32_t uWifiSockGetLocalAddress(uDeviceHandle_t devHandle,
                                  int32_t sockHandle,

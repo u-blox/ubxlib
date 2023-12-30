@@ -93,7 +93,6 @@ typedef struct {
     uint16_t ARCount;          // number of resource entries
 } uDnsHeader_t;
 
-
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */

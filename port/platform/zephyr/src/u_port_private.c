@@ -479,5 +479,4 @@ int32_t uPortPrivateTimerChange(const uPortTimerHandle_t handle,
     return errorCode;
 }
 
-
 // End of file

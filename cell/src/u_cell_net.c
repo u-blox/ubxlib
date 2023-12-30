@@ -3444,7 +3444,6 @@ int32_t uCellNetGetApnStr(uDeviceHandle_t cellHandle,
     return errorCodeOrSize;
 }
 
-
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS: DATA COUNTERS
  * -------------------------------------------------------------- */

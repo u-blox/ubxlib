@@ -170,7 +170,6 @@ int32_t uWifiTestPrivatePreamble(uWifiModuleType_t moduleType,
             pParameters->uartHandle = errorCodeOrHandle;
         }
 
-
         if (errorCodeOrHandle >= (int32_t) U_ERROR_COMMON_SUCCESS) {
             errorCodeOrHandle = uShortRangeGetEdmStreamHandle(devHandle);
             pParameters->edmStreamHandle = errorCodeOrHandle;

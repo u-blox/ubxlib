@@ -134,7 +134,6 @@ void uPortTaskBlock(int32_t delayMs)
     tx_thread_sleep(delayMs);
 }
 
-
 // Get the minimum free stack for a given task.
 int32_t uPortTaskStackMinFree(const uPortTaskHandle_t taskHandle)
 {

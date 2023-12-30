@@ -202,5 +202,4 @@ void uDeviceSerialDelete(uDeviceSerial_t *pDeviceSerial)
     uInterfaceDelete(pDeviceSerial);
 }
 
-
 // End of file

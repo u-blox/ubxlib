@@ -1135,7 +1135,6 @@ static bool mqttRetry(const uCellPrivateInstance_t *pInstance, bool mqttSn)
     return retry;
 }
 
-
 // Determine whether MQTT TLS security is on or off.
 static bool isSecured(const uCellPrivateInstance_t *pInstance,
                       int32_t *pSecurityProfileId)

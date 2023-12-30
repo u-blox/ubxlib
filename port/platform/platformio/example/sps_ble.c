@@ -57,7 +57,6 @@ static const uNetworkCfgBle_t gNetworkCfg = {
     .spsServer = true
 };
 
-
 static void connectionCallback(int32_t connHandle, char *address, int32_t status,
                                int32_t channel, int32_t mtu, void *pParameters)
 {

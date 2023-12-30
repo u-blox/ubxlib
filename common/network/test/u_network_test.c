@@ -172,7 +172,6 @@ static const char gTestData[] =  "_____0000:012345678901234567890123456789012345
 // Make sure the test data is not a multiple of the MTU
 // so we test packets smaller than MTU as well as MTU sized packets
 
-
 static volatile int32_t gConnHandle;
 static volatile int32_t gBytesReceived;
 static volatile int32_t gErrors = 0;

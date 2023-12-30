@@ -43,7 +43,6 @@
  * TYPES
  * -------------------------------------------------------------- */
 
-
 /* ----------------------------------------------------------------
  * STATIC PROTOTYPES
  * -------------------------------------------------------------- */
@@ -178,7 +177,6 @@ void uShortRangePbufListMerge(uShortRangePbufList_t *pOldList, uShortRangePbufLi
     }
 }
 
-
 size_t uShortRangePbufListConsumeData(uShortRangePbufList_t *pBufList, char *pData, size_t len)
 {
     size_t copiedLen = 0;
@@ -219,7 +217,6 @@ size_t uShortRangePbufListConsumeData(uShortRangePbufList_t *pBufList, char *pDa
 
     return copiedLen;
 }
-
 
 int32_t uShortRangePktListAppend(uShortRangePktList_t *pPktList,
                                  uShortRangePbufList_t *pPbufList)

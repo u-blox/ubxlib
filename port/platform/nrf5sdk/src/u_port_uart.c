@@ -375,7 +375,6 @@ static void uartIrqHandler(uPortUartData_t *pUartData)
         nrf_uarte_task_trigger(pReg, NRF_UARTE_TASK_STOPTX);
     }
 
-
     if (nrf_uarte_event_check(pReg, NRF_UARTE_EVENT_TXSTOPPED)) {
         if (pUartData->disableTxIrq) {
             nrf_uarte_int_disable(pReg, NRF_UARTE_INT_TXSTOPPED_MASK);

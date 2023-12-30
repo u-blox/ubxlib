@@ -54,7 +54,6 @@ typedef struct {
     uDeviceHandle_t devHandle;  /**< The u-blox device handle returned by uShortRangeOpenUart(). */
 } uWifiTestPrivate_t;
 
-
 //lint -esym(769, uWifiTestError_t::U_WIFI_TEST_ERROR_NONE)
 //lint -esym(769, uWifiTestError_t::U_WIFI_TEST_ERROR_PREAMBLE)
 //lint -esym(769, uWifiTestError_t::U_WIFI_TEST_ERROR_CONNECT)

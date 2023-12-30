@@ -86,7 +86,7 @@ static uLocationAssist_t gLocationAssistCellLocate = {500000, // desiredAccuracy
                                                       // a GNSS network can use it
                                                       -1, -1, -1, -1, NULL, NULL, -1,
                                                       -1, -1 // Wifi parameters are irrelevant
-                                                      };
+                                                     };
 
 /** Location configuration for Cell Locate.
  */
@@ -113,7 +113,7 @@ static uLocationAssist_t gLocationAssistCloudLocate = {-1,   // desiredAccuracyM
                                                        NULL,  // mqttClientContext must be filled in later
                                                        U_LOCATION_TEST_CLOUD_LOCATE_RRLP_DATA_LENGTH_BYTES,
                                                        -1, -1 // Wifi parameters are irrelevant
-                                                       };
+                                                      };
 
 /** Location configuration for Cloud Locate.
  */
@@ -160,7 +160,7 @@ static uLocationAssist_t gLocationAssistWifi  = {-1,    // desiredAccuracyMillim
                                                  -1,
                                                  U_LOCATION_TEST_ACCESS_POINTS_FILTER,
                                                  U_LOCATION_TEST_RSSI_DBM_FILTER
-                                                 };
+                                                };
 #endif
 
 #if defined(U_CFG_APP_GOOGLE_MAPS_API_KEY) && !defined(U_LOCATION_TEST_DISABLE_WIFI)

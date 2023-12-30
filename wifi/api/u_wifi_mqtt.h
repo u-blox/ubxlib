@@ -48,7 +48,6 @@ extern "C" {
  */
 #define U_WIFI_MQTT_MAX_NUM_CONNECTIONS 7
 
-
 typedef enum {
     U_WIFI_MQTT_QOS_AT_MOST_ONCE = 0,
     U_WIFI_MQTT_QOS_AT_LEAST_ONCE = 1,
@@ -220,7 +219,6 @@ int32_t uWifiMqttMessageRead(const uMqttClientContext_t *pContext,
  * @return                    true/false.
  */
 bool uWifiMqttIsConnected(const uMqttClientContext_t *pContext);
-
 
 #ifdef __cplusplus
 }

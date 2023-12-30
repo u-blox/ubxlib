@@ -113,7 +113,6 @@ const uMqttClientConnection_t gMqttUnsecuredConnection = {
     .localPort = 1883
 };
 
-
 const uMqttClientConnection_t gMqttSecuredConnection = {
     .pBrokerNameStr = "ubxlib.com",
     .pUserNameStr = "test_user",
@@ -212,7 +211,6 @@ static void mqttDisconnectCb(int32_t status, void *pCbParam)
     gMqttSessionDisconnected = true;
 }
 
-
 static int32_t mqttSubscribe(uMqttClientContext_t *gpMqttClientCtx,
                              const char *pTopicFilterStr,
                              uMqttQos_t maxQos)
@@ -283,7 +281,6 @@ static int32_t wifiMqttUnsubscribeTest(bool isSecuredConnection)
     pMessageIn = (char *) pUPortMalloc(U_MQTT_CLIENT_TEST_READ_MESSAGE_MAX_LENGTH_BYTES);
     U_PORT_TEST_ASSERT(pMessageIn != NULL);
 
-
     topicId1 = rand();
     // Make a unique topic name to stop different boards colliding
     snprintf(pTopicOut1, U_MQTT_CLIENT_TEST_READ_TOPIC_MAX_LENGTH_BYTES,
@@ -308,7 +305,6 @@ static int32_t wifiMqttUnsubscribeTest(bool isSecuredConnection)
 
     }
 
-
     //lint -e(731) suppress boolean argument to equal / not equal
     U_PORT_TEST_ASSERT(uMqttClientIsConnected(gpMqttClientCtx) == true);
 
@@ -321,7 +317,6 @@ static int32_t wifiMqttUnsubscribeTest(bool isSecuredConnection)
     err = mqttSubscribe(gpMqttClientCtx, pTopicOut1, qos);
     U_PORT_TEST_ASSERT(err == (int32_t)qos);
 
-
     for (count = 0; count < MQTT_PUBLISH_TOTAL_MSG_COUNT; count++) {
 
         err = mqttPublish(gpMqttClientCtx,
@@ -333,10 +328,8 @@ static int32_t wifiMqttUnsubscribeTest(bool isSecuredConnection)
         U_PORT_TEST_ASSERT(err == (int32_t)U_ERROR_COMMON_SUCCESS);
     }
 
-
     U_PORT_TEST_ASSERT(uMqttClientGetTotalMessagesSent(gpMqttClientCtx) ==
                        MQTT_PUBLISH_TOTAL_MSG_COUNT);
-
 
     for (count = 0; count < MQTT_RETRY_COUNT; count++) {
 
@@ -387,7 +380,6 @@ static int32_t wifiMqttUnsubscribeTest(bool isSecuredConnection)
     err = uMqttClientDisconnect(gpMqttClientCtx);
     U_PORT_TEST_ASSERT(err == (int32_t)U_ERROR_COMMON_SUCCESS);
 
-
     for (count = 0; ((count < MQTT_RETRY_COUNT) && !gMqttSessionDisconnected); count++) {
         uPortTaskBlock(1000);
     }
@@ -432,7 +424,6 @@ static int32_t wifiMqttPublishSubscribeTest(bool isSecuredConnection)
     //lint -esym(613, pMessageOut) Suppress possible use of NULL pointer in future
     pMessageIn = (char *) pUPortMalloc(U_MQTT_CLIENT_TEST_READ_MESSAGE_MAX_LENGTH_BYTES);
     U_PORT_TEST_ASSERT(pMessageIn != NULL);
-
 
     topicId1 = rand();
     // Make a unique topic name to stop different boards colliding
@@ -489,7 +480,6 @@ static int32_t wifiMqttPublishSubscribeTest(bool isSecuredConnection)
         U_PORT_TEST_ASSERT(err == (int32_t)U_ERROR_COMMON_SUCCESS);
     }
 
-
     for (count = 0; count < MQTT_PUBLISH_TOTAL_MSG_COUNT; count++) {
 
         err = mqttPublish(gpMqttClientCtx,
@@ -503,7 +493,6 @@ static int32_t wifiMqttPublishSubscribeTest(bool isSecuredConnection)
 
     U_PORT_TEST_ASSERT(uMqttClientGetTotalMessagesSent(gpMqttClientCtx) == (MQTT_PUBLISH_TOTAL_MSG_COUNT
                                                                             << 1));
-
 
     for (count = 0; count < MQTT_RETRY_COUNT; count++) {
 
@@ -536,7 +525,6 @@ static int32_t wifiMqttPublishSubscribeTest(bool isSecuredConnection)
 
     err = uMqttClientDisconnect(gpMqttClientCtx);
     U_PORT_TEST_ASSERT(err == (int32_t)U_ERROR_COMMON_SUCCESS);
-
 
     for (count = 0; count < MQTT_RETRY_COUNT; count++) {
 

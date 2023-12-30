@@ -1083,7 +1083,7 @@ int32_t getRateUbxCfgVal(uGnssPrivateInstance_t *pInstance,
     uint32_t keyId = U_GNSS_CFG_VAL_KEY(U_GNSS_CFG_VAL_KEY_GROUP_ID_RATE,
                                         U_GNSS_CFG_VAL_KEY_ITEM_ID_ALL, 0);
     uint16_t items[sizeof(gCfgValKeyIdCfgRate) /
-                                               sizeof(gCfgValKeyIdCfgRate[0])] = {0};
+                   sizeof(gCfgValKeyIdCfgRate[0])] = {0};
     size_t itemsFound = 0;
 
     // Request all the rate items
@@ -1315,7 +1315,7 @@ static int32_t setProtocolOutUbxCfgVal(uGnssPrivateInstance_t *pInstance,
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
     uGnssCfgVal_t val[sizeof(gProtocolTypeToCfgValItemIdOutProt) /
-                                                                 sizeof(gProtocolTypeToCfgValItemIdOutProt[0])];
+                      sizeof(gProtocolTypeToCfgValItemIdOutProt[0])];
     size_t numEntries = 0;
 
     if (pInstance->portNumber < sizeof(gPortToCfgValGroupIdOutProt) /

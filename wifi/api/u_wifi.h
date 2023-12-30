@@ -126,7 +126,6 @@ typedef struct {
 typedef void (*uWifiScanResultCallback_t) (uDeviceHandle_t devHandle,
                                            uWifiScanResult_t *pResult);
 
-
 /** Connection status callback type.
  *
  * @param devHandle              the handle of the wifi instance.
@@ -147,7 +146,6 @@ typedef void (*uWifiConnectionStatusCallback_t) (uDeviceHandle_t devHandle,
                                                  char *pBssid,
                                                  int32_t disconnectReason,
                                                  void *pCallbackParameter);
-
 
 /** Network status callback type.
  *

@@ -176,7 +176,6 @@ static const char *pHttpRequestTypeStr(uCellHttpRequest_t requestType)
     return pStr;
 }
 
-
 // Callback function for the cellular connection process.
 static bool keepGoingCallback(uDeviceHandle_t unused)
 {

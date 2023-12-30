@@ -1401,13 +1401,13 @@ U_PORT_TEST_FUNCTION("[sock]", "sockMaxNumSockets")
         // Now try to open one more and it should fail
         U_TEST_PRINT_LINE("opening one more, should fail.");
         descriptor[(sizeof(descriptor) /
-                                        sizeof(descriptor[0])) - 1] = openSocketAndUseIt(devHandle,
+                    sizeof(descriptor[0])) - 1] = openSocketAndUseIt(devHandle,
                                                                      &remoteAddress,
                                                                      U_SOCK_TYPE_DGRAM,
                                                                      U_SOCK_PROTOCOL_UDP,
                                                                      &heapXxxSockInitLoss);
         U_PORT_TEST_ASSERT(descriptor[(sizeof(descriptor) /
-                                                           sizeof(descriptor[0])) - 1] < 0);
+                                       sizeof(descriptor[0])) - 1] < 0);
         U_PORT_TEST_ASSERT(errno > 0);
         errno = 0;
 

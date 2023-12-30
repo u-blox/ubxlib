@@ -580,7 +580,6 @@ static void fileListClear(uCellPrivateFileListContainer_t **ppFileContainer)
     }
 }
 
-
 // [Re]attach a PDP context to an internal module profile with an
 // option on whether the AT client is locked/released or not.
 int32_t privateActivateProfile(const uCellPrivateInstance_t *pInstance,

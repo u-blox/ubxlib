@@ -1088,7 +1088,6 @@ int32_t uWifiStationScan(uDeviceHandle_t devHandle, const char *pSsid,
         uShortRangeUnlock();
     }
 
-
     return errorCode;
 }
 

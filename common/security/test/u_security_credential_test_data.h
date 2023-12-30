@@ -124,7 +124,6 @@ extern const uint8_t gUSecurityCredentialTestClientX509Pem[];
  */
 extern const size_t gUSecurityCredentialTestClientX509PemSize;
 
-
 #ifdef U_SECURITY_CREDENTIAL_TEST_FORMATS
 
 /* ----------------------------------------------------------------

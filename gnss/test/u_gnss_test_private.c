@@ -224,7 +224,6 @@ static int32_t setPowerState(uDeviceHandle_t gnssHandle, uDeviceHandle_t cellHan
     return errorCode;
 }
 
-
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */

@@ -126,7 +126,6 @@ U_PORT_TEST_FUNCTION("[wifiCfg]", "wifiCfgConfigureModule")
     cfg.dhcp = true; // set DHCP
     U_PORT_TEST_ASSERT(uWifiCfgConfigure(gHandles.devHandle, &cfg) == 0);
 
-
     uWifiTestPrivatePostamble(&gHandles);
 
     // Check for resource leaks

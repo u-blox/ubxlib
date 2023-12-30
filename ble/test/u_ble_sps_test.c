@@ -125,7 +125,6 @@ static void connectionCallback(int32_t connHandle, char *address, int32_t type,
     (void) pParameters;
 }
 
-
 U_PORT_TEST_FUNCTION("[bleSps]", "bleSps")
 {
     int32_t resourceCount;
@@ -154,7 +153,6 @@ U_PORT_TEST_FUNCTION("[bleSps]", "bleSps")
 #else
 #error "Either U_CFG_TEST_SHORT_RANGE_MODULE_TYPE or U_CFG_BLE_MODULE_INTERNAL must be defined"
 #endif
-
 
     U_PORT_TEST_ASSERT(uBleSpsSetCallbackConnectionStatus(gHandles.devHandle,
                                                           connectionCallback,
