@@ -21,6 +21,8 @@
 #ifdef U_CFG_OVERRIDE
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
+
+#include "limits.h"    // INT_MAX
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
@@ -108,9 +110,12 @@ int32_t uPortGetTickTimeMs()
 {
     int32_t ms = 0;
     struct timespec ts;
+
     if (clock_gettime(CLOCK_MONOTONIC_RAW, &ts) == 0) {
-        ms = (ts.tv_sec * 1000) + (ts.tv_nsec / 1000000);
+        // Ensure that the calculation wraps correctly
+        ms = ((((int64_t) ts.tv_sec) * 1000) + (((int64_t) ts.tv_nsec) / 1000000)) % INT_MAX;
     }
+
     return ms;
 }
 
