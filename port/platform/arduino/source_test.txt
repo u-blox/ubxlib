@@ -20,6 +20,7 @@ example/cell/power_saving/cell_power_saving_e_drx_main.c
 example/gnss/assist_now_main.c
 example/gnss/cfg_val_main.c
 example/gnss/msg_main.c
+example/gnss/dec_main.c
 example/gnss/pos_main.c
 example/gnss/geofence_main.c
 ble/test/u_ble_test.c

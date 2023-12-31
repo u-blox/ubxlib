@@ -14,10 +14,9 @@
  * limitations under the License.
  */
 
-/** @brief This example demonstrates how to exchange message of your
- * choice with a GNSS device that is directly connected to this MCU;
- * this mechanism does not currently work if your GNSS device is
- * connected via an intermediate [cellular] module.
+/** @brief This example demonstrates how to decode messages of your
+ * choice, not otherwise decoded by ubxlib, from a GNSS device that
+ * is directly connected to this MCU.
  *
  * The choice of module and the choice of platform on which this
  * code runs is made at build time, see the README.md for
@@ -42,8 +41,7 @@
  * -------------------------------------------------------------- */
 
 /** The size of message buffer we need: enough room for a UBX-NAV-PVT
- * message, which has a body of length 92 bytes, and any NMEA message,
- * which have a maximum size of 82 bytes.
+ * message, which has a body of length 92 bytes.
  */
 # define MY_MESSAGE_BUFFER_LENGTH  (92 + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES)
 
@@ -173,84 +171,57 @@ static const uDeviceCfg_t gDeviceCfg = {
 static const uDeviceCfg_t gDeviceCfg = {.deviceType = U_DEVICE_TYPE_NONE};
 # endif
 
-// Count of messages received
-static size_t gMessageCount = 0;
+// Count of messages decoded
+static size_t gDecCount = 0;
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-// Convert a lat/long into a whole number and a bit-after-the-decimal-point
-// that can be printed by a version of printf() that does not support
-// floating point operations, returning the prefix (either "+" or "-").
-// The result should be printed with printf() format specifiers
-// %c%d.%07d, e.g. something like:
-//
-// int32_t whole;
-// int32_t fraction;
-//
-// printf("%c%d.%07d/%c%d.%07d", latLongToBits(latitudeX1e7, &whole, &fraction),
-//                               whole, fraction,
-//                               latLongToBits(longitudeX1e7, &whole, &fraction),
-//                               whole, fraction);
-static char latLongToBits(int32_t thingX1e7,
-                          int32_t *pWhole,
-                          int32_t *pFraction)
-{
-    char prefix = '+';
-
-    // Deal with the sign
-    if (thingX1e7 < 0) {
-        thingX1e7 = -thingX1e7;
-        prefix = '-';
-    }
-    *pWhole = thingX1e7 / 10000000;
-    *pFraction = thingX1e7 % 10000000;
-
-    return prefix;
-}
-
-// Print out the position contained in a UBX-NAV-PVT message
-static void printPosition(const char *pBuffer, size_t length)
-{
-    char prefix[2] = {0};
-    int32_t whole[2] = {0};
-    int32_t fraction[2] = {0};
-    int32_t longitudeX1e7;
-    int32_t latitudeX1e7;
-
-    // We have the complete raw message so need to move past the header
-    pBuffer += U_UBX_PROTOCOL_HEADER_LENGTH_BYTES;
-    if ((length >= U_UBX_PROTOCOL_HEADER_LENGTH_BYTES + 32) && (*(pBuffer + 21) & 0x01)) {
-        longitudeX1e7 =  uUbxProtocolUint32Decode(pBuffer + 24);
-        latitudeX1e7 = uUbxProtocolUint32Decode(pBuffer + 28);
-        prefix[0] = latLongToBits(longitudeX1e7, &(whole[0]), &(fraction[0]));
-        prefix[1] = latLongToBits(latitudeX1e7, &(whole[1]), &(fraction[1]));
-        uPortLog("I am here: https://maps.google.com/?q=%c%d.%07d,%c%d.%07d\n",
-                 prefix[1], whole[1], fraction[1], prefix[0], whole[0], fraction[0]);
-    }
-}
-
-// Callback for asynchronous message reception.
+// Callback for asynchronous message reception and decoding.
 static void callback(uDeviceHandle_t devHandle, const uGnssMessageId_t *pMessageId,
                      int32_t errorCodeOrLength, void *pCallbackParam)
 {
     char *pBuffer = (char *) pCallbackParam;
     int32_t length;
+    uGnssDec_t *pDec;
+#ifndef U_CFG_TEST_USING_NRF5SDK
+    uGnssDecUbxNavPvt_t *pUbxNavPvt;
+    int64_t utcTimeNanoseconds;
+#endif
 
     (void) pMessageId;
 
     if (errorCodeOrLength >= 0) {
-        // Read the message into our buffer and print it
+        // Read the message into our buffer
         length = uGnssMsgReceiveCallbackRead(devHandle, pBuffer, errorCodeOrLength);
         if (length >= 0) {
-            gMessageCount++;
+            // Call the uGnssDec() API to decode the message
+            pDec = pUGnssDecAlloc(pBuffer, length);
+            if ((pDec != NULL) && (pDec->errorCode == 0)) {
+                gDecCount++;
+                // No need to check pDec->id (or pMessageId) here since we have
+                // only asked for UBX-NAV-PVT messages.
 #ifndef U_CFG_TEST_USING_NRF5SDK // NRF52 goes a bit crazy if you print here
-            uPortLog("%.*s", length, pBuffer);
-        } else {
-            uPortLog("Empty or bad message received.\n");
+                pUbxNavPvt = &(pDec->pBody->ubxNavPvt);
+                // Do stuff with the contents
+                utcTimeNanoseconds = uGnssDecUbxNavPvtGetTimeUtc(pUbxNavPvt);
+                if (utcTimeNanoseconds >= 0) {
+                    // This print will only do anything useful if you have
+                    // a printf() which supports 64-bit integers
+                    uPortLog("UTC time %lld nanoseconds.\n", utcTimeNanoseconds);
+                } else {
+                    uPortLog("UTC time not available.\n");
+                }
 #endif
+            }
+            // Must *always* free the memory that pUGnssDecAlloc() allocated
+            uGnssDecFree(pDec);
         }
+#ifndef U_CFG_TEST_USING_NRF5SDK // NRF52 goes a bit crazy if you print here
+    } else {
+        uPortLog("Empty or bad message received.\n");
+#endif
     }
 }
 
@@ -261,14 +232,12 @@ static void callback(uDeviceHandle_t devHandle, const uGnssMessageId_t *pMessage
 // The entry point, main(): before this is called the system
 // clocks must have been started and the RTOS must be running;
 // we are in task space.
-U_PORT_TEST_FUNCTION("[example]", "exampleGnssMsg")
+U_PORT_TEST_FUNCTION("[example]", "exampleGnssDec")
 {
     uDeviceHandle_t devHandle = NULL;
     uGnssMessageId_t messageId = {0};
-    // Enough room for the UBX-NAV-PVT message, which has a body of length 92 bytes,
-    // and any NMEA message (which have a maximum size of 82 bytes)
+    // Enough room for the UBX-NAV-PVT message, which has a body of length 92 bytes
     char *pBuffer = (char *) pUPortMalloc(MY_MESSAGE_BUFFER_LENGTH);
-    int32_t length = 0;
     int32_t returnCode;
     int32_t handle;
 
@@ -286,45 +255,54 @@ U_PORT_TEST_FUNCTION("[example]", "exampleGnssMsg")
         // Since we are not using the common APIs we do not need
         // to call uNetworkInteraceUp()/uNetworkInteraceDown().
 
-        // Just for when this test is running on the ubxlib test system
-        // with other tests that may have switched NMEA messages off
-        // (we need them a little lower down).
-        uGnssCfgSetProtocolOut(devHandle, U_GNSS_PROTOCOL_NMEA, true);
+        // Set up a message receive call-back to capture UBX-NAV-PVT messages.
+        // UBX-NAV-PVT messages _are_ decoded by ubxlib, that is how all of
+        // the position establishment functions work, but only the position-
+        // related fields are returned; the UBX-NAV-PVT message contains other
+        // things that may be of interest (e.g. velocity, dead-reckoning
+        // information), which the uGnssDec API will decode for you.
 
-        // Begin by sending a single UBX-format message to the GNSS
-        // device and picking up the answer; the message does not have
-        // to be a UBX-format message, it can be anything you think the
-        // GNSS chip will understand (NMEA, SPARTN etc.), we are just
-        // using a UBX-format message to demonstrate uUbxProtocolEncode().
+        // The other decoder that is currently available in the uGnssDec API,
+        // for use with HPG (high precision) GNSS devices, is UBX-NAV-HPPOSLLH
+        // (message class/ID 0x0114); you can obtain a list of the available
+        // decoders by calling uGnssDecGetIdList().
 
-        // First encode the message into pBuffer; we just send the message
-        // class and ID of the UBX-NAV-PVT message (values read from the
-        // GNSS interface manual - we will enumerate these at some point)
-        // with an empty body: this "polls" the GNSS device for a
-        // UBX-NAV-PVT message.
-        length = uUbxProtocolEncode(0x01, 0x07, NULL, 0, pBuffer);
-        if (uGnssMsgSend(devHandle, pBuffer, length) == length) {
-            // Wait for the UBX-NAV-PVT response to come back
-            messageId.type = U_GNSS_PROTOCOL_UBX;
-            messageId.id.ubx = 0x0107; // This could be any UBX message ID/class
-            length = uGnssMsgReceive(devHandle, &messageId, &pBuffer, MY_MESSAGE_BUFFER_LENGTH, 30000, NULL);
-            if (length > 0) {
-                printPosition(pBuffer, length);
-            } else {
-                uPortLog("Did not receive a response!\n");
-            }
-        } else {
-            uPortLog("Unable to send message!\n");
+        // Should you need other message types decoded please let us know;
+        // we will add popular/commonly-used ones
+
+        // Otherwise you may call uGnssDecSetCallback() to hook-in your own
+        // message decode function.
+
+        messageId.type = U_GNSS_PROTOCOL_UBX;
+        messageId.id.ubx = 0x0107; // The message class/ID of a UBX-NAV-PVT message
+
+        // NOTE: of course, you will need to be sure that the GNSS device
+        // is actually emitting the message you want to decode: for an M8 or
+        // earlier device this is done with:
+        // uGnssCfgSetMsgRate(devHandle, &messageId, 1)
+        // ...while for an M9 or later device this is done with something like:
+        // U_GNSS_CFG_SET_VAL_RAM(devHandle, MSGOUT_UBX_NAV_PVT_I2C_U1, 1)
+        // ...or:
+        // U_GNSS_CFG_SET_VAL_RAM(devHandle, MSGOUT_UBX_NAV_PVT_SPI_U1, 1)
+        // ...etc., depending on which message ID you want to decode and which
+        // interface you are using with the GNSS device.
+
+        // As we don't know which GNSS device type or interface this example
+        // will be run on, we just do the lot
+        if (uGnssCfgSetMsgRate(devHandle, &messageId, 1) < 0) {
+            U_GNSS_CFG_SET_VAL_RAM(devHandle, MSGOUT_UBX_NAV_PVT_I2C_U1, 1);
+            U_GNSS_CFG_SET_VAL_RAM(devHandle, MSGOUT_UBX_NAV_PVT_SPI_U1, 1);
+            U_GNSS_CFG_SET_VAL_RAM(devHandle, MSGOUT_UBX_NAV_PVT_UART1_U1, 1);
+            U_GNSS_CFG_SET_VAL_RAM(devHandle, MSGOUT_UBX_NAV_PVT_UART2_U1, 1);
+            U_GNSS_CFG_SET_VAL_RAM(devHandle, MSGOUT_UBX_NAV_PVT_USB_U1, 1);
         }
 
-        // Alternatively, we can set up one or more message receive call-backs
-        // We will set one up to capture all NMEA messages
-        messageId.type = U_GNSS_PROTOCOL_NMEA;
-        messageId.id.pNmea = NULL; // This means all, but could be "GPGSV", etc.
         // We give the message receiver pBuffer so that it can read messages into it
         handle = uGnssMsgReceiveStart(devHandle, &messageId, callback, pBuffer);
         if (handle >= 0) {
-            // Wait a while for some messages to arrive
+            // Wait a while for some messages to arrive; when a wanted
+            // message class/ID arrives callback() will be called: see in there
+            // for where pUGnssDecAlloc() is called to perform the message decoding
             uPortTaskBlock(5000);
             // Stop the message receiver(s) once more
             uGnssMsgReceiveStopAll(devHandle);
@@ -332,7 +310,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleGnssMsg")
             uPortLog("Unable to start message receiver!\n");
         }
 
-        uPortLog("%d NMEA message(s) received.\n", gMessageCount);
+        uPortLog("%d UBX-NAV-PVT message(s) decoded.\n", gDecCount);
 
         // Close the device
         // Note: we don't power the device down here in order
@@ -356,7 +334,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleGnssMsg")
 
 #if ((U_CFG_APP_GNSS_UART >= 0) || (U_CFG_APP_GNSS_I2C >= 0) || (U_CFG_APP_GNSS_SPI >= 0))
     // For u-blox internal testing only
-    EXAMPLE_FINAL_STATE((length > 0) && (gMessageCount > 0) && (returnCode == 0));
+    EXAMPLE_FINAL_STATE((gDecCount > 0) && (returnCode == 0));
 # endif
 }
 

@@ -175,6 +175,7 @@ A number of examples are provided with this repo:
 | GNSS         | [location](/example/location "location example") example using a GNSS chip connected directly or via a cellular module.|
 | GNSS         | [cfg_val](/example/gnss "CFGVALXXX example") example configuring an M9 or later GNSS chip with CFGVALXXX messages.|
 | GNSS         | [message](/example/gnss "message example") example communicating directly with a GNSS chip, messages of your choice.|
+| GNSS         | [decode](/example/gnss "decode example") example decoding messages of your choice, not otherwise provided by `ubxlib`, from a GNSS chip.|
 | GNSS         | [position](/example/gnss "position example") example obtaining streamed position directly from a GNSS chip.|
 | GNSS         | [position](/example/gnss "AssistNow example") example of how to use the u-blox AssistNow service to improve the time to first fix of GNSS.|
 | GNSS         | [geofence](/example/gnss "geofence example") example of how to use the comon [geofence](/common/geofence "geofence API") API with GNSS; note that it can equally be used with cellular (CellLocate) and Wi-Fi (Google, SkyHook and Here).|

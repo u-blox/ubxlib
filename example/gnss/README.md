@@ -4,11 +4,12 @@ These directories provide examples that are specific to u-blox GNSS chips, e.g. 
 # Example
 - [cfg_val_main.c](cfg_val_main.c) contains an example of how to configure a GNSS chip using the `uGnssCfgValXxx()` API which can be found in [u_gnss_cfg.h](/gnss/api/u_gnss_cfg.h); note that this API is supported ONLY on M9 modules and later, not on M8 modules; for M8 modules there are simple configuration/information APIs in [u_gnss_cfg.h](/gnss/api/u_gnss_cfg.h)/[u_gnss_info.h](/gnss/api/u_gnss_info.h) that need no examples.
 - [msg_main.c](msg_main.c) contains an example of how to exchange messages of your choice with a GNSS chip that is connected directly to this MCU, i.e. not via an intermediate [cellular] module.  It uses the `uGnssMsg` API which can be found in [u_gnss_msg.h](/gnss/api/u_gnss_msg.h).
+- [dec_main.c](dec_main.c) contains an example of how to decode messages of your choice, messages not otherwise accessible from `ubxlib`, from a GNSS chip.  It uses the `uGnssDec` API which can be found in [u_gnss_dec.h](/gnss/api/u_gnss_dec.h).
 - [pos_main.c](pos_main.c) contains an example of how to obtain streamed position fixes from a GNSS chip.  It uses the `uGnssPos` API which can be found in [u_gnss_pos.h](/gnss/api/u_gnss_pos.h).
 - [assist_now_main.c](assist_now_main.c) contains an example of how achieve a faster time to first fix by using the u-blox AssistNow services.  It uses the `uGnssMga` API which can be found in [u_gnss_mga.h](/gnss/api/u_gnss_mga.h).
 - [geofence_main.c](geofence_main.c) contains an example of how to use the common [geofence](/common/geofence/api/u_geofence.h) API with a GNSS chip; the conditional compilation flag `U_CFG_GEOFENCE` MUST be passed into your build for this exampe to do anything useful.  Note that the same common [geofence](/common/geofence/api/u_geofence.h) API can be used with [cellular](/cell/api/u_cell_geofence.h) (CellLocate) and [Wi-Fi](/wifi/api/u_wifi_geofence.h) (Google, Skyhook and Here). ZEPHYR USERS should note that the Zephyr minimal C library is NOT sufficient to build this example: maths functions are required and hence newlib MUST be used.
 
-# Usage: `cfg_val_main.c`, `msg_main.c` And `pos_main.c`
+# Usage: `cfg_val_main.c`, `msg_main.c`, `dec_main.c` And `pos_main.c`
 To build and run these examples on a supported platform you need to travel down into the `port/platform/<platform>/mcu/<mcu>` directory of your choice and find the `runner` build.  The instructions there will tell you how to set/override defines.  The following \#defines are relevant:
 
 `U_CFG_APP_FILTER`: set this to `exampleGnss` (noting that NO quotation marks should be included) to run *just* these examples, as opposed to all the examples and unit tests.
