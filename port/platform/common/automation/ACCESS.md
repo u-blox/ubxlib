@@ -82,7 +82,7 @@ sudo docker run -it --rm --name certbot -v /etc/letsencrypt:/etc/letsencrypt -v 
 - Note: once you have NGINX running, after updating certificates you will need to reload it to start using them: `docker exec -it nginx nginx -s reload`.
 
 #### AWS Route 53 Case
-If you are using Amazon Web Services Route 53 to provide your DNS record/static IP address then you can set up Cerbot/Let's Encrypt to obtain a private key for the URL of the test system (e.g. `ubxlib.com`) and get that signed by a CA (Let's Encrypt) automatically using [certboot-dns-route53](https://certbot-dns-route53.readthedocs.io/en/stable/).
+If you are using Amazon Web Services Route 53 to provide your DNS record/static IP address then you can set up Cerbot/Let's Encrypt to obtain a private key for the URL of the test system (e.g. `ubxlib.com`) and get that signed by a CA (Let's Encrypt) automatically using [certbot-dns-route53](https://certbot-dns-route53.readthedocs.io/en/stable/).
 
 Do the following in the AWS web console:
 
@@ -133,25 +133,52 @@ aws_secret_access_key=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
 - Run the `certbot/dns-route53` Docker container as follows to create the certificate:
 
 ```
-sudo docker run -it --rm --name certbot --env AWS_CONFIG_FILE=/etc/aws/config -v /etc/aws:/etc/aws -v /etc/letsencrypt:/etc/letsencrypt -v /var/lib/letsencrypt:/var/lib/letsencrypt certbot/dns-route53 certonly --dns-route53 -d ubxlib.com
+sudo docker run --rm --name certbot --env AWS_CONFIG_FILE=/etc/aws/config -v /etc/aws:/etc/aws -v /etc/letsencrypt:/etc/letsencrypt -v /var/lib/letsencrypt:/var/lib/letsencrypt certbot/dns-route53 certonly --dns-route53 -d ubxlib.com
 ```
 
 - The private key and signed certificate will be placed into `/etc/letsencrypt/live/ubxlib.com`.
 
-- Set this up to [auto-renew](https://eff-certbot.readthedocs.io/en/stable/using.html#setting-up-automated-renewal) with:
+- Set this up to [auto-renew](https://eff-certbot.readthedocs.io/en/stable/using.html#setting-up-automated-renewal) (checked twice daily) with:
 
 ```
-SLEEPTIME=$(awk 'BEGIN{srand(); print int(rand()*(3600+1))}'); echo "0 0,12 * * * root sleep $SLEEPTIME && docker run -it --rm --name certbot --env AWS_CONFIG_FILE=/etc/aws/config -v /etc/aws:/etc/aws -v /etc/letsencrypt:/etc/letsencrypt -v /var/lib/letsencrypt:/var/lib/letsencrypt certbot/dns-route53 renew -q" | sudo tee -a /etc/crontab > /dev/null
+SLEEPTIME=$(awk 'BEGIN{srand(); print int(rand()*(3600+1))}'); echo "0 0,12 * * * root sleep $SLEEPTIME && docker run --rm --name certbot --env AWS_CONFIG_FILE=/etc/aws/config -v /etc/aws:/etc/aws -v /etc/letsencrypt:/etc/letsencrypt -v /var/lib/letsencrypt:/var/lib/letsencrypt certbot/dns-route53 renew -q" | sudo tee -a /etc/crontab > /dev/null
 ```
 
-- To have `NGINX` restarted when auto-renewal has occurred, create a file named `/etc/letsencrypt/renewal-hooks/deploy/nginx_restart.sh` with the following contents:
-
-```
-#!/bin/sh
-docker exec -it nginx nginx -s reload
-```
-
-  ...and give it the correct permissions with `sudo chmod 755 /etc/letsencrypt/renewal-hooks/deploy/nginx_restart.sh`.
+- To have `NGINX` restarted when auto-renewal has occurred, you'll need to create a named pipe on the host machine to which the `certbot/dns-route53` Docker container can send a reload command; it goes like this:
+  - Create a named pipe with `mkfifo /etc/letsencrypt/docker_host_pipe`; `ls -l /etc/letsencrypt/docker_host_pipe` should show a `p` in the first character of the file flags.
+  - Create a file named `/etc/letsencrypt/docker_host_pipe_eval.sh` to execute stuff coming through the pipe with contents:
+    ```
+    #!/bin/bash
+    while true; do eval "$(cat /etc/letsencrypt/docker_host_pipe)"; done
+    ```
+  - Give the file the correct permissions with `sudo chmod +x /etc/letsencrypt/docker_host_pipe_eval.sh`.
+  - Start the script manually with:
+    ```
+    sudo sh /etc/letsencrypt/docker_host_pipe_eval.sh&
+    ```
+  - Check that it works with something like:
+    ```
+    echo "echo Hello host" | sudo tee /etc/letsencrypt/docker_host_pipe
+    ```
+    ...which should result in something like:
+    ```
+    echo Hello host
+    Hello host
+    ```
+  - Create a deploy-hook file named `/etc/letsencrypt/renewal-hooks/deploy/nginx_restart.sh` that will be run by the `certbot/dns-route53` Docker container, redirecting its commands to the named pipe:
+    ```
+    #!/bin/sh
+    echo "echo Restarting NGINX docker on host" > /etc/letsencrypt/docker_host_pipe
+    echo "docker exec nginx nginx -s reload" > /etc/letsencrypt/docker_host_pipe
+    ```
+  - Give the file the correct permissions with `sudo chmod +x /etc/letsencrypt/renewal-hooks/deploy/nginx_restart.sh`.
+  - Check that this works with a dry-run:
+    ```
+    docker run --rm --name certbot --env AWS_CONFIG_FILE=/etc/aws/config -v /etc/aws:/etc/aws -v /etc/letsencrypt:/etc/letsencrypt -v /var/lib/letsencrypt:/var/lib/letsencrypt certbot/dns-route53 --dry-run --run-deploy-hooks renew
+    ```
+    ...you should see `Restarting NGINX docker` and something like `[notice]: signal process started` mixed-in towards the end of the usual `certbot/dns-route53` output.
+  - Make this start at boot by editing `/etc/crontab` to add on the end `@reboot /etc/letsencrypt/docker_host_pipe_eval.sh`.
+  - Check that this works at boot by modifying the `cron` entry to, say, run every 5 minutes (`*/5 * * * *` at the start), and have the `--dry-run --run-deploy-hooks` switches in it; try rebooting and watch `journalctl -f` to see if it runs.
 
 ### Setting Up As A Certificate Authority
 Note: the keys/certificates etc. used here are entirely separate from those generated by Certbot above, don't mix the two.  Also, the naming pattern used by Cerbot (more correct in my view), in which the file extension `.pem` designates the format of the file, is replaced here by what appears to be the more usual format for SSL stuff, which is that certificates end with `.crt`, keys with `.key` and certificate signing requests with `.csr`; all are PEM format anyway.
