@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2023 u-blox
+ * Copyright 2019-2024 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -530,8 +530,7 @@ int32_t MTX_FN(uPortMutexCreate(uPortMutexHandle_t *pMutexHandle))
         *pMutexHandle = (uPortMutexHandle_t) k_malloc(sizeof(struct k_mutex));
         if (*pMutexHandle != NULL) {
             errorCode = U_ERROR_COMMON_PLATFORM;
-            if (0 == k_mutex_init((struct k_mutex *)
-                                  *pMutexHandle)) {// *NOPAD* stop AStyle making * look like a multiply
+            if (0 == k_mutex_init((struct k_mutex *) * pMutexHandle)) {
                 errorCode = U_ERROR_COMMON_SUCCESS;
                 U_ATOMIC_INCREMENT(&gResourceAllocCount);
                 U_PORT_OS_DEBUG_PRINT_MUTEX_CREATE(*pMutexHandle);
@@ -624,8 +623,7 @@ int32_t uPortSemaphoreCreate(uPortSemaphoreHandle_t *pSemaphoreHandle,
         *pSemaphoreHandle = (uPortSemaphoreHandle_t) k_malloc(sizeof(struct k_sem));
         if (*pSemaphoreHandle != NULL) {
             errorCode = U_ERROR_COMMON_PLATFORM;
-            if (0 == k_sem_init((struct k_sem *) *pSemaphoreHandle, initialCount,
-                                limit)) { // *NOPAD* stop AStyle making * look like a multiply
+            if (0 == k_sem_init((struct k_sem *) * pSemaphoreHandle, initialCount, limit)) {
                 errorCode = U_ERROR_COMMON_SUCCESS;
                 U_ATOMIC_INCREMENT(&gResourceAllocCount);
                 U_PORT_OS_DEBUG_PRINT_SEMAPHORE_CREATE(*pSemaphoreHandle, initialCount, limit);
