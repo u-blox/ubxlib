@@ -1280,7 +1280,7 @@ int32_t uCellPrivateFileListFirst(const uCellPrivateInstance_t *pInstance,
     int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
     uAtClientHandle_t atHandle;
     char *pFileNameTmp;
-    uCellPrivateFileListContainer_t *pFileContainer;
+    uCellPrivateFileListContainer_t *pFileContainer = NULL;
     bool keepGoing = true;
     int32_t bytesRead = 0;
     size_t count = 0;
