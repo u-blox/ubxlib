@@ -141,7 +141,7 @@ int32_t uGnssInfoGetVersions(uDeviceHandle_t gnssHandle,
 int32_t uGnssInfoGetIdStr(uDeviceHandle_t gnssHandle,
                           char *pStr, size_t size);
 
-/** Get the UTC time according to GNSS.
+/** Get the UTC time according to GNSS; see also uGnssInfoGetTimeUtcRaw().
  *
  * Note: in order to obtain UTC time the GNSS chip has to download
  * the leap seconds information from the satellite, which is only
@@ -161,6 +161,23 @@ int32_t uGnssInfoGetIdStr(uDeviceHandle_t gnssHandle,
  *                    error code.
  */
 int64_t uGnssInfoGetTimeUtc(uDeviceHandle_t gnssHandle);
+
+/** Get the UTC time according to GNSS; see also uGnssInfoGetTimeUtc().
+ *
+ * This function differs from uGnssInfoGetTimeUtc() in that none
+ * of the validity flags are checked.  This is useful if you have
+ * your GNSS chip wired to keep time, RTC-like, and you want to
+ * read the time back from it before the GNSS chip has gone through
+ * a procedure to validate the UTC time using satellites.
+ *
+ * It is up to you to check that the returned time is valid, e.g.
+ * using a range check.
+ *
+ * @param gnssHandle  the handle of the GNSS instance.
+ * @return            on success the Unix UTC time, else negative
+ *                    error code.
+ */
+int64_t uGnssInfoGetTimeUtcRaw(uDeviceHandle_t gnssHandle);
 
 /** Get the communication stats as seen by the GNSS chip; supported
  * only on M9 modules and beyond.

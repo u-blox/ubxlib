@@ -77,6 +77,53 @@
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
+// Get the UTC time according to GNSS, with validity flags.
+static int64_t getTimeUtc(uGnssPrivateInstance_t *pInstance,
+                          uint8_t *pValidity)
+{
+    int64_t errorCodeOrTime = (int64_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    // Enough room for the body of the UBX-NAV-TIMEUTC message
+    char message[20];
+    int32_t months;
+    int32_t year;
+
+    if (pInstance != NULL) {
+        if (pValidity != NULL) {
+            *pValidity = 0;
+        }
+        // Poll with the message class and ID of the UBX-NAV-TIMEUTC command
+        errorCodeOrTime = uGnssPrivateSendReceiveUbxMessage(pInstance,
+                                                            0x01, 0x21,
+                                                            NULL, 0, message,
+                                                            sizeof(message));
+        if (errorCodeOrTime >= (int64_t) sizeof(message)) {
+            if (pValidity != NULL) {
+                *pValidity = message[19];
+            }
+            errorCodeOrTime = 0;
+            // Year is 1999-2099, so need to adjust to get year since 1970
+            year = (uUbxProtocolUint16Decode(message + 12) - 1999) + 29;
+            // Month (1 to 12), so take away 1 to make it zero-based
+            months = message[14] - 1;
+            months += year * 12;
+            // Work out the number of seconds due to the year/month count
+            errorCodeOrTime += uTimeMonthsToSecondsUtc(months);
+            // Day (1 to 31)
+            errorCodeOrTime += ((int32_t) message[15] - 1) * 3600 * 24;
+            // Hour (0 to 23)
+            errorCodeOrTime += ((int32_t) message[16]) * 3600;
+            // Minute (0 to 59)
+            errorCodeOrTime += ((int32_t) message[17]) * 60;
+            // Second (0 to 60)
+            errorCodeOrTime += message[18];
+            uPortLog("U_GNSS_POS: UTC time is %d (validity 0x%02x).\n",
+                     (int32_t) errorCodeOrTime, message[19]);
+        }
+    }
+
+    return errorCodeOrTime;
+}
+
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -228,10 +275,7 @@ int64_t uGnssInfoGetTimeUtc(uDeviceHandle_t gnssHandle)
 {
     int64_t errorCodeOrTime = (int64_t) U_ERROR_COMMON_NOT_INITIALISED;
     uGnssPrivateInstance_t *pInstance;
-    // Enough room for the body of the UBX-NAV-TIMEUTC message
-    char message[20];
-    int32_t months;
-    int32_t year;
+    uint8_t validityFlags = 0;
 
     if (gUGnssPrivateMutex != NULL) {
 
@@ -240,35 +284,32 @@ int64_t uGnssInfoGetTimeUtc(uDeviceHandle_t gnssHandle)
         errorCodeOrTime = (int64_t) U_ERROR_COMMON_INVALID_PARAMETER;
         pInstance = pUGnssPrivateGetInstance(gnssHandle);
         if (pInstance != NULL) {
-            // Poll with the message class and ID of the UBX-NAV-TIMEUTC command
-            errorCodeOrTime = uGnssPrivateSendReceiveUbxMessage(pInstance,
-                                                                0x01, 0x21,
-                                                                NULL, 0, message,
-                                                                sizeof(message));
-            if (errorCodeOrTime >= (int64_t) sizeof(message)) {
-                // Check the validity flag
-                errorCodeOrTime = (int64_t) U_ERROR_COMMON_UNKNOWN;
-                if (message[19] & 0x04) {
-                    errorCodeOrTime = 0;
-                    // Year is 1999-2099, so need to adjust to get year since 1970
-                    year = (uUbxProtocolUint16Decode(message + 12) - 1999) + 29;
-                    // Month (1 to 12), so take away 1 to make it zero-based
-                    months = message[14] - 1;
-                    months += year * 12;
-                    // Work out the number of seconds due to the year/month count
-                    errorCodeOrTime += uTimeMonthsToSecondsUtc(months);
-                    // Day (1 to 31)
-                    errorCodeOrTime += ((int32_t) message[15] - 1) * 3600 * 24;
-                    // Hour (0 to 23)
-                    errorCodeOrTime += ((int32_t) message[16]) * 3600;
-                    // Minute (0 to 59)
-                    errorCodeOrTime += ((int32_t) message[17]) * 60;
-                    // Second (0 to 60)
-                    errorCodeOrTime += message[18];
-
-                    uPortLog("U_GNSS_POS: UTC time is %d.\n", (int32_t) errorCodeOrTime);
-                }
+            errorCodeOrTime = getTimeUtc(pInstance, &validityFlags);
+            if ((validityFlags & 0x04) != 0x04 ) {
+                errorCodeOrTime = (int64_t) U_ERROR_COMMON_NOT_FOUND;
             }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
+    }
+
+    return errorCodeOrTime;
+}
+
+// Get the UTC time according to GNSS without checking validity.
+int64_t uGnssInfoGetTimeUtcRaw(uDeviceHandle_t gnssHandle)
+{
+    int64_t errorCodeOrTime = (int64_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uGnssPrivateInstance_t *pInstance;
+
+    if (gUGnssPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
+
+        errorCodeOrTime = (int64_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        pInstance = pUGnssPrivateGetInstance(gnssHandle);
+        if (pInstance != NULL) {
+            errorCodeOrTime = getTimeUtc(pInstance, NULL);
         }
 
         U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);

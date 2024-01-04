@@ -253,7 +253,7 @@ U_PORT_TEST_FUNCTION("[gnssInfo]", "gnssInfoTime")
 {
     uDeviceHandle_t gnssHandle;
     int32_t resourceCount;
-    int64_t y = -1;
+    int64_t y;
     int32_t startTimeMs;
     size_t iterations;
     uGnssTransportType_t transportTypes[U_GNSS_TRANSPORT_MAX_NUM];
@@ -284,7 +284,12 @@ U_PORT_TEST_FUNCTION("[gnssInfo]", "gnssInfoTime")
         U_TEST_PRINT_LINE("setting UTC standard to automatic..\n");
         U_PORT_TEST_ASSERT(uGnssCfgSetUtcStandard(gnssHandle, U_GNSS_UTC_STANDARD_AUTOMATIC) == 0);
 
-        // Ask for time, allowing a few tries in case the GNSS receiver
+        // Ask for the raw UTC time: should return a non-negative value
+        y = uGnssInfoGetTimeUtcRaw(gnssHandle);
+        U_PORT_TEST_ASSERT(y >= 0);
+        y = -1;
+
+        // Ask for accurate UTC time, allowing a few tries in case the GNSS receiver
         // has not yet found time
         U_TEST_PRINT_LINE("waiting up to %d second(s) to establish UTC time...",
                           U_GNSS_TIME_TEST_TIMEOUT_SECONDS);
