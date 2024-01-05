@@ -2,7 +2,7 @@
 This directory contains the build infrastructure for STM32F4 MCU using the STM32Cube FW SDK.  The STM32F4 device configuration matches that of the STM32F437VG device that is mounted on the u-blox C030 board and configures it sufficiently well to run the `ubxlib` tests and examples: no attempt is made to optimise the MCU RAM/flash etc. sizes, you need to know how to do that yourself.
 
 # SDK Installation
-Download a version (this code was tested with version 1.25.0) of the STM32F4 MCU package ZIP file (containing their HAL etc.) from here:
+Download a version (this code was tested with version 1.28.0) of the STM32F4 MCU package ZIP file (containing their HAL etc.) from here:
 
 https://www.st.com/en/embedded-software/stm32cubef4.html
 

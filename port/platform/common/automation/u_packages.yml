@@ -73,7 +73,7 @@ segger_jlink:
 stm32cubef4:
     type: git
     url: https://github.com/STMicroelectronics/STM32CubeF4.git
-    version: v1.26.1
+    version: v1.28.0
 
 esp_idf:
     type: esp_idf
