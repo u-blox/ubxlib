@@ -498,12 +498,12 @@ echo Updating ubxlib Docker image on this agent.
 echo Branch will be $UBXLIB_PRIV_REV, folder where the Docker files are found is assumed to be \"$WORKSPACE/ubxlib/$UBXLIB_DOCKER_FOLDER\".
 cd $WORKSPACE/ubxlib/$UBXLIB_DOCKER_FOLDER
 pwd
+# Set exit on error
+set -e
 sudo -E /usr/local/bin/docker-compose build
-if [ $? ]; then
-    if [ -d /home/"$USER"/.docker ]; then
-        sudo chown "$USER":"$USER" /home/"$USER"/.docker -R
-        sudo chmod g+rwx "/home/$USER/.docker" -R
-    fi
+if [ -d /home/"$USER"/.docker ]; then
+    sudo chown "$USER":"$USER" /home/"$USER"/.docker -R
+    sudo chmod g+rwx "/home/$USER/.docker" -R
 fi
 ```
 
