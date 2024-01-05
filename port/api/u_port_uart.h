@@ -161,39 +161,42 @@ int32_t uPortUartPrefix(const char *pPrefix);
  * @param pinTx                  the transmit (output) pin,
  *                               a positive integer or -1 if the
  *                               pin choice has already been
- *                               determined at compile time.
+ *                               determined at compile time,
+ *                               or is irrelevant (for example on
+ *                               Zephyr, Windows or Linux).
  * @param pinRx                  the receive (input) pin,
  *                               a positive integer or -1 if the
  *                               pin choice has already been
- *                               determined at compile time.
- * @param pinCts                 the CTS (input) flow
- *                               control pin, asserted
- *                               by the modem when it is
- *                               ready to receive
- *                               data; use -1 for none or if
- *                               the pin choice has already been
- *                               determined at compile time.  On
- *                               some platforms where no pin
- *                               selection can be made at run-time
- *                               (e.g. Windows and Linux) this is
- *                               simply treated as a flag
- *                               where a negative value means
- *                               no CTS flow control and a
- *                               non-negative means CTS flow control.
- * @param pinRts                 the RTS (output) flow
- *                               control pin, asserted
- *                               when we are ready to
- *                               receive data from the
- *                               modem; use -1 for none or if
- *                               the pin choice has already been
- *                               determined at compile time.  On
- *                               some platforms where no pin
- *                               selection can be made at run-time
- *                               (e.g. Windows and Linux) this is
- *                               simply treated as a flag
+ *                               determined at compile time (for
+ *                               example on Zephyr, Windows or
+ *                               Linux).
+ * @param pinCts                 the CTS (input) flow control pin,
+ *                               asserted by the modem when it is
+ *                               ready to receive data; use -1
+ *                               for none or if the pin choice has
+ *                               already been determined at compile
+ *                               time (for example on Zephr).  On some
+ *                               platforms where no pin selection
+ *                               can be made at run-time (e.g. Windows
+ *                               and Linux) this is simply treated
+ *                               as a flag where a negative value
+ *                               means no CTS flow control and a
+ *                               non-negative value means CTS flow
+ *                               control.
+ * @param pinRts                 the RTS (output) flow control pin,
+ *                               asserted when we are ready to
+ *                               receive data from the modem;
+ *                               use -1 for none or if the pin
+ *                               choice has already been determined
+ *                               at compile time (for example on
+ *                               Zephyr).  On some platforms where
+ *                               no pin selection can be made at
+ *                               run-time (e.g. Windows and Linux)
+ *                               this is simply treated as a flag
  *                               where a negative value means
  *                               no RTS flow control and a
- *                               non-negative means RTS flow control.
+ *                               non-negative value means RTS flow
+ *                               control.
  * @return                       a UART handle else negative
  *                               error code.
  */

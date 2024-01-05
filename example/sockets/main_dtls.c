@@ -74,7 +74,7 @@
 //
 // Note that the pin numbers are those of the MCU: if you
 // are using an MCU inside a u-blox module the IO pin numbering
-// for the module is likely different that from the MCU: check
+// for the module is likely different to that of the MCU: check
 // the data sheet for the module to determine the mapping.
 
 #ifdef U_CFG_TEST_CELL_MODULE_TYPE

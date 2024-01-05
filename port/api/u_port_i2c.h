@@ -93,10 +93,12 @@ void uPortI2cDeinit();
  * @param i2c            the I2C HW block to use.
  * @param pinSda         the data pin, a positive integer or -1 if
  *                       the pin choice has already been determined
- *                       at compile time.
+ *                       at compile time or is irrelevant (for
+ *                       example Zephyr and Linux).
  * @param pinSdc         the clock pin, a positive integer or -1
  *                       if the pin choice has already been
- *                       determined at compile time.
+ *                       determined at compile time or is irrelevant
+ *                       (for example Zephyr and Linux).
  * @param controller     set to true for an I2C controller; this is for
  *                       forwards-compatibility only, it must currently
  *                       always be set to true since target/peripheral/

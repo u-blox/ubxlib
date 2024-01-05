@@ -35,7 +35,7 @@
  * resulting in calculation errors up to 0.5% for large shapes.
  *
  * IMPORTANT: computationally, a true earth model is, of course,
- * the most expensive; probably 10 timed more than the spherical
+ * the most expensive; probably 10 times more than the spherical
  * case, think 10 to 100 ms of calculation time per position
  * for a polygon > 1 km on an average MCU (e.g. ESP32) and about
  * 5 kbytes more task stack required in ANY TASK where the

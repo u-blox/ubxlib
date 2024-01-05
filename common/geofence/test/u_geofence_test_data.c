@@ -3136,7 +3136,7 @@ static const uGeofenceTestVertex_t gVertexGordonOutside = {69681989617LL /* latX
                                                           };
 
 /** A vertex on what looks like the edge of a glacier falling
- * into the say, on the north east corner of the North West
+ * into the sea, on the north east corner of the North West
  * Territories, on the outside.
  */
 static const uGeofenceTestVertex_t gVertexGlacierOutside = {69472381365LL /* latX1e9 */,

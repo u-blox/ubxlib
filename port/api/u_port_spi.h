@@ -88,14 +88,17 @@ void uPortSpiDeinit();
  * @param pinMosi        the master-out, slave-in data pin, a
  *                       positive integer or -1 if the pin choice
  *                       has already been determined at compile
- *                       time or if only reads will be performed.
+ *                       time or is irrelevant (for example Zephyr
+ *                       and Linux) or if only reads will be performed.
  * @param pinMiso        the master-in, slave-out data pin, a positive
  *                       integer or -1 if the pin choice has already
- *                       been determined at compile time or if only
- *                       writes will be performed.
+ *                       been determined at compile time or is
+ *                       irrelevant (for example Zephyr and Linux) or
+ *                       if only writes will be performed.
  * @param pinClk         the clock pin, a positive integer or -1
  *                       if the pin choice has already been determined
- *                       at compile time.
+ *                       at compile time or is irrelevant (for example
+ *                       Zephyr and Linux).
  * @param controller     set to true for an SPI controller; this is for
  *                       forwards-compatibility only, it must currently
  *                       always be set to true since device/slave mode

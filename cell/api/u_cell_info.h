@@ -315,7 +315,14 @@ int32_t uCellInfoGetFirmwareVersionStr(uDeviceHandle_t cellHandle,
  * of UTC time, use uCellInfoGetTime().
  *
  * Should the cellular network not provide time, you may set it
- * yourself with uCellCfgSetTime();
+ * yourself with uCellCfgSetTime().
+ *
+ * Note: the date emitted by the cellular module has a two-digit
+ * year and, if the network does not support giving the time,
+ * that year will likely appear as "80"; this code can only assume
+ * that this means 2080 and hence a large number will be returned;
+ * you may wish to range-check the returned value to guard against
+ * this.
  *
  * @param cellHandle  the handle of the cellular instance.
  * @return            on success the Unix UTC time, else negative
@@ -349,7 +356,14 @@ int32_t uCellInfoGetTimeUtcStr(uDeviceHandle_t cellHandle,
  * in the cellular network.
  *
  * Should the cellular network not provide time, you may set it
- * yourself with uCellCfgSetTime();
+ * yourself with uCellCfgSetTime().
+ *
+ * Note: the date emitted by the cellular module has a two-digit
+ * year and, if the network does not support giving the time,
+ * that year will likely appear as "80"; this code can only assume
+ * that this means 2080 and hence a large number will be returned;
+ * you may wish to range-check the returned value to guard against
+ * this.
  *
  * @param cellHandle             the handle of the cellular
  *                               instance.

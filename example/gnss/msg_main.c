@@ -72,7 +72,7 @@
 //
 // Note that the pin numbers are those of the MCU: if you
 // are using an MCU inside a u-blox module the IO pin numbering
-// for the module is likely different that from the MCU: check
+// for the module is likely different to that of the MCU: check
 // the data sheet for the module to determine the mapping.
 
 #if ((U_CFG_APP_GNSS_UART >= 0) || (U_CFG_APP_GNSS_I2C >= 0) || (U_CFG_APP_GNSS_SPI >= 0))
@@ -154,8 +154,8 @@ static const uDeviceCfg_t gDeviceCfg = {
     .transportCfg = {
         .cfgUart = {
             .uart = U_CFG_APP_GNSS_UART,
-            .baudRate = U_GNSS_UART_BAUD_RATE, /* For GNSS 0 will try the possible
-                                                  baud rates to find correct one */
+            .baudRate = U_GNSS_UART_BAUD_RATE, /* Use 0 to try all possible baud rates
+                                                  and find the correct one. */
             .pinTxd = U_CFG_APP_PIN_GNSS_TXD,
             .pinRxd = U_CFG_APP_PIN_GNSS_RXD,
             .pinCts = U_CFG_APP_PIN_GNSS_CTS,

@@ -114,8 +114,8 @@ typedef struct {
                                    unless otherwise specified below. */
     int32_t uart;             /**< The UART HW block to use; for Linux see
                                    also pPrefix. */
-    int32_t baudRate;         /**< UART speed value (For GNSS 0 will try
-                                   the possible baud rates to find correct one). */
+    int32_t baudRate;         /**< UART speed value; specify 0 to try the
+                                   possible baud rates and find the correct one. */
     int32_t pinTxd;           /**< The output pin that sends UART data to
                                    the module. */
     int32_t pinRxd;           /**< The input pin that receives UART data from

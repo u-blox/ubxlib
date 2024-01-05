@@ -39,13 +39,13 @@ You must also specify what `ubxlib` features to enable using the `UBXLIB_FEATURE
 
 To bring the platform-specific files into your CMake file, take a look at, for instance, the Windows-platform [CMakeLists.txt](platform/windows/mcu/win32/runner/CMakeLists.txt) file.
 
-## UBXLIB_FEATURES
-Available features currently are:
-* `u_lib`: include the `lib_common` API
-* `short_range`: include `wifi`, `ble` and `short_range` API
-* `cell`: include `cell` API
-* `gnss`: include `gnss` API
-* `geodesic`: include [GeographicLib](https://github.com/geographiclib/geographiclib), required only if `U_CFG_GEOFENCE` is defined and shapes larger than 1 km in size are being used in the fence, see [u_geofence_geodesic.h](/common/geofence/api/u_geofence_geodesic.h] for details.
+## `UBXLIB_FEATURES`
+Available features are:
+- `u_lib`: include the `lib_common` API,
+- `short_range`: include `wifi`, `ble` and `short_range` API,
+- `cell`: include `cell` API,
+- `gnss`: include `gnss` API,
+- `geodesic`: include [GeographicLib](https://github.com/geographiclib/geographiclib), required only if `U_CFG_GEOFENCE` is defined and shapes larger than 1 km in size are being used in the fence, see [u_geofence_geodesic.h](/common/geofence/api/u_geofence_geodesic.h) for details.
 
 ## Example
 ```cmake
@@ -67,18 +67,18 @@ include(${UBXLIB_BASE}/port/ubxlib.cmake)
 
 ## Output Variables
 After `ubxlib.cmake` has been included the following variables will be available:
-* `UBXLIB_SRC`: A list of all the  non-platform-specific .c files
-* `UBXLIB_INC`: A list of the public include directories
-* `UBXLIB_PRIVATE_INC`: A list of the private include directories required to build ubxlib
-* `UBXLIB_TEST_SRC`: A list of all the test .c files
-* `UBXLIB_TEST_INC`: A list of test include directories
+- `UBXLIB_SRC`: A list of all the  non-platform-specific `.c` files,
+- `UBXLIB_INC`: A list of the public include directories,
+- `UBXLIB_PRIVATE_INC`: A list of the private include directories required to build `ubxlib`,
+- `UBXLIB_TEST_SRC`: A list of all the test `.c` files,
+- `UBXLIB_TEST_INC`: A list of test include directories,
 
 # Shared Makefile
 For ports that use `make` [ubxlib.mk](ubxlib.mk) can be used to collect the non-platform-specific `ubxlib` source code files, include directories etc. in the same way as for CMake above.
 
-Just like the shared CMake file you must first set the variable `UBXLIB_BASE` to root directory of `ubxlib` and configure the `ubxlib` features using the `UBXLIB_FEATURES` (please see [UBXLIB_FEATURES](#UBXLIB_FEATURES) above). `ubxlib.mk` will then define the same output variables as the shared CMake above (see [Output Variables](#Output-Variables))
+Just like the shared CMake file you must first set the variable `UBXLIB_BASE` to root directory of `ubxlib` and configure the `ubxlib` features using `UBXLIB_FEATURES` (see above). `ubxlib.mk` will then define the same output variables as the shared CMake above (see [Output Variables](#Output-Variables))
 
-To bring the platform-specific files into your `Makefile`, take a look at, for instance, the STM32F4 [Makefile](platform/stm32cube/mcu/stm32f4/runner/Makefile).
+To bring the platform-specific files into your `Makefile`, take a look at, for instance, the [STM32F4 Makefile](platform/stm32cube/mcu/stm32f4/runner/Makefile).
 
 ## Example
 ```makefile
