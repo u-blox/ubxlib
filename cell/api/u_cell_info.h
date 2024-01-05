@@ -317,12 +317,15 @@ int32_t uCellInfoGetFirmwareVersionStr(uDeviceHandle_t cellHandle,
  * Should the cellular network not provide time, you may set it
  * yourself with uCellCfgSetTime().
  *
- * Note: the date emitted by the cellular module has a two-digit
- * year and, if the network does not support giving the time,
- * that year will likely appear as "80"; this code can only assume
- * that this means 2080 and hence a large number will be returned;
- * you may wish to range-check the returned value to guard against
- * this.
+ * Note: the date emitted by the cellular module has a two-digit year
+ * and, if the network does not provide the time, a service sometimes
+ * called NITZ, Network Information and TimeZone (e.g. Telefonica in
+ * the UK does not), the year may appear as, for instance, "80" (meaning
+ * 1980) or maybe "15" (meaning 2015).  This code can only assume that
+ * "80" means 2080, hence a large number will be returned, and of course
+ * 2015 is in the past; you may wish to range-check the value returned by
+ * this function to guard against assuming the wrong time when operating
+ * on such networks.
  *
  * @param cellHandle  the handle of the cellular instance.
  * @return            on success the Unix UTC time, else negative
@@ -358,12 +361,15 @@ int32_t uCellInfoGetTimeUtcStr(uDeviceHandle_t cellHandle,
  * Should the cellular network not provide time, you may set it
  * yourself with uCellCfgSetTime().
  *
- * Note: the date emitted by the cellular module has a two-digit
- * year and, if the network does not support giving the time,
- * that year will likely appear as "80"; this code can only assume
- * that this means 2080 and hence a large number will be returned;
- * you may wish to range-check the returned value to guard against
- * this.
+ * Note: the date emitted by the cellular module has a two-digit year
+ * and, if the network does not provide the time, a service sometimes
+ * called NITZ, Network Information and TimeZone (e.g. Telefonica in
+ * the UK does not), the year may appear as, for instance, "80" (meaning
+ * 1980) or maybe "15" (meaning 2015).  This code can only assume that
+ * "80" means 2080, hence a large number will be returned, and of course
+ * 2015 is in the past; you may wish to range-check the value returned by
+ * this function to guard against assuming the wrong time when operating
+ * on such networks.
  *
  * @param cellHandle             the handle of the cellular
  *                               instance.
