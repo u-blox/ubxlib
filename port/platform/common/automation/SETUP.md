@@ -94,8 +94,10 @@ docker build -t jenkins-custom .
 - Execute this docker image with:
 
 ```
-docker run --name jenkins-custom --restart=always --detach --network jenkins --network-alias jenkins-custom --env DOCKER_HOST=tcp://docker:2376 --env DOCKER_CERT_PATH=/certs/client --env DOCKER_TLS_VERIFY=1 --publish 8080:8080 --publish 50000:50000 --volume $HOME/jenkins:/var/jenkins_home --volume jenkins-docker-certs:/certs/client:ro --log-driver=journald jenkins-custom 
+docker run --name jenkins-custom --restart=always --detach --network jenkins --network-alias jenkins-custom --env DOCKER_HOST=tcp://docker:2376 --env DOCKER_CERT_PATH=/certs/client --env DOCKER_TLS_VERIFY=1 --env JAVA_OPTS="-Dhudson.model.DirectoryBrowserSupport.CSP=\"script-src 'unsafe-inline'\"" --publish 8080:8080 --publish 50000:50000 --volume $HOME/jenkins:/var/jenkins_home --volume jenkins-docker-certs:/certs/client:ro --log-driver=journald jenkins-custom 
 ```
+
+- Note: the `JAVA_OPTS="hudson.model.DirectoryBrowserSupport.CSP...` bit allows the CodeChecker nodes to display nice HTML output describing exactly what needs fixing when they raise an issue.  This is not a security problem as we lock down access to Jenkins on a certificate/key basis to known users; keep the miscreants out at the gates.
 
 - Note: you can start a command shell _inside_ this running Docker container (you will need this to read the `initialAdminPassword` in the next step) with:
 
@@ -588,8 +590,7 @@ Some other things to set:
 - Under `Manage Jenkins` -> `Configure System` find `Global Build Discarders`, add a `Default Build Discarder` and set `Days to keep builds` and `Days to keep artifacts` to some sensible number (e.g. 30).
 - Under `Manage Jenkins` -> `Configure System` find `Test Results Analyzer` and tick `Display run time for each test` 'cos that's useful to see.
 - You can dismiss the warning about not running jobs on the Jenkins master - we need to do that as we use it for thread-safety when managing shared resources.
-- In order to manage shared resources [Jenkinsfile](Jenkinsfile) uses a file, `shared_resources/counter`, on the Jenkins master, to count the number of things currently using those shared resources.  In case this ever gets out of step with reality, create a new `Pipeline` project, name it `ubxlib_clean_up`, give it a description, e.g. "Clean things up when all nodes are idle.", tick `Build periodicallty` and enter `H 6 * * *` (run at approcimately 06:00 daily), then into `Pipeline script` paste the contents of [jenkins_ubxlib_clean_up.txt](scripts/jenkins_ubxlib_clean_up.txt) and `Save` the project.
-- Select the `built-in` node, select `Script Console` and in it enter `System.setProperty("hudson.model.DirectoryBrowserSupport.CSP", "script-src 'unsafe-inline'")` then press `Run`; if you don't do this the CodeChecker nodes will not be able to display nice HTML output describing exactly what needs fixing.  This is not a security issue as we lock down access to Jenkins on a certificate/key basis to known users; keep the miscreants out at the gates.
+- In order to manage shared resources [Jenkinsfile](Jenkinsfile) uses a file, `shared_resources/counter`, on the Jenkins master, to count the number of things currently using those shared resources.  In case this ever gets out of step with reality, create a new `Pipeline` project, name it `ubxlib_clean_up`, give it a description, e.g. "Clean things up when all nodes are idle.", tick `Build periodicallty` and enter `H 6 * * *` (run at approximately 06:00 daily), then into `Pipeline script` paste the contents of [jenkins_ubxlib_clean_up.txt](scripts/jenkins_ubxlib_clean_up.txt) and `Save` the project.
 
 # Configure Test Instances
 With all of the Jenkins stuff done, and at least one of each agent type (Linux "beefy", Linux Raspbian and Windows), you can start configuring the instances.  Instances up to and including 9, the "check" instances need no further attention; it is the "test" instances, i.e. a thing with real MCUs/modules attached, that need additional configuration.
