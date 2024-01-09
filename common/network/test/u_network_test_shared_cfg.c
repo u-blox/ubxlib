@@ -336,7 +336,7 @@ static uNetworkTestDevice_t gUNetworkTest[] = {
         .network =
         {
             {.type = U_NETWORK_TYPE_CELL, .pCfg = (const void *) &gNetworkCfgCell},
-#if defined(U_CFG_TEST_GNSS_MODULE_TYPE) && (U_CFG_APP_GNSS_UART < 0) && (U_CFG_APP_GNSS_I2C < 0)
+#if defined(U_CFG_TEST_GNSS_MODULE_TYPE) && (U_CFG_APP_GNSS_UART < 0) && (U_CFG_APP_GNSS_I2C < 0) && (U_CFG_APP_GNSS_SPI < 0)
             {.type = U_NETWORK_TYPE_GNSS, .pCfg = (const void *) &gNetworkCfgGnss}
 #else
             {.type = U_NETWORK_TYPE_NONE, .pCfg = NULL}
