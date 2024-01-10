@@ -885,6 +885,7 @@ U_PORT_TEST_FUNCTION("[httpClient]", "httpClient")
                                                                                      networkStatusCallback, pTmp) == 0);
                                     }
                                     uHttpClientClose(gpHttpContext[y]);
+                                    gpHttpContext[y] = NULL;
                                     if (x == 0) {
                                         gpHttpContext[y] = pUHttpClientOpen(devHandle, &connection, NULL);
                                     } else {
@@ -917,6 +918,7 @@ U_PORT_TEST_FUNCTION("[httpClient]", "httpClient")
             U_TEST_PRINT_LINE("closing HTTP instances...");
             for (size_t y = 0; y < httpClientMaxNumConn; y++) {
                 uHttpClientClose(gpHttpContext[y]);
+                gpHttpContext[y] = NULL;
             }
         } // for (HTTP and HTTPS)
     }
@@ -962,6 +964,10 @@ U_PORT_TEST_FUNCTION("[httpClient]", "httpClient")
 U_PORT_TEST_FUNCTION("[httpClient]", "httpClientCleanUp")
 {
     U_TEST_PRINT_LINE("cleaning up any outstanding resources.\n");
+
+    for (size_t x = 0; x < sizeof(gpHttpContext) / sizeof(gpHttpContext[0]); x++) {
+        uHttpClientClose(gpHttpContext[x]);
+    }
 
     uPortFree(gpDataBufferOut);
     uPortFree(gpDataBufferIn);
