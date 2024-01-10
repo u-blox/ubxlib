@@ -260,9 +260,12 @@ U_PORT_TEST_FUNCTION("[wifiGeofence]", "wifiGeofenceBasic")
     U_PORT_TEST_ASSERT(gpFenceB != NULL);
     U_TEST_PRINT_LINE("fence B: %d m circle a bit to the right, not near the test system.",
                       U_WIFI_GEOFENCE_TEST_RADIUS_METRES);
+    // Note: we used to have this just 0.1 degrees away but, for whatever reason, in our
+    // location Google can sometimes return a result with a radius of uncertainty of 6 km,
+    // hence we now make it 1 degree away
     U_PORT_TEST_ASSERT(uGeofenceAddCircle(gpFenceB,
                                           U_GEOFENCE_TEST_SYSTEM_LATITUDE_X1E9,
-                                          U_GEOFENCE_TEST_SYSTEM_LONGITUDE_X1E9  + 100000000LL,
+                                          U_GEOFENCE_TEST_SYSTEM_LONGITUDE_X1E9  + 1000000000LL,
                                           U_WIFI_GEOFENCE_TEST_RADIUS_METRES * 1000) == 0);
 
     // Add a callback
