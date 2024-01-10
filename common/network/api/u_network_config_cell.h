@@ -93,6 +93,11 @@ typedef struct {
                                     there is no harm in populating this field
                                     even if your module _does_ support figuring
                                     out the authentication mode automatically. */
+    const char *pMccMnc; /** ONLY REQUIRED if you wish to connect to a specific
+                             MCC/MNC rather than to the best available network;
+                             should point to the null-terminated string giving
+                             the MCC and MNC of the PLMN to use (for example
+                             "23410"). */
     /* This is the end of version 0 of this
        structure: should any fields be added to
        this structure in future they must be

@@ -229,7 +229,11 @@ typedef struct {
  *                         #uNetworkType_t to indicate the
  *                         type and allow cross-checking.
  *                         Can be set to NULL on subsequent calls
- *                         if the configuration is unchanged.
+ *                         if the configuration is unchanged, BUT
+ *                         NOTE THAT FOR THAT TO WORK the data at
+ *                         pCfg must have been a true constant,
+ *                         as the uNetworkInterfaceUp() function
+ *                         will NOT have made a copy of the contents.
  * @return                 zero on success else negative error code.
  */
 int32_t uNetworkInterfaceUp(uDeviceHandle_t devHandle, uNetworkType_t netType,

@@ -158,7 +158,7 @@ static const uNetworkCfgCell_t gNetworkCfg = {
     .type = U_NETWORK_TYPE_CELL,
     .pApn = NULL, /* APN: NULL to accept default.  If using a Thingstream SIM enter "tsiot" here */
     .timeoutSeconds = 240 /* Connection timeout in seconds */
-    // There are four additional fields here which we do NOT set,
+    // There are five additional fields here which we do NOT set,
     // we allow the compiler to set them to 0 and all will be fine.
     // The fields are:
     //
@@ -188,6 +188,11 @@ static const uNetworkCfgCell_t gNetworkCfg = {
     //   figuring out the authentication mode automatically but
     //   you ONLY NEED TO WORRY ABOUT IT if you were given that user
     //   name and password with the APN (which is thankfully not usual).
+    //
+    // - "pMccMnc": ONLY required if you wish to connect to a specific
+    //   MCC/MNC rather than to the best available network; should point
+    //   to the null-terminated string giving the MCC and MNC of the PLMN
+    //   to use (for example "23410").
 };
 static const uNetworkType_t gNetType = U_NETWORK_TYPE_CELL;
 #else

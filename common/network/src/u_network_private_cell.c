@@ -183,7 +183,8 @@ int32_t uNetworkPrivateChangeStateCell(uDeviceHandle_t devHandle,
                 }
                 if (errorCode == 0) {
                     // Connect using automatic selection
-                    errorCode = uCellNetConnect(devHandle, NULL,
+                    errorCode = uCellNetConnect(devHandle,
+                                                pCfg->pMccMnc,
                                                 pCfg->pApn,
                                                 pCfg->pUsername,
                                                 pCfg->pPassword,
