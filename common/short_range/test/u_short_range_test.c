@@ -35,6 +35,7 @@
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
+#include "string.h"    // strlen()
 
 #include "u_cfg_sw.h"
 #include "u_cfg_app_platform_specific.h"
@@ -205,6 +206,8 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeOpenUart")
 U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeUartSetBaudrate")
 {
     uAtClientHandle_t atClient = NULL;
+    int32_t x;
+    char buffer[32];
     uShortRangeUartConfig_t uart = { .uartPort = U_CFG_APP_SHORT_RANGE_UART,
                                      .baudRate = U_SHORT_RANGE_UART_BAUD_RATE,
                                      .pinTx = U_CFG_APP_PIN_SHORT_RANGE_TXD,
@@ -249,8 +252,12 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeUartSetBaudrate")
         gHandles.edmStreamHandle = uShortRangeGetEdmStreamHandle(gHandles.devHandle);
         U_PORT_TEST_ASSERT(uShortRangeAtClientHandleGet(gHandles.devHandle,
                                                         &gHandles.atClientHandle) == 0);
-        // This should receive a valid response
+        // These should receive a valid response
         U_PORT_TEST_ASSERT(uShortRangeAttention(gHandles.devHandle) == 0);
+        x = uShortRangeGetFirmwareVersionStr(gHandles.devHandle, buffer, sizeof(buffer));
+        U_PORT_TEST_ASSERT(x > 0);
+        U_PORT_TEST_ASSERT(x == strlen(buffer));
+        U_TEST_PRINT_LINE("after setting baudrate, module FW version reads as \"%s\".", buffer);
     }
     uShortRangeTestPrivateCleanup(&gHandles);
     U_TEST_PRINT_LINE("shortRangeUartSetBaudrate succeded.");

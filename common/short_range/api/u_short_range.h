@@ -331,6 +331,24 @@ int32_t uShortRangeAtClientHandleGet(uDeviceHandle_t devHandle,
 
 const uShortRangeModuleInfo_t *uShortRangeGetModuleInfo(int32_t moduleId);
 
+/** Get the firmware version string from the short-range module.
+ *
+ * @param devHandle   the short range device handle.
+ * @param[out] pStr   a pointer to size bytes of storage into which
+ *                    the firmware version string will be copied.
+ *                    Room should be allowed for a null terminator,
+ *                    which will be added to terminate the string.
+ *                    This pointer cannot be NULL.
+ * @param size        the number of bytes available at pStr, including
+ *                    room for a null terminator. Must be greater
+ *                    than zero.
+ * @return            on success, the number of characters copied into
+ *                    pStr NOT including the terminator (as strlen()
+ *                    would return), on failure negative error code.
+ */
+int32_t uShortRangeGetFirmwareVersionStr(uDeviceHandle_t devHandle,
+                                         char *pStr, size_t size);
+
 /** Check if a module type supports BLE
  *
  * @param moduleType       the short range module type.

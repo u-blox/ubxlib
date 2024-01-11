@@ -1062,6 +1062,37 @@ const uShortRangeModuleInfo_t *uShortRangeGetModuleInfo(int32_t moduleType)
     return NULL;
 }
 
+int32_t uShortRangeGetFirmwareVersionStr(uDeviceHandle_t devHandle,
+                                         char *pStr, size_t size)
+{
+    uAtClientHandle_t atHandle;
+    uShortRangePrivateInstance_t *pInstance;
+    int32_t readBytes;
+    int32_t err = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
+
+    if (gUShortRangePrivateMutex == NULL) {
+        return (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    }
+
+    pInstance = pUShortRangePrivateGetInstance(devHandle);
+
+    if ((pInstance != NULL) && (pStr != NULL) && (size > 0)) {
+        atHandle = pInstance->atHandle;
+        uAtClientLock(atHandle);
+        uAtClientCommandStart(atHandle, "AT+CGMR");
+        uAtClientCommandStop(atHandle);
+        uAtClientResponseStart(atHandle, NULL);
+        readBytes = uAtClientReadString(atHandle, pStr, size, false);
+        uAtClientResponseStop(atHandle);
+        err = uAtClientUnlock(atHandle);
+        if ((readBytes >= 0) && (err == (int32_t)U_ERROR_COMMON_SUCCESS)) {
+            err = readBytes;
+        }
+    }
+
+    return err;
+}
+
 int32_t uShortRangeGetSerialNumber(uDeviceHandle_t devHandle, char *pSerialNumber)
 {
     uAtClientHandle_t atHandle;

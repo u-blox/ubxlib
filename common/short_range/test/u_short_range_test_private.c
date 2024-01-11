@@ -88,6 +88,7 @@ int32_t uShortRangeTestPrivatePreamble(uShortRangeModuleType_t moduleType,
 {
     int32_t errorCodeOrHandle = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     const uShortRangePrivateModule_t *pModule;
+    char buffer[32];
 
     // Set some defaults
     pParameters->uartHandle = -1;
@@ -140,6 +141,12 @@ int32_t uShortRangeTestPrivatePreamble(uShortRangeModuleType_t moduleType,
                 }
 
                 if (errorCodeOrHandle == 0) {
+                    if (uShortRangeGetFirmwareVersionStr(pParameters->devHandle,
+                                                         buffer, sizeof(buffer)) > 0) {
+                        U_TEST_PRINT_LINE("module FW version \"%s\".", buffer);
+                    } else {
+                        U_TEST_PRINT_LINE("unable to read module FW version.");
+                    }
                     U_TEST_PRINT_LINE("module is powered-up and configured for testing.");
                 }
             }
