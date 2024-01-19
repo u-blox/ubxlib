@@ -180,6 +180,16 @@ void uGnssRemove(uDeviceHandle_t gnssHandle);
 /** Get the type and handle of the transport used by the given
  * GNSS instance.
  *
+ * Note: where the transport is over AT (i.e. the case where AT+UGUBX
+ * messages are being used to talk to a GNSS chip that is inside or
+ * connected via a GNSS chip, e.g. if U_NETWORK_GNSS_CFG_CELL_USE_AT_ONLY
+ * is defined, or CMUX is not supported, not the normal case) it is
+ * possible for the AT handle to change underneath, so an AT handle
+ * returned by this function will be locked and therefore unusable.
+ * This will occur if a PPP session is opened to the cellular device.
+ * Should a PPP session be opened this function should be called again
+ * to obtain the correct AT handle.
+ *
  * @param gnssHandle            the handle of the GNSS instance.
  * @param[out] pTransportType   a place to put the transport type,
  *                              may be NULL.

@@ -75,10 +75,18 @@
  * COMPILE-TIME MACROS: HEAP RELATED
  * -------------------------------------------------------------- */
 
+#ifdef U_CFG_PPP_ENABLE
+/** The minimum free heap space permitted, i.e. what's left for
+ * user code; this is a smaller limit when PPP capability is enabled
+ * since we switch on the IP stack within ESP-IDF.
+ */
+# define U_CFG_TEST_HEAP_MIN_FREE_BYTES (1024 * 170)
+#else
 /** The minimum free heap space permitted, i.e. what's left for
  * user code.
  */
-#define U_CFG_TEST_HEAP_MIN_FREE_BYTES (1024 * 185)
+# define U_CFG_TEST_HEAP_MIN_FREE_BYTES (1024 * 185)
+#endif
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS: OS RELATED

@@ -129,3 +129,12 @@ int app_start() {
     while(1);
 }
 ```
+
+# PPP-Level Integration With A Platform
+PPP-level integration between the bottom of a platform's IP stack and cellular is supported on some platforms and some module types, currently only ESP-IDF with SARA-R5 or SARA-R422.  This allows the native clients of the platform (e.g. MQTT etc.) to be used in your application with a cellular transport beneath them.
+
+To enable this integration you must define `U_CFG_PPP_ENABLE` for your build.  Other switches/components/whatevers may also be required on the platform side: see the README.md in the relevant platform directory for details.
+
+To use the integration, just make a cellular connection with `ubxlib` in the usual way and the connection will be available to the platform.
+
+Note: if you are required to supply a username and password for your connection then, when using PPP, you must call `uCellNetSetAuthenticationMode()` to set the authentication mode explicitly; automatic authentication mode will not work with PPP.

@@ -8,10 +8,12 @@ Note: the directory structure here differs from that in the other platform direc
 
 - [app](app): contains the code that runs the test application (both examples and unit tests) on the Zephyr platform.
 - [cfg](cfg): contains the configuration files for the MCU, the OS, for the application and for testing (mostly which MCU pins are connected to which module pins).
+- [dts](dts): device tree bindings needed by this code; for instance, the PPP UART driver, required if you want to integrate at PPP-level with cellular, see below.
 - [src](src): contains the implementation of the porting layers for Zephyr platform on Nordic chips and on Linux/posix.
 - [runner](runner): contains the test application configuration and build files for the Nordic MCUs supported on the Zephyr platform.
 - [runner_linux](runner_linux): contains the test application configuration and build files for Linux/Posix on the Zephyr platform.
 - [boards](boards): contains custom u-blox boards that are not \[yet\] in the Zephyr repo.
+- [test](test): contains tests that use Zephyr application APIs to check out the integration of `ubxlib` into Zephyr, e.g. at PPP level.
 
 # SDK Installation (NRF Connect)
 `ubxlib` is tested with the version of Zephyr that comes with `nRFConnect SDK version 2.5.0` (Zephyr 3.4.99ncs, which includes modifications that Nordic make to Zephyr) which is the recommended version; it is intended to build with all versions nRFConnect SDK from 1.6.1 up til 2.5.0.
@@ -118,3 +120,64 @@ If this is a problem, e.g. if your board uses its own naming of the devices you 
   ```
   set U_FLAGS=-DMY_FLAG -DU_CFG_APP_PIN_CELL_ENABLE_POWER=-1
   ```
+
+# PPP-Level Integration With Cellular
+PPP support in Zephyr, at least in Zephyr version 3.4.99, is marked as "experimental": despite the presence of a PAP configuration item, there is no way to configure the authentication mode or the username/password (which are hard-coded in `zephyr/subsys/net/l2/ppp/pap.c`, see function `pap_config_info_add()`) and there doesn't appear to be any code to support CHAP authentication; hence, if your operator requires a user name and password along with the APN, you have no choice but to edit the Zephyr source code.
+
+Also, the only integration mechanism provided at the bottom of Zephyr PPP is to a \[single\] UART (`zephyr,ppp-uart`); hence the port layer here makes the PPP stream of the \[cellular\] module appear as a UART which must be pulled-in by the application's `.dts` or a `.overlay` file to complete the connection (see below for how to do this).
+
+And BE WARNED, because of the way the integration has to work, the transmit side of the link is relatively slow, hence the TCP window size has to be relatively small.
+
+With all of that said, it otherwise appears to work, so if you wish to use native Zephyr applications (e.g. MQTT) with a cellular connection, you will need to (a) define `U_CFG_PPP_ENABLE` when building `ubxlib`, (b) put the settings below in your `prj.conf` file and (c) add a `zephyr,ppp-uart` entry to your `.dts` or `.overlay` file (see further down):
+
+- `CONFIG_NETWORKING=y`
+- `CONFIG_NET_DRIVERS=y`
+- `CONFIG_NET_IPV6=n` (the IPCP negotiation phase will fail if IPV6 is set and the module does not have an IPV6 address)
+- `CONFIG_NET_IPV4=y`
+- `CONFIG_PPP_NET_IF_NO_AUTO_START=y`
+- `CONFIG_NET_PPP=y`
+- `CONFIG_NET_PPP_ASYNC_UART=y`
+- `CONFIG_NET_L2_PPP=y`
+- `CONFIG_NET_L2_PPP_PAP=y`
+- `CONFIG_NET_L2_PPP_TIMEOUT=10000`
+- If your network operator requires a user name and password along with the APN **AND** requires CHAP authentication, then also include `CONFIG_NET_L2_PPP_CHAP=y` and hope it works,
+- `CONFIG_NET_PPP_UART_BUF_LEN=512`; 512 being a suggested receive buffer length (two will be required),
+- `CONFIG_NET_PPP_ASYNC_UART_TX_BUF_LEN=512`; 512 being a suggested transmit buffer length.
+
+If you want to use sockets from Zephyr and if you want to use BSD names for stuff (otherwise you will need a liberal sprinkling of a `zsock_` prefix), you might also want to add:
+
+- `CONFIG_NET_TCP=y`
+- `CONFIG_NET_TCP_MAX_SEND_WINDOW_SIZE=256` (since the PPP link is relatively slow, keep the window size small)
+- `CONFIG_NET_TCP_MAX_RECV_WINDOW_SIZE=256`
+- `CONFIG_NET_SOCKETS=y`
+- `CONFIG_NET_SOCKETS_POSIX_NAMES=y` (if you do not set this then you will beed to prefix all sockets calls with `zsock_`, e.g. `zsock_connect()`)
+
+Depending on how much data you expect to receive, you may want to increase `CONFIG_NET_PPP_RINGBUF_SIZE` from the default of 256 and you may need to [tune the buffer sizes that the network stack inside Zephyr uses](https://docs.zephyrproject.org/latest/connectivity/networking/net_config_guide.html#network-buffer-configuration-options).  If you have trouble getting data through then look for TCP errors in the Zephyr logging output like "E: TCP failed to allocate buffer in retransmission" and "E: Data buffer (1034) allocation failed", which indicates that you need bigger buffers.  In our Zephyr native sockets test, `zephyrSockTcp()`, where we send 2 kbytes up and back down again, we set `CONFIG_NET_BUF_DATA_SIZE=256`.
+
+With `U_CFG_PPP_ENABLE` defined `ubxlib` will, internally, create a Zephyr UART device named `u-blox,uart-ppp` and you must instantiate it and connect it to Zephyr PPP's `zephyr,ppp-uart` in the root section of your `.dts` or `.overlay` file with something like:
+
+```
+/* Required for PPP-level integration with ubxlib to work */
+/ { // The leading / indicates that we're in the root section
+    // This chooses uart instance 99 to be the zephyr,ppp-uart that ppp.c wants
+    chosen {
+        zephyr,ppp-uart = &uart99;
+    };
+
+    // This creates instance 99 of a uart that we will give to zephyr,ppp-uart
+    uart99: uart-ppp@8000 { // The "8000" here is irrelevant but required for Zephyr to work
+        compatible = "u-blox,uart-ppp"; // The important part: this is an instance of u-blox,uart-ppp
+        reg = <0x8000 0x100>; // This is irrelevant but required for Zephyr to work
+        status = "okay"; // Zephyr boiler-plate
+    };
+};
+```
+
+If this is not correct then Zephyr `ppp.c` will fail to compile in `ppp_start()` because `__device_dts_ord_DT_CHOSEN_zephyr_ppp_uart_ORD` is undeclared (i.e. a binding for `zephyr,ppp-uart` has not been found) or your application will fail to link because something like `__device_dts_ord_6` (the driver implementation in [u_port_ppp.c](src/u_port_ppp.c)) has not been found.
+
+You can find an example of how to do all this and make a sockets connection in [main_ppp_zephyr.c](/example/sockets/main_ppp_zephyr.c).
+
+## Zephyr PPP Issue
+There is an issue in Zephyr PPP, discussed in [Github issue 67627](https://github.com/zephyrproject-rtos/zephyr/issues/67627), which means that Zephyr does not shut the PPP link down properly, leaving the module "hanging", such that it will not connect again next time around, unless the module is power cycled or rebooted.  A workaround for this is included, so everything works fine, _except_ that when a cellular connection is disconnected Zephyr must be allowed 20 seconds for its side of the PPP connection to time out; this delay is included within the ubxlib code.  If you do not want this delay (e.g. because you are going to switch the cellular module off anyway, or because your application is not going to connect again for at least 20 seconds) then you can remove it by defining `U_CFG_PPP_ZEPHYR_TERMINATE_WAIT_DISABLE`.
+
+Once the Zephyr issue is fixed and the fix is available in a version of Zephyr that forms a part of nRFConnect SDK the delay will be removed.

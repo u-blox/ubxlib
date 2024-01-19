@@ -388,31 +388,6 @@ int32_t uCellMuxPrivateParseCmux(uParseHandle_t parseHandle, void *pUserParam)
  * PUBLIC FUNCTIONS: MISC
  * -------------------------------------------------------------- */
 
-// Get the serial device for the given channel.
-uDeviceSerial_t *pUCellMuxPrivateGetDeviceSerial(uCellMuxPrivateContext_t *pContext,
-                                                 uint8_t channel)
-{
-    uDeviceSerial_t *pDeviceSerial = NULL;
-    uCellMuxPrivateChannelContext_t *pChannelContext;
-
-    if ((pContext != NULL) && (channel <= U_CELL_MUX_PRIVATE_CHANNEL_ID_MAX)) {
-        for (size_t x = 0;
-             (x < sizeof(pContext->pDeviceSerial) / sizeof(pContext->pDeviceSerial[0])) &&
-             (pDeviceSerial == NULL); x++) {
-            if (pContext->pDeviceSerial[x] != NULL) {
-                pChannelContext = (uCellMuxPrivateChannelContext_t *) pUInterfaceContext(
-                                      pContext->pDeviceSerial[x]);
-                if ((pChannelContext != NULL) && !pChannelContext->markedForDeletion &&
-                    (pChannelContext->channel == channel)) {
-                    pDeviceSerial = pContext->pDeviceSerial[x];
-                }
-            }
-        }
-    }
-
-    return pDeviceSerial;
-}
-
 // Copy the settings of one AT client into another AT client.
 int32_t uCellMuxPrivateCopyAtClient(uAtClientHandle_t atHandleSource,
                                     uAtClientHandle_t atHandleDestination)
@@ -503,77 +478,6 @@ int32_t uCellMuxPrivateCopyAtClient(uAtClientHandle_t atHandleSource,
     return errorCode;
 }
 
-// Close a CMUX channel.
-void uCellMuxPrivateCloseChannel(uCellMuxPrivateContext_t *pContext, uint8_t channel)
-{
-    uDeviceSerial_t *pDeviceSerial = pUCellMuxPrivateGetDeviceSerial(pContext, channel);
-
-    if (pDeviceSerial != NULL) {
-        pDeviceSerial->close(pDeviceSerial);
-#ifdef U_CELL_MUX_ENABLE_DEBUG
-        uPortLog("U_CELL_CMUX_%d: channel closed.\n", channel);
-#endif
-    }
-}
-
-// Disable multiplexer mode.  This involves a few steps:
-//
-// 1. Send DISC on the virtual serial interface of any currently
-//    open channels and close the virtual serial interfaces;
-//    do channel 0, the control interface, last and it will
-//    end CMUX mode.
-// 2. Move AT client operations back to the original AT client.
-// 3. DO NOT fee memory; only uCellMuxPrivateRemoveContext() does
-//    that, to ensure thread-safety.
-int32_t uCellMuxPrivateDisable(uCellPrivateInstance_t *pInstance)
-{
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-    uAtClientHandle_t atHandle;
-    uCellMuxPrivateContext_t *pContext;
-    uCellMuxPrivateChannelContext_t *pChannelContext;
-
-    if (pInstance != NULL) {
-        atHandle = pInstance->atHandle;
-        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-        if (pInstance->pMuxContext != NULL) {
-            pContext = (uCellMuxPrivateContext_t *) pInstance->pMuxContext;
-            // Start from the top, so that we do channel 0, which
-            // will always be at index 0, last
-            for (int32_t x = (sizeof(pContext->pDeviceSerial) / sizeof(pContext->pDeviceSerial[0])) - 1;
-                 x >= 0; x--) {
-                pChannelContext = (uCellMuxPrivateChannelContext_t *) pUInterfaceContext(
-                                      pContext->pDeviceSerial[x]);
-                if (pChannelContext != NULL) {
-                    uCellMuxPrivateCloseChannel(pContext, pChannelContext->channel);
-                }
-            }
-            if (pContext->savedAtHandle != NULL) {
-                // Copy the settings of the AT handler on channel 1
-                // back into the original one, in case they have changed
-                errorCode = uCellMuxPrivateCopyAtClient(atHandle, pContext->savedAtHandle);
-                // While we set the error code above, there's not a whole lot
-                // we can do if this fails, so continue anyway; close the
-                // AT handler that was on channel 1
-                uAtClientIgnoreAsync(atHandle);
-                uAtClientRemove(atHandle);
-                // Unhijack the old AT handler and unlock it
-                atHandle = pContext->savedAtHandle;
-                uAtClientUrcHandlerHijackExt(atHandle, NULL, NULL);
-                uAtClientUnlock(atHandle);
-                pInstance->atHandle = atHandle;
-                pContext->savedAtHandle = NULL;
-#ifdef U_CELL_MUX_ENABLE_DEBUG
-                uPortLog("U_CELL_CMUX: closed.\n");
-#endif
-            }
-            // Give the module a moment for the MUX switcheroo
-            uPortTaskBlock(U_CELL_MUX_PRIVATE_ENABLE_DISABLE_DELAY_MS);
-        }
-    }
-
-    return (int32_t) errorCode;
-}
-
 // Remove the CMUX context for the given cellular instance.
 void uCellMuxPrivateRemoveContext(uCellPrivateInstance_t *pInstance)
 {
@@ -590,6 +494,8 @@ void uCellMuxPrivateRemoveContext(uCellPrivateInstance_t *pInstance)
                                       pContext->pDeviceSerial[x]);
                 if (pChannelContext != NULL) {
                     uPortMutexDelete(pChannelContext->mutex);
+                    uPortMutexDelete(pChannelContext->mutexUserDataWrite);
+                    uPortMutexDelete(pChannelContext->mutexUserDataRead);
                     uDeviceSerialDelete(pContext->pDeviceSerial[x]);
                 }
             }
@@ -604,5 +510,9 @@ void uCellMuxPrivateRemoveContext(uCellPrivateInstance_t *pInstance)
         }
     }
 }
+
+/* ----------------------------------------------------------------
+ * PUBLIC FUNCTIONS: THERE ARE MORE uCellMuxPrivateXxx() FUNCTIONS IN U_CELL_MUX.C
+ * -------------------------------------------------------------- */
 
 // End of file

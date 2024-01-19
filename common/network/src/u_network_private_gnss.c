@@ -53,6 +53,7 @@
 #include "u_cell_loc.h"             // For uCellLocSetPinGnssPwr()/uCellLocSetPinGnssDataReady()
 #include "u_cell_mux.h"             // For U_CELL_MUX_CHANNEL_ID_GNSS
 #include "u_cell_pwr.h"             // For uCellPwrEnableUartSleep() etc.
+#include "u_cell_ppp_shared.h"      // For uCellPppIsOpen()
 
 #include "u_gnss_module_type.h"
 #include "u_gnss_type.h"
@@ -112,9 +113,9 @@ static void setGnssNetworkContext(uDeviceHandle_t devHandle,
                         pDeviceSerial = (uDeviceSerial_t *) (gnssTransportHandle.pDeviceSerial);
                         uCellMuxRemoveChannel(devHandle, pDeviceSerial);
                     }
-                    if (!pFoundNetworkContext->cellMuxAlreadyEnabled) {
-                        // Disable the multiplexer if one was in use
-                        // and it was us who started it
+                    if (!pFoundNetworkContext->cellMuxAlreadyEnabled && !uCellPppIsOpen(devHandle)) {
+                        // Disable the multiplexer if one was in use, it was us who
+                        // started and PPP isn't using it
                         uCellMuxDisable(devHandle);
                     }
                 }
@@ -248,7 +249,7 @@ int32_t uNetworkPrivateChangeStateGnss(uDeviceHandle_t devHandle,
                                 }
                                 if (errorCode < 0) {
                                     // Tidy up on error
-                                    if (!pNetworkContext->cellMuxAlreadyEnabled) {
+                                    if (!pNetworkContext->cellMuxAlreadyEnabled && !uCellPppIsOpen(devHandle)) {
                                         uCellMuxDisable(devHandle);
                                     }
                                     if ((pDeviceSerial != NULL) &&

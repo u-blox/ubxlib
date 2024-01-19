@@ -70,6 +70,9 @@ UBXLIB_SRC += ${UBXLIB_BASE}/port/u_port_timezone.c
 # Default uPortXxxResource implementation
 UBXLIB_SRC += ${UBXLIB_BASE}/port/u_port_resource.c
 
+# Default uPortPppAttach()/uPortPppDetach() implementation
+UBXLIB_SRC += ${UBXLIB_BASE}/port/u_port_ppp_default.c
+
 # Optional short range related files and directories
 ifneq ($(filter short_range,$(UBXLIB_FEATURES)),)
 UBXLIB_MODULE_DIRS += \

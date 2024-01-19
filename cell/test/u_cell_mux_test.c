@@ -24,14 +24,16 @@
  * @brief Tests for the cellular MUX API.
  * These test should pass on all platforms that have a cellular module
  * connected to them.  They are only compiled if U_CFG_TEST_CELL_MODULE_TYPE
- * is defined and can be disabled with U_CFG_TEST_DISABLE_MUX.
+ * is defined and can be disabled with U_CFG_TEST_DISABLE_MUX, however
+ * they are also disabled if U_CFG_PPP_ENABLE is defined since stopping
+ * the mux while PPP is using it upsets just about everyone.
  *
  * IMPORTANT: see notes in u_cfg_test_platform_specific.h for the
  * naming rules that must be followed when using the
  * U_PORT_TEST_FUNCTION() macro.
  */
 
-#if defined(U_CFG_TEST_CELL_MODULE_TYPE) && !defined(U_CFG_TEST_DISABLE_MUX)
+#if defined(U_CFG_TEST_CELL_MODULE_TYPE) && !defined(U_CFG_TEST_DISABLE_MUX) && !defined(U_CFG_PPP_ENABLE)
 
 # ifdef U_CFG_OVERRIDE
 #  include "u_cfg_override.h" // For a customer's configuration override
@@ -990,5 +992,6 @@ U_PORT_TEST_FUNCTION("[cellMux]", "cellMuxCleanUp")
 }
 
 #endif // #if defined(U_CFG_TEST_CELL_MODULE_TYPE) && !defined(U_CFG_TEST_DISABLE_MUX)
+//  !defined(U_CFG_PPP_ENABLE)
 
 // End of file

@@ -53,9 +53,8 @@
 #include "u_cell_pwr.h"
 #include "u_cell_cfg.h"
 #include "u_cell_info.h"
-#ifdef U_CELL_TEST_MUX_ALWAYS
-# include "u_cell_mux.h"
-#endif
+#include "u_cell_mux.h"
+#include "u_cell_ppp_shared.h"
 
 #include "u_cell_test_cfg.h"
 #include "u_cell_test_private.h"
@@ -264,6 +263,12 @@ int32_t uCellTestPrivatePreamble(uCellModuleType_t moduleType,
                 // Power up
                 U_TEST_PRINT_LINE("powering on...");
                 errorCode = uCellPwrOn(cellHandle, U_CELL_TEST_CFG_SIM_PIN, NULL);
+                if (errorCode < 0) {
+                    // If powering-on fails, try sending the CMUX abort sequence in
+                    // case the module is stuck in CMUX mode, and powering-on again
+                    uCellMuxModuleAbort(cellHandle);
+                    errorCode = uCellPwrOn(cellHandle, U_CELL_TEST_CFG_SIM_PIN, NULL);
+                }
                 if (errorCode == 0) {
                     // Note: if this is a SARA-R422 module, which supports only
                     // 1.8V SIMs, the SIM cards we happen to use in the ubxlib test farm
@@ -460,6 +465,10 @@ void uCellTestPrivatePostamble(uCellTestPrivate_t *pParameters,
     }
 #endif
 
+    if (pParameters->cellHandle != NULL) {
+        // Make sure PPP is closed
+        uCellPppClose(pParameters->cellHandle, true);
+    }
     U_TEST_PRINT_LINE("deinitialising cellular API...");
     // Let uCellDeinit() remove the cell handle
     uCellDeinit();

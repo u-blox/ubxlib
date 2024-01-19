@@ -43,6 +43,7 @@ cell/test/u_cell_gpio_test.c
 cell/test/u_cell_fota_test.c
 cell/test/u_cell_mux_test.c
 cell/test/u_cell_geofence_test.c
+cell/test/u_cell_ppp_test.c
 cell/test/u_cell_test_preamble.c
 cell/test/u_cell_test_private.c
 cell/test/u_cell_mux_private_test.c
@@ -97,6 +98,7 @@ port/platform/common/test/u_preamble_test.c
 port/platform/common/test/u_postamble_test.c
 port/platform/common/test/u_cleanup_test.c
 port/platform/common/test_util/u_test_util_resource_check.c
+port/platform/esp-idf/test/u_espidf_ppp_test.c
 # Note: it is deliberate that u_runner.c is here but 
 # port/platform/common/runner is in "include.txt"
 # and NOT just in "include_test.txt": the header file

@@ -203,6 +203,7 @@ typedef enum {
 typedef enum {
     U_CELL_MUX_PRIVATE_CHANNEL_ID_CONTROL = 0, /**< fixed by 3GPP 27.010. */
     U_CELL_MUX_PRIVATE_CHANNEL_ID_AT = 1,      /**< AT channel, common to all u-blox cellular modules. */
+    U_CELL_MUX_PRIVATE_CHANNEL_ID_PPP = 2,     /**< PPP data channel, common to all u-blox cellular modules. */
     U_CELL_MUX_PRIVATE_CHANNEL_ID_MAX = U_CELL_MUX_PRIVATE_ADDRESS_MAX
 } uCellMuxPrivateChannelId_t;
 
@@ -303,12 +304,177 @@ typedef struct {
     uint8_t channel;
     bool markedForDeletion;
     uPortMutexHandle_t mutex;
+    uPortMutexHandle_t mutexUserDataWrite;
+    uPortMutexHandle_t mutexUserDataRead;
     uCellMuxPrivateTraffic_t traffic;
     uCellMuxPrivateEventCallback_t eventCallback;
 } uCellMuxPrivateChannelContext_t;
 
 /* ----------------------------------------------------------------
- * FUNCTIONS: 3GPP 27.010 CMUX ENCODE/DECODE
+ * FUNCTIONS: PRIVATE TO CELLULAR (SEE U_CELL_MUX.C)
+ * -------------------------------------------------------------- */
+
+/** Enable multiplexer mode.  Puts the cellular module's AT
+ * interface into multiplexer (3GPP 27.010 CMUX) mode.  This
+ * is useful when you want to access a GNSS module that is
+ * connected via, or embedded inside, a cellular module as if it
+ * were connected directly to this MCU via a serial interface (see
+ * uCellMuxAddChannel()).  Note that this function _internally_
+ * opens and uses a CMUX channel for the AT interface, you do not
+ * have to do that.  The AT handle that was originally passed to
+ * uCellAdd() will remain locked, the handle of the new one that is
+ * created for use internally can be obtained by calling
+ * uCellAtClientHandleGet(); uCellAtClientHandleGet() will always
+ * return the AT handle currently in use.
+ *
+ * Whether multiplexer mode is supported or not depends on the cellular
+ * module and the interface in use: for instance a USB interface to
+ * a module does not support multiplexer mode.
+ *
+ * The module must be powered on for this to work.  Returns success
+ * without doing anything if multiplexer mode is already enabled.
+ * Multiplexer mode does not survive a power-cycle, either deliberate
+ * (with uCellPwrOff(), uCellPwrReboot(), etc.) or accidental, and
+ * cannot be used with 3GPP power saving (since it will also be
+ * reset during module deep sleep).
+ *
+ * Note: if you have passed the AT handle to a GNSS instance (e.g.
+ * via uGnssAdd()) it will stop working when multiplexer mode is
+ * enabled (because the AT handle will have been changed), hence you
+ * should enable multiplexer mode _before_ calling uGnssAdd()
+ * (and, likewise, remove any GNSS instance before disabling
+ * multiplexer mode).  However, if you have enabled multiplexer
+ * mode it is much better to call uCellMuxAddChannel() with
+ * #U_CELL_MUX_CHANNEL_ID_GNSS and then you can pass the
+ * #uDeviceSerial_t handle that returns to uGnssAdd() (with the
+ * transport type #U_GNSS_TRANSPORT_VIRTUAL_SERIAL) and you will
+ * have streamed position.
+ *
+ * Note: gUCellPrivateMutex should be locked before this is called.
+ *
+ * @param[in] pInstance  a pointer to the cellular instance.
+ * @return               zero on success or negative error code
+ *                       on failure.
+ */
+int32_t uCellMuxPrivateEnable(uCellPrivateInstance_t *pInstance);
+
+/** Determine if the multiplexer is currently enabled.
+ *
+ * Note: gUCellPrivateMutex should be locked before this is called.
+ *
+ * @param[in] pInstance  a pointer to the cellular instance.
+ * @return               true if the multiplexer is enabled,
+ *                       else false.
+ */
+bool uCellMuxPrivateIsEnabled(uCellPrivateInstance_t *pInstance);
+
+/** Add a multiplexer channel; may be called after uCellMuxEnable()
+ * has returned success in order to, for instance, create a virtual
+ * serial port to a GNSS chip inside a SARA-R422M8S or SARA-R510M8S
+ * module.  The virtual serial port handle returned in *ppDeviceSerial
+ * can be used in #uDeviceCfg_t to open the GNSS device using the
+ * uDevice API, or it can be passed to uGnssAdd() (with the transport
+ * type #U_GNSS_TRANSPORT_VIRTUAL_SERIAL) if you prefer to use the
+ * uGnss API the hard way.
+ *
+ * If the channel is already open, this function returns success
+ * without doing anything.  An error is returned if uCellMuxEnable()
+ * has not been called.
+ *
+ * Note: there is a known issue with SARA-R5 modules where, if a GNSS
+ * multiplexer channel is opened, closed, and then re-opened the GNSS
+ * chip will be unresponsive.  For that case, please open the GNSS
+ * multiplexer channel once at start of day.
+ *
+ * UART POWER SAVING: when UART power saving is enabled in the module
+ * any constraints arising will also apply to a multiplexer channel;
+ * specifically, if a DTR pin is not used to wake-up the module, i.e.
+ * the module supports and is using the "wake up on TX activity" mode
+ * of UART power saving then, though the AT interface will continue
+ * to work correctly (as it knows to expect loss of the first few
+ * characters of an AT string), the other multiplexer channels have
+ * the same restriction and have no such automated protection. Hence
+ * if you (a) expect to use a multiplexer channel to communicate with
+ * a GNSS chip in a cellular module and (b) are not able to use a DTR
+ * pin to wake the module up from power-saving, then you should call
+ * uCellPwrDisableUartSleep() to disable UART sleep while you run the
+ * multiplexer channel (and uCellPwrEnableUartSleep() to re-enable it
+ * afterwards).
+ *
+ * NOTES ON DEVICE SERIAL OPERATION: the operation of *pDeviceSerial
+ * is constrained in certain ways, since what you have is not a real
+ * serial port, it is a virtual serial port which has hijacked some
+ * of the functionality of the physical serial port that was
+ * previously running, see notes below, but particularly flow control,
+ * or not taking data out of one or more multiplexed serial ports fast
+ * enough, can have an adverse effect on other multiplexed serial ports.
+ * This is difficult to avoid since they are on the same transport.  Hence
+ * it is important to service your multiplexed serial ports often or,
+ * alternatively, you may call serialDiscardOnFlowControl() with true
+ * on any serial port where you are happy for any overruns to be
+ * discarded (e.g. the GNSS one), so that it cannot possibly interfere
+ * with others (e.g. the AT command one).
+ *
+ * The stack size and priority of any event serial callbacks are not
+ * respected: what you end up with is #U_CELL_MUX_CALLBACK_TASK_PRIORITY
+ * and #U_CELL_MUX_CALLBACK_TASK_STACK_SIZE_BYTES since a common
+ * event queue is used for all serial devices.
+ *
+ * Note: gUCellPrivateMutex should be locked before this is called.
+ *
+ * @param[in] pInstance       a pointer to the cellular instance.
+ * @param channel             the channel number to open; channel
+ *                            numbers are module-specific, however
+ *                            the value #U_CELL_MUX_CHANNEL_ID_GNSS
+ *                            can be used, in all cases, to open a
+ *                            channel to an embedded GNSS chip.
+ *                            Note that channel zero is reserved
+ *                            for management operations and channel
+ *                            one is the existing AT interface;
+ *                            neither value can be used here.
+ * @param[out] ppDeviceSerial a pointer to a place to put the
+ *                            handle of the virtual serial port
+ *                            that is the multiplexer channel.
+ * @return                    zero on success or negative error
+ *                            code on failure.
+ */
+int32_t uCellMuxPrivateAddChannel(uCellPrivateInstance_t *pInstance,
+                                  int32_t channel,
+                                  uDeviceSerial_t **ppDeviceSerial);
+
+/** Disable CMUX on the given cellular instance.  This does NOT free
+ * memory to ensure thread safety; only uCellMuxPrivateRemoveContext()
+ * frees memory.  Note that this may cause the atHandle in pInstance to
+ * change, so if you have a local copy of it you will need to refresh
+ * it once this function returns.
+ *
+ * Note: gUCellPrivateMutex should be locked before this is called.
+ *
+ * @param[in] pInstance a pointer to the cellular instance.
+ */
+int32_t uCellMuxPrivateDisable(uCellPrivateInstance_t *pInstance);
+
+/** Get the serial device for the given channel.
+ *
+ * @param[in] pContext the mux context.
+ * @param channel      the channel number.
+ * @return             the serial device.
+ */
+uDeviceSerial_t *pUCellMuxPrivateGetDeviceSerial(uCellMuxPrivateContext_t *pContext,
+                                                 uint8_t channel);
+
+/** Close a CMUX channel.  This does NOT free memory to ensure
+ * thread safety; only uCellMuxPrivateRemoveContext() frees memory.
+ *
+ * Note: gUCellPrivateMutex should be locked before this is called.
+ *
+ * @param[in] pContext the mux context.
+ * @param channel      the channel number to close.
+ */
+void uCellMuxPrivateCloseChannel(uCellMuxPrivateContext_t *pContext, uint8_t channel);
+
+/* ----------------------------------------------------------------
+ * FUNCTIONS: 3GPP 27.010 CMUX ENCODE/DECODE (SEE U_CELL_MUX_PRIVATE.C)
  * -------------------------------------------------------------- */
 
 /** Encode a 3GPP 27.010 mux frame.
@@ -364,17 +530,8 @@ int32_t uCellMuxPrivateEncode(uint8_t address, uCellMuxPrivateFrameType_t type,
 int32_t uCellMuxPrivateParseCmux(uParseHandle_t parseHandle, void *pUserParam);
 
 /* ----------------------------------------------------------------
- * FUNCTIONS: MISC
+ * FUNCTIONS: MISC (SEE U_CELL_MUX_PRIVATE.C)
  * -------------------------------------------------------------- */
-
-/** Get the serial device for the given channel.
- *
- * @param[in] pContext the mux context.
- * @param channel      the channel number.
- * @return             the serial device.
- */
-uDeviceSerial_t *pUCellMuxPrivateGetDeviceSerial(uCellMuxPrivateContext_t *pContext,
-                                                 uint8_t channel);
 
 /** Copy the settings of one AT client into another AT client.
  *
@@ -384,28 +541,6 @@ uDeviceSerial_t *pUCellMuxPrivateGetDeviceSerial(uCellMuxPrivateContext_t *pCont
  */
 int32_t uCellMuxPrivateCopyAtClient(uAtClientHandle_t atHandleSource,
                                     uAtClientHandle_t atHandleDestination);
-
-/** Close a CMUX channel.  This does NOT free memory to ensure
- * thread safety; only uCellMuxPrivateRemoveContext() frees memory.
- *
- * Note: gUCellPrivateMutex should be locked before this is called.
- *
- * @param[in] pContext the mux context.
- * @param channel      the channel number to close.
- */
-void uCellMuxPrivateCloseChannel(uCellMuxPrivateContext_t *pContext, uint8_t channel);
-
-/** Disable CMUX on the given cellular instance.  This does NOT free
- * memory to ensure thread safety; only uCellMuxPrivateRemoveContext()
- * frees memory.  Note that this may cause the atHandle in pInstance to
- * change, so if you have a local copy of it you will need to refresh
- * it once this function returns.
- *
- * Note: gUCellPrivateMutex should be locked before this is called.
- *
- * @param[in] pInstance a pointer to the cellular instance.
- */
-int32_t uCellMuxPrivateDisable(uCellPrivateInstance_t *pInstance);
 
 /** Remove the CMUX context for the given cellular instance.  If CMUX
  * is active it will be disabled first.  Note that this may cause the

@@ -129,20 +129,6 @@
 # define U_SOCK_TEST_MAX_UDP_PACKET_SIZE 500
 #endif
 
-#ifndef U_SOCK_TEST_MAX_TCP_READ_WRITE_SIZE
-/** The maximum TCP read/write size to use during testing.
- */
-# define U_SOCK_TEST_MAX_TCP_READ_WRITE_SIZE 1024
-#endif
-
-#ifndef U_SOCK_TEST_MIN_TCP_READ_WRITE_SIZE
-/** Sending just one byte doesn't always cause all
- * modules to actually send the data in a reasonable
- * time so set a sensible minimum here for testing.
- */
-# define U_SOCK_TEST_MIN_TCP_READ_WRITE_SIZE 128
-#endif
-
 #ifndef U_SOCK_TEST_NON_BLOCKING_TIME_MS
 /** Expected return time for non-blocking operation
  *in ms during testing.

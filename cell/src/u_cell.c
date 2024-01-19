@@ -60,6 +60,7 @@
 #include "u_cell_private.h" // don't change it
 #include "u_cell_mux.h"
 #include "u_cell_mux_private.h"
+#include "u_cell_ppp_private.h"
 
 // The headers below necessary to work around an Espressif linker problem, see uCellInit()
 #include "u_sock.h"
@@ -143,6 +144,8 @@ static void removeCellInstance(uCellPrivateInstance_t *pInstance)
             uPortFree(pInstance->pFotaContext);
             // Free any HTTP context
             uCellPrivateHttpRemoveContext(pInstance);
+            // Free any PPP context
+            uCellPppPrivateRemoveContext(pInstance);
             // Free any CMUX context
             uCellMuxPrivateRemoveContext(pInstance);
             // Free any CellTime context

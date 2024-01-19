@@ -44,7 +44,7 @@ extern "C" {
 /** The stack size of the task that runs a local DNS (created and
  * destroyed by uWifiCaptivePortal()).
  */
-# define U_WIFI_CAPTIVE_PORTAL_DNS_TASK_STACK_SIZE_BYTES 2048
+# define U_WIFI_CAPTIVE_PORTAL_DNS_TASK_STACK_SIZE_BYTES 2304
 #endif
 
 #ifndef U_WIFI_CAPTIVE_PORTAL_DNS_TASK_PRIORITY

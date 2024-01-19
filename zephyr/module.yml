@@ -1,3 +1,5 @@
 build:
   cmake: port/platform/zephyr/
   kconfig: port/platform/zephyr/Kconfig
+  settings:
+    dts_root: port/platform/zephyr

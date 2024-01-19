@@ -32,6 +32,8 @@ cell/src/u_cell_geofence.c
 cell/src/u_cell_private.c
 cell/src/u_cell_mux_private.c
 cell/src/u_cell_mno_db.c
+cell/src/u_cell_ppp.c
+cell/src/u_cell_stub_gnss.c
 gnss/src/u_gnss.c
 gnss/src/u_gnss_pwr.c
 gnss/src/u_gnss_cfg.c
@@ -121,6 +123,7 @@ common/geofence/src/u_geofence.c
 common/geofence/src/dummy/u_geofence_geodesic.c
 port/u_port_heap.c
 port/u_port_resource.c
+port/u_port_ppp_default.c
 port/platform/common/event_queue/u_port_event_queue.c
 port/clib/u_port_clib_mktime64.c
 port/u_port_timezone.c
@@ -131,6 +134,7 @@ port/platform/esp-idf/src/u_port_gpio.c
 port/platform/esp-idf/src/u_port_uart.c
 port/platform/esp-idf/src/u_port_i2c.c
 port/platform/esp-idf/src/u_port_spi.c
+port/platform/esp-idf/src/u_port_ppp.c
 port/platform/esp-idf/src/u_port_private.c
 port/platform/common/mutex_debug/u_mutex_debug.c
 port/platform/common/log_ram/u_log_ram.c

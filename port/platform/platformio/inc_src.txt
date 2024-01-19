@@ -80,6 +80,7 @@ port/clib/u_port_clib_mktime64.c
 port/u_port_timezone.c
 port/u_port_heap.c
 port/u_port_resource.c
+port/u_port_ppp_default.c
 port/platform/common/mutex_debug/u_mutex_debug.c
 gnss/src/lib_mga/u_lib_mga.c
 common/network/src/u_network.c

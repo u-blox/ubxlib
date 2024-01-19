@@ -114,6 +114,7 @@ int32_t uCellPwrPrivatePeriodicWakeupStrToSeconds(const char *pStr,
                                                   int32_t *pSeconds);
 
 /** Get the 3GPP power saving settings.
+ *
  * Note: gUCellPrivateMutex should be locked before this is called.
  *
  * @param pInstance              a pointer to the cellular instance.
@@ -142,6 +143,7 @@ int32_t uCellPwrPrivateGet3gppPowerSaving(uCellPrivateInstance_t *pInstance,
                                           int32_t *pPeriodicWakeupSeconds);
 
 /** Get the E-DRX settings for the given RAT.
+ *
  * Note: gUCellPrivateMutex should be locked before this is called.
  *
  * @param pInstance              a pointer to the cellular instance.
@@ -171,6 +173,51 @@ int32_t uCellPwrPrivateGetEDrx(const uCellPrivateInstance_t *pInstance,
                                bool *pOnNotOff,
                                int32_t *pEDrxSeconds,
                                int32_t *pPagingWindowSeconds);
+
+/** Get the DTR power-saving pin.
+ *
+ * Note: gUCellPrivateMutex should be locked before this is called.
+ *
+ * @param pInstance  a pointer to the cellular instance.
+ * @return           the pin of this MCU that is connected to
+ *                   the DTR line of the cellular module, as
+ *                   set by uCellPwrSetDtrPowerSavingPin(),
+ *                   or negative error code.
+ */
+int32_t uCellPwrPrivateGetDtrPowerSavingPin(const uCellPrivateInstance_t *pInstance);
+
+/** Disable UART, AKA 32 kHz, sleep. 32 kHz sleep is always
+ * enabled where supported by the module; call this function
+ * to disable 32 kHz sleep.
+ *
+ * Note: gUCellPrivateMutex should be locked before this is called.
+ *
+ * @param pInstance   a pointer to the cellular instance.
+ * @return            zero on success or negative error code on
+ *                    failure.
+ */
+int32_t uCellPwrPrivateDisableUartSleep(uCellPrivateInstance_t *pInstance);
+
+/** Enable UART, AKA 32 kHz sleep.  32 kHz sleep is always enabled
+ * where supported - you only need to call this if you have
+ * previously called uCellPwrDisableUartSleep().
+ *
+ * Note: gUCellPrivateMutex should be locked before this is called.
+ *
+ * @param pInstance   a pointer to the cellular instance.
+ * @return            zero on success or negative error code on
+ *                    failure.
+ */
+int32_t uCellPwrPrivateEnableUartSleep(uCellPrivateInstance_t *pInstance);
+
+/** Determine whether UART, AKA 32 kHz, sleep is enabled or not.
+ *
+ * Note: gUCellPrivateMutex should be locked before this is called.
+ *
+ * @param pInstance   a pointer to the cellular instance.
+ * @return            true if UART sleep is enabled, else false.
+ */
+bool uCellPwrPrivateUartSleepIsEnabled(const uCellPrivateInstance_t *pInstance);
 
 #ifdef __cplusplus
 }

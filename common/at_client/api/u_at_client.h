@@ -360,9 +360,21 @@ extern "C" {
  * work for all platforms, the governing factor being ESP32,
  * which seems to require around twice the stack of NRF52
  * or STM32F4 and more again in the version pre-built for
- * Arduino.
+ * Arduino.  We wouldn't normally entertain platform
+ * switches in here but the size increase required by Arduino
+ * is too much for poor little nRF5SDK, i.e. giving the
+ * URC callback as much stack as Arduino requires, likely
+ * because the printf() used by the pre-built ESP-IDF Arduino
+ * is quite fully featured, means we don't have at least
+ * 5 kbytes application stack left free at the end of testing
+ * on nRF52, which is our baseline.  So we do a specific
+ * increase in stack size for Arduino here.
  */
-# define U_AT_CLIENT_URC_TASK_STACK_SIZE_BYTES  2304
+# ifdef __ARDUINO__
+#  define U_AT_CLIENT_URC_TASK_STACK_SIZE_BYTES  2816
+# else
+#  define U_AT_CLIENT_URC_TASK_STACK_SIZE_BYTES  2304
+# endif
 #endif
 
 #ifndef U_AT_CLIENT_URC_TASK_PRIORITY

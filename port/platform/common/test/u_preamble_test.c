@@ -51,6 +51,7 @@
 #include "u_port.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"
+#include "u_port_event_queue.h"
 #if defined(U_CFG_TEST_PIN_GNSS_RESET_N) && (U_CFG_TEST_PIN_GNSS_RESET_N >= 0)
 #include "u_port_gpio.h"
 #endif
@@ -201,6 +202,7 @@ U_PORT_TEST_FUNCTION("[preamble]", "preambleHeapDefence")
     uPortTaskBlock(2000);
 #endif
 
+    uPortEventQueueCleanUp();
     uPortDeinit();
 
 #ifdef PRE_ALLOCATE_FILE_COUNT

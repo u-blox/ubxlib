@@ -242,7 +242,8 @@ typedef enum {
     U_CELL_PRIVATE_FEATURE_AUTHENTICATION_MODE_AUTOMATIC,
     U_CELL_PRIVATE_FEATURE_LWM2M,
     U_CELL_PRIVATE_FEATURE_UCGED,
-    U_CELL_PRIVATE_FEATURE_HTTP
+    U_CELL_PRIVATE_FEATURE_HTTP,
+    U_CELL_PRIVATE_FEATURE_PPP
 } uCellPrivateFeature_t;
 
 /** The characteristics that may differ between cellular modules.
@@ -485,6 +486,7 @@ typedef struct uCellPrivateInstance_t {
     void *pCellTimeContext;  /**< Hook for CellTime context. */
     void *pCellTimeCellSyncContext;   /**< Hook for CellTime cell synchronisation context. */
     void *pFenceContext; /**< Storage for a uGeofenceContext_t. */
+    void *pPppContext; /**< Hook for a PPP connection context. */
     struct uCellPrivateInstance_t *pNext;
 } uCellPrivateInstance_t;
 

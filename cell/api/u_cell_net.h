@@ -270,6 +270,10 @@ typedef enum {
 } uCellNetRegDomain_t;
 
 /** The possible authentication modes for the network connection.
+ *
+ * Note: there is also a #uPortPppAuthenticationMode_t enumeration
+ * which is set to match this one.  If you make a change here you
+ * may need to make a change there also.
  */
 typedef enum {
     U_CELL_NET_AUTHENTICATION_MODE_NONE = 0, /**< \deprecated please use #U_CELL_NET_AUTHENTICATION_MODE_NOT_SET. */

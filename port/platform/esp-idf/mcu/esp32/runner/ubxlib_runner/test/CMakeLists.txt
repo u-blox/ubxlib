@@ -30,7 +30,7 @@ if (DEFINED ENV{U_UBXLIB_AUTO})
   list(APPEND COMPONENT_SRCS            ${UBXLIB_BASE}/port/platform/common/runner/u_runner.c)
 endif()
 
-set(COMPONENT_REQUIRES "driver" "esptool_py" "unity" ${GEODESIC_COMPONENT})
+set(COMPONENT_REQUIRES "driver" "esptool_py" "unity" "esp_netif" ${GEODESIC_COMPONENT})
 
 message("COMPONENT_REQUIRES for component UBXLIB_RUNNER TEST is ${COMPONENT_REQUIRES}")
 

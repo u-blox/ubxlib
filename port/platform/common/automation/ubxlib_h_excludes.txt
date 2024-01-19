@@ -11,3 +11,6 @@ lib_fibonacci.h
 
 # Contains no user-callable functions
 u_geofence_geodesic.h
+
+# Called only internally within ubxlib
+u_port_ppp.h

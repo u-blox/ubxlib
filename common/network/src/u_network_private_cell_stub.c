@@ -151,6 +151,12 @@ U_WEAK void uCellMuxFree(uDeviceHandle_t cellHandle)
     (void) cellHandle;
 }
 
+U_WEAK bool uCellPppIsOpen(uDeviceHandle_t cellHandle)
+{
+    (void) cellHandle;
+    return false;
+}
+
 U_WEAK int32_t uCellCfgSetGnssProfile(uDeviceHandle_t cellHandle,
                                       int32_t profileBitMap,
                                       const char *pServerName)

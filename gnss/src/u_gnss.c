@@ -198,6 +198,32 @@ static void deleteGnssInstance(uGnssPrivateInstance_t *pInstance)
 }
 
 /* ----------------------------------------------------------------
+ * PUBLIC FUNCTIONS THAT ARE SHARED WITHIN UBXLIB ONLY
+ * -------------------------------------------------------------- */
+
+// Update an AT handle that any GNSS instance may be using.
+void uGnssUpdateAtHandle(void *pAtOld, void *pAtNew)
+{
+    uGnssPrivateInstance_t *pInstance;
+
+    if (gUGnssPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
+
+        pInstance = gpUGnssPrivateInstanceList;
+        while (pInstance != NULL) {
+            if ((pInstance->transportType == U_GNSS_TRANSPORT_AT) &&
+                (pInstance->transportHandle.pAt == pAtOld)) {
+                pInstance->transportHandle.pAt = pAtNew;
+            }
+            pInstance = pInstance->pNext;
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
+    }
+}
+
+/* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 

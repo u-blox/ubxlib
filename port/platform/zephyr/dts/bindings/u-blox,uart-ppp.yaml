@@ -1,0 +1,5 @@
+description: virtual ubxlib UART for PPP connections
+
+compatible: "u-blox,uart-ppp"
+
+include: [uart-controller.yaml]

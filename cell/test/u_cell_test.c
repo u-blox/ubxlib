@@ -212,7 +212,6 @@ U_PORT_TEST_FUNCTION("[cell]", "cellAdd")
                                                d[0] + 1) == 0);
     U_PORT_TEST_ASSERT(uCellAtCommandTimingGet(devHandleA, &(a[1]), &(b[1]), &(c[1]), &(d[1])) == 0);
     U_PORT_TEST_ASSERT(a[1] == a[0] + 1);
-    uPortLog("### b[1] %d, b[0] %d.\n", b[1], b[0]);
     U_PORT_TEST_ASSERT(b[1] == b[0] + 1);
     U_PORT_TEST_ASSERT(c[1] == c[0] + 1);
     U_PORT_TEST_ASSERT(d[1] == d[0] + 1);

@@ -66,7 +66,7 @@
 #define configMINIMAL_STACK_SIZE                                                  ( 60 )
 // If you modify this value then make sure that the value of
 // HEAP_SIZE in the Makefile for a GCC build is modified to match.
-#define configTOTAL_HEAP_SIZE                                                     ( 53 * 1024 )
+#define configTOTAL_HEAP_SIZE                                                     ( 54 * 1024 )
 #define configMAX_TASK_NAME_LEN                                                   ( 16 )
 #define configUSE_16_BIT_TICKS                                                    0
 #define configIDLE_SHOULD_YIELD                                                   1

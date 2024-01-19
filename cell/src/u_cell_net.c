@@ -53,6 +53,8 @@
 
 #include "u_at_client.h"
 
+#include "u_sock.h"
+
 #include "u_cell_module_type.h"
 #include "u_cell_file.h"
 #include "u_cell.h"         // Order is
@@ -61,6 +63,7 @@
 #include "u_cell_info.h"
 #include "u_cell_apn_db.h"
 #include "u_cell_mno_db.h"
+#include "u_cell_ppp_shared.h"
 
 #include "u_cell_pwr_private.h"
 
@@ -262,10 +265,22 @@ static void activateContextCallback(uAtClientHandle_t atHandle,
                                     void *pParameter)
 {
     uCellPrivateInstance_t *pInstance = (uCellPrivateInstance_t *) pParameter;
+    uDeviceHandle_t cellHandle = pInstance->cellHandle;
+    char buffer[U_CELL_NET_IP_ADDRESS_SIZE];
+    uSockAddress_t address;
+    uSockIpAddress_t *pIpAddress = NULL;
 
     (void) atHandle;
 
     activateContext(pInstance, U_CELL_NET_CONTEXT_ID, U_CELL_NET_PROFILE_ID);
+
+    if (U_CELL_PRIVATE_HAS(pInstance->pModule, U_CELL_PRIVATE_FEATURE_PPP)) {
+        if ((uCellNetGetIpAddressStr(cellHandle, buffer) > 0) &&
+            (uSockStringToAddress(buffer, &address) > 0)) {
+            pIpAddress = &address.ipAddress;
+        }
+        uPortPppReconnect(cellHandle, pIpAddress);
+    }
 }
 
 // Set the current network status.
@@ -1405,7 +1420,7 @@ static int32_t setAuthenticationMode(const uCellPrivateInstance_t *pInstance,
                                      const char *pPassword,
                                      uCellNetAuthenticationMode_t overrideAuthenticationMode)
 {
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    int32_t errorCodeOrAuthenticationMode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
     uAtClientHandle_t atHandle = pInstance->atHandle;
     uCellNetAuthenticationMode_t authenticationMode = pInstance->authenticationMode;
 
@@ -1457,10 +1472,14 @@ static int32_t setAuthenticationMode(const uCellPrivateInstance_t *pInstance,
             }
         }
         uAtClientCommandStopReadResponse(atHandle);
-        errorCode = uAtClientUnlock(atHandle);
+        errorCodeOrAuthenticationMode = uAtClientUnlock(atHandle);
     }
 
-    return errorCode;
+    if (errorCodeOrAuthenticationMode == 0) {
+        errorCodeOrAuthenticationMode = authenticationMode;
+    }
+
+    return errorCodeOrAuthenticationMode;
 }
 
 // Get the APN currently in use 3GPP commands, required
@@ -2190,6 +2209,47 @@ static int32_t parseDeepScanLine(uAtClientHandle_t atHandle,
     return errorCodeOrNumber;
 }
 
+// Make the PPP connection
+static int32_t connectPpp(uDeviceHandle_t cellHandle,
+                          const char *pUsername,
+                          const char *pPassword,
+                          uCellNetAuthenticationMode_t authenticationMode)
+{
+    int32_t errorCode;
+    char buffer1[U_CELL_NET_IP_ADDRESS_SIZE];
+    char buffer2[U_CELL_NET_IP_ADDRESS_SIZE];
+    uSockAddress_t address;
+    uSockIpAddress_t *pIpAddress = NULL;
+    uSockAddress_t dnsAddressPrimary;
+    uSockIpAddress_t *pDnsIpAddressPrimary = NULL;
+    uSockAddress_t dnsAddressSecondary;
+    uSockIpAddress_t *pDnsIpAddressSecondary = NULL;
+
+    if ((uCellNetGetIpAddressStr(cellHandle, buffer1) > 0) &&
+        (uSockStringToAddress(buffer1, &address) > 0)) {
+        pIpAddress = &address.ipAddress;
+    }
+    if (uCellNetGetDnsStr(cellHandle, false, buffer1, buffer2) > 0) {
+        if (uSockStringToAddress(buffer1, &dnsAddressPrimary) > 0) {
+            pDnsIpAddressPrimary = &dnsAddressPrimary.ipAddress;
+        }
+        if (uSockStringToAddress(buffer2, &dnsAddressSecondary) > 0) {
+            pDnsIpAddressSecondary = &dnsAddressSecondary.ipAddress;
+        }
+    }
+    // uPortPppAuthenticationMode_t matches uCellNetAuthenticationMode_t
+    // so this is fine
+    errorCode = uPortPppConnect(cellHandle, pIpAddress, pDnsIpAddressPrimary,
+                                pDnsIpAddressSecondary, pUsername, pPassword,
+                                (uPortPppAuthenticationMode_t) authenticationMode);
+
+    if (errorCode == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
+        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+    }
+
+    return errorCode;
+}
+
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -2206,8 +2266,18 @@ int32_t uCellNetConnect(uDeviceHandle_t cellHandle,
     char buffer[15];  // At least 15 characters for the IMSI
     const char *pApnConfig = NULL;
     uCellNetAuthenticationMode_t overrideAuthenticationMode = U_CELL_NET_AUTHENTICATION_MODE_NOT_SET;
+    uCellNetAuthenticationMode_t authenticationModeUsed = overrideAuthenticationMode;
+    bool hasPpp = false;
 
     if (gUCellPrivateMutex != NULL) {
+
+        // It is possible that the user already has a PDP context
+        // up and wants to change it, in which case
+        // handleExistingContext() will close it.  However, the
+        // PPP connection _must_ be taken down before that happens
+        // and we can't do so while the cellular API mutex is
+        // locked, so we alays take the PPP connection down first
+        uPortPppDisconnect(cellHandle);
 
         U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
 
@@ -2215,6 +2285,7 @@ int32_t uCellNetConnect(uDeviceHandle_t cellHandle,
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if ((pInstance != NULL) &&
             ((pUsername == NULL) || (pPassword != NULL))) {
+            hasPpp = U_CELL_PRIVATE_HAS(pInstance->pModule, U_CELL_PRIVATE_FEATURE_PPP);
 
             errorCode = (int32_t) U_CELL_ERROR_NOT_CONNECTED;
             if (uCellPrivateIsRegistered(pInstance)) {
@@ -2301,6 +2372,10 @@ int32_t uCellNetConnect(uDeviceHandle_t cellHandle,
                                                                   pUsername,
                                                                   pPassword,
                                                                   overrideAuthenticationMode);
+                                if (errorCode >= 0) {
+                                    authenticationModeUsed = errorCode;
+                                    errorCode = 0;
+                                }
                             }
                         }
                         if (errorCode == 0) {
@@ -2410,6 +2485,11 @@ int32_t uCellNetConnect(uDeviceHandle_t cellHandle,
         }
 
         U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+
+        if ((errorCode == 0) && hasPpp) {
+            // Any PPP connection the platform may have attached is now up
+            errorCode = connectPpp(cellHandle, pUsername, pPassword, authenticationModeUsed);
+        }
     }
 
     return errorCode;
@@ -2507,8 +2587,18 @@ int32_t uCellNetActivate(uDeviceHandle_t cellHandle,
     char imsi[15];
     const char *pApnConfig = NULL;
     uCellNetAuthenticationMode_t overrideAuthenticationMode = U_CELL_NET_AUTHENTICATION_MODE_NOT_SET;
+    uCellNetAuthenticationMode_t authenticationModeUsed = overrideAuthenticationMode;
+    bool hasPpp = false;
 
     if (gUCellPrivateMutex != NULL) {
+
+        // It is possible that the user already has a PDP context
+        // up and wants to change it, in which case
+        // handleExistingContext() will close it.  However, the
+        // PPP connection _must_ be taken down before that happens
+        // and we can't do so while the cellular API mutex is
+        // locked, so we alays take the PPP connection down first
+        uPortPppDisconnect(cellHandle);
 
         U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
 
@@ -2516,6 +2606,7 @@ int32_t uCellNetActivate(uDeviceHandle_t cellHandle,
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if ((pInstance != NULL) &&
             ((pUsername == NULL) || (pPassword != NULL))) {
+            hasPpp = U_CELL_PRIVATE_HAS(pInstance->pModule, U_CELL_PRIVATE_FEATURE_PPP);
 
             errorCode = (int32_t) U_CELL_ERROR_NOT_REGISTERED;
             if (uCellPrivateIsRegistered(pInstance)) {
@@ -2579,6 +2670,10 @@ int32_t uCellNetActivate(uDeviceHandle_t cellHandle,
                                                                   pUsername,
                                                                   pPassword,
                                                                   overrideAuthenticationMode);
+                                if (errorCode >= 0) {
+                                    authenticationModeUsed = errorCode;
+                                    errorCode = 0;
+                                }
                             }
                             if (errorCode == 0) {
                                 if (!uCellPrivateIsRegistered(pInstance)) {
@@ -2637,6 +2732,11 @@ int32_t uCellNetActivate(uDeviceHandle_t cellHandle,
         }
 
         U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+
+        if ((errorCode == 0) && hasPpp) {
+            // Any PPP connection the platform may have attached is now up
+            errorCode = connectPpp(cellHandle, pUsername, pPassword, authenticationModeUsed);
+        }
     }
 
     return errorCode;
@@ -2651,6 +2751,10 @@ int32_t uCellNetDeactivate(uDeviceHandle_t cellHandle,
     uCellNetRat_t rat;
 
     if (gUCellPrivateMutex != NULL) {
+
+        // Let the platform, know that the PPP connection,
+        // is going down
+        uPortPppDisconnect(cellHandle);
 
         U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
 
@@ -2696,6 +2800,10 @@ int32_t uCellNetDisconnect(uDeviceHandle_t cellHandle,
     int32_t status3gpp;
 
     if (gUCellPrivateMutex != NULL) {
+
+        // Let the platform, know that the PPP connection,
+        // is going down
+        uPortPppDisconnect(cellHandle);
 
         U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
 

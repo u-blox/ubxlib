@@ -69,3 +69,18 @@
 	pinctrl-1 = <&spi3_sleep>;
 	pinctrl-names = "default", "sleep";
 };
+
+/* Required for PPP-level integration with ubxlib to work */
+/ { // The leading / indicates that we're in the root section
+    // This chooses uart instance 99 to be the zephyr,ppp-uart that ppp.c wants
+    chosen {
+        zephyr,ppp-uart = &uart99;
+    };
+
+    // This creates instance 99 of a uart that we will give to zephyr,ppp-uart
+    uart99: uart-ppp@8000 { // The "8000" here is irrelevant but required for Zephyr to work
+        compatible = "u-blox,uart-ppp"; // The important part: this is an instance of u-blox,uart-ppp
+        reg = <0x8000 0x100>; // This is irrelevant but required for Zephyr to work
+        status = "okay"; // Zephyr boiler-plate
+    };
+};

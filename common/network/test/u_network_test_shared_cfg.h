@@ -266,6 +266,18 @@ bool uNetworkTestHasStatusCallback(uDeviceType_t deviceType,
                                    uNetworkType_t networkType,
                                    int32_t moduleType);
 
+/** Return true if the combination supports a PPP connection.
+ *
+ * @param deviceType  the device type.
+ * @param networkType the network type.
+ * @param moduleType  the module type.
+ * @return            true if a PPP connection is supported,
+ *                    else false.
+ */
+bool uNetworkTestHasPpp(uDeviceType_t deviceType,
+                        uNetworkType_t networkType,
+                        int32_t moduleType);
+
 #endif // _U_NETWORK_TEST_CFG_H_
 
 // End of file

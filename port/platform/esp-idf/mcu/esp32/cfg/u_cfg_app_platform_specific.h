@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef _U_PORT_APP_PLATFORM_SPECIFIC_H_
-#define _U_PORT_APP_PLATFORM_SPECIFIC_H_
+#ifndef _U_CFG_APP_PLATFORM_SPECIFIC_H_
+#define _U_CFG_APP_PLATFORM_SPECIFIC_H_
 
 /** @file
  * @brief This header file contains configuration information for
@@ -334,6 +334,6 @@
 # define U_CFG_APP_CELL_PIN_GNSS_DATA_READY  24 // AKA GPIO3
 #endif
 
-#endif // _U_PORT_APP_PLATFORM_SPECIFIC_H_
+#endif // _U_CFG_APP_PLATFORM_SPECIFIC_H_
 
 // End of file

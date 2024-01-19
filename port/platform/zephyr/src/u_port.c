@@ -40,6 +40,7 @@
 #include "u_port_gpio.h"
 #include "u_port_uart.h"
 #include "u_port_event_queue_private.h"
+#include "u_port_ppp_private.h"
 #include "u_port_private.h"
 
 #include <version.h>
@@ -112,12 +113,16 @@ int32_t uPortInit()
     if (errorCode == 0) {
         errorCode = uPortPrivateInit();
     }
+    if (errorCode == 0) {
+        errorCode = uPortPppPrivateInit();
+    }
     return errorCode;
 }
 
 // Deinitialise the porting layer.
 void uPortDeinit()
 {
+    uPortPppPrivateDeinit();
     uPortPrivateDeinit();
     uPortUartDeinit();
     uPortEventQueuePrivateDeinit();

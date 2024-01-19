@@ -151,6 +151,9 @@ list(APPEND UBXLIB_SRC ${UBXLIB_BASE}/port/u_port_timezone.c)
 # Default uPortXxxResource implementation
 list(APPEND UBXLIB_SRC ${UBXLIB_BASE}/port/u_port_resource.c)
 
+# Default uPortPppAttach()/uPortPppDetach() implementation
+list(APPEND UBXLIB_SRC ${UBXLIB_BASE}/port/u_port_ppp_default.c)
+
 # Optional features
 
 # short range

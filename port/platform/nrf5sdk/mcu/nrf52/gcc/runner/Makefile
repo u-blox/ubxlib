@@ -17,7 +17,7 @@ JLINK_SERIAL_NUMBER :=
 # (and in the SES SDK you'll find a variable
 # "arm_linker_heap_size" nestling in the .emProject
 # file, if you want to align the two SDKs).
-HEAP_SIZE        := 54272
+HEAP_SIZE        := 55296
 
 $(info    MAKEFILE_DIR is "$(MAKEFILE_DIR)")
 $(info    OUTPUT_DIRECTORY will be "$(OUTPUT_DIRECTORY)")
@@ -217,9 +217,9 @@ LDFLAGS += -Wl,--wrap=realloc
 LDFLAGS += -Wl,--wrap=_realloc_r
 
 nrf52840_xxaa: CFLAGS += -D__HEAP_SIZE=$(HEAP_SIZE)
-nrf52840_xxaa: CFLAGS += -D__STACK_SIZE=8192
+nrf52840_xxaa: CFLAGS += -D__STACK_SIZE=7168
 nrf52840_xxaa: ASMFLAGS += -D__HEAP_SIZE=$(HEAP_SIZE)
-nrf52840_xxaa: ASMFLAGS += -D__STACK_SIZE=8192
+nrf52840_xxaa: ASMFLAGS += -D__STACK_SIZE=7168
 
 # Add standard libraries at the very end of the linker input, after all objects
 # that may need symbols provided by these libraries.

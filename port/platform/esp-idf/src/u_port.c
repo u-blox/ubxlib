@@ -32,6 +32,8 @@
 #include "u_port_heap.h"
 #include "u_port_uart.h"
 #include "u_port_event_queue_private.h"
+#include "u_port_ppp.h"
+#include "u_port_ppp_private.h"
 #include "u_port_private.h"
 
 #include "freertos/FreeRTOS.h" // For xPortGetFreeHeapSize()
@@ -108,6 +110,16 @@ int32_t uPortInit()
 {
     int32_t errorCode = 0;
 
+    // Workaround for Espressif linker missing out files that
+    // only contain functions which also have weak alternatives
+    // (see https://www.esp32.com/viewtopic.php?f=13&t=8418&p=35899).
+    // Basically any file that might end up containing only functions
+    // that also have WEAK linked counterparts will be lost, so we need
+    // to add a dummy function in those files and call it from somewhere
+    // that will always be present in the build, which for the port
+    // layer we choose to be here
+    uPortPppDefaultPrivateLink();
+
     if (!gInitialised) {
         errorCode = uPortHeapMonitorInit(NULL, NULL, NULL);
         if (errorCode == 0) {
@@ -116,6 +128,9 @@ int32_t uPortInit()
                 errorCode = uPortPrivateInit();
                 if (errorCode == 0) {
                     errorCode = uPortUartInit();
+                    if (errorCode == 0) {
+                        errorCode = uPortPppPrivateInit();
+                    }
                 }
             }
         }
@@ -129,6 +144,7 @@ int32_t uPortInit()
 void uPortDeinit()
 {
     if (gInitialised) {
+        uPortPppPrivateDeinit();
         uPortUartDeinit();
         uPortPrivateDeinit();
         uPortEventQueuePrivateDeinit();

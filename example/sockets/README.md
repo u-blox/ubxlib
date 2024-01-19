@@ -37,3 +37,16 @@ Obviously you will need a SIM in your board, an antenna connected and you may ne
 `U_CFG_APP_PIN_SHORT_RANGE_xxx`: the default values for the MCU pins connecting your short range module to your MCU are \#defined in the file [port/platform](/port/platform)`/<platform>/mcu/<mcu>/cfg/cfg_app_platform_specific.h`.  You should check if these are correct for your board and, if not, override the values of the \#defines (where -1 means "not connected").
 
 `U_CFG_APP_SHORT_RANGE_UART`: this sets the internal HW UART block that your chosen MCU will use to talk to the Wi-Fi module.  The default is usually acceptable but if you wish to change it then consult the file [port/platform](/port/platform)`<platform>/mcu/<mcu>/cfg/cfg_hw_platform_specific.h` for other options.
+
+# Using PPP
+On the following platforms:
+
+- [ESP-IDF](/port/platform/esp-idf)
+- [Zephyr](/port/platform/zephyr)
+
+...and with following \[cellular\] modules:
+
+- SARA-R5
+- SARA-R422
+
+...it is possible to make a PPP connection between the module and the bottom of the platform's own IP stack, allowing the native applications of that platform (e.g. MQTT) to connect through the module.  Set-up for `ubxlib` is as above, plus you must define `U_CFG_PPP_ENABLE` when building `ubxlib`.  Unfortunately there will _always_ be additional platform-specific setup: for this, refer to the `README.md` of the relevant platform directory or also look at the top of the example `.c` file.

@@ -53,10 +53,10 @@ extern "C" {
 #define U_CELL_MUX_CHANNEL_ID_GNSS 0xFF
 
 #ifndef U_CELL_MUX_MAX_CHANNELS
-/** Enough room for the control channel, an AT channel and a
- * GNSS serial channel.
+/** Enough room for the control channel, an AT channel, a
+ * GNSS serial channel and potentially a PPP data channel.
  */
-# define U_CELL_MUX_MAX_CHANNELS 3
+# define U_CELL_MUX_MAX_CHANNELS 4
 #endif
 
 /* ----------------------------------------------------------------
@@ -231,6 +231,14 @@ int32_t uCellMuxRemoveChannel(uDeviceHandle_t cellHandle,
  * no longer be in use and the AT handle will return to being the one
  * originally passed to uCellAdd(); uCellAtClientHandleGet() will reflect
  * this change.
+ *
+ * IMPORTANT: if you have compiled with U_CFG_ENABLE_PPP, in order to
+ * use the native OS IP stack with a cellular connection, you should
+ * NOT call this function; it would result in the PPP connection, which
+ * uses the multiplexer, being terminated without notice and you will
+ * find that any subsequent attempt to make a PPP connection to the
+ * module will fail (since the previous one is still up), until you
+ * have power-cycled or rebooted the module.
  *
  * @param cellHandle the handle of the cellular instance.
  * @return           zero on success or negative error code on failure.

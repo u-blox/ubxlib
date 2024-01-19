@@ -40,6 +40,15 @@
 
 #include "u_debug_utils.h"
 
+// Bring in the ESP-IDF CONFIG_ #defines
+#include "sdkconfig.h"
+
+#ifdef CONFIG_LWIP_PPP_SUPPORT
+# include "esp_log.h"
+# include "esp_event.h"
+# include "esp_netif.h"
+#endif
+
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
@@ -77,6 +86,12 @@ static void appTask(void *pParam)
                         U_MUTEX_DEBUG_WATCHDOG_TIMEOUT_SECONDS);
 #endif
 
+#ifdef CONFIG_LWIP_PPP_SUPPORT
+    esp_netif_init();
+    esp_event_loop_create_default();
+    esp_log_level_set("*", ESP_LOG_VERBOSE);
+#endif
+
 #ifdef U_RUNNER_TOP_STR
     // If U_RUNNER_TOP_STR is defined we must be running inside the
     // test automation system (since the definition is added by
@@ -88,7 +103,7 @@ static void appTask(void *pParam)
     uPortTaskBlock(5000);
     uPortInit();
 
-#if U_CFG_APP_PIN_CELL_RESET >= 0
+# if U_CFG_APP_PIN_CELL_RESET >= 0
     // Set reset high (i.e. not reset) if it is connected (this for the
     // HPG Solution board) we use in the ubxlib test farm
     gpioConfig.pin = U_CFG_APP_PIN_CELL_RESET;
@@ -96,7 +111,7 @@ static void appTask(void *pParam)
     gpioConfig.direction = U_PORT_GPIO_DIRECTION_OUTPUT;
     uPortGpioConfig(&gpioConfig);
     uPortGpioSet(U_CFG_APP_PIN_CELL_RESET, 1);
-#endif
+# endif
 
     UNITY_BEGIN();
 
@@ -119,6 +134,10 @@ static void appTask(void *pParam)
     UNITY_END();
 
     uPortDeinit();
+
+# ifdef CONFIG_LWIP_PPP_SUPPORT
+    esp_netif_deinit();
+# endif
 
     while (1) {}
 #else

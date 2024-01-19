@@ -3,7 +3,7 @@
 # Note: the IDF_TARGET is not specified here: it will default to esp32
 # and can be overridden by setting the environment variable IDF_TARGET
 
-# This should be sufficient that the user is left with 5 kbytes of
+# This is sufficient that the user is left with 5 kbytes of
 # main task stack free for themselves
 CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192
 
@@ -14,6 +14,11 @@ CONFIG_ESP_CONSOLE_UART_NUM=0
 
 # ubxlib needs no more than the NANO stuff
 CONFIG_NEWLIB_NANO_FORMAT=y
+
+# Needed to include PPP interface for integration into the bottom of LWIP
+CONFIG_LWIP_PPP_SUPPORT=y
+CONFIG_LWIP_PPP_PAP_SUPPORT=y
+CONFIG_LWIP_PPP_CHAP_SUPPORT=y
 
 # We set this to "n" as otherwise the PlatformIO builds
 # fail because some AES functions are not brought-in
@@ -31,4 +36,8 @@ CONFIG_TASK_WDT_CHECK_IDLE_TASK_CPU0=y
 CONFIG_TASK_WDT_CHECK_IDLE_TASK_CPU1=y
 CONFIG_HEAP_TRACING_STANDALONE=y
 CONFIG_HEAP_TRACING=y
+
+# Uncomment these as required when debugging
+#CONFIG_LWIP_PPP_DEBUG_ON=y
+#CONFIG_LWIP_DEBUG=y
 

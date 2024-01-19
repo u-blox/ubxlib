@@ -9,5 +9,3 @@ These directories provide the implementation of the porting layer on Windows.  I
 - [u_cfg_os_platform_specific.h](u_cfg_os_platform_specific.h): task priorities and stack sizes for the platform, built into this code.
 
 Windows is a great environment for rapid development and debug visibility but note that both **stack checking** and **heap checking** cannot be done under Windows.
-
-Note that if you wish to run stuff such as Valgrind, which is only supported on Linux, then you can do so by running [Zephyr on Linux](..\zephyr).

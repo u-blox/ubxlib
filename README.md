@@ -162,14 +162,15 @@ Configuration information for the examples and the tests can be found in the `cf
 A number of examples are provided with this repo:
 
 |  Technology  | Example |
-|--------------|----------|
+|--------------|---------|
 | Cellular     | The [sockets](/example/sockets "socket example") example brings up a TCP/UDP socket by using the [device](/common/device "device API"), [network](/common/network "network API") and [sock](/common/sock "sock API") APIs.  |
-| Cellular     | The [PSK generation](/example/security/psk "PSK example") example using the [security](/common/security "security API") API. |
 | Cellular     | A [TLS-secured version](/example/sockets "TLS sockets example") of the sockets example. |
 | Cellular     | A [DTLS-secured version](/example/sockets "DTLS sockets example") of the sockets example. |
+| Cellular     | A [PPP version](/example/sockets "PPP sockets example") of the sockets example that shows how the platform IP stack/applications can use a cellular connection. |
 | Cellular     | An [MQTT/MQTT-SN client](/example/mqtt_client "MQTT/MQTT-SN example") using the [MQTT/MQTT-SN client](/common/mqtt_client "MQTT/MQTT-SN client API") API.|
 | Cellular     | An [HTTP client](/example/http_client "HTTP example") using the [HTTP client](/common/http_client "HTTP client API") API.|
 | Cellular     | [CellLocate](/example/location "CellLocate example") example.|
+| Cellular     | The [PSK generation](/example/security/psk "PSK example") example using the [security](/common/security "security API") API. |
 | Bluetooth    | See the BLE examples in the [XPLR-IOT-1 ubxlib examples repo](https://github.com/u-blox/ubxlib_examples_xplr_iot/tree/master/examples). |
 | Wi-Fi        | The [sockets](/example/sockets "sockets example") example brings up a TCP/UDP socket by using the [device](/common/device "device API"), [network](/common/network "network API") and [sock](/common/sock "sock API") APIs.  |
 | GNSS         | [location](/example/location "location example") example using a GNSS chip connected directly or via a cellular module.|
@@ -227,7 +228,7 @@ The software in this repository is Apache 2.0 licensed and copyright u-blox with
 - The ARM callstack iterator in [port/platform/common/debug_utils/src/arch/arm/u_stack_frame_cortex.c](/port/platform/common/debug_utils/src/arch/arm/u_print_callstack_cortex.c) is copyright Armink, part of [CmBacktrace](https://github.com/armink/CmBacktrace).
 - The FreeRTOS additions [port/platform/common/debug_utils/src/freertos/additions](/port/platform/common/debug_utils/src/freertos/additions) are copied from the Apache licensed [ESP-IDF](https://github.com/espressif/esp-idf).
 - If you compile-in geofencing by defining the conditional compilation flag `U_CFG_GEOFENCE` for your build:
-  - For shapes larger than about 1 km, to employ a true-earth model you may choose to conditionally link the sub-module [common/geofence/geographiclib](geographiclib) from the MIT licensed [GeographicLib](https://github.com/geographiclib) by Charles A. Karney.
+  - For shapes larger than about 1 km, to employ a true-earth model you may choose to conditionally link the sub-module [common/geofence](geographiclib) from the MIT licensed [GeographicLib](https://github.com/geographiclib) by Charles A. Karney.
   - The default functions, which assume a spherical earth, are derived from the valuable advice (though not the code) of https://www.movable-type.co.uk/scripts/latlong.html, MIT licensed and copyright Chris Veness.
 
 In all cases copyright, and our thanks, remain with the original authors.

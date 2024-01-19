@@ -60,7 +60,7 @@
 
 #define U_SHORT_RANGE_BT_ADDRESS_SIZE 14
 
-#define U_BLE_SPS_EVENT_STACK_SIZE 1536
+#define U_BLE_SPS_EVENT_STACK_SIZE 2048
 #define U_BLE_SPS_EVENT_PRIORITY (U_CFG_OS_PRIORITY_MAX - 5)
 
 /* ----------------------------------------------------------------

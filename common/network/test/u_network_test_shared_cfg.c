@@ -675,4 +675,14 @@ bool uNetworkTestHasStatusCallback(uDeviceType_t deviceType,
            (networkType == U_NETWORK_TYPE_CELL);
 }
 
+// Return true if the configuration supports a PPP connection.
+bool uNetworkTestHasPpp(uDeviceType_t deviceType,
+                        uNetworkType_t networkType,
+                        int32_t moduleType)
+{
+    (void) deviceType;
+    (void) moduleType;
+    return (networkType == U_NETWORK_TYPE_CELL);
+}
+
 // End of file
