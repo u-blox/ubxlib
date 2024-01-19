@@ -256,7 +256,7 @@ static esp_err_t setDnsAddress(esp_netif_t *pEspNetif, esp_netif_dns_type_t type
 static esp_err_t espNetifTransmit(void *pHandle,
                                   void *pData, size_t length)
 {
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_IGNORED;;
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_IGNORED;
     uPortPppNetifDriver_t *pDriver = (uPortPppNetifDriver_t *) pHandle;
     struct uPortPppInterface_t *pPppInterface = pDriver->pPppInterface;
     size_t guard = 0;

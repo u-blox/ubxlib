@@ -150,8 +150,8 @@ static const char gLcpTerminateAck[] = {0x7e, 0xff, 0x7d, 0x23, 0xc0, 0x21, 0x7d
 
 // Check if the given buffer contains the given buffer; returns
 // the number of characters matched: if this is non-zero but less
-// than the length of pBuffer then the caller should keep that many
-// characters in the buffer and call this again with any additions.
+// than the length of pBufferWanted then the caller should keep that
+// many characters in the buffer and call this again with any additions.
 static int32_t bufferContains(const char *pBuffer, size_t size,
                               const char *pBufferWanted, size_t bufferLength)
 {

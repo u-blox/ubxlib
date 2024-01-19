@@ -19,20 +19,45 @@
  * IP stack of the ESP-IDF platform.
  *
  * For this example to run you must define U_CFG_PPP_ENABLE when
- * building ubxlib and you must switch on the following in your
- * sdkconfig file:
+ * building ubxlib; you could do this by appending it to the
+ * ESP-IDF CMake variable COMPILE_DEFINITIONS, which is applied
+ * to all components (ubxlib is a component), in your top-level
+ * CMakeLists.txt file with a line as follows:
  *
- * CONFIG_LWIP_PPP_SUPPORT
- * CONFIG_ESP_NETIF_TCPIP_LWIP
- * CONFIG_LWIP_PPP_PAP_SUPPORT
+ * add_compile_definitions(U_CFG_PPP_ENABLE)
  *
- * If your network operator requires a user name and password
- * along with the APN **AND** requires CHAP authentication, then
- * you must also switch on CONFIG_LWIP_PPP_CHAP_SUPPORT.
+ *...or by including it in the U_FLAGS environment variable that the
+ * ubxlib ESP-IDF component looks for by executing a line in the
+ * console where you are performing your build such as, for Windows:
  *
- * If you are minimising the components built into your main
- * application then you may need to add the ESP-IDF component
- * "esp_netif" to your component list.
+ * set U_FLAGS=-DU_CFG_PPP_ENABLE
+ *
+ * ..or for Linux:
+ *
+ * export U_FLAGS=-DU_CFG_PPP_ENABLE
+ *
+ * You must also bring in the right ESP-IDF components through menuconfig
+ * by going to "Component Config" and making sure that the following are
+ * ticked:
+ *
+ * - "ESP NETIF Adapter --> TCP/IP Stack Library (LwIP) --> LwIP"
+ * - "LWIP --> Enable PAP support"
+ * - if your network operator requires a user name and password along
+ *   with the APN **AND** requires CHAP authentication, then also
+ *   "LWIP --> Enable CHAP support".
+ *
+ * Alternatively, if you prefer to set things up manually, rather than
+ * through menuconfig, then switch on the following in your sdkconfig
+ * file:
+ *
+ * - CONFIG_LWIP_PPP_SUPPORT
+ * - CONFIG_ESP_NETIF_TCPIP_LWIP
+ * - CONFIG_LWIP_PPP_PAP_SUPPORT
+ * - CONFIG_LWIP_PPP_CHAP_SUPPORT (if required)
+ *
+ * ...and, if you are minimising the components built into your main
+ * application, you may need to add the ESP-IDF component "esp_netif"
+ * to your component list.
  *
  * The choice of [cellular] module is made at build time, see the
  * README.md for instructions.
@@ -210,6 +235,9 @@ U_PORT_TEST_FUNCTION("[example]", "examplePppEspIdfSockets")
     // This is under the switch #ifndef U_PORT_TEST_FUNCTION
     // only because, when we run this for internal
     // testing, the initialisation is done elsewhere
+
+    // These must be called once only, and BEFORE the device
+    // is opened
     esp_netif_init();
     esp_event_loop_create_default();
 #endif
