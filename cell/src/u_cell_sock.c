@@ -127,6 +127,7 @@ typedef struct {
     void (*pClosedCallback) (uDeviceHandle_t, int32_t); /**< Set to NULL
                                                      if socket is
                                                      not in use. */
+    bool closedByRemote; /**< Will be set to true if +UUSOCL lands. */
 } uCellSockSocket_t;
 
 /** Definition of a URC handler.
@@ -226,6 +227,7 @@ static uCellSockSocket_t *pSockCreate(int32_t sockHandle,
         pSock->pAsyncClosedCallback = NULL;
         pSock->pDataCallback = NULL;
         pSock->pClosedCallback = NULL;
+        pSock->closedByRemote = false;
     }
 
     return pSock;
@@ -249,6 +251,7 @@ static void sockFree(int32_t sockHandle)
             pSock->pAsyncClosedCallback = NULL;
             pSock->pDataCallback = NULL;
             pSock->pClosedCallback = NULL;
+            pSock->closedByRemote = false;
         }
     }
 }
@@ -367,6 +370,7 @@ static void UUSOCL_urc(const uAtClientHandle_t atHandle,
                                   closedCallback,
                                   U_INT32_TO_PTR(pSocket->sockHandle));
             }
+            pSocket->closedByRemote = true;
         }
     }
 }
@@ -1567,7 +1571,7 @@ int32_t uCellSockWrite(uDeviceHandle_t cellHandle,
                     while ((leftToSendSize > 0) &&
                            (negErrnoLocalOrSize == U_SOCK_ENONE) &&
                            (x < U_CELL_SOCK_TCP_RETRY_LIMIT) &&
-                           written) {
+                           written && !pSocket->closedByRemote) {
                         if (leftToSendSize < thisSendSize) {
                             thisSendSize = leftToSendSize;
                         }
@@ -1738,7 +1742,8 @@ int32_t uCellSockRead(uDeviceHandle_t cellHandle,
                     // pending data or room in the buffer
                     while ((dataSizeBytes > 0) &&
                            (pSocket->pendingBytes > 0) &&
-                           (negErrnoLocalOrSize == U_SOCK_ENONE)) {
+                           (negErrnoLocalOrSize == U_SOCK_ENONE) &&
+                           !pSocket->closedByRemote) {
                         thisWantedReceiveSize = dataLengthMax;
                         if (thisWantedReceiveSize > (int32_t) dataSizeBytes) {
                             thisWantedReceiveSize = (int32_t) dataSizeBytes;
