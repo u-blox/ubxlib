@@ -1491,6 +1491,8 @@ void uSockCleanUp()
                     pTmp = pContainer->pNext;
                     devHandle = pContainer->socket.devHandle;
 
+                    // Free any security context associated with the socket
+                    uSecurityTlsRemove(pContainer->socket.pSecurityContext);
                     // Free the memory
                     uPortFree(pContainer);
                     // Move to the next entry
@@ -1499,6 +1501,9 @@ void uSockCleanUp()
                     // Remember the network handle
                     devHandle = pContainer->socket.devHandle;
                     pContainer->socket.state = U_SOCK_STATE_CLOSED;
+                    // Free any security context associated with the socket
+                    uSecurityTlsRemove(pContainer->socket.pSecurityContext);
+                    pContainer->socket.pSecurityContext = NULL;
                     pContainer->socket.devHandle = NULL;
                     // Move on
                     pContainer = pContainer->pNext;
