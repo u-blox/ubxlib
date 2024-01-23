@@ -86,6 +86,13 @@
                                                                         (((value) + 1) * 256 / 100) :   \
                                                                         (((value) + 1) * 128 / 100))
 
+#ifndef U_CELL_PWR_GNSS_PROFILE_BITS_EXTRA
+/** The extra bits to OR into the GNSS IO configuration (AT+UGPRF);
+ * set a negative value and this code will not set AT+UGPRF.
+ */
+# define U_CELL_PWR_GNSS_PROFILE_BITS_EXTRA 0
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -884,8 +891,10 @@ static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance,
     uAtClientStreamHandle_t stream = U_AT_CLIENT_STREAM_HANDLE_DEFAULTS;
     uCellPwrPsvMode_t uartPowerSavingMode = U_CELL_PWR_PSV_MODE_DISABLED; // Assume no UART power saving
     char buffer[20]; // Enough room for AT+UPSV=2,1300
+#if U_CELL_PWR_GNSS_PROFILE_BITS_EXTRA >= 0
     char *pServerNameGnss;
     int32_t y;
+#endif
 
     // First send all the commands that everyone gets
     for (size_t x = 0;
@@ -1067,6 +1076,7 @@ static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance,
             uAtClientResponseStop(atHandle);
             uAtClientUnlock(atHandle);
         }
+#if U_CELL_PWR_GNSS_PROFILE_BITS_EXTRA >= 0
         // The module may have a GNSS module inside it or
         // connected via it, in which case, if we are to use
         // that module via CMUX rather than via the clunky
@@ -1082,12 +1092,13 @@ static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance,
             y = uCellPrivateGetGnssProfile(pInstance, pServerNameGnss,
                                            U_CELL_CFG_GNSS_SERVER_NAME_MAX_LEN_BYTES);
             if ((y >= 0) && ((y & U_CELL_CFG_GNSS_PROFILE_MUX) == 0)) {
-                y |= U_CELL_CFG_GNSS_PROFILE_MUX;
+                y = U_CELL_CFG_GNSS_PROFILE_MUX | U_CELL_PWR_GNSS_PROFILE_BITS_EXTRA;
                 uCellPrivateSetGnssProfile(pInstance, y, pServerNameGnss);
             }
             // Free memory
             uPortFree(pServerNameGnss);
         }
+#endif
         if (andRadioOff) {
             // Switch the radio off until commanded to connect
             // Wait for flip time to expire
