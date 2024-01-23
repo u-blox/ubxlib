@@ -1709,7 +1709,7 @@ static int32_t activateContextUpsd(const uCellPrivateInstance_t *pInstance,
         uAtClientCommandStart(atHandle, "AT+UPSD=");
         uAtClientWriteInt(atHandle, profileId);
         uAtClientWriteInt(atHandle, 6);
-        uAtClientWriteInt(atHandle, 3);
+        uAtClientWriteInt(atHandle, pInstance->authenticationMode);
         uAtClientCommandStopReadResponse(atHandle);
         errorCode = uAtClientUnlock(atHandle);
     }
