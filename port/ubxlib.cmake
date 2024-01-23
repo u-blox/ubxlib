@@ -140,7 +140,15 @@ list(APPEND UBXLIB_INC ${UBXLIB_BASE}/common/device/api)
 list(APPEND UBXLIB_PRIVATE_INC ${UBXLIB_BASE}/common/device/src)
 
 # CPP file required for geofencing
-list(APPEND UBXLIB_SRC ${UBXLIB_BASE}/common/geofence/src/u_geofence_geodesic.cpp)
+# Note: bringing the .c version of this file in if geodesic is not present is not
+# strictly necessary (since the file includes dummy implementations anyway); it
+# is done in order to allow those who don't have C++ support in their toolchain
+# to still compile/use the geofence feature in non-geodesic mode.
+if (geodesic IN_LIST UBXLIB_FEATURES)
+  list(APPEND UBXLIB_SRC ${UBXLIB_BASE}/common/geofence/src/u_geofence_geodesic.cpp)
+else()
+  list(APPEND UBXLIB_SRC ${UBXLIB_BASE}/common/geofence/src/dummy/u_geofence_geodesic.c)
+endif()
 
 # Default malloc()/free() implementation
 list(APPEND UBXLIB_SRC ${UBXLIB_BASE}/port/u_port_heap.c)
@@ -230,7 +238,7 @@ u_add_test_source_dir(base ${UBXLIB_BASE}/example/utilities/c030_module_fw_updat
 # cause any extra libraries to be linked and
 # UBXLIB_COMPILE_OPTIONS, which can be added to
 # target_compile_definitions(). HOWEVER, it doesn't
-# work for ESP-IDF, which has a "helful" component
+# work for ESP-IDF, which has a "helpful" component
 # system of its own stuck on top, hence BE AWARE
 # THAT that ESP-IDF doesn't use the bit below...
 #
