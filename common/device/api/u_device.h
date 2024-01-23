@@ -78,6 +78,19 @@ typedef enum {
                                            second one, otherwise please just use
                                            #U_DEVICE_TRANSPORT_TYPE_UART (or
                                            #U_DEVICE_TRANSPORT_TYPE_UART_1). */
+    U_DEVICE_TRANSPORT_TYPE_UART_USB, /**< Internally this is no different to
+                                           #U_DEVICE_TRANSPORT_TYPE_UART, despite
+                                           the HW being USB the UART driver is
+                                           still used in all cases and that works
+                                           on all supported platforms; IT SHOULD
+                                           BE USED in the GNSS case to indicate
+                                           that the connection is ultimately to
+                                           the USB port of the GNSS chip, rather
+                                           than the UART port of the GNSS chip
+                                           (this code needs to know that because
+                                           the configuration of periodic message
+                                           transmission from within the GNSS
+                                           device is port-specific). */
     U_DEVICE_TRANSPORT_TYPE_MAX_NUM,
     U_DEVICE_TRANSPORT_TYPE_UART_1 = U_DEVICE_TRANSPORT_TYPE_UART
 } uDeviceTransportType_t;

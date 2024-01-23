@@ -350,10 +350,12 @@ static const char *gpOfflineOperation[] = {"send everything", "write to flash", 
  * GNSS chip attached so it is useful to know which one we've selected.
  */
 static const char *const gpTransportType[] = {"None",       // U_DEVICE_TRANSPORT_TYPE_NONE
-                                              "UART",       // U_DEVICE_TRANSPORT_TYPE_UART
+                                              "UART 1",     // U_DEVICE_TRANSPORT_TYPE_UART
                                               "I2C",        // U_DEVICE_TRANSPORT_TYPE_I2C
                                               "SPI",        // U_DEVICE_TRANSPORT_TYPE_SPI
-                                              "Virtual Serial" // U_DEVICE_TRANSPORT_TYPE_VIRTUAL_SERIAL
+                                              "Virtual Serial", // U_DEVICE_TRANSPORT_TYPE_VIRTUAL_SERIAL
+                                              "UART 2",    // U_DEVICE_TRANSPORT_TYPE_UART_2
+                                              "UART USB"   // U_DEVICE_TRANSPORT_TYPE_UART_USB
                                              };
 
 # endif // #if defined(U_CFG_APP_GNSS_ASSIST_NOW_AUTHENTICATION_TOKEN) && defined(U_CFG_TEST_GNSS_MGA) &&

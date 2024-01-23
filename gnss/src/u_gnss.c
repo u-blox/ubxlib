@@ -85,7 +85,8 @@ static const char *const gpTransportTypeText[] = {"None",       // U_GNSS_TRANSP
                                                   "I2C",        // U_GNSS_TRANSPORT_I2C
                                                   "SPI",        // U_GNSS_TRANSPORT_SPI
                                                   "Virtual Serial", // U_GNSS_TRANSPORT_VIRTUAL_SERIAL
-                                                  "UART 2"      // U_GNSS_TRANSPORT_UART_2
+                                                  "UART 2",     // U_GNSS_TRANSPORT_UART_2
+                                                  "UART USB"    // U_GNSS_TRANSPORT_USB
                                                  };
 #endif
 
@@ -104,8 +105,9 @@ static uGnssPrivateInstance_t *pGetGnssInstanceTransportHandle(uGnssTransportTyp
     bool match = false;
 
     while ((pInstance != NULL) && !match) {
-        // Either UART transport type (on the GNSS-side) should be treated the same way
-        if (transportType == U_GNSS_TRANSPORT_UART_2) {
+        // Either UART transport type (on the GNSS-side), or USB transport
+        // (which just looks like UART to us) should be treated the same way
+        if ((transportType == U_GNSS_TRANSPORT_UART_2) || (transportType == U_GNSS_TRANSPORT_USB)) {
             transportType = U_GNSS_TRANSPORT_UART;
         }
         if (pInstance->transportType == transportType) {
@@ -357,10 +359,13 @@ int32_t uGnssAdd(uGnssModuleType_t moduleType,
                             pInstance->portNumber = U_GNSS_PORT_UART2;
                         } else if (transportType == U_GNSS_TRANSPORT_SPI) {
                             pInstance->portNumber = U_GNSS_PORT_SPI;
+                        } else if (transportType == U_GNSS_TRANSPORT_USB) {
+                            pInstance->portNumber = U_GNSS_PORT_USB;
                         }
 #if defined(_WIN32) || (defined(__ZEPHYR__) && defined(CONFIG_UART_NATIVE_POSIX))
                         // For Windows and Posix-Zephyr the GNSS-side connection is assumed to be USB
-                        // (for Linux, on a Raspberry Pi, it's not forced, just good 'ole UART)
+                        // (for Linux, assumed to be on a Raspberry Pi, it is not forced, as it
+                        // could still be any one of UART, I2C or SPI)
                         pInstance->portNumber = 3;
 #endif
 #ifdef U_CFG_GNSS_PORT_NUMBER

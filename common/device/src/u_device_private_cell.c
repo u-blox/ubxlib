@@ -247,7 +247,8 @@ int32_t uDevicePrivateCellAdd(const uDeviceCfg_t *pDevCfg,
     const uDeviceCfgCell_t *pCfgCell;
 
     if ((pDevCfg != NULL) &&
-        (pDevCfg->transportType == U_DEVICE_TRANSPORT_TYPE_UART) &&
+        ((pDevCfg->transportType == U_DEVICE_TRANSPORT_TYPE_UART) ||
+         (pDevCfg->transportType == U_DEVICE_TRANSPORT_TYPE_UART_USB)) &&
         (pDeviceHandle != NULL)) {
         pCfgUart = &(pDevCfg->transportCfg.cfgUart);
         pCfgCell = &(pDevCfg->deviceCfg.cfgCell);

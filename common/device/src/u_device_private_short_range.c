@@ -116,7 +116,8 @@ int32_t uDevicePrivateShortRangeAdd(const uDeviceCfg_t *pDevCfg,
     uShortRangeUartConfig_t uartCfg;
 
     if ((pDevCfg != NULL) &&
-        (pDevCfg->transportType == U_DEVICE_TRANSPORT_TYPE_UART) &&
+        ((pDevCfg->transportType == U_DEVICE_TRANSPORT_TYPE_UART) ||
+         (pDevCfg->transportType == U_DEVICE_TRANSPORT_TYPE_UART_USB)) &&
         (pDeviceHandle != NULL)) {
         pCfgUart = &(pDevCfg->transportCfg.cfgUart);
         pCfgSho = &(pDevCfg->deviceCfg.cfgSho);
