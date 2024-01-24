@@ -214,17 +214,20 @@ static int32_t restart(const uAtClientHandle_t atHandle, bool store)
  * PUBLIC FUNCTIONS THAT ARE PRIVATE TO BLE EXTMOD
  * -------------------------------------------------------------- */
 
-int32_t uBlePrivateGetRole(const uAtClientHandle_t atHandle)
+int32_t uBlePrivateGetRole(uDeviceHandle_t devHandle)
 {
     int32_t roleOrError;
-
-    uAtClientLock(atHandle);
-    uAtClientCommandStart(atHandle, "AT+UBTLE?");
-    uAtClientCommandStop(atHandle);
-    uAtClientResponseStart(atHandle, "+UBTLE:");
-    roleOrError = uAtClientReadInt(atHandle);
-    uAtClientResponseStop(atHandle);
-    uAtClientUnlock(atHandle);
+    uAtClientHandle_t atHandle;
+    roleOrError = uShortRangeAtClientHandleGet(devHandle, &atHandle);
+    if (roleOrError == 0) {
+        uAtClientLock(atHandle);
+        uAtClientCommandStart(atHandle, "AT+UBTLE?");
+        uAtClientCommandStop(atHandle);
+        uAtClientResponseStart(atHandle, "+UBTLE:");
+        roleOrError = uAtClientReadInt(atHandle);
+        uAtClientResponseStop(atHandle);
+        uAtClientUnlock(atHandle);
+    }
 
     return roleOrError;
 }
@@ -250,7 +253,7 @@ int32_t uBleCfgConfigure(uDeviceHandle_t devHandle,
                 bool restartNeeded = false;
                 atHandle = pInstance->atHandle;
 
-                int32_t role = uBlePrivateGetRole(atHandle);
+                int32_t role = uBlePrivateGetRole(devHandle);
                 if (role != (int32_t) pCfg->role) {
                     errorCode = setBleRole(atHandle, (int32_t) pCfg->role);
                     if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {

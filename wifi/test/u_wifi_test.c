@@ -340,7 +340,9 @@ U_PORT_TEST_FUNCTION("[wifi]", "wifiOpenUart")
                                                 &uart,
                                                 &gHandles) == 0);
     U_PORT_TEST_ASSERT(uShortRangeGetUartHandle(gHandles.devHandle) == gHandles.uartHandle);
+#ifndef U_UCONNECT_GEN2
     U_PORT_TEST_ASSERT(uShortRangeGetEdmStreamHandle(gHandles.devHandle) == gHandles.edmStreamHandle);
+#endif
     uShortRangeAtClientHandleGet(gHandles.devHandle, &atClient);
     U_PORT_TEST_ASSERT(gHandles.atClientHandle == atClient);
     U_PORT_TEST_ASSERT(uShortRangeAttention(gHandles.devHandle) == 0);

@@ -36,6 +36,10 @@
 //lint -efile(766, u_wifi_module_type.h)
 #include "u_wifi_module_type.h"
 
+// *** UCX WORKAROUND FIX ***
+// Currently no support for http in ucx, hence disabled
+#ifndef U_UCONNECT_GEN2
+
 #include "u_short_range_test_selector.h"
 
 #if U_SHORT_RANGE_TEST_WIFI()
@@ -394,5 +398,7 @@ U_PORT_TEST_FUNCTION("[wifiLoc]", "wifiLocCleanUp")
 }
 
 #endif // U_SHORT_RANGE_TEST_WIFI()
+
+#endif // U_UCONNECT_GEN2
 
 // End of file

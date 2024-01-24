@@ -110,11 +110,11 @@ int32_t uBleTestPrivatePreamble(uBleModuleType_t moduleType,
             pParameters->uartHandle = errorCodeOrHandle;
         }
 
-        if (errorCodeOrHandle >= (int32_t) U_ERROR_COMMON_SUCCESS) {
+#ifndef U_UCONNECT_GEN2
+        if (errorCodeOrHandle >= (int32_t)U_ERROR_COMMON_SUCCESS) {
             errorCodeOrHandle = uShortRangeGetEdmStreamHandle(devHandle);
             pParameters->edmStreamHandle = errorCodeOrHandle;
         }
-
         if (errorCodeOrHandle >= (int32_t) U_ERROR_COMMON_SUCCESS) {
             errorCodeOrHandle = uShortRangeAtClientHandleGet(devHandle, &pParameters->atClientHandle);
             if (errorCodeOrHandle >= (int32_t) U_ERROR_COMMON_SUCCESS) {
@@ -124,7 +124,7 @@ int32_t uBleTestPrivatePreamble(uBleModuleType_t moduleType,
                 uAtClientDebugSet(pParameters->atClientHandle, true);
             }
         }
-
+#endif
         if (errorCodeOrHandle >= (int32_t) U_ERROR_COMMON_SUCCESS) {
             if ((uShortRangeModuleType_t) moduleType != (int32_t) U_SHORT_RANGE_MODULE_TYPE_INVALID) {
                 errorCodeOrHandle = (int32_t) U_ERROR_COMMON_UNKNOWN;

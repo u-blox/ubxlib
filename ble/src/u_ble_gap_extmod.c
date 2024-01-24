@@ -97,7 +97,7 @@ static bool validateBle(uShortRangePrivateInstance_t *pInstance, bleRoleCheck_t 
                  !pCfgBle->spsServer &&
                  pInstance->atHandle != NULL;
             if (ok && roleCheck != BLE_ROLE_ANY) {
-                int32_t currRole = uBlePrivateGetRole(pInstance->atHandle);
+                int32_t currRole = uBlePrivateGetRole(pInstance->devHandle);
                 if (roleCheck == BLE_ROLE_CENTRAL) {
                     ok = currRole == U_BLE_CFG_ROLE_CENTRAL ||
                          currRole == U_BLE_CFG_ROLE_CENTRAL_AND_PERIPHERAL;

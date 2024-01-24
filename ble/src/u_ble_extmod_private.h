@@ -37,10 +37,10 @@ extern "C" {
 
 /** Get the current BLE role for the connected module
  *
- * @param atHandle    the handle of the AT client to use.
+ * @param devHandle   the handle of the device.
  * @return            a uBleCfgRole_t value, on failure negative error code.
  */
-int32_t uBlePrivateGetRole(const uAtClientHandle_t atHandle);
+int32_t uBlePrivateGetRole(uDeviceHandle_t devHandle);
 
 #ifdef __cplusplus
 }

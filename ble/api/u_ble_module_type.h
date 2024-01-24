@@ -43,6 +43,13 @@
     _BLE(_TYPE_NAME)
 
 /** The possible types of BLE module.
+ *
+ * IMPORTANT: if you are using U_BLE_MODULE_TYPE_NORA_W36, which comes
+ * with a second generation of uConnectExpress, you MUST add
+ * short_range_gen2 to the UBXLIB_FEATURES variable in your make or CMake
+ * file when building ubxlib.  For instance:
+ *
+ * UBXLIB_FEATURES=cell gnss short_range short_range_gen2
  */
 typedef enum {
 // X macro is used to generate this enum from #U_SHORT_RANGE_MODULE_LIST

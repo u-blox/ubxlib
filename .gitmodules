@@ -2,3 +2,6 @@
 	path = common/geofence/geographiclib
 	branch = devel
 	url = https://github.com/geographiclib/geographiclib
+[submodule "common/short_range/src/gen2/ucxclient"]
+	path = common/short_range/src/gen2/ucxclient
+	url = https://github.com/u-blox/ucxclient.git

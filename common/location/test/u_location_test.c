@@ -28,6 +28,10 @@
  * macro.
  */
 
+// *** UCX WORKAROUND FIX ***
+// Currently no support for http in ucx, hence disabled
+#ifndef U_UCONNECT_GEN2
+
 #ifndef U_LOCATION_TEST_DISABLE
 
 #ifdef U_CFG_OVERRIDE
@@ -923,5 +927,7 @@ U_PORT_TEST_FUNCTION("[location]", "locationCleanUp")
 }
 
 #endif // #ifndef U_LOCATION_TEST_DISABLE
+
+#endif // #ifndef U_UCONNECT_GEN2
 
 // End of file

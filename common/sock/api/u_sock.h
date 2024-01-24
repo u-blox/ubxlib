@@ -47,7 +47,14 @@ extern "C" {
  * define #U_SOCK_DESCRIPTOR_SET_SIZE.  A limitation may also be
  * applied by the underlying implementation.
  */
-# define U_SOCK_MAX_NUM_SOCKETS 7
+
+// *** UCX WORKAROUND FIX ***
+// Lower value for ucx required
+# ifdef U_UCONNECT_GEN2
+#  define U_SOCK_MAX_NUM_SOCKETS 3
+# else
+#  define U_SOCK_MAX_NUM_SOCKETS 7
+# endif
 #endif
 
 #ifndef U_SOCK_DEFAULT_RECEIVE_TIMEOUT_MS

@@ -126,7 +126,13 @@
 /** A sensible maximum size for UDP packets sent over
  * the public internet when testing.
  */
-# define U_SOCK_TEST_MAX_UDP_PACKET_SIZE 500
+# ifdef U_UCONNECT_GEN2
+// *** UCX WORKAROUND FIX ***
+// Ucx can't handle large UDP packages for now
+#  define U_SOCK_TEST_MAX_UDP_PACKET_SIZE 256
+# else
+#  define U_SOCK_TEST_MAX_UDP_PACKET_SIZE 500
+# endif
 #endif
 
 #ifndef U_SOCK_TEST_NON_BLOCKING_TIME_MS
@@ -1063,14 +1069,16 @@ U_PORT_TEST_FUNCTION("[sock]", "sockBasicUdp")
             U_PORT_TEST_ASSERT(uSockClose(descriptor) == 0);
             uSockCleanUp();
 
-            // Check for memory leaks
-            heapUsed -= uPortGetHeapFree();
-            U_TEST_PRINT_LINE("during this part of the test %d byte(s)"
-                              " were lost to sockets initialisation; we"
-                              " have leaked %d byte(s).",
-                              heapSockInitLoss + heapXxxSockInitLoss,
-                              heapUsed - (heapSockInitLoss + heapXxxSockInitLoss));
-            U_PORT_TEST_ASSERT(heapUsed <= heapSockInitLoss + heapXxxSockInitLoss);
+            if (uPortGetHeapFree() >= 0) {
+                // Check for memory leaks
+                heapUsed -= uPortGetHeapFree();
+                U_TEST_PRINT_LINE("during this part of the test %d byte(s)"
+                                  " were lost to sockets initialisation; we"
+                                  " have leaked %d byte(s).",
+                                  heapSockInitLoss + heapXxxSockInitLoss,
+                                  heapUsed - (heapSockInitLoss + heapXxxSockInitLoss));
+                U_PORT_TEST_ASSERT(heapUsed <= heapSockInitLoss + heapXxxSockInitLoss);
+            }
         }
     }
 
@@ -2079,6 +2087,13 @@ U_PORT_TEST_FUNCTION("[sock]", "sockUdpEchoNonPingPong")
 
     // Repeat for all bearers
     for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+#ifdef U_UCONNECT_GEN2
+        // *** UCX WORKAROUND FIX ***
+        // Ucx can't handle large UDP packages for now so skip this test
+        if (pTmp->networkType == U_NETWORK_TYPE_WIFI) {
+            continue;
+        }
+#endif
         devHandle = *pTmp->pDevHandle;
         // Get the initial-ish heap
         heapUsed = uPortGetHeapFree();

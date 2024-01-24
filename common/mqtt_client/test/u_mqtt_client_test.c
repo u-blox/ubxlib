@@ -160,8 +160,17 @@ static char gSerialNumber[U_SECURITY_SERIAL_NUMBER_MAX_LENGTH_BYTES];
 
 /** Data to send over MQTT; all printable characters.
  */
-static const char gSendData[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-                                "0123456789\"!#$%&'()*+,-./:;<=>?@[\\]^_`{|}~";
+static const char gSendData[] =
+#ifndef U_UCONNECT_GEN2
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    "0123456789\"!#$%&'()*+,-./:;<=>?@[\\]^_`{|}~";
+#else
+    // *** UCX WORKAROUND FIX ***
+    // Ucx currently only supports publishing data as strings.
+    // Hence we must avoid quote character for now.
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    "0123456789!#$%&'()*+,-./:;<=>?@[\\]^_`{|}~";
+#endif
 
 /** Flag to indicate that the disconnect callback
  * has been called.

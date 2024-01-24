@@ -146,10 +146,14 @@ U_PORT_TEST_FUNCTION("[ble]", "bleOpenUart")
     U_PORT_TEST_ASSERT(uBleTestPrivatePreamble((uBleModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
                                                &uart,
                                                &gHandles) == 0);
+#ifndef U_UCONNECT_GEN2
     U_PORT_TEST_ASSERT(uShortRangeGetUartHandle(gHandles.devHandle) == gHandles.uartHandle);
     U_PORT_TEST_ASSERT(uShortRangeGetEdmStreamHandle(gHandles.devHandle) == gHandles.edmStreamHandle);
     uShortRangeAtClientHandleGet(gHandles.devHandle, &atClient);
     U_PORT_TEST_ASSERT(gHandles.atClientHandle == atClient);
+#else
+    (void)atClient;
+#endif
     U_PORT_TEST_ASSERT(uShortRangeAttention(gHandles.devHandle) == 0);
 
     U_TEST_PRINT_LINE("calling uShortRangeOpenUart with same arg twice,"

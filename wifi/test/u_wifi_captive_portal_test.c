@@ -37,6 +37,10 @@
 
 #include "u_short_range_test_selector.h"
 
+// *** UCX WORKAROUND FIX ***
+// Currently no support for access point ip-address in ucx, hence disabled
+#ifndef U_UCONNECT_GEN2
+
 #if U_SHORT_RANGE_TEST_WIFI()
 
 #include "stdlib.h"    // rand()
@@ -223,5 +227,7 @@ U_PORT_TEST_FUNCTION("[wifiCaptivePortal]", "wifiCaptivePortalCleanUp")
 }
 
 #endif // U_SHORT_RANGE_TEST_WIFI()
+
+#endif // U_UCONNECT_GEN2
 
 // End of file

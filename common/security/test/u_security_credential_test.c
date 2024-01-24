@@ -253,6 +253,14 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialTest")
     int32_t x = 0;
     for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext, x++) {
         devHandle = *pTmp->pDevHandle;
+#ifdef U_UCONNECT_GEN2
+        // *** UCX WORKAROUND FIX ***
+        // No support for this yet in ucx
+        if ((pTmp->networkType = U_NETWORK_TYPE_BLE) ||
+            (pTmp->networkType = U_NETWORK_TYPE_WIFI)) {
+            continue;
+        }
+#endif
 
         U_TEST_PRINT_LINE_X("testing %s.", x, gpUNetworkTestTypeName[pTmp->networkType]);
 

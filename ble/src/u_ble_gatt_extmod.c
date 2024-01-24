@@ -367,8 +367,8 @@ int32_t uBleGattWriteNotifyValue(uDeviceHandle_t devHandle,
     return errorCode;
 }
 
-int32_t uBleGattAddService(uDeviceHandle_t devHandle,
-                           const char *pUuid)
+int32_t uBleGattBeginAddService(uDeviceHandle_t devHandle,
+                                const char *pUuid)
 {
     int32_t errorCode = (int32_t)U_ERROR_COMMON_NOT_INITIALISED;
     uShortRangePrivateInstance_t *pInstance;
@@ -431,6 +431,13 @@ int32_t uBleGattAddCharacteristic(uDeviceHandle_t devHandle,
         uShortRangeUnlock();
     }
     return errorCode;
+}
+
+int32_t uBleGattEndAddService(uDeviceHandle_t devHandle)
+{
+    // Dummy for old uConnect. Service gets activated directly in uBleGattBeginAddService
+    (void)devHandle;
+    return (int32_t)U_ERROR_COMMON_SUCCESS;
 }
 
 #endif

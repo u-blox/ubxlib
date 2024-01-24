@@ -20,7 +20,7 @@
 # include directories from ubxlib.
 
 import os
-from os.path import realpath
+from os.path import realpath, basename, dirname, exists
 from re import sub, match, search
 from pathlib import Path
 import sys
@@ -82,8 +82,13 @@ def add_include_path(line, exclude):
 def add_source_path(line, src_filter, exclude, section_parameter):
     ''' Add line to src_filter if not in exclude, obeying section filtering '''
     if section_parameter_true(section_parameter):
-        for path in glob(ubxlib_dir + "/" + line, recursive=True):
+        for path in glob(ubxlib_dir + "/" + line, recursive=False):
             if not search(exclude, path.replace("\\", "/")):
+                if "short_range_gen2" in ubxlib_features:
+                    # Use second generation file instead if available
+                    alt_path = dirname(path) + '/gen2/' + basename(path)
+                    if exists(alt_path):
+                        path = alt_path
                 src_filter.append(f"+<{path}>")
 
 src_filter = ["-<*>"]
@@ -123,3 +128,14 @@ for file_name in file_list:
                 add_source_path(line, src_filter, exclude, section_parameter)
 
 env.Append(SRC_FILTER=src_filter)
+
+if "short_range_gen2" in ubxlib_features:
+    # Shortrange second generation AT module
+    gen2_at_dir = ubxlib_dir + "/common/short_range/src/gen2/ucxclient"
+    env.Append(CPPPATH=[gen2_at_dir + "/inc", gen2_at_dir + "/ucx_api"])
+    for path in glob(gen2_at_dir + "/src/*.c", recursive=False):
+        src_filter.append(f"+<{path}>")
+    for path in glob(gen2_at_dir + "/ucx_api/*.c", recursive=False):
+        src_filter.append(f"+<{path}>")
+    env.Append(CPPDEFINES="U_UCONNECT_GEN2")
+    env.Append(CPPDEFINES="U_CX_AT_CONFIG_FILE=\"../../ucx_config.h\"")

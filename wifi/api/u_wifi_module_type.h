@@ -51,6 +51,15 @@ extern "C" {
 #define U_SHORT_RANGE_MODULE(_TYPE_NAME, _GMM_NAME, _BLE, _BT_CLASSIC, _WIFI) \
     _WIFI(_TYPE_NAME)
 
+/** The possible types of Wi-Fi module.
+ *
+ * IMPORTANT: if you are using U_WIFI_MODULE_TYPE_NORA_W36, which comes
+ * with a second generation of uConnectExpress, you MUST add
+ * short_range_gen2 to the UBXLIB_FEATURES variable in your make or CMake
+ * file when building ubxlib.  For instance:
+ *
+ * UBXLIB_FEATURES=cell gnss short_range short_range_gen2
+ */
 typedef enum {
 // X macro is used to generate this enum from #U_SHORT_RANGE_MODULE_LIST
 // for all entries with field "WiFi" set to U_YES.

@@ -83,10 +83,13 @@ void uDevicePrivateShortRangeLink()
 // Initialise short-range.
 int32_t uDevicePrivateShortRangeInit()
 {
-    int32_t errorCode = uShortRangeEdmStreamInit();
+    int32_t errorCode = 0;
+#ifndef U_UCONNECT_GEN2
+    errorCode = uShortRangeEdmStreamInit();
     if (errorCode == 0) {
         errorCode = uAtClientInit();
     }
+#endif
     if (errorCode == 0) {
         errorCode = uBleInit();
     }
@@ -101,8 +104,10 @@ void uDevicePrivateShortRangeDeinit()
 {
     uShortRangeDeinit();
     uBleDeinit();
+#ifndef U_UCONNECT_GEN2
     uShortRangeEdmStreamDeinit();
     uAtClientDeinit();
+#endif
 }
 
 // Power up a short-range device that is external to the MCU,

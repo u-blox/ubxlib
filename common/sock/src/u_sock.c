@@ -1353,6 +1353,8 @@ int32_t uSockConnect(uSockDescriptor_t descriptor,
         // Write the errno
         errno = errnoLocal;
         errorCode = (int32_t) U_ERROR_COMMON_BSD_ERROR;
+    } else {
+        errno = U_SOCK_ENONE;
     }
 
     return errorCode;

@@ -63,6 +63,11 @@
 
 #include "u_security_credential.h"
 
+#ifdef U_UCONNECT_GEN2
+# include "u_short_range_private.h"
+# include "u_cx_security.h"
+#endif
+
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
@@ -436,9 +441,24 @@ int32_t uSecurityCredentialStore(uDeviceHandle_t devHandle,
                                  const char *pPassword,
                                  char *pMd5)
 {
-    return securityCredentialStoreOrImport(devHandle, type, pName,
-                                           pContents, size, NULL,
-                                           pPassword, pMd5);
+#ifdef U_UCONNECT_GEN2
+    if (uDeviceGetDeviceType(devHandle) == (int32_t)U_DEVICE_TYPE_SHORT_RANGE) {
+        int32_t errorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
+        uCxHandle_t *pUcxHandle = pShortRangePrivateGetUcxHandle(devHandle);
+        if (pUcxHandle != NULL) {
+            if (pPassword == NULL) {
+                errorCode = uCxSecurityUploadCertificate2(pUcxHandle, (uCertType_t)type, pName,
+                                                          (uint8_t *)pContents, size);
+            } else {
+                errorCode = uCxSecurityUploadCertificate3(pUcxHandle, (uCertType_t)type, pName,
+                                                          pPassword, (uint8_t *)pContents, size);
+            }
+        }
+        return errorCode;
+    }
+#endif
+    return securityCredentialStoreOrImport(devHandle, type, pName, pContents, size, NULL, pPassword,
+                                           pMd5);
 }
 
 // Import the given X.509 certificate or security key from a file.
@@ -449,6 +469,11 @@ int32_t uSecurityCredentialImportFromFile(uDeviceHandle_t devHandle,
                                           const char *pPassword,
                                           char *pMd5)
 {
+#ifdef U_UCONNECT_GEN2
+    if (uDeviceGetDeviceType(devHandle) == (int32_t)U_DEVICE_TYPE_SHORT_RANGE) {
+        return (int32_t)U_ERROR_COMMON_NOT_IMPLEMENTED;
+    }
+#endif
     return securityCredentialStoreOrImport(devHandle, type, pName,
                                            NULL, 0, pFileName,
                                            pPassword, pMd5);
@@ -461,6 +486,11 @@ int32_t uSecurityCredentialGetHash(uDeviceHandle_t devHandle,
                                    const char *pName,
                                    char *pMd5)
 {
+#ifdef U_UCONNECT_GEN2
+    if (uDeviceGetDeviceType(devHandle) == (int32_t)U_DEVICE_TYPE_SHORT_RANGE) {
+        return (int32_t)U_ERROR_COMMON_NOT_IMPLEMENTED;
+    }
+#endif
     uAtClientHandle_t atHandle;
     int32_t errorCode = getAtClient(devHandle, &atHandle);
     char hashHexRead[U_SECURITY_CREDENTIAL_MD5_LENGTH_BYTES * 2 + 1]; // +1 for terminator
@@ -508,6 +538,11 @@ int32_t uSecurityCredentialGetHash(uDeviceHandle_t devHandle,
 int32_t uSecurityCredentialListFirst(uDeviceHandle_t devHandle,
                                      uSecurityCredential_t *pCredential)
 {
+#ifdef U_UCONNECT_GEN2
+    if (uDeviceGetDeviceType(devHandle) == (int32_t)U_DEVICE_TYPE_SHORT_RANGE) {
+        return (int32_t)U_ERROR_COMMON_NOT_IMPLEMENTED;
+    }
+#endif
     bool keepGoing = true;
     uAtClientHandle_t atHandle;
     int32_t errorCodeOrSize = getAtClient(devHandle, &atHandle);
@@ -637,6 +672,11 @@ int32_t uSecurityCredentialListFirst(uDeviceHandle_t devHandle,
 int32_t uSecurityCredentialListNext(uDeviceHandle_t devHandle,
                                     uSecurityCredential_t *pCredential)
 {
+#ifdef U_UCONNECT_GEN2
+    if (uDeviceGetDeviceType(devHandle) == (int32_t)U_DEVICE_TYPE_SHORT_RANGE) {
+        return (int32_t)U_ERROR_COMMON_NOT_IMPLEMENTED;
+    }
+#endif
     uAtClientHandle_t atHandle;
     int32_t errorCodeOrSize = getAtClient(devHandle, &atHandle);
 
@@ -658,6 +698,11 @@ int32_t uSecurityCredentialListNext(uDeviceHandle_t devHandle,
 // Free memory from credential listing.
 void uSecurityCredentialListLast(uDeviceHandle_t devHandle)
 {
+#ifdef U_UCONNECT_GEN2
+    if (uDeviceGetDeviceType(devHandle) == (int32_t)U_DEVICE_TYPE_SHORT_RANGE) {
+        return;
+    }
+#endif
     uAtClientHandle_t atHandle;
 
     if (getAtClient(devHandle, &atHandle) == 0) {
@@ -674,6 +719,16 @@ int32_t uSecurityCredentialRemove(uDeviceHandle_t devHandle,
                                   uSecurityCredentialType_t type,
                                   const char *pName)
 {
+#ifdef U_UCONNECT_GEN2
+    if (uDeviceGetDeviceType(devHandle) == (int32_t)U_DEVICE_TYPE_SHORT_RANGE) {
+        int32_t errorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
+        uCxHandle_t *pUcxHandle = pShortRangePrivateGetUcxHandle(devHandle);
+        if (pUcxHandle != NULL) {
+            errorCode = uCxSecurityCertificateRemove(pUcxHandle, (uCertType_t)type, pName);
+        }
+        return errorCode;
+    }
+#endif
     uAtClientHandle_t atHandle;
     int32_t errorCode = getAtClient(devHandle, &atHandle);
 

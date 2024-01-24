@@ -76,9 +76,10 @@ def run(ubxlib_dir, reporter):
     # Find the paths of all .h files in API directories and check
     # for missing ones
     U_LOG.info("recursing %s looking for headers in api directories:", ubxlib_dir)
+    api_match = os.path.sep + "api" + os.path.sep
     for root, _, files in os.walk(ubxlib_dir):
         for file_name in files:
-            if file_name.endswith(".h") and "api" in root.lower():
+            if file_name.endswith(".h") and api_match in root.lower():
                 item = os.path.join(root, file_name)
                 # Found a header in an API directory, check if it is
                 # already in ubxlib.h

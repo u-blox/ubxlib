@@ -26,6 +26,11 @@
 #include "u_http_client.h"
 #include "u_wifi_http.h"
 
+#ifdef U_UCONNECT_GEN2
+# include "u_cx_at_client.h"
+# include "u_cx_general.h"
+#endif
+
 /** @file
  * @brief This header file defines types, functions and inclusions that
  * are common and private to the short range API.
@@ -38,6 +43,14 @@ extern "C" {
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
+
+#ifndef MIN
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#endif
+
+#ifndef MAX
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+#endif
 
 #define U_SHORT_RANGE_UUDPC_TYPE_BT 1
 #define U_SHORT_RANGE_UUDPC_TYPE_IPv4 2
@@ -110,6 +123,13 @@ typedef struct uShortRangePrivateConnection_t {
     uShortRangeConnectionType_t type;
 } uShortRangePrivateConnection_t;
 
+#ifdef U_UCONNECT_GEN2
+typedef struct {
+    uCxAtClient_t uCxAtClient;
+    uCxHandle_t uCxHandle;
+} uShortRangeUCxContext_t;
+#endif
+
 /** Definition of a ShortRange instance.
  */
 //lint -esym(768, uShortRangePrivateInstance_t::pSpsConnectionCallback) Suppress not reference, it is
@@ -158,6 +178,12 @@ typedef struct uShortRangePrivateInstance_t {
     volatile void *pLocContext;
     void *pFenceContext; /**< Storage for a uGeofenceContext_t. */
     struct uShortRangePrivateInstance_t *pNext;
+#ifdef U_UCONNECT_GEN2
+    uShortRangeUCxContext_t *pUcxContext;
+    volatile uint32_t wifiState;
+    void *pMqttContext;
+    void *pBleContext;
+#endif
 } uShortRangePrivateInstance_t;
 
 /* ----------------------------------------------------------------
@@ -184,6 +210,19 @@ extern uPortMutexHandle_t gUShortRangePrivateMutex;
 /* ----------------------------------------------------------------
  * FUNCTIONS
  * -------------------------------------------------------------- */
+
+#ifdef U_UCONNECT_GEN2
+
+/** Get the uCx handle for a short range device.
+ *
+ * @param   devHandle  the short range device handle.
+ * @return  a pointer to the instance or NULL if invalid
+ */
+uCxHandle_t *pShortRangePrivateGetUcxHandle(uDeviceHandle_t devHandle);
+
+int32_t uShortrangePrivateRestartDevice(uDeviceHandle_t devHandle, bool storeConfig);
+
+#endif
 
 /** Find a short range instance in the list by instance handle.
  * Note: gUShortRangePrivateMutex should be locked before this is

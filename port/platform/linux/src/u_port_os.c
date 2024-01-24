@@ -386,7 +386,7 @@ void uPortOsPrivateDeinit(void)
         uLinkedList_t *p = gpThreadList;
         while (p != NULL) {
             uLinkedList_t *pNext = p->pNext;
-            uLinkedListRemove(&gpThreadList, p);
+            uLinkedListRemove(&gpThreadList, p->p);
             p = pNext;
         }
         MTX_FN(uPortMutexUnlock(gMutexThread));
@@ -459,14 +459,14 @@ int32_t uPortTaskDelete(const uPortTaskHandle_t taskHandle)
     }
     uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
     pthread_t tread = taskHandle == NULL ? pthread_self() : (pthread_t)taskHandle;
+    MTX_FN(uPortMutexLock(gMutexThread));
+    uLinkedListRemove(&gpThreadList, (void *)tread);
+    MTX_FN(uPortMutexUnlock(gMutexThread));
     if (pthread_cancel(tread) == 0) {
         errorCode = U_ERROR_COMMON_SUCCESS;
         U_ATOMIC_DECREMENT(&gResourceAllocCount);
         U_PORT_OS_DEBUG_PRINT_TASK_DELETE(tread);
     }
-    MTX_FN(uPortMutexLock(gMutexThread));
-    uLinkedListRemove(&gpThreadList, (void *)tread);
-    MTX_FN(uPortMutexUnlock(gMutexThread));
     return (int32_t)errorCode;
 }
 
@@ -655,7 +655,6 @@ int32_t uPortQueueGetFree(const uPortQueueHandle_t queueHandle)
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS: MUTEXES
  * -------------------------------------------------------------- */
-
 // Create a mutex.
 int32_t MTX_FN(uPortMutexCreate(uPortMutexHandle_t *pMutexHandle))
 {
@@ -687,6 +686,8 @@ int32_t MTX_FN(uPortMutexDelete(const uPortMutexHandle_t mutexHandle))
             uPortFree(mutexHandle);
             U_ATOMIC_DECREMENT(&gResourceAllocCount);
             U_PORT_OS_DEBUG_PRINT_MUTEX_DELETE(mutexHandle);
+        } else {
+            errorCode = U_ERROR_COMMON_PLATFORM;
         }
     }
     return (int32_t)errorCode;

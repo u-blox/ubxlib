@@ -609,6 +609,15 @@ bool uNetworkTestHasHttp(uDeviceType_t deviceType,
     (void) deviceType;
     (void) moduleType;
 
+#ifdef U_UCONNECT_GEN2
+    if (deviceType == U_DEVICE_TYPE_SHORT_RANGE) {
+        // *** UCX WORKAROUND FIX ***
+        // No http support in ucx yet
+        return false;
+    }
+
+#endif
+
     // The LARA-R6 module on the test system fails this
     // test intermittently; LARA-R6 seems to forget the
     // server host name part of the way through the test run,

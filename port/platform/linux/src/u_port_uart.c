@@ -72,6 +72,7 @@
  * -------------------------------------------------------------- */
 
 typedef struct uPortUartData_t {
+    int32_t id;
     int uartFd;
     bool markedForDeletion;
     uPortTaskHandle_t rxTask;
@@ -233,6 +234,19 @@ static uPortUartData_t *findUart(int32_t handle)
     while (p != NULL) {
         uPortUartData_t *pUart = (uPortUartData_t *)(p->p);
         if (pUart->uartFd == handle) {
+            return pUart;
+        }
+        p = p->pNext;
+    }
+    return NULL;
+}
+
+static uPortUartData_t *findUartById(int32_t id)
+{
+    uLinkedList_t *p = gpUartList;
+    while (p != NULL) {
+        uPortUartData_t *pUart = (uPortUartData_t *)(p->p);
+        if (pUart->id == id) {
             return pUart;
         }
         p = p->pNext;
@@ -402,12 +416,16 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
     if (gMutex == NULL) {
         return U_ERROR_COMMON_NOT_INITIALISED;
     }
+    if (findUartById(uart) != NULL) {
+        return (int32_t)U_ERROR_COMMON_BUSY;
+    }
     uPortUartData_t *pUartData = pUPortMalloc(sizeof(uPortUartData_t));
     if (pUartData == NULL) {
         return U_ERROR_COMMON_NO_MEMORY;
     }
     memset(pUartData, 0, sizeof(uPortUartData_t));
     pUartData->uartFd = -1;
+    pUartData->id = -1;
     pUartData->eventQueueHandle = -1;
     if ((pinTx >= 0) || (pinRx >= 0)) {
         FAIL(U_ERROR_COMMON_INVALID_PARAMETER);
@@ -498,6 +516,7 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
     uLinkedListAdd(&gpUartList, (void *)pUartData);
     U_PORT_MUTEX_UNLOCK(gMutex);
     U_ATOMIC_INCREMENT(&gResourceAllocCount);
+    pUartData->id = uart;
     return (int32_t)(pUartData->uartFd);
 }
 

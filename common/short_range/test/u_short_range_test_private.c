@@ -111,6 +111,7 @@ int32_t uShortRangeTestPrivatePreamble(uShortRangeModuleType_t moduleType,
             pParameters->uartHandle = errorCodeOrHandle;
         }
 
+#ifndef U_UCONNECT_GEN2
         if (errorCodeOrHandle >= (int32_t) U_ERROR_COMMON_SUCCESS) {
             errorCodeOrHandle = uShortRangeGetEdmStreamHandle(pParameters->devHandle);
         }
@@ -130,8 +131,9 @@ int32_t uShortRangeTestPrivatePreamble(uShortRangeModuleType_t moduleType,
             uAtClientPrintAtSet(pParameters->atClientHandle, true);
             uAtClientDebugSet(pParameters->atClientHandle, true);
         }
+#endif
 
-        if (errorCodeOrHandle >= (int32_t) U_ERROR_COMMON_SUCCESS) {
+        if (errorCodeOrHandle >= (int32_t)U_ERROR_COMMON_SUCCESS) {
             if (moduleType != U_SHORT_RANGE_MODULE_TYPE_INVALID) {
                 errorCodeOrHandle = (int32_t) U_ERROR_COMMON_UNKNOWN;
                 pModule = pUShortRangePrivateGetModule(pParameters->devHandle);

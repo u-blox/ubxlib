@@ -338,7 +338,13 @@ int32_t uWifiCaptivePortal(uDeviceHandle_t deviceHandle,
                            const char *pPassword,
                            uWifiCaptivePortalKeepGoingCallback_t cb)
 {
+
     int32_t errorCode = 0;
+    // *** UCX WORKAROUND FIX ***
+    // Currently no support for access point ip-address in ucx, hence disabled
+#ifdef U_UCONNECT_GEN2
+    return U_ERROR_COMMON_NOT_IMPLEMENTED;
+#endif
 
     // Wifi access point configuration
     gNetworkCfg.type = U_NETWORK_TYPE_WIFI;

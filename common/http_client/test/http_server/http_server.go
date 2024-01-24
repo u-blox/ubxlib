@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2023 u-blox
+ * Copyright 2019-2024 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -115,7 +115,7 @@ func handler(response http.ResponseWriter, request *http.Request) {
             fallthrough
         case "POST":
             fmt.Printf("Attempting to write file \"%s\".\n", path)
-            request.Body = http.MaxBytesReader(response, request.Body, parameters.maxFileLength) 
+            request.Body = http.MaxBytesReader(response, request.Body, parameters.maxFileLength)
 
             parameters.listMutex.Lock()
             defer parameters.listMutex.Unlock()

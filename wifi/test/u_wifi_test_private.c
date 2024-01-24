@@ -170,6 +170,8 @@ int32_t uWifiTestPrivatePreamble(uWifiModuleType_t moduleType,
             pParameters->uartHandle = errorCodeOrHandle;
         }
 
+#ifndef U_UCONNECT_GEN2
+
         if (errorCodeOrHandle >= (int32_t) U_ERROR_COMMON_SUCCESS) {
             errorCodeOrHandle = uShortRangeGetEdmStreamHandle(devHandle);
             pParameters->edmStreamHandle = errorCodeOrHandle;
@@ -185,7 +187,7 @@ int32_t uWifiTestPrivatePreamble(uWifiModuleType_t moduleType,
                 uAtClientDebugSet(pParameters->atClientHandle, true);
             }
         }
-
+#endif
         if (errorCodeOrHandle >= (int32_t) U_ERROR_COMMON_SUCCESS) {
             if ((uShortRangeModuleType_t) moduleType != U_SHORT_RANGE_MODULE_TYPE_INVALID) {
                 errorCodeOrHandle = (int32_t) U_ERROR_COMMON_UNKNOWN;

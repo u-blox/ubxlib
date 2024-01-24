@@ -95,7 +95,7 @@
 #define HAS_RESPONSE (gPeerResponse[0] != 0)
 #define SERVER_FOUND (gPeerMac[0] != 0)
 // Connection wait time in seconds. The external server and client may be busy
-#define PEER_WAIT_TIME_S 100
+#define PEER_WAIT_TIME_S 180
 
 /* ----------------------------------------------------------------
  * TYPES

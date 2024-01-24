@@ -42,33 +42,35 @@ UBXLIB_PRIVATE_INC += \
 	${UBXLIB_BASE}/port/platform/common/debug_utils/src/freertos/additions \
 	${UBXLIB_BASE}/port/platform/common/log_ram
 
+SRC_LIST =
+
 # Device and network require special care since they contain stub & optional files
-UBXLIB_SRC += ${UBXLIB_BASE}/common/network/src/u_network.c
-UBXLIB_SRC += ${UBXLIB_BASE}/common/network/src/u_network_shared.c
-UBXLIB_SRC += ${UBXLIB_BASE}/common/network/src/u_network_private_ble_extmod_stub.c
-UBXLIB_SRC += ${UBXLIB_BASE}/common/network/src/u_network_private_cell_stub.c
-UBXLIB_SRC += ${UBXLIB_BASE}/common/network/src/u_network_private_gnss_stub.c
-UBXLIB_SRC += ${UBXLIB_BASE}/common/network/src/u_network_private_wifi_stub.c
+SRC_LIST += ${UBXLIB_BASE}/common/network/src/u_network.c
+SRC_LIST += ${UBXLIB_BASE}/common/network/src/u_network_shared.c
+SRC_LIST += ${UBXLIB_BASE}/common/network/src/u_network_private_ble_extmod_stub.c
+SRC_LIST += ${UBXLIB_BASE}/common/network/src/u_network_private_cell_stub.c
+SRC_LIST += ${UBXLIB_BASE}/common/network/src/u_network_private_gnss_stub.c
+SRC_LIST += ${UBXLIB_BASE}/common/network/src/u_network_private_wifi_stub.c
 UBXLIB_INC += ${UBXLIB_BASE}/common/network/api
 UBXLIB_PRIVATE_INC += ${UBXLIB_BASE}/common/network/src
-UBXLIB_SRC += ${UBXLIB_BASE}/common/device/src/u_device.c
-UBXLIB_SRC += ${UBXLIB_BASE}/common/device/src/u_device_serial.c
-UBXLIB_SRC += ${UBXLIB_BASE}/common/device/src/u_device_shared.c
-UBXLIB_SRC += ${UBXLIB_BASE}/common/device/src/u_device_private.c
-UBXLIB_SRC += ${UBXLIB_BASE}/common/device/src/u_device_private_cell_stub.c
-UBXLIB_SRC += ${UBXLIB_BASE}/common/device/src/u_device_private_gnss_stub.c
-UBXLIB_SRC += ${UBXLIB_BASE}/common/device/src/u_device_private_short_range_stub.c
+SRC_LIST += ${UBXLIB_BASE}/common/device/src/u_device.c
+SRC_LIST += ${UBXLIB_BASE}/common/device/src/u_device_serial.c
+SRC_LIST += ${UBXLIB_BASE}/common/device/src/u_device_shared.c
+SRC_LIST += ${UBXLIB_BASE}/common/device/src/u_device_private.c
+SRC_LIST += ${UBXLIB_BASE}/common/device/src/u_device_private_cell_stub.c
+SRC_LIST += ${UBXLIB_BASE}/common/device/src/u_device_private_gnss_stub.c
+SRC_LIST += ${UBXLIB_BASE}/common/device/src/u_device_private_short_range_stub.c
 UBXLIB_INC += ${UBXLIB_BASE}/common/device/api
 UBXLIB_PRIVATE_INC += ${UBXLIB_BASE}/common/device/src
 
 # Default malloc()/free() implementation
-UBXLIB_SRC += ${UBXLIB_BASE}/port/u_port_heap.c
+SRC_LIST += ${UBXLIB_BASE}/port/u_port_heap.c
 
 # Default uPortGetTimezoneOffsetSeconds() implementation
-UBXLIB_SRC += ${UBXLIB_BASE}/port/u_port_timezone.c
+SRC_LIST += ${UBXLIB_BASE}/port/u_port_timezone.c
 
 # Default uPortXxxResource implementation
-UBXLIB_SRC += ${UBXLIB_BASE}/port/u_port_resource.c
+SRC_LIST += ${UBXLIB_BASE}/port/u_port_resource.c
 
 # Default uPortPppAttach()/uPortPppDetach() implementation
 UBXLIB_SRC += ${UBXLIB_BASE}/port/u_port_ppp_default.c
@@ -80,14 +82,14 @@ UBXLIB_MODULE_DIRS += \
 	${UBXLIB_BASE}/ble \
 	${UBXLIB_BASE}/wifi
 
-UBXLIB_SRC += \
+SRC_LIST += \
 	${UBXLIB_BASE}/common/network/src/u_network_private_ble_extmod.c \
 	${UBXLIB_BASE}/common/network/src/u_network_private_ble_intmod.c \
 	${UBXLIB_BASE}/common/network/src/u_network_private_wifi.c \
 	${UBXLIB_BASE}/common/device/src/u_device_private_short_range.c
 else
 # Make the linker happy
-UBXLIB_SRC += \
+SRC_LIST += \
 	${UBXLIB_BASE}/common/network/src/u_network_private_ble_extmod_link.c \
 	${UBXLIB_BASE}/common/network/src/u_network_private_wifi_link.c \
 	${UBXLIB_BASE}/common/device/src/u_device_private_short_range_link.c
@@ -109,12 +111,12 @@ endif
 # Optional cell related files and directories
 ifneq ($(filter cell,$(UBXLIB_FEATURES)),)
 UBXLIB_MODULE_DIRS += ${UBXLIB_BASE}/cell
-UBXLIB_SRC += \
+SRC_LIST += \
 	${UBXLIB_BASE}/common/network/src/u_network_private_cell.c \
 	${UBXLIB_BASE}/common/device/src/u_device_private_cell.c
 else
 # Make the linker happy
-UBXLIB_SRC += \
+SRC_LIST += \
 	${UBXLIB_BASE}/common/network/src/u_network_private_cell_link.c \
 	${UBXLIB_BASE}/common/device/src/u_device_private_cell_link.c
 # Always add all of the includes
@@ -129,14 +131,14 @@ endif
 # Optional GNSS related files and directories
 ifneq ($(filter gnss,$(UBXLIB_FEATURES)),)
 UBXLIB_MODULE_DIRS += ${UBXLIB_BASE}/gnss
-UBXLIB_SRC += \
+SRC_LIST += \
 	${UBXLIB_BASE}/common/network/src/u_network_private_gnss.c \
 	${UBXLIB_BASE}/common/device/src/u_device_private_gnss.c \
 	${UBXLIB_BASE}/common/geofence/src/dummy/u_geofence_geodesic.c \
 	${UBXLIB_BASE}/gnss/src/lib_mga/u_lib_mga.c
 else
 # Make the linker happy
-UBXLIB_SRC += \
+SRC_LIST += \
 	${UBXLIB_BASE}/common/network/src/u_network_private_gnss_link.c \
 	${UBXLIB_BASE}/common/device/src/u_device_private_gnss_link.c
 # Always add all of the includes
@@ -191,10 +193,32 @@ UBXLIB_PRIVATE_INC += $(wildcard $(addsuffix /src, $(UBXLIB_MODULE_DIRS)))
 UBXLIB_TEST_DIRS += $(wildcard $(addsuffix /test/, $(UBXLIB_MODULE_DIRS)))
 
 # Get all .c files in each UBXLIB_SRC_DIRS and add these to UBXLIB_SRC
-UBXLIB_SRC += \
+SRC_LIST += \
 	$(foreach dir, $(UBXLIB_SRC_DIRS), \
 		$(sort $(wildcard $(dir)/*.c)) \
 	)
+
+# Add all the files to UBXLIB_SRC variable.
+# Check for possible gen2 replacements when feature is set.
+ifneq ($(filter short_range_gen2,$(UBXLIB_FEATURES)),)
+  UBXLIB_SRC += \
+    $(foreach file,\
+      $(SRC_LIST),\
+      $(if \
+        $(wildcard $(dir $(file))gen2/$(notdir $(file))),\
+        $(dir $(file))gen2/$(notdir $(file)),\
+        $(file)\
+      )\
+    )
+  # Shortrange second generation AT module
+  GEN2_AT_DIR = ${UBXLIB_BASE}/common/short_range/src/gen2/ucxclient
+  UBXLIB_INC += ${GEN2_AT_DIR}/inc ${GEN2_AT_DIR}/ucx_api
+  UBXLIB_SRC += $(sort $(wildcard ${GEN2_AT_DIR}/src/*.c))
+  UBXLIB_SRC += $(sort $(wildcard ${GEN2_AT_DIR}/ucx_api/*.c))
+  override CFLAGS += -DU_UCONNECT_GEN2 -DU_CX_AT_CONFIG_FILE="\"../../ucx_config.h\""
+else
+  UBXLIB_SRC += $(SRC_LIST)
+endif
 
 # Get all .c files in each UBXLIB_TEST_DIRS and add these to UBXLIB_TEST_SRC
 UBXLIB_TEST_SRC += \

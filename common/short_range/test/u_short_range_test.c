@@ -137,7 +137,6 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeInitialisation")
 U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeOpenUart")
 {
     int32_t resourceCount;
-    uAtClientHandle_t atClient = NULL;
     uShortRangeUartConfig_t uart = { .uartPort = U_CFG_APP_SHORT_RANGE_UART,
                                      .baudRate = U_SHORT_RANGE_UART_BAUD_RATE,
                                      .pinTx = U_CFG_APP_PIN_SHORT_RANGE_TXD,
@@ -162,10 +161,13 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeOpenUart")
                                                       &gHandles) == 0);
 
     U_PORT_TEST_ASSERT(uShortRangeGetUartHandle(gHandles.devHandle) == gHandles.uartHandle);
+#ifndef U_UCONNECT_GEN2
+    uAtClientHandle_t atClient = NULL;
     U_PORT_TEST_ASSERT(uShortRangeGetEdmStreamHandle(gHandles.devHandle) ==
                        gHandles.edmStreamHandle);
     uShortRangeAtClientHandleGet(gHandles.devHandle, &atClient);
     U_PORT_TEST_ASSERT(gHandles.atClientHandle == atClient);
+#endif
     U_PORT_TEST_ASSERT(uShortRangeAttention(gHandles.devHandle) == 0);
 
     U_TEST_PRINT_LINE("calling uShortRangeOpenUart with same arg twice,"
@@ -265,6 +267,8 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeUartSetBaudrate")
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
+#ifndef U_UCONNECT_GEN2
+
 U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeMemFullRecovery")
 {
     uShortRangeUartConfig_t uart = { .uartPort = U_CFG_APP_SHORT_RANGE_UART,
@@ -329,6 +333,7 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeMemFullRecovery")
     // Printed for information: asserting happens in the postamble
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
+#endif
 
 #if defined(U_CFG_APP_PIN_SHORT_RANGE_RESET_TO_DEFAULTS) && (U_CFG_APP_PIN_SHORT_RANGE_RESET_TO_DEFAULTS >= 0)
 
@@ -372,9 +377,11 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeResetToDefaultSettings")
     // Must re-get the handles since uShortRangeSetBaudrate() will have
     // closed and re-opened them all
     gHandles.uartHandle = uShortRangeGetUartHandle(gHandles.devHandle);
+#ifndef U_UCONNECT_GEN2
     gHandles.edmStreamHandle = uShortRangeGetEdmStreamHandle(gHandles.devHandle);
     U_PORT_TEST_ASSERT(uShortRangeAtClientHandleGet(gHandles.devHandle,
                                                     &gHandles.atClientHandle) == 0);
+#endif
     // This should receive a valid response
     U_PORT_TEST_ASSERT(uShortRangeAttention(gHandles.devHandle) == 0);
 

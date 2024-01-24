@@ -74,6 +74,7 @@
         },
         {
             "name": "Linux runner: Run",
+            "cwd": "${input:getBuildDir}",
             "type": "cppdbg",
             "request": "launch",
             "program": "${input:getBuildDir}/runner_linux/ubxlib_test_main",
