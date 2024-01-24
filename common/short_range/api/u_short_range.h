@@ -437,10 +437,20 @@ int32_t uShortRangeGpioConfig(uDeviceHandle_t devHandle, int32_t gpioId, bool is
  */
 int32_t uShortRangeGpioSet(uDeviceHandle_t devHandle, int32_t gpioId, int32_t level);
 
-/** Resets the module settings to default values of a shortrange module.
+/** Resets the module settings to default values of a short-range module.
  *
  * @param pinResetToDefaults the pin of this MCU that MUST BE CONNECTED TO
- *                           the DSR pin of the module.
+ *                           the DSR pin of the module.  Note: the AT manual
+ *                           says that the module will be looking for the
+ *                           reset sequence on the "DTR line", but the
+ *                           "DTR line", the output from this MCU, which may
+ *                           be on this MCU's DTR pin, is conventionally
+ *                           connected to the DSR _pin_ of the short-range
+ *                           module; all very confusing.  To be clear:
+ *
+ *                           THIS IS THE MCU PIN THAT IS CONNECTED TO THE
+ *                           **DSR** PIN OF THE SHORT-RANGE MODULE.
+ *
  * @return                   zero on success else negative error code.
  */
 int32_t uShortRangeResetToDefaultSettings(int32_t pinResetToDefaults);
