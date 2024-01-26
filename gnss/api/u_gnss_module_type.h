@@ -43,7 +43,7 @@
  * Note: if you add a new module type here, check the
  * U_GNSS_PRIVATE_MODULE_xxx macros in u_gnss_private.h
  * to see if they need updating and also update the
- * tables in u_gnss_private.c.
+ * tables in u_gnss_private.c and u_gnss_pwr.c.
  */
 //lint -estring(788, uGnssModuleType_t::U_GNSS_MODULE_TYPE_MAX_NUM)
 // Suppress not used within defaulted switch
@@ -51,6 +51,9 @@ typedef enum {
     U_GNSS_MODULE_TYPE_M8  = 0,
     U_GNSS_MODULE_TYPE_M9  = 1,
     U_GNSS_MODULE_TYPE_M10 = 2,
+    // Add any new module types here, before U_GNSS_MODULE_TYPE_ANY, assigning
+    // them to specific values.
+    U_GNSS_MODULE_TYPE_ANY,
     U_GNSS_MODULE_TYPE_MAX_NUM
 } uGnssModuleType_t;
 

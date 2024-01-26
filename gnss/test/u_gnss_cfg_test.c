@@ -336,7 +336,7 @@ U_PORT_TEST_FUNCTION("[gnssCfg]", "gnssCfgBasic")
         // Do the standard preamble
         U_TEST_PRINT_LINE("testing on transport %s...",
                           pGnssTestPrivateTransportTypeName(transportTypes[x]));
-        U_PORT_TEST_ASSERT(uGnssTestPrivatePreamble(U_CFG_TEST_GNSS_MODULE_TYPE,
+        U_PORT_TEST_ASSERT(uGnssTestPrivatePreamble(U_GNSS_MODULE_TYPE_ANY,
                                                     transportTypes[x], &gHandles, true,
                                                     U_CFG_APP_CELL_PIN_GNSS_POWER,
                                                     U_CFG_APP_CELL_PIN_GNSS_DATA_READY) == 0);

@@ -854,6 +854,20 @@ int32_t uShortRangeOpenUart(uShortRangeModuleType_t moduleType,
 
     uShortRangeEdmStreamSetAtHandle(edmStreamHandle, atClientHandle);
 
+    if (moduleType == U_SHORT_RANGE_MODULE_TYPE_ANY) {
+        moduleType = uShortRangeDetectModule(*pDevHandle);
+        uShortRangePrivateInstance_t *pInstance;
+        pInstance = pUShortRangePrivateGetInstance(*pDevHandle);
+        if (pInstance != NULL) {
+            pInstance->pModule = &gUShortRangePrivateModuleList[moduleType - 1];
+            uAtClientTimeoutSet(atClientHandle, pInstance->pModule->atTimeoutSeconds * 1000);
+            uAtClientDelaySet(atClientHandle, pInstance->pModule->commandDelayMs);
+            uPortLog("U_SHORT_RANGE: Module %d identified and set sucessfully\n",
+                     pInstance->pModule->moduleType);
+        } else {
+            return (int32_t)U_SHORT_RANGE_ERROR_INIT_INTERNAL;
+        }
+    }
     if (restart) {
         if (restartModuleAndEnterEDM(*pDevHandle) != (int32_t) U_ERROR_COMMON_SUCCESS) {
             uShortRangeClose(*pDevHandle);

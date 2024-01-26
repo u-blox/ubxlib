@@ -24,6 +24,7 @@
 
 #include "u_device.h"
 #include "u_ringbuffer.h"
+#include "u_gnss_info.h" // For uGnssVersionType_t
 
 /** @file
  * @brief This header file defines types, functions and inclusions that
@@ -566,6 +567,16 @@ int32_t uGnssPrivateMessageIdToPublic(const uGnssPrivateMessageId_t *pPrivateMes
  */
 bool uGnssPrivateMessageIdIsWanted(uGnssPrivateMessageId_t *pMessageId,
                                    uGnssPrivateMessageId_t *pMessageIdWanted);
+
+/** Get the various information from the GNSS chip.
+ *
+ * @param[in] pInstance  a pointer to the GNSS instance, cannot be NULL.
+ * @param[out] pVer      a pointer to structure where information is copied.
+ *                       This pointer cannot be NULL.
+ * @return               on sucesss 0, else negative error code.
+ */
+int32_t uGnssPrivateInfoGetVersions(uGnssPrivateInstance_t *pInstance,
+                                    uGnssVersionType_t *pVer);
 
 /* ----------------------------------------------------------------
  * FUNCTIONS: STREAMING TRANSPORT (UART/I2C/VIRTUAL SERIAL) ONLY

@@ -528,7 +528,7 @@ void uCellPrivateAbortAtCommand(const uCellPrivateInstance_t *pInstance);
  * characters (0 to 9).
  *
  * @param pBuffer     pointer to the buffer.
- * @param bufferSize  number of characters at pBuffer.
+ * @param bufferSize  number of characters in pBuffer.
  * @return            true if all the characters in pBuffer are
  *                    numeric characters, else false.
  */
@@ -973,6 +973,34 @@ bool uCellPrivateGnssInsideCell(const uCellPrivateInstance_t *pInstance);
  * @param pInstance   a pointer to the cellular instance.
  */
 void uCellPrivateCellTimeRemoveContext(uCellPrivateInstance_t *pInstance);
+
+/** Get an ID string from the cellular module.
+ *
+ * Note:  gUCellPrivateMutex should be locked before this is called.
+ *
+ * @param atHandle      the handle of the AT client that is talking
+ *                      to the module.
+ * @param[in] pCmd      a pointer to the string containing the command to
+ *                      be sent to the cellular module.
+ * @param[out] pBuffer  a pointer to size bytes of storage into which
+ *                      the response string will be copied.
+ *                      This pointer cannot be NULL.
+ * @param bufferSize    number of characters in pBuffer.
+ * @return              on success, the number of characters copied into
+ *                      pBuffer NOT including the terminator (as strlen()
+ *                      would return), on failure negative error code.
+ */
+int32_t uCellPrivateGetIdStr(uAtClientHandle_t atHandle,
+                             const char *pCmd, char *pBuffer,
+                             size_t bufferSize);
+
+/** Updates the module related settings for the given instance.
+ *
+ * Note:  gUCellPrivateMutex should be locked before this is called.
+ *
+ * @param pInstance   a pointer to the cellular instance.
+ */
+void uCellPrivateModuleSpecificSetting(uCellPrivateInstance_t *pInstance);
 
 #ifdef __cplusplus
 }

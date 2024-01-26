@@ -156,7 +156,7 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeOpenUart")
     U_PORT_TEST_ASSERT(uPortInit() == 0);
     U_PORT_TEST_ASSERT(uAtClientInit() == 0);
     U_PORT_TEST_ASSERT(uShortRangeInit() == 0);
-    U_PORT_TEST_ASSERT(uShortRangeTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
+    U_PORT_TEST_ASSERT(uShortRangeTestPrivatePreamble(U_SHORT_RANGE_MODULE_TYPE_ANY,
                                                       &uart,
                                                       &gHandles) == 0);
 

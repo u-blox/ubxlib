@@ -322,7 +322,7 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgBandMask")
     resourceCount = uTestUtilGetDynamicResourceCount();
 
     // Do the standard preamble
-    U_PORT_TEST_ASSERT(uCellTestPrivatePreamble(U_CFG_TEST_CELL_MODULE_TYPE,
+    U_PORT_TEST_ASSERT(uCellTestPrivatePreamble(U_CELL_MODULE_TYPE_ANY,
                                                 &gHandles, true) == 0);
 
     // Get the private module data as we need it for testing

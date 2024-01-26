@@ -305,11 +305,6 @@ int32_t uCellAdd(uCellModuleType_t moduleType,
                     uCellPrivateClearRadioParameters(&(pInstance->radioParameters), false);
                     pInstance->pModule = &(gUCellPrivateModuleList[moduleType]);
                     pInstance->sockNextLocalPort = -1;
-                    if (U_CELL_PRIVATE_HAS(pInstance->pModule,
-                                           U_CELL_PRIVATE_FEATURE_AUTHENTICATION_MODE_AUTOMATIC)) {
-                        // Set automatic authentication mode where supported
-                        pInstance->authenticationMode = U_CELL_NET_AUTHENTICATION_MODE_AUTOMATIC;
-                    }
                     pInstance->deepSleepBlockedBy = -1;
                     pInstance->gnssAidMode = U_CELL_LOC_GNSS_AIDING_TYPES;
                     pInstance->gnssSystemTypesBitMap = U_CELL_LOC_GNSS_SYSTEM_TYPES;
@@ -410,10 +405,7 @@ int32_t uCellAdd(uCellModuleType_t moduleType,
                     }
                     // With that done, set up the AT client for this module
                     if (platformError == 0) {
-                        uAtClientTimeoutSet(atHandle,
-                                            pInstance->pModule->atTimeoutSeconds * 1000);
-                        uAtClientDelaySet(atHandle,
-                                          pInstance->pModule->commandDelayDefaultMs);
+                        uCellPrivateModuleSpecificSetting(pInstance);
 #ifndef U_CFG_CELL_DISABLE_UART_POWER_SAVING
                         // Here we set the power-saving wake-up handler but note
                         // that this might be _removed_ during the power-on

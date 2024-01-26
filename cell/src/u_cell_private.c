@@ -43,6 +43,7 @@
 #include "u_port_uart.h"
 #include "u_port_gpio.h"
 #include "u_port_event_queue.h"
+#include "u_port_debug.h"
 
 #include "u_at_client.h"
 
@@ -406,6 +407,21 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
         ),
         -1, /* Default CMUX channel for GNSS */
         16 /* AT+CFUN reboot command */
+    },
+    // Add new module types here, before the U_CELL_MODULE_TYPE_ANY entry (since
+    // the uCellModuleType_t value is used as an index into this array).
+    {
+        // The module attributes set here are such that they help in identifying
+        // the actual module type.
+        U_CELL_MODULE_TYPE_ANY, 2000 /* Pwr On pull ms */, 3100 /* Pwr off pull ms */,
+        5 /* Boot wait */, 30 /* Min awake */, 35 /* Pwr down wait */, 5 /* Reboot wait */, 10 /* AT timeout */,
+        100 /* Cmd wait ms */, 3000 /* Resp max wait ms */, 4 /* radioOffCfun */, 16500 /* resetHoldMilliseconds */,
+        1 /* Simultaneous RATs */,
+        (1ULL << (int32_t) U_CELL_NET_RAT_CATM1) /* RATs */,
+        (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE) |
+        (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_DTR_POWER_SAVING) /* features */,
+        3, /* Default CMUX channel for GNSS */
+        15 /* AT+CFUN reboot command */
     }
 };
 
@@ -1573,16 +1589,8 @@ bool uCellPrivateGnssInsideCell(const uCellPrivateInstance_t *pInstance)
         atHandle = pInstance->atHandle;
         // Simplest way to check is to send ATI and see if
         // it includes an "M8" or an "M10"
-        uAtClientLock(atHandle);
-        uAtClientCommandStart(atHandle, "ATI");
-        uAtClientCommandStop(atHandle);
-        uAtClientResponseStart(atHandle, NULL);
-        bytesRead = uAtClientReadBytes(atHandle, buffer,
-                                       sizeof(buffer) - 1, false);
-        uAtClientResponseStop(atHandle);
-        if ((uAtClientUnlock(atHandle) == 0) && (bytesRead > 0)) {
-            // Add a terminator
-            buffer[bytesRead] = 0;
+        bytesRead = uAtClientGetAti(atHandle, buffer, sizeof(buffer));
+        if (bytesRead > 0) {
             if (strstr(buffer, "M8") != NULL) {
                 isInside = true;
             } else if (strstr(buffer, "M10") != NULL) {
@@ -1639,6 +1647,59 @@ void uCellPrivateAbortAtCommand(const uCellPrivateInstance_t *pInstance)
         success = (deviceError.type != U_AT_CLIENT_DEVICE_ERROR_TYPE_NO_ERROR);
         uAtClientUnlock(atHandle);
     }
+}
+
+// Get an ID string from the cellular module.
+int32_t uCellPrivateGetIdStr(uAtClientHandle_t  atHandle,
+                             const char *pCmd, char *pBuffer,
+                             size_t bufferSize)
+{
+    int32_t errorCodeOrSize;
+    int32_t bytesRead;
+    char delimiter;
+
+    uAtClientLock(atHandle);
+    uAtClientCommandStart(atHandle, "ATE0");
+    uAtClientCommandStopReadResponse(atHandle);
+    uAtClientCommandStart(atHandle, pCmd);
+    uAtClientCommandStop(atHandle);
+    // Don't want characters in the string being interpreted
+    // as delimiters
+    delimiter = uAtClientDelimiterGet(atHandle);
+    uAtClientDelimiterSet(atHandle, '\x00');
+    uAtClientResponseStart(atHandle, NULL);
+    bytesRead = uAtClientReadString(atHandle, pBuffer,
+                                    bufferSize, false);
+    uAtClientResponseStop(atHandle);
+    // Restore the delimiter
+    uAtClientDelimiterSet(atHandle, delimiter);
+    errorCodeOrSize = uAtClientUnlock(atHandle);
+    if ((bytesRead >= 0) && (errorCodeOrSize == 0)) {
+        uPortLog("U_CELL_INFO: ID string, length %d character(s),"
+                 " returned by %s is \"%s\".\n",
+                 bytesRead, pCmd, pBuffer);
+        errorCodeOrSize = bytesRead;
+    } else {
+        errorCodeOrSize = (int32_t) U_CELL_ERROR_AT;
+        uPortLog("U_CELL_INFO: unable to read ID string using"
+                 " %s.\n", pCmd);
+    }
+
+    return errorCodeOrSize;
+}
+
+// Updates the module related settings for the given instance.
+void uCellPrivateModuleSpecificSetting(uCellPrivateInstance_t *pInstance)
+{
+    if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                           U_CELL_PRIVATE_FEATURE_AUTHENTICATION_MODE_AUTOMATIC)) {
+        // Set automatic authentication mode where supported
+        pInstance->authenticationMode = U_CELL_NET_AUTHENTICATION_MODE_AUTOMATIC;
+    }
+    uAtClientTimeoutSet(pInstance->atHandle,
+                        pInstance->pModule->atTimeoutSeconds * 1000);
+    uAtClientDelaySet(pInstance->atHandle,
+                      pInstance->pModule->commandDelayDefaultMs);
 }
 
 // End of file

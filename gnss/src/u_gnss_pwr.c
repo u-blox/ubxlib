@@ -58,6 +58,7 @@
 #include "u_gnss_cfg_val_key.h"
 #include "u_gnss_cfg.h"
 #include "u_gnss_cfg_private.h"
+#include "u_gnss_info.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -111,6 +112,17 @@ typedef struct {
     uGnssPwrFlag_t flag;
     uint32_t keyId;
 } uGnssPwrFlagToKeyId_t;
+
+/* ----------------------------------------------------------------
+ * VARIABLES
+ * -------------------------------------------------------------- */
+
+/** Array to compare the Hardware Versions from the devices.
+ * This string array and the uGnssModuleType_t should be kept synchronized.
+ * The order of module types must match.
+ */
+
+const char *gpHardwareVersion[] = {"00080000", "00190000", "000A0000"};
 
 /* ----------------------------------------------------------------
  * STATIC VARIABLES
@@ -471,6 +483,28 @@ static int32_t setOrClearFlags(uDeviceHandle_t gnssHandle, uint32_t bitMap, bool
     return errorCode;
 }
 
+// Identify the module type read from GNSS module
+static uGnssModuleType_t identifyGnssModuleType(uDeviceHandle_t gnssHandle)
+{
+    int32_t errorCodeOrType = U_ERROR_COMMON_UNKNOWN_MODULE_TYPE;
+    uGnssVersionType_t version;
+    uGnssPrivateInstance_t *pInstance;
+    pInstance = pUGnssPrivateGetInstance(gnssHandle);
+    errorCodeOrType = uGnssPrivateInfoGetVersions(pInstance, &version);
+
+    if (errorCodeOrType == 0) {
+        errorCodeOrType = (int32_t) U_ERROR_COMMON_UNKNOWN_MODULE_TYPE;
+        for (size_t y = 0; (y < (U_GNSS_MODULE_TYPE_MAX_NUM - 1)) &&
+             (errorCodeOrType < 0); y++) {
+            if (strncmp(version.hw, gpHardwareVersion[y], 8) == 0) {
+                errorCodeOrType = (uGnssModuleType_t) y;
+            }
+        }
+    }
+
+    return errorCodeOrType;
+}
+
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -481,6 +515,7 @@ int32_t uGnssPwrOn(uDeviceHandle_t gnssHandle)
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uGnssPrivateInstance_t *pInstance;
     uAtClientHandle_t atHandle;
+    uGnssModuleType_t readModuleType = U_GNSS_MODULE_TYPE_ANY;
     // Message buffer for the 120-byte UBX-MON-MSGPP message
     char message[120] = {0};
 
@@ -518,42 +553,56 @@ int32_t uGnssPwrOn(uDeviceHandle_t gnssHandle)
                         errorCode = atPowerOn(pInstance, atHandle, false);
                     } else {
                         if (pInstance->portNumber != 3) {
-                            errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
-                            // Make sure GNSS is on with UBX-CFG-RST but ONLY
-                            // if the GNSS chip is not on a USB interface (if
-                            // it is on a USB interface then resetting it
-                            // resets the USB interface also and we will lose
-                            // connection).
-                            // The message is not acknowledged, so must use
-                            // uGnssPrivateSendOnlyCheckStreamUbxMessage()
-                            message[2] = 0x09; // Controlled GNSS hot start
-                            if (uGnssPrivateSendOnlyCheckStreamUbxMessage(pInstance,
-                                                                          0x06, 0x04,
-                                                                          message, 4) > 0) {
-                                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-                                if (pInstance->pModule->moduleType == U_GNSS_MODULE_TYPE_M8) {
-                                    errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
-                                    // From the M8 receiver description, a HW reset is also
-                                    // required at this point if Galileo is enabled,
-                                    // so find out if it is by polling UBX-MON-GNSS
-                                    if (uGnssPrivateSendReceiveUbxMessage(pInstance,
-                                                                          0x0a, 0x28,
-                                                                          NULL, 0,
-                                                                          message, 8) == 8) {
-                                        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-                                        // Byte 3 is the enabled flags and bit 3 of that is Galileo
-                                        if (message[3] & 0x08) {
-                                            // Setting the message to all zeroes effects a HW reset
-                                            memset(message, 0, sizeof(message));
-                                            // Nothing we can do here to check that the message
-                                            // has been accepted as the reset removes all evidence
-                                            errorCode = uGnssPrivateSendReceiveUbxMessage(pInstance,
-                                                                                          0x06, 0x04,
-                                                                                          message, 4,
-                                                                                          NULL, 0);
-                                            if (errorCode == 0) {
-                                                // Wait for the reset to complete
-                                                uPortTaskBlock(U_GNSS_RESET_TIME_SECONDS * 1000);
+                            if ((errorCode == 0) && (pInstance->pModule->moduleType == U_GNSS_MODULE_TYPE_ANY)) {
+                                // Read and compare the name with available module types.
+                                readModuleType = identifyGnssModuleType(gnssHandle);
+                                errorCode = readModuleType;
+                                if ((errorCode >= 0) && (readModuleType < (U_GNSS_MODULE_TYPE_MAX_NUM - 1))) {
+                                    pInstance->pModule = &(gUGnssPrivateModuleList[readModuleType]);
+                                    uPortLog("U_GNSS_PWR: Identified module type: %d\n", pInstance->pModule->moduleType);
+                                } else {
+                                    uPortLog("U_GNSS_PWR: could not identify the module type.\n");
+                                    errorCode = U_ERROR_COMMON_UNKNOWN_MODULE_TYPE;
+                                }
+                            }
+                            if (pInstance->pModule->moduleType != U_GNSS_MODULE_TYPE_ANY) {
+                                errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
+                                // Make sure GNSS is on with UBX-CFG-RST but ONLY
+                                // if the GNSS chip is not on a USB interface (if
+                                // it is on a USB interface then resetting it
+                                // resets the USB interface also and we will lose
+                                // connection).
+                                // The message is not acknowledged, so must use
+                                // uGnssPrivateSendOnlyCheckStreamUbxMessage()
+                                message[2] = 0x09; // Controlled GNSS hot start
+                                if (uGnssPrivateSendOnlyCheckStreamUbxMessage(pInstance,
+                                                                              0x06, 0x04,
+                                                                              message, 4) > 0) {
+                                    errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                                    if (pInstance->pModule->moduleType == U_GNSS_MODULE_TYPE_M8) {
+                                        errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
+                                        // From the M8 receiver description, a HW reset is also
+                                        // required at this point if Galileo is enabled,
+                                        // so find out if it is by polling UBX-MON-GNSS
+                                        if (uGnssPrivateSendReceiveUbxMessage(pInstance,
+                                                                              0x0a, 0x28,
+                                                                              NULL, 0,
+                                                                              message, 8) == 8) {
+                                            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                                            // Byte 3 is the enabled flags and bit 3 of that is Galileo
+                                            if (message[3] & 0x08) {
+                                                // Setting the message to all zeroes effects a HW reset
+                                                memset(message, 0, sizeof(message));
+                                                // Nothing we can do here to check that the message
+                                                // has been accepted as the reset removes all evidence
+                                                errorCode = uGnssPrivateSendReceiveUbxMessage(pInstance,
+                                                                                              0x06, 0x04,
+                                                                                              message, 4,
+                                                                                              NULL, 0);
+                                                if (errorCode == 0) {
+                                                    // Wait for the reset to complete
+                                                    uPortTaskBlock(U_GNSS_RESET_TIME_SECONDS * 1000);
+                                                }
                                             }
                                         }
                                     }
@@ -561,6 +610,20 @@ int32_t uGnssPwrOn(uDeviceHandle_t gnssHandle)
                             }
                         }
                     }
+                }
+            }
+
+            // Determining module type for the non-USB case
+            if ((errorCode == 0) && (pInstance->pModule->moduleType == U_GNSS_MODULE_TYPE_ANY)) {
+                // Read and compare the name with available module types.
+                readModuleType = identifyGnssModuleType(gnssHandle);
+                errorCode = readModuleType;
+                if ((errorCode >= 0) && (readModuleType < (U_GNSS_MODULE_TYPE_MAX_NUM - 1))) {
+                    pInstance->pModule = &(gUGnssPrivateModuleList[readModuleType]);
+                    uPortLog("U_GNSS_PWR: Identified module type: %d\n", pInstance->pModule->moduleType);
+                } else {
+                    uPortLog("U_GNSS_PWR: could not identify the module type.\n");
+                    errorCode = U_ERROR_COMMON_UNKNOWN_MODULE_TYPE;
                 }
             }
 

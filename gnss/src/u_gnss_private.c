@@ -175,6 +175,14 @@ const uGnssPrivateModule_t gUGnssPrivateModuleList[] = {
         ((1UL << (int32_t) U_GNSS_PRIVATE_FEATURE_CFGVALXXX) |
          (1UL << (int32_t) U_GNSS_PRIVATE_FEATURE_RXM_MEAS_50_20_C12_D12)  /* features */
         )
+    },
+    // Add new module types here, before the U_GNSS_MODULE_TYPE_ANY entry (since
+    // the uGnssModuleType_t value is used as an index into this array).
+    {
+        U_GNSS_MODULE_TYPE_ANY,
+        // The module attributes set here should be such that they help
+        // in identifying the actual module type.
+        (0x00UL)  /* features */
     }
 };
 
@@ -1730,16 +1738,8 @@ bool uGnssPrivateIsInsideCell(const uGnssPrivateInstance_t *pInstance)
         if (pInstance->transportType == U_GNSS_TRANSPORT_AT) {
             // Simplest way to check is to send ATI and see if
             // it includes an "M8"
-            uAtClientLock(atHandle);
-            uAtClientCommandStart(atHandle, "ATI");
-            uAtClientCommandStop(atHandle);
-            uAtClientResponseStart(atHandle, NULL);
-            bytesRead = uAtClientReadBytes(atHandle, buffer,
-                                           sizeof(buffer) - 1, false);
-            uAtClientResponseStop(atHandle);
-            if ((uAtClientUnlock(atHandle) == 0) && (bytesRead > 0)) {
-                // Add a terminator
-                buffer[bytesRead] = 0;
+            bytesRead = uAtClientGetAti(atHandle, buffer, sizeof(buffer));
+            if (bytesRead > 0) {
                 if (strstr("M8", buffer) != NULL) {
                     isInside = true;
                 }
@@ -1908,6 +1908,49 @@ bool uGnssPrivateMessageIdIsWanted(uGnssPrivateMessageId_t *pMessageId,
     }
 
     return isWanted;
+}
+
+int32_t uGnssPrivateInfoGetVersions(uGnssPrivateInstance_t *pInstance,
+                                    uGnssVersionType_t *pVer)
+{
+    int32_t errorCodeOrLength = U_ERROR_COMMON_INVALID_PARAMETER;
+    if (pVer != NULL) {
+        // Poll with the message class and ID of the UBX-MON-VER
+        // message and pass the message body directly back
+        struct {
+            char sw[30];
+            char hw[10];
+            char ext[10][30];
+        } message;
+        errorCodeOrLength = uGnssPrivateSendReceiveUbxMessage(pInstance,
+                                                              0x0a, 0x04,
+                                                              NULL, 0,
+                                                              (char *)&message, sizeof(message));
+        // Add a terminator
+        if (errorCodeOrLength > sizeof(message.sw) + sizeof(message.hw)) {
+            memset(pVer, 0, sizeof(*pVer));
+            strncpy(pVer->ver, message.sw, sizeof(pVer->ver));
+            strncpy(pVer->hw, message.hw, sizeof(pVer->hw));
+            int32_t n = (errorCodeOrLength - (sizeof(message.sw) + sizeof(message.hw))) / sizeof(
+                            message.ext[0]);
+            for (int32_t i = 0; i < n; i++) {
+                if (0 == strncmp(message.ext[i], "ROM BASE ", 9)) {
+                    strncpy(pVer->rom, message.ext[i] + 9, sizeof(pVer->rom));
+                } else if (0 == strncmp(message.ext[i], "FWVER=", 6)) {
+                    strncpy(pVer->fw, message.ext[i] + 6, sizeof(pVer->fw));
+                } else if (0 == strncmp(message.ext[i], "PROTVER=", 8)) {
+                    strncpy(pVer->prot, message.ext[i] + 8, sizeof(pVer->prot));
+                } else if (0 == strncmp(message.ext[i], "MOD=", 4)) {
+                    strncpy(pVer->mod, message.ext[i] + 4, sizeof(pVer->mod));
+                }
+            }
+            errorCodeOrLength = U_ERROR_COMMON_SUCCESS;
+        } else if (errorCodeOrLength >= 0) {
+            errorCodeOrLength = U_ERROR_COMMON_NOT_RESPONDING;
+        }
+    }
+
+    return errorCodeOrLength;
 }
 
 /* ----------------------------------------------------------------

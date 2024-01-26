@@ -59,7 +59,7 @@
  * VARIABLES
  * -------------------------------------------------------------- */
 
-// This is needed for OpenOCD FreeRTOS htread awareness
+// This is needed for OpenOCD FreeRTOS thread awareness
 const int __attribute__((used)) uxTopUsedPriority = configMAX_PRIORITIES - 1;
 
 // This is intentionally a bit hidden and comes from u_port_debug.c

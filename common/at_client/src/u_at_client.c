@@ -4626,4 +4626,25 @@ int32_t uAtClientGetActivityPinSettings(const uAtClientHandle_t atHandle,
     return activityPin;
 }
 
+// Fetches the identification information using ATI command
+int32_t uAtClientGetAti(uAtClientHandle_t atHandle,
+                        char *pBuffer,
+                        size_t lengthBytes)
+{
+    int32_t errorCodeOrLength = U_ERROR_COMMON_NOT_INITIALISED;
+    uAtClientLock(atHandle);
+    uAtClientCommandStart(atHandle, "ATI");
+    uAtClientCommandStop(atHandle);
+    uAtClientResponseStart(atHandle, NULL);
+    errorCodeOrLength = uAtClientReadBytes(atHandle, pBuffer,
+                                           lengthBytes - 1, false);
+    uAtClientResponseStop(atHandle);
+    if ((uAtClientUnlock(atHandle) == 0) && (errorCodeOrLength > 0)) {
+        // Add a terminator
+        pBuffer[errorCodeOrLength++] = 0;
+    }
+
+    return errorCodeOrLength;
+}
+
 // End of file

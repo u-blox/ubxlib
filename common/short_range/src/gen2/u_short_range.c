@@ -315,16 +315,33 @@ int32_t uShortRangeOpenUart(uShortRangeModuleType_t moduleType,
                                   U_AT_CLIENT_URC_TASK_STACK_SIZE_BYTES,
                                   U_AT_CLIENT_URC_TASK_PRIORITY);
 
-        if (restart) {
-            uShortrangePrivateRestartDevice(pInstance->devHandle, false);
-        }
-        handleOrErrorCode = uCxSystemSetEchoOff(&(pUCxContext->uCxHandle));
-        if (handleOrErrorCode == 0) {
-            if (uShortRangeDetectModule(pInstance->devHandle) != moduleType) {
-                handleOrErrorCode = U_SHORT_RANGE_ERROR_NOT_DETECTED;
+        if (moduleType == U_SHORT_RANGE_MODULE_TYPE_ANY) {
+            moduleType = uShortRangeDetectModule(pInstance->devHandle);
+            if (moduleType != U_SHORT_RANGE_MODULE_TYPE_INVALID) {
+                for (size_t i = 0; i < gUShortRangePrivateModuleListSize; i++) {
+                    if (gUShortRangePrivateModuleList[i].moduleType == moduleType) {
+                        pInstance->pModule = &gUShortRangePrivateModuleList[i];
+                        break;
+                    }
+                }
+                uPortLog("U_SHORT_RANGE: Module %d identified and set sucessfully\n", moduleType);
+            } else {
+                uPortLog("U_SHORT_RANGE: could not identify the module type.\n");
+                handleOrErrorCode = U_SHORT_RANGE_ERROR_INIT_INTERNAL;
             }
-        } else {
-            handleOrErrorCode = U_SHORT_RANGE_ERROR_INIT_INTERNAL;
+        }
+        if (handleOrErrorCode > (int32_t)U_ERROR_COMMON_SUCCESS) {
+            if (restart) {
+                uShortrangePrivateRestartDevice(pInstance->devHandle, false);
+            }
+            handleOrErrorCode = uCxSystemSetEchoOff(&(pUCxContext->uCxHandle));
+            if (handleOrErrorCode == 0) {
+                if (uShortRangeDetectModule(pInstance->devHandle) != moduleType) {
+                    handleOrErrorCode = U_SHORT_RANGE_ERROR_NOT_DETECTED;
+                }
+            } else {
+                handleOrErrorCode = U_SHORT_RANGE_ERROR_INIT_INTERNAL;
+            }
         }
     } else {
         handleOrErrorCode = U_ERROR_COMMON_NO_MEMORY;

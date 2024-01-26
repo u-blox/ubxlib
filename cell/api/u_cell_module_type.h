@@ -43,7 +43,8 @@
  * Note: if you add a new module type here, check the
  * U_CELL_PRIVATE_MODULE_xxx macros in u_cell_private.h
  * to see if they need updating and also update the
- * tables in u_cell_private.c and u_cell_sock_test.c.
+ * tables in u_cell_private.c, u_cell_sock_test.c and
+ * u_cell_pwr.c.
  */
 //lint -estring(788, uCellModuleType_t::U_CELL_MODULE_TYPE_MAX_NUM)
 // Suppress not used within defaulted switch
@@ -81,6 +82,9 @@ typedef enum {
     U_CELL_MODULE_TYPE_SARA_R422 = 6,
     U_CELL_MODULE_TYPE_LARA_R6 = 7,
     U_CELL_MODULE_TYPE_LENA_R8 = 8,
+    // Add any new module types here, before U_CELL_MODULE_TYPE_ANY, assigning
+    // them to specific values.
+    U_CELL_MODULE_TYPE_ANY,
     U_CELL_MODULE_TYPE_MAX_NUM
 } uCellModuleType_t;
 

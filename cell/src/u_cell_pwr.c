@@ -208,6 +208,20 @@ static const int32_t gEdrxCatM1SecondsToNumber[] = {5, 10, 20, 41, 61, 82, 102, 
  */
 static const int32_t gEdrxNb1SecondsToNumber[] = {-1, -1, 20, 41, 20, 82, 20, 20, 20, 164, 328, 655, 1310, 2621, 5243, 10486};
 
+/** Array to compare the module names from the devices.
+ * This string array and the uCellModuleType_t should be kept synchronized.
+ * The order of module types must match.
+ */
+static const char *gModuleNames[] = {"SARA-U2",
+                                     "SARA-R410M-02B",
+                                     "SARA-R412M-02B",
+                                     "SARA-R412M-03B",
+                                     "SARA-R5",
+                                     "SARA-R410M-03B",
+                                     "SARA-R422",
+                                     "LARA-R6",
+                                     "LENA-R8"
+                                    };
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS: 3GPP POWER SAVING
  * -------------------------------------------------------------- */
@@ -1232,6 +1246,38 @@ static void quickPowerOff(uCellPrivateInstance_t *pInstance,
     }
 }
 
+// Identify the module type read from module
+static uCellModuleType_t identifyCellModuleType(uDeviceHandle_t cellHandle)
+{
+    char buffer[64] = {0};
+    int32_t errorCodeOrType = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    int32_t idSize;
+    uCellPrivateInstance_t *pInstance;
+
+    pInstance = pUCellPrivateGetInstance(cellHandle);
+    if (pInstance != NULL) {
+        // Two goes here in case if the module type is not read successfully
+        // or some URC is interrupting us.
+        for (size_t x = 2; (x > 0) && (errorCodeOrType < 0); x--) {
+            errorCodeOrType = uCellPrivateGetIdStr(pInstance->atHandle, "AT+CGMM",
+                                                   buffer, sizeof(buffer));
+            idSize = errorCodeOrType;
+            errorCodeOrType = (int32_t) U_ERROR_COMMON_UNKNOWN_MODULE_TYPE;
+            if (idSize > 0) {
+                // compare the module type with the supported ones
+                for (size_t y = 0; (y < (U_CELL_MODULE_TYPE_MAX_NUM - 1)) &&
+                     (errorCodeOrType < 0); y++) {
+                    if (strstr(buffer, gModuleNames[y]) != NULL) {
+                        errorCodeOrType = (uCellModuleType_t) y;
+                    }
+                }
+            }
+        }
+    }
+
+    return errorCodeOrType;
+}
+
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS THAT ARE PRIVATE TO CELLULAR
  * -------------------------------------------------------------- */
@@ -1252,6 +1298,7 @@ int32_t uCellPwrPrivateOn(uCellPrivateInstance_t *pInstance,
     int32_t enablePowerAtStart = 1;
     bool asleepAtStart = (pInstance->deepSleepState == U_CELL_PRIVATE_DEEP_SLEEP_STATE_ASLEEP);
     uDeviceHandle_t cellHandle = pInstance->cellHandle;
+    uCellModuleType_t readModuleType = U_CELL_MODULE_TYPE_ANY;
     uCellPrivateSleep_t *pSleepContext = pInstance->pSleepContext;
     uCellPwrDeepSleepWakeUpCallback_t *pCallback;
 
@@ -1278,21 +1325,36 @@ int32_t uCellPwrPrivateOn(uCellPrivateInstance_t *pInstance,
         ((pInstance->pinVInt < 0) &&
          (uCellPwrPrivateIsAlive(pInstance, 1) == 0))) {
         uPortLog("U_CELL_PWR: powering on, module is already on.\n");
-        // Configure the module.  Since it was already
-        // powered on we might have been called from
-        // a state where everything was already fine
-        // and dandy so only switch the radio off at
-        // the end of configuration if we are not
-        // already registered
-        errorCode = moduleConfigure(pInstance,
-                                    !uCellPrivateIsRegistered(pInstance),
-                                    asleepAtStart);
-        if (errorCode != 0) {
-            // I have seen situations where the module responds
-            // initially and then fails configuration.  If that is
-            // the case then make sure it's definitely off before
-            // we go any further
-            quickPowerOff(pInstance, pKeepGoingCallback);
+        if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_ANY) {
+            // Read and compare the name with available module types.
+            readModuleType = identifyCellModuleType(cellHandle);
+            errorCode = readModuleType;
+            if ((errorCode >= 0) && (readModuleType < (U_CELL_MODULE_TYPE_MAX_NUM - 1))) {
+                pInstance->pModule = &(gUCellPrivateModuleList[readModuleType]);
+                uPortLog("U_CELL_PWR: Identified module type: %s\n", gModuleNames[readModuleType]);
+                uCellPrivateModuleSpecificSetting(pInstance);
+            } else {
+                uPortLog("U_CELL_PWR: could not identify the module type.\n");
+                errorCode = U_ERROR_COMMON_UNKNOWN_MODULE_TYPE;
+            }
+        }
+        if (pInstance->pModule->moduleType != U_CELL_MODULE_TYPE_ANY) {
+            // Configure the module.  Since it was already
+            // powered on we might have been called from
+            // a state where everything was already fine
+            // and dandy so only switch the radio off at
+            // the end of configuration if we are not
+            // already registered
+            errorCode = moduleConfigure(pInstance,
+                                        !uCellPrivateIsRegistered(pInstance),
+                                        asleepAtStart);
+            if (errorCode != 0) {
+                // I have seen situations where the module responds
+                // initially and then fails configuration.  If that is
+                // the case then make sure it's definitely off before
+                // we go any further
+                quickPowerOff(pInstance, pKeepGoingCallback);
+            }
         }
     }
     // Two goes at this, 'cos I've seen some module types
@@ -1340,17 +1402,36 @@ int32_t uCellPwrPrivateOn(uCellPrivateInstance_t *pInstance,
                 errorCode = uCellPwrPrivateIsAlive(pInstance, 1);
             }
             if (errorCode == 0) {
-                // Configure the module, only putting into radio-off
-                // mode if we weren't already registered at the start
-                // (e.g. we might have been in 3GPP sleep, which retains
-                // the registration status)
-                errorCode = moduleConfigure(pInstance,
-                                            !uCellPrivateIsRegistered(pInstance),
-                                            asleepAtStart);
-                if (errorCode != 0) {
-                    // If the module fails configuration, power it
-                    // off and try again
-                    quickPowerOff(pInstance, pKeepGoingCallback);
+                if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_ANY) {
+                    // Read and compare the name with available module types.
+                    readModuleType = identifyCellModuleType(cellHandle);
+                    errorCode = readModuleType;
+                    if ((errorCode >= 0) && (readModuleType < (U_CELL_MODULE_TYPE_MAX_NUM - 1))) {
+                        pInstance->pModule = &(gUCellPrivateModuleList[readModuleType]);
+                        uPortLog("U_CELL_PWR: Identified module type: %s\n", gModuleNames[readModuleType]);
+                        uCellPrivateModuleSpecificSetting(pInstance);
+                    } else {
+                        uPortLog("U_CELL_PWR: could not identify the module type.\n");
+                        errorCode = U_ERROR_COMMON_UNKNOWN_MODULE_TYPE;
+                    }
+                }
+                if (pInstance->pModule->moduleType != U_CELL_MODULE_TYPE_ANY) {
+                    // Check here again 'cos the module type should be changed
+                    // if read successfully from the cellular device. Also for
+                    // backward compatibility.
+
+                    // Configure the module, only putting into radio-off
+                    // mode if we weren't already registered at the start
+                    // (e.g. we might have been in 3GPP sleep, which retains
+                    // the registration status)
+                    errorCode = moduleConfigure(pInstance,
+                                                !uCellPrivateIsRegistered(pInstance),
+                                                asleepAtStart);
+                    if (errorCode != 0) {
+                        // If the module fails configuration, power it
+                        // off and try again
+                        quickPowerOff(pInstance, pKeepGoingCallback);
+                    }
                 }
             }
         } else {

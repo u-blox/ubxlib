@@ -63,6 +63,9 @@
 #else
 # define U_SHORT_RANGE_MODULE_TYPE_NORA_W36 9 /**< Please add short_range_gen2 to UBXLIB_FEATURES when using this module type. */
 #endif
+// Add any new module types here, before U_SHORT_RANGE_MODULE_TYPE_ANY,
+// and assign specific values
+#define U_SHORT_RANGE_MODULE_TYPE_ANY       10
 
 #define U_SHORT_RANGE_MODULE_TYPE_INVALID -1
 #define U_SHORT_RANGE_MODULE_TYPE_UNSUPPORTED -2
@@ -84,10 +87,14 @@
     U_SHORT_RANGE_MODULE(  NINA_B4  , "NINA-B4"  , U_YES ,   U_NO     , U_NO   ) \
     U_SHORT_RANGE_MODULE(  NINA_W13 , "NINA-W13" , U_NO  ,   U_NO     , U_YES  ) \
     U_SHORT_RANGE_MODULE(  NINA_W15 , "NINA-W15" , U_YES ,   U_YES    , U_YES  ) \
-    U_SHORT_RANGE_MODULE(  ODIN_W2  , "ODIN-W2"  , U_YES ,   U_YES    , U_YES  )
+    U_SHORT_RANGE_MODULE(  ODIN_W2  , "ODIN-W2"  , U_YES ,   U_YES    , U_YES  ) \
+    /*  Add new module information here before "ANY"  */                         \
+    U_SHORT_RANGE_MODULE(  ANY      , "ANY"      , U_NO  ,   U_NO     , U_NO   )
 #else
 # define U_SHORT_RANGE_MODULE_LIST \
-    U_SHORT_RANGE_MODULE(  NORA_W36 , "NORA-W36" , U_YES ,   U_NO     , U_YES  )
+    U_SHORT_RANGE_MODULE(  NORA_W36 , "NORA-W36" , U_YES ,   U_NO     , U_YES  ) \
+    /*  Add new module information here before "ANY"  */                         \
+    U_SHORT_RANGE_MODULE(  ANY      , "ANY"      , U_NO  ,   U_NO     , U_NO   )
 #endif
 
 /* ----------------------------------------------------------------

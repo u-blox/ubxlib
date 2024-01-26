@@ -112,43 +112,6 @@ static int32_t ecnoLevToDb(int32_t ecnoLev)
     return ecnoDb;
 }
 
-// Get an ID string from the cellular module.
-static int32_t getString(uAtClientHandle_t atHandle,
-                         const char *pCmd, char *pBuffer,
-                         size_t bufferSize)
-{
-    int32_t errorCodeOrSize;
-    int32_t bytesRead;
-    char delimiter;
-
-    uAtClientLock(atHandle);
-    uAtClientCommandStart(atHandle, pCmd);
-    uAtClientCommandStop(atHandle);
-    // Don't want characters in the string being interpreted
-    // as delimiters
-    delimiter = uAtClientDelimiterGet(atHandle);
-    uAtClientDelimiterSet(atHandle, '\x00');
-    uAtClientResponseStart(atHandle, NULL);
-    bytesRead = uAtClientReadString(atHandle, pBuffer,
-                                    bufferSize, false);
-    uAtClientResponseStop(atHandle);
-    // Restore the delimiter
-    uAtClientDelimiterSet(atHandle, delimiter);
-    errorCodeOrSize = uAtClientUnlock(atHandle);
-    if ((bytesRead >= 0) && (errorCodeOrSize == 0)) {
-        uPortLog("U_CELL_INFO: ID string, length %d character(s),"
-                 " returned by %s is \"%s\".\n",
-                 bytesRead, pCmd, pBuffer);
-        errorCodeOrSize = bytesRead;
-    } else {
-        errorCodeOrSize = (int32_t) U_CELL_ERROR_AT;
-        uPortLog("U_CELL_INFO: unable to read ID string using"
-                 " %s.\n", pCmd);
-    }
-
-    return errorCodeOrSize;
-}
-
 // Get SINR as an integer from a decimal (e.g -13.75) in a string,
 // or 0x7FFFFFFF if not known
 static int32_t getSinr(const char *pStr, int32_t divisor)
@@ -1146,8 +1109,8 @@ int32_t uCellInfoGetManufacturerStr(uDeviceHandle_t cellHandle,
         pInstance = pUCellPrivateGetInstance(cellHandle);
         errorCodeOrSize = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if ((pInstance != NULL) && (pStr != NULL) && (size > 0)) {
-            errorCodeOrSize = getString(pInstance->atHandle, "AT+CGMI",
-                                        pStr, size);
+            errorCodeOrSize = uCellPrivateGetIdStr(pInstance->atHandle, "AT+CGMI",
+                                                   pStr, size);
         }
 
         U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
@@ -1170,8 +1133,8 @@ int32_t uCellInfoGetModelStr(uDeviceHandle_t cellHandle,
         pInstance = pUCellPrivateGetInstance(cellHandle);
         errorCodeOrSize = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if ((pInstance != NULL) && (pStr != NULL) && (size > 0)) {
-            errorCodeOrSize = getString(pInstance->atHandle, "AT+CGMM",
-                                        pStr, size);
+            errorCodeOrSize = uCellPrivateGetIdStr(pInstance->atHandle, "AT+CGMM",
+                                                   pStr, size);
         }
 
         U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
@@ -1195,8 +1158,8 @@ int32_t uCellInfoGetFirmwareVersionStr(uDeviceHandle_t cellHandle,
         errorCodeOrSize = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if ((pInstance != NULL) && (pStr != NULL) && (size > 0)) {
             // Use ATI9 instead of AT+CGMR as it contains more information
-            errorCodeOrSize = getString(pInstance->atHandle, "ATI9",
-                                        pStr, size);
+            errorCodeOrSize = uCellPrivateGetIdStr(pInstance->atHandle, "ATI9",
+                                                   pStr, size);
         }
 
         U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);

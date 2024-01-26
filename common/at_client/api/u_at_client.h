@@ -1825,6 +1825,25 @@ int32_t uAtClientGetActivityPinSettings(const uAtClientHandle_t atHandle,
                                         int32_t *pReadyMs, int32_t *pHysteresisMs,
                                         bool *pHighIsOn);
 
+/** Reads the identification information from the device.
+ *
+ * @param atHandle      the handle of the AT client.
+ * @param[out] pBuffer  a buffer in which to place the
+ *                      bytes read.  May be set to NULL
+ *                      in which case the received bytes
+ *                      are thrown away.
+ * @param lengthBytes   the maximum number of bytes to read.
+ *                      If pBuffer is NULL this should be
+ *                      set to the number of bytes to be
+ *                      read and thrown away.
+ * @return              on success, the number of characters copied into
+ *                      buffer include the terminator; on failure negative
+ *                      error code.
+ */
+int32_t uAtClientGetAti(uAtClientHandle_t atHandle,
+                        char *pBuffer,
+                        size_t lengthBytes);
+
 #ifdef __cplusplus
 }
 #endif

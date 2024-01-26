@@ -52,7 +52,7 @@ typedef struct {
     char rom[22];   //!< Underlying ROM Version
     char fw[25];    //!< Firmware Version
     char prot[23];  //!< Protocol Version
-    char mod[27];   //<! Module  Variant
+    char mod[27];   //!< Module  Variant
 } uGnssVersionType_t; //!< return structs with different information
 
 /** Array of communications as seen by the GNSS chip.
