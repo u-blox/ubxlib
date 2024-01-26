@@ -21,8 +21,8 @@ The [api](api) directory contains the files that define the Wi-Fi APIs, each API
 
 HOWEVER for Wi-Fi connection and data transfer the recommendation is to use the [common/network](/common/network) API, along with the [common/sock](/common/sock) API. The handle returned by `uNetworkAdd()` can still be used with the `wifi` API for configuration etc. Please see the [socket example](/example/sockets) for details.
 
-# uConnectExpress For NORA-W3 And Beyond
-`ubxlib` relies on uConnectExpress, running on the short-range module and providing the AT interface to this MCU.  While `ubxlib` does not rely on a particular version of uConnectExpress, NORA-W3 and later modules are provided with a second generation of uConnectExpress which requires the `ubxlib` code in the [src/gen2](src/gen2) directory rather that in the [src](src) directory.
+# u-connectExpress For NORA-W3 And Beyond
+`ubxlib` relies on u-connectExpress, running on the short-range module and providing the AT interface to this MCU.  While `ubxlib` does not rely on a particular version of u-connectExpress, NORA-W3 and later modules are provided with a second generation of u-connectExpress which requires the `ubxlib` code in the [src/gen2](src/gen2) directory rather that in the [src](src) directory.
 
 To use the [src/gen2](src/gen2) code, please **add** `short_range_gen2` to the `UBXLIB_FEATURES` variable in your `make` or `CMake` file, e.g.:
 
@@ -30,7 +30,7 @@ To use the [src/gen2](src/gen2) code, please **add** `short_range_gen2` to the `
 UBXLIB_FEATURES= cell gnss short_range short_range_gen2
 ```
 
-The versions of uConnectExpress that we test with are listed in the short-range [test](/common/short_range/test) directory.
+The versions of u-connectExpress that we test with are listed in the short-range [test](/common/short_range/test) directory.
 
 # WiFi Captive Portal
 Included in this directory is also functionality for starting a captive portal for wifi credentials provisioning at runtime instead of adding these in the source code at build time.

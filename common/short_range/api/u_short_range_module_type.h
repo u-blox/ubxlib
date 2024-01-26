@@ -45,7 +45,7 @@
 /** The possible types of short range module.
  *
  * IMPORTANT: if you are using U_SHORT_RANGE_MODULE_TYPE_NORA_W36, which
- * comes with a second generation of uConnectExpress, you MUST add
+ * comes with a second generation of u-connectExpress, you MUST add
  * short_range_gen2 to the UBXLIB_FEATURES variable in your make or CMake
  * file when building ubxlib.  For instance:
  *
@@ -73,8 +73,14 @@
 #endif
 // Add any new module types here, before U_SHORT_RANGE_MODULE_TYPE_ANY,
 // and assign specific values
-#define U_SHORT_RANGE_MODULE_TYPE_ANY       10
-
+#define U_SHORT_RANGE_MODULE_TYPE_ANY       10 /**< when this module type is used the code will
+                                                    interrogate the module and chose the correct
+                                                    module type by itself; should this fail, for
+                                                    example because you are using a module type which
+                                                    is sufficiently close to a supported module type
+                                                    to work but the ID string it returns is too
+                                                    different to be detected, then you should chose
+                                                    the specific module type you want instead. */
 #define U_SHORT_RANGE_MODULE_TYPE_INVALID -1
 #define U_SHORT_RANGE_MODULE_TYPE_UNSUPPORTED -2
 

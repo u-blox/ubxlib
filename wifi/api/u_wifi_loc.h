@@ -30,7 +30,7 @@
 
 /** @file
  * @brief This header file defines the location APIs for Wi-Fi;
- * these APIs require that the module is running uConnectExpress
+ * these APIs require that the module is running u-connectExpress
  * version 5 or higher.
  */
 
@@ -91,7 +91,7 @@ typedef void (uWifiLocCallback_t) (uDeviceHandle_t wifiHandle,
  * -------------------------------------------------------------- */
 
 /** Get location (blocking) from the likes of Google, Skyhook and
- * Here; requires uConnectExpress version 5 and up.  The module must
+ * Here; requires u-connectExpress version 5 and up.  The module must
  * have already been connected to an access point for this function
  * to work.
  *
@@ -154,7 +154,7 @@ int32_t uWifiLocGet(uDeviceHandle_t wifiHandle,
                     bool (*pKeepGoingCallback) (uDeviceHandle_t));
 
 /** Get the current location, non-blocking version.  Requires
- * uConnectExpress version 5 and up.  The module must have already
+ * u-connectExpress version 5 and up.  The module must have already
  * been connected to an access point for this function to work.
  * Call uWifiLocGetStop() to stop the location request and free
  * memory.  You MUST complete a Wi-Fi location request that has

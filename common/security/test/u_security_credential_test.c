@@ -321,10 +321,10 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialTest")
             U_TEST_PRINT_LINE_X_Y("expiration %d UTC.", x, z, credential.expirationUtc);
             if (strcmp(credential.name, "ubxlib_test_cert") == 0) {
                 U_PORT_TEST_ASSERT(credential.type == U_SECURITY_CREDENTIAL_CLIENT_X509);
-                // Used to check the subject here but V5 uConnectExpress doesn't
+                // Used to check the subject here but V5 u-connectExpress doesn't
                 // give what we would expect (the subject of ubxlib_test_cert should
-                // be "ubxlib client" but uConnectExpress V5 has it as "CN=ubxlib ca",
-                // while earlier version of uConnectExpress don't report it at all),
+                // be "ubxlib client" but u-connectExpress V5 has it as "CN=ubxlib ca",
+                // while earlier version of u-connectExpress don't report it at all),
                 // so we can't check it
                 if (credential.expirationUtc != 0) {
                     U_PORT_TEST_ASSERT(credential.expirationUtc == U_SECURITY_CREDENTIAL_TEST_X509_EXPIRATION_UTC);
@@ -478,10 +478,10 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialTest")
                 U_TEST_PRINT_LINE_X_Y("expiration %d UTC.", x, z, credential.expirationUtc);
                 if (strcmp(credential.name, "ubxlib_test_cert") == 0) {
                     U_PORT_TEST_ASSERT(credential.type == U_SECURITY_CREDENTIAL_CLIENT_X509);
-                    // Used to check the subject here but V5 uConnectExpress doesn't
+                    // Used to check the subject here but V5 u-connectExpress doesn't
                     // give what we would expect (the subject of ubxlib_test_cert should
-                    // be "ubxlib client" but uConnectExpress V5 has it as "CN=ubxlib ca",
-                    // while earlier version of uConnectExpress don't report it at all),
+                    // be "ubxlib client" but u-connectExpress V5 has it as "CN=ubxlib ca",
+                    // while earlier version of u-connectExpress don't report it at all),
                     // so we can't check it
                     if (credential.expirationUtc != 0) {
                         U_PORT_TEST_ASSERT(credential.expirationUtc == U_SECURITY_CREDENTIAL_TEST_X509_EXPIRATION_UTC);

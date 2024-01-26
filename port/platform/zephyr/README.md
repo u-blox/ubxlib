@@ -92,6 +92,20 @@ socat /dev/pts/3,echo=0,raw /dev/pts/3,echo=0,raw
 
 ...would loop `/dev/pts/3` (in the example above UART 0) back on itself.
 
+## Additional Notes
+- Always clean the build directory when upgrading to a new `ubxlib` version.
+- You may override or provide conditional compilation flags to CMake without modifying `CMakeLists.txt`.  Do this by setting an environment variable `U_FLAGS`, e.g.:
+
+  ```
+  set U_FLAGS=-DMY_FLAG
+  ```
+
+  ...or:
+
+  ```
+  set U_FLAGS=-DMY_FLAG -DU_CFG_APP_PIN_CELL_ENABLE_POWER=-1
+  ```
+
 # Device Tree
 Zephyr pin choices for any HW peripheral managed by Zephyr (e.g. UART, I2C, SPI, etc.) are made at compile-time in the Zephyr device tree, they cannot be passed into the functions as run-time variables.  Look in the `zephyr/zephyr.dts` file located in your build directory to find the resulting pin allocations for these peripherals.
 
@@ -234,20 +248,6 @@ Notes:
 - Device tree node-labels are required so that `phandle`-type properties (i.e. the `network` property in this case) can refer to those nodes; if there is no need to refer to a node then the label can be omitted.
 
 FYI, for transports and GPIOs, what `ubxlib` is trying to get is the HW block number, for example the `0` on the end of `&uart0`; however, there is no way (see [discussion](https://github.com/zephyrproject-rtos/zephyr/issues/67046)), from within C code, to get that `0`, or even `uart0`, those references are all resolved inside the Zephyr device tree parser before any C code is compiled.  This is why the `transport-type` and `pin-xxx` labels, which would naturally just be `phandle` references, e.g. `<&uart0>` and `<gpio1 3 0>`, have to instead be strings and integers.  Should Zephyr provide a mechanism to obtain this information in future then we will adopt it and the properties will become conventional.
-
-## Additional Notes
-- Always clean the build directory when upgrading to a new `ubxlib` version.
-- You may override or provide conditional compilation flags to CMake without modifying `CMakeLists.txt`.  Do this by setting an environment variable `U_FLAGS`, e.g.:
-
-  ```
-  set U_FLAGS=-DMY_FLAG
-  ```
-
-  ...or:
-
-  ```
-  set U_FLAGS=-DMY_FLAG -DU_CFG_APP_PIN_CELL_ENABLE_POWER=-1
-  ```
 
 # PPP-Level Integration With Cellular
 PPP support in Zephyr, at least in Zephyr version 3.4.99, is marked as "experimental": despite the presence of a PAP configuration item, there is no way to configure the authentication mode or the username/password (which are hard-coded in `zephyr/subsys/net/l2/ppp/pap.c`, see function `pap_config_info_add()`) and there doesn't appear to be any code to support CHAP authentication; hence, if your operator requires a user name and password along with the APN, you have no choice but to edit the Zephyr source code.

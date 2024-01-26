@@ -252,4 +252,4 @@ If the commit text does *not* contain a line starting with `test:` (the usual ca
 - If you add a new platform or test suite, add it to [DATABASE.md](DATABASE.md) and make sure that the result is parsed correctly by [u_data.py](./scripts/u_data.py) (e.g. by running `automation.<command>` PyInvoke tasks) from the command-line and checking that everything is correct).
 - If you add a new item in the range 0 to 9 (i.e. a checker with no platform), update [automation.py](./tasks/automation.py) to include it.
 - If you add a new directory OFF THE ROOT of `ubxlib`, i.e. something like `ubxlib/blah`, add it to the `ASTYLE_DIRS` variable of the [u_run_astyle.py](./scripts/u_run_astyle.py) script.
-- When the FW version of a cellular module, or GNSS chip, or uConnectExpress version in the test system is updated, update the `README.md` in the corresponding test directory with that version.
+- When the FW version of a cellular module, or GNSS chip, or u-connectExpress version in the test system is updated, update the `README.md` in the corresponding test directory with that version.

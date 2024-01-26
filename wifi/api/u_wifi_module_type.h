@@ -54,7 +54,7 @@ extern "C" {
 /** The possible types of Wi-Fi module.
  *
  * IMPORTANT: if you are using U_WIFI_MODULE_TYPE_NORA_W36, which comes
- * with a second generation of uConnectExpress, you MUST add
+ * with a second generation of u-connectExpress, you MUST add
  * short_range_gen2 to the UBXLIB_FEATURES variable in your make or CMake
  * file when building ubxlib.  For instance:
  *

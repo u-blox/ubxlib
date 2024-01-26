@@ -91,7 +91,14 @@ typedef enum {
     U_CELL_MODULE_TYPE_LENA_R8 = 8,
     // Add any new module types here, before U_CELL_MODULE_TYPE_ANY, assigning
     // them to specific values.
-    U_CELL_MODULE_TYPE_ANY,
+    U_CELL_MODULE_TYPE_ANY, /**< when this module type is used the code will
+                                 interrogate the module and chose the correct
+                                 module type by itself; should this fail, for
+                                 example because you are using a module type which
+                                 is sufficiently close to a supported module type
+                                 to work but the ID string it returns is too
+                                 different to be detected, then you should chose
+                                 the specific module type you want instead. */
     U_CELL_MODULE_TYPE_MAX_NUM
 } uCellModuleType_t;
 

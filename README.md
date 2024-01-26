@@ -79,7 +79,7 @@ Peripherals are u-blox modules which accept commands (e.g. AT-commands) over a s
 
 
 <sup>3: Through the u-blox [CellLocate](https://www.u-blox.com/en/product/celllocate) mobile network-based location service.</sup><br />
-<sup>4: Beta support: please **add** `short_range_gen2` to the `UBXLIB_FEATURES` variable in your `make` or `CMake` file when building `ubxlib` for NORA-W36; NORA-W36 comes with a second generation uConnectExpress, please see the release notes for NORA-W36 for the supported features.</sup>
+<sup>4: Beta support: please **add** `short_range_gen2` to the `UBXLIB_FEATURES` variable in your `make` or `CMake` file when building `ubxlib` for NORA-W36; NORA-W36 comes with a second generation u-connectExpress, please see the release notes for NORA-W36 for the supported features.</sup>
 
 # Structure of `ubxlib`
 The APIs for each type of u-blox module can be found in the relevant directory (e.g. [cell](/cell) for cellular modules and [ble](/ble)/[wifi](/wifi) for BLE/Wi-Fi modules).  The [common](/common) directory contains APIs and 'helper' modules that are shared by u-blox modules, most importantly the [device](/common/device) API, the [network](/common/network) API and the [sockets](/common/sockets) API.  All APIs are documented in the API header files.

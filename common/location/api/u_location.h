@@ -133,11 +133,11 @@ typedef enum {
     U_LOCATION_TYPE_CLOUD_CELL_LOCATE = 2, /**< supported on cellular network
                                                 instances only. */
     U_LOCATION_TYPE_CLOUD_GOOGLE = 3, /**< supported on Wi-Fi network instances
-                                           with uConnectExpress version 5. */
+                                           with u-connectExpress version 5. */
     U_LOCATION_TYPE_CLOUD_SKYHOOK = 4, /**< supported on Wi-Fi network instances
-                                            with uConnectExpress version 5. */
+                                            with u-connectExpress version 5. */
     U_LOCATION_TYPE_CLOUD_HERE = 5,  /**< supported on Wi-Fi network instances
-                                          with uConnectExpress version 5. */
+                                          with u-connectExpress version 5. */
     U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE = 6,  /**< supported on cellular and Wi-Fi
                                                   network instances. */
     U_LOCATION_TYPE_MAX_NUM

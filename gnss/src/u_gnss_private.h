@@ -177,7 +177,7 @@ typedef struct uGnssPrivateMsgReader_t {
     int32_t handle;
     uGnssPrivateMessageId_t privateMessageId;
     void *pCallback; /**< stored as a void * to avoid having to bring
-                          all the types of uGnssTransparentReceiveCallback_t
+                          all the types of uGnssMsgReceiveCallback_t
                           into everything. */
     void *pCallbackParam;
     struct uGnssPrivateMsgReader_t *pNext;
