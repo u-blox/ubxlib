@@ -68,6 +68,11 @@
  * VARIABLES
  * -------------------------------------------------------------- */
 
+// ZEPHYR USERS may prefer to set the device and network
+// configuration from their device tree, rather than in this C
+// code: see /port/platform/zephyr/README.md for instructions on
+// how to do that.
+
 // Below is the module configuration
 // When U_CFG_TEST_CELL_MODULE_TYPE is set this example will setup a cellular
 // link using uNetworkConfigurationCell_t.

@@ -1,0 +1,56 @@
+# The device tree bindings for a ubxlib cellular device;
+# basically uDeviceCfgCell_t (see /common/device/api/device.h)
+# but in .yaml form for Zephyr.
+
+description: "ubxlib cellular device configuration."
+
+compatible: "u-blox,ubxlib-device-cellular"
+
+properties:
+# transportType
+    transport-type:
+        type: string
+        required: true
+        description: "The node label STRING for the transport that the cellular module is connected on, e.g. \"uart0\", no ampersand, no angle brackets and not an alias; make sure that &uart0, or whatever, is enabled in your device tree of course."
+# baudRate for UART
+    uart-baud-rate:
+        type: int
+        default: 115200
+        description: "The baud-rate that the UART is running at, if not the default of 115200."
+# moduleType, chosen from /cell/api/u_cell_module_type.h
+    module-type:
+        type: string
+        default: "U_CELL_MODULE_TYPE_ANY"
+        description: "The cellular module type."
+        enum:
+            - "U_CELL_MODULE_TYPE_SARA_U201"
+            - "U_CELL_MODULE_TYPE_SARA_R410M_02B"
+            - "U_CELL_MODULE_TYPE_SARA_R412M_02B"
+            - "U_CELL_MODULE_TYPE_SARA_R412M_03B"
+            - "U_CELL_MODULE_TYPE_SARA_R5"
+            - "U_CELL_MODULE_TYPE_SARA_R410M_03B"
+            - "U_CELL_MODULE_TYPE_SARA_R422"
+            - "U_CELL_MODULE_TYPE_LARA_R6"
+            - "U_CELL_MODULE_TYPE_LENA_R8"
+            # Add any new module types here, before U_CELL_MODULE_TYPE_ANY
+            - "U_CELL_MODULE_TYPE_ANY"
+# pinEnablePower
+    pin-enable-power:
+        type: int
+        description: "The GPIO output pin (an integer, assuming 32 pins per GPIO bank) that enables power to the cellular module (e.g. through a relay or some such); not usually required."
+# pinPwrOn
+    pin-pwr-on:
+        type: int
+        description: "The GPIO output pin (an integer, assuming 32 pins per GPIO bank) that is connected to the PWR_ON pin of the cellular module."
+# pinVint
+    pin-vint:
+        type: int
+        description: "The GPIO input pin (an integer, assuming 32 pins per GPIO bank) that is connected to the VINT pin of the cellular module."
+# pinDtrPowerSaving
+    pin-dtr-power-saving:
+        type: int
+        description: "The GPIO output pin  (an integer, assuming 32 pins per GPIO bank) that is connected to the DTR pin of the cellular module because you intend to use the DTR pin to tell the module whether it can enter power-saving."
+# Associated network configurations
+    network:
+        type: phandles
+        description: "Network configuration(s) associated with this device; two may be needed, for instance, if using GNSS that is inside or connected-via a cellular device."

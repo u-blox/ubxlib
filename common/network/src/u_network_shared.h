@@ -67,6 +67,14 @@ uDeviceHandle_t uNetworkGetDeviceHandle(uDeviceHandle_t devHandle,
 uDeviceNetworkData_t *pUNetworkGetNetworkData(uDeviceInstance_t *pInstance,
                                               uNetworkType_t netType);
 
+/** Free any network configuration data stored with a device;
+ * It is advisable to only call this between a
+ * uDeviceLock()/uDeviceUnlock() pair.
+ *
+ * @param devHandle  the handle of the device.
+ */
+void uNetworkCfgFree(uDeviceHandle_t devHandle);
+
 #ifdef __cplusplus
 }
 #endif

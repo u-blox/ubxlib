@@ -46,13 +46,30 @@
  * irrespective of whether Wifi is used there.
  */
 
+/* NOTE TO MAINTAINERS: if you change this enum you will
+ * need to change u-blox,ubxlib-network-wifi.yaml over in
+ * /port/platform/zephyr/dts/bindings to match  and you will also
+ * need to update the table in the Zephyr u_port_board_cfg.c file
+ * that maps string to enum.
+ */
 typedef enum {
+    U_WIFI_MODE_FORCE_INT32 = 0x7FFFFFFF, /**< Force this to be a 32-bit
+                                               enum since the construction
+                                               in the Zephyr
+                                               u_port_board_cfg.c requires
+                                               that. */
     U_WIFI_MODE_STA = 0, /**< Wifi station */
     U_WIFI_MODE_AP,      /**< Wifi access point */
     U_WIFI_MODE_STA_AP,  /**< Station and access point */
     U_WIFI_MODE_NONE     /**< Inactive */
 } uNetworkWifiMode_t;
 
+/* NOTE TO MAINTAINERS: if you change this structure you will
+ * need to change u-blox,ubxlib-network-wifi.yaml over in
+ * /port/platform/zephyr/dts/bindings to match and you may also
+ * need to change the code in the Zephyr u_port_board_cfg.c file
+ * that parses the values.
+ */
 /** The network configuration for Wifi station and access point.
  */
 typedef struct {

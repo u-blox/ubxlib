@@ -1,0 +1,44 @@
+# The device tree bindings for a ubxlib short-range device;
+# basically uDeviceCfgShortRange_t (see /common/device/api/device.h)
+# but in .yaml form for Zephyr.
+
+description: "ubxlib short-range (i.e. Wi-Fi or BLE) device configuration."
+
+compatible: "u-blox,ubxlib-device-short-range"
+
+properties:
+# transport-type; note that this is not a required field since it may be absent in the open CPU case
+    transport-type:
+        type: string
+        description: "The node label STRING for the transport that the short-range module is connected on, e.g. \"uart0\", no ampersand, no angle brackets and not an alias; make sure that &uart0, or whatever, is enabled in your device tree of course."
+# baudRate for UART
+    uart-baud-rate:
+        type: int
+        default: 115200
+        description: "The baud-rate that the UART is running at, if not the default of 115200."
+# moduleType, chosen from /common/short-range/api/u_short_range_module_type.h
+    module-type:
+        type: string
+        default: "U_SHORT_RANGE_MODULE_TYPE_ANY"
+        description: "The short-range module type."
+        enum:
+            - "U_SHORT_RANGE_MODULE_TYPE_INTERNAL"
+            - "U_SHORT_RANGE_MODULE_TYPE_ANNA_B1"
+            - "U_SHORT_RANGE_MODULE_TYPE_NINA_B1"
+            - "U_SHORT_RANGE_MODULE_TYPE_NINA_B2"
+            - "U_SHORT_RANGE_MODULE_TYPE_NINA_B3"
+            - "U_SHORT_RANGE_MODULE_TYPE_NINA_B4"
+            - "U_SHORT_RANGE_MODULE_TYPE_NINA_W13"
+            - "U_SHORT_RANGE_MODULE_TYPE_NINA_W15"
+            - "U_SHORT_RANGE_MODULE_TYPE_ODIN_W2"
+            - "U_SHORT_RANGE_MODULE_TYPE_NORA_W36"
+            # Add any new module types here, before U_SHORT_RANGE_MODULE_TYPE_ANY
+            - "U_SHORT_RANGE_MODULE_TYPE_ANY"
+# the open CPU variant
+    open-cpu:
+        type: boolean
+        description: "Specify this flag if this is a short-range configuration for open CPU (i.e. this code is running _inside_ the short-range module that it is using the BLE/Wi-Fi of, rather than using an external short-range module via the uConnectExpress AT interface)."
+# Associated network configurations
+    network:
+        type: phandles
+        description: "Network configuration(s) associated with this device; two may be needed if both BLE and Wi-Fi networks are in use."

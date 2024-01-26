@@ -86,6 +86,10 @@ extern "C" {
 # define U_CELL_NET_MAX_APN_LENGTH_BYTES 101
 #endif
 
+/* NOTE TO MAINTAINERS: if you change this #define you will
+ * need to change u-blox,ubxlib-network-cell.yaml over in
+ * /port/platform/zephyr/dts/bindings to match.
+ */
 #ifndef U_CELL_NET_CONNECT_TIMEOUT_SECONDS
 /** The time in seconds allowed for a connection to complete.
  * This is a long time since, in the worst case, deep scan

@@ -1,0 +1,96 @@
+# The device tree bindings for a ubxlib GNSS device;
+# basically uDeviceCfgGnss_t (see /common/device/api/device.h)
+# but in .yaml form for Zephyr.
+
+description: "ubxlib GNSS device configuration."
+
+compatible: "u-blox,ubxlib-device-gnss"
+
+properties:
+# transportType
+    transport-type:
+        type: string
+        required: true
+        description: "The node label STRING for the transport that the GNSS module is connected on, e.g. \"i2c0\", no ampersand, no angle brackets; make sure that &i2c0, or whatever, is enabled in your device tree of course."
+# baudRate for UART
+    uart-baud-rate:
+        type: int
+        default: 9600
+        description: "If transport is a UART, use this to specify the baud-rate that the UART is running at, if not the default of 9600."
+# clockHertz for I2C
+    i2c-clock-hertz:
+        type: int
+        default: 100000
+        description: "If transport is I2C you may modify the clock rate here, in Hertz; if not specified the default of 100 kHz will be used."
+# alreadyOpened for I2C
+    i2c-already-open:
+        type: boolean
+        description: "If transport is I2C you may specify this to indicate that the application has already opened the I2C port and this code need do nothing (in which case i2c-clock will be ignored)."
+# pinSelect for SPI
+    spi-pin-select:
+        type: int
+        description: "The GPIO output pin (an integer, assuming 32 pins per GPIO bank) to use for SPI chip select; if you do not specify a pin then spi-index-select is used and if spi-index-select is not specified index 0 is used."
+# indexSelect for SPI
+    spi-index-select:
+        type: int
+        default: 0
+        description: "The index of the CS pin from the chip select pins defined for the SPI controller being used by this device; ignored if spi-pin-select is specified."
+# frequencyHertz for SPI
+    spi-frequency-hertz:
+        type: int
+        default: 1000000
+        description: "If transport is SPI you may modify the clock frequency here, in Hertz; if not specified the default 1 MHz will be used."
+# mode for SPI
+    spi-mode:
+        type: int
+        default: 0
+        description: "The clock/data-read mode for SPI: 0 for CPOL 0/CPHA 0, 1 for CPOL 0/CPHA 1, 2 for CPOL 1/CPHA 0, 3 for CPOL 1/CPHA 1; if not specified 0 will be used."
+# wordSizeBytes for SPI
+    spi-word-size-bytes:
+        type: int
+        default: 1
+        description: "The word size, in bytes for SPI; if not specified 1 will be used."
+# lsbFirst for SPI
+    spi-lsb-first:
+        type: boolean
+        description: "If using SPI, use this flag to indicate that the LSB should be sent first, else MSB will be sent first."
+# startOffsetNanoseconds for SPI
+    spi-start-offset-nanoseconds:
+        type: int
+        default: 0
+        description: "The offset to apply after asserting CS and beginning an SPI transaction; if not specified there is no offset."
+# stopOffsetNanoseconds for SPI
+    spi-stop-offset-nanoseconds:
+        type: int
+        default: 0
+        description: "The offset to apply after ending an SPI transaction before CS is deasserted; if not specified there is no offset."
+# moduleType, chosen from /gnss/api/u_gnss_module_type.h
+# IMPORTANT: if you update this please also update the one in u-blox,ubxlib-network-gnss.yaml
+    module-type:
+        type: string
+        default: "U_GNSS_MODULE_TYPE_ANY"
+        description: "The GNSS module type."
+        enum:
+            - "U_GNSS_MODULE_TYPE_M8"
+            - "U_GNSS_MODULE_TYPE_M9"
+            - "U_GNSS_MODULE_TYPE_M10"
+            # Add any new module types here, before U_GNSS_MODULE_TYPE_ANY, and don't forget to update the one in u-blox,ubxlib-network-gnss.yaml also
+            - "U_GNSS_MODULE_TYPE_ANY"
+# pinEnablePower
+    pin-enable-power:
+        type: int
+        description: "The GPIO output pin (an integer, assuming 32 pins per GPIO bank) that enables power to the GNSS device (e.g. through a relay or some such); not usually required."
+# pinDataReady
+    pin-data-ready:
+        type: int
+        description: "The GPIO output pin (an integer, assuming 32 pins per GPIO bank) that is connected to the Data Ready pin of the GNSS device; provided for future compatibility only, currently ignored."
+# i2cAddress
+    i2c-address:
+        type: int
+        default: 42
+        description: "The I2C address of the GNSS device, required if the GNSS device is connected via I2C and its I2C address is not the default value of 42."
+# indication that we're connected to UART 2 on the GNSS device
+    gnss-uart2:
+        type: boolean
+        description: "Specify this flag if your UART connection is to the _second_ serial port of a GNSS device."
+# Note: there is no associated network configuration for the GNSS case

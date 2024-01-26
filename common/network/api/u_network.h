@@ -23,6 +23,7 @@
  * please keep #includes to your .c files. */
 
 #include "u_device.h"
+#include "u_network_type.h"
 
 /** \addtogroup network Network
  *  @{
@@ -74,34 +75,6 @@ extern "C" {
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
-
-/** Network types.
- */
-//lint -estring(788, uNetworkType_t::U_NETWORK_TYPE_MAX_NUM)
-//lint -estring(788, uNetworkType_t::U_NETWORK_TYPE_NONE)
-//  Suppress not used within defaulted switch
-typedef enum {
-    U_NETWORK_TYPE_NONE,
-    U_NETWORK_TYPE_BLE,
-    U_NETWORK_TYPE_CELL,
-    U_NETWORK_TYPE_WIFI,
-    U_NETWORK_TYPE_GNSS,
-    U_NETWORK_TYPE_MAX_NUM
-} uNetworkType_t;
-
-/** A version number for the network configuration structure. In
- * general you should allow the compiler to initialise any variable
- * of this type to zero and ignore it.  It is only set to a value
- * other than zero when variables in a new and extended version of
- * the structure it is a part of are being used, the version number
- * being employed by this code to detect that and, more importantly,
- * to adopt default values for any new elements when the version
- * number is STILL ZERO, maintaining backwards compatibility with
- * existing application code.  The structure this is a part of will
- * include instructions as to when a non-zero version number should
- * be set.
- */
-typedef int32_t uNetworkCfgVersion_t;
 
 /** Network status information for BLE.
  */
@@ -234,6 +207,11 @@ typedef struct {
  *                         pCfg must have been a true constant,
  *                         as the uNetworkInterfaceUp() function
  *                         will NOT have made a copy of the contents.
+ *                         Zephyr users may prefer to set the
+ *                         network (and device) configuration
+ *                         through the Zephyr device tree;
+ *                         see /port/platform/zephyr/README.md
+ *                         for instructions on how to do that.
  * @return                 zero on success else negative error code.
  */
 int32_t uNetworkInterfaceUp(uDeviceHandle_t devHandle, uNetworkType_t netType,

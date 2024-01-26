@@ -24,6 +24,7 @@
 
 #include "u_device_serial.h"
 #include "u_common_spi.h"
+#include "u_device_handle.h"
 
 /** \addtogroup device Device
  *  @{
@@ -34,6 +35,13 @@
  * (chip or module). These functions are generally used in conjunction
  * with those in the network API, see u_network.h for further information.
  * These functions are thread-safe.
+ *
+ * IMPORTANT NOTE TO MAINTAINERS: the structures and enums here are
+ * also written in .yaml form over in the files
+ * /port/platform/zephyr/dts/bindings/u-blox,ubxlib-device*.yaml for use
+ * with the Zephyr platform.  If you change anything here you must
+ * change those file to match and you may also need to change the
+ * code in the Zephyr u_port_board_cfg.c file that parses the values.
  */
 
 #ifdef __cplusplus
@@ -47,11 +55,6 @@ extern "C" {
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
-
-/** The u-blox device handle; this is intended to be anonymous,
- * the contents should never be referenced by the application.
- */
-typedef void *uDeviceHandle_t;
 
 /** Device types.
  */
@@ -119,6 +122,12 @@ typedef int32_t uDeviceVersion_t;
  * know nothing about the network.
  */
 
+/* NOTE TO MAINTAINERS: if you change this structure you may
+ * need to change u-blox,ubxlib-device-xxx.yaml over in
+ * /port/platform/zephyr/dts/bindings to match and you may also
+ * need to change the code in the Zephyr u_port_board_cfg.c file
+ * that parses the values.
+ */
 /** UART transport configuration.
  */
 typedef struct {
@@ -177,6 +186,12 @@ typedef struct {
        this structure must be set to 1 or higher". */
 } uDeviceCfgVirtualSerial_t;
 
+/* NOTE TO MAINTAINERS: if you change this structure you may
+ * need to change u-blox,ubxlib-device-gnss.yaml over in
+ * /port/platform/zephyr/dts/bindings to match and you may also
+ * need to change the code in the Zephyr u_port_board_cfg.c file
+ * that parses the values.
+ */
 /** I2C transport configuration.
  */
 typedef struct {
@@ -213,6 +228,12 @@ typedef struct {
        this structure must be set to 1 or higher". */
 } uDeviceCfgI2c_t;
 
+/* NOTE TO MAINTAINERS: if you change this structure you may
+ * need to change u-blox,ubxlib-device-gnss.yaml over in
+ * /port/platform/zephyr/dts/bindings to match and you may also
+ * need to change the code in the Zephyr u_port_board_cfg.c file
+ * that parses the values.
+ */
 /** SPI transport configuration.
  */
 typedef struct {
@@ -236,8 +257,14 @@ typedef struct {
        this structure must be set to 1 or higher". */
 } uDeviceCfgSpi_t;
 
+/* NOTE TO MAINTAINERS: if you change this structure you will
+ * need to change u-blox,ubxlib-device-cellular.yaml over in
+ * /port/platform/zephyr/dts/bindings to match and you may also
+ * need to change the code in the Zephyr u_port_board_cfg.c file
+ * that parses the values.
+ */
 /** Cellular device configuration.
-*/
+ */
 typedef struct {
     uDeviceVersion_t version;  /**< Version of this structure; allow your
                                     compiler to initialise this to zero
@@ -272,6 +299,12 @@ typedef struct {
        of this structure must be set to 1 or higher". */
 } uDeviceCfgCell_t;
 
+/* NOTE TO MAINTAINERS: if you change this structure you will
+ * need to change u-blox,ubxlib-device-gnss.yaml over in
+ * /port/platform/zephyr/dts/bindings to match and you may also
+ * need to change the code in the Zephyr u_port_board_cfg.c file
+ * that parses the values.
+ */
 /** GNSS device configuration.
  */
 typedef struct {
@@ -322,6 +355,12 @@ typedef struct {
        this structure must be set to 1 or higher". */
 } uDeviceCfgGnss_t;
 
+/* NOTE TO MAINTAINERS: if you change this structure you will
+ * need to change u-blox,ubxlib-device-short-range.yaml over in
+ * /port/platform/zephyr/dts/bindings to match and you may also
+ * need to change the code in the Zephyr u_port_board_cfg.c file
+ * that parses the values.
+ */
 /** Short-range device configuration.
  */
 typedef struct {
@@ -343,6 +382,12 @@ typedef struct {
        this structure must be set to 1 or higher". */
 } uDeviceCfgShortRange_t;
 
+/* NOTE TO MAINTAINERS: if you change this structure you will
+ * need to change u-blox,ubxlib-device.yaml over in
+ * /port/platform/zephyr/dts/bindings to match and you may also
+ * need to change the code in the Zephyr u_port_board_cfg.c file
+ * that parses the values.
+ */
 /** The complete device configuration.
  */
 typedef struct {
@@ -362,6 +407,36 @@ typedef struct {
         uDeviceCfgSpi_t cfgSpi;
         uDeviceCfgVirtualSerial_t cfgVirtualSerial;
     } transportCfg;
+    const char *pCfgName; /**< A name for the configuration, only currently
+                               used by Zephyr to permit population of this
+                               structure from the device tree, in which
+                               case all of the other parameters in this
+                               structure may be overridden by a device
+                               tree node with this name; MUST point to
+                               a true constant string (the contents will
+                               not be copied by this code).  Otherwise,
+                               allow your compiler to initalise this
+                               to zero and it will be ignored.
+                               Zephyr users please consult
+                               /port/platform/zephyr/README.md for
+                               instructions on how to use the device
+                               tree to configure your ubxlib devices.
+                               NOTE TO ZEPHYR USERS: you only need to
+                               populate this field if you wish to use the
+                               device tree as your configuration source
+                               and you have more than one device of any
+                               given type in your device tree (e.g. two
+                               GNSS modules); otherwise you may leave
+                               it as NULL and the single device of any
+                               given device you happen to have in your
+                               device tree will be adopted.  You do,
+                               however, need to populate the
+                               deviceType member here if you have more
+                               than one ubxlib device in your device tree.
+                               IMPORTANT NOTE TO ZEPHYR USERS: if you get
+                               pCfgName wrong this will NOT throw an error,
+                               since pCfgName may be used for other
+                               purposes in future; you need to get it right. */
     /* This is the end of version 0 of this structure:
        should any fields be added to this structure in
        future they must be added AFTER this point and
@@ -414,7 +489,12 @@ int32_t uDeviceGetDefaults(uDeviceType_t deviceType,
 /** Open a device instance; if this function returns successfully
  * the device is powered-up and ready to be configured.
  *
- * @param[in] pDeviceCfg      device configuration, cannot be NULL.
+ * @param[in] pDeviceCfg      device configuration, should not be
+ *                            NULL unless you are using Zephyr and
+ *                            have provided a device configuration
+ *                            through the Zephyr device tree;
+ *                            see /port/platform/zephyr/README.md
+ *                            for instructions on how to do that.
  * @param[out] pDeviceHandle  a place to put the device handle;
  *                            cannot be NULL.
  * @return                    zero on success else a negative error

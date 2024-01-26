@@ -33,6 +33,9 @@
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 
+#include "u_port_os.h"
+#include "u_port_heap.h"
+
 #include "u_device_shared.h"
 #include "u_network_shared.h"
 
@@ -141,6 +144,19 @@ uDeviceNetworkData_t *pUNetworkGetNetworkData(uDeviceInstance_t *pInstance,
     }
 
     return pNetworkData;
+}
+
+// Free any network configuration stored for the device.
+void uNetworkCfgFree(uDeviceHandle_t devHandle)
+{
+    uDeviceInstance_t *pInstance;
+
+    if (uDeviceGetInstance(devHandle, &pInstance) == 0) {
+        for (size_t x = 0; (x < sizeof(pInstance->networkData) /
+                            sizeof(pInstance->networkData[0])); x++) {
+            uPortFree(pInstance->networkData[x].pCfg);
+        }
+    }
 }
 
 // End of file

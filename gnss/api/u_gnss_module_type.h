@@ -39,6 +39,15 @@
  * TYPES
  * -------------------------------------------------------------- */
 
+/*  IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT
+ *
+ * NOTE TO MAINTAINERS: if you change this enum you will need to
+ * change u-blox,ubxlib-device-gnss.yaml AND
+ * u-blox,ubxlib-network-gnss.yaml over in
+ * /port/platform/zephyr/dts/bindings to match and you will also
+ * need to update the table in the Zephyr u_port_board_cfg.c file
+ * that maps string to enum.
+ */
 /** The possible types of GNSS module.
  * Note: if you add a new module type here, check the
  * U_GNSS_PRIVATE_MODULE_xxx macros in u_gnss_private.h
@@ -56,6 +65,10 @@ typedef enum {
     U_GNSS_MODULE_TYPE_ANY,
     U_GNSS_MODULE_TYPE_MAX_NUM
 } uGnssModuleType_t;
+
+/* IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT
+ * See note above.
+ */
 
 /** @}*/
 

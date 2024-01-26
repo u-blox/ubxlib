@@ -69,7 +69,7 @@ extern "C" {
  */
 typedef struct {
     int32_t networkType; /**< the type for this network. */
-    const void *pCfg; /**< constant network configuration provided by application. */
+    void *pCfg; /**< network configuration provided by application. */
     void *pContext; /**< optional context data for this network interface. */
     void *pStatusCallbackData; /**< optional status callback for this network interface. */
 } uDeviceNetworkData_t;
@@ -81,6 +81,8 @@ typedef struct {
 typedef struct {
     uint32_t magic;             /**< magic number for detecting a stale uDeviceInstance_t. */
     uDeviceType_t deviceType;   /**< type of device. */
+    const char
+    *pCfgName;       /**< the name of the device configuration, where applicable (may be NULL). */
     int32_t moduleType;         /**< module identification (when applicable). */
     void *pContext;             /**< private instance data for the device. */
     void *pUserContext;         /**< user context attached to device. */

@@ -173,6 +173,9 @@ list(APPEND UBXLIB_SRC ${UBXLIB_BASE}/port/u_port_resource.c)
 # Default uPortPppAttach()/uPortPppDetach() implementation
 list(APPEND UBXLIB_SRC ${UBXLIB_BASE}/port/u_port_ppp_default.c)
 
+# Default uPortDeviceXxx implementation
+list(APPEND UBXLIB_SRC ${UBXLIB_BASE}/port/u_port_board_cfg.c)
+
 # Optional features
 
 # short range

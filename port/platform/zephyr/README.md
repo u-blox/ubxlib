@@ -4,7 +4,7 @@ These directories provide the implementation of the porting layer on the Zephyr 
 - Nordic MCUs, which require a **specific** version/configuration of Zephyr,
 - Linux/posix, for debugging/development only, just like [windows](../windows).
 
-Note: the directory structure here differs from that in the other platform directories in order to follow more closely the approach adopter by Zephyr, which is hopefully familiar to Zephyr users.
+Note: the directory structure here differs from that in the other platform directories in order to follow more closely the approach adopted by Zephyr, which is hopefully familiar to Zephyr users.
 
 - [app](app): contains the code that runs the test application (both examples and unit tests) on the Zephyr platform.
 - [cfg](cfg): contains the configuration files for the MCU, the OS, for the application and for testing (mostly which MCU pins are connected to which module pins).
@@ -20,7 +20,7 @@ Note: the directory structure here differs from that in the other platform direc
 
 Follow the instructions to install the development tools:
 
-- Install nRF connect. https://www.nordicsemi.com/Software-and-Tools/Development-Tools/nRF-Connect-for-desktop
+- Install nRF connect from https://www.nordicsemi.com/Software-and-Tools/Development-Tools/nRF-Connect-for-desktop.
 - Start nRFConnect and use the tool chain manager to install the recommended SDK version (see above).
 - IMPORTANT: update SDK and toolchain using the dropdown menu for your SDK version.
 
@@ -31,7 +31,7 @@ https://docs.zephyrproject.org/latest/boards/posix/native_posix/doc/index.html
 # Integration
 `ubxlib` is a [Zephyr module](https://docs.zephyrproject.org/latest/guides/modules.html).
 
-To add `ubxlib` to your Zephyr application you can either add it to your west.yml, or make use of [ZEPHYR_EXTRA_MODULES](https://docs.zephyrproject.org/latest/guides/modules.html#integrate-modules-in-zephyr-build-system).
+To add `ubxlib` to your Zephyr application you can either add it to your `west.yml`, or make use of [ZEPHYR_EXTRA_MODULES](https://docs.zephyrproject.org/latest/guides/modules.html#integrate-modules-in-zephyr-build-system).
 
 To add it to your `west.yml`, add the u-blox remote to your `remotes` section and the `ubxlib` module to the `projects` section:
 ```yml
@@ -92,20 +92,148 @@ socat /dev/pts/3,echo=0,raw /dev/pts/3,echo=0,raw
 
 ...would loop `/dev/pts/3` (in the example above UART 0) back on itself.
 
-## Device Tree
+# Device Tree
 Zephyr pin choices for any HW peripheral managed by Zephyr (e.g. UART, I2C, SPI, etc.) are made at compile-time in the Zephyr device tree, they cannot be passed into the functions as run-time variables.  Look in the `zephyr/zephyr.dts` file located in your build directory to find the resulting pin allocations for these peripherals.
 
-If you want to find out more about device tree please see Zephyr [Introduction to devicetree](https://docs.zephyrproject.org/latest/guides/dts/intro.html)
+If you want to find out more about device tree please see Zephyr "[Introduction to Device Tree](https://docs.zephyrproject.org/latest/guides/dts/intro.html)".
 
-You will, though, still need to pass into `ubxlib` the HW block that is used: e.g. UART 0, UART 1, etc.  The UARTs, for instance, will be named `uart0`, `uart1`... in the device tree; the ending number is the value you should use to tell `ubxlib` what device to open.
+Unless you take the approach set out in the next section, you will still need to pass into `ubxlib` the HW block that is used: e.g. UART 0, UART 1, etc.  The UARTs, for instance, will be named `uart0`, `uart1`... in the device tree; the ending number is the value you should use to tell `ubxlib` what device to open.
 
-If this is a problem, e.g. if your board uses its own naming of the devices you can add a device tree overlay file to your build and in this define aliases in order to get the correct mapping. Ubxlib will always check if there is an alias named ubxlib-xyz and use it when present. Example:
+If this is a problem, e.g. if your board uses its own naming of the devices, you can add a device tree overlay file to your build and in this define aliases in order to get the correct mapping. `ubxlib` will always check if there is an alias named `ubxlib-xxxxn` and use it when present.  For example:
 
+```
     / {
       aliases {
         ubxlib-uart1 = &usart1;
       };
     };
+```
+
+# Specifying Device And Network Configuration Through The Device Tree
+For those familiar with the Zephyr device tree, it is possible to ignore the device and network configuration structures in the C code and instead set their entire contents through the device tree, binding files for which can be found in [dts/bindings](dts/bindings).
+
+IMPORTANT: this _only_ works if you bring up a device by calling `uDeviceOpen()`; if you bring up a device the hard way, by calling `uPortXxxOpen()` for the UART/I2C/SPI transport, then calling `uCellAdd()`/`uGnssAdd()`/`uShortRangeAdd()` etc. it will NOT work.
+
+You will need an entry with `status = "okay"` for the device you intend to use ([cellular](dts/bindings/u-blox,ubxlib-device-cellular.yaml), [GNSS](dts/bindings/u-blox,ubxlib-device-gnss.yaml) or [short range](dts/bindings/u-blox,ubxlib-device-short-range.yaml)) and each device _may_ refer to a [BLE](dts/bindings/u-blox,ubxlib-network-ble.yaml), [cellular](dts/bindings/u-blox,ubxlib-network-cellular.yaml), [GNSS](dts/bindings/u-blox,ubxlib-network-gnss.yaml) or [Wi-Fi](dts/bindings/u-blox,ubxlib-network-wifi.yaml) network (e.g. to specify an SSID or an APN or use GNSS inside a cellular device).  Here is an example:
+
+```
+/ { # This puts us in the root node
+
+    # A cellular device connected to UART0; the name can be whatever you like
+    cfg-device-cellular {
+        compatible = "u-blox,ubxlib-device-cellular";
+        # Each ubxlib-xxx-yyy entry needs to have status = "okay"
+        status = "okay";
+        # The transport-type looks like the node-label you may use for
+        # a UART etc. but for the "transport-type" property of a ubxlib
+        # device it must be given as a STRING
+        transport-type = "uart0";
+        module-type = "U_CELL_MODULE_TYPE_SARA_R422";
+        # Pin numbers assume 32 pins per gpio, so the pin for
+        # <&gpio1 0 x> would be pin 32
+        pin-pwr-on = <10>;
+        pin-vint = <35>;
+        # This SARA-R422 device has GNSS inside it, which is indicated by
+        # the second network configuration below; the first network
+        # configuration contains the APN for cellular
+        # If the cellular module does not have GNSS inside it and
+        # your service provider does not require you to provide an
+        # APN then you do not need to provide a network property
+        # at all
+        network = <&label_cfg_network_cellular_thingstream &label_cfg_network_gnss_inside>;
+    };
+
+    # A GNSS device connected to SPI2
+    cfg-device-gnss {
+        compatible = "u-blox,ubxlib-device-gnss";
+        status = "okay";
+        transport-type = "spi2";
+        spi-index-select = <0>;
+        module-type = "U_GNSS_MODULE_TYPE_M9";
+        # No network configuration is required for a standalone GNSS device
+    };
+
+    # A short-range device connected on UART1
+    cfg-device-short-range {
+        compatible = "u-blox,ubxlib-device-short-range";
+        status = "okay";
+        transport-type = "uart1";
+        module-type = "U_SHORT_RANGE_MODULE_TYPE_NINA_W15";
+        network = <&label_cfg_network_wifi_client_home &label_cfg_network_ble_peripheral>;
+   };
+
+    # A cellular network configuration; label required so that we can
+    # reference it.  The label and name can be whatever you like.
+    label_cfg_network_cellular_1nce: cfg-network-cellular-1nce {
+        compatible = "u-blox,ubxlib-network-cellular";
+        status = "okay";
+        apn = "iot.1nce.net";
+    };
+
+    # Another cellular network configuration
+    label_cfg_network_cellular_thingstream: cfg-network-cellular-thingstream {
+        compatible = "u-blox,ubxlib-network-cellular";
+        status = "okay";
+        apn = "tsiot";
+    };
+
+    # A GNSS network configuration for the GNSS inside the SARA-R422 device
+    label_cfg_network_gnss_inside: cfg-network-gnss-inside {
+        compatible = "u-blox,ubxlib-network-gnss";
+        status = "okay";
+        module-type = "U_GNSS_MODULE_TYPE_M10";
+    };
+
+    # A Wi-Fi network configuration
+    label_cfg_network_wifi_client_home: cfg-network-wifi-client-home {
+        compatible = "u-blox,ubxlib-network-wifi";
+        status = "okay";
+        ssid = "my_home_ssid";
+        authentication = 2;
+        pass-phrase = "my_pass_phrase";
+    };
+
+    # A BLE network configuration
+    label_cfg_network_ble_peripheral: cfg-network-ble-peripheral {
+        compatible = "u-blox,ubxlib-network-ble";
+        status = "okay";
+        role = "U_BLE_CFG_ROLE_PERIPHERAL";
+    };
+};
+
+&uart0 {
+    compatible = "nordic,nrf-uarte";
+    status = "okay";
+}
+&spi2 {
+    compatible = "nordic,nrf-spim";
+    status = "okay";
+    cs-gpios = <&gpio1 15 GPIO_ACTIVE_LOW>;
+    pinctrl-0 = <&spi2_default>;
+    pinctrl-1 = <&spi2_sleep>;
+    pinctrl-names = "default", "sleep";
+}
+&uart1 {
+    compatible = "nordic,nrf-uarte";
+    status = "okay";
+}
+
+...
+```
+
+Notes:
+- The form of each device tree property name matches that of the corresponding member of the [uDeviceCfg_t](/common/device/api/u_device.h)/[uNetworkCfgBle_t](/common/network/api/u_network_config_ble.h)/[uNetworkCfgCell_t](/common/network/api/u_network_config_cell.h)/[uNetworkCfgGnss_t](/common/network/api/u_network_config_gnss.h)/[uNetworkCfgWifi_t](/common/network/api/u_network_config_wifi.h) structure, e.g. `transportType` becomes `transport-type`; if you have `ubxlib` debug prints switched on then the values adopted for each property name will be printed-out when a device is opened or a network interface is brought up.
+- Where a structure member is to do with a transport, e.g. `baudRate` for UART or `alreadyOpen` for I2C or `frequencyHertz` for SPI, then the corresponding property name is prefixed with `uart`, `i2c` or `spi`, i.e. `uart-baud-rate`, `i2c-already-open` and `spi-frequency-hertz`.
+- If you include just a single `ubxlib` cellular, GNSS or short-range device in your device tree then you need populate nothing in the `uDeviceCfg_t` structure that you pass to `uDeviceOpen()` (or `NULL` can be passed) and what you have specified in the device tree will be used.
+- If you have more than one `ubxlib` device entry in your device tree but you still have only one of each type, e.g. you have a cellular device connected via UART and a GNSS device connected via SPI, you only need to populate the `uDeviceType_t` member of the `uDeviceCfg_t` structures that you pass to `uDeviceOpen()` (e.g. `U_DEVICE_TYPE_CELL` and `U_DEVICE_TYPE_GNSS`) and the relevant entry from your device tree will be used.
+- If you have more than one `ubxlib` cellular, GNSS or short-range entry in your device tree then you will also need to populate the `pCfgName` member of the `uDeviceCfg_t` structures that you pass to `uDeviceOpen()` with, e.g. for the example above `cfg-device-cellular`, to match the name of the node in the device tree you want to use.
+- Each `ubxlib-xxx-yyy` node needs a `status = "okay"` property in it in order to be used; this is a Zephyr device tree convention.
+- For a chosen transport the `ubxlib` setting ALWAYS OVERRIDES any in the `&` node, whether explicitly set in the `ubxlib-device-xxx` entry or not; for instance, if in node `&uart0` you set `current-speed = <230400>` and you pick up that UART in a `ubxlib-device-cellular` node (`transport-type = "uart0"`) WITHOUT including the property `uart-baud-rate`, the baud rate you end up with will be the `ubxlib` default for cellular of 115200, NOT 230400.
+- The `network` property in the `ubxlib` DT binding is of type `phandles`,  that is, more than one; the device tree syntax for this is to put ALL of the referenced node-labels TOGETHER inside a SINGLE pair of angle brackets `< >`, put an `&` before each and separate them ONLY WITH WHITESPACE, no commas.
+- Device tree node-labels, i.e. the bit before the `:`, can contain `-` but a _reference_ to them cannot, hence you must use underscores there, unlike the convention for the rest of the syntax where `-` is normal.
+- Device tree node-labels are required so that `phandle`-type properties (i.e. the `network` property in this case) can refer to those nodes; if there is no need to refer to a node then the label can be omitted.
+
+FYI, for transports and GPIOs, what `ubxlib` is trying to get is the HW block number, for example the `0` on the end of `&uart0`; however, there is no way (see [discussion](https://github.com/zephyrproject-rtos/zephyr/issues/67046)), from within C code, to get that `0`, or even `uart0`, those references are all resolved inside the Zephyr device tree parser before any C code is compiled.  This is why the `transport-type` and `pin-xxx` labels, which would naturally just be `phandle` references, e.g. `<&uart0>` and `<gpio1 3 0>`, have to instead be strings and integers.  Should Zephyr provide a mechanism to obtain this information in future then we will adopt it and the properties will become conventional.
 
 ## Additional Notes
 - Always clean the build directory when upgrading to a new `ubxlib` version.

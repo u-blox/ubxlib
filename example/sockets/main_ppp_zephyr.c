@@ -59,7 +59,7 @@
  *        reg = <0x8000 0x100>;
  *        status = "okay";
  *    };
- *};
+ * };
  *
  * Note that if your network operator requires a user name and password
  * along with the APN then you must edit the username/password that
@@ -127,6 +127,10 @@
 /* ----------------------------------------------------------------
  * VARIABLES
  * -------------------------------------------------------------- */
+
+// You may prefer to set the device and network configuration from
+// the device tree, rather than in this C code: see
+// /port/platform/zephyr/README.md for instructions on how to do that.
 
 #ifdef U_CFG_TEST_CELL_MODULE_TYPE
 // Set U_CFG_TEST_CELL_MODULE_TYPE to your module type,

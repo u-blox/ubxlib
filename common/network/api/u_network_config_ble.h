@@ -46,6 +46,12 @@
  * irrespective of whether BLE is used there.
  */
 
+/* NOTE TO MAINTAINERS: if you change this structure you will
+ * need to change u-blox,ubxlib-network-ble.yaml over in
+ * /port/platform/zephyr/dts/bindings to match and you may also
+ * need to change the code in the Zephyr u_port_board_cfg.c file
+ * that parses the values.
+ */
 /** The network configuration for BLE.
  */
 typedef struct {
@@ -56,7 +62,7 @@ typedef struct {
                                        specified below. */
     uNetworkType_t type; /**< for error checking purposes. */
     int32_t role;        /**< peripheral, central or, peripheral and central,
-                              see uShortRangeBleRole_t in u_short_range.h. */
+                              see uBleCfgRole_t in u_ble_cfg.h. */
     bool spsServer;      /**< true if sps server is to be enabled. */
     /* This is the end of version 0 of this structure:
        should any fields be added to this structure in

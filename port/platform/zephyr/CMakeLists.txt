@@ -65,6 +65,7 @@ target_sources(app PRIVATE
     src/u_port_i2c.c
     src/u_port_spi.c
     src/u_port_ppp.c
+    src/u_port_board_cfg.c
     src/u_port_private.c
     ${UBXLIB_BASE}/port/clib/u_port_clib_mktime64.c
 )
@@ -90,10 +91,11 @@ target_compile_options(app PRIVATE ${UBXLIB_COMPILE_OPTIONS})
 if (CONFIG_UBXLIB_TEST)
     target_compile_definitions(app PRIVATE UNITY_INCLUDE_CONFIG_H)
 
-    target_sources(app PRIVATE
+   target_sources(app PRIVATE
         ${UBXLIB_TEST_SRC}
         test/u_zephyr_ppp_test.c
         ${UBXLIB_BASE}/example/sockets/main_ppp_zephyr.c
+        test/u_zephyr_port_board_cfg_test.c
     )
 
     zephyr_include_directories(
@@ -101,7 +103,6 @@ if (CONFIG_UBXLIB_TEST)
         ${UBXLIB_TEST_INC}
         test
     )
-
     # we need to build https://github.com/ThrowTheSwitch/unity
     # Path resolution order:
     # 1. environment variable UNITY_PATH

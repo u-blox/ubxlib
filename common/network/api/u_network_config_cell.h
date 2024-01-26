@@ -46,6 +46,12 @@
  * irrespective of whether cellular is used there.
  */
 
+/* NOTE TO MAINTAINERS: if you change this structure you will
+ * need to change u-blox,ubxlib-network-cellular.yaml over in
+ * /port/platform/zephyr/dts/bindings to match and you may also
+ * need to change the code in the Zephyr u_port_board_cfg.c file
+ * that parses the values.
+ */
 /** The network configuration for cellular.
  */
 typedef struct {
@@ -80,11 +86,11 @@ typedef struct {
     const char *pUsername; /** ONLY REQUIRED if you must use a user name
                                and password with the APN provided to you
                                by your service provider; let your compiler
-                               initialised= this to zero otherwise. */
+                               initialise this to zero otherwise. */
     const char *pPassword; /** ONLY REQUIRED if you must use a user name
                                and password with the APN provided to you
                                by your service provider; let your compiler
-                               initialised= this to zero otherwise. */
+                               initialise this to zero otherwise. */
     int32_t authenticationMode; /** ONLY REQUIRED if you must give a user name
                                     and password with the APN provided to
                                     you by your service provider and your

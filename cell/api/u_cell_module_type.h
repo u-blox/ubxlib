@@ -39,7 +39,14 @@
  * TYPES
  * -------------------------------------------------------------- */
 
+/* IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT
+ *
+ * NOTE TO MAINTAINERS: if you change this enum you will need to
+ * change u-blox,ubxlib-device-cellular.yaml over in
+ * /port/platform/zephyr/dts/bindings to match.
+ */
 /** The possible types of cellular module.
+ *
  * Note: if you add a new module type here, check the
  * U_CELL_PRIVATE_MODULE_xxx macros in u_cell_private.h
  * to see if they need updating and also update the
@@ -87,6 +94,10 @@ typedef enum {
     U_CELL_MODULE_TYPE_ANY,
     U_CELL_MODULE_TYPE_MAX_NUM
 } uCellModuleType_t;
+
+/* IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT
+ * See note above.
+ */
 
 /** @}*/
 

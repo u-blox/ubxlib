@@ -46,6 +46,12 @@
  * irrespective of whether GNSS is used there.
  */
 
+/* NOTE TO MAINTAINERS: if you change this structure you will
+ * need to change u-blox,ubxlib-network-gnss.yaml over in
+ * /port/platform/zephyr/dts/bindings to match and you may also
+ * need to change the code in the Zephyr u_port_board_cfg.c file
+ * that parses the values.
+ */
 /** The network configuration for GNSS.
  */
 typedef struct {

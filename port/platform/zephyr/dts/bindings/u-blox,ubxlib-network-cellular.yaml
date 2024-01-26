@@ -1,0 +1,41 @@
+# The device tree bindings that describe a ubxlib network
+# configuration for cellular; basically uNetworkCfgCell_t
+# (see /common/network/api/u_network_config_cell.h) but
+# in .yaml form for Zephyr.
+
+description: "ubxlib network configuration for cellular."
+
+compatible: "u-blox,ubxlib-network-cellular"
+
+properties:
+# Hidden property: network type
+    do-not-set-network-type:
+       type: int
+       default: 2
+       description: "A hidden property: the application should _not_ set this, just allow it to be the default for a cellular network (matches U_NETWORK_TYPE_CELL)."
+# APN string
+    apn:
+        type: string
+        description: "The APN for your network; only specify this if your service provider _requires_ you to do so.  If not specified a database look-up will be used, specify \"\" to NOT do a database look-up."
+# timeout
+    timeout-seconds:
+        type: int
+        default: 1800
+        description: "The timeout when connecting to the network in seconds; this is a LOOONG time in case you are using an NB1 network, where initial search can take many many minutes; if you are NOT using an NB1 network specify a shorter time (e.g. 240 seconds), or alternatively in your code you may specify a timeout callback, see /common/network/api/u_network_config_cell.h."
+# username
+    username:
+        type: string
+        description: "ONLY REQUIRED if you must use a user name and password with the APN provided to you by your service provider."
+# password
+    password:
+        type: string
+        description: "ONLY REQUIRED if you must use a user name and password with the APN provided to you by your service provider."
+# authentication mode
+    authentication-mode:
+        type: int
+        default: 0
+        description: "use 1 for PAP, 2 for CHAP, 3 for automatic (where supported), ONLY REQUIRED if you must give a user name and password with the APN provided to you by your service provider and your cellular module does NOT support figuring out the authentication mode automatically; there is no harm in populating this field even if your module _does_ support figuring out the authentication mode automatically."
+# MCC/MNC string
+    mccmnc:
+        type: string
+        description: "ONLY REQUIRED if you want to connect to a specific cellular network (e.g. \"23410\") rather than letting the module just choose the best one."

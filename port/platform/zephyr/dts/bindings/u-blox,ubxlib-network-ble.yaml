@@ -1,0 +1,27 @@
+# The device tree bindings that describe a ubxlib network
+# configuration for a BLE module; basically uNetworkCfgBle_t
+# (see /common/network/api/u_network_config_ble.h) but
+# in .yaml form for Zephyr.
+
+description: "ubxlib network configuration for BLE."
+
+compatible: "u-blox,ubxlib-network-ble"
+
+properties:
+    do-not-set-network-type:
+       type: int
+       default: 1
+       description: "A hidden property: the application should _not_ set this, just allow it to be the default for a BLE network (matches U_NETWORK_TYPE_BLE)."
+    role:
+        type: string
+        description: "The role for the device; peripheral, central or both."
+        required: true
+        enum:
+            - "U_BLE_CFG_ROLE_DISABLED"
+            - "U_BLE_CFG_ROLE_CENTRAL"
+            - "U_BLE_CFG_ROLE_PERIPHERAL"
+            - "U_BLE_CFG_ROLE_CENTRAL_AND_PERIPHERAL"
+    enable-sps-server:
+        type: boolean
+        description: "Specify this if SPS server is to be enabled."
+

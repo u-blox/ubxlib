@@ -1,0 +1,49 @@
+# The device tree bindings that describe a ubxlib network
+# configuration for a Wi-Fi module; basically uNetworkCfgWifi_t
+# (see /common/network/api/u_network_config_wifi.h) but
+# in .yaml form for Zephyr.
+
+description: "ubxlib network configuration for Wi-Fi."
+
+compatible: "u-blox,ubxlib-network-wifi"
+
+properties:
+    do-not-set-network-type:
+       type: int
+       default: 3
+       description: "A hidden property: the application should _not_ set this, just allow it to be the default for a Wi-Fi network (matches U_NETWORK_TYPE_WIFI)."
+    ssid:
+        type: string
+        description: "The SSID of the network to connect to; not required if credentials have previously been saved."
+    authentication:
+        type: int
+        default: 1
+        description: "The authentication mode. Values are (2) WPA/WPA2/WPA3-PSK, (6) WPA2/WPA3-PSK or (7) WPA3-PSK; not specified means open (1)."
+    pass-phrase:
+        type: string
+        description: "The WPA/WPA2/WPA3 pass-phrase for the network being connected-to; not required if the authentication type is not specified (i.e. open)."
+    host-name:
+        type: string
+        description: "The network host name of the Wi-Fi device; if not specified a default name combined of the module type and mac address will be used."
+    mode:
+        type: string
+        default: "U_WIFI_MODE_STA"
+        description: "The mode in which the Wi-Fi module should be started (station, access point, both or none)."
+        enum:
+            - "U_WIFI_MODE_STA"
+            - "U_WIFI_MODE_AP"
+            - "U_WIFI_MODE_STA_AP"
+            - "U_WIFI_MODE_NONE"
+    ap-ssid:
+        type: string
+        description: "The SSID of the access point."
+    ap-authentication:
+        type: int
+        default: 1
+        description: "The authentication mode of the access point. Values are (2) WPA/WPA2/WPA3-PSK, (6) WPA2/WPA3-PSK or (7) WPA3-PSK; not specified means open (1)."
+    ap-pass-phrase:
+        type: string
+        description: "The WPA/WPA2/WPA3 pass-phrase for the access point; not required if the access point authentication type is not specified (i.e. open)."
+    ap-ip-address:
+        type: string
+        description: "The IP address of the access point."

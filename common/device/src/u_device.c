@@ -29,12 +29,15 @@
 #include "u_error_common.h"
 
 #include "u_port_os.h"
+#include "u_port_board_cfg.h"
 
 #include "u_device.h"
 #include "u_device_shared.h"
 
 #include "u_location.h"
 #include "u_location_shared.h"
+
+#include "u_network_shared.h"
 
 #include "u_device_private.h"
 #include "u_device_private_cell.h"
@@ -254,6 +257,7 @@ int32_t uDeviceGetDefaults(uDeviceType_t deviceType,
 
 int32_t uDeviceOpen(const uDeviceCfg_t *pDeviceCfg, uDeviceHandle_t *pDeviceHandle)
 {
+    uDeviceCfg_t localDeviceCfg = {0};
     // Lock the API
     int32_t errorCode = uDeviceLock();
 
@@ -261,38 +265,49 @@ int32_t uDeviceOpen(const uDeviceCfg_t *pDeviceCfg, uDeviceHandle_t *pDeviceHand
 
     if (errorCode == 0 && pDeviceCfg != NULL) {
         errorCode = uDeviceCallback("open", (void *)pDeviceCfg->deviceType, NULL);
+        localDeviceCfg = *pDeviceCfg;
+    }
+
+    if (errorCode == 0) {
+        // Allow the device configuration from the board
+        // configuration of the platform to override what
+        // we were given; only used by Zephyr
+        errorCode = uPortBoardCfgDevice(&localDeviceCfg);
     }
 
     if (errorCode == 0) {
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-        if ((pDeviceCfg != NULL) && (pDeviceCfg->version == 0) && (pDeviceHandle != NULL)) {
-            switch (pDeviceCfg->deviceType) {
+        if ((pDeviceHandle != NULL) && (localDeviceCfg.version == 0)) {
+            switch (localDeviceCfg.deviceType) {
                 case U_DEVICE_TYPE_CELL:
-                    errorCode = uDevicePrivateCellAdd(pDeviceCfg, &deviceHandleCandidate);
+                    errorCode = uDevicePrivateCellAdd(&localDeviceCfg, &deviceHandleCandidate);
                     if (errorCode == 0) {
-                        U_DEVICE_INSTANCE(deviceHandleCandidate)->moduleType = pDeviceCfg->deviceCfg.cfgCell.moduleType;
+                        U_DEVICE_INSTANCE(deviceHandleCandidate)->moduleType = localDeviceCfg.deviceCfg.cfgCell.moduleType;
                     }
                     break;
                 case U_DEVICE_TYPE_GNSS:
-                    errorCode = uDevicePrivateGnssAdd(pDeviceCfg, &deviceHandleCandidate);
+                    errorCode = uDevicePrivateGnssAdd(&localDeviceCfg, &deviceHandleCandidate);
                     if (errorCode == 0) {
-                        U_DEVICE_INSTANCE(deviceHandleCandidate)->moduleType = pDeviceCfg->deviceCfg.cfgGnss.moduleType;
+                        U_DEVICE_INSTANCE(deviceHandleCandidate)->moduleType = localDeviceCfg.deviceCfg.cfgGnss.moduleType;
                     }
                     break;
                 case U_DEVICE_TYPE_SHORT_RANGE:
-                    errorCode = uDevicePrivateShortRangeAdd(pDeviceCfg, &deviceHandleCandidate);
+                    errorCode = uDevicePrivateShortRangeAdd(&localDeviceCfg, &deviceHandleCandidate);
                     if (errorCode == 0) {
-                        U_DEVICE_INSTANCE(deviceHandleCandidate)->moduleType = pDeviceCfg->deviceCfg.cfgSho.moduleType;
+                        U_DEVICE_INSTANCE(deviceHandleCandidate)->moduleType = localDeviceCfg.deviceCfg.cfgSho.moduleType;
                     }
                     break;
                 case U_DEVICE_TYPE_SHORT_RANGE_OPEN_CPU:
-                    errorCode = uDevicePrivateShortRangeOpenCpuAdd(pDeviceCfg, &deviceHandleCandidate);
+                    errorCode = uDevicePrivateShortRangeOpenCpuAdd(&localDeviceCfg, &deviceHandleCandidate);
                     if (errorCode == 0) {
-                        U_DEVICE_INSTANCE(deviceHandleCandidate)->moduleType = pDeviceCfg->deviceCfg.cfgSho.moduleType;
+                        U_DEVICE_INSTANCE(deviceHandleCandidate)->moduleType = localDeviceCfg.deviceCfg.cfgSho.moduleType;
                     }
                     break;
                 default:
                     break;
+            }
+            if (errorCode == 0) {
+                U_DEVICE_INSTANCE(deviceHandleCandidate)->pCfgName = localDeviceCfg.pCfgName;
             }
         }
 
@@ -342,6 +357,8 @@ int32_t uDeviceClose(uDeviceHandle_t devHandle, bool powerOff)
             void *pDeviceType = (void *) deviceType;
             void *pPowerOff = (void *) powerOff;
             errorCode = uDeviceCallback("close", pDeviceType, pPowerOff);
+            // Free any storage allocated for network configuration data
+            uNetworkCfgFree(devHandle);
         }
 
         // ...and done

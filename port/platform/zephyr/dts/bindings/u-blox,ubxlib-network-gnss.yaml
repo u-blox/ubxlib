@@ -1,0 +1,36 @@
+# The device tree bindings that describe a ubxlib network
+# configuration for GNSS; basically uNetworkCfgGnss_t
+# (see /common/network/api/u_network_config_gnss.h) but
+# in .yaml form for Zephyr.
+
+description: "ubxlib network configuration for GNSS."
+
+compatible: "u-blox,ubxlib-network-gnss"
+
+properties:
+# Hidden property: network type
+    do-not-set-network-type:
+       type: int
+       default: 4
+       description: "A hidden property: the application should _not_ set this, just allow it to be the default for a GNSS network (matches U_NETWORK_TYPE_GNSS)."
+# moduleType, chosen from /gnss/api/u_gnss_module_type.h
+# IMPORTANT: if you update this please also update the one in u-blox,ubxlib-device-gnss.yaml
+    module-type:
+        type: string
+        default: "U_GNSS_MODULE_TYPE_ANY"
+        description: "The GNSS module type, ONLY REQUIRED if the GNSS network is being added via a non-GNSS (for example cellular) device."
+        enum:
+            - "U_GNSS_MODULE_TYPE_M8"
+            - "U_GNSS_MODULE_TYPE_M9"
+            - "U_GNSS_MODULE_TYPE_M10"
+            # Add any new module types here, before U_GNSS_MODULE_TYPE_ANY
+            - "U_GNSS_MODULE_TYPE_ANY"
+# devicePinPwr
+    device-pin-pwr:
+        type: int
+        description: "Only relevant if the GNSS network is on a non-GNSS device, for example it is connected via or inside a (for example SARA-R510M8S) cellular module, and that intermediate module is controlling power to GNSS.  This is the pin OF THAT INTERMEDIATE MODULE and NOT of this MCU.  For instance, in the case of a cellular module, GPIO2 is cellular module pin 23 and hence 23 would be used here."
+# devicePinDataReady
+    device-pin-data-ready:
+        type: int
+        description: "Only relevant if the GNSS network is on a non-GNSS device, for example it is connected via or inside a (for example SARA-R510M8S) cellular module, and that intermediate module is connected to the Data Ready pin of GNSS.  This is the pin OF THAT INTERMEDIATE MODULE and NOT of this MCU.  For instance, in the case of a cellular module, GPIO3 is cellular module pin 24 and hence 24 would be used here."
+

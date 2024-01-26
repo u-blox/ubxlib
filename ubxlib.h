@@ -71,8 +71,10 @@
 #include <u_wifi_module_type.h>
 
 // Other common APIs
+#include <u_device_handle.h>
 #include <u_device.h>
 #include <u_device_serial.h>
+#include <u_network_type.h>
 #include <u_network.h>
 #include <u_network_config_ble.h>
 #include <u_network_config_cell.h>

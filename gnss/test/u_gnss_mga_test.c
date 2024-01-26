@@ -42,7 +42,7 @@
  * macro.
  */
 
-#ifdef U_CFG_TEST_GNSS_MODULE_TYPE
+#if defined(U_CFG_TEST_GNSS_MODULE_TYPE) && !defined(U_CFG_TEST_GNSS_ASSIST_NOW_DISABLE)
 
 # ifdef U_CFG_OVERRIDE
 #  include "u_cfg_override.h" // For a customer's configuration override
@@ -1046,7 +1046,7 @@ U_PORT_TEST_FUNCTION("[gnssMga]", "gnssMgaServer")
     U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
-# endif // #if defined(U_CFG_APP_GNSS_ASSIST_NOW_AUTHENTICATION_TOKEN) && defined(U_CFG_TEST_GNSS_MGA) &&
+# endif // #if defined(U_CFG_APP_GNSS_ASSIST_NOW_AUTHENTICATION_TOKEN) && defined(U_CFG_TEST_GNSS_ASSIST_NOW) &&
 // (defined(U_CFG_TEST_CELL_MODULE_TYPE) || defined(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE))
 
 /** Clean-up to be run at the end of this round of tests, just
@@ -1075,6 +1075,6 @@ U_PORT_TEST_FUNCTION("[gnssMga]", "gnssMgaCleanUp")
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
 
-#endif // #if defined(U_CFG_TEST_GNSS_MODULE_TYPE)
+#endif // #if defined(U_CFG_TEST_GNSS_MODULE_TYPE) && !defined(U_CFG_TEST_GNSS_ASSIST_NOW_DISABLE)
 
 // End of file

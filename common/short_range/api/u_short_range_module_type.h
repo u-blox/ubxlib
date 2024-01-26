@@ -36,6 +36,12 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+/* IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT
+ *
+ * NOTE TO MAINTAINERS: if you change this enum you will need to
+ * change u-blox,ubxlib-device-short-range.yaml over in
+ * /port/platform/zephyr/dts/bindings to match.
+ */
 /** The possible types of short range module.
  *
  * IMPORTANT: if you are using U_SHORT_RANGE_MODULE_TYPE_NORA_W36, which
@@ -49,6 +55,8 @@
  *  1. Add an entry to gUShortRangePrivateModuleList in
  *     u_short_range_private.c.
  *  2. Add an entry to #U_SHORT_RANGE_MODULE_LIST() in this file.
+ *  3. Add an entry in the file u-blox,ubxlib-device-short-range.yaml
+ *     over in /port/platform/zephyr/dts/bindings.
  */
 #define U_SHORT_RANGE_MODULE_TYPE_INTERNAL 0
 #ifndef U_UCONNECT_GEN2
@@ -69,6 +77,10 @@
 
 #define U_SHORT_RANGE_MODULE_TYPE_INVALID -1
 #define U_SHORT_RANGE_MODULE_TYPE_UNSUPPORTED -2
+
+/* IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT
+ * See note above about U_SHORT_RANGE_MODULE_TYPE_XXX.
+ */
 
 /** This is a X macro table of the radio features for all supported
  *  short range modules. This is used for automatically generating some
