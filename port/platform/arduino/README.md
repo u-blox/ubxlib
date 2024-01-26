@@ -1,4 +1,4 @@
-*** IMPORTANT: this platform is currently supported but WILL BE DEPRECATED soon and will be REMOVED at the end of 2023: please build for Arduino[ESP32] through [platformio](/port/platform/platformio) instead. ***
+*** IMPORTANT: this platform is now DEPRECATED, it is no longer supported and will be REMOVED in release 1.5, mid 2024: please build for Arduino[ESP32] through [platformio](/port/platform/platformio) instead. ***
 
 # Preface
 This platform allows `ubxlib` to be called from within Arduino code.  It does not provide a C++ API into `ubxlib`, does not "Arduino-ise" the `ubxlib` architecture, i.e. `ubxlib` still requires the RTOS world of tasks, mutexes, queues etc., which is provided in this case by the underlying ESP-IDF SDK.

@@ -82,6 +82,11 @@ def main(source_files, include_paths, platform_type, ubxlib_dir,
     # Make the ubxlib directory absolute, clearer that way
     ubxlib_dir = os.path.abspath(ubxlib_dir)
 
+    print("\n*** IMPORTANT: this platform is now DEPRECATED, it is no longer" \
+          " supported and will be REMOVED in release 1.5, mid 2024: please" \
+          " build for Arduino[ESP32] through /port/platform//platformio)"   \
+          " instead. ***\n")
+
     # Print out what we've been told to do
     text = "Creating an Arduino library version of ubxlib for \"" + \
            platform_type + "\" in \"" + output_dir + "\" with the"  \
@@ -126,6 +131,11 @@ def main(source_files, include_paths, platform_type, ubxlib_dir,
     else:
         print("Done, with errors.")
 
+    print("\n*** IMPORTANT: this platform is now DEPRECATED, it is no longer" \
+          " supported and will be REMOVED in release 1.5, mid 2024: please" \
+          " build for Arduino[ESP32] through /port/platform//platformio)"   \
+          " instead. ***\n")
+
     if saved_path:
         os.chdir(saved_path)
 
@@ -134,7 +144,15 @@ def main(source_files, include_paths, platform_type, ubxlib_dir,
 if __name__ == "__main__":
     PARSER = argparse.ArgumentParser(description="A script to"     \
                                      " create a ubxlib Arduino"    \
-                                     " library.\n")
+                                     " library.\nIMPORTANT: this"   \
+                                     " platform is now DEPRECATED," \
+                                     " it is no longer supported"  \
+                                     " and will be REMOVED in"     \
+                                     " release 1.5, mid 2024:"     \
+                                     " please build for"           \
+                                     " Arduino[ESP32] through"     \
+                                     " [platformio](/port/platform/" \
+                                     "platformio) instead. ***")
     PARSER.add_argument("-p", default="esp-idf", help="the ubxlib" \
                         " platform to use with Arduino, i.e. a"    \
                         " directory name under the ubxlib platform"\

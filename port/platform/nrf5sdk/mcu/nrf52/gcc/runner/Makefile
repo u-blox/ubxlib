@@ -10,6 +10,10 @@ UNITY_PATH ?= $(UBXLIB_PATH)/../Unity
 NRF5_PATH ?= $(UBXLIB_PATH)/../nrf5
 JLINK_SERIAL_NUMBER := 
 
+$(info )
+$(warning *** IMPORTANT: this platform is now DEPRECATED, it is no longer supported and will be REMOVED in release 1.5, mid 2024: please use /port/platform/zephyr instead. ***)
+$(info )
+
 # This is picked up in gcc_startup_nrf52840.S to
 # set the heap size.  If you modify this value then
 # make sure that the value of configTOTAL_HEAP_SIZE

@@ -1,4 +1,4 @@
-*** IMPORTANT: this platform is currently supported but WILL BE DEPRECATED soon and will be REMOVED at the end of 2023: please use [zephyr](/port/platform/zephyr) instead. ***
+*** IMPORTANT: this platform is now DEPRECATED, it is no longer supported and will be REMOVED in release 1.5, mid 2024: please use [zephyr](/port/platform/zephyr) instead. ***
 
 # Introduction
 These directories provide the configuration and build metadata for the NRF52 MCU under the nRF5 SDK.  The configuration here is sufficient to run the `ubxlib` tests and examples, no attempt is made to optimise the MCU RAM/flash etc. sizes, you need to know how to do that yourself.

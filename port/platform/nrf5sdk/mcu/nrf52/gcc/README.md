@@ -1,3 +1,5 @@
+*** IMPORTANT: this platform is now DEPRECATED, it is no longer supported and will be REMOVED in release 1.5, mid 2024: please use [zephyr](/port/platform/zephyr) instead. ***
+
 # Introduction
 This directory and its sub-directories contain the build infrastructure for Nordic NRF52 building under GCC with Make.
 

@@ -1,4 +1,4 @@
-*** IMPORTANT: this platform is currently supported but WILL BE DEPRECATED soon and will be REMOVED at the end of 2023: please use [zephyr](/port/platform/zephyr) instead. ***
+*** IMPORTANT: this platform is now DEPRECATED, it is no longer supported and will be REMOVED in release 1.5, mid 2024: please use [zephyr](/port/platform/zephyr) instead. ***
 
 # Introduction
 These directories provide the implementation of the porting layer on the Nordic nRF5 platform.  Instructions on how to install the necessary tools and perform the build can be found in the MCU directories below.
