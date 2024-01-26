@@ -47,3 +47,9 @@
   fun:uDebugUtilsInitInactivityDetector
   ...
 }
+{
+  uDeviceIsValidInstance() deliberately checks a potentially uninitialised integer for a magic number
+  Memcheck:Addr4
+  fun:uDeviceIsValidInstance
+  ...
+}
