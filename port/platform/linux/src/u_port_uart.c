@@ -149,16 +149,16 @@ static void eventHandler(void *pParam, size_t paramLength)
 static void readTask(void *pParam)
 {
     uPortUartData_t *p = (uPortUartData_t *)pParam;
-    struct timeval tv = {0};
-
-    // Initiate a set for select operation.
-    fd_set set;
-    tv.tv_usec = U_CFG_OS_YIELD_MS * 1000;
     // Need a brief pause before calling select after open.
     uPortTaskBlock(10);
     while (!p->markedForDeletion) {
+        // Initiate a set for select operation.
+        fd_set set;
         FD_ZERO(&set);
         FD_SET(p->uartFd, &set);
+        // Select timeout
+        struct timeval tv = {0};
+        tv.tv_usec = U_CFG_OS_YIELD_MS * 1000;
         // Wait for input
         int res = select(p->uartFd + 1, &set, NULL, NULL, &tv);
         if (res > 0) {
