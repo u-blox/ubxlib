@@ -446,6 +446,7 @@ typedef struct uCellPrivateInstance_t {
     networkStatus[U_CELL_PRIVATE_NET_REG_TYPE_MAX_NUM]; /**< Registation status for each type, separating CREG, CGREG and CEREG. */
     uCellNetRat_t
     rat[U_CELL_PRIVATE_NET_REG_TYPE_MAX_NUM];  /**< The active RAT for each registration type. */
+    int32_t lastEmmRejectCause; /**< Used by uCellNetGetLastEmmRejectCause() only. */
     uCellPrivateRadioParameters_t radioParameters; /**< The radio parameters. */
     int32_t startTimeMs;     /**< Used while connecting and scanning. */
     int32_t connectedAtMs;   /**< When a connection was last established,

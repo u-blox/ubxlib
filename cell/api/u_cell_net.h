@@ -761,6 +761,22 @@ int32_t uCellNetSetBaseStationConnectionStatusCallback(uDeviceHandle_t cellHandl
 uCellNetStatus_t uCellNetGetNetworkStatus(uDeviceHandle_t cellHandle,
                                           uCellNetRegDomain_t domain);
 
+/** Get the last EMM reject cause value sent by the network; not
+ * supported by all module types (for example SARA-R4 series
+ * modules do not support this).  If there is nothing to report
+ * zero will be returned.  Note that the error may have
+ * occurred some time in the past, e.g. you may be successfully
+ * registered but if, on the way, you were temporarily denied
+ * service then this function will likely return the reason for
+ * that denial (e.g. 11 for "PLMN not allowed"), rather than zero.
+ *
+ * @param cellHandle  the handle of the cellular instance.
+ * @return            on success the last EMM cause from the network,
+ *                    see appendix A.3 of the AT commands manual,
+ *                    else negative error code.
+ */
+int32_t uCellNetGetLastEmmRejectCause(uDeviceHandle_t cellHandle);
+
 /** Get a value indicating whether the module is registered on
  * the network, roaming or home networks.
  *

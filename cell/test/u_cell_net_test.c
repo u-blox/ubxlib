@@ -206,6 +206,7 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetConnectDisconnectPlus")
     char parameter1[5]; // enough room for "Boo!"
     char parameter2[5]; // enough room for "Bah!"
     int32_t resourceCount;
+    int32_t networkCause;
 
     strncpy(parameter1, "Boo!", sizeof(parameter1));
     strncpy(parameter2, "Bah!", sizeof(parameter2));
@@ -271,6 +272,12 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetConnectDisconnectPlus")
     } else {
         U_PORT_TEST_ASSERT(x < 0);
     }
+
+    // Get the network cause
+    networkCause = uCellNetGetLastEmmRejectCause(cellHandle);
+    U_TEST_PRINT_LINE("network cause is %d.", networkCause);
+    U_PORT_TEST_ASSERT((networkCause == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) ||
+                       (networkCause == 0));
 
     // Connect with a very short time-out to show that aborts work
     U_TEST_PRINT_LINE("testing abort of connection attempt due to timeout.");
@@ -344,6 +351,12 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetConnectDisconnectPlus")
         U_PORT_TEST_ASSERT(!gConnectCallbackCalled);
         U_PORT_TEST_ASSERT(!gHasBeenConnected);
     }
+
+    // Get the network cause
+    networkCause = uCellNetGetLastEmmRejectCause(cellHandle);
+    U_TEST_PRINT_LINE("network cause is now %d.", networkCause);
+    U_PORT_TEST_ASSERT((networkCause == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) ||
+                       (networkCause == 0));
 
     // Check that we have an active RAT
     // Note: can't check that it's the right one for this module
@@ -464,6 +477,12 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetConnectDisconnectPlus")
         // will have deactivated what we had and been unable to
         // activate the new one
         U_PORT_TEST_ASSERT(uCellNetGetIpAddressStr(cellHandle, buffer) < 0);
+
+        // Get the network cause
+        networkCause = uCellNetGetLastEmmRejectCause(cellHandle);
+        U_TEST_PRINT_LINE("network cause with incorrect APN is %d.", networkCause);
+        U_PORT_TEST_ASSERT((networkCause == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) ||
+                           (networkCause > 0));
     }
 #endif
 
@@ -510,6 +529,7 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetScanRegActDeact")
     int32_t y = 0;
     uCellNetRat_t rat = U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED;
     int32_t resourceCount;
+    int32_t networkCause;
 
     // In case a previous test failed
     uCellTestPrivateCleanup(&gHandles);
@@ -629,6 +649,12 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetScanRegActDeact")
     U_PORT_TEST_ASSERT(y > 0);
     U_PORT_TEST_ASSERT(strlen(buffer) == y);
 
+    // Get the network cause
+    networkCause = uCellNetGetLastEmmRejectCause(cellHandle);
+    U_TEST_PRINT_LINE("network cause is %d.", networkCause);
+    U_PORT_TEST_ASSERT((networkCause == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) ||
+                       (networkCause == 0));
+
     // Deactivate the context
     rat = uCellNetGetActiveRat(cellHandle);
     U_TEST_PRINT_LINE("deactivating context...");
@@ -734,6 +760,12 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetScanRegActDeact")
         U_PORT_TEST_ASSERT(y < 0);
         // Get the IP address.
         U_PORT_TEST_ASSERT(uCellNetGetIpAddressStr(cellHandle, buffer) < 0);
+
+        // Get the network cause
+        networkCause = uCellNetGetLastEmmRejectCause(cellHandle);
+        U_TEST_PRINT_LINE("network cause with incorrect APN is %d.", networkCause);
+        U_PORT_TEST_ASSERT((networkCause == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) ||
+                           (networkCause > 0));
     }
 #endif
 
@@ -788,6 +820,12 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetScanRegActDeact")
     U_PORT_TEST_ASSERT(y > 0);
     U_PORT_TEST_ASSERT(strlen(buffer) == y);
 
+    // Get the network cause
+    networkCause = uCellNetGetLastEmmRejectCause(cellHandle);
+    U_TEST_PRINT_LINE("network cause is now %d.", networkCause);
+    U_PORT_TEST_ASSERT((networkCause == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) ||
+                       (networkCause == 0));
+
     // Disconnect
     U_PORT_TEST_ASSERT(uCellNetDisconnect(cellHandle, NULL) == 0);
 
@@ -841,6 +879,12 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetScanRegActDeact")
     y = uCellNetGetIpAddressStr(cellHandle, buffer);
     U_PORT_TEST_ASSERT(y > 0);
     U_PORT_TEST_ASSERT(strlen(buffer) == y);
+
+    // Get the network cause
+    networkCause = uCellNetGetLastEmmRejectCause(cellHandle);
+    U_TEST_PRINT_LINE("network cause is finally %d.", networkCause);
+    U_PORT_TEST_ASSERT((networkCause == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) ||
+                       (networkCause == 0));
 
     // Disconnect
     U_TEST_PRINT_LINE("disconnecting...");

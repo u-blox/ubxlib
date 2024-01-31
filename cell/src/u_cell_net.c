@@ -95,6 +95,13 @@
 */
 #define U_CELL_NET_CREG_OR_CGREG_TYPE 2
 
+#ifndef U_CELL_NET_CEER_MAX_NUM
+/** A guard to prevent us waiting for too long for
+ * information-response lines to AT+CMEER.
+ */
+# define U_CELL_NET_CEER_MAX_NUM 3
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -1061,6 +1068,167 @@ static int32_t readNextScanItem(uCellPrivateInstance_t *pInstance,
     return errorCodeOrNumber;
 }
 
+// Read the last EMM cause sent by the network.
+static int32_t getEmmRejectCause(const uCellPrivateInstance_t *pInstance)
+{
+    int32_t errorCodeOrEmmCause = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+    uAtClientHandle_t atHandle = pInstance->atHandle;
+    uAtClientDeviceError_t deviceError;
+    int32_t cause;
+    bool gotAnEmmCause = false;
+    char buffer[32]; // Enough room for "EMM cause"
+
+    if (!U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType)) {
+        // Return 0 if there's nothing to get
+        errorCodeOrEmmCause = 0;
+        deviceError.type = U_AT_CLIENT_DEVICE_ERROR_TYPE_NO_ERROR;
+        uAtClientLock(atHandle);
+        uAtClientTimeoutSet(atHandle,
+                            pInstance->pModule->responseMaxWaitMs);
+        uAtClientCommandStart(atHandle, "AT+CEER");
+        uAtClientCommandStop(atHandle);
+        // Should get back, potentially multiple lines of,
+        // +CEER: <type>[,<cause>,<error_description>]
+        // The potential multiple lines is what leads to the complicated
+        // construction here.
+        for (size_t x = 0; (x < U_CELL_NET_CEER_MAX_NUM) &&
+             !gotAnEmmCause &&
+             (deviceError.type == U_AT_CLIENT_DEVICE_ERROR_TYPE_NO_ERROR);
+             x++) {
+            uAtClientResponseStart(atHandle, "+CEER:");
+            // Read <type>
+            uAtClientReadString(atHandle, buffer, sizeof(buffer), false);
+            // Read <cause>
+            cause = uAtClientReadInt(atHandle);
+            // Skip <error_description>
+            uAtClientSkipParameters(atHandle, 1);
+            if ((cause >= 0) &&
+                (strncmp(buffer, "EMM cause", sizeof(buffer)) == 0)) {
+                gotAnEmmCause = true;
+                errorCodeOrEmmCause = cause;
+            }
+            // Check for errors as we spin around
+            uAtClientDeviceErrorGet(atHandle, &deviceError);
+        }
+        uAtClientResponseStop(atHandle);
+        uAtClientUnlock(atHandle);
+        if (deviceError.type != U_AT_CLIENT_DEVICE_ERROR_TYPE_NO_ERROR) {
+            // If we got an error response while spinning, over-write
+            errorCodeOrEmmCause = (int32_t) U_CELL_ERROR_AT;
+        }
+    }
+
+    return errorCodeOrEmmCause;
+}
+
+// Handle the response to the CxREG command, where regType
+// is an index into gRegTypes[].
+static void handleCxRegResponse(uCellPrivateInstance_t *pInstance, int32_t regType)
+{
+    uCellNetStatus_t status = U_CELL_NET_STATUS_UNKNOWN;
+    uAtClientHandle_t atHandle = pInstance->atHandle;
+    int32_t firstInt;
+    int32_t status3gpp;
+    int32_t skippedParameters = 1;
+    int32_t rat3gpp = -1;
+    bool gotUrc = false;
+    char buffer[U_CELL_PRIVATE_CELL_ID_LOGICAL_SIZE + 1]; // +1 for terminator
+
+    uAtClientResponseStart(atHandle, gRegTypes[regType].pResponseStr);
+
+    // It is possible for the module to spit-out
+    // a "+CxREG: y" URC while we're waiting for
+    // the "+CxREG: x,y" response from the AT+CxREG
+    // command. So the first integer might either by the mode
+    // we set, <n>, being sent back to us or it might be the
+    // <status> value of the URC.  The dodge to distinguish the
+    // two is based on the fact that our values for <n> match status
+    // values that mean "not registered", so we can do this:
+    // (a) if the first integer matches the <n>/mode
+    //     parameter from the AT+CxREG=<n>,... command, then either
+    //     i)  this is the response we were expecting and
+    //         the status etc. parameters follow, or,
+    //     ii) this is a URC with a value indicating we are not
+    //         registered and hence will not be followed
+    //         by any further parameters,
+    // (b) if the first integer does not match <n> then this
+    //     is a URC and the first integer is the <status> value.
+
+    // ...except if this is LENA-R8 which, just to be different,
+    // and only for the +CREG command, omits the <n> for both the
+    // information response and the URC cases.
+    if ((regType != 0 /* not CREG */) ||
+        (pInstance->pModule->moduleType != U_CELL_MODULE_TYPE_LENA_R8)) {
+        firstInt = uAtClientReadInt(atHandle);
+        status3gpp = uAtClientReadInt(atHandle);
+        if ((firstInt == U_CELL_NET_CREG_OR_CGREG_TYPE) ||
+            (firstInt == U_CELL_NET_CEREG_TYPE)) {
+            // case (a.i) or (a.ii)
+            if (status3gpp < 0) {
+                // case (a.ii)
+                gotUrc = true;
+                status3gpp = firstInt;
+                uAtClientClearError(atHandle);
+            }
+        } else {
+            // case (b), it's the URC
+            gotUrc = true;
+            status3gpp = firstInt;
+        }
+    } else {
+        // LENA-R8 +CREG information response
+        status3gpp = uAtClientReadInt(atHandle);
+    }
+    if (gotUrc) {
+        // Read the actual response, which should follow
+        uAtClientResponseStart(atHandle,
+                               gRegTypes[regType].pResponseStr);
+        uAtClientReadInt(atHandle);
+        status3gpp = uAtClientReadInt(atHandle);
+    }
+    if ((status3gpp >= 0) &&
+        (status3gpp < (int32_t) (sizeof(g3gppStatusToCellStatus) /
+                                 sizeof(g3gppStatusToCellStatus[0])))) {
+        status = g3gppStatusToCellStatus[status3gpp];
+    }
+    if (U_CELL_NET_STATUS_MEANS_REGISTERED(status)) {
+        // Skip <lac>/<tac>
+        if ((regType == 2 /* CEREG */) && (gRegTypes[regType].type == 4) &&
+            (((pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R410M_02B) ||
+              (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R412M_02B)) ||
+             ((pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_LARA_R6) &&
+              !gotUrc))) {
+            // SARA-R41x-02B modules, and LARA-R6 modules but only in the
+            // non-URC case, sneak an extra <rac_or_mme> parameter in between
+            // <tac> and <ci> when U_CELL_NET_CEREG_TYPE is 4 so we need to
+            // skip an additional parameter
+            skippedParameters++;
+        }
+        uAtClientSkipParameters(atHandle, skippedParameters);
+        // Read CI, which is hex, encoded as an 8-digit string
+        if (uAtClientReadString(atHandle, buffer, sizeof(buffer), false) > 0) {
+            pInstance->radioParameters.cellIdLogical = strtol(buffer, NULL, 16);
+        }
+        // Read the RAT that we're on
+        rat3gpp = uAtClientReadInt(atHandle);
+        if (rat3gpp < 0) {
+            if (regType == 2 /* CEREG */) {
+                // LARA-R6 sometime misses out the RAT in the +CEREG
+                // response; we need something...
+                rat3gpp = 7; // LTE
+            } else if (regType == 1 /* CGREG */) {
+                // LENA-R8 frequently misses out the RAT in the +CGREG
+                // response; we need something...
+                rat3gpp = 3; // GSM/GPRS/EDGE
+            }
+        }
+    }
+    // Set the status
+    setNetworkStatus(pInstance, status, rat3gpp, regType, false);
+
+    uAtClientResponseStop(atHandle);
+}
+
 // Register with the cellular network
 static int32_t registerNetwork(uCellPrivateInstance_t *pInstance,
                                const char *pMccMnc)
@@ -1069,14 +1237,7 @@ static int32_t registerNetwork(uCellPrivateInstance_t *pInstance,
     uAtClientHandle_t atHandle = pInstance->atHandle;
     bool keepGoing = true;
     int32_t regType;
-    int32_t firstInt;
-    int32_t status3gpp;
-    uCellNetStatus_t status;
-    int32_t skippedParameters = 1;
-    int32_t rat3gpp = -1;
-    bool gotUrc;
     size_t errorCount = 0;
-    char buffer[U_CELL_PRIVATE_CELL_ID_LOGICAL_SIZE + 1]; // +1 for terminator
 
     // Come out of airplane mode and try to register
     // Wait for flip time to expire first though
@@ -1157,104 +1318,13 @@ static int32_t registerNetwork(uCellPrivateInstance_t *pInstance,
             // one at a time.
             if (gRegTypes[regType].supportedRatsBitmap &
                 pInstance->pModule->supportedRatsBitmap) {
-                status = U_CELL_NET_STATUS_UNKNOWN;
                 uAtClientLock(atHandle);
                 uAtClientTimeoutSet(atHandle,
                                     pInstance->pModule->responseMaxWaitMs);
                 uAtClientCommandStart(atHandle, gRegTypes[regType].pQueryStr);
                 uAtClientCommandStop(atHandle);
-                uAtClientResponseStart(atHandle, gRegTypes[regType].pResponseStr);
-                // It is possible for the module to spit-out
-                // a "+CxREG: y" URC while we're waiting for
-                // the "+CxREG: x,y" response from the AT+CxREG
-                // command. So the first integer might either by the mode
-                // we set, <n>, being sent back to us or it might be the
-                // <status> value of the URC.  The dodge to distinguish the
-                // two is based on the fact that our values for <n> match status
-                // values that mean "not registered", so we can do this:
-                // (a) if the first integer matches the <n>/mode
-                //     parameter from the AT+CxREG=<n>,... command, then either
-                //     i)  this is the response we were expecting and
-                //         the status etc. parameters follow, or,
-                //     ii) this is a URC with a value indicating we are not
-                //         registered and hence will not be followed
-                //         by any further parameters,
-                // (b) if the first integer does not match <n> then this
-                //     is a URC and the first integer is the <status> value.
-
-                // ...except if this is LENA-R8 which, just to be different,
-                // and only for the +CREG command, omits the <n> for both the
-                // information response and the URC cases.
-                gotUrc = false;
-                if ((regType != 0 /* not CREG */) ||
-                    (pInstance->pModule->moduleType != U_CELL_MODULE_TYPE_LENA_R8)) {
-                    firstInt = uAtClientReadInt(atHandle);
-                    status3gpp = uAtClientReadInt(atHandle);
-                    if ((firstInt == U_CELL_NET_CREG_OR_CGREG_TYPE) ||
-                        (firstInt == U_CELL_NET_CEREG_TYPE)) {
-                        // case (a.i) or (a.ii)
-                        if (status3gpp < 0) {
-                            // case (a.ii)
-                            gotUrc = true;
-                            status3gpp = firstInt;
-                            uAtClientClearError(atHandle);
-                        }
-                    } else {
-                        // case (b), it's the URC
-                        gotUrc = true;
-                        status3gpp = firstInt;
-                    }
-                } else {
-                    // LENA-R8 +CREG information response
-                    status3gpp = uAtClientReadInt(atHandle);
-                }
-                if (gotUrc) {
-                    // Read the actual response, which should follow
-                    uAtClientResponseStart(atHandle,
-                                           gRegTypes[regType].pResponseStr);
-                    uAtClientReadInt(atHandle);
-                    status3gpp = uAtClientReadInt(atHandle);
-                }
-                if ((status3gpp >= 0) &&
-                    (status3gpp < (int32_t) (sizeof(g3gppStatusToCellStatus) /
-                                             sizeof(g3gppStatusToCellStatus[0])))) {
-                    status = g3gppStatusToCellStatus[status3gpp];
-                }
-                if (U_CELL_NET_STATUS_MEANS_REGISTERED(status)) {
-                    // Skip <lac>/<tac>
-                    if ((regType == 2 /* CEREG */) && (gRegTypes[regType].type == 4) &&
-                        (((pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R410M_02B) ||
-                          (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R412M_02B)) ||
-                         ((pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_LARA_R6) &&
-                          !gotUrc))) {
-                        // SARA-R41x-02B modules, and LARA-R6 modules but only in the
-                        // non-URC case, sneak an extra <rac_or_mme> parameter in between
-                        // <tac> and <ci> when U_CELL_NET_CEREG_TYPE is 4 so we need to
-                        // skip an additional parameter
-                        skippedParameters++;
-                    }
-                    uAtClientSkipParameters(atHandle, skippedParameters);
-                    // Read CI, which is hex, encoded as an 8-digit string
-                    if (uAtClientReadString(atHandle, buffer, sizeof(buffer), false) > 0) {
-                        pInstance->radioParameters.cellIdLogical = strtol(buffer, NULL, 16);
-                    }
-                    // Read the RAT that we're on
-                    rat3gpp = uAtClientReadInt(atHandle);
-                    if (rat3gpp < 0) {
-                        if (regType == 2 /* CEREG */) {
-                            // LARA-R6 sometime misses out the RAT in the +CEREG
-                            // response; we need something...
-                            rat3gpp = 7; // LTE
-                        } else if (regType == 1 /* CGREG */) {
-                            // LENA-R8 frequently misses out the RAT in the +CGREG
-                            // response; we need something...
-                            rat3gpp = 3; // GSM/GPRS/EDGE
-                        }
-                    }
-                }
-                // Set the status
-                setNetworkStatus(pInstance, status, rat3gpp, regType, false);
-                uAtClientResponseStop(atHandle);
+                // Handle the response to the CxREG command
+                handleCxRegResponse(pInstance, regType);
                 if (uAtClientUnlock(atHandle) != 0) {
                     // We're prodding the module pretty often
                     // while it is busy, it is possible for
@@ -2453,6 +2523,9 @@ int32_t uCellNetConnect(uDeviceHandle_t cellHandle,
                     } while ((errorCode != 0) && (pApnConfig != NULL) &&
                              (*pApnConfig != '\0') && keepGoingLocalCb(pInstance));
 
+                    // Populate, or reset, the last EMM cause
+                    pInstance->lastEmmRejectCause = getEmmRejectCause(pInstance);
+
                     if (errorCode == 0) {
                         // Remember the MCC/MNC in case we need to deactivate
                         // and reactivate context later and that causes
@@ -2478,7 +2551,6 @@ int32_t uCellNetConnect(uDeviceHandle_t cellHandle,
                     // Take away the callback again
                     pInstance->pKeepGoingCallback = NULL;
                     pInstance->startTimeMs = 0;
-
                 }
             } else {
                 uPortLog("U_CELL_NET: already connected.\n");
@@ -2543,6 +2615,9 @@ int32_t uCellNetRegister(uDeviceHandle_t cellHandle,
                     errorCode = waitAttach(pInstance);
                 }
 
+                // Populate, or reset, the last EMM cause
+                pInstance->lastEmmRejectCause = getEmmRejectCause(pInstance);
+
                 if (errorCode == 0) {
                     // Remember the MCC/MNC in case we need to deactivate
                     // and reactivate context later and that causes
@@ -2566,7 +2641,6 @@ int32_t uCellNetRegister(uDeviceHandle_t cellHandle,
                 // Take away the callback again
                 pInstance->pKeepGoingCallback = NULL;
                 pInstance->startTimeMs = 0;
-
             }
         }
 
@@ -2691,6 +2765,8 @@ int32_t uCellNetActivate(uDeviceHandle_t cellHandle,
                                         // be registered but not attached.
                                         errorCode = waitAttach(pInstance);
                                     }
+                                    // Update again, in case of failure
+                                    pInstance->lastEmmRejectCause = getEmmRejectCause(pInstance);
                                     if (errorCode != 0) {
                                         // Switch radio off after failure
                                         radioOff(pInstance);
@@ -2782,6 +2858,8 @@ int32_t uCellNetDeactivate(uDeviceHandle_t cellHandle,
                 if (errorCode != 0) {
                     uPortLog("U_CELL_NET: unable to deactivate context.\n");
                 }
+                // Populate, or reset, the last EMM cause
+                pInstance->lastEmmRejectCause = getEmmRejectCause(pInstance);
             }
         }
 
@@ -2834,6 +2912,8 @@ int32_t uCellNetDisconnect(uDeviceHandle_t cellHandle,
             } else {
                 uPortLog("U_CELL_NET: unable to disconnect.\n");
             }
+            // Populate, or reset, the last EMM cause
+            pInstance->lastEmmRejectCause = getEmmRejectCause(pInstance);
         }
 
         U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
@@ -3253,6 +3333,35 @@ uCellNetStatus_t uCellNetGetNetworkStatus(uDeviceHandle_t cellHandle,
     }
 
     return (uCellNetStatus_t) errorCodeOrStatus;
+}
+
+// Get the last EMM cause sent by the network.
+int32_t uCellNetGetLastEmmRejectCause(uDeviceHandle_t cellHandle)
+{
+    int32_t errorCodeOrEmmCause = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance;
+
+    if (gUCellPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        pInstance = pUCellPrivateGetInstance(cellHandle);
+        errorCodeOrEmmCause = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        if (pInstance != NULL) {
+            // Retrieve the stored value, which may hold a
+            // reject cause from a registration atttempt
+            errorCodeOrEmmCause = pInstance->lastEmmRejectCause;
+            if (errorCodeOrEmmCause == 0) {
+                // If there wasn't a stored value, check again
+                // in case something has happened since
+                errorCodeOrEmmCause = getEmmRejectCause(pInstance);
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return errorCodeOrEmmCause;
 }
 
 // Get a value whether the module is registered on the network.
