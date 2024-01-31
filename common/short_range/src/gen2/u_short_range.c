@@ -407,7 +407,7 @@ uShortRangeModuleType_t uShortRangeDetectModule(uDeviceHandle_t devHandle)
     uCxHandle_t *pUcxHandle = pShortRangePrivateGetUcxHandle(devHandle);
     if (pUcxHandle != NULL) {
         const char *pIdStr;
-        if (uCxBeginGeneralGetDeviceModelIdentification(pUcxHandle, &pIdStr)) {
+        if (uCxGeneralGetDeviceModelIdentificationBegin(pUcxHandle, &pIdStr)) {
             for (int32_t i = 0; i < (int32_t)gModuleInfoCount; ++i) {
                 if (!strncmp(pIdStr, gModuleInfo[i].pName, strlen(gModuleInfo[i].pName))) {
                     moduleType = gModuleInfo[i].moduleType;
@@ -459,7 +459,7 @@ int32_t uShortRangeGetFirmwareVersionStr(uDeviceHandle_t devHandle,
     uCxHandle_t *pUcxHandle = pShortRangePrivateGetUcxHandle(devHandle);
     if (pUcxHandle != NULL) {
         const char *pVersion;
-        if (uCxBeginGeneralGetSoftwareVersion(pUcxHandle, &pVersion)) {
+        if (uCxGeneralGetSoftwareVersionBegin(pUcxHandle, &pVersion)) {
             memset(pStr, 0, size);
             strncpy(pStr, pVersion, size - 1);
             errorCodeOrLength = strlen(pVersion);
@@ -476,7 +476,7 @@ int32_t uShortRangeGetSerialNumber(uDeviceHandle_t devHandle, char *pSerialNumbe
     uCxHandle_t *pUcxHandle = pShortRangePrivateGetUcxHandle(devHandle);
     if (pUcxHandle != NULL) {
         const char *pSerial;
-        if (uCxBeginGeneralGetSerialNumber(pUcxHandle, &pSerial)) {
+        if (uCxGeneralGetSerialNumberBegin(pUcxHandle, &pSerial)) {
             strcpy(pSerialNumber, pSerial);
             errorCodeOrLength = strlen(pSerial);
         }

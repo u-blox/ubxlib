@@ -243,11 +243,11 @@ int32_t uWifiSockInitInstance(uDeviceHandle_t devHandle)
     int32_t errorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
     uCxHandle_t *pUcxHandle = pShortRangePrivateGetUcxHandle(devHandle);
     if (pUcxHandle != NULL) {
-        uCxUrcRegisterSocketConnect(pUcxHandle, socketConnectCallback);
-        uCxUrcRegisterSocketDataAvailable(pUcxHandle, socketDataCallback);
-        uCxUrcRegisterSocketClosed(pUcxHandle, socketClosedCallback);
-        uCxUrcRegisterSocketIncommingConnection(pUcxHandle,
-                                                socketIncomingConnectCallback);
+        uCxSocketRegisterConnect(pUcxHandle, socketConnectCallback);
+        uCxSocketRegisterDataAvailable(pUcxHandle, socketDataCallback);
+        uCxSocketRegisterClosed(pUcxHandle, socketClosedCallback);
+        uCxSocketRegisterIncomingConnection(pUcxHandle,
+                                            socketIncomingConnectCallback);
         errorCode = (int32_t)U_ERROR_COMMON_SUCCESS;
     }
     return errorCode;
@@ -258,9 +258,9 @@ int32_t uWifiSockDeinitInstance(uDeviceHandle_t devHandle)
     int32_t errorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
     uCxHandle_t *pUcxHandle = pShortRangePrivateGetUcxHandle(devHandle);
     if (pUcxHandle != NULL) {
-        uCxUrcRegisterSocketConnect(pUcxHandle, NULL);
-        uCxUrcRegisterSocketDataAvailable(pUcxHandle, NULL);
-        uCxUrcRegisterSocketClosed(pUcxHandle, NULL);
+        uCxSocketRegisterConnect(pUcxHandle, NULL);
+        uCxSocketRegisterDataAvailable(pUcxHandle, NULL);
+        uCxSocketRegisterClosed(pUcxHandle, NULL);
         errorCode = (int32_t)U_ERROR_COMMON_SUCCESS;
     }
     return errorCode;
@@ -333,8 +333,10 @@ int32_t uWifiSockConnect(uDeviceHandle_t devHandle,
         errorCode = uCxSocketConnect(pUcxHandle, pUWiFiSocket->uCxSockHandle,
                                      addrString, pRemoteAddress->port);
         if (errorCode >= 0 && pUWiFiSocket->protocol == U_SOCK_PROTOCOL_TCP) {
-            errorCode = uPortSemaphoreTryTake(pUWiFiSocket->semaphore,
-                                              U_SOCK_DEFAULT_RECEIVE_TIMEOUT_MS);
+            // *** UCX WORKAROUND FIX ***
+            // The timeout for a connection in the under laying LWIP is longer
+            // than U_SOCK_DEFAULT_RECEIVE_TIMEOUT_MS so we use an explict value here, 30s.
+            errorCode = uPortSemaphoreTryTake(pUWiFiSocket->semaphore, 30000);
         }
     }
     return errorCode;
@@ -463,8 +465,8 @@ int32_t uWifiSockWrite(uDeviceHandle_t devHandle,
     uCxHandle_t *pUcxHandle = pShortRangePrivateGetUcxHandle(devHandle);
     uWifiSocket_t *pUWiFiSocket = getSocketByHandle(sockHandle);
     if ((pUcxHandle != NULL) && (pUWiFiSocket != NULL)) {
-        errorCodeOrLength = uCxSocketWriteBinary(pUcxHandle, pUWiFiSocket->uCxSockHandle,
-                                                 (uint8_t *)pData, dataSizeBytes);
+        errorCodeOrLength = uCxSocketWrite(pUcxHandle, pUWiFiSocket->uCxSockHandle,
+                                           (uint8_t *)pData, dataSizeBytes);
     }
     return errorCodeOrLength;
 }
@@ -479,8 +481,8 @@ int32_t uWifiSockRead(uDeviceHandle_t devHandle,
     if ((pUcxHandle != NULL) && (pUWiFiSocket != NULL)) {
         // ucx limit
         dataSizeBytes = MIN(dataSizeBytes, 1000);
-        errorCodeOrLength = uCxSocketReadBinary(pUcxHandle, pUWiFiSocket->uCxSockHandle,
-                                                dataSizeBytes, pData);
+        errorCodeOrLength = uCxSocketRead(pUcxHandle, pUWiFiSocket->uCxSockHandle,
+                                          dataSizeBytes, pData);
     }
     if (errorCodeOrLength == 0) {
         // If there is no data available we must return U_SOCK_EWOULDBLOCK

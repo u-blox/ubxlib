@@ -137,9 +137,9 @@ int32_t uBleGattDiscoverServices(uDeviceHandle_t devHandle, int32_t connHandle,
     int32_t errorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
     uCxHandle_t *pUcxHandle = pShortRangePrivateGetUcxHandle(devHandle);
     if ((pUcxHandle != NULL) && (cb != NULL)) {
-        uCxBeginGattClientDiscoverPrimaryServices(pUcxHandle, connHandle);
+        uCxGattClientDiscoverPrimaryServicesBegin(pUcxHandle, connHandle);
         uCxGattClientDiscoverPrimaryServices_t resp;
-        while (uCxGattClientDiscoverPrimaryServicesGetResponse(pUcxHandle, &resp)) {
+        while (uCxGattClientDiscoverPrimaryServicesGetNext(pUcxHandle, &resp)) {
             char *pUuid;
             if (binToHex(resp.uuid.pData, resp.uuid.length, &pUuid)) {
                 cb(connHandle, resp.start_handle, resp.end_handle, pUuid);
@@ -158,9 +158,9 @@ int32_t uBleGattDiscoverChar(uDeviceHandle_t devHandle,
     int32_t errorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
     uCxHandle_t *pUcxHandle = pShortRangePrivateGetUcxHandle(devHandle);
     if ((pUcxHandle != NULL) && (cb != NULL)) {
-        uCxBeginGattClientDiscoverServiceChars(pUcxHandle, connHandle, 1, 65535);
+        uCxGattClientDiscoverServiceCharsBegin(pUcxHandle, connHandle, 1, 65535);
         uCxGattClientDiscoverServiceChars_t resp;
-        while (uCxGattClientDiscoverServiceCharsGetResponse(pUcxHandle, &resp)) {
+        while (uCxGattClientDiscoverServiceCharsGetNext(pUcxHandle, &resp)) {
             char *pUuid;
             if (binToHex(resp.uuid.pData, resp.uuid.length, &pUuid)) {
                 cb(connHandle, resp.attr_handle, resp.properties.pData[0], resp.value_handle, pUuid);
@@ -196,7 +196,7 @@ int32_t uBleGattSetNotificationCallback(uDeviceHandle_t devHandle,
             errorCode = checkCreateBleContext(pInstance);
             if (errorCode == 0) {
                 ((uBleDeviceState_t *)(pInstance->pBleContext))->notifyCallback = cb;
-                uCxUrcRegisterGattClientNotification(pUcxHandle, notificationCallback);
+                uCxGattClientRegisterNotification(pUcxHandle, notificationCallback);
                 errorCode = (int32_t)U_ERROR_COMMON_SUCCESS;
             }
         }
@@ -217,7 +217,7 @@ int32_t uBleGattSetWriteCallback(uDeviceHandle_t devHandle,
             errorCode = checkCreateBleContext(pInstance);
             if (errorCode == 0) {
                 ((uBleDeviceState_t *)(pInstance->pBleContext))->writeCallback = cb;
-                uCxUrcRegisterGattServerNotification(pUcxHandle, writeCallback);
+                uCxGattServerRegisterNotification(pUcxHandle, writeCallback);
                 errorCode = (int32_t)U_ERROR_COMMON_SUCCESS;
             }
         }
@@ -233,14 +233,14 @@ int32_t uBleGattReadValue(uDeviceHandle_t devHandle,
     int32_t errorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
     uCxHandle_t *pUcxHandle = pShortRangePrivateGetUcxHandle(devHandle);
     if (pUcxHandle != NULL) {
-        uCxGattClientRead_t resp;
-        errorCode = uCxBeginGattClientRead(pUcxHandle, connHandle, valueHandle, &resp);
+        uByteArray_t resp;
+        errorCode = uCxGattClientReadBegin(pUcxHandle, connHandle, valueHandle, &resp);
         if (errorCode == 0) {
-            int32_t len = resp.hex_data.length;
+            int32_t len = resp.length;
             if (len > valueLength) {
                 len = valueLength;
             }
-            memcpy(pValue, resp.hex_data.pData, len);
+            memcpy(pValue, resp.pData, len);
         }
         errorCode = uCxEnd(pUcxHandle);
     }

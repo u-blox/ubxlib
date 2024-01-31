@@ -134,8 +134,8 @@ int32_t uBleGapSetConnectCallback(uDeviceHandle_t devHandle, uBleGapConnectCallb
             errorCode = checkCreateBleContext(pInstance);
             if (errorCode == 0) {
                 ((uBleDeviceState_t *)(pInstance->pBleContext))->connectCallback = cb;
-                uCxUrcRegisterBluetoothConnect(pUcxHandle, bleConnectCallback);
-                uCxUrcRegisterBluetoothDisconnect(pUcxHandle, bleDisconnectCallback);
+                uCxBluetoothRegisterConnect(pUcxHandle, bleConnectCallback);
+                uCxBluetoothRegisterDisconnect(pUcxHandle, bleDisconnectCallback);
                 errorCode = (int32_t)U_ERROR_COMMON_SUCCESS;
             }
         }
@@ -164,14 +164,12 @@ int32_t uBleGapScan(uDeviceHandle_t devHandle,
                 uCxType = U_DISCOVERY_TYPE_DISCOVER_ALL;
             }
             // Need to turn off possible AT debug printouts during the scanning
-            bool logWasOn = uCxLogIsEnabled();
-            uCxLogDisable();
             // Start and loop over all received discoveries
-            uCxBeginBluetoothDiscoveryEx3(pUcxHandle, uCxType,
-                                          activeScan ? U_DISCOVERY_MODE_ACTIVE : U_DISCOVERY_MODE_PASSIVE,
-                                          (int32_t)timeousMs);
-            uCxBluetoothDiscoveryEx_t uCxResp;
-            while (uCxBluetoothDiscoveryExGetResponse3(pUcxHandle, &uCxResp)) {
+            uCxBluetoothDiscovery3Begin(pUcxHandle, uCxType,
+                                        activeScan ? U_DISCOVERY_MODE_ACTIVE : U_DISCOVERY_MODE_PASSIVE,
+                                        (int32_t)timeousMs);
+            uCxBluetoothDiscovery_t uCxResp;
+            while (uCxBluetoothDiscovery3GetNext(pUcxHandle, &uCxResp)) {
                 uBleScanResult_t result;
                 uCxBdAddressToString(&uCxResp.bd_addr, result.address, sizeof(result.address));
                 int32_t length = MIN(sizeof(result.data), uCxResp.data.length);
@@ -183,9 +181,6 @@ int32_t uBleGapScan(uDeviceHandle_t devHandle,
                 cb(&result);
             }
             errorCode = uCxEnd(pUcxHandle);
-            if (logWasOn) {
-                uCxLogEnable();
-            }
             if (errorCode == U_CX_ERROR_CMD_TIMEOUT) {
                 // *** UCX WORKAROUND FIX ***
                 // Ignore timeout for now, not possible to set ucx timeout value

@@ -447,10 +447,10 @@ int32_t uSecurityCredentialStore(uDeviceHandle_t devHandle,
         uCxHandle_t *pUcxHandle = pShortRangePrivateGetUcxHandle(devHandle);
         if (pUcxHandle != NULL) {
             if (pPassword == NULL) {
-                errorCode = uCxSecurityUploadCertificate2(pUcxHandle, (uCertType_t)type, pName,
+                errorCode = uCxSecurityCertificateUpload2(pUcxHandle, (uCertType_t)type, pName,
                                                           (uint8_t *)pContents, size);
             } else {
-                errorCode = uCxSecurityUploadCertificate3(pUcxHandle, (uCertType_t)type, pName,
+                errorCode = uCxSecurityCertificateUpload3(pUcxHandle, (uCertType_t)type, pName,
                                                           pPassword, (uint8_t *)pContents, size);
             }
         }

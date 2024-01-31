@@ -170,14 +170,14 @@ int32_t uBleSpsConnectSps(uDeviceHandle_t devHandle,
     uCxHandle_t *pUcxHandle = pShortRangePrivateGetUcxHandle(devHandle);
     if ((pUcxHandle != NULL) && (pInstance != NULL)) {
         uPortMutexLock(gMutex);
-        uCxUrcRegisterBluetoothConnect(pUcxHandle, bleConnectCallback);
+        uCxBluetoothRegisterConnect(pUcxHandle, bleConnectCallback);
         errorCode = uBleGapConnect(devHandle, pAddress);
         if (errorCode == 0) {
             errorCode = uPortSemaphoreTryTake(gSemaphore, 5000);
             if (errorCode == 0) {
-                uCxUrcRegisterSpsConnect(pUcxHandle, spsConnectCallback);
-                uCxUrcRegisterSpsDisconnect(pUcxHandle, spsDisconnectCallback);
-                uCxUrcRegisterSpsDataAvailable(pUcxHandle, spsDataAvailableCallback);
+                uCxSpsRegisterConnect(pUcxHandle, spsConnectCallback);
+                uCxSpsRegisterDisconnect(pUcxHandle, spsDisconnectCallback);
+                uCxSpsRegisterDataAvailable(pUcxHandle, spsDataAvailableCallback);
                 if (pConnParams != NULL) {
                     // Setup the parameters currently available in uCx
                     errorCode = uCxBluetoothSetConnectionIntervalMin(pUcxHandle,
@@ -223,7 +223,7 @@ int32_t uBleSpsReceive(uDeviceHandle_t devHandle, int32_t channel, char *pData, 
     uBleDeviceState_t *pState = pGetBleContext(pUShortRangePrivateGetInstance(devHandle));
     uCxHandle_t *pUcxHandle = pShortRangePrivateGetUcxHandle(devHandle);
     if ((pUcxHandle != NULL) && (pState != NULL)) {
-        errorCodeOrLength = uCxSpsReadBinary(pUcxHandle, pState->spsConnHandle, length, (uint8_t *)pData);
+        errorCodeOrLength = uCxSpsRead(pUcxHandle, pState->spsConnHandle, length, (uint8_t *)pData);
     }
     return errorCodeOrLength;
 }
@@ -237,8 +237,8 @@ int32_t uBleSpsSend(uDeviceHandle_t devHandle, int32_t channel, const char *pDat
     if ((pUcxHandle != NULL) && (pInstance != NULL) && (pState != NULL)) {
         int32_t received = 0;
         do {
-            errorCodeOrLength = uCxSpsWriteBinary(pUcxHandle, pState->spsConnHandle,
-                                                  (uint8_t *)pData, MIN(1000, length - received));
+            errorCodeOrLength = uCxSpsWrite(pUcxHandle, pState->spsConnHandle,
+                                            (uint8_t *)pData, MIN(1000, length - received));
             if (errorCodeOrLength > 0) {
                 received += errorCodeOrLength;
                 pData += errorCodeOrLength;

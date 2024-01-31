@@ -216,7 +216,8 @@ U_PORT_TEST_FUNCTION("[bleNus]", "bleNusClient")
         U_TEST_PRINT_LINE("try #%d", i + 1);
         U_PORT_TEST_ASSERT(uBleGapScan(gDeviceHandle,
                                        U_BLE_GAP_SCAN_DISCOVER_ALL_ONCE,
-                                       true, 10000,
+                                       true,
+                                       9500, // This value is due to the current fixed AT-timeout in ucx (10s)
                                        scanResponse) == 0);
     }
     U_PORT_TEST_ASSERT(SERVER_FOUND);

@@ -190,8 +190,8 @@ int32_t uWifiSetConnectionStatusCallback(uDeviceHandle_t devHandle,
         uShortRangePrivateInstance_t *pInstance = pUShortRangePrivateGetInstance(devHandle);
         if ((pUcxHandle != NULL) && (pInstance != NULL)) {
             errorCode = (int32_t)U_ERROR_COMMON_SUCCESS;
-            uCxUrcRegisterWifiLinkUp(pUcxHandle, WiFiLinkUpCallback);
-            uCxUrcRegisterWifiLinkDown(pUcxHandle, WiFiLinkDownCallback);
+            uCxWifiRegisterLinkUp(pUcxHandle, WiFiLinkUpCallback);
+            uCxWifiRegisterLinkDown(pUcxHandle, WiFiLinkDownCallback);
             pInstance->pWifiConnectionStatusCallback = pCallback;
             pInstance->pWifiConnectionStatusCallbackParameter = pCallbackParameter;
         }
@@ -211,10 +211,10 @@ int32_t uWifiSetNetworkStatusCallback(uDeviceHandle_t devHandle,
         uShortRangePrivateInstance_t *pInstance = pUShortRangePrivateGetInstance(devHandle);
         if ((pUcxHandle != NULL) && (pInstance != NULL)) {
             errorCode = (int32_t)U_ERROR_COMMON_SUCCESS;
-            uCxUrcRegisterWifiStationNetworkUp(pUcxHandle, wiFiUpCallback);
-            uCxUrcRegisterWifiStationNetworkDown(pUcxHandle, wiFiDownCallback);
-            uCxUrcRegisterWifiApNetworkUp(pUcxHandle, wiFiUpCallback);
-            uCxUrcRegisterWifiApNetworkDown(pUcxHandle, wiFiUpCallback);
+            uCxWifiRegisterStationNetworkUp(pUcxHandle, wiFiUpCallback);
+            uCxWifiRegisterStationNetworkDown(pUcxHandle, wiFiDownCallback);
+            uCxWifiRegisterApNetworkUp(pUcxHandle, wiFiUpCallback);
+            uCxWifiRegisterApNetworkDown(pUcxHandle, wiFiUpCallback);
             pInstance->pNetworkStatusCallback = pCallback;
             pInstance->pNetworkStatusCallbackParameter = pCallbackParameter;
             uShortRangeUnlock();
@@ -237,7 +237,7 @@ int32_t uWifiStationConnect(uDeviceHandle_t devHandle, const char *pSsid,
             if (pSsid != NULL) {
                 uCxWifiStationStatus_t resp;
                 resp.type = U_CX_WIFI_STATION_STATUS_RSP_TYPE_WIFI_STATUS_ID_STR;
-                if (uCxBeginWifiStationStatus(pUcxHandle, U_WIFI_STATUS_ID_SSID, &resp) &&
+                if (uCxWifiStationStatusBegin(pUcxHandle, U_WIFI_STATUS_ID_SSID, &resp) &&
                     (resp.rspWifiStatusIdStr.ssid[0] != 0)) {
                     // Already connected, check if same ssid
                     if (strcmp(resp.rspWifiStatusIdStr.ssid, pSsid) == 0) {
@@ -315,7 +315,7 @@ bool uWifiStationHasStoredConfig(uDeviceHandle_t devHandle)
     uCxHandle_t *pUcxHandle = pShortRangePrivateGetUcxHandle(devHandle);
     if (pUcxHandle != NULL) {
         uCxWifiStationGetConnectionParams_t params;
-        int32_t errorCode = uCxBeginWifiStationGetConnectionParams(pUcxHandle,
+        int32_t errorCode = uCxWifiStationGetConnectionParamsBegin(pUcxHandle,
                                                                    WLAN_HANDLE, &params);
         has = errorCode == 0 && strlen(params.ssid) > 0;
         uCxEnd(pUcxHandle);
@@ -373,8 +373,7 @@ bool uWifiAccessPointHasStoredConfig(uDeviceHandle_t devHandle)
     uCxHandle_t *pUcxHandle = pShortRangePrivateGetUcxHandle(devHandle);
     if (pUcxHandle != NULL) {
         uCxWifiApGetConnectionParams_t params;
-        int32_t errorCode =
-            uCxBeginWifiApGetConnectionParams(pUcxHandle, &params);
+        int32_t errorCode = uCxWifiApGetConnectionParamsBegin(pUcxHandle, &params);
         has = errorCode == 0 && strlen(params.ssid) > 0;
     }
     return has;
@@ -386,13 +385,10 @@ int32_t uWifiStationScan(uDeviceHandle_t devHandle, const char *pSsid,
     int32_t errorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
     uCxHandle_t *pUcxHandle = pShortRangePrivateGetUcxHandle(devHandle);
     if ((pUcxHandle != NULL) && (pCallback != NULL)) {
-        // Need to turn off possible AT debug printouts during the scanning
-        bool logWasOn = uCxLogIsEnabled();
-        uCxLogDisable();
-        uCxBeginWifiStationScan(pUcxHandle);
+        uCxWifiStationScanBegin(pUcxHandle);
         uCxWifiStationScan_t uCxresult;
         uWifiScanResult_t result;
-        while (uCxWifiStationScanGetResponse(pUcxHandle, &uCxresult)) {
+        while (uCxWifiStationScanGetNext(pUcxHandle, &uCxresult)) {
             result.authSuiteBitmask = uCxresult.authentication_suites;
             memcpy(result.bssid, uCxresult.bssid.address, sizeof(result.bssid));
             result.channel = uCxresult.channel;
@@ -406,9 +402,6 @@ int32_t uWifiStationScan(uDeviceHandle_t devHandle, const char *pSsid,
             }
         }
         errorCode = uCxEnd(pUcxHandle);
-        if (logWasOn) {
-            uCxLogEnable();
-        }
     }
     return errorCode;
 }

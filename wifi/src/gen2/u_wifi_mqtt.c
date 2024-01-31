@@ -240,9 +240,9 @@ int32_t uWifiMqttConnect(const uMqttClientContext_t *pContext,
             }
         }
         if (errorCode == 0) {
-            uCxUrcRegisterMqttConnect(pUcxHandle, connectCallback);
-            uCxUrcRegisterMqttDisconnect(pUcxHandle, disconnectCallback);
-            uCxUrcRegisterMqttDataAvailable(pUcxHandle, dataAvailableCallback);
+            uCxMqttRegisterConnect(pUcxHandle, connectCallback);
+            uCxMqttRegisterDisconnect(pUcxHandle, disconnectCallback);
+            uCxMqttRegisterDataAvailable(pUcxHandle, dataAvailableCallback);
             errorCode = uCxMqttConnect(pUcxHandle, MQTT_ID);
             if (errorCode == 0) {
                 errorCode = uPortSemaphoreTryTake(pMqttDeviceState->semaphore,
@@ -250,9 +250,9 @@ int32_t uWifiMqttConnect(const uMqttClientContext_t *pContext,
                 if (errorCode != 0) {
                     disconnectCallback(pUcxHandle, MQTT_ID,
                                        (int32_t)U_ERROR_COMMON_TIMEOUT);
-                    uCxUrcRegisterMqttConnect(pUcxHandle, NULL);
-                    uCxUrcRegisterMqttDisconnect(pUcxHandle, NULL);
-                    uCxUrcRegisterMqttDataAvailable(pUcxHandle, NULL);
+                    uCxMqttRegisterConnect(pUcxHandle, NULL);
+                    uCxMqttRegisterDisconnect(pUcxHandle, NULL);
+                    uCxMqttRegisterDataAvailable(pUcxHandle, NULL);
                 }
             }
         }
@@ -302,18 +302,8 @@ int32_t uWifiMqttPublish(const uMqttClientContext_t *pContext,
     uCxHandle_t *pUcxHandle = pShortRangePrivateGetUcxHandle(pContext->devHandle);
     if (pUcxHandle != NULL) {
         if (pMessage != NULL) {
-            // *** UCX WORKAROUND FIX ***
-            // There is currently no binary mqtt publish available in ucx
-            // hence we have to copy the content into a string. Any quote character
-            // in the data will result in an error.
-            char *pMessCopy = pUPortMalloc(messageSizeBytes + 1);
-            if (pMessCopy != NULL) {
-                memcpy(pMessCopy, pMessage, messageSizeBytes);
-                pMessCopy[messageSizeBytes] = 0;
-                errorCode = uCxMqttPublish(pUcxHandle, MQTT_ID, (uQos_t)qos, (uRetain_t)retain,
-                                           pTopicNameStr, pMessCopy);
-                uPortFree(pMessCopy);
-            }
+            errorCode = uCxMqttPublish(pUcxHandle, MQTT_ID, (uQos_t)qos, (uRetain_t)retain,
+                                       pTopicNameStr, (uint8_t *)pMessage, messageSizeBytes);
         } else if (messageSizeBytes == 0) {
             errorCode = 0;
         }
@@ -414,18 +404,17 @@ int32_t uWifiMqttMessageRead(const uMqttClientContext_t *pContext,
     uMqttDeviceState_t *pMqttDeviceState = (uMqttDeviceState_t *)pContext->pPriv;
     uCxHandle_t *pUcxHandle = pShortRangePrivateGetUcxHandle(pContext->devHandle);
     if ((pMqttDeviceState != NULL) && (pUcxHandle != NULL)) {
-        uCxMqttReadMessage_t resp;
-        resp.message_len = *pMessageSizeBytes;
-        if (uCxBeginMqttReadMessage(pUcxHandle, MQTT_ID, &resp)) {
+        uCxMqttRead_t resp;
+        uint32_t len = uCxMqttReadBegin(pUcxHandle, MQTT_ID, (uint8_t *)pMessage, *pMessageSizeBytes,
+                                        &resp);
+        if (len > 0) {
             pMqttDeviceState->unReadCnt--;
             if (pQos != NULL) {
                 *pQos = 0; // Not available in the response
             }
             memset(pTopicNameStr, 0, topicNameSizeBytes);
             strncpy(pTopicNameStr, resp.topic, topicNameSizeBytes - 1);
-            int32_t messageLength = MIN(*pMessageSizeBytes, resp.message_len);
-            memcpy(pMessage, resp.message, messageLength);
-            *pMessageSizeBytes = messageLength;
+            *pMessageSizeBytes = len;
         }
         errorCode = uCxEnd(pUcxHandle);
     }
