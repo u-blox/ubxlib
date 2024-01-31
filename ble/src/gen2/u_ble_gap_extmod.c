@@ -163,7 +163,6 @@ int32_t uBleGapScan(uDeviceHandle_t devHandle,
             } else {
                 uCxType = U_DISCOVERY_TYPE_DISCOVER_ALL;
             }
-            // Need to turn off possible AT debug printouts during the scanning
             // Start and loop over all received discoveries
             uCxBluetoothDiscovery3Begin(pUcxHandle, uCxType,
                                         activeScan ? U_DISCOVERY_MODE_ACTIVE : U_DISCOVERY_MODE_PASSIVE,

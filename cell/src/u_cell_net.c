@@ -83,7 +83,7 @@
  * IMPORTANT: if this value ever needs to change, because of the
  * similarity between the response to this AT command and the URC,
  * it needs to be considered _very_ carefully, need to be sure that
- * the dodge in CXREG_urc() and registerNetwork() still works.
+ * the dodge in CXREG_urc() and handleCxRegResponse() still works.
 */
 #define U_CELL_NET_CEREG_TYPE 4
 
@@ -91,7 +91,7 @@
  * IMPORTANT: if this value ever needs to change, because of the
  * similarity between the response to this AT command and the URC,
  * it needs to be considered _very_ carefully, need to be sure that
- * the dodge in CXREG_urc() and registerNetwork() still works.
+ * the dodge in CXREG_urc() and handleCxRegResponse() still works.
 */
 #define U_CELL_NET_CREG_OR_CGREG_TYPE 2
 
@@ -495,7 +495,7 @@ static inline uCellNetStatus_t CXREG_urc(uCellPrivateInstance_t *pInstance,
     bool responseToCommandNotUrc = false;
     char buffer[U_CELL_PRIVATE_CELL_ID_LOGICAL_SIZE + 1]; // +1 for terminator
 
-    // As described in registerNetwork(), it is possible
+    // As described in handleCxRegResponse(), it is possible
     // for this URC handler to capture the response to
     // an AT+CxREG? command instead of the URC, so
     // do some dodging here to avoid it.
