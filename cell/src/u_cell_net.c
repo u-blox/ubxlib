@@ -1068,7 +1068,6 @@ static int32_t registerNetwork(uCellPrivateInstance_t *pInstance,
     int32_t errorCode;
     uAtClientHandle_t atHandle = pInstance->atHandle;
     bool keepGoing = true;
-    bool deviceErrorDetected = false;
     int32_t regType;
     int32_t firstInt;
     int32_t status3gpp;
@@ -1114,7 +1113,7 @@ static int32_t registerNetwork(uCellPrivateInstance_t *pInstance,
         uAtClientWriteString(atHandle, pMccMnc, true);
         uAtClientCommandStop(atHandle);
         // Loop until either we give up or we get a response
-        while (keepGoing && keepGoingLocalCb(pInstance) && !deviceErrorDetected) {
+        while (keepGoing && keepGoingLocalCb(pInstance) && (errorCode == 0)) {
             uAtClientResponseStart(atHandle, NULL);
             keepGoing = (uAtClientErrorGet(atHandle) < 0);
             // keepGoing will be false if we were successful
@@ -1126,12 +1125,14 @@ static int32_t registerNetwork(uCellPrivateInstance_t *pInstance,
             // and leave if one landed.
             uAtClientDeviceError_t deviceError;
             uAtClientDeviceErrorGet(atHandle, &deviceError);
-            deviceErrorDetected = (deviceError.type != U_AT_CLIENT_DEVICE_ERROR_TYPE_NO_ERROR);
+            if (deviceError.type != U_AT_CLIENT_DEVICE_ERROR_TYPE_NO_ERROR) {
+                errorCode = (int32_t) U_ERROR_COMMON_NOT_FOUND;
+            }
             uAtClientClearError(atHandle);
         }
         uAtClientResponseStop(atHandle);
         uAtClientUnlock(atHandle);
-        if (keepGoing && !deviceErrorDetected) {
+        if (keepGoing && (errorCode == 0)) {
             // Get here if there was a local abort (keepGoing
             // was till true, we were still waiting for a response)
             // and the module did not return ERROR/CME ERROR, i.e.
@@ -1274,10 +1275,10 @@ static int32_t registerNetwork(uCellPrivateInstance_t *pInstance,
                 regType = 0;
             }
         }
-    }
 
-    if (uCellPrivateIsRegistered(pInstance)) {
-        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+        if (uCellPrivateIsRegistered(pInstance)) {
+            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+        }
     }
 
     return errorCode;
