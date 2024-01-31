@@ -33,6 +33,7 @@ cell/src/u_cell_private.c
 cell/src/u_cell_mux_private.c
 cell/src/u_cell_mno_db.c
 cell/src/u_cell_ppp.c
+cell/src/u_cell_sim.c
 cell/src/u_cell_stub_gnss.c
 gnss/src/u_gnss.c
 gnss/src/u_gnss_pwr.c

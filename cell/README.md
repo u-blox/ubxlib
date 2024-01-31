@@ -21,6 +21,7 @@ first fix when a GNSS module is included inside or connected-via the cellular mo
 - `file`: access to file storage on the cellular module.
 - `fota`: access to information about the state of FOTA in the cellular module.
 - `mux`: support for 3GPP 27.010 CMUX mode.
+- `sim`: SIM access; this API is deliberately minimal since applications that employ `ubxlib` don't generally use SIM PINs, don't need phone-book access, etc.
 
 The module types supported by this implementation are listed in [u_cell_module_type.h](api/u_cell_module_type.h).
 

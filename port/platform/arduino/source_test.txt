@@ -44,6 +44,7 @@ cell/test/u_cell_fota_test.c
 cell/test/u_cell_mux_test.c
 cell/test/u_cell_geofence_test.c
 cell/test/u_cell_ppp_test.c
+cell/test/u_cell_sim_test.c
 cell/test/u_cell_test_preamble.c
 cell/test/u_cell_test_private.c
 cell/test/u_cell_mux_private_test.c
