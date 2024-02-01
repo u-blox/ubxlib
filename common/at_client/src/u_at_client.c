@@ -636,6 +636,8 @@ static char *pPrintTimestamp(const char *pPrefix, const char *pPostfix,
             // Months counting from 1 instead of 0
             tmStruct.tm_mon++;
             x %= 1000;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-truncation"
             int32_t ignored = snprintf(pBuffer, size, "%s%04d/%02d/%02d %02d:%02d:%02d.%03d%s",
                                        pPrefix, tmStruct.tm_year, tmStruct.tm_mon,
                                        tmStruct.tm_mday, tmStruct.tm_hour,
@@ -643,6 +645,7 @@ static char *pPrintTimestamp(const char *pPrefix, const char *pPostfix,
                                        (int) x, pPostfix);
             // This to stop GCC 12.3.0 complaining that variables printed into pBuffer are being truncated
             (void) ignored;
+ #pragma GCC diagnostic pop
         }
     }
 
