@@ -621,9 +621,7 @@ static void CEREG_urc(uAtClientHandle_t atHandle, void *pParameter)
         // parameters from the end of +CEREG also
         // CXREG_urc() will have read up to and including
         // the parameter indicating the active RAT, next
-        // skip the <cause_type> and <reject_cause> parameters
-        uAtClientSkipParameters(atHandle, 2);
-        // Now read the active time, T3324, as a string, and decode it
+        // read the active time, T3324, as a string, and decode it
         bytesRead = uAtClientReadString(atHandle, encoded, sizeof(encoded), false);
         if (bytesRead > 0) {
             uCellPwrPrivateActiveTimeStrToSeconds(encoded, &activeTimeSeconds);
