@@ -132,6 +132,7 @@
 #include <u_cell_sock.h>
 #include <u_cell_fota.h>
 #include <u_cell_mux.h>
+#include <u_cell_sim.h>
 #include <u_cell_geofence.h>
 #include <u_gnss_type.h>
 #include <u_gnss.h>
