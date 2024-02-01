@@ -645,7 +645,7 @@ static char *pPrintTimestamp(const char *pPrefix, const char *pPostfix,
                                        (int) x, pPostfix);
             // This to stop GCC 12.3.0 complaining that variables printed into pBuffer are being truncated
             (void) ignored;
- #pragma GCC diagnostic pop
+#pragma GCC diagnostic pop
         }
     }
 
