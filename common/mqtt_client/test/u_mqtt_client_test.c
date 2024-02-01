@@ -235,13 +235,16 @@ static uNetworkTestList_t *pStdPreamble(bool mqttSn)
 static void messageIndicationCallback(int32_t numUnread, void *pParam)
 {
     int32_t *pNumUnread = (int32_t *) pParam;
+    int32_t x;
 
     U_TEST_PRINT_LINE_MQTT("messageIndicationCallback() called, %d message(s) unread.", numUnread);
 
     if (gpMqttContextA != NULL) {
         // To prove that it is possible to do it, rather than for any
         // practical reason, call back into the MQTT API here
-        U_PORT_TEST_ASSERT(uMqttClientGetUnread(gpMqttContextA) >= numUnread);
+        x = uMqttClientGetUnread(gpMqttContextA);
+        U_PORT_TEST_ASSERT(x >= numUnread);
+        U_TEST_PRINT_LINE_MQTT("messageIndicationCallback(), uMqttClientGetUnread() returned %d.", x);
     }
 
     *pNumUnread = numUnread;
@@ -333,7 +336,6 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClient")
             // Make a unique topic name to stop different boards colliding
             snprintf(pTopicOut, U_MQTT_CLIENT_TEST_READ_TOPIC_MAX_LENGTH_BYTES,
                      "ubx_test/%s", gSerialNumber);
-            gNumUnread = 0;
             bool noTls = (run == 0) || (pTmp->networkType == U_NETWORK_TYPE_WIFI);
             // Open an MQTT client
             if (noTls) {
@@ -430,6 +432,7 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClient")
                     }
 
                     U_PORT_TEST_ASSERT(uMqttClientGetUnread(gpMqttContextA) == 0);
+                    gNumUnread = 0;
 
                     U_TEST_PRINT_LINE_MQTT("publishing %d byte(s) to topic \"%s\"...",
                                            U_MQTT_CLIENT_TEST_PUBLISH_MAX_LENGTH_BYTES, pTopicOut);
@@ -509,6 +512,7 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClient")
                     U_PORT_TEST_ASSERT(memcmp(pMessageIn, pMessageOut, s) == 0);
 
                     U_PORT_TEST_ASSERT(uMqttClientGetUnread(gpMqttContextA) == 0);
+                    gNumUnread = 0;
 
                     // Read again - should return U_ERROR_COMMON_EMPTY
                     // Note that in the cellular case, for some modules (e.g. SARA-R4),
@@ -687,7 +691,6 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClientSn")
         // Make a unique topic name to stop different boards colliding
         snprintf(pTopicNameOutMqtt, U_MQTT_CLIENT_TEST_READ_TOPIC_MAX_LENGTH_BYTES,
                  "ubx_test/%s", gSerialNumber);
-        gNumUnread = 0;
         // Open an MQTT-SN client
         U_TEST_PRINT_LINE_MQTTSN("opening MQTT-SN client...");
         gpMqttContextA = pUMqttClientOpen(devHandle, NULL);
@@ -769,6 +772,7 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClientSn")
                 }
 
                 U_PORT_TEST_ASSERT(uMqttClientGetUnread(gpMqttContextA) == 0);
+                gNumUnread = 0;
 
                 // Do this twice, once with the topic ID returned by uMqttClientSnSubscribe()
                 // above and a second time with one returned by uMqttClientSnRegisterNormalTopic()
@@ -848,6 +852,7 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClientSn")
                     U_PORT_TEST_ASSERT(memcmp(pMessageIn, pMessageOut, s) == 0);
 
                     U_PORT_TEST_ASSERT(uMqttClientGetUnread(gpMqttContextA) == 0);
+                    gNumUnread = 0;
 
                     if (idRun == 0) {
                         // Now register an ID for the same topic for use on the next turn
