@@ -233,6 +233,11 @@ typedef struct {
  *                                 potentially a callback function which
  *                                 would make the HTTP request functions
  *                                 non-blocking; cannot be NULL.
+ *                                 IT IS GOOD PRACTICE to assign this,
+ *                                 initially, to
+ *                                 #U_HTTP_CLIENT_CONNECTION_DEFAULT and
+ *                                 then modify the members you want
+ *                                 to be different to the default value.
  * @param[in] pSecurityTlsSettings a pointer to the security settings to
  *                                 be applied if you wish to make an HTTPS
  *                                 connection, NULL for no security.

@@ -476,7 +476,7 @@ int32_t uCellHttpOpen(uDeviceHandle_t cellHandle, const char *pServerName,
         errorCodeOrHandle = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if ((pServerName != NULL) && (strlen(pServerName) <= U_CELL_HTTP_SERVER_NAME_MAX_LEN_BYTES) &&
             ((pUserName != NULL) || (pPassword == NULL)) &&
-            (timeoutSeconds >= 0) && (pCallback != NULL)) {
+            (timeoutSeconds > 0) && (pCallback != NULL)) {
             errorCodeOrHandle = (int32_t) U_ERROR_COMMON_NO_MEMORY;
             pHttpContext = pCellInstance->pHttpContext;
             if (pHttpContext == NULL) {
