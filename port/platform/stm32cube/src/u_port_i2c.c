@@ -612,7 +612,11 @@ static int32_t openI2c(int32_t i2c, int32_t pinSda, int32_t pinSdc,
                     gpioInitStruct.Pin = (1U << U_PORT_STM32F4_GPIO_PIN(pinSda)) |
                                          (1U << U_PORT_STM32F4_GPIO_PIN(pinSdc));
                     gpioInitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
-                    gpioInitStruct.Speed = LL_GPIO_SPEED_FREQ_VERY_HIGH;
+                    // Note: we used to set the speed to LL_GPIO_SPEED_FREQ_VERY_HIGH
+                    // but that seemed to cause significant comms failures; setting
+                    // the speed to low (up to 8 MHz) is more reliable and perfectly
+                    // sufficient for what is needed here
+                    gpioInitStruct.Speed = GPIO_SPEED_FREQ_LOW;
                     gpioInitStruct.OutputType = LL_GPIO_OUTPUT_OPENDRAIN;
                     gpioInitStruct.Pull = LL_GPIO_PULL_UP;
                     // AF4 from the data sheet for the STM32F437VG

@@ -1022,7 +1022,11 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
                     gpioInitStruct.Pin = (1U << U_PORT_STM32F4_GPIO_PIN(pinTx)) |
                                          (1U << U_PORT_STM32F4_GPIO_PIN(pinRx));
                     gpioInitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
-                    gpioInitStruct.Speed = LL_GPIO_SPEED_FREQ_VERY_HIGH;
+                    // Note: we used to set the speed to LL_GPIO_SPEED_FREQ_VERY_HIGH
+                    // but that seemed to cause significant comms failures; setting
+                    // the speed to low (up to 8 MHz) is more reliable and perfectly
+                    // sufficient for what is needed here
+                    gpioInitStruct.Speed = GPIO_SPEED_FREQ_LOW;
                     // Output type doesn't matter, it is overridden by
                     // the alternate function
                     gpioInitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
