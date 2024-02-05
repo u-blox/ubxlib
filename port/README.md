@@ -44,6 +44,7 @@ To bring the platform-specific files into your CMake file, take a look at, for i
 Available features are:
 - `u_lib`: include the `lib_common` API,
 - `short_range`: include `wifi`, `ble` and `short_range` API,
+- `short_range_gen2`: should be used IN ADDITION TO `short_range` and ONLY IF you are using the short-range NORA-W36 module; this is required since NORA-W36 comes with a second generation u-connectExpress,
 - `cell`: include `cell` API,
 - `gnss`: include `gnss` API,
 - `geodesic`: include [GeographicLib](https://github.com/geographiclib/geographiclib), required only if `U_CFG_GEOFENCE` is defined and shapes larger than 1 km in size are being used in the fence, see [u_geofence_geodesic.h](/common/geofence/api/u_geofence_geodesic.h) for details.
