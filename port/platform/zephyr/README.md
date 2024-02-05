@@ -126,7 +126,7 @@ If this is a problem, e.g. if your board uses its own naming of the devices, you
 # Specifying Device And Network Configuration Through The Device Tree
 For those familiar with the Zephyr device tree, it is possible to ignore the device and network configuration structures in the C code and instead set their entire contents through the device tree, binding files for which can be found in [dts/bindings](dts/bindings).
 
-IMPORTANT: this _only_ works if you bring up a device by calling `uDeviceOpen()`; if you bring up a device the hard way, by calling `uPortXxxOpen()` for the UART/I2C/SPI transport, then calling `uCellAdd()`/`uGnssAdd()`/`uShortRangeAdd()` etc. it will NOT work.
+IMPORTANT: this _only_ works if you initialise the relevant `uPort` APIs and then bring up a device by calling `uDeviceOpen()` (see the [examples](/example)); if you initialise the relevant `uPort` APIs and then bring up a device the hard way, by separately calling `uPortXxxOpen()` for the UART/I2C/SPI transport, then calling `uCellAdd()`/`uGnssAdd()`/`uShortRangeAdd()` etc. it will NOT work.
 
 You will need an entry with `status = "okay"` for the device you intend to use ([cellular](dts/bindings/u-blox,ubxlib-device-cellular.yaml), [GNSS](dts/bindings/u-blox,ubxlib-device-gnss.yaml) or [short range](dts/bindings/u-blox,ubxlib-device-short-range.yaml)) and each device _may_ refer to a [BLE](dts/bindings/u-blox,ubxlib-network-ble.yaml), [cellular](dts/bindings/u-blox,ubxlib-network-cellular.yaml), [GNSS](dts/bindings/u-blox,ubxlib-network-gnss.yaml) or [Wi-Fi](dts/bindings/u-blox,ubxlib-network-wifi.yaml) network (e.g. to specify an SSID or an APN or use GNSS inside a cellular device).  Here is an example:
 
