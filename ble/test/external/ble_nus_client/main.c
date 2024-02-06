@@ -51,6 +51,9 @@ static void timer_cb(void *p_context)
         m_state = START_SCAN;
     } else {
         // Response timeout
+        if (m_state == CONNECT) {
+            sd_ble_gap_connect_cancel();
+        }
         m_state = TIMEOUT;
         SET_LED(BSP_BOARD_LED_0, true);
     }
