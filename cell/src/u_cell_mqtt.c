@@ -2068,7 +2068,7 @@ static int32_t readMessage(const uCellPrivateInstance_t *pInstance,
                         uAtClientReadBytes(atHandle, NULL,
                                            // Cast in two stages to keep Lint happy
                                            (size_t) (unsigned) (messageBytesAvailable -
-                                                                messageBytesRead), false);
+                                                                messageBytesRead), true);
                     }
                 }
                 // Make sure to wait for the stop tag before
