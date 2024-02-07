@@ -361,8 +361,9 @@ static void httpCallback(uDeviceHandle_t cellHandle, int32_t httpHandle,
     pCallbackData->httpHandle = httpHandle;
     pCallbackData->requestType = requestType;
     pCallbackData->error = error;
+    memset(pCallbackData->fileNameResponse, 0, sizeof(pCallbackData->fileNameResponse));
     strncpy(pCallbackData->fileNameResponse, pFileNameResponse,
-            sizeof(pCallbackData->fileNameResponse));
+            sizeof(pCallbackData->fileNameResponse) - 1);
     pCallbackData->contentsMismatch = !checkFile(cellHandle,
                                                  pFileNameResponse,
                                                  pCallbackData->pExpectedFirstLine,

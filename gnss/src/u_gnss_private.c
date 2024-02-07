@@ -1935,13 +1935,13 @@ int32_t uGnssPrivateInfoGetVersions(uGnssPrivateInstance_t *pInstance,
                             message.ext[0]);
             for (int32_t i = 0; i < n; i++) {
                 if (0 == strncmp(message.ext[i], "ROM BASE ", 9)) {
-                    strncpy(pVer->rom, message.ext[i] + 9, sizeof(pVer->rom));
+                    strncpy(pVer->rom, message.ext[i] + 9, sizeof(pVer->rom) - 1);
                 } else if (0 == strncmp(message.ext[i], "FWVER=", 6)) {
-                    strncpy(pVer->fw, message.ext[i] + 6, sizeof(pVer->fw));
+                    strncpy(pVer->fw, message.ext[i] + 6, sizeof(pVer->fw) - 1);
                 } else if (0 == strncmp(message.ext[i], "PROTVER=", 8)) {
-                    strncpy(pVer->prot, message.ext[i] + 8, sizeof(pVer->prot));
+                    strncpy(pVer->prot, message.ext[i] + 8, sizeof(pVer->prot) - 1);
                 } else if (0 == strncmp(message.ext[i], "MOD=", 4)) {
-                    strncpy(pVer->mod, message.ext[i] + 4, sizeof(pVer->mod));
+                    strncpy(pVer->mod, message.ext[i] + 4, sizeof(pVer->mod) - 1);
                 }
             }
             errorCodeOrLength = U_ERROR_COMMON_SUCCESS;

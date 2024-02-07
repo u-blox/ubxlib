@@ -1274,7 +1274,7 @@ int32_t uWifiMqttMessageRead(const uMqttClientContext_t *pContext,
                     if (pFoundTopicStr != NULL) {
                         foundTopicLen = strlen(pFoundTopicStr);
                         if ((foundTopicLen + 1) <= topicNameSizeBytes) {
-                            strncpy(pTopicNameStr, pFoundTopicStr, foundTopicLen);
+                            strncpy(pTopicNameStr, pFoundTopicStr, topicNameSizeBytes);
                             err = (int32_t)U_ERROR_COMMON_SUCCESS;
                         }
                     }

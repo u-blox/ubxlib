@@ -36,4 +36,7 @@ project(ubxlib)
 # Warnings as errors, while we're testing
 idf_build_set_property(COMPILE_OPTIONS "-Werror" APPEND)
 
+# Adding this as it seems to produce additional string copy buffer overrun checks
+idf_build_set_property(COMPILE_OPTIONS "-O2" APPEND)
+
 message("Processing RUNNER build ends")

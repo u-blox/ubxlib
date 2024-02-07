@@ -4,8 +4,8 @@
 # and can be overridden by setting the environment variable IDF_TARGET
 
 # This is sufficient that the user is left with 5 kbytes of
-# main task stack free for themselves
-CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192
+# main task stack free for themselves when compiled with -O2
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=8448
 
 # UART 0 is used for tracing
 CONFIG_ESP_DEBUG_STUBS_ENABLE=y

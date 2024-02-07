@@ -341,17 +341,25 @@ static bool isAllowedHttpRequestStr(const char *pStr, size_t maxLength)
 // create one. The file name is formed of:
 // U_CELL_HTTP_FILE_NAME_RESPONSE_AUTO_PREFIX + profile ID
 // e.g.: ubxlibhttp_0
-static void copyFileNameResponse(uCellHttpInstance_t *pHttpInstance,
+static bool copyFileNameResponse(uCellHttpInstance_t *pHttpInstance,
                                  const char *pFileNameGiven)
 {
+    bool success = false;
+
     if (pFileNameGiven != NULL) {
-        strncpy(pHttpInstance->fileNameResponse, pFileNameGiven,
-                sizeof(pHttpInstance->fileNameResponse));
+        if (strlen(pFileNameGiven) < sizeof(pHttpInstance->fileNameResponse)) {
+            strncpy(pHttpInstance->fileNameResponse, pFileNameGiven,
+                    sizeof(pHttpInstance->fileNameResponse));
+            success = true;
+        }
     } else {
         snprintf(pHttpInstance->fileNameResponse, sizeof(pHttpInstance->fileNameResponse),
                  "%s%d", U_CELL_HTTP_FILE_NAME_RESPONSE_AUTO_PREFIX,
                  (int) pHttpInstance->profileId);
+        success = true;
     }
+
+    return success;
 }
 
 // Event queue callback, we end up here from UUHTTPCR_urc().
@@ -741,6 +749,7 @@ int32_t uCellHttpRequest(uDeviceHandle_t cellHandle, int32_t httpHandle,
     if (errorCode == 0) {
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if ((pPath != NULL) && (requestType != U_CELL_HTTP_REQUEST_PUT) &&
+            copyFileNameResponse(pHttpInstance, pFileNameResponse) &&
             ((requestType != U_CELL_HTTP_REQUEST_POST) || ((pStrPost != NULL) &&
                                                            isAllowedHttpRequestStr(pStrPost, U_CELL_HTTP_POST_REQUEST_STRING_MAX_LENGTH_BYTES) &&
                                                            (pContentTypePost != NULL) &&
@@ -749,7 +758,6 @@ int32_t uCellHttpRequest(uDeviceHandle_t cellHandle, int32_t httpHandle,
                 // For this we use POST_DATA
                 httpCommand = 5;
             }
-            copyFileNameResponse(pHttpInstance, pFileNameResponse);
             atHandle = pCellInstance->atHandle;
             uAtClientLock(atHandle);
             uAtClientCommandStart(atHandle, "AT+UHTTPC=");
@@ -794,13 +802,13 @@ int32_t uCellHttpRequestFile(uDeviceHandle_t cellHandle, int32_t httpHandle,
     if (errorCode == 0) {
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if ((pPath != NULL) && ((int32_t) requestType >= 0) &&
+            copyFileNameResponse(pHttpInstance, pFileNameResponse) &&
             (requestType < U_CELL_HTTP_REQUEST_MAX_NUM) &&
             (((requestType != U_CELL_HTTP_REQUEST_PUT) && (requestType != U_CELL_HTTP_REQUEST_POST)) ||
              ((pFileNamePutPost != NULL) && (pContentTypePutPost != NULL) &&
               isAllowedHttpRequestStr(pContentTypePutPost,
                                       U_CELL_HTTP_CONTENT_TYPE_MAX_LENGTH_BYTES)))) {
             errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
-            copyFileNameResponse(pHttpInstance, pFileNameResponse);
             atHandle = pCellInstance->atHandle;
             uAtClientLock(atHandle);
             uAtClientCommandStart(atHandle, "AT+UHTTPC=");
