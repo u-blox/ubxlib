@@ -1107,7 +1107,7 @@ static void cfgGnss(uDeviceCfg_t *pCfg, int32_t index)
             pCfgI2c->alreadyOpen = gDeviceCfgGnssI2cAlreadyOpen[index];
             pCfgI2c->pinSda = -1;
             pCfgI2c->pinScl = -1;
-            uPortLog("U_PORT_BOARD_CFG: ...GNSS on I2C %d, i2c-address %d, i2c-clock-hertz %d%s.\n",
+            uPortLog("U_PORT_BOARD_CFG: ...GNSS on I2C %d, i2c-address 0x%02x, i2c-clock-hertz %d%s.\n",
                      pCfgI2c->i2c, pCfgGnss->i2cAddress,
                      pCfgI2c->clockHertz,
                      pCfgI2c->alreadyOpen ? ", i2c-already-open" : "");

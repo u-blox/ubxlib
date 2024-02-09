@@ -34,7 +34,7 @@
         transport-type = "i2c0";
         i2c-clock-hertz = <1000>;
         i2c-already-open;
-        i2c-address = <43>;
+        i2c-address = <0x43>;
         module-type = "U_GNSS_MODULE_TYPE_M9";
         pin-enable-power = <1>;
         pin-data-ready = <36>;

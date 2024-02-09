@@ -87,8 +87,8 @@ properties:
 # i2cAddress
     i2c-address:
         type: int
-        default: 42
-        description: "The I2C address of the GNSS device, required if the GNSS device is connected via I2C and its I2C address is not the default value of 42."
+        default: 0x42
+        description: "The I2C address of the GNSS device, required if the GNSS device is connected via I2C and its I2C address is not the default value of 0x42."
 # indication that we're connected to UART 2 on the GNSS device
     gnss-uart2:
         type: boolean

@@ -383,7 +383,7 @@ U_PORT_TEST_FUNCTION("[zephyrPortBoardCfg]", "zephyrPortBoardCfgBasic")
     U_PORT_TEST_ASSERT(pCfgI2c->alreadyOpen);
     U_PORT_TEST_ASSERT(pCfgGnss->version == 0);
     U_PORT_TEST_ASSERT(pCfgGnss->moduleType == U_GNSS_MODULE_TYPE_M9);
-    U_PORT_TEST_ASSERT(pCfgGnss->i2cAddress == 43);
+    U_PORT_TEST_ASSERT(pCfgGnss->i2cAddress == 0x43);
     U_PORT_TEST_ASSERT(pCfgGnss->pinEnablePower == 1);
     U_PORT_TEST_ASSERT(pCfgGnss->pinDataReady == 36);
     // Set the second valid configuration
