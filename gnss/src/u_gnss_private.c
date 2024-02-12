@@ -22,8 +22,6 @@
 
 /** @file
  * @brief Implementation of functions that are private to GNSS.
- * IMPORTANT: this code is changing a lot at the moment as we move
- * towards a more generic, streamed, approach - beware!
  */
 
 #ifdef U_CFG_OVERRIDE
@@ -210,7 +208,8 @@ static const int32_t gGnssPrivateTransportTypeToStream[] = {
 };
 
 /** Table to convert a port number to the UBX-CFG-VAL group ID that
- * configures that port number for output protocol. */
+ * configures that port number for output protocol.
+ */
 static const uGnssCfgValKeyGroupId_t gPortToCfgValGroupIdOutProt[] = {
     U_GNSS_CFG_VAL_KEY_GROUP_ID_I2COUTPROT,   // 0: I2C
     U_GNSS_CFG_VAL_KEY_GROUP_ID_UART1OUTPROT, // 1: UART/UART1
@@ -220,7 +219,8 @@ static const uGnssCfgValKeyGroupId_t gPortToCfgValGroupIdOutProt[] = {
 };
 
 /** Table to convert an output protocol type to the UBX-CFG-VAL item ID
- * for that output protocol type. */
+ * for that output protocol type.
+ */
 static const uint8_t gProtocolTypeToCfgValItemIdOutProt[] = {
     1, // 0: U_GNSS_PROTOCOL_UBX
     2, // 1: U_GNSS_PROTOCOL_NMEA
@@ -2348,9 +2348,8 @@ int32_t uGnssPrivateSendOnlyCheckStreamUbxMessage(uGnssPrivateInstance_t *pInsta
             if (pInstance->transportType == U_GNSS_TRANSPORT_VIRTUAL_SERIAL) {
                 // When using a virtual serial port to talk to a GNSS chip via
                 // an intermediate module, that intermediate module may also be
-                // talking to the GNSS chip and hence we can't do the check
-                // below since the module may also be talking to the GNSS chip,
-                // we have to rely on the transport being good
+                // talking to the GNSS chip, and hence we can't do the UBX-MON-MSGPP
+                // check
                 errorCodeOrLength = uGnssPrivateSendOnlyStreamUbxMessage(pInstance, messageClass, messageId,
                                                                          pMessageBody, messageBodyLengthBytes);
             } else {
