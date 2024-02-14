@@ -29,6 +29,6 @@ fi
 # THIS MUST ALWAYS BE PLACED LASTLY IN THE SCRIPT!
 # newgrp will spawn a subshell so any shell commands after that point will not be executed
 if [ "$DOCKER_WAS_INSTALLED" == 1 ]; then
-    # Normally you need to logout in order to trigger the new group, but with this command this shouldn't be needed
+    # Normally you need to log out in order to trigger the new group, but with this command this shouldn't be needed
     newgrp docker # Calling this here will start a sub-shell and cause any remaining commands to not execute
 fi

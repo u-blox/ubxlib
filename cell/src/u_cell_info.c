@@ -78,6 +78,7 @@
 
 // Convert the UTRAN RSSI number in 3GPP TS 25.133 format to dBm.
 // Returns 0x7FFFFFFF if the number is not known.
+//
 // 0:     less than -100 dBm
 // 1..75: from -100 to -25 dBm with 1 dBm steps
 // 76:    -25 dBm or greater

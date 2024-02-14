@@ -110,7 +110,8 @@ typedef enum {
  * and the module must be re-booted afterwards (with a call to
  * uCellPwrReboot()) for it to take effect.
  *
- * Note: only for LENA-R8, setting numBands to 0 means "enable all bands".
+ * Note: for LENA-R8 (and only LENA-R8), setting numBands to 0 means
+ * "enable all bands".
  *
  * @param cellHandle  the handle of the cellular instance.
  * @param rat         the RAT to set the band mask for; must represent

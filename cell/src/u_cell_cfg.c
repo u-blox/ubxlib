@@ -68,7 +68,7 @@
  * -------------------------------------------------------------- */
 
 /** Table to convert uCellNetRat_t to the value used in
- * CONFIGURING the module, SARA_U201 form
+ * CONFIGURING the module, SARA_U201 form.
  */
 static const int8_t gCellRatToModuleRatU201[] = {
     -1,  // Dummy value for U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED

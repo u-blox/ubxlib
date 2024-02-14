@@ -3,7 +3,7 @@ from argparse import ArgumentParser
 from invoke import context
 
 def main(args):
-    '''Script entrypoint'''
+    '''Entrypoint'''
     parser = ArgumentParser(description=
         "This script will find the most likely base branch of a commit.")
     parser.add_argument('--rev', nargs='?', default="HEAD",

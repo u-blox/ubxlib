@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ###########################################################################
-# This will setup packages needed for ubxlib
+# This will set up packages needed for ubxlib
 ###########################################################################
 
 set -e

@@ -48,7 +48,7 @@ def main():
 
   if use_encryption == "1":
     aesccm = AESCCM(key,tag_size)
-    # Put the nonce at the start of the file.
+    # Put the nonce at the start of the file
     data_enc = nonce + aesccm.encrypt(nonce,data,data_aad)
     with open(libname,"wb") as f:
        f.write(data_enc)  

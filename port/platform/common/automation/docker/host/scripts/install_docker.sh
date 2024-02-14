@@ -30,7 +30,7 @@ sudo apt-get install docker-ce docker-ce-cli containerd.io
 
 echo "Post installation..."
 sudo groupadd -f docker
-# Add docker group to current user
+# Add docker group to the current user
 sudo usermod -aG docker $USER
 
 echo "Configure Docker to start on boot"

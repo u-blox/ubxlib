@@ -52,9 +52,9 @@ extern "C" {
  */
 #define U_CELL_INFO_IMEI_SIZE 15
 
-/** The number of digits required to store an ICCID.  Note
- * that 19 digit ICCIDs also exist.  This size includes room
- * for a null terminator.
+/** The number of digits required to store an ICCID.  Note that
+ * 19 digit ICCIDs also exist.  This size includes room for a null
+ * terminator.
  */
 #define U_CELL_INFO_ICCID_BUFFER_SIZE 21
 
