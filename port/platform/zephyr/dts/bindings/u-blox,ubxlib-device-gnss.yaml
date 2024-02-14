@@ -26,6 +26,16 @@ properties:
     i2c-already-open:
         type: boolean
         description: "If transport is I2C you may specify this to indicate that the application has already opened the I2C port and this code need do nothing (in which case i2c-clock will be ignored)."
+# maxSegmentSize for I2C
+    i2c-max-segment-size:
+        type: int
+        default: 0
+        description: "If transport is I2C and your MCU HW is limited in the length it can transfer in one go, specify the maximum segment size here, otherwise leave at the default of zero and no segmentation will be applied."
+# maxSegmentSize for SPI
+    spi-max-segment-size:
+        type: int
+        default: 0
+        description: "If transport is SPI and your MCU HW is limited in the length it can transfer in one go, specify the maximum segment size here, otherwise leave at the default of zero and no segmentation will be applied."
 # pinSelect for SPI
     spi-pin-select:
         type: int

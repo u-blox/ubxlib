@@ -96,6 +96,7 @@ typedef struct {
     const struct device *pDevice;  // NULL if not in use
     struct spi_config spiConfig;
     struct spi_cs_control spiCsControl;
+    size_t maxSegmentSize;
 } uPortSpiCfg_t;
 
 /* ----------------------------------------------------------------
@@ -503,6 +504,7 @@ int32_t uPortSpiOpen(int32_t spi, int32_t pinMosi, int32_t pinMiso,
             }
 
             if (pDevice != NULL) {
+                gSpiCfg[spi].maxSegmentSize = 0;
                 handleOrErrorCode = setSpiConfig(spi, &(gSpiCfg[spi]), &device);
                 if (handleOrErrorCode == 0) {
                     // Hook the device data structure into the entry
@@ -537,6 +539,49 @@ void uPortSpiClose(int32_t handle)
 
         U_PORT_MUTEX_UNLOCK(gMutex);
     }
+}
+
+// Set the maximum SPI segment size.
+int32_t uPortSpiSetMaxSegmentSize(int32_t handle, size_t maxSegmentSize)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+
+    if (gMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gMutex);
+
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        if ((handle >= 0) && (handle < sizeof(gSpiCfg) / sizeof(gSpiCfg[0])) &&
+            (gSpiCfg[handle].pDevice != NULL)) {
+            gSpiCfg[handle].maxSegmentSize = maxSegmentSize;
+            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+        }
+
+        U_PORT_MUTEX_UNLOCK(gMutex);
+    }
+
+    return errorCode;
+}
+
+// Get the maximum SPI segment size.
+int32_t uPortSpiGetMaxSegmentSize(int32_t handle)
+{
+    int32_t errorCodeOrMaxSegmentSize = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+
+    if (gMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gMutex);
+
+        errorCodeOrMaxSegmentSize = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        if ((handle >= 0) && (handle < sizeof(gSpiCfg) / sizeof(gSpiCfg[0])) &&
+            (gSpiCfg[handle].pDevice != NULL)) {
+            errorCodeOrMaxSegmentSize = (int32_t) gSpiCfg[handle].maxSegmentSize;
+        }
+
+        U_PORT_MUTEX_UNLOCK(gMutex);
+    }
+
+    return errorCodeOrMaxSegmentSize;
 }
 
 // Set the configuration of the device.
@@ -688,6 +733,7 @@ int32_t uPortSpiControllerSendReceiveBlock(int32_t handle, const char *pSend,
                                            size_t bytesToReceive)
 {
     int32_t errorCodeOrReceiveSize = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    int32_t x;
     uPortSpiCfg_t *pSpiCfg;
     struct spi_buf sendBuffer;
     struct spi_buf_set sendBufferList;
@@ -702,31 +748,51 @@ int32_t uPortSpiControllerSendReceiveBlock(int32_t handle, const char *pSend,
 
         errorCodeOrReceiveSize = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if ((handle >= 0) && (handle < sizeof(gSpiCfg) / sizeof(gSpiCfg[0])) &&
-            (gSpiCfg[handle].pDevice != NULL)) {
+            (gSpiCfg[handle].pDevice != NULL)  &&
+            ((pSend != NULL) || (bytesToSend == 0)) &&
+            ((pReceive != NULL) || (bytesToReceive == 0))) {
             pSpiCfg = &(gSpiCfg[handle]);
+            errorCodeOrReceiveSize = 0;
+            while ((errorCodeOrReceiveSize >= 0) &&
+                   ((bytesToSend > 0) || (bytesToReceive > 0))) {
+                sendBuffer.buf = NULL;
+                sendBuffer.len = 0;
+                if (bytesToSend > 0) {
+                    sendBuffer.buf = (char *) pSend;
+                    sendBuffer.len = bytesToSend;
+                    if ((pSpiCfg->maxSegmentSize > 0) &&
+                        (sendBuffer.len > pSpiCfg->maxSegmentSize)) {
+                        sendBuffer.len = pSpiCfg->maxSegmentSize;
+                    }
+                    bytesToSend -= sendBuffer.len;
+                    pSend += sendBuffer.len;
+                    sendBufferList.buffers = &sendBuffer;
+                    sendBufferList.count = 1;
+                    pSendBufferList = &sendBufferList;
+                }
+                receiveBuffer.buf = NULL;
+                receiveBuffer.len = 0;
+                if (bytesToReceive > 0) {
+                    receiveBuffer.buf = pReceive;
+                    receiveBuffer.len = bytesToReceive;
+                    if ((pSpiCfg->maxSegmentSize > 0) &&
+                        (receiveBuffer.len > pSpiCfg->maxSegmentSize)) {
+                        receiveBuffer.len = pSpiCfg->maxSegmentSize;
+                    }
+                    bytesToReceive -= receiveBuffer.len;
+                    pReceive += receiveBuffer.len;
+                    receiveBufferList.buffers = &receiveBuffer;
+                    receiveBufferList.count = 1;
+                    pReceiveBufferList = &receiveBufferList;
+                }
 
-            if (pSend != NULL) {
-                sendBuffer.buf = (char *) pSend;
-                sendBuffer.len = bytesToSend;
-                sendBufferList.buffers = &sendBuffer;
-                sendBufferList.count = 1;
-                pSendBufferList = &sendBufferList;
-            }
-
-            if (pReceive != NULL) {
-                receiveBuffer.buf = pReceive;
-                receiveBuffer.len = bytesToReceive;
-                receiveBufferList.buffers = &receiveBuffer;
-                receiveBufferList.count = 1;
-                pReceiveBufferList = &receiveBufferList;
-            } else {
-                bytesToReceive = 0;
-            }
-
-            errorCodeOrReceiveSize = spi_transceive(pSpiCfg->pDevice, &(pSpiCfg->spiConfig),
-                                                    pSendBufferList, pReceiveBufferList);
-            if (errorCodeOrReceiveSize == 0) {
-                errorCodeOrReceiveSize = bytesToReceive;
+                x = spi_transceive(pSpiCfg->pDevice, &(pSpiCfg->spiConfig),
+                                   pSendBufferList, pReceiveBufferList);
+                if (x == 0) {
+                    errorCodeOrReceiveSize += receiveBuffer.len;
+                } else {
+                    errorCodeOrReceiveSize = x;
+                }
             }
         }
 

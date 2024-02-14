@@ -110,10 +110,11 @@ static const uDeviceCfg_t gDeviceCfg = {
             .i2c = U_CFG_APP_GNSS_I2C,
             .pinSda = U_CFG_APP_PIN_GNSS_SDA,
             .pinScl = U_CFG_APP_PIN_GNSS_SCL
-            // There two additional fields here
-            // "clockHertz" amd "alreadyOpen", which
-            // we do NOT set, we allow the compiler
-            // to set them to 0 and all will be fine.
+            // There are three additional fields here,
+            // "clockHertz", "alreadyOpen" and
+            // "maxSegmentSize", which we do not set,
+            // we allow the compiler to set them to 0
+            // and all will be fine.
             // You may set clockHertz if you want the
             // I2C bus to use a different clock frequency
             // to the default of
@@ -131,6 +132,11 @@ static const uDeviceCfg_t gDeviceCfg = {
             // if alreadyOpen is set to true then
             // pinSda, pinScl and clockHertz will
             // be ignored.
+            // You may set maxSegmentSize if the I2C
+            // HW you are using has a size limitation
+            // (e.g. nRF52832 does); any I2C transfer
+            // greater than this size will be split
+            // into N transfers smaller than this size.
         },
     },
 # elif (U_CFG_APP_GNSS_SPI >= 0)
@@ -153,6 +159,15 @@ static const uDeviceCfg_t gDeviceCfg = {
             // .device = U_COMMON_SPI_CONTROLLER_DEVICE_INDEX_DEFAULTS(1)
             // would use pin 14 of port GPIO 1 as the chip select.
             .device = U_COMMON_SPI_CONTROLLER_DEVICE_DEFAULTS(U_CFG_APP_PIN_GNSS_SPI_SELECT)
+            // There is an additional field here,
+            // "maxSegmentSize", which we do not set,
+            // we allow the compiler to set it to 0
+            // and all will be fine.
+            // You may set maxSegmentSize if the SPI
+            // HW you are using has a size limitation
+            // (e.g. nRF52832 does); any SPI transfer
+            // greater than this size will be split
+            // into N transfers smaller than this size.
         },
     },
 #  else

@@ -327,12 +327,21 @@ int32_t uDevicePrivateGnssAdd(const uDeviceCfg_t *pDevCfg,
                                              true);
                     if (errorCode >= 0) {
                         gnssTransportHandle.spi = errorCode;
-                        errorCode = uPortSpiControllerSetDevice(errorCode,
-                                                                &(pCfgSpi->device));
-                        if (errorCode == 0) {
-                            errorCode = addDevice(gnssTransportHandle,
-                                                  pDevCfg->transportType,
-                                                  pCfgGnss, pDeviceHandle);
+                        if (pCfgSpi->maxSegmentSize > 0) {
+                            if (uPortSpiSetMaxSegmentSize(gnssTransportHandle.spi,
+                                                          pCfgSpi->maxSegmentSize) < 0) {
+                                // Return a meaningful error code
+                                errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+                            }
+                        }
+                        if (errorCode >= 0) {
+                            errorCode = uPortSpiControllerSetDevice(gnssTransportHandle.spi,
+                                                                    &(pCfgSpi->device));
+                            if (errorCode == 0) {
+                                errorCode = addDevice(gnssTransportHandle,
+                                                      pDevCfg->transportType,
+                                                      pCfgGnss, pDeviceHandle);
+                            }
                         }
                         if (errorCode < 0) {
                             // Clean up on error

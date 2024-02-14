@@ -91,6 +91,20 @@
  */
 #define U_TEST_PRINT_LINE(format, ...) uPortLog(U_TEST_PREFIX format "\n", ##__VA_ARGS__)
 
+#ifndef U_CFG_APP_I2C_MAX_SEGMENT_SIZE
+/** Make sure that there is a default maximum I2C segment size (where
+ * 0 means no segmentation).
+ */
+# define U_CFG_APP_I2C_MAX_SEGMENT_SIZE 0
+#endif
+
+#ifndef U_CFG_APP_SPI_MAX_SEGMENT_SIZE
+/** Make sure that there is a default maximum SPI segment size (where
+ * 0 means no segmentation).
+ */
+# define U_CFG_APP_SPI_MAX_SEGMENT_SIZE 0
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -262,7 +276,8 @@ static const uDeviceCfg_t gDeviceCfgGnss = {
         .cfgI2c = {
             .i2c = U_CFG_APP_GNSS_I2C,
             .pinSda = U_CFG_APP_PIN_GNSS_SDA,
-            .pinScl = U_CFG_APP_PIN_GNSS_SCL
+            .pinScl = U_CFG_APP_PIN_GNSS_SCL,
+            .maxSegmentSize = U_CFG_APP_I2C_MAX_SEGMENT_SIZE
         }
     }
 # elif (U_CFG_APP_GNSS_SPI >= 0)
@@ -273,7 +288,8 @@ static const uDeviceCfg_t gDeviceCfgGnss = {
             .pinMosi = U_CFG_APP_PIN_GNSS_SPI_MOSI,
             .pinMiso = U_CFG_APP_PIN_GNSS_SPI_MISO,
             .pinClk = U_CFG_APP_PIN_GNSS_SPI_CLK,
-            .device = U_COMMON_SPI_CONTROLLER_DEVICE_DEFAULTS(U_CFG_APP_PIN_GNSS_SPI_SELECT)
+            .device = U_COMMON_SPI_CONTROLLER_DEVICE_DEFAULTS(U_CFG_APP_PIN_GNSS_SPI_SELECT),
+            .maxSegmentSize = U_CFG_APP_SPI_MAX_SEGMENT_SIZE
         }
     }
 # else

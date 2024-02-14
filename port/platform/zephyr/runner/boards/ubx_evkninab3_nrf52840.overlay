@@ -35,6 +35,7 @@
         i2c-clock-hertz = <1000>;
         i2c-already-open;
         i2c-address = <0x43>;
+        i2c-max-segment-size = <256>;
         module-type = "U_GNSS_MODULE_TYPE_M9";
         pin-enable-power = <1>;
         pin-data-ready = <36>;
@@ -43,6 +44,7 @@
         compatible = "u-blox,ubxlib-device-gnss";
         status = "okay";
         transport-type = "spi2";
+        spi-max-segment-size = <255>;
         spi-frequency-hertz = <2000000>;
         spi-index-select = <0>;
         spi-mode = <2>;

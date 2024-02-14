@@ -2763,6 +2763,12 @@ U_PORT_TEST_FUNCTION("[port]", "portI2cRequiresSpecificWiring")
             // Write a longer thing; UBX-MON-VER polls the GNSS device for a
             // 40 + n·* 30 byte UBX-MON-VER response containing a 40 byte fixed part, which
             // is all we captue here; message class 0x0a, message ID 0x04.
+
+# if defined(U_CFG_APP_I2C_MAX_SEGMENT_SIZE) && (U_CFG_APP_I2C_MAX_SEGMENT_SIZE > 0)
+            // Where required, do this with segmentation on
+            U_PORT_TEST_ASSERT(uPortI2cSetMaxSegmentSize(gI2cHandle, U_CFG_APP_I2C_MAX_SEGMENT_SIZE) == 0);
+            U_PORT_TEST_ASSERT(uPortI2cGetMaxSegmentSize(gI2cHandle) == U_CFG_APP_I2C_MAX_SEGMENT_SIZE);
+# endif
             memset(gpI2cBuffer, 0xFF, U_PORT_TEST_I2C_BUFFER_LENGTH_BYTES);
             y = uUbxProtocolEncode(0x0a, 0x04, NULL, 0, gpI2cBuffer);
             // Send
@@ -2959,6 +2965,12 @@ U_PORT_TEST_FUNCTION("[port]", "portSpiRequiresSpecificWiring")
     } else {
         memcpy(buffer3, buffer2, 3);
     }
+# if defined(U_CFG_APP_SPI_MAX_SEGMENT_SIZE) && (U_CFG_APP_SPI_MAX_SEGMENT_SIZE > 0)
+    // Where required, do this with segmentation on
+    U_PORT_TEST_ASSERT(uPortSpiSetMaxSegmentSize(gSpiHandle, U_CFG_APP_SPI_MAX_SEGMENT_SIZE) == 0);
+    U_PORT_TEST_ASSERT(uPortSpiGetMaxSegmentSize(gSpiHandle) == U_CFG_APP_SPI_MAX_SEGMENT_SIZE);
+# endif
+
     uPortSpiControllerSendReceiveWord(gSpiHandle, *((uint64_t *) &buffer3), 3);
     U_PORT_TEST_ASSERT(uPortSpiControllerSendReceiveBlock(gSpiHandle,
                                                           &(buffer2[3]),

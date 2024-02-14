@@ -216,6 +216,16 @@ typedef struct {
                                     the I2C HW configuration; if this is
                                     true then pinSda, pinScl and clockHertz
                                     will be ignored. */
+    size_t maxSegmentSize;     /**< The maximum size of I2C transfer to perform
+                                    at any one time; this is ONLY REQUIRED on a
+                                    very small number of chipsets that have a
+                                    HW limitation (e.g. nRF52832 which has a
+                                    maximum DMA size of 256 bytes); otherwise
+                                    it should be left at zero (meaning no
+                                    segmentation).  Where it is greater than
+                                    zero a transfer larger than this size
+                                    will be split into several transfers no
+                                    larger than this size. */
     /* This is the end of version 0 of this structure:
        should any fields be added to this structure in
        future they must be added AFTER this point and
@@ -245,6 +255,16 @@ typedef struct {
     int32_t pinMiso;                     /**< The master-out, slave-in data pin. */
     int32_t pinClk;                      /**< The clock pin. */
     uCommonSpiControllerDevice_t device; /**< The device configuration. */
+    size_t maxSegmentSize;               /**< The maximum size of SPI transfer to
+                                              perform at any one time; this is ONLY
+                                              REQUIRED on a very small number of
+                                              chipsets that have a HW limitation
+                                              (e.g. nRF52832 which has a maximum DMA
+                                              size of 256 bytes); otherwise it should
+                                              be left at zero (meaning no segmentation).
+                                              Where it is greater than zero a transfer
+                                              larger than this size will be split into
+                                              several transfers no larger than this size. */
     /* This is the end of version 0 of this structure:
        should any fields be added to this structure in
        future they must be added AFTER this point and

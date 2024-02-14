@@ -451,6 +451,10 @@ int32_t uGnssTestPrivatePreamble(uGnssModuleType_t moduleType,
                         // (see https://www.st.com/resource/en/errata_sheet/es0206-stm32f427437-and-stm32f429439-line-limitations-stmicroelectronics.pdf),
                         // switch to 400 kHz for our testing
                         uPortI2cSetClock(pParameters->streamHandle, 400000);
+# if defined(U_CFG_APP_I2C_MAX_SEGMENT_SIZE) && (U_CFG_APP_I2C_MAX_SEGMENT_SIZE > 0)
+                        uPortI2cSetMaxSegmentSize(pParameters->streamHandle,
+                                                  U_CFG_APP_I2C_MAX_SEGMENT_SIZE);
+# endif
                     }
                 }
                 break;
@@ -466,6 +470,10 @@ int32_t uGnssTestPrivatePreamble(uGnssModuleType_t moduleType,
                                              true);
                     if ((errorCode >= 0) &&
                         (uPortSpiControllerSetDevice(errorCode, &spiDevice) == 0)) {
+# if defined(U_CFG_APP_SPI_MAX_SEGMENT_SIZE) && (U_CFG_APP_SPI_MAX_SEGMENT_SIZE > 0)
+                        uPortSpiSetMaxSegmentSize(errorCode,
+                                                  U_CFG_APP_SPI_MAX_SEGMENT_SIZE);
+# endif
                         pParameters->streamHandle = errorCode;
                         transportHandle.spi = pParameters->streamHandle;
                     }

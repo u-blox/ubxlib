@@ -503,6 +503,26 @@ static const int32_t gDeviceCfgGnssI2cAlreadyOpen[] = {
                                  i2c_already_open)
 };
 
+/** The "i2c-max-segment-size" property of each of the
+ * ubxlib-device-gnss compatible devices, or -1 where not present,
+ * in the order they appear in the device tree.
+ */
+static const int32_t gDeviceCfgGnssI2cMaxSegmentSize[] = {
+    DT_FOREACH_STATUS_OKAY_VARGS(u_blox_ubxlib_device_gnss,
+                                 U_PORT_BOARD_CFG_GET_INT,
+                                 i2c_max_segment_size)
+};
+
+/** The "spi-max-segment-size" property of each of the
+ * ubxlib-device-gnss compatible devices, or -1 where not present,
+ * in the order they appear in the device tree.
+ */
+static const int32_t gDeviceCfgGnssSpiMaxSegmentSize[] = {
+    DT_FOREACH_STATUS_OKAY_VARGS(u_blox_ubxlib_device_gnss,
+                                 U_PORT_BOARD_CFG_GET_INT,
+                                 spi_max_segment_size)
+};
+
 /** The "spi-pin-select" of each of the ubxlib-device-gnss
  * compatible devices, or -1 where not present, in the order they
  * appear in the device tree.
@@ -1107,9 +1127,11 @@ static void cfgGnss(uDeviceCfg_t *pCfg, int32_t index)
             pCfgI2c->alreadyOpen = gDeviceCfgGnssI2cAlreadyOpen[index];
             pCfgI2c->pinSda = -1;
             pCfgI2c->pinScl = -1;
-            uPortLog("U_PORT_BOARD_CFG: ...GNSS on I2C %d, i2c-address 0x%02x, i2c-clock-hertz %d%s.\n",
+            pCfgI2c->maxSegmentSize = gDeviceCfgGnssI2cMaxSegmentSize[index];
+            uPortLog("U_PORT_BOARD_CFG: ...GNSS on I2C %d, i2c-address 0x%02x, i2c-clock-hertz %d, i2c-max-segment-size %d%s.\n",
                      pCfgI2c->i2c, pCfgGnss->i2cAddress,
                      pCfgI2c->clockHertz,
+                     pCfgI2c->maxSegmentSize,
                      pCfgI2c->alreadyOpen ? ", i2c-already-open" : "");
         }
         break;
@@ -1122,6 +1144,7 @@ static void cfgGnss(uDeviceCfg_t *pCfg, int32_t index)
             pCfgSpi->pinMosi = -1;
             pCfgSpi->pinMiso = -1;
             pCfgSpi->pinClk = -1;
+            pCfgSpi->maxSegmentSize = gDeviceCfgGnssSpiMaxSegmentSize[index];
             pSpiDevice->pinSelect = gDeviceCfgGnssSpiPinSelect[index];
             pSpiDevice->indexSelect = gDeviceCfgGnssSpiIndexSelect[index];
             pSpiDevice->frequencyHertz = gDeviceCfgGnssSpiFrequencyHertz[index];
@@ -1133,12 +1156,12 @@ static void cfgGnss(uDeviceCfg_t *pCfg, int32_t index)
             // Can't set these last two in Zephyr
             pSpiDevice->sampleDelayNanoseconds = U_COMMON_SPI_SAMPLE_DELAY_NANOSECONDS;
             pSpiDevice->fillWord = U_COMMON_SPI_FILL_WORD;
-            uPortLog("U_PORT_BOARD_CFG: ...GNSS on SPI %d, spi-pin-select %d,"
-                     " spi-index-select %d, spi-frequency-hertz %d, spi-mode %d,"
-                     " spi-word-size-bytes %d%s, spi-start-offset-nanoseconds %d,"
-                     " spi-stop-offset-nanoseconds %d"
+            uPortLog("U_PORT_BOARD_CFG: ...GNSS on SPI %d, spi-max-segment-size %d,"
+                     " spi-pin-select %d, spi-index-select %d, spi-frequency-hertz %d,"
+                     " spi-mode %d, spi-word-size-bytes %d%s,"
+                     " spi-start-offset-nanoseconds %d, spi-stop-offset-nanoseconds %d"
                      " [sample delay %d nanoseconds, fill word 0x%08x].\n",
-                     pCfgSpi->spi, pSpiDevice->pinSelect,
+                     pCfgSpi->spi, pCfgSpi->maxSegmentSize, pSpiDevice->pinSelect,
                      pSpiDevice->indexSelect, pSpiDevice->frequencyHertz,
                      pSpiDevice->mode, pSpiDevice->wordSizeBytes,
                      pSpiDevice->lsbFirst ? ", spi-lsb-first" : "",

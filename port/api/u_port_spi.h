@@ -114,6 +114,38 @@ int32_t uPortSpiOpen(int32_t spi, int32_t pinMosi, int32_t pinMiso,
  */
 void uPortSpiClose(int32_t handle);
 
+/** Set the maximum segment size for an SPI transfer in both
+ * directions; this should be used only on chipsets where the HW
+ * interface is limited (e.g. nRF52832, which has a maximum DMA
+ * size of 256 for SPI): any transfers above this size will be
+ * segmented into N transfers of no more than this size.  If this is
+ * not called no segmentation will be applied.  Where this is not
+ * supported a weakly-linked function will return
+ * #U_ERROR_COMMON_NOT_SUPPORTED.
+ *
+ * Note to GNSS users: the receive length of each segment of
+ * data from the GNSS device is already limited by
+ * #U_GNSS_MSG_TEMPORARY_BUFFER_LENGTH_BYTES.  To avoid any
+ * inefficiencies you may wish to make sure that matches
+ * the maxSegmentSize you use here.
+ *
+ * @param handle         the handle of the SPI instance.
+ * @param maxSegmentSize the maximum segment size; use zero to
+ *                       indicate no limit (the default).
+ * @return               zero on success, else negative error code.
+ */
+int32_t uPortSpiSetMaxSegmentSize(int32_t handle, size_t maxSegmentSize);
+
+/** Get the maximum segment size for an SPI transfer in both
+ * directions.  If this is not called no segmentation will be
+ * applied.
+ *
+ * @param handle the handle of the SPI instance.
+ * @return       the maximum segment size (zero if no segmentation
+ *               is applied).
+ */
+int32_t uPortSpiGetMaxSegmentSize(int32_t handle);
+
 /** Set the configuration of the device that this controller will
  * talk to.  If this function is not called
  * #U_COMMON_SPI_CONTROLLER_DEVICE_DEFAULTS /

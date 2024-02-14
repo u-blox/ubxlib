@@ -222,6 +222,38 @@ int32_t uPortI2cSetTimeout(int32_t handle, int32_t timeoutMs);
  */
 int32_t uPortI2cGetTimeout(int32_t handle);
 
+/** Set the maximum segment size for an I2C transfer in both
+ * directions; this should be used only on chipsets where the HW
+ * interface is limited (e.g. nRF52832, which has a maximum DMA
+ * size of 256 for I2C): any transfers above this size will be
+ * segmented into N transfers of no more than this size.  If this is
+ * not called no segmentation will be applied.  Where this is not
+ * supported a weakly-linked function will return
+ * #U_ERROR_COMMON_NOT_SUPPORTED.
+ *
+ * Note to GNSS users: the receive length of each segment of
+ * data from the GNSS device is already limited by
+ * #U_GNSS_MSG_TEMPORARY_BUFFER_LENGTH_BYTES.  To avoid any
+ * inefficiencies you may wish to make sure that matches
+ * the maxSegmentSize you use here.
+ *
+ * @param handle         the handle of the I2C instance.
+ * @param maxSegmentSize the maximum segment size; use zero to
+ *                       indicate no limit (the default).
+ * @return               zero on success, else negative error code.
+ */
+int32_t uPortI2cSetMaxSegmentSize(int32_t handle, size_t maxSegmentSize);
+
+/** Get the maximum segment size for an I2C transfer in both
+ * directions.  If this is not called no segmentation will be
+ * applied.
+ *
+ * @param handle the handle of the I2C instance.
+ * @return       the maximum segment size (zero if no segmentation
+ *               is applied).
+ */
+int32_t uPortI2cGetMaxSegmentSize(int32_t handle);
+
 /** Send and/or receive over the I2C interface as a controller.
  * Note that the NRF52 and NRF53 chips require all buffers to
  * be in RAM.
