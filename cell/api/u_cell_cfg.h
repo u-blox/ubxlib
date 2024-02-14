@@ -337,7 +337,24 @@ int32_t uCellCfgGetActiveSerialInterface(uDeviceHandle_t cellHandle);
  *                    failure.
  */
 int32_t uCellCfgSetUdconf(uDeviceHandle_t cellHandle, int32_t param1,
-                          int32_t param2,  int32_t param3);
+                          int32_t param2, int32_t param3);
+
+/** This allows a UDCONF command to be sent to the
+ * module with up to "n" integer parameters.  A reboot is usually
+ * required afterwards to write the setting to non-volatile memory.
+ *
+ * @param cellHandle      the handle of the cellular instance.
+ * @param numParameters   specify the number of parameters to be set.
+ * @param[in] pParameters pointer to the array containing the parameters
+ *                        that are desired to be set.  The parameters
+ *                        should be positive integers.  First two
+ *                        parameters are mandatory.
+ * @return                zero on success or negative error code on
+ *                        failure.
+ */
+int32_t uCellCfgSetUdconfMultiParam(uDeviceHandle_t cellHandle,
+                                    size_t numParameters,
+                                    int32_t *pParameters);
 
 /** Get the given "AT+UDCONF" setting.
  *

@@ -804,6 +804,8 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgUdconf")
     int32_t x;
     int32_t setUdconf = 0;
     int32_t resourceCount;
+    size_t numParameters = 3;
+    int32_t parameters[5] = {92, 50, -1, 532, -2};
 
     // In case a previous test failed
     uCellTestPrivateCleanup(&gHandles);
@@ -817,24 +819,58 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgUdconf")
     cellHandle = gHandles.cellHandle;
 
     // All modules support AT+UDCONF=1 so we can test that safely
-    U_TEST_PRINT_LINE("getting UDCONF=1...");
+    U_TEST_PRINT_LINE("getting UDCONF = 1...");
     udconfOriginal = uCellCfgGetUdconf(cellHandle, 1, -1);
-    U_TEST_PRINT_LINE("UDCONF=1 is %d.", udconfOriginal);
+    U_TEST_PRINT_LINE("UDCONF = 1 is %d.", udconfOriginal);
     U_PORT_TEST_ASSERT((udconfOriginal == 0) || (udconfOriginal == 1));
 
     if (udconfOriginal == 0) {
         setUdconf = 1;
     }
 
-    U_TEST_PRINT_LINE("setting UDCONF=1,%d...", setUdconf);
+    U_TEST_PRINT_LINE("setting UDCONF = 1,%d...", setUdconf);
     U_PORT_TEST_ASSERT(uCellCfgSetUdconf(cellHandle, 1, setUdconf, -1) == 0);
     x = uCellCfgGetUdconf(cellHandle, 1, -1);
-    U_TEST_PRINT_LINE("UDCONF=1 is now %d.", x);
+    U_TEST_PRINT_LINE("UDCONF = 1 is now %d.", x);
     U_PORT_TEST_ASSERT(x == setUdconf);
     U_PORT_TEST_ASSERT(uCellPwrRebootIsRequired(cellHandle));
 
-    U_TEST_PRINT_LINE("putting UDCONF=1 back to what it was...");
+    U_TEST_PRINT_LINE("putting UDCONF = 1 back to what it was...");
     U_PORT_TEST_ASSERT(uCellCfgSetUdconf(cellHandle, 1, udconfOriginal, -1) == 0);
+
+    // Testing for multiple parameters
+    if (U_CFG_TEST_CELL_MODULE_TYPE == U_CELL_MODULE_TYPE_LARA_R6) {
+        U_TEST_PRINT_LINE("getting UDCONF for %d = 92, 50 ...",
+                          U_CELL_MODULE_TYPE_LARA_R6);
+        udconfOriginal = uCellCfgGetUdconf(cellHandle, 92, 50);
+        U_TEST_PRINT_LINE("UDCONF = 92 is %d.", udconfOriginal);
+        U_PORT_TEST_ASSERT((udconfOriginal >= 0) && (udconfOriginal <= 255));
+
+        // Attempting to write a wrong value, it should not be written to module.
+        U_PORT_TEST_ASSERT(uCellCfgSetUdconfMultiParam(cellHandle, numParameters, parameters) <= 0);
+        x = uCellCfgGetUdconf(cellHandle, 92, 50);
+        U_PORT_TEST_ASSERT(x == udconfOriginal);
+
+        // Now trying to write a valid value...
+        if (udconfOriginal == 22) {
+            setUdconf = 24;
+        } else {
+            setUdconf = 22;
+        }
+        parameters[0] = 92;
+        parameters[1] = 50;
+        parameters[2] = setUdconf;
+        U_TEST_PRINT_LINE("setting UDCONF = 92, 50, %d...", parameters[2]);
+        U_PORT_TEST_ASSERT(uCellCfgSetUdconfMultiParam(cellHandle, numParameters, parameters) == 0);
+        x = uCellCfgGetUdconf(cellHandle, 92, 50);
+        U_TEST_PRINT_LINE("UDCONF = 92, 50 is now %d.", x);
+        U_PORT_TEST_ASSERT(x == setUdconf);
+        U_PORT_TEST_ASSERT(uCellPwrRebootIsRequired(cellHandle));
+
+        U_TEST_PRINT_LINE("putting UDCONF = 92, 50 back to what it was...");
+        parameters[2] = udconfOriginal;
+        U_PORT_TEST_ASSERT(uCellCfgSetUdconfMultiParam(cellHandle, numParameters, parameters) == 0);
+    }
 
     // Do the standard postamble, leaving the module on for the next
     // test to speed things up

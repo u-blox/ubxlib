@@ -1745,11 +1745,39 @@ int32_t uCellCfgGetActiveSerialInterface(uDeviceHandle_t cellHandle)
 
 // Set "AT+UDCONF".
 int32_t uCellCfgSetUdconf(uDeviceHandle_t cellHandle, int32_t param1,
-                          int32_t param2,  int32_t param3)
+                          int32_t param2, int32_t param3)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    size_t numParameters = 0;
+    int32_t parameters[3] = {0};
+
+    if ((param1 >= 0) && (param2 >= 0)) {
+        numParameters = 2;
+        parameters[0] = param1;
+        parameters[1] = param2;
+        // Check for the optional parameter.
+        if (param3 >= 0) {
+            numParameters++;
+            parameters[2] = param3;
+        }
+
+        errorCode = uCellCfgSetUdconfMultiParam(cellHandle, numParameters,
+                                                parameters);
+    }
+
+    return errorCode;
+}
+
+// Allows to set multiple parameters by "AT+UDCONF".
+int32_t uCellCfgSetUdconfMultiParam(uDeviceHandle_t cellHandle,
+                                    size_t numParameters,
+                                    int32_t *pParameters)
+
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
     uAtClientHandle_t atHandle;
+    bool isParamValid = true;
 
     if (gUCellPrivateMutex != NULL) {
 
@@ -1757,19 +1785,26 @@ int32_t uCellCfgSetUdconf(uDeviceHandle_t cellHandle, int32_t param1,
 
         pInstance = pUCellPrivateGetInstance(cellHandle);
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-        if ((pInstance != NULL) && (param1 >= 0) && (param2 >= 0)) {
+        if ((pInstance != NULL) &&
+            (pParameters != NULL) &&
+            (numParameters >= 2)) {
             atHandle = pInstance->atHandle;
             uAtClientLock(atHandle);
             uAtClientCommandStart(atHandle, "AT+UDCONF=");
-            uAtClientWriteInt(atHandle, param1);
-            uAtClientWriteInt(atHandle, param2);
-            if (param3 >= 0) {
-                uAtClientWriteInt(atHandle, param3);
+            for (size_t i = 0; ((i < numParameters) && isParamValid); i++) {
+                if (pParameters[i] >= 0) {
+                    uAtClientWriteInt(atHandle, pParameters[i]);
+                } else {
+                    isParamValid = false;
+                }
             }
             uAtClientCommandStopReadResponse(atHandle);
             errorCode = uAtClientUnlock(atHandle);
             if (errorCode == 0) {
                 pInstance->rebootIsRequired = true;
+            }
+            if (isParamValid == false) {
+                errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
             }
         }
 
@@ -1804,7 +1839,7 @@ int32_t uCellCfgGetUdconf(uDeviceHandle_t cellHandle, int32_t param1,
                 uAtClientWriteInt(atHandle, param2);
                 // If we're writing a second parameter it
                 // will be echoed back at us so we need to
-                // skip it there
+                // skip it there.
                 skip++;
             }
             uAtClientCommandStop(atHandle);
