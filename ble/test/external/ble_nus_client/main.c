@@ -27,11 +27,14 @@
 
 #define SERVER_NAME "UbxDutNusServer"
 #define COMMAND "Hello"
+#define RESPONSE_TIMEOUT_MS 5000
+#define IDLE_TIMEOUT_MS 10000
 
 enum { IDLE,
        START_SCAN,
        SCANNING,
        CONNECT,
+       CONNECTING,
        DISCONNECT,
        TIMEOUT
      } m_state = START_SCAN;
@@ -51,7 +54,7 @@ static void timer_cb(void *p_context)
         m_state = START_SCAN;
     } else {
         // Response timeout
-        if (m_state == CONNECT) {
+        if (m_state == CONNECTING) {
             sd_ble_gap_connect_cancel();
         }
         m_state = TIMEOUT;
@@ -79,8 +82,11 @@ void nus_c_rx_cb(uint8_t *data, uint32_t length)
     } else if (length == 1) {
         NRF_LOG_INFO("Nus detected, sending command")
         enrf_nus_c_string_send(COMMAND);
-        // Set reponse timeout
-        app_timer_start(m_response_timer, APP_TIMER_TICKS(5000), (void *)false);
+        // Set response timeout
+        app_timer_stop(m_response_timer);
+        app_timer_start(m_response_timer,
+                        APP_TIMER_TICKS(RESPONSE_TIMEOUT_MS),
+                        (void *)false);
     }
 }
 
@@ -131,20 +137,27 @@ int main()
             enrf_stop_scan();
             app_timer_stop(m_blink_timer);
             SET_LED(BSP_BOARD_LED_1, true);
-            m_state = IDLE;
+            m_state = CONNECTING;
             NRF_LOG_INFO("Connecting to: %s", enrf_addr_to_str(&m_client_addr));
+            // No automatic exit from connect, set timeout
+            app_timer_start(m_response_timer,
+                            APP_TIMER_TICKS(RESPONSE_TIMEOUT_MS),
+                            (void *)false);
             enrf_connect_to(&m_client_addr, NULL, nus_c_rx_cb);
         } else if (m_state == DISCONNECT || m_state == TIMEOUT) {
-            m_state = IDLE;
             enrf_disconnect();
-            NRF_LOG_INFO("Disconnected");
             SET_LED(BSP_BOARD_LED_1, false);
-            if (m_state == TIMEOUT) {
+            if (m_state == DISCONNECT) {
+                NRF_LOG_INFO("Disconnected");
+            } else {
+                NRF_LOG_ERROR("Timeout")
                 // Show error LED
                 SET_LED(BSP_BOARD_LED_0, true);
             }
+            m_state = IDLE;
             NRF_LOG_INFO("Idle");
-            app_timer_start(m_idle_timer, APP_TIMER_TICKS(10000), (void *)true);
+            // Wait before scanning again
+            app_timer_start(m_idle_timer, APP_TIMER_TICKS(IDLE_TIMEOUT_MS), (void *)true);
         }
         enrf_wait_for_event();
     }

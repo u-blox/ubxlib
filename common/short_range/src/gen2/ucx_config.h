@@ -21,7 +21,7 @@
 #define U_CX_MUTEX_CREATE(mutex) uPortMutexCreate(&mutex)
 #define U_CX_MUTEX_DELETE(mutex) uPortMutexDelete(mutex)
 #define U_CX_MUTEX_LOCK(mutex) uPortMutexLock(mutex)
-#define U_CX_MUTEX_TRY_LOCK(mutex) uPortMutexTryLock(mutex, 0)
+#define U_CX_MUTEX_TRY_LOCK(mutex, timeoutMs) uPortMutexTryLock(mutex, timeoutMs)
 #define U_CX_MUTEX_UNLOCK(mutex) uPortMutexUnlock(mutex)
 
 /* Porting layer for getting time in ms.*/
