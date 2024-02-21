@@ -334,6 +334,23 @@ int32_t uGnssMsgReceive(uDeviceHandle_t gnssHandle,
  * transport, please instead open a Virtual Serial connection for
  * that case (see uCellMuxAddChannel()).
  *
+ * Note: if you wish to capture multiple message IDs, e.g. "G?GGA"
+ * and "G?RMC", then you should make a call to uGnssMsgReceiveStart()
+ * for both message IDs, which could be with the same pCallback, (don't
+ * worry about resources, internally the same monitoring task will be
+ * used for both) and either call uGnssMsgReceiveStop() for both when
+ * done or call uGnssMsgReceiveStopAll() to stop both of them.
+ * Alternatively, you could set a wider filter (in this case
+ * messageId.type = #U_GNSS_PROTOCOL_NMEA; messageId.id.pNmea = "";
+ * (i.e. all NMEA messages)) and do the filtering yourself in your
+ * #uGnssMsgReceiveCallback_t callback by checking the contents of
+ * the pMessageId pointer it is passed, e.g. with uGnssMsgIdIsWanted()
+ * in a loop for a list of wanted message IDs, or by hand in your
+ * own way if you prefer: this might be a very slightly higher
+ * processor load but, in the end, the filtering is always going to
+ * be in C code on this MCU and so whether you do it in your
+ * application or this API does it internally is a moot point.
+ *
  * @param gnssHandle             the handle of the GNSS instance.
  * @param[in] pMessageId         a pointer to the message ID to capture;
  *                               a copy will be taken so this may be
