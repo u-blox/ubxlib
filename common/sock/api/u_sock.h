@@ -375,6 +375,21 @@ typedef struct {
  * assigned by the IP stack unless uSockSetNextLocalPort()
  * has been called.
  *
+ * Note: the descriptor (an integer) returned by this function
+ * is not the one the module returns, it is a local descriptor
+ * which this API will _map_ to the one the module returns.
+ * In other words if, in an AT log, you see:
+ *
+ * ```
+ * AT+USOCR=17
+ * +USOCR: 0
+ * OK
+ * ```
+ *
+ * ...the descriptor returned here may not be 0, it will be
+ * the next value of an incrementing integer maintained by
+ * this code.
+ *
  * @param devHandle      the handle of the underlying network
  *                       layer to use, usually established by
  *                       a call to uDeviceOpen().
