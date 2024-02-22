@@ -176,7 +176,7 @@ static int32_t getSpiCsControl(int32_t spi, int32_t pin, int32_t index,
         pin &= ~U_COMMON_SPI_PIN_SELECT_INVERTED;
         // Convert the pin into a port and a pin
         pPort = pUPortPrivateGetGpioDevice(pin);
-        pin = pin % GPIO_MAX_PINS_PER_PORT;
+        pin = pin % uPortPrivateGetGpioPortMaxPins();
     }
 
     if (((pin < 0) || (pPort != NULL)) &&
@@ -346,7 +346,7 @@ static int32_t setSpiConfig(int32_t spi, uPortSpiCfg_t *pSpiCfg,
         pSpiCfg->spiCsControl.gpio_dev = pUPortPrivateGetGpioDevice(pinSelect);
         if (pSpiCfg->spiCsControl.gpio_dev != NULL) {
             errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-            pSpiCfg->spiCsControl.gpio_pin = pinSelect % GPIO_MAX_PINS_PER_PORT;
+            pSpiCfg->spiCsControl.gpio_pin = pinSelect % uPortPrivateGetGpioPortMaxPins();
             if (!pinSelectInverted) {
                 pSpiCfg->spiCsControl.gpio_dt_flags = GPIO_ACTIVE_LOW;
             }
@@ -372,7 +372,7 @@ static int32_t setSpiConfig(int32_t spi, uPortSpiCfg_t *pSpiCfg,
             // hook-in any-old GPIO if we initialise it
             pGpioPort = pUPortPrivateGetGpioDevice(pinSelect);
             if (pGpioPort != NULL) {
-                pinSelect = pinSelect % GPIO_MAX_PINS_PER_PORT;
+                pinSelect = pinSelect % uPortPrivateGetGpioPortMaxPins();
                 if (!pinSelectInverted) {
                     gpioFlags |= GPIO_ACTIVE_LOW;
                 }

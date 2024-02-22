@@ -104,6 +104,10 @@ static size_t gLastKTimerNext = 0;
  */
 static int32_t gTimerEventQueueHandle = -1;
 
+/** The number of pins in each GPIO port.
+ */
+static int32_t gGpioNumPinsPerPort = -1;
+
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -286,27 +290,105 @@ int32_t uPortPrivateGetGpioPort(const struct device *pGpioDevice,
     int32_t portNumber = -1;
 
     if (pinWithinPort >= 0) {
+        //NOLINTBEGIN(misc-redundant-expression)
 #if KERNEL_VERSION_MAJOR < 3
         if ((pGpioDevice == device_get_binding("GPIO_0")) ||
+            (pGpioDevice == device_get_binding("GPIOA")) ||
             (pGpioDevice == device_get_binding("PORTA"))) {
             portNumber = 0;
         } else if ((pGpioDevice == device_get_binding("GPIO_1")) ||
+                   (pGpioDevice == device_get_binding("GPIOB")) ||
                    (pGpioDevice == device_get_binding("PORTB"))) {
             portNumber = 1;
+        } else if ((pGpioDevice == device_get_binding("GPIO_2")) ||
+                   (pGpioDevice == device_get_binding("GPIOC")) ||
+                   (pGpioDevice == device_get_binding("PORTC"))) {
+            portNumber = 2;
+        } else if ((pGpioDevice == device_get_binding("GPIO_3")) ||
+                   (pGpioDevice == device_get_binding("GPIOD")) ||
+                   (pGpioDevice == device_get_binding("PORTD"))) {
+            portNumber = 3;
+        } else if ((pGpioDevice == device_get_binding("GPIO_4")) ||
+                   (pGpioDevice == device_get_binding("GPIOE")) ||
+                   (pGpioDevice == device_get_binding("PORTE"))) {
+            portNumber = 4;
+        } else if ((pGpioDevice == device_get_binding("GPIO_5")) ||
+                   (pGpioDevice == device_get_binding("GPIOF")) ||
+                   (pGpioDevice == device_get_binding("PORTF"))) {
+            portNumber = 5;
+        } else if ((pGpioDevice == device_get_binding("GPIO_6")) ||
+                   (pGpioDevice == device_get_binding("GPIOG")) ||
+                   (pGpioDevice == device_get_binding("PORTG"))) {
+            portNumber = 6;
+        } else if ((pGpioDevice == device_get_binding("GPIO_7")) ||
+                   (pGpioDevice == device_get_binding("GPIOH")) ||
+                   (pGpioDevice == device_get_binding("PORTH"))) {
+            portNumber = 7;
+        } else if ((pGpioDevice == device_get_binding("GPIO_8")) ||
+                   (pGpioDevice == device_get_binding("GPIOI")) ||
+                   (pGpioDevice == device_get_binding("PORTI"))) {
+            portNumber = 8;
+        } else if ((pGpioDevice == device_get_binding("GPIO_9")) ||
+                   (pGpioDevice == device_get_binding("GPIOJ")) ||
+                   (pGpioDevice == device_get_binding("PORTJ"))) {
+            portNumber = 9;
+        } else if ((pGpioDevice == device_get_binding("GPIO_10")) ||
+                   (pGpioDevice == device_get_binding("GPIOK")) ||
+                   (pGpioDevice == device_get_binding("PORTK"))) {
+            portNumber = 10;
         }
 #else
         if ((pGpioDevice == U_DEVICE_DT_GET_OR_NULL(gpio0)) ||
+            (pGpioDevice == U_DEVICE_DT_GET_OR_NULL(gpioa)) ||
             (pGpioDevice == U_DEVICE_DT_GET_OR_NULL(porta))) {
             portNumber = 0;
         } else if ((pGpioDevice == U_DEVICE_DT_GET_OR_NULL(gpio1)) ||
+                   (pGpioDevice == U_DEVICE_DT_GET_OR_NULL(gpiob)) ||
                    (pGpioDevice == U_DEVICE_DT_GET_OR_NULL(portb))) {
             portNumber = 1;
+        } else if ((pGpioDevice == U_DEVICE_DT_GET_OR_NULL(gpio2)) ||
+                   (pGpioDevice == U_DEVICE_DT_GET_OR_NULL(gpioc)) ||
+                   (pGpioDevice == U_DEVICE_DT_GET_OR_NULL(portc))) {
+            portNumber = 2;
+        } else if ((pGpioDevice == U_DEVICE_DT_GET_OR_NULL(gpio3)) ||
+                   (pGpioDevice == U_DEVICE_DT_GET_OR_NULL(gpiod)) ||
+                   (pGpioDevice == U_DEVICE_DT_GET_OR_NULL(portd))) {
+            portNumber = 3;
+        } else if ((pGpioDevice == U_DEVICE_DT_GET_OR_NULL(gpio4)) ||
+                   (pGpioDevice == U_DEVICE_DT_GET_OR_NULL(gpioe)) ||
+                   (pGpioDevice == U_DEVICE_DT_GET_OR_NULL(porte))) {
+            portNumber = 4;
+        } else if ((pGpioDevice == U_DEVICE_DT_GET_OR_NULL(gpio5)) ||
+                   (pGpioDevice == U_DEVICE_DT_GET_OR_NULL(gpiof)) ||
+                   (pGpioDevice == U_DEVICE_DT_GET_OR_NULL(portf))) {
+            portNumber = 5;
+        } else if ((pGpioDevice == U_DEVICE_DT_GET_OR_NULL(gpio6)) ||
+                   (pGpioDevice == U_DEVICE_DT_GET_OR_NULL(gpiog)) ||
+                   (pGpioDevice == U_DEVICE_DT_GET_OR_NULL(portg))) {
+            portNumber = 6;
+        } else if ((pGpioDevice == U_DEVICE_DT_GET_OR_NULL(gpio7)) ||
+                   (pGpioDevice == U_DEVICE_DT_GET_OR_NULL(gpioh)) ||
+                   (pGpioDevice == U_DEVICE_DT_GET_OR_NULL(porth))) {
+            portNumber = 7;
+        } else if ((pGpioDevice == U_DEVICE_DT_GET_OR_NULL(gpio8)) ||
+                   (pGpioDevice == U_DEVICE_DT_GET_OR_NULL(gpioi)) ||
+                   (pGpioDevice == U_DEVICE_DT_GET_OR_NULL(porti))) {
+            portNumber = 8;
+        } else if ((pGpioDevice == U_DEVICE_DT_GET_OR_NULL(gpio9)) ||
+                   (pGpioDevice == U_DEVICE_DT_GET_OR_NULL(gpioj)) ||
+                   (pGpioDevice == U_DEVICE_DT_GET_OR_NULL(portj))) {
+            portNumber = 9;
+        } else if ((pGpioDevice == U_DEVICE_DT_GET_OR_NULL(gpio10)) ||
+                   (pGpioDevice == U_DEVICE_DT_GET_OR_NULL(gpiok)) ||
+                   (pGpioDevice == U_DEVICE_DT_GET_OR_NULL(portk))) {
+            portNumber = 10;
         }
 #endif
+        //NOLINTEND(misc-redundant-expression)
     }
 
     if (portNumber >= 0) {
-        errorCodeOrPin = (portNumber * GPIO_MAX_PINS_PER_PORT) + pinWithinPort;
+        errorCodeOrPin = (portNumber * uPortPrivateGetGpioPortMaxPins()) + pinWithinPort;
     }
 
     return errorCodeOrPin;
@@ -316,36 +398,247 @@ int32_t uPortPrivateGetGpioPort(const struct device *pGpioDevice,
 const struct device *pUPortPrivateGetGpioDevice(int32_t pin)
 {
     const struct device *pDev = NULL;
-    // Common practice in device trees that one gpio port holds 32 pins
-    int32_t portNo = pin / GPIO_MAX_PINS_PER_PORT;
+    int32_t portNo = pin / uPortPrivateGetGpioPortMaxPins();
     // The actual device tree name of the GPIO port may vary between
     // different boards. Try the known variants.
 #if KERNEL_VERSION_MAJOR < 3
     if (portNo == 0) {
         pDev = device_get_binding("GPIO_0");
         if (!pDev) {
+            pDev = device_get_binding("GPIOA");
+        }
+        if (!pDev) {
             pDev = device_get_binding("PORTA");
         }
     } else if (portNo == 1) {
         pDev = device_get_binding("GPIO_1");
         if (!pDev) {
+            pDev = device_get_binding("GPIOB");
+        }
+        if (!pDev) {
             pDev = device_get_binding("PORTB");
+        }
+    } else if (portNo == 2) {
+        pDev = device_get_binding("GPIO_2");
+        if (!pDev) {
+            pDev = device_get_binding("GPIOC");
+        }
+        if (!pDev) {
+            pDev = device_get_binding("PORTC");
+        }
+    } else if (portNo == 3) {
+        pDev = device_get_binding("GPIO_3");
+        if (!pDev) {
+            pDev = device_get_binding("GPIOD");
+        }
+        if (!pDev) {
+            pDev = device_get_binding("PORTD");
+        }
+    } else if (portNo == 4) {
+        pDev = device_get_binding("GPIO_4");
+        if (!pDev) {
+            pDev = device_get_binding("GPIOD");
+        }
+        if (!pDev) {
+            pDev = device_get_binding("PORTD");
+        }
+    } else if (portNo == 5) {
+        pDev = device_get_binding("GPIO_5");
+        if (!pDev) {
+            pDev = device_get_binding("GPIOE");
+        }
+        if (!pDev) {
+            pDev = device_get_binding("PORTE");
+        }
+    } else if (portNo == 6) {
+        pDev = device_get_binding("GPIO_6");
+        if (!pDev) {
+            pDev = device_get_binding("GPIOF");
+        }
+        if (!pDev) {
+            pDev = device_get_binding("PORTF");
+        }
+    } else if (portNo == 7) {
+        pDev = device_get_binding("GPIO_7");
+        if (!pDev) {
+            pDev = device_get_binding("GPIOG");
+        }
+        if (!pDev) {
+            pDev = device_get_binding("PORTG");
+        }
+    } else if (portNo == 8) {
+        pDev = device_get_binding("GPIO_8");
+        if (!pDev) {
+            pDev = device_get_binding("GPIOH");
+        }
+        if (!pDev) {
+            pDev = device_get_binding("PORTH");
+        }
+    } else if (portNo == 9) {
+        pDev = device_get_binding("GPIO_9");
+        if (!pDev) {
+            pDev = device_get_binding("GPIOI");
+        }
+        if (!pDev) {
+            pDev = device_get_binding("PORTI");
+        }
+    } else if (portNo == 9) {
+        pDev = device_get_binding("GPIO_");
+        if (!pDev) {
+            pDev = device_get_binding("GPIOJ");
+        }
+        if (!pDev) {
+            pDev = device_get_binding("PORTJ");
+        }
+    } else if (portNo == 10) {
+        pDev = device_get_binding("GPIO_10");
+        if (!pDev) {
+            pDev = device_get_binding("GPIOK");
+        }
+        if (!pDev) {
+            pDev = device_get_binding("PORTK");
         }
     }
 #else
     if (portNo == 0) {
         pDev = U_DEVICE_DT_GET_OR_NULL(gpio0);
         if (!pDev) {
+            pDev = U_DEVICE_DT_GET_OR_NULL(gpioa);
+        }
+        if (!pDev) {
             pDev = U_DEVICE_DT_GET_OR_NULL(porta);
         }
     } else if (portNo == 1) {
         pDev = U_DEVICE_DT_GET_OR_NULL(gpio1);
         if (!pDev) {
+            pDev = U_DEVICE_DT_GET_OR_NULL(gpiob);
+        }
+        if (!pDev) {
             pDev = U_DEVICE_DT_GET_OR_NULL(portb);
+        }
+    } else if (portNo == 2) {
+        pDev = U_DEVICE_DT_GET_OR_NULL(gpio2);
+        if (!pDev) {
+            pDev = U_DEVICE_DT_GET_OR_NULL(gpioc);
+        }
+        if (!pDev) {
+            pDev = U_DEVICE_DT_GET_OR_NULL(portc);
+        }
+    } else if (portNo == 3) {
+        pDev = U_DEVICE_DT_GET_OR_NULL(gpio3);
+        if (!pDev) {
+            pDev = U_DEVICE_DT_GET_OR_NULL(gpiod);
+        }
+        if (!pDev) {
+            pDev = U_DEVICE_DT_GET_OR_NULL(portd);
+        }
+    } else if (portNo == 4) {
+        pDev = U_DEVICE_DT_GET_OR_NULL(gpio4);
+        if (!pDev) {
+            pDev = U_DEVICE_DT_GET_OR_NULL(gpioe);
+        }
+        if (!pDev) {
+            pDev = U_DEVICE_DT_GET_OR_NULL(porte);
+        }
+    } else if (portNo == 5) {
+        pDev = U_DEVICE_DT_GET_OR_NULL(gpio5);
+        if (!pDev) {
+            pDev = U_DEVICE_DT_GET_OR_NULL(gpiof);
+        }
+        if (!pDev) {
+            pDev = U_DEVICE_DT_GET_OR_NULL(portf);
+        }
+    } else if (portNo == 6) {
+        pDev = U_DEVICE_DT_GET_OR_NULL(gpio6);
+        if (!pDev) {
+            pDev = U_DEVICE_DT_GET_OR_NULL(gpiog);
+        }
+        if (!pDev) {
+            pDev = U_DEVICE_DT_GET_OR_NULL(portg);
+        }
+    } else if (portNo == 7) {
+        pDev = U_DEVICE_DT_GET_OR_NULL(gpio7);
+        if (!pDev) {
+            pDev = U_DEVICE_DT_GET_OR_NULL(gpioh);
+        }
+        if (!pDev) {
+            pDev = U_DEVICE_DT_GET_OR_NULL(porth);
+        }
+    } else if (portNo == 8) {
+        pDev = U_DEVICE_DT_GET_OR_NULL(gpio8);
+        if (!pDev) {
+            pDev = U_DEVICE_DT_GET_OR_NULL(gpioi);
+        }
+        if (!pDev) {
+            pDev = U_DEVICE_DT_GET_OR_NULL(porti);
+        }
+    } else if (portNo == 9) {
+        pDev = U_DEVICE_DT_GET_OR_NULL(gpio9);
+        if (!pDev) {
+            pDev = U_DEVICE_DT_GET_OR_NULL(gpioj);
+        }
+        if (!pDev) {
+            pDev = U_DEVICE_DT_GET_OR_NULL(portj);
+        }
+    } else if (portNo == 10) {
+        pDev = U_DEVICE_DT_GET_OR_NULL(gpio10);
+        if (!pDev) {
+            pDev = U_DEVICE_DT_GET_OR_NULL(gpiok);
+        }
+        if (!pDev) {
+            pDev = U_DEVICE_DT_GET_OR_NULL(portk);
         }
     }
 #endif
     return pDev;
+}
+
+// Get the maximum number of pins supported by each GPIO port.
+int32_t uPortPrivateGetGpioPortMaxPins()
+{
+    const struct device *pGpioDevice = NULL;
+    const struct gpio_driver_config *pCfg;
+
+    if (gGpioNumPinsPerPort < 0) {
+        // Get the number of pins on a port that must exist
+#if KERNEL_VERSION_MAJOR < 3
+        pGpioDevice = device_get_binding("GPIO_0");
+        if (!pGpioDevice) {
+            pGpioDevice = device_get_binding("GPIOA");
+        }
+        if (!pGpioDevice) {
+            pGpioDevice = device_get_binding("PORTA");
+        }
+#else
+        pGpioDevice = U_DEVICE_DT_GET_OR_NULL(gpio0);
+        if (!pGpioDevice) {
+            pGpioDevice = U_DEVICE_DT_GET_OR_NULL(gpioa);
+        }
+        if (!pGpioDevice) {
+            pGpioDevice = U_DEVICE_DT_GET_OR_NULL(porta);
+        }
+#endif
+
+        pCfg = (const struct gpio_driver_config *) pGpioDevice->config;
+        // The first item in a GPIO device configuration is always
+        // port_pin_mask, in which each bit set to 1, starting with
+        // bit 0 and working up, represents a valid pin
+        for (int32_t x = 0; (x < 64) && (gGpioNumPinsPerPort < 0); x++) {
+            if ((pCfg->port_pin_mask & (1UL << x)) == 0) {
+                gGpioNumPinsPerPort = x;
+            }
+        }
+        if (gGpioNumPinsPerPort == 0) {
+            // Clang gets concerned about divisions by zero if
+            // we return zero from here (which we never will,
+            // since if the first bit of port_pin_mask is 0
+            // then the Zephyr platform is broken), but keep
+            // it happy anyway.
+            gGpioNumPinsPerPort = -1;
+        }
+    }
+
+    return gGpioNumPinsPerPort;
 }
 
 /* ----------------------------------------------------------------

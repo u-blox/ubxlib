@@ -150,7 +150,8 @@ int32_t uPortGpioConfig(uPortGpioConfig_t *pConfig)
     }
 
     if (!badConfig) {
-        zerr = gpio_pin_configure(pPort, pConfig->pin % GPIO_MAX_PINS_PER_PORT,
+        zerr = gpio_pin_configure(pPort,
+                                  (gpio_pin_t) (pConfig->pin % uPortPrivateGetGpioPortMaxPins()),
                                   flags);
         if (!zerr) {
             errorCode = U_ERROR_COMMON_SUCCESS;
@@ -171,7 +172,9 @@ int32_t uPortGpioSet(int32_t pin, int32_t level)
         return (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
     }
 
-    zerr = gpio_pin_set_raw(pPort, pin % GPIO_MAX_PINS_PER_PORT, (int)level);
+    zerr = gpio_pin_set_raw(pPort,
+                            (gpio_pin_t) (pin % uPortPrivateGetGpioPortMaxPins()),
+                            (int)level);
     if (zerr) {
         return (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
     }
@@ -196,7 +199,7 @@ int32_t uPortGpioGet(int32_t pin)
         return (int32_t)U_ERROR_COMMON_DEVICE_ERROR;
     }
 
-    return (val & (1 << (pin % GPIO_MAX_PINS_PER_PORT))) ? 1 : 0;
+    return (val & (1 << (pin % uPortPrivateGetGpioPortMaxPins()))) ? 1 : 0;
 }
 
 // End of file
