@@ -69,7 +69,8 @@
 # define U_SHORT_RANGE_MODULE_TYPE_NINA_W15 7
 # define U_SHORT_RANGE_MODULE_TYPE_ODIN_W2  8
 #else
-# define U_SHORT_RANGE_MODULE_TYPE_NORA_W36 9 /**< Please add short_range_gen2 to UBXLIB_FEATURES when using this module type. */
+# define U_SHORT_RANGE_MODULE_TYPE_NORA_W36 9 /**< Please add short_range_gen2 (and short_range)
+                                                   to UBXLIB_FEATURES when using this module type. */
 #endif
 // Add any new module types here, before U_SHORT_RANGE_MODULE_TYPE_ANY,
 // and assign specific values

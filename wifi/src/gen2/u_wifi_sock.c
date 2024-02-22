@@ -539,7 +539,7 @@ int32_t uWifiSockReceiveFrom(uDeviceHandle_t devHandle,
            ((res = uWifiSockRead(devHandle, sockHandle, pData, dataSizeBytes)) >= 0)) {
         tot += res;
         dataSizeBytes -= res;
-        pData += res;
+        pData = (char *)pData + res;
         uPortTaskBlock(1);
     }
     return tot > 0 ? tot : -U_SOCK_EWOULDBLOCK;

@@ -85,6 +85,6 @@ set(UBXLIB_SRC_PORT
 # Using the above, create the ubxlib library and add its headers.
 add_library(ubxlib ${UBXLIB_SRC} ${UBXLIB_SRC_PORT})
 message("UBXLIB_COMPILE_OPTIONS will be \"${UBXLIB_COMPILE_OPTIONS}\"")
-target_compile_options(ubxlib PRIVATE ${UBXLIB_COMPILE_OPTIONS})
+target_compile_options(ubxlib PUBLIC ${UBXLIB_COMPILE_OPTIONS})
 target_include_directories(ubxlib PUBLIC ${UBXLIB_INC} ${UBXLIB_PUBLIC_INC_PORT})
 target_include_directories(ubxlib PRIVATE ${UBXLIB_PRIVATE_INC} ${UBXLIB_PRIVATE_INC_PORT})
