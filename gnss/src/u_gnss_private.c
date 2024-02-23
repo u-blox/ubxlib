@@ -1914,6 +1914,7 @@ int32_t uGnssPrivateInfoGetVersions(uGnssPrivateInstance_t *pInstance,
                                     uGnssVersionType_t *pVer)
 {
     int32_t errorCodeOrLength = U_ERROR_COMMON_INVALID_PARAMETER;
+
     if (pVer != NULL) {
         // Poll with the message class and ID of the UBX-MON-VER
         // message and pass the message body directly back
@@ -1925,14 +1926,14 @@ int32_t uGnssPrivateInfoGetVersions(uGnssPrivateInstance_t *pInstance,
         errorCodeOrLength = uGnssPrivateSendReceiveUbxMessage(pInstance,
                                                               0x0a, 0x04,
                                                               NULL, 0,
-                                                              (char *)&message, sizeof(message));
-        // Add a terminator
-        if (errorCodeOrLength > sizeof(message.sw) + sizeof(message.hw)) {
+                                                              (char *)&message,
+                                                              sizeof(message));
+        if (errorCodeOrLength > (int32_t) (sizeof(message.sw) + sizeof(message.hw))) {
             memset(pVer, 0, sizeof(*pVer));
             strncpy(pVer->ver, message.sw, sizeof(pVer->ver));
             strncpy(pVer->hw, message.hw, sizeof(pVer->hw));
-            int32_t n = (errorCodeOrLength - (sizeof(message.sw) + sizeof(message.hw))) / sizeof(
-                            message.ext[0]);
+            int32_t n = (errorCodeOrLength - (sizeof(message.sw) + sizeof(message.hw))) /
+                        sizeof(message.ext[0]);
             for (int32_t i = 0; i < n; i++) {
                 if (0 == strncmp(message.ext[i], "ROM BASE ", 9)) {
                     strncpy(pVer->rom, message.ext[i] + 9, sizeof(pVer->rom) - 1);

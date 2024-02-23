@@ -486,12 +486,12 @@ static int32_t setOrClearFlags(uDeviceHandle_t gnssHandle, uint32_t bitMap, bool
 // Identify the module type read from GNSS module
 static uGnssModuleType_t identifyGnssModuleType(uDeviceHandle_t gnssHandle)
 {
-    int32_t errorCodeOrType = U_ERROR_COMMON_UNKNOWN_MODULE_TYPE;
+    int32_t errorCodeOrType;
     uGnssVersionType_t version;
     uGnssPrivateInstance_t *pInstance;
+
     pInstance = pUGnssPrivateGetInstance(gnssHandle);
     errorCodeOrType = uGnssPrivateInfoGetVersions(pInstance, &version);
-
     if (errorCodeOrType == 0) {
         errorCodeOrType = (int32_t) U_ERROR_COMMON_UNKNOWN_MODULE_TYPE;
         for (size_t y = 0; (y < (U_GNSS_MODULE_TYPE_MAX_NUM - 1)) &&
@@ -554,15 +554,15 @@ int32_t uGnssPwrOn(uDeviceHandle_t gnssHandle)
                     } else {
                         if (pInstance->portNumber != 3) {
                             if ((errorCode == 0) && (pInstance->pModule->moduleType == U_GNSS_MODULE_TYPE_ANY)) {
+                                errorCode = (int32_t) U_ERROR_COMMON_UNKNOWN_MODULE_TYPE;
                                 // Read and compare the name with available module types.
                                 readModuleType = identifyGnssModuleType(gnssHandle);
-                                errorCode = readModuleType;
-                                if ((errorCode >= 0) && (readModuleType < (U_GNSS_MODULE_TYPE_MAX_NUM - 1))) {
+                                if ((readModuleType >= 0) && (readModuleType < (U_GNSS_MODULE_TYPE_MAX_NUM - 1))) {
                                     pInstance->pModule = &(gUGnssPrivateModuleList[readModuleType]);
-                                    uPortLog("U_GNSS_PWR: Identified module type: %d\n", pInstance->pModule->moduleType);
+                                    uPortLog("U_GNSS_PWR: identified module type: %d\n", pInstance->pModule->moduleType);
+                                    errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
                                 } else {
                                     uPortLog("U_GNSS_PWR: could not identify the module type.\n");
-                                    errorCode = U_ERROR_COMMON_UNKNOWN_MODULE_TYPE;
                                 }
                             }
                             if (pInstance->pModule->moduleType != U_GNSS_MODULE_TYPE_ANY) {
@@ -615,15 +615,15 @@ int32_t uGnssPwrOn(uDeviceHandle_t gnssHandle)
 
             // Determining module type for the non-USB case
             if ((errorCode == 0) && (pInstance->pModule->moduleType == U_GNSS_MODULE_TYPE_ANY)) {
+                errorCode = (int32_t) U_ERROR_COMMON_UNKNOWN_MODULE_TYPE;
                 // Read and compare the name with available module types.
                 readModuleType = identifyGnssModuleType(gnssHandle);
-                errorCode = readModuleType;
-                if ((errorCode >= 0) && (readModuleType < (U_GNSS_MODULE_TYPE_MAX_NUM - 1))) {
+                if ((readModuleType >= 0) && (readModuleType < (U_GNSS_MODULE_TYPE_MAX_NUM - 1))) {
                     pInstance->pModule = &(gUGnssPrivateModuleList[readModuleType]);
-                    uPortLog("U_GNSS_PWR: Identified module type: %d\n", pInstance->pModule->moduleType);
+                    uPortLog("U_GNSS_PWR: identified module type: %d\n", pInstance->pModule->moduleType);
+                    errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
                 } else {
                     uPortLog("U_GNSS_PWR: could not identify the module type.\n");
-                    errorCode = U_ERROR_COMMON_UNKNOWN_MODULE_TYPE;
                 }
             }
 
