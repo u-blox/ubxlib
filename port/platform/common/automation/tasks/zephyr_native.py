@@ -4,19 +4,21 @@ import sys
 import json
 import re
 from pathlib import Path
-
 from invoke import task, Exit
 from tasks import task_utils
 from scripts import u_utils
-from scripts.u_log_readers import URttReader
 from scripts.u_flags import u_flags_to_cflags, get_cflags_from_u_flags_yml
 from scripts.packages import u_package, u_pkg_utils
+from scripts.u_log_readers import UUartReader
 
-DEFAULT_CMAKE_DIR = f"{u_utils.UBXLIB_DIR}/port/platform/zephyr/runner"
+DEFAULT_CMAKE_BASE_DIR = f"{u_utils.UBXLIB_DIR}/port/platform/zephyr/runner"
 DEFAULT_BOARD_NAME = "nrf5340dk_nrf5340_cpuapp"
-DEFAULT_OUTPUT_NAME = f"runner_{DEFAULT_BOARD_NAME}"
-DEFAULT_BUILD_DIR = os.path.join("_build","nrfconnect")
-DEFAULT_MCU = "NRF5340_XXAA_APP"
+DEFAULT_OUTPUT_NAME = f"runner"
+DEFAULT_BUILD_DIR = os.path.join("_build", "zephyr_native")
+
+BOARD_NAME_TO_MCU = {
+    "nucleo_f767zi": "stm32"
+}
 
 def posix_path(path):
     path = Path(path).expanduser().as_posix()
@@ -61,18 +63,26 @@ def filter_compile_commands(input_json_file='compile_commands.json',
     with open(output_json_file, 'w', encoding='utf8') as outfile:
         json.dump(filtered_commands, outfile)
 
+def get_mcu(board_name):
+    """Get the MCU name for the given board_name"""
+    mcu = BOARD_NAME_TO_MCU.get(board_name)
+    if not mcu:
+        print(f"Board {board_name} not found in list of known board names")
+
+    return mcu
+
 @task()
 def check_installation(ctx):
-    """Check that the toolchain for nRF connect SDK is installed"""
+    """Check that the toolchain for Zephyr is installed"""
     ctx.zephyr_pre_command = ""
 
     # Load required packages
-    pkgs = u_package.load(ctx, ["arm_embedded_gcc", "nrfconnectsdk", "ninja", "cmake", "gperf", "nrf_cli", "segger_jlink", "unity"])
-    ncs_pkg = pkgs["nrfconnectsdk"]
+    pkgs = u_package.load(ctx, ["arm_embedded_gcc", "zephyr_native", "ninja", "cmake", "gperf", "unity", "openocd"])
+    zephyr_native_pkg = pkgs["zephyr_native"]
     ae_gcc_pkg = pkgs["arm_embedded_gcc"]
     unity_pkg = pkgs["unity"]
 
-    ctx.config.run.env["ZEPHYR_BASE"] = f'{ncs_pkg.get_install_path()}/zephyr'
+    ctx.config.run.env["ZEPHYR_BASE"] = f'{zephyr_native_pkg.get_install_path()}/zephyr'
     ctx.config.run.env["ZEPHYR_TOOLCHAIN_VARIANT"] = 'gnuarmemb'
     ctx.config.run.env["GNUARMEMB_TOOLCHAIN_PATH"] = ae_gcc_pkg.get_install_path()
     ctx.arm_toolchain_path = ae_gcc_pkg.get_install_path() + "/bin"
@@ -81,22 +91,26 @@ def check_installation(ctx):
 @task(
     pre=[check_installation],
     help={
-        "cmake_dir": f"CMake project directory to build (default: {DEFAULT_CMAKE_DIR})",
-        "board_name": f"Zephyr board name (default: {DEFAULT_BOARD_NAME})",
+        "board_name": f"Zephyr board name (must be provided)",
+        "cmake_dir": f"CMake project directory to build; if not specified cmake_base_dir will apply",
+        "cmake_base_dir": f"The base CMake project directory, used if cmake_dir is not provided (default: {DEFAULT_CMAKE_BASE_DIR}); to this will be appended an underscore and then the MCU name for the board",
         "output_name": f"An output name (build sub folder, default: {DEFAULT_OUTPUT_NAME})",
         "build_dir": f"Output build directory (default: {DEFAULT_BUILD_DIR})",
         "u_flags": "Extra u_flags (when this is specified u_flags.yml will not be used)",
         "features": "Feature list, e.g. \"cell short_range\" to leave out gnss; overrides the environment variable UBXLIB_FEATURES and u_flags.yml"
     }
 )
-def build(ctx, cmake_dir=DEFAULT_CMAKE_DIR, board_name=DEFAULT_BOARD_NAME,
-          output_name=DEFAULT_OUTPUT_NAME, build_dir=DEFAULT_BUILD_DIR,
-          u_flags=None, features=None):
-    """Build a nRF connect SDK based application"""
+def build(ctx, board_name, cmake_dir=None, cmake_base_dir=DEFAULT_CMAKE_BASE_DIR,
+          output_name=DEFAULT_OUTPUT_NAME,
+          build_dir=DEFAULT_BUILD_DIR, u_flags=None, features=None):
+    """Build a Zephyr based application"""
     pristine = "auto"
+    mcu = get_mcu(board_name)
+    if not cmake_dir:
+        cmake_dir = cmake_base_dir + "_" + mcu
 
-    # Read U_FLAGS and features from nrfconnect.u_flags, if it is there
-    u_flags_yml = get_cflags_from_u_flags_yml(ctx.config.vscode_dir, "nrfconnect", output_name)
+    # Read U_FLAGS and features from zephyr_native.u_flags, if it is there  TODO
+    u_flags_yml = get_cflags_from_u_flags_yml(ctx.config.vscode_dir, "zephyr_native", output_name)
     if u_flags_yml:
         ctx.config.run.env["U_FLAGS"] = u_flags_yml["cflags"]
         if not features and "features" in u_flags_yml:
@@ -119,10 +133,9 @@ def build(ctx, cmake_dir=DEFAULT_CMAKE_DIR, board_name=DEFAULT_BOARD_NAME,
         if u_utils.is_linux():
             # A semicolon is a special character on Linux
             west_cmd = west_cmd.replace(";", "\\;")
-    print(west_cmd)
     ctx.run(west_cmd)
     # This specific case gives a return code so that automation.py can call it directly for instance 8
-    return 0
+    return 0 # TODO
 
 @task(
     pre=[check_installation],
@@ -132,7 +145,7 @@ def build(ctx, cmake_dir=DEFAULT_CMAKE_DIR, board_name=DEFAULT_BOARD_NAME,
     }
 )
 def clean(ctx, output_name=DEFAULT_OUTPUT_NAME, build_dir=DEFAULT_BUILD_DIR):
-    """Remove all files for a nRF connect SDK build"""
+    """Remove all files for a Zephyr build"""
     build_dir = os.path.join(build_dir, output_name)
     if os.path.exists(build_dir):
         shutil.rmtree(build_dir)
@@ -146,46 +159,40 @@ def clean(ctx, output_name=DEFAULT_OUTPUT_NAME, build_dir=DEFAULT_BUILD_DIR):
         "hex_file": "Optional: Specify the hex file to flash manually"
     }
 )
-def flash(ctx, debugger_serial="", output_name=DEFAULT_OUTPUT_NAME,
-          build_dir=DEFAULT_BUILD_DIR, hex_file=None):
-    """Flash a nRF connect SDK based application"""
+def flash(ctx, board_name, debugger_serial="", output_name=DEFAULT_OUTPUT_NAME,
+          build_dir=DEFAULT_BUILD_DIR):
+    """Flash a Zephyr-based application"""
     build_dir = os.path.abspath(os.path.join(build_dir, output_name))
     if debugger_serial != "":
-        debugger_serial = f"--dev-id {debugger_serial}"
-    hex_arg = "" if hex_file == None else f"--hex-file {hex_file}"
-    #ctx.run(f'nrfjprog --program {build_dir}/zephyr/zephyr.hex --clockspeed 500 --recover --log', hide=False)
-    ctx.run(f'{ctx.zephyr_pre_command}west flash --skip-rebuild {hex_arg} -d {build_dir} {debugger_serial} --erase --recover --tool-opt="--clockspeed 500"', hide=False)
+        debugger_serial = f"--serial {debugger_serial}"
+    ctx.run(f'{ctx.zephyr_pre_command}west flash --skip-rebuild -d {build_dir} {debugger_serial}', hide=False)
 
 @task(
     pre=[check_installation],
     help={
-        "mcu": f"The MCU name (The JLink target name) (default: {DEFAULT_MCU})",
+        "board_name": f"The board name (must be provided)",
         "debugger_serial": "The debugger serial number (optional)",
+        "port": "The local TCP port to use for OpenOCD SWO output",
         "output_name": f"An output name (build sub folder, default: {DEFAULT_OUTPUT_NAME}). This is used for finding ELF file",
         "build_dir": f"Output build directory (default: {DEFAULT_BUILD_DIR}). This is used for finding ELF file",
         "elf_file": f"The .elf file used for decoding backtrace. When this is used --build-dir and --output-name has no function.",
         "reset": "When set the target device will reset on connection."
     }
 )
-def log(ctx, mcu=DEFAULT_MCU, debugger_serial=None,
+def log(ctx, board_name, serial_port, baudrate=115200,
         output_name=DEFAULT_OUTPUT_NAME, build_dir=DEFAULT_BUILD_DIR,
-        elf_file=None, reset=True):
+        elf_file=None):
     """Open a log terminal"""
-    if debugger_serial == "":
-        debugger_serial = None
-
     build_dir = os.path.abspath(os.path.join(build_dir, output_name))
     if elf_file is None:
         elf_file = task_utils.get_elf(build_dir, "zephyr/zephyr.elf")
-    block_address = task_utils.get_rtt_block_address(ctx, elf_file,
-                                                     toolchain_prefix=f"{ctx.arm_toolchain_path}/arm-none-eabi-")
 
-    with URttReader(mcu, jlink_serial=debugger_serial, reset_on_connect=reset, rtt_block_address=block_address) as rtt_reader:
+    with UUartReader(port=serial_port, baudrate=baudrate) as serial:
         line = ""
         while True:
-            data = rtt_reader.read()
+            data = serial.read()
             if data:
-                line += bytearray(data).decode(sys.stdout.encoding, "backslashreplace").replace("\r", "")
+                line += data.decode(sys.stdout.encoding, "backslashreplace").replace("\r", "")
                 if "\n" in line:
                     lines = line.split("\n")
                     for l in lines[:-1]:
@@ -201,33 +208,39 @@ def log(ctx, mcu=DEFAULT_MCU, debugger_serial=None,
     pre=[check_installation],
 )
 def terminal(ctx):
-    """Open a nRFconnect SDK terminal"""
+    """Open a Zephyr terminal"""
     ctx.run(f'{ctx.zephyr_pre_command}{ctx.config.run.shell}', pty=True)
 
 @task(
     pre=[check_installation],
 )
 def parse_backtrace(ctx, elf_file, line):
-    """Parse an nRFconnect backtrace line
-    Example usage: inv nrfconnect.parse-backtrace zephyr.elf "Backtrace:0x400ec4df:0x3ffbabb0 0x400df5a6:0x3ffbabd0"
+    """Parse a Zephyr backtrace line
+    Example usage: inv zephyr_native.parse-backtrace zephyr.elf "Backtrace:0x400ec4df:0x3ffbabb0 0x400df5a6:0x3ffbabd0"
     """
     task_utils.parse_backtrace(ctx, elf_file, line, toolchain_prefix=f"{ctx.arm_toolchain_path}/arm-none-eabi-")
 
 @task(
     pre=[check_installation],
     help={
-        "cmake_dir": f"CMake project directory to build (default: {DEFAULT_CMAKE_DIR})",
         "board_name": f"Zephyr board name (default: {DEFAULT_BOARD_NAME})",
+        "cmake_dir": f"CMake project directory to build; if not specified cmake_base_dir will apply",
+        "cmake_base_dir": f"The base CMake project directory, used if cmake_dir is not provided (default: {DEFAULT_CMAKE_BASE_DIR}); to this will be appended an underscore and then the MCU name for the board",
         "output_name": f"An output name (build sub folder, default: {DEFAULT_OUTPUT_NAME})",
         "build_dir": f"Output build directory (default: {DEFAULT_BUILD_DIR})",
         "u_flags": "Extra u_flags (when this is specified u_flags.yml will not be used)",
         "features": "Feature list, e.g. \"cell short_range\" to leave out gnss; overrides the environment variable UBXLIB_FEATURES"
     }
 )
-def analyze(ctx, cmake_dir=DEFAULT_CMAKE_DIR, board_name=DEFAULT_BOARD_NAME,
+def analyze(ctx, board_name=DEFAULT_BOARD_NAME, cmake_dir=None,
+            cmake_base_dir=DEFAULT_CMAKE_BASE_DIR,
             output_name=DEFAULT_OUTPUT_NAME, build_dir=DEFAULT_BUILD_DIR,
             u_flags=None, features=None):
     """Run CodeChecker static code analyzer (clang-analyze + clang-tidy)"""
+    mcu = get_mcu(board_name)
+    if not cmake_dir:
+        cmake_dir = cmake_base_dir + "_" + mcu
+
     build_dir = os.path.abspath(os.path.join(build_dir, output_name))
     features_string = ""
     os.makedirs(build_dir, exist_ok=True)

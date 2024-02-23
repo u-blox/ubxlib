@@ -129,9 +129,10 @@
  * COMPILE-TIME MACROS FOR A CELLULAR MODULE ON ZEPHYR/NRF5x: MISC
  * -------------------------------------------------------------- */
 
-#if defined(CONFIG_BOARD_UBX_EVKNORAB1_NRF5340_CPUAPP) || \
-    defined(CONFIG_BOARD_NRF5340PDK_NRF5340_CPUAPP)    || \
-    defined(CONFIG_BOARD_NRF5340DK_NRF5340_CPUAPP)
+#ifndef U_CFG_APP_CELL_UART
+# if defined(CONFIG_BOARD_UBX_EVKNORAB1_NRF5340_CPUAPP) || \
+     defined(CONFIG_BOARD_NRF5340PDK_NRF5340_CPUAPP)    || \
+     defined(CONFIG_BOARD_NRF5340DK_NRF5340_CPUAPP)
 /** The UARTE HW block to use inside the NRF53 chip when
  * communicating with a cellular module.
  * NOTE: this used to be 1 however, with I2C added, which has to
@@ -141,17 +142,19 @@
  * you can't have I2C/SPI and UART on the same HW block and there
  * are more UARTs available on NRF53.
  */
-# ifndef U_CFG_APP_CELL_UART
 #  define U_CFG_APP_CELL_UART       3
-# endif
-#else
+# elif defined(CONFIG_BOARD_NUCLEO_F767ZI)
+/** UART HW block to use inside STM32F767ZI when communicating
+ * with a cellular module.
+ */
+#  define U_CFG_APP_CELL_UART       6
+# else
 /** The UARTE HW block to use inside the NRF52 chip or on Linux
  * when communicating with a cellular module.
  */
-# ifndef U_CFG_APP_CELL_UART
 #  define U_CFG_APP_CELL_UART       1
 # endif
-#endif
+#endif // #ifndef U_CFG_APP_CELL_UART
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS FOR ZEPHYR/NRF5x: PINS FOR CELLULAR
@@ -165,6 +168,12 @@
 #endif
 
 #ifndef U_CFG_APP_PIN_CELL_PWR_ON
+# ifdef CONFIG_BOARD_NUCLEO_F767ZI
+/** The STM32 GPIO output that is connected to the PWR_ON
+ * pin of the cellular module.
+ */
+#  define U_CFG_APP_PIN_CELL_PWR_ON            0x5e // Arduino header pin D4, or pin F14 in STM32 port numbering
+# else
 /** The NRF5x GPIO output that is connected to the PWR_ON
  * pin of the cellular module.  Note that if you are using
  * the Nordic NRF5340 DK board configuration and the version of
@@ -172,7 +181,8 @@
  * use this pin for something and hence it is better to change
  * it, e.g. to pin 36 (AKA 1.04).
  */
-# define U_CFG_APP_PIN_CELL_PWR_ON            33 // AKA 1.01
+#  define U_CFG_APP_PIN_CELL_PWR_ON            33 // AKA 1.01
+# endif
 #endif
 
 #ifndef U_CFG_APP_PIN_CELL_RESET

@@ -139,22 +139,28 @@
 #include "u_cfg_test_platform_specific_sparkfun_asset_tracker_nrf52840.h"
 #endif
 
+#ifdef CONFIG_BOARD_NUCLEO_F767ZI
+#include "u_cfg_test_platform_specific_nucleo_f767zi.h"
+#endif
+
 #ifdef CONFIG_BOARD_NATIVE_POSIX
 #include "u_cfg_test_platform_specific_native_posix.h"
 #endif
 
-#if defined(CONFIG_BOARD_UBX_EVKNORAB1_NRF5340_CPUAPP) || \
-    defined(CONFIG_BOARD_NRF5340PDK_NRF5340_CPUAPP)    || \
-    defined(CONFIG_BOARD_NRF5340DK_NRF5340_CPUAPP)
+#ifndef U_CFG_TEST_UART_A
+# if defined(CONFIG_BOARD_UBX_EVKNORAB1_NRF5340_CPUAPP) || \
+     defined(CONFIG_BOARD_NRF5340PDK_NRF5340_CPUAPP)    || \
+     defined(CONFIG_BOARD_NRF5340DK_NRF5340_CPUAPP)
 /** UART HW block for UART driver loopback testing on nRF53.
  */
-# ifndef U_CFG_TEST_UART_A
 #  define U_CFG_TEST_UART_A          3
-# endif
-#else
+# elif defined(CONFIG_BOARD_NUCLEO_F767ZI)
+/** UART HW block for UART driver loopback testing on STM32F767ZI.
+ */
+#  define U_CFG_TEST_UART_A          2
+# else
 /** UART HW block for UART driver loopback testing on everything else.
  */
-# ifndef U_CFG_TEST_UART_A
 #  define U_CFG_TEST_UART_A          1
 # endif
 #endif

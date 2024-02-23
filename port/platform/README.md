@@ -8,7 +8,7 @@ The MCUs supported by the platforms are as follows:
 
 - Espressif [ESP-IDF](esp-idf): ESP32.
 - ST Microelectronics' [STM32Cube IDE](stm32cube): STM32F4.
-- [zephyr](zephyr): we test NRF52/NRF53, and also Linux/Posix for development purposes, but any MCU that is supported by Zephyr may work transparently.
+- [zephyr](zephyr): we test NRF52/NRF53, STM32, and also Linux/Posix for development purposes, but any MCU that is supported by Zephyr may work transparently.
 - not really an MCU but [windows](windows) is supported for development/test purposes.
 - [Linux](linux): not an MCU but native Linux is supported.
 

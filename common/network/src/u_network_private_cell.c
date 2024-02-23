@@ -157,6 +157,7 @@ int32_t uNetworkPrivateChangeStateCell(uDeviceHandle_t devHandle,
     uDeviceInstance_t *pDevInstance;
     int32_t errorCode = uDeviceGetInstance(devHandle, &pDevInstance);
     bool (*pKeepGoingCallback)(uDeviceHandle_t devHandle) = keepGoingCallback;
+    int32_t timeoutSeconds;
 
     if (errorCode == 0) {
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
@@ -167,9 +168,13 @@ int32_t uNetworkPrivateChangeStateCell(uDeviceHandle_t devHandle,
                 // The user has given us a keep-going callback, so use it
                 pKeepGoingCallback = pCfg->pKeepGoingCallback;
             } else {
+                timeoutSeconds = pCfg->timeoutSeconds;
                 // Set the stop time for the connect/disconnect calls
+                if (timeoutSeconds <= 0) {
+                    timeoutSeconds = U_CELL_NET_CONNECT_TIMEOUT_SECONDS;
+                }
                 pContext->stopTimeMs = uPortGetTickTimeMs() +
-                                       (((int64_t) pCfg->timeoutSeconds) * 1000);
+                                       (((int64_t) timeoutSeconds) * 1000);
             }
             if (upNotDown) {
                 // Set the authentication mode

@@ -2546,6 +2546,7 @@ U_PORT_TEST_FUNCTION("[port]", "portUartRequiresSpecificWiring")
     // port so deinitialise it here to obtain the
     // correct initial heap size
     uPortDeinit();
+
     resourceCount = uTestUtilGetDynamicResourceCount();
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 

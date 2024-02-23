@@ -9,7 +9,7 @@ from scripts import u_run_check_ubxlib_h, u_run_check_malloc, u_run_build_pio_ex
 
 from scripts.packages import u_package
 from scripts.u_logging import ULog
-from . import nrf5, esp_idf, nrfconnect, stm32cubef4, arduino, platformio, linux
+from . import nrf5, esp_idf, nrfconnect, stm32cubef4, arduino, platformio, linux, zephyr_native
 from enum import Enum
 import sys
 import json
@@ -129,9 +129,9 @@ def instance_command(ctx, instance_str, cmd):
             raise Exit(f"Unsupported command for platform: '{platform}'")
 
     elif platform == "zephyr":
-        nrfconnect.check_installation(ctx)
-        if mcu.lower() != "linux32":
-            # Normal embedded target stuff
+        if mcu.lower().startswith("nrf"):
+            # Nordic nRF embedded target stuff, done with the Nordic nRF Connect SDK, which includes Zephyr
+            nrfconnect.check_installation(ctx)
             if cmd == Command.BUILD:
                 nrfconnect.build(ctx, board_name=board, output_name="", build_dir=ctx.build_dir, u_flags=defines,
                                  features=ubxlib_features)
@@ -154,10 +154,29 @@ def instance_command(ctx, instance_str, cmd):
                                    features=ubxlib_features)
             else:
                 raise Exit(f"Unsupported command for MCU '{mcu}' on platform: '{platform}'")
+        elif mcu.lower() != "linux32":
+            # Native Zephyr
+            zephyr_native.check_installation(ctx)
+            if cmd == Command.BUILD:
+                zephyr_native.build(ctx, board_name=board, output_name="", build_dir=ctx.build_dir, u_flags=defines,
+                                    features=ubxlib_features)
+            elif cmd == Command.FLASH:
+                zephyr_native.flash(ctx, board_name=board, output_name="", build_dir=ctx.build_dir, debugger_serial=serial)
+            elif cmd == Command.LOG:
+                zephyr_native.log(ctx, board_name=board, serial_port=connection["serial_port"],
+                                  output_name="", build_dir=ctx.build_dir)
+            elif cmd == Command.TEST:
+                check_return_code(u_run_log.run(instance, ctx.build_dir, ctx.reporter, ctx.test_report))
+            elif cmd == Command.STATIC_ANALYZE:
+                zephyr_native.analyze(ctx, board_name=board, output_name="", build_dir=ctx.build_dir, u_flags=defines,
+                                      features=ubxlib_features)
+            else:
+                raise Exit(f"Unsupported command for MCU '{mcu}' on platform: '{platform}'")
         else:
             # Linux is handled differently and so gets a
             # script of its own, similar to the Windows case
             if cmd == Command.TEST:
+                nrfconnect.check_installation(ctx)
                 check_return_code(u_run_linux.run(ctx, instance=instance, platform=platform,
                                                   board_name=board,
                                                   build_dir=f'{DEFAULT_BUILD_LOCATION}/{instance_str}',

@@ -3,6 +3,10 @@ unity:
     url: https://github.com/ThrowTheSwitch/Unity
     version: v2.5.0
 
+zephyr_native:
+    type: zephyr
+    version: v3.5.0
+
 nrfconnectsdk:
     type: nrfconnectsdk
     version: v2.5.0

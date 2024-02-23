@@ -31,7 +31,7 @@
    device tree. It enables use of aliases in possible user overlay files.
    Ubxlib normally uses labels like "uart1" but will through this macro always
    first check for a possible alias named "ubxlib-uart1". This applies to
-   uart, i2c and spi.
+   uart, i2c, spi and gpio.
    Overlay example:
     / {
         aliases {

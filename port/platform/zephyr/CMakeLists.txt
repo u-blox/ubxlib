@@ -103,6 +103,7 @@ if (CONFIG_UBXLIB_TEST)
         ${UBXLIB_TEST_INC}
         test
     )
+
     # we need to build https://github.com/ThrowTheSwitch/unity
     # Path resolution order:
     # 1. environment variable UNITY_PATH
@@ -111,7 +112,7 @@ if (CONFIG_UBXLIB_TEST)
     # 3. if the nRF Connect SDK is inside our workspace, it will be at
     #    ${ZEPHYR_BASE}/../test/cmock/vendor/unity
     # 4. otherwise the platform itself must build and include it
-    if (DEFINED $ENV{UNITY_PATH})
+    if (DEFINED ENV{UNITY_PATH})
         set(UNITY_PATH $ENV{UNITY_PATH})
     elseif (EXISTS "${ZEPHYR_BASE}/../modules/test/unity")
         # this is the location if west fetched unity for us

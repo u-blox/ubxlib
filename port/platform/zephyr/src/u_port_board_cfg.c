@@ -1068,12 +1068,14 @@ static void cfgCellular(uDeviceCfg_t *pCfg, int32_t index)
         pCfgUart->pinRts = -1;
     }
     uPortLog("U_PORT_BOARD_CFG: using CELLULAR device \"%s\" from the device tree,"
-             " module-type %d on UART %d, uart-baud-rate %d with pin-enable-power %d,"
-             " pin-pwr-on %d, pin-vint %d, pin-dtr-power-saving %d.\n",
+             " module-type %d on UART %d, uart-baud-rate %d with pin-enable-power %d (0x%02x),"
+             " pin-pwr-on %d (0x%02x), pin-vint %d  (0x%02x), pin-dtr-power-saving %d  (0x%02x).\n",
              gpCfgCellDeviceName[index],
              pCfgCell->moduleType, pCfgUart->uart, pCfgUart->baudRate,
-             pCfgCell->pinEnablePower, pCfgCell->pinPwrOn, pCfgCell->pinVInt,
-             pCfgCell->pinDtrPowerSaving);
+             pCfgCell->pinEnablePower, pCfgCell->pinEnablePower,
+             pCfgCell->pinPwrOn, pCfgCell->pinPwrOn,
+             pCfgCell->pinVInt, pCfgCell->pinVInt,
+             pCfgCell->pinDtrPowerSaving, pCfgCell->pinDtrPowerSaving);
 }
 
 #endif // #if DT_HAS_COMPAT_STATUS_OKAY(u_blox_ubxlib_device_cellular)
@@ -1095,9 +1097,10 @@ static void cfgGnss(uDeviceCfg_t *pCfg, int32_t index)
     pCfgGnss->pinDataReady = gDeviceCfgGnssPinDataReady[index];
     pCfgGnss->i2cAddress = -1;
     uPortLog("U_PORT_BOARD_CFG: using GNSS device \"%s\" from the device tree,"
-             " module-type %d with pin-enable-power %d, pin-data-ready %d...\n",
+             " module-type %d with pin-enable-power %d (0x%02x), pin-data-ready %d (0x%02x)...\n",
              gpCfgGnssDeviceName[index], pCfgGnss->moduleType,
-             pCfgGnss->pinEnablePower, pCfgGnss->pinDataReady);
+             pCfgGnss->pinEnablePower, pCfgGnss->pinEnablePower,
+             pCfgGnss->pinDataReady, pCfgGnss->pinDataReady);
     // Don't need to check for NULL here as transport is a required field for GNSS
     x = getPort(gpDeviceCfgGnssTransportType[index], &(pCfg->transportType));
     switch (pCfg->transportType) {
@@ -1157,13 +1160,14 @@ static void cfgGnss(uDeviceCfg_t *pCfg, int32_t index)
             pSpiDevice->sampleDelayNanoseconds = U_COMMON_SPI_SAMPLE_DELAY_NANOSECONDS;
             pSpiDevice->fillWord = U_COMMON_SPI_FILL_WORD;
             uPortLog("U_PORT_BOARD_CFG: ...GNSS on SPI %d, spi-max-segment-size %d,"
-                     " spi-pin-select %d, spi-index-select %d, spi-frequency-hertz %d,"
-                     " spi-mode %d, spi-word-size-bytes %d%s,"
+                     " spi-pin-select %d (0x%02x), spi-index-select %d,"
+                     " spi-frequency-hertz %d, spi-mode %d, spi-word-size-bytes %d%s,"
                      " spi-start-offset-nanoseconds %d, spi-stop-offset-nanoseconds %d"
                      " [sample delay %d nanoseconds, fill word 0x%08x].\n",
                      pCfgSpi->spi, pCfgSpi->maxSegmentSize, pSpiDevice->pinSelect,
-                     pSpiDevice->indexSelect, pSpiDevice->frequencyHertz,
-                     pSpiDevice->mode, pSpiDevice->wordSizeBytes,
+                     pSpiDevice->pinSelect, pSpiDevice->indexSelect,
+                     pSpiDevice->frequencyHertz, pSpiDevice->mode,
+                     pSpiDevice->wordSizeBytes,
                      pSpiDevice->lsbFirst ? ", spi-lsb-first" : "",
                      pSpiDevice->startOffsetNanoseconds,
                      pSpiDevice->stopOffsetNanoseconds,
@@ -1401,7 +1405,10 @@ static void cfgNetworkBle(int32_t deviceIndex, int32_t networkIndex,
 
 #endif // #if DT_HAS_COMPAT_STATUS_OKAY(u_blox_ubxlib_network_ble)
 
-#if DT_HAS_COMPAT_STATUS_OKAY(u_blox_ubxlib_network_cellular)
+#if DT_HAS_COMPAT_STATUS_OKAY(u_blox_ubxlib_device_cellular)
+// Note: this is under u_blox_ubxlib_device_cellular and not
+// u_blox_ubxlib_network_cellular as we need the default
+// settings to be populated in all cases.
 
 // Populate a cellular network configuration structure.
 static void cfgNetworkCellular(int32_t deviceIndex, int32_t networkIndex,
@@ -1452,7 +1459,7 @@ static void cfgNetworkCellular(int32_t deviceIndex, int32_t networkIndex,
              pNetworkCfg->pMccMnc ? pNetworkCfg->pMccMnc : "NULL");
 }
 
-#endif // #if DT_HAS_COMPAT_STATUS_OKAY(u_blox_ubxlib_network_cellular)
+#endif // #if DT_HAS_COMPAT_STATUS_OKAY(u_blox_ubxlib_device_cellular)
 
 #if DT_HAS_COMPAT_STATUS_OKAY(u_blox_ubxlib_network_gnss)
 
@@ -1736,7 +1743,10 @@ int32_t uPortBoardCfgNetwork(uDeviceHandle_t devHandle,
 #endif
                         break;
                     case U_NETWORK_TYPE_CELL:
-#if DT_HAS_COMPAT_STATUS_OKAY(u_blox_ubxlib_network_cellular)
+#if DT_HAS_COMPAT_STATUS_OKAY(u_blox_ubxlib_device_cellular)
+                        // Note: this is under u_blox_ubxlib_device_cellular and not
+                        // u_blox_ubxlib_network_cellular as we need the default
+                        // settings to be populated in all cases.
                         cfgNetworkCellular(deviceIndex, networkIndex,
                                            (uNetworkCfgCell_t *) pNetworkCfg);
 #endif
@@ -1790,7 +1800,7 @@ DEVICE_DT_INST_DEFINE(i,                                                        
                       NULL, /* pm_device */                                         \
                       NULL, /* Context: this would be pDev->data if we needed it */ \
                       NULL, /* Constant configuration data */                       \
-                      APPLICATION, /* Device initialisation level */                \
+                      POST_KERNEL, /* Device initialisation level */                \
                       99,   /* Initialisation priority (99 is the lowest, used since there is nothing to initialise) */ \
                       NULL); /* API jump-table */
 
@@ -1807,7 +1817,7 @@ DEVICE_DT_INST_DEFINE(i,                                                        
                       NULL, /* pm_device */                                         \
                       NULL, /* Context: this would be pDev->data if we needed it */ \
                       NULL, /* Constant configuration data */                       \
-                      APPLICATION, /* Device initialisation level */                \
+                      POST_KERNEL, /* Device initialisation level */                \
                       99,   /* Initialisation priority (99 is the lowest, used since there is nothing to initialise) */ \
                       NULL); /* API jump-table */
 
@@ -1824,7 +1834,7 @@ DEVICE_DT_INST_DEFINE(i,                                                        
                       NULL, /* pm_device */                                         \
                       NULL, /* Context: this would be pDev->data if we needed it */ \
                       NULL, /* Constant configuration data */                       \
-                      APPLICATION, /* Device initialisation level */                \
+                      POST_KERNEL, /* Device initialisation level */                \
                       99,   /* Initialisation priority (99 is the lowest, used since there is nothing to initialise) */ \
                       NULL); /* API jump-table */
 

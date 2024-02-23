@@ -8,6 +8,7 @@ from .u_base_package import *
 from .u_nrfconnectsdk_package import UNrfConnectSdkPackage
 from .u_esp_idf_package import UEspIdfPackage
 from .u_segger_jlink_package import USeggerJlinkPackage
+from .u_zephyr_package import UZephyrPackage
 from typing import List, Dict
 
 AUTOMATION_LOCK_TIMEOUT = 60 * 15
@@ -86,6 +87,8 @@ def load(ctx: Context, packages: List[str]) -> Dict[str,UBasePackage]:
                     pkg = UEspIdfPackage()
                 elif type == "segger_jlink":
                     pkg = USeggerJlinkPackage()
+                elif type == "zephyr":
+                    pkg = UZephyrPackage()
                 else:
                     raise UPackageException(f"Unknown package type: {type}")
                 pkg.name = pkg_name

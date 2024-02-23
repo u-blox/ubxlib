@@ -98,6 +98,10 @@ static void appTask(void *pParam)
 
     uPortInit();
 
+    // Give the log-capture we use during testing time
+    // to start up
+    uPortTaskBlock(5000);
+
 #ifndef CONFIG_ARCH_POSIX
     uPortTaskBlock(U_CFG_STARTUP_DELAY_SECONDS * 1000);
 #endif

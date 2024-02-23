@@ -1,7 +1,8 @@
 # Introduction
-These directories provide the implementation of the porting layer on the Zephyr platform.  Instructions on how to install the necessary tools and perform the build can be found in the [runner](runner) directory for Nordic platforms and the [runner_linux](runner_linux) directory for Linux/Posix.  While this should, generically, work with any Zephyr board, you should note that we only test with the following HW:
+These directories provide the implementation of the porting layer on the Zephyr platform.  Instructions on how to install the necessary tools and perform the build can be found in the [runner](runner) directory for Nordic platforms, the [runner_stm32](runner_stm32) directory for STM32 platforms and the [runner_linux](runner_linux) directory for Linux/Posix.  While this should, generically, work with any Zephyr board, you should note that we only test with the following HW:
 
 - Nordic MCUs, which require a **specific** version/configuration of Zephyr,
+- STM32 MCUs,
 - Linux/posix, for debugging/development only, just like [windows](../windows).
 
 Note: the directory structure here differs from that in the other platform directories in order to follow more closely the approach adopted by Zephyr, which is hopefully familiar to Zephyr users.
@@ -12,10 +13,11 @@ Note: the directory structure here differs from that in the other platform direc
 - [src](src): contains the implementation of the porting layers for Zephyr platform on Nordic chips and on Linux/posix.
 - [runner](runner): contains the test application configuration and build files for the Nordic MCUs supported on the Zephyr platform.
 - [runner_linux](runner_linux): contains the test application configuration and build files for Linux/Posix on the Zephyr platform.
+- [runner_stm32](runner_stm32): contains the test application configuration and build files for STM32 MCUs supported on the Zephyr platform.
 - [boards](boards): contains custom u-blox boards that are not \[yet\] in the Zephyr repo.
 - [test](test): contains tests that use Zephyr application APIs to check out the integration of `ubxlib` into Zephyr, e.g. at PPP level.
 
-# SDK Installation (NRF Connect)
+# SDK Installation For Nordic MCUs (NRF Connect)
 `ubxlib` is tested with the version of Zephyr that comes with `nRFConnect SDK version 2.5.0` (Zephyr 3.4.99ncs, which includes modifications that Nordic make to Zephyr) which is the recommended version; it is intended to build with all versions nRFConnect SDK from 1.6.1 up til 2.5.0.
 
 Follow the instructions to install the development tools:
@@ -24,9 +26,12 @@ Follow the instructions to install the development tools:
 - Start nRFConnect and use the tool chain manager to install the recommended SDK version (see above).
 - IMPORTANT: update SDK and toolchain using the dropdown menu for your SDK version.
 
-If you intend to use Zephyr on Linux/posix then you must also follow the instructions here:
+# SDK Installation For Other MCUs (Native Zephyr)
+Please follow the [Zephyr](https://docs.zephyrproject.org/latest/develop/getting_started/index.html) instructions to install Zephyr and the `west` tool that configures and builds Zephyr.
 
-https://docs.zephyrproject.org/latest/boards/posix/native_posix/doc/index.html
+`ubxlib` is tested with native Zephyr version 3.5.0.
+
+If you intend to use Zephyr on Linux/posix then you must also follow the instructions here: https://docs.zephyrproject.org/latest/boards/posix/native_posix/doc/index.html.
 
 # Integration
 `ubxlib` is a [Zephyr module](https://docs.zephyrproject.org/latest/guides/modules.html).

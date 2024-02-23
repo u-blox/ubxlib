@@ -1069,7 +1069,7 @@ DEVICE_DT_INST_DEFINE(i,                                                        
                       NULL, /* pm_device */                                         \
                       NULL, /* Context: this would be pDev->data if we needed it */ \
                       NULL, /* Constant configuration data */                       \
-                      APPLICATION, /* Device initialisation level */                \
+                      POST_KERNEL, /* Device initialisation level */                \
                       CONFIG_SERIAL_INIT_PRIORITY, /* Initialisation priority */    \
                       &gUart); // API jump-table
 
@@ -1097,7 +1097,7 @@ DEVICE_DT_INST_DEFINE(i,                                                        
                       NULL, /* pm_device */                                         \
                       NULL, /* Context: this would be pDev->data if we needed it */ \
                       NULL, /* Constant configuration data */                       \
-                      APPLICATION, /* Device initialisation level */                \
+                      POST_KERNEL, /* Device initialisation level */                \
                       CONFIG_SERIAL_INIT_PRIORITY, /* Initialisation priority */    \
                       NULL); // API jump-table
 

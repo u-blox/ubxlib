@@ -1,0 +1,46 @@
+# This is a kind of "master" manifest file that is employed during
+# fetches to make Zephyr/west behave as we want. Specifically:
+#
+# 1. We need a single installation of Zephyr on a machine, to avoid
+#    running out of disk/time with the N gigabyte download that
+#    might otherwise result.
+# 2. For a given Zephyr version, the compatible Git commit hashes of
+#    the Zephyr modules that contain the HALs for the platform are
+#    stored in that Zephyr version’s west.yml file: e.g. the
+#    hal_stm32 module within Zephyr has no release tags/branches
+#    associated with it, the only way to get the correct version of
+#    that module is to fetch it using west, which reads the west.yml
+#    file inside Zephyr.
+# 3. We don’t want to install every platform [AKA module/lib/whatever]
+#    Zephyr has ever supported (‘cos disk space/time) and the only
+#    way to make west not install everything is to write stuff in a
+#    west.yml file (e.g. name-allowlist etc.).
+#
+# The way to get west to do this is "topology 3", or the "forest topology"
+# and this is the manifest file for that, representing the super-set
+# of things we require from Zephyr; u_zephyr_package.py will copy it
+# into the package installation directory where it will be used by
+# "west update".
+
+manifest:
+  self:
+    west-commands: scripts/west-commands.yml
+
+  remotes:
+    - name: zephyrproject-rtos
+      url-base: https://github.com/zephyrproject-rtos
+
+  projects:
+    - name: zephyr
+      remote: zephyrproject-rtos
+      # u_zephyr_package.py will replace REVISION_REPLACE_ME with the intended version
+      revision: REVISION_REPLACE_ME
+      import:
+        # By using name-allowlist we can clone only the modules that are
+        # strictly needed by ubxlib
+        name-allowlist:
+          - cmsis
+          - hal_stm32
+          - mbedtls
+          # Zephyr BLE GATT needs this on STM32
+          - tinycrypt

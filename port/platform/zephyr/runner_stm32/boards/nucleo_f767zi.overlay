@@ -1,0 +1,62 @@
+/ { // This portion in the "root" of the device tree
+
+    // All of the UARTs on this board exposed through the default
+    // .dts file are called USARTs (i.e. with an S inserted),
+    // hence we need to use aliases in order for ubxlib to be
+    // able to find them as UARTs
+    aliases {
+        ubxlib-uart2 = &usart2; // For UART loopback testing
+        ubxlib-uart6 = &usart6; // For cellular module
+        // Don't need an alias for USART3 as that's the console
+        // and ubxlib doesn't need to open it
+    };
+
+    chosen {
+            // Only required if U_CFG_PPP_ENABLE is enabled
+            zephyr,ppp-uart = &uart99;
+    };
+
+    // Only required if U_CFG_PPP_ENABLE is enabled
+    // This creates instance 99 of a uart that we will give to zephyr,ppp-uart
+    uart99: uart-ppp@8000 { // The "8000" here is irrelevant but required for Zephyr to work
+        compatible = "u-blox,uart-ppp"; // The important part: this is an instance of u-blox,uart-ppp
+        reg = <0x8000 0x100>; // This is irrelevant but required for Zephyr to work
+        status = "okay"; // Zephyr boiler-plate
+    };
+};
+
+// Enable DMA (a) because STM32 serial ports
+// have only a one-byte buffer, so will lose
+// characters without it, and, (b) because we
+// need an asynchronous UART for PPP and the
+// device tree configuration on STM32 won't
+// allow that unless at least one thing has
+// DMA enabled
+// Guidance from tables 27/28 of the reference
+// manual R0410 and
+// https://github.com/zephyrproject-rtos/zephyr/blob/main/dts/bindings/dma/st%2Cstm32-dma-v2.yaml
+&usart2 {
+    dmas = <&dma1 6 4 0x28440 0x03>,
+           <&dma1 5 4 0x28480 0x03>;
+    dma-names = "tx", "rx"; // This is apparently mandatory
+    status = "okay"; // Make this "OK" 'cos, though it is configured
+                     // in the default .dts file, it is not enabled
+};
+&dma1 {
+    status = "okay";
+};
+&usart6 {
+    dmas = <&dma2 7 5 0x28440 0x03>,
+           <&dma2 2 5 0x28480 0x03>;
+    dma-names = "tx", "rx";
+};
+&dma2 {
+    status = "okay";
+};
+
+// Make console logging use DMA also for speed
+&usart3 {
+    dmas = <&dma1 3 4 0x28440 0x03>,
+           <&dma1 1 4 0x28480 0x03>;
+    dma-names = "tx", "rx";
+};
