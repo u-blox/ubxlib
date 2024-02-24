@@ -116,9 +116,14 @@ Zephyr pin choices for any HW peripheral managed by Zephyr (e.g. UART, I2C, SPI,
 
 If you want to find out more about device tree please see Zephyr "[Introduction to Device Tree](https://docs.zephyrproject.org/latest/guides/dts/intro.html)".
 
-Unless you take the approach set out in the next section, you will still need to pass into `ubxlib` the HW block that is used: e.g. UART 0, UART 1, etc.  The UARTs, for instance, will be named `uart0`, `uart1`... in the device tree; the ending number is the value you should use to tell `ubxlib` what device to open.
+You will still need to pass into `ubxlib` the HW block that is used: e.g. UART 0, UART 1, etc.  The UARTs, for instance, will be named `uart0`, `uart1`... in the device tree; the ending number is the value you should use to tell `ubxlib` what device to open.
 
-If this is a problem, e.g. if your board uses its own naming of the devices, you can add a device tree overlay file to your build and in this define aliases in order to get the correct mapping. `ubxlib` will always check if there is an alias named `ubxlib-xxxxn` and use it when present.  For example:
+# UART/I2C/SPI Device Tree Names If You Are Not Using nRF52/nRF53
+In order to obtain the device configuration for UART, I2C and SPI from the device tree, `ubxlib` assumes that a UART device is named `uart` (e.g. `uart2`), an I2C device `i2c` (e.g. `i2c1`) and an SPI device `spi` (e.g. `spi0`); it is the number on the end of that name that you put into the device structure, the HW block that is used.
+
+If you are not using nRF52/nRF53 then it is possible that the entries in the device tree are called something else, e.g. `usart` for STM32, maybe `serial`, whatever (the same is true for I2C and SPI but everyone seems to have chosen `i2c` and `spi` there).
+
+In that case you must add a device tree `.overlay` file to your build that defines a `ubxlib` alias for the device in order to get the correct mapping. `ubxlib` will always check if there is an alias, named `ubxlib-xxxxn`, and use it when present.  For example:
 
 ```
     / {
