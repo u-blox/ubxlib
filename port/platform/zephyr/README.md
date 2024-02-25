@@ -157,9 +157,9 @@ You will need an entry with `status = "okay"` for the device you intend to use (
         # so you will need to know the number of pins per GPIO port on your
         # MCU to work it out.  For nRF52/nRF53 there are 32 pins per GPIO
         # port, so the pin for <&gpio1 0 x> would be pin 32, while for
-        # STM32 therea are 16 pins per GPIO port which is easiest to comprehend
+        # STM32 there are 16 pins per GPIO port which is easiest to comprehend
         # when expressed in hex, so <&gpiob 0 x> (the STM32 GPIO device tree
-        # entries use a letter rather than a number), pin PB0 would be 0x10,
+        # entries use a letter rather than a number), pin PB0, would be 0x10,
         # <&gpiof 14 x>, pin PF14, would be 0x5e, etc.
         pin-pwr-on = <10>;
         pin-vint = <35>;
