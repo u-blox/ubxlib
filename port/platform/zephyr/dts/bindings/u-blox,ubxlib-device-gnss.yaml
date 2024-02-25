@@ -39,7 +39,7 @@ properties:
 # pinSelect for SPI
     spi-pin-select:
         type: int
-        description: "The GPIO output pin (an integer, assuming 32 pins per GPIO bank) to use for SPI chip select; if you do not specify a pin then spi-index-select is used and if spi-index-select is not specified index 0 is used."
+        description: "The GPIO output pin (an integer, counting from zero up through the GPIO banks) to use for SPI chip select; if you do not specify a pin then spi-index-select is used and if spi-index-select is not specified index 0 is used."
 # indexSelect for SPI
     spi-index-select:
         type: int
@@ -89,11 +89,11 @@ properties:
 # pinEnablePower
     pin-enable-power:
         type: int
-        description: "The GPIO output pin (an integer, assuming 32 pins per GPIO bank) that enables power to the GNSS device (e.g. through a relay or some such); not usually required."
+        description: "The GPIO output pin (an integer, counting from zero up through the GPIO banks) that enables power to the GNSS device (e.g. through a relay or some such); not usually required."
 # pinDataReady
     pin-data-ready:
         type: int
-        description: "The GPIO output pin (an integer, assuming 32 pins per GPIO bank) that is connected to the Data Ready pin of the GNSS device; provided for future compatibility only, currently ignored."
+        description: "The GPIO output pin (an integer,counting from zero up through the GPIO banks) that is connected to the Data Ready pin of the GNSS device; provided for future compatibility only, currently ignored."
 # i2cAddress
     i2c-address:
         type: int

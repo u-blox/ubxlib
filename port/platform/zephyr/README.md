@@ -153,8 +153,14 @@ You will need an entry with `status = "okay"` for the device you intend to use (
         # device it must be given as a STRING
         transport-type = "uart0";
         module-type = "U_CELL_MODULE_TYPE_SARA_R422";
-        # Pin numbers assume 32 pins per gpio, so the pin for
-        # <&gpio1 0 x> would be pin 32
+        # The ubxlib pin number is simply an integer counting up from zero,
+        # so you will need to know the number of pins per GPIO port on your
+        # MCU to work it out.  For nRF52/nRF53 there are 32 pins per GPIO
+        # port, so the pin for <&gpio1 0 x> would be pin 32, while for
+        # STM32 therea are 16 pins per GPIO port which is easiest to comprehend
+        # when expressed in hex, so <&gpiob 0 x> (the STM32 GPIO device tree
+        # entries use a letter rather than a number), pin PB0 would be 0x10,
+        # <&gpiof 14 x>, pin PF14, would be 0x5e, etc.
         pin-pwr-on = <10>;
         pin-vint = <35>;
         # This SARA-R422 device has GNSS inside it, which is indicated by
