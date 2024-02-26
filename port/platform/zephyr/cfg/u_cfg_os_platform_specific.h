@@ -48,7 +48,7 @@
  * COMPILE-TIME MACROS FOR ZEPHYR: HEAP
  * -------------------------------------------------------------- */
 
-/** /deprecated Not stricty speaking part of the OS but there's nowhere
+/** \deprecated Not stricty speaking part of the OS but there's nowhere
  * better to put this. Set this to 1 if the C library does not free memory
  * that it has alloced internally when a task is deleted.
  * For instance, newlib when it is compiled in a certain way
