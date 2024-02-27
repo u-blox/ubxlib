@@ -209,6 +209,6 @@ static int ubxlib_preinit(const struct device *arg)
     return 0;
 }
 
-SYS_INIT(ubxlib_preinit, PRE_KERNEL_1, 0);
+SYS_INIT(ubxlib_preinit, POST_KERNEL, 0);
 
 // End of file
