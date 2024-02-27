@@ -373,9 +373,10 @@ static int32_t sendMessageStream(uGnssPrivateInstance_t *pInstance,
         }
         break;
         case U_GNSS_PRIVATE_STREAM_TYPE_I2C: {
-            errorCodeOrSentLength = uPortI2cControllerSend(pInstance->transportHandle.i2c,
-                                                           pInstance->i2cAddress,
-                                                           pMessage, messageLengthBytes, false);
+            errorCodeOrSentLength = uPortI2cControllerExchange(pInstance->transportHandle.i2c,
+                                                               pInstance->i2cAddress,
+                                                               pMessage, messageLengthBytes,
+                                                               NULL, 0, false);
             if (errorCodeOrSentLength == 0) {
                 errorCodeOrSentLength = messageLengthBytes;
             }
@@ -1981,7 +1982,7 @@ int32_t uGnssPrivateStreamGetReceiveSize(uGnssPrivateInstance_t *pInstance)
 {
     int32_t errorCodeOrReceiveSize = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
     int32_t privateStreamTypeOrError;
-    char buffer[2];
+    char buffer[2] = {0};
 
     if (pInstance != NULL) {
         privateStreamTypeOrError = uGnssPrivateGetStreamType(pInstance->transportType);
@@ -1998,16 +1999,13 @@ int32_t uGnssPrivateStreamGetReceiveSize(uGnssPrivateInstance_t *pInstance)
                 // 0xFD, with no stop bit, and then a read request for two bytes
                 // should get us the [big-endian] length
                 buffer[0] = 0xFD;
-                errorCodeOrReceiveSize = uPortI2cControllerSend(pInstance->transportHandle.i2c,
-                                                                (uint16_t) i2cAddress,
-                                                                buffer, 1, true);
-                if (errorCodeOrReceiveSize == 0) {
-                    errorCodeOrReceiveSize = uPortI2cControllerSendReceive(pInstance->transportHandle.i2c,
-                                                                           (uint16_t) i2cAddress,
-                                                                           NULL, 0, buffer, sizeof(buffer));
-                    if (errorCodeOrReceiveSize == sizeof(buffer)) {
-                        errorCodeOrReceiveSize = (int32_t) ((((uint32_t) buffer[0]) << 8) + (uint32_t) buffer[1]);
-                    }
+                errorCodeOrReceiveSize = uPortI2cControllerExchange(pInstance->transportHandle.i2c,
+                                                                    (uint16_t) i2cAddress,
+                                                                    buffer, 1,
+                                                                    buffer, sizeof(buffer),
+                                                                    true);
+                if (errorCodeOrReceiveSize == sizeof(buffer)) {
+                    errorCodeOrReceiveSize = (int32_t) ((((uint32_t) buffer[0]) << 8) + (uint32_t) buffer[1]);
                 }
             }
             break;
@@ -2186,11 +2184,11 @@ int32_t uGnssPrivateStreamFillRingBuffer(uGnssPrivateInstance_t *pInstance,
                             // the I2C buffer is effectively on the GNSS chip and I2C drivers
                             // often don't say how much they've read, just giving us back
                             // the number we asked for on a successful read
-                            receiveSize = uPortI2cControllerSendReceive(pInstance->transportHandle.i2c,
-                                                                        pInstance->i2cAddress,
-                                                                        NULL, 0,
-                                                                        pTemporaryBuffer,
-                                                                        receiveSize);
+                            receiveSize = uPortI2cControllerExchange(pInstance->transportHandle.i2c,
+                                                                     pInstance->i2cAddress,
+                                                                     NULL, 0,
+                                                                     pTemporaryBuffer,
+                                                                     receiveSize, false);
                             break;
                         case U_GNSS_PRIVATE_STREAM_TYPE_SPI:
                             // For the SPI case, we need to pull the data that was

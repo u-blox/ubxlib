@@ -130,11 +130,11 @@ int32_t uGnssUtilUbxTransparentSendReceive(uDeviceHandle_t gnssHandle,
                                                                    commandLengthBytes);
                         break;
                     case U_GNSS_PRIVATE_STREAM_TYPE_I2C:
-                        errorCodeOrResponseLength = uPortI2cControllerSend(pInstance->transportHandle.i2c,
-                                                                           pInstance->i2cAddress,
-                                                                           pCommand,
-                                                                           commandLengthBytes,
-                                                                           false);
+                        errorCodeOrResponseLength = uPortI2cControllerExchange(pInstance->transportHandle.i2c,
+                                                                               pInstance->i2cAddress,
+                                                                               pCommand,
+                                                                               commandLengthBytes,
+                                                                               NULL, 0, false);
                         if (errorCodeOrResponseLength == 0) {
                             errorCodeOrResponseLength = commandLengthBytes;
                         }
@@ -197,9 +197,10 @@ int32_t uGnssUtilUbxTransparentSendReceive(uDeviceHandle_t gnssHandle,
                                                               pResponse + bytesRead, x);
                                             break;
                                         case U_GNSS_PRIVATE_STREAM_TYPE_I2C:
-                                            x = uPortI2cControllerSendReceive(pInstance->transportHandle.i2c,
-                                                                              pInstance->i2cAddress,
-                                                                              NULL, 0, pResponse + bytesRead, x);
+                                            x = uPortI2cControllerExchange(pInstance->transportHandle.i2c,
+                                                                           pInstance->i2cAddress,
+                                                                           NULL, 0, pResponse + bytesRead, x,
+                                                                           false);
                                             break;
                                         case U_GNSS_PRIVATE_STREAM_TYPE_SPI:
                                             // For the SPI case, we need to pull the data that was

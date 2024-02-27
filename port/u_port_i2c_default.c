@@ -56,6 +56,31 @@
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
+//  Default implementation of the I2C data exchange function.
+U_WEAK int32_t uPortI2cControllerExchange(int32_t handle, uint16_t address,
+                                          const char *pSend, size_t bytesToSend,
+                                          char *pReceive, size_t bytesToReceive,
+                                          bool noInterveningStop)
+{
+    int32_t errorCodeOrReceiveSize = (int32_t) U_ERROR_COMMON_SUCCESS;
+
+    if (noInterveningStop) {
+        errorCodeOrReceiveSize = uPortI2cControllerSend(handle, address,
+                                                        pSend, bytesToSend,
+                                                        noInterveningStop);
+        pSend = NULL;
+        bytesToSend = 0;
+    }
+
+    if (errorCodeOrReceiveSize == 0) {
+        errorCodeOrReceiveSize = uPortI2cControllerSendReceive(handle, address,
+                                                               pSend, bytesToSend,
+                                                               pReceive, bytesToReceive);
+    }
+
+    return errorCodeOrReceiveSize;
+}
+
 // Default implmentation of setting maximum I2C segment size.
 U_WEAK int32_t uPortI2cSetMaxSegmentSize(int32_t handle, size_t maxSegmentSize)
 {

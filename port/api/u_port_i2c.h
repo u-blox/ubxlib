@@ -258,6 +258,85 @@ int32_t uPortI2cGetMaxSegmentSize(int32_t handle);
  * Note that the NRF52 and NRF53 chips require all buffers to
  * be in RAM.
  *
+ * Note: where this function is not implemented a weakly-linked
+ * version will currently do the following:
+ *
+ * (a) call uPortI2cControllerSend() if pReceive is NULL or
+ *     noInterveningStop is true,
+ * (b) call uPortI2cControllerSend() followed by
+ *     uPortI2cControllerSendReceive() if pReceive is non-NULL
+ *     and noInterveningStop is true,
+ * (c) otherwise call uPortI2cControllerSendReceive().
+ *
+ * This weakly-linked function will be removed when the deprecated
+ * uPortI2cControllerSend()/uPortI2cControllerSendReceive() functions
+ * are removed.
+ *
+ * Note also that the uPortI2cSetTimeout() (or the equivalent set
+ * by a platform at compile-time) applies for the whole of this
+ * transaction, i.e. the peripheral must begin responding within
+ * that time; if you wish to allow the peripheral longer to respond
+ * you should take control of the time allowed yourself by calling
+ * uPortI2cControllerExchange() twice, once with only a send buffer
+ * and again with only a receive buffer.
+ *
+ * @param handle            the handle of the I2C instance.
+ * @param address           the I2C address to send to; only the lower
+ *                          7 bits are used unless the platform supports
+ *                          10-bit addressing.  Note that the NRF5 SDK,
+ *                          and hence Zephyr on NRF52/53 (which uses the NRF5
+ *                          SDK under the hood) does not support 10-bit
+ *                          addressing and, in any case, we've not yet found
+ *                          a device that supports 10-bit addressing to test
+ *                          against.
+ * @param[in] pSend         a pointer to the data to send, use NULL
+ *                          if only receive is required; setting this and
+ *                          pReceive to NULL will return success only if a
+ *                          device with the given address is present on the I2C
+ *                          bus; however note that the NRFX drivers used on nRF52
+ *                          and nRF53 by NRF-SDK and Zephyr don't support
+ *                          sending only the address, data must follow.
+ * @param bytesToSend       the number of bytes to send, must be zero if pSend
+ *                          is NULL.
+ * @param[out] pReceive     a pointer to a buffer in which to store received
+ *                          data; use NULL if only send is required.
+ * @param bytesToReceive    the size of buffer pointed to by pReceive, must
+ *                          be zero if pReceive is NULL.
+ * @param noInterveningStop if true then no stop is sent between the send
+ *                          and the receive; this is useful for devices such
+ *                          as EEPROMs or, in certain situations, u-blox GNSS
+ *                          modules, which allow writing of a memory address
+ *                          byte or bytes, followed by no stop bit; the data
+ *                          from that memory address may then be received
+ *                          into pReceive.  This is sometimes called using a
+ *                          "repeated start bit".  Note that if pReceive
+ *                          is NULL, depending on the platform, this _may_
+ *                          be ignored and a stop bit added in any case;
+ *                          e.g. the STM32 drivers within Zephyr will do this;
+ *                          they require a stop bit at the end of an I2C
+ *                          transaction.
+ * @return                  if pReceive is not NULL the number of bytes
+ *                          received or negative error code; if pReceive is
+ *                          NULL then zero on success else negative error code.
+ *                          Note that the underlying platform drivers often
+ *                          do not report the number of bytes received and
+ *                          hence the return value may just be either an
+ *                          error code or bytesToReceive copied back to you.
+ */
+int32_t uPortI2cControllerExchange(int32_t handle, uint16_t address,
+                                   const char *pSend, size_t bytesToSend,
+                                   char *pReceive, size_t bytesToReceive,
+                                   bool noInterveningStop);
+
+/** \deprecated this function is deprecated, please use
+ * uPortI2cControllerExchange() instead; if you are making your own
+ * I2C port, please implement uPortI2cControllerExchange() and
+ * not this function.
+ *
+ * Send and/or receive over the I2C interface as a controller.
+ * Note that the NRF52 and NRF53 chips require all buffers to
+ * be in RAM.
+ *
  * Note that the uPortI2cSetTimeout() (or the equivalent set
  * by a platform at compile-time) applies for the whole of this
  * transaction, i.e. the peripheral must begin responding within
@@ -275,7 +354,7 @@ int32_t uPortI2cGetMaxSegmentSize(int32_t handle);
  *                       addressing and, in any case, we've not yet found
  *                       a device that supports 10-bit addressing to test
  *                       against.
- * @param pSend          a pointer to the data to send, use NULL
+ * @param[in] pSend      a pointer to the data to send, use NULL
  *                       if only receive is required.  This function
  *                       will do nothing, and return success, if both
  *                       pSend and pReceive are NULL; if you want to do
@@ -284,7 +363,7 @@ int32_t uPortI2cGetMaxSegmentSize(int32_t handle);
  *                       though note that not all platforms support this.
  * @param bytesToSend    the number of bytes to send, must be zero if pSend
  *                       is NULL.
- * @param pReceive       a pointer to a buffer in which to store received
+ * @param[out] pReceive  a pointer to a buffer in which to store received
  *                       data; use NULL if only send is required.
  * @param bytesToReceive the size of buffer pointed to by pReceive, must
  *                       be zero if pReceive is NULL.
@@ -300,7 +379,12 @@ int32_t uPortI2cControllerSendReceive(int32_t handle, uint16_t address,
                                       const char *pSend, size_t bytesToSend,
                                       char *pReceive, size_t bytesToReceive);
 
-/** Perform just a send over the I2C interface as a controller, with the
+/** \deprecated this function is deprecated, please use
+ * uPortI2cControllerExchange() instead; if you are making your own
+ * I2C port, please implement uPortI2cControllerExchange() and
+ * not this function.
+ *
+ * Perform just a send over the I2C interface as a controller, with the
  * option of omitting the stop marker on the end.
  * Note that the NRF52 and NRF53 chips require the buffer to be in RAM.
  *
@@ -313,7 +397,7 @@ int32_t uPortI2cControllerSendReceive(int32_t handle, uint16_t address,
  *                       addressing and, in any case, we've not yet found
  *                       a device that supports 10-bit addressing to test
  *                       against.
- * @param pSend          a pointer to the data to send; setting this to
+ * @param[in] pSend      a pointer to the data to send; setting this to
  *                       NULL will return success only if a device with
  *                       the given address is present on the I2C bus;
  *                       however note that the NRFX drivers used on nRF52

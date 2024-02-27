@@ -528,9 +528,9 @@ int32_t uGnssMsgSend(uDeviceHandle_t gnssHandle, const char *pBuffer, size_t siz
                     }
                     break;
                     case U_GNSS_PRIVATE_STREAM_TYPE_I2C: {
-                        errorCodeOrLength = uPortI2cControllerSend(pInstance->transportHandle.i2c,
-                                                                   pInstance->i2cAddress,
-                                                                   pBuffer, size, false);
+                        errorCodeOrLength = uPortI2cControllerExchange(pInstance->transportHandle.i2c,
+                                                                       pInstance->i2cAddress,
+                                                                       pBuffer, size, NULL, 0, false);
                         if (errorCodeOrLength == 0) {
                             errorCodeOrLength = (int32_t) size;
                         }
