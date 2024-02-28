@@ -649,8 +649,8 @@ void uCellNetScanGetLast(uDeviceHandle_t cellHandle);
  *                                   IMPORTANT: the callback function should
  *                                   not call back into this API (which will
  *                                   be locked): it must return false to allow
- *                                   uCellNetDeepScan() to exit and only then
- *                                   should it call, for instance,
+ *                                   uCellNetDeepScan() to exit. Only then
+ *                                   should the application call, for instance,
  *                                   uCellTimeSyncCellEnable().
  * @param[in,out] pCallbackParameter a pointer to be passed to pCallback
  *                                   as its third parameter; may be NULL.
@@ -661,9 +661,9 @@ void uCellNetScanGetLast(uDeviceHandle_t cellHandle);
  *                                   be repeated because the module indicated
  *                                   a failure part way through then the
  *                                   callback may end up being called more
- *                                   times than the return value might suggest.
+ *                                   times than this return value might suggest.
  *                                   A value of zero will be returned if the
- *                                   scan succeeds but returns no cells.
+ *                                   scan succeeded but returned no cells.
  */
 int32_t uCellNetDeepScan(uDeviceHandle_t cellHandle,
                          bool (*pCallback) (uDeviceHandle_t,
