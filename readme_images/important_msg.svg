@@ -4,7 +4,7 @@
             <style>
                 .notification {
                     font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji";
-                    background-color: #ddff03;
+                    background-color: #03d3fc;
                     border: 1px solid #0303fc;
                     border-radius: 10px;
                     padding: 10px 10px 10px 36px;
@@ -25,7 +25,7 @@
                     <span class="icon">⚠️ </span><span class="header">Upcoming:</span>
                 </div>
                 <div class="message">
-                    See UPCOMING.md for changes in release 1.4 (due end January 2024).
+                    See UPCOMING.md for changes coming in release 1.5 (due end July 2024).
                 </div>
             </div>
         </div>
