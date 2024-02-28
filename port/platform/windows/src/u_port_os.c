@@ -221,6 +221,9 @@ void uPortTaskBlock(int32_t delayMs)
         thisSleepMs = GetTickCount64() - startTimeMs;
         if (thisSleepMs >= 0) {
             delayMs -= (int32_t) thisSleepMs;
+            if (delayMs < 0) {
+                delayMs = 0;
+            }
         } else {
             // If the tick count happens to wrap then exit
             delayMs = 0;
