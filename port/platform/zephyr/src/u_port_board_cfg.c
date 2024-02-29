@@ -1239,7 +1239,10 @@ static void cfgShortRange(uDeviceCfg_t *pCfg, int32_t index)
 #if DT_HAS_COMPAT_STATUS_OKAY(u_blox_ubxlib_network_ble) ||       \
     DT_HAS_COMPAT_STATUS_OKAY(u_blox_ubxlib_network_cellular) ||  \
     DT_HAS_COMPAT_STATUS_OKAY(u_blox_ubxlib_network_gnss) ||      \
-    DT_HAS_COMPAT_STATUS_OKAY(u_blox_ubxlib_network_wifi)
+    DT_HAS_COMPAT_STATUS_OKAY(u_blox_ubxlib_network_wifi) ||      \
+    DT_HAS_COMPAT_STATUS_OKAY(u_blox_ubxlib_device_cellular) ||   \
+    DT_HAS_COMPAT_STATUS_OKAY(u_blox_ubxlib_device_gnss) ||       \
+    DT_HAS_COMPAT_STATUS_OKAY(u_blox_ubxlib_device_short_range)
 
 // For the given device instance, return the index of it
 // in the various arrays above.
@@ -1349,6 +1352,19 @@ static int32_t getNetworkIndex(int32_t deviceIndex,
     return index;
 }
 
+#endif // #if DT_HAS_COMPAT_STATUS_OKAY(u_blox_ubxlib_network_ble) ||
+//            DT_HAS_COMPAT_STATUS_OKAY(u_blox_ubxlib_network_cellular) ||
+//            DT_HAS_COMPAT_STATUS_OKAY(u_blox_ubxlib_network_gnss) ||
+//            DT_HAS_COMPAT_STATUS_OKAY(u_blox_ubxlib_network_wifi)
+//            DT_HAS_COMPAT_STATUS_OKAY(u_blox_ubxlib_device_cellular) ||
+//            DT_HAS_COMPAT_STATUS_OKAY(u_blox_ubxlib_device_gnss) ||
+//            DT_HAS_COMPAT_STATUS_OKAY(u_blox_ubxlib_device_short_range)
+
+#if DT_HAS_COMPAT_STATUS_OKAY(u_blox_ubxlib_network_ble) ||     \
+    DT_HAS_COMPAT_STATUS_OKAY(u_blox_ubxlib_device_cellular) || \
+    DT_HAS_COMPAT_STATUS_OKAY(u_blox_ubxlib_network_gnss) ||    \
+    DT_HAS_COMPAT_STATUS_OKAY(u_blox_ubxlib_network_wifi)
+
 // Get the int32_t enum value for a string.
 static bool getEnum(const char *pString,
                     uPortBoardCfgStringToEnum_t *pTableStringToEnum,
@@ -1374,7 +1390,7 @@ static bool getEnum(const char *pString,
 }
 
 #endif // #if DT_HAS_COMPAT_STATUS_OKAY(u_blox_ubxlib_network_ble) ||
-//            DT_HAS_COMPAT_STATUS_OKAY(u_blox_ubxlib_network_cellular) ||
+//            DT_HAS_COMPAT_STATUS_OKAY(u_blox_ubxlib_device_cellular) ||
 //            DT_HAS_COMPAT_STATUS_OKAY(u_blox_ubxlib_network_gnss) ||
 //            DT_HAS_COMPAT_STATUS_OKAY(u_blox_ubxlib_network_wifi)
 

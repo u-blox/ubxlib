@@ -168,7 +168,7 @@
 #endif
 
 #ifndef U_CFG_APP_PIN_CELL_PWR_ON
-# ifdef CONFIG_BOARD_NUCLEO_F767ZI
+# if defined(CONFIG_BOARD_NUCLEO_F767ZI) || defined(CONFIG_BOARD_NUCLEO_U575ZI_Q)
 /** The STM32 GPIO output that is connected to the PWR_ON
  * pin of the cellular module.
  */
@@ -303,7 +303,8 @@
 #ifndef U_CFG_APP_GNSS_I2C
 /** The I2C HW block to use inside the NRF5x chip to communicate
  * with a GNSS module.  If this is required, please use number 1
- * as that is the one that the NRFx drivers used by Zephyr supports.
+ * as that is the one that the NRFx drivers used by Zephyr supports
+ * and it is also the default for the Nucleo_U575ZI_q board.
  * You will also need to set the following in your prj.cnf file:
  *
  * CONFIG_I2C=y

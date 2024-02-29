@@ -76,7 +76,9 @@ CONNECTION_LIST = [
     # Instance 30, STM32F4, NORA-W36, LARA-R6
     {"lock": None, "id": 30, **u_settings.CONNECTION_INSTANCE_30},
     # Instance 31, STM32, native Zephyr
-    {"lock": None, "id": 31, **u_settings.CONNECTION_INSTANCE_31}
+    {"lock": None, "id": 31, **u_settings.CONNECTION_INSTANCE_31},
+    # Instance 32, STM32, native Zephyr
+    {"lock": None, "id": 32, **u_settings.CONNECTION_INSTANCE_32}
 ]
 
 def init_locks(manager):

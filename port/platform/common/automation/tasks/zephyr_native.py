@@ -17,7 +17,8 @@ DEFAULT_OUTPUT_NAME = f"runner"
 DEFAULT_BUILD_DIR = os.path.join("_build", "zephyr_native")
 
 BOARD_NAME_TO_MCU = {
-    "nucleo_f767zi": "stm32"
+    "nucleo_f767zi": "stm32",
+    "nucleo_u575zi_q": "stm32"
 }
 
 def posix_path(path):
@@ -67,7 +68,7 @@ def get_mcu(board_name):
     """Get the MCU name for the given board_name"""
     mcu = BOARD_NAME_TO_MCU.get(board_name)
     if not mcu:
-        print(f"Board {board_name} not found in list of known board names")
+        print(f"Board {board_name} not found in list of known board names in automation script zephyr_native.py")
 
     return mcu
 
@@ -165,7 +166,7 @@ def flash(ctx, board_name, debugger_serial="", output_name=DEFAULT_OUTPUT_NAME,
     build_dir = os.path.abspath(os.path.join(build_dir, output_name))
     if debugger_serial != "":
         debugger_serial = f"--serial {debugger_serial}"
-    ctx.run(f'{ctx.zephyr_pre_command}west flash --skip-rebuild -d {build_dir} {debugger_serial}', hide=False)
+    ctx.run(f'{ctx.zephyr_pre_command}west flash --skip-rebuild -d {build_dir} --runner openocd {debugger_serial}', hide=False)
 
 @task(
     pre=[check_installation],

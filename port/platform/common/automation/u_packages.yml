@@ -24,14 +24,14 @@ arm_embedded_gcc:
 
 openocd:
     type: archive
-    version: v0.11.0-3
+    version: v0.12.0-2
     skip_first_subdir: True
     windows:
-        url: https://github.com/xpack-dev-tools/openocd-xpack/releases/download/v0.11.0-3/xpack-openocd-0.11.0-3-win32-x64.zip
+        url: https://github.com/xpack-dev-tools/openocd-xpack/releases/download/v0.12.0-2/xpack-openocd-0.12.0-2-win32-x64.zip
     linux:
-        url: https://github.com/xpack-dev-tools/openocd-xpack/releases/download/v0.11.0-3/xpack-openocd-0.11.0-3-linux-x64.tar.gz
+        url: https://github.com/xpack-dev-tools/openocd-xpack/releases/download/v0.12.0-2/xpack-openocd-0.12.0-2-linux-x64.tar.gz
     linux_arm:
-        url: https://github.com/xpack-dev-tools/openocd-xpack/releases/download/v0.11.0-3/xpack-openocd-0.11.0-3-linux-arm64.tar.gz
+        url: https://github.com/xpack-dev-tools/openocd-xpack/releases/download/v0.12.0-2/xpack-openocd-0.12.0-2-linux-arm64.tar.gz
     add_to_path: bin
 
 nrf5sdk:

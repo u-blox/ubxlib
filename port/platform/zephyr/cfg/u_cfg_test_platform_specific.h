@@ -143,6 +143,10 @@
 #include "u_cfg_test_platform_specific_nucleo_f767zi.h"
 #endif
 
+#ifdef CONFIG_BOARD_NUCLEO_U575ZI_Q
+#include "u_cfg_test_platform_specific_nucleo_u575zi_q.h"
+#endif
+
 #ifdef CONFIG_BOARD_NATIVE_POSIX
 #include "u_cfg_test_platform_specific_native_posix.h"
 #endif

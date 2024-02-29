@@ -33,3 +33,6 @@ SUBSYSTEM=="tty", ATTRS{idVendor}=="1366", ATTRS{idProduct}=="1055", ENV{ID_SEGG
 SUBSYSTEMS=="usb", ENV{ID_STLINK_V2_1_STANDALONE_INTERFACE_NUMBER}="$attr{bInterfaceNumber}", MODE:="0666", SYMLINK+="stlink_v2_1_standalone"
 SUBSYSTEM=="tty", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="3748", ENV{ID_STLINK_V2_1_STANDALONE_INTERFACE_NUMBER}=="07", MODE:="0666", SYMLINK+="stlink_v2_1_standalone_uart"
 
+# STLink V3 debugger, as used on Nucleo U575ZI boards
+SUBSYSTEMS=="usb", ENV{ID_STLINK_V3_INTERFACE_NUMBER}="$attr{bInterfaceNumber}", MODE:="0666", SYMLINK+="stlink_v3"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="374e", ENV{ID_STLINK_V3_INTERFACE_NUMBER}=="07", MODE:="0666", SYMLINK+="stlink_v3"
