@@ -117,8 +117,7 @@ int32_t uPortGetTickTimeMs()
     struct timespec ts;
 
     if (clock_gettime(CLOCK_MONOTONIC_RAW, &ts) == 0) {
-        // Ensure that the calculation wraps correctly
-        ms = ((((int64_t) ts.tv_sec) * 1000) + (((int64_t) ts.tv_nsec) / 1000000)) % INT_MAX;
+        ms = (((int64_t) ts.tv_sec) * 1000) + (((int64_t) ts.tv_nsec) / 1000000);
     }
 
     return ms;

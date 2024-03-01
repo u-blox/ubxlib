@@ -40,6 +40,8 @@
 #include "u_port.h"
 #include "u_port_uart.h"
 
+#include "u_timeout.h"
+
 #include "u_at_client.h"
 
 #include "u_device.h"
@@ -83,7 +85,8 @@ static bool keepGoingCallback(uDeviceHandle_t devHandle)
     if (uDeviceGetInstance(devHandle, &pDevInstance) == 0) {
         pContext = (uDeviceCellContext_t *) pDevInstance->pContext;
         if ((pContext == NULL) ||
-            (uPortGetTickTimeMs() < pContext->stopTimeMs)) {
+            !uTimeoutExpiredMs(pContext->timeoutStop.timeoutStart,
+                               pContext->timeoutStop.durationMs)) {
             keepGoing = true;
         }
     }
@@ -173,8 +176,8 @@ int32_t uNetworkPrivateChangeStateCell(uDeviceHandle_t devHandle,
                 if (timeoutSeconds <= 0) {
                     timeoutSeconds = U_CELL_NET_CONNECT_TIMEOUT_SECONDS;
                 }
-                pContext->stopTimeMs = uPortGetTickTimeMs() +
-                                       (((int64_t) timeoutSeconds) * 1000);
+                pContext->timeoutStop.timeoutStart = uTimeoutStart();
+                pContext->timeoutStop.durationMs = timeoutSeconds * 1000;
             }
             if (upNotDown) {
                 // Set the authentication mode

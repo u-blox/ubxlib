@@ -63,6 +63,8 @@
 
 #include "u_test_util_resource_check.h"
 
+#include "u_timeout.h"
+
 #include "u_network.h"
 #include "u_network_test_shared_cfg.h"
 #include "u_http_client_test_shared_cfg.h"
@@ -400,7 +402,7 @@ static int32_t checkResponse(uHttpClientTestOperation_t operation,
                              bool checkBinary, bool rtsFlowControlEnabled)
 {
     int32_t outcome = (int32_t) U_ERROR_COMMON_SUCCESS;
-    int32_t startTimeMs;
+    uTimeoutStart_t timeoutStart;
     int32_t x;
     const char *pTmp;
     int32_t y;
@@ -429,21 +431,21 @@ static int32_t checkResponse(uHttpClientTestOperation_t operation,
                 // For the non-blocking case, should have an initial
                 // error code of zero
                 if (errorOrStatusCode == 0) {
-                    startTimeMs = uPortGetTickTimeMs();
+                    timeoutStart = uTimeoutStart();
                     // Wait for twice as long as the timeout as a guard
                     U_TEST_PRINT_LINE("waiting for asynchronous response for up to"
                                       " %d second(s)...", (pConnection->timeoutSeconds * 2) +
                                       U_HTTP_CLIENT_TEST_RESPONSE_TIMEOUT_EXTRA_SECONDS);
                     while (!pCallbackData->called &&
-                           (uPortGetTickTimeMs() - startTimeMs < ((pConnection->timeoutSeconds * 2) +
-                                                                  U_HTTP_CLIENT_TEST_RESPONSE_TIMEOUT_EXTRA_SECONDS) * 1000)) {
+                           !uTimeoutExpiredSeconds(timeoutStart, (pConnection->timeoutSeconds * 2) +
+                                                   U_HTTP_CLIENT_TEST_RESPONSE_TIMEOUT_EXTRA_SECONDS)) {
                         uPortTaskBlock(100);
                     }
 
                     if (pCallbackData->called) {
                         responseSize = pCallbackData->responseSize;
-                        U_TEST_PRINT_LINE("response received in %d ms.\n",
-                                          uPortGetTickTimeMs() - startTimeMs);
+                        U_TEST_PRINT_LINE("response received in %u ms.\n",
+                                          uTimeoutElapsedMs(timeoutStart));
                         if (pCallbackData->statusCodeOrError != expectedStatusCode) {
                             U_TEST_PRINT_LINE("expected status code %d, got %d.\n",
                                               expectedStatusCode, pCallbackData->statusCodeOrError);
@@ -456,8 +458,8 @@ static int32_t checkResponse(uHttpClientTestOperation_t operation,
                             }
                         }
                     } else {
-                        U_TEST_PRINT_LINE("callback not called after %d second(s).\n",
-                                          (uPortGetTickTimeMs() - startTimeMs) / 1000);
+                        U_TEST_PRINT_LINE("callback not called after %u second(s).\n",
+                                          uTimeoutElapsedSeconds(timeoutStart));
                         outcome = (int32_t) U_ERROR_COMMON_TIMEOUT;
                     }
                 } else {

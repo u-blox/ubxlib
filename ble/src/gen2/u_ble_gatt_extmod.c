@@ -37,6 +37,7 @@
 #include "stdlib.h"  // strol(), atoi(), strol(), strtof()
 #include "string.h"  // memset(), strncpy(), strtok_r(), strtol()
 #include "u_error_common.h"
+#include "u_timeout.h"
 #include "u_at_client.h"
 #include "u_ble.h"
 #include "u_ble_cfg.h"

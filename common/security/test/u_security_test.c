@@ -55,6 +55,8 @@
 
 #include "u_test_util_resource_check.h"
 
+#include "u_timeout.h"
+
 #ifdef U_CFG_TEST_CELL_MODULE_TYPE
 #include "u_cell_module_type.h"
 #include "u_cell_test_cfg.h" // For the cellular test macros
@@ -94,7 +96,7 @@
 #ifdef U_CFG_SECURITY_DEVICE_PROFILE_UID
 /** Used for keepGoingCallback() timeout.
  */
-static int64_t gStopTimeMs;
+static uTimeoutStop_t gTimeoutStop;
 #endif
 
 /* ----------------------------------------------------------------
@@ -107,7 +109,8 @@ static bool keepGoingCallback()
 {
     bool keepGoing = true;
 
-    if (uPortGetTickTimeMs() > gStopTimeMs) {
+    if (uTimeoutExpiredMs(gTimeoutStop.timeoutStart,
+                          gTimeoutStop.durationMs)) {
         keepGoing = false;
     }
 
@@ -221,8 +224,8 @@ U_PORT_TEST_FUNCTION("[security]", "securitySeal")
                                       " number \"%s\"...",
                                       U_PORT_STRINGIFY_QUOTED(U_CFG_SECURITY_DEVICE_PROFILE_UID),
                                       serialNumber);
-                    gStopTimeMs = uPortGetTickTimeMs() +
-                                  (U_SECURITY_TEST_SEAL_TIMEOUT_SECONDS * 1000);
+                    gTimeoutStop.timeoutStart = uTimeoutStart();
+                    gTimeoutStop.durationMs = U_SECURITY_TEST_SEAL_TIMEOUT_SECONDS * 1000;
                     if (uSecuritySealSet(devHandle,
                                          U_PORT_STRINGIFY_QUOTED(U_CFG_SECURITY_DEVICE_PROFILE_UID),
                                          serialNumber, keepGoingCallback) == 0) {

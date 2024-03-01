@@ -149,7 +149,7 @@ typedef struct uShortRangePrivateInstance_t {
     uAtClientHandle_t atHandle; /**< the AT client handle to use. */
     int32_t streamHandle; /**< handle to the underlaying stream. */
     uAtClientStream_t streamType; /**< stream type. */
-    int32_t startTimeMs;     /**< used while restarting. */
+    uTimeoutStart_t timeoutStart;     /**< used while restarting. */
     int32_t ticksLastRestart;
     bool urcConHandlerSet;
     int32_t sockNextLocalPort;

@@ -55,6 +55,8 @@
 
 #include "u_test_util_resource_check.h"
 
+#include "u_timeout.h"
+
 #ifdef U_CFG_TEST_SHORT_RANGE_MODULE_TYPE
 #include "u_ble_sps.h"
 #include "u_short_range_private.h"

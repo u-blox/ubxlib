@@ -57,6 +57,8 @@
 
 #include "u_test_util_resource_check.h"
 
+#include "u_timeout.h"
+
 #include "u_at_client.h"
 
 #ifdef U_CFG_TEST_GNSS_MODULE_TYPE
@@ -118,7 +120,7 @@
 
 /** Used for keepGoingCallback() timeout.
  */
-static int32_t gStopTimeMs;
+static uTimeoutStop_t gTimeoutStop;
 
 /** Handle.
  */
@@ -140,7 +142,8 @@ static bool keepGoingCallback(uDeviceHandle_t unused)
 
     (void) unused;
 
-    if (uPortGetTickTimeMs() > gStopTimeMs) {
+    if (uTimeoutExpiredMs(gTimeoutStop.timeoutStart,
+                          gTimeoutStop.durationMs)) {
         keepGoing = false;
     }
 
@@ -279,7 +282,8 @@ U_PORT_TEST_FUNCTION("[cellPpp]", "cellPppBasic")
     if (U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_PPP)) {
         U_TEST_PRINT_LINE("testing PPP, first with no connection.");
         // First check before having connected: should return error
-        gStopTimeMs = uPortGetTickTimeMs() + (U_CELL_PPP_TEST_TIMEOUT_SECONDS * 1000);
+        gTimeoutStop.timeoutStart = uTimeoutStart();
+        gTimeoutStop.durationMs = U_CELL_PPP_TEST_TIMEOUT_SECONDS * 1000;
         x = uCellPppOpen(cellHandle, NULL, NULL, gBuffer,
                          sizeof(gBuffer), keepGoingCallback);
         U_TEST_PRINT_LINE("uCellPppOpen() returned %d.", x);
@@ -290,8 +294,8 @@ U_PORT_TEST_FUNCTION("[cellPpp]", "cellPppBasic")
 
         U_TEST_PRINT_LINE("now with a connection.");
         // Now connect
-        gStopTimeMs = uPortGetTickTimeMs() +
-                      (U_CELL_TEST_CFG_CONNECT_TIMEOUT_SECONDS * 1000);
+        gTimeoutStop.timeoutStart = uTimeoutStart();
+        gTimeoutStop.durationMs = U_CELL_TEST_CFG_CONNECT_TIMEOUT_SECONDS * 1000;
         x = uCellNetConnect(cellHandle, NULL,
 #ifdef U_CELL_TEST_CFG_APN
                             U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_APN),
@@ -311,7 +315,8 @@ U_PORT_TEST_FUNCTION("[cellPpp]", "cellPppBasic")
                             keepGoingCallback);
         U_PORT_TEST_ASSERT (x == 0);
 
-        gStopTimeMs = uPortGetTickTimeMs() + (U_CELL_PPP_TEST_TIMEOUT_SECONDS * 1000);
+        gTimeoutStop.timeoutStart = uTimeoutStart();
+        gTimeoutStop.durationMs = U_CELL_PPP_TEST_TIMEOUT_SECONDS * 1000;
         x = uCellPppOpen(cellHandle, NULL, NULL, gBuffer,
                          sizeof(gBuffer), keepGoingCallback);
         U_TEST_PRINT_LINE("uCellPppOpen() returned %d.", x);

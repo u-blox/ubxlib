@@ -47,6 +47,8 @@
 #include "u_port_gpio.h"
 #include "u_port_uart.h"
 
+#include "u_timeout.h"
+
 #include "u_at_client.h"
 
 #include "u_linked_list.h"
@@ -237,7 +239,7 @@ static int32_t uShortRangeAdd(uShortRangeModuleType_t moduleType,
             pInstance->devHandle = pDevInstance;
             pInstance->atHandle = atHandle;
             pInstance->mode = U_SHORT_RANGE_MODE_EDM;
-            pInstance->startTimeMs = 500;
+            pInstance->timeoutStart = uTimeoutStart();
             pInstance->urcConHandlerSet = false;
             pInstance->sockNextLocalPort = -1;
             pInstance->uartHandle = uartHandle;

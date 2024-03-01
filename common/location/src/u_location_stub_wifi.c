@@ -38,6 +38,7 @@
 
 #include "u_compiler.h" // U_WEAK
 #include "u_error_common.h"
+#include "u_timeout.h"
 #include "u_port_os.h"
 #include "u_location.h"
 #include "u_short_range_module_type.h"

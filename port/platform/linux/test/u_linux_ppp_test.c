@@ -71,6 +71,8 @@
 
 #include "u_test_util_resource_check.h"
 
+#include "u_timeout.h"
+
 #include "u_network.h"                  // In order to provide a comms
 #include "u_network_test_shared_cfg.h"  // path for the socket
 
@@ -251,7 +253,7 @@ static void rxTask(void *pParameter)
                          pTestConfig->bytesReceived, 0);
         if (sizeBytes > 0) {
             U_TEST_PRINT_LINE("received %d byte(s) of data @%d ms.",
-                              sizeBytes, (int32_t) uPortGetTickTimeMs());
+                              sizeBytes, uPortGetTickTimeMs());
             pTestConfig->bytesReceived += sizeBytes;
             pTestConfig->packetsReceived++;
         } else {
@@ -282,18 +284,18 @@ static size_t sendTcp(int32_t sock, const char *pData, size_t sizeBytes)
 {
     int32_t x;
     size_t sentSizeBytes = 0;
-    int32_t startTimeMs;
+    uTimeoutStart_t timeoutStart;
 
     U_TEST_PRINT_LINE("sending %d byte(s) of TCP data...", sizeBytes);
-    startTimeMs = uPortGetTickTimeMs();
+    timeoutStart = uTimeoutStart();
     while ((sentSizeBytes < sizeBytes) &&
-           ((uPortGetTickTimeMs() - startTimeMs) < 10000)) {
+           !uTimeoutExpiredSeconds(timeoutStart, 10)) {
         x = send(sock, (const void *) pData, sizeBytes - sentSizeBytes, 0);
         if (x > 0) {
             sentSizeBytes += x;
             pData += x;
             U_TEST_PRINT_LINE("sent %d byte(s) of TCP data @%d ms.",
-                              sentSizeBytes, (int32_t) uPortGetTickTimeMs());
+                              sentSizeBytes, uPortGetTickTimeMs());
         }
     }
 
@@ -396,7 +398,7 @@ U_PORT_TEST_FUNCTION("[testLinuxSock]", "testLinuxSockTcp")
     int32_t x;
     size_t sizeBytes = 0;
     size_t offset;
-    int32_t startTimeMs;
+    uTimeoutStart_t timeoutStart;
     struct ifreq interface = {0};
 
     // Whatever called us likely initialised the
@@ -471,7 +473,7 @@ U_PORT_TEST_FUNCTION("[testLinuxSock]", "testLinuxSockTcp")
             // Throw random sized segments up...
             offset = 0;
             x = 0;
-            startTimeMs = uPortGetTickTimeMs();
+            timeoutStart = uTimeoutStart();
             while (offset < gTestConfig.bytesToSend) {
                 sizeBytes = (rand() % U_SOCK_TEST_MAX_TCP_READ_WRITE_SIZE) + 1;
                 sizeBytes = fix(sizeBytes, U_SOCK_TEST_MAX_TCP_READ_WRITE_SIZE);
@@ -498,10 +500,10 @@ U_PORT_TEST_FUNCTION("[testLinuxSock]", "testLinuxSockTcp")
 
             U_TEST_PRINT_LINE("TCP async receive task got %d segment(s)"
                               " totalling %d byte(s) and the send/receive"
-                              " process took %d milliseconds.",
+                              " process took %u milliseconds.",
                               gTestConfig.packetsReceived,
                               gTestConfig.bytesReceived,
-                              uPortGetTickTimeMs() - startTimeMs);
+                              uTimeoutElapsedMs(timeoutStart));
 
             // Check that we reassembled everything correctly
             U_PORT_TEST_ASSERT(checkAgainstSentData(gSendData,

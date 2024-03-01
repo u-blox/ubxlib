@@ -78,6 +78,7 @@ common/network/src/u_network_private_wifi.c
 common/network/src/u_network_private_wifi_stub.c
 common/network/src/u_network_private_gnss.c
 common/network/src/u_network_private_gnss_stub.c
+common/timeout/src/u_timeout.c
 common/sock/src/u_sock.c
 common/sock/src/u_sock_stub_cell.c
 common/sock/src/u_sock_stub_wifi.c

@@ -49,6 +49,8 @@
 #include "u_port_uart.h"
 #include "u_compiler.h"
 
+#include "u_timeout.h"
+
 #include "u_cx_at_client.h"
 #include "u_cx_general.h"
 #include "u_cx_system.h"

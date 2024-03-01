@@ -42,6 +42,8 @@
 
 #include "u_error_common.h"
 
+#include "u_timeout.h"
+
 #include "u_port_clib_platform_specific.h" /* Integer stdio, must be included
                                               before the other port files if
                                               any print or scan function is used. */
@@ -869,15 +871,15 @@ static int32_t handleReadOnError(uAtClientHandle_t atClientHandle,
 {
     int32_t lastError;
     uint64_t uint64;
-    int64_t startTime;
-    int32_t duration;
+    uTimeoutStart_t timeoutStart;
+    int32_t durationMs;
     const uAtClientTestEchoError_t *pError;
 
 #if !U_CFG_ENABLE_LOGGING
     (void) index;
 #endif
 
-    startTime = uPortGetTickTimeMs();
+    timeoutStart = uTimeoutStart();
     pError = (const uAtClientTestEchoError_t *) pParameter;
 
     U_TEST_PRINT_LINE_X("checking that parameter reads return error when"
@@ -940,20 +942,20 @@ static int32_t handleReadOnError(uAtClientHandle_t atClientHandle,
     }
 
     // The errors should be returned within the guard times
-    duration = (int32_t) (uPortGetTickTimeMs() - startTime);
+    durationMs = uTimeoutElapsedMs(timeoutStart);
     if (lastError == 0) {
-        if (duration < pError->timeMinMs) {
+        if (durationMs < pError->timeMinMs) {
             U_TEST_PRINT_LINE_X("reads took %d ms when a minimum of %d ms was"
-                                " expected.", index + 1, duration,
+                                " expected.", index + 1, durationMs,
                                 pError->timeMinMs);
             lastError = 6;
         }
     }
 
     if (lastError == 0) {
-        if (duration > pError->timeMaxMs) {
+        if (durationMs > pError->timeMaxMs) {
             U_TEST_PRINT_LINE_X("reads took %d ms when a maximum of %d ms"
-                                " was expected.", index + 1, duration,
+                                " was expected.", index + 1, durationMs,
                                 pError->timeMaxMs);
             lastError = 7;
         }

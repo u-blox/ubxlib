@@ -26,6 +26,8 @@
 
 #include "u_error_common.h"
 
+#include "u_timeout.h"
+
 #include "u_port.h"
 #include "u_port_os.h"
 #include "u_port_gpio.h" // For unblocking
@@ -239,11 +241,11 @@ static int32_t configureHw(I2C_TypeDef *pReg, int32_t clockHertz)
 static bool waitFlagOk(I2C_TypeDef *pReg, uint32_t flag,
                        FlagStatus status, int32_t timeoutMs)
 {
-    int32_t startTimeMs = uPortGetTickTimeMs();
+    uTimeoutStart_t timeoutStart = uTimeoutStart();
     bool wait;
 
     while ((wait = (U_PORT_HAL_I2C_GET_FLAG(pReg, flag) != status)) &&
-           (uPortGetTickTimeMs() - startTimeMs < timeoutMs)) {
+           !uTimeoutExpiredMs(timeoutStart, timeoutMs)) {
     }
 
     return !wait;
@@ -256,12 +258,13 @@ static bool waitFlagOk(I2C_TypeDef *pReg, uint32_t flag,
 static bool waitTransmitOk(I2C_TypeDef *pReg, uint32_t flag,
                            int32_t timeoutMs)
 {
-    int32_t startTimeMs = uPortGetTickTimeMs();
+    uTimeoutStart_t timeoutStart = uTimeoutStart();
     bool wait;
     bool ackFailed = false;
 
     while ((wait = (U_PORT_HAL_I2C_GET_FLAG(pReg, flag) == RESET)) &&
-           (uPortGetTickTimeMs() - startTimeMs < timeoutMs) && !ackFailed) {
+           !uTimeoutExpiredMs(timeoutStart, timeoutMs) &&
+           !ackFailed) {
         if (U_PORT_HAL_I2C_GET_FLAG(pReg, I2C_FLAG_AF) == SET) {
             // If there's been an acknowledgement failure,
             // give up in an organised way

@@ -49,6 +49,8 @@
 #include "u_port_uart.h"
 #include "u_port_ppp.h"
 
+#include "u_timeout.h"
+
 #include "u_time.h"
 
 #include "u_at_client.h"
@@ -681,7 +683,7 @@ int32_t uCellTimeSyncCellEnable(uDeviceHandle_t cellHandle,
     uCellTimeCellSyncPrivateContext_t *pContext;
     uAtClientHandle_t atHandle;
     char buffer[7]; // Enough room for MCC/MNC plus a null terminator
-    int32_t startTimeMs;
+    uTimeoutStart_t timeoutStart;
 
     if (gUCellPrivateMutex != NULL) {
 
@@ -733,10 +735,11 @@ int32_t uCellTimeSyncCellEnable(uDeviceHandle_t cellHandle,
                         errorCode = uAtClientUnlock(atHandle);
                         if (errorCode == 0) {
                             // Wait for the URC for the outcome
-                            startTimeMs = uPortGetTickTimeMs();
+                            timeoutStart = uTimeoutStart();
                             errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
                             while ((pContext->errorCode == INT_MIN) &&
-                                   (uPortGetTickTimeMs() - startTimeMs < (U_CELL_TIME_SYNC_TIME_SECONDS * 1000))) {
+                                   !uTimeoutExpiredSeconds(timeoutStart,
+                                                           U_CELL_TIME_SYNC_TIME_SECONDS)) {
                                 uPortTaskBlock(1000);
                             }
                             if (pContext->errorCode != INT_MIN) {
@@ -770,7 +773,7 @@ int32_t uCellTimeSyncCellDisable(uDeviceHandle_t cellHandle)
     uCellPrivateInstance_t *pInstance;
     uCellTimeCellSyncPrivateContext_t *pContext;
     uAtClientHandle_t atHandle;
-    int32_t startTimeMs;
+    uTimeoutStart_t timeoutStart;
 
     if (gUCellPrivateMutex != NULL) {
 
@@ -795,10 +798,11 @@ int32_t uCellTimeSyncCellDisable(uDeviceHandle_t cellHandle)
                         errorCode = uAtClientUnlock(atHandle);
                         if (errorCode == 0) {
                             // Have to wait for the URC for the outcome
-                            startTimeMs = uPortGetTickTimeMs();
+                            timeoutStart = uTimeoutStart();
                             errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
                             while ((pContext->errorCode != (int32_t) U_ERROR_COMMON_CANCELLED) &&
-                                   (uPortGetTickTimeMs() - startTimeMs < (U_CELL_TIME_SYNC_TIME_SECONDS * 1000))) {
+                                   !uTimeoutExpiredSeconds(timeoutStart,
+                                                           U_CELL_TIME_SYNC_TIME_SECONDS)) {
                                 uPortTaskBlock(1000);
                             }
                             if (pContext->errorCode != INT_MIN) {

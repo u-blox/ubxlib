@@ -57,6 +57,7 @@
 
 #include "u_test_util_resource_check.h"
 
+#include "u_timeout.h"
 #include "u_at_client.h"
 #include "u_at_client_test.h"
 #include "u_at_client_test_data.h"
@@ -284,13 +285,13 @@ static bool atTimeoutIsObeyed(uAtClientHandle_t atClientHandle,
                               int32_t timeoutMs)
 {
     bool success = false;
-    int64_t startTime;
-    int32_t duration;
+    uTimeoutStart_t timeoutStart;
+    int32_t durationMs;
     int32_t consecutiveTimeouts;
     int32_t x;
     int32_t y;
 
-    startTime = uPortGetTickTimeMs();
+    timeoutStart = uTimeoutStart();
     uAtClientLock(atClientHandle);
     // Send nothing
     consecutiveTimeouts = gConsecutiveTimeout;
@@ -309,11 +310,11 @@ static bool atTimeoutIsObeyed(uAtClientHandle_t atClientHandle,
     uPortTaskBlock(10);
     if ((x < 0) && (y < 0) &&
         (gConsecutiveTimeout == consecutiveTimeouts + 1)) {
-        duration = (int32_t) (uPortGetTickTimeMs() - startTime);
-        if ((duration < timeoutMs) ||
-            (duration > timeoutMs + U_AT_CLIENT_TEST_AT_TIMEOUT_TOLERANCE_MS)) {
+        durationMs = uTimeoutElapsedMs(timeoutStart);
+        if ((durationMs < timeoutMs) ||
+            (durationMs > timeoutMs + U_AT_CLIENT_TEST_AT_TIMEOUT_TOLERANCE_MS)) {
             U_TEST_PRINT_LINE("AT timeout was not obeyed (%d ms as opposed"
-                              " to %d ms).", (int) duration, timeoutMs);
+                              " to %d ms).", (int) durationMs, timeoutMs);
         } else {
             success = true;
         }

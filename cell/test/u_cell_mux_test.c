@@ -64,6 +64,8 @@
 
 #include "u_test_util_resource_check.h"
 
+#include "u_timeout.h"
+
 #include "u_at_client.h"
 
 #include "u_sock.h"
@@ -168,7 +170,7 @@ typedef struct {
 
 /** Used for keepGoingCallback() timeout.
  */
-static int32_t gStopTimeMs;
+static uTimeoutStop_t gTimeoutStop;
 
 /** Handles.
  */
@@ -226,7 +228,8 @@ static bool keepGoingCallback(uDeviceHandle_t unused)
 
     (void) unused;
 
-    if (uPortGetTickTimeMs() > gStopTimeMs) {
+    if (uTimeoutExpiredMs(gTimeoutStop.timeoutStart,
+                          gTimeoutStop.durationMs)) {
         keepGoing = false;
     }
 
@@ -248,8 +251,8 @@ static void printBuffer(const char *pBuffer, size_t length)
 // Make a cellular connection
 static int32_t connect(uDeviceHandle_t cellHandle)
 {
-    gStopTimeMs = uPortGetTickTimeMs() +
-                  (U_CELL_TEST_CFG_CONNECT_TIMEOUT_SECONDS * 1000);
+    gTimeoutStop.timeoutStart = uTimeoutStart();
+    gTimeoutStop.durationMs = U_CELL_TEST_CFG_CONNECT_TIMEOUT_SECONDS * 1000;
     return uCellNetConnect(cellHandle, NULL,
 #ifdef U_CELL_TEST_CFG_APN
                            U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_APN),
@@ -372,18 +375,18 @@ static void httpCallback(uDeviceHandle_t cellHandle, int32_t httpHandle,
 }
 
 // Check an HTTP response, return true if it is good, else false.
-static bool httpWaitCheckResponse(int32_t timeoutSeconds,
+static bool httpWaitCheckResponse(uint32_t timeoutSeconds,
                                   volatile uCellMuxHttpTestCallback_t *pCallbackData,
                                   uDeviceHandle_t cellHandle, int32_t httpHandle,
                                   uCellHttpRequest_t requestType,
                                   const char *pFileNameResponse)
 {
     bool isOk = false;
-    int32_t startTimeMs = uPortGetTickTimeMs();
+    uTimeoutStart_t timeoutStart = uTimeoutStart();
 
-    U_TEST_PRINT_LINE("waiting up to %d second(s) for response to HTTP request...",
+    U_TEST_PRINT_LINE("waiting up to %u second(s) for response to HTTP request...",
                       timeoutSeconds);
-    while ((uPortGetTickTimeMs() - startTimeMs < (timeoutSeconds * 1000)) &&
+    while (!uTimeoutExpiredSeconds(timeoutStart, timeoutSeconds) &&
            !pCallbackData->called) {
         uPortTaskBlock(100);
     }
@@ -391,8 +394,8 @@ static bool httpWaitCheckResponse(int32_t timeoutSeconds,
     if (pCallbackData->called) {
         isOk = true;
         // The callback was called, check everything
-        U_TEST_PRINT_LINE("response received after %d millisecond(s).",
-                          uPortGetTickTimeMs() - startTimeMs);
+        U_TEST_PRINT_LINE("response received after %u millisecond(s).",
+                          uTimeoutElapsedMs(timeoutStart));
         if (pCallbackData->cellHandle != cellHandle) {
             U_TEST_PRINT_LINE("expected cell handle 0x%08x, got 0x%08x.",
                               cellHandle, pCallbackData->cellHandle);
@@ -428,8 +431,8 @@ static bool httpWaitCheckResponse(int32_t timeoutSeconds,
             isOk = false;
         }
     } else {
-        U_TEST_PRINT_LINE("callback not called after %d second(s).",
-                          (uPortGetTickTimeMs() - startTimeMs) / 1000);
+        U_TEST_PRINT_LINE("callback not called after %u second(s).",
+                          uTimeoutElapsedSeconds(timeoutStart));
     }
 
     // Reset for next time
@@ -705,7 +708,7 @@ U_PORT_TEST_FUNCTION("[cellMux]", "cellMuxMqtt")
     char topic[U_CELL_INFO_IMEI_SIZE + 1] = {0};
     char *pMessageIn;
     char *pTopicStrIn;
-    int32_t startTimeMs;
+    uTimeoutStart_t timeoutStart;
     size_t messageSize = sizeof(gMqttSendData) - 1;
     uCellMqttQos_t qos;
 
@@ -777,7 +780,7 @@ U_PORT_TEST_FUNCTION("[cellMux]", "cellMuxMqtt")
                                               U_CELL_MQTT_QOS_AT_MOST_ONCE) == 0);
 
         U_TEST_PRINT_LINE("publishing \"%s\" to topic \"%s\"...", gMqttSendData, topic);
-        startTimeMs = uPortGetTickTimeMs();
+        timeoutStart = uTimeoutStart();
         gMqttMessagesAvailable = 0;
         U_PORT_TEST_ASSERT(uCellMqttPublish(cellHandle, topic, gMqttSendData,
                                             sizeof(gMqttSendData) - 1,
@@ -787,7 +790,8 @@ U_PORT_TEST_FUNCTION("[cellMux]", "cellMuxMqtt")
         U_TEST_PRINT_LINE("waiting %d second(s) for message to be sent back...",
                           U_CELL_MUX_TEST_MQTT_RESPONSE_TIMEOUT_MS);
         while ((gMqttMessagesAvailable == 0) &&
-               (uPortGetTickTimeMs() - startTimeMs < U_CELL_MUX_TEST_MQTT_RESPONSE_TIMEOUT_MS)) {
+               !uTimeoutExpiredMs(timeoutStart,
+                                  U_CELL_MUX_TEST_MQTT_RESPONSE_TIMEOUT_MS)) {
             uPortTaskBlock(1000);
         }
 

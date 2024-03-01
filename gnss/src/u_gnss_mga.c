@@ -44,6 +44,8 @@
 #include "u_port_heap.h"
 #include "u_port_debug.h"
 
+#include "u_timeout.h"
+
 #include "u_at_client.h"
 
 #include "u_ubx_protocol.h"
@@ -389,7 +391,7 @@ static int32_t ubxMgaSendWaitAck(uGnssPrivateInstance_t *pInstance,
                                  size_t messageBodyLengthBytes)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-    int32_t startTimeMs;
+    uTimeoutStart_t timeoutStart;
     // The UBX-MGA-ACK message ID
     uGnssPrivateMessageId_t ackMessageId = {.type = U_GNSS_PROTOCOL_UBX,
                                             .id.ubx = 0x1360
@@ -413,7 +415,7 @@ static int32_t ubxMgaSendWaitAck(uGnssPrivateInstance_t *pInstance,
             if (x == messageBodyLengthBytes + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES) {
                 errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
                 // Wait for the UBX-MGA-ACK-DATA0 response for our message ID
-                startTimeMs = uPortGetTickTimeMs();
+                timeoutStart = uTimeoutStart();
                 do {
                     x = uGnssPrivateReceiveStreamMessage(pInstance, &ackMessageId,
                                                          pInstance->ringBufferReadHandlePrivate,
@@ -430,7 +432,9 @@ static int32_t ubxMgaSendWaitAck(uGnssPrivateInstance_t *pInstance,
                             }
                         }
                     }
-                } while ((ackState == 0) && (uPortGetTickTimeMs() - startTimeMs < pInstance->timeoutMs));
+                } while ((ackState == 0) &&
+                         !uTimeoutExpiredMs(timeoutStart,
+                                            pInstance->timeoutMs));
                 if (ackState == 2) {
                     errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
                 } else if (ackState == 1) {
@@ -1056,7 +1060,7 @@ int32_t uGnssMgaGetDatabase(uDeviceHandle_t gnssHandle,
     uGnssPrivateInstance_t *pInstance;
     int32_t protocolsOut = 0;
     int32_t readHandle;
-    int32_t startTimeMs;
+    uTimeoutStart_t timeoutStart;
     // The UBX-MGA message class/ID (to capture -DBD and -ACK)
     uGnssPrivateMessageId_t messageId = {.type = U_GNSS_PROTOCOL_UBX,
                                          .id.ubx = 0x1300 + U_GNSS_UBX_MESSAGE_ID_ALL
@@ -1098,9 +1102,10 @@ int32_t uGnssMgaGetDatabase(uDeviceHandle_t gnssHandle,
                     if (uGnssPrivateSendOnlyStreamUbxMessage(pInstance, 0x13, 0x80,
                                                              NULL, 0) == U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES) {
                         errorCodeOrLength = (int32_t) U_ERROR_COMMON_TIMEOUT;
-                        startTimeMs = uPortGetTickTimeMs();
+                        timeoutStart = uTimeoutStart();
                         while (context.keepGoing && (context.errorCodeOrLength >= 0) &&
-                               (uPortGetTickTimeMs() - startTimeMs < U_GNSS_MGA_DATABASE_READ_TIMEOUT_MS)) {
+                               !uTimeoutExpiredMs(timeoutStart,
+                                                  U_GNSS_MGA_DATABASE_READ_TIMEOUT_MS)) {
                             uPortTaskBlock(250);
                         }
                         if (!context.keepGoing) {

@@ -60,6 +60,8 @@
 
 #include "u_test_util_resource_check.h"
 
+#include "u_timeout.h"
+
 #include "u_location.h"
 
 #include "u_at_client.h"
@@ -151,7 +153,7 @@ static uWifiLocTestLocType_t gLocType[] = {
 static size_t gIteration;
 
 // Stop time, global so that keepGoingCallback() can find it.
-static int32_t gStopTimeMs;
+static uTimeoutStop_t gTimeoutStop;
 
 // Global used for callback() to indicate what it received.
 static int32_t gCallback;
@@ -167,7 +169,8 @@ static bool keepGoingCallback(uDeviceHandle_t param)
 
     (void) param;
 
-    if (uPortGetTickTimeMs() > gStopTimeMs) {
+    if (uTimeoutExpiredMs(gTimeoutStop.timeoutStart,
+                          gTimeoutStop.durationMs)) {
         keepGoing = false;
     }
 
@@ -292,7 +295,6 @@ U_PORT_TEST_FUNCTION("[wifiLoc]", "wifiLocBasic")
 {
     int32_t z;
     int32_t resourceCount;
-    int32_t startTimeMs = 0;
     uLocation_t location;
 
     resourceCount = uTestUtilGetDynamicResourceCount();
@@ -306,16 +308,17 @@ U_PORT_TEST_FUNCTION("[wifiLoc]", "wifiLocBasic")
         U_TEST_PRINT_LINE("testing blocking Wifi location with %s.", gLocType[gIteration].pName);
         // It is possible for these cloud services to fail, so give them a few goes
         for (size_t y = 0; (y < U_WIFI_LOC_TEST_TRIES) && (z != 0); y++) {
-            startTimeMs = uPortGetTickTimeMs();
-            gStopTimeMs = startTimeMs + U_WIFI_LOC_TEST_TIMEOUT_SECONDS * 1000;
+            gTimeoutStop.timeoutStart = uTimeoutStart();
+            gTimeoutStop.durationMs = U_WIFI_LOC_TEST_TIMEOUT_SECONDS * 1000;
             locationSetDefaults(&location);
             z = uWifiLocGet(gHandles.devHandle, gLocType[gIteration].type,
                             gLocType[gIteration].pApiKey,
                             U_WIFI_LOC_TEST_AP_FILTER,
                             U_WIFI_LOC_TEST_RSSI_FILTER_DBM,
                             &location, keepGoingCallback);
-            U_TEST_PRINT_LINE("uWifiLocGet() for %s returned %d in %d ms.",
-                              gLocType[gIteration].pName, z, uPortGetTickTimeMs() - startTimeMs);
+            U_TEST_PRINT_LINE("uWifiLocGet() for %s returned %d in %u ms.",
+                              gLocType[gIteration].pName, z,
+                              uTimeoutElapsedMs(gTimeoutStop.timeoutStart));
         }
         // Success or allow error code 206 on HERE since it often isn't able to establish position in our lab
         U_PORT_TEST_ASSERT((z == 0) || ((z == 206) &&
@@ -342,7 +345,8 @@ U_PORT_TEST_FUNCTION("[wifiLoc]", "wifiLocBasic")
         // It is possible for these cloud services to fail, so give them a few goes
         gCallback = INT_MIN;
         for (size_t y = 0; (y < U_WIFI_LOC_TEST_TRIES) && (gCallback != 0); y++) {
-            startTimeMs = uPortGetTickTimeMs();
+            gTimeoutStop.timeoutStart = uTimeoutStart();
+            gTimeoutStop.durationMs = U_WIFI_LOC_TEST_TIMEOUT_SECONDS * 1000;
             gCallback = INT_MIN;
             locationSetDefaults(&location);
             z = uWifiLocGetStart(gHandles.devHandle, gLocType[gIteration].type,
@@ -352,9 +356,10 @@ U_PORT_TEST_FUNCTION("[wifiLoc]", "wifiLocBasic")
                                  callback);
             U_TEST_PRINT_LINE("uWifiLocGetStart() for %s returned %d.", gLocType[gIteration].pName, z);
             U_PORT_TEST_ASSERT(z == 0);
-            U_TEST_PRINT_LINE("waiting %d second(s) for result...", U_WIFI_LOC_TEST_TIMEOUT_SECONDS);
+            U_TEST_PRINT_LINE("waiting %u second(s) for result...", gTimeoutStop.durationMs / 1000);
             while ((gCallback == INT_MIN) &&
-                   ((uPortGetTickTimeMs() - startTimeMs) < U_WIFI_LOC_TEST_TIMEOUT_SECONDS * 1000)) {
+                   !uTimeoutExpiredMs(gTimeoutStop.timeoutStart,
+                                      gTimeoutStop.durationMs)) {
                 uPortTaskBlock(250);
             }
             if (gCallback != 0) {
@@ -363,8 +368,8 @@ U_PORT_TEST_FUNCTION("[wifiLoc]", "wifiLocBasic")
             }
         }
         uWifiLocGetStop(gHandles.devHandle);
-        U_TEST_PRINT_LINE("gCallback was %d after %d second(s).", gCallback,
-                          (uPortGetTickTimeMs() - startTimeMs) / 1000);
+        U_TEST_PRINT_LINE("gCallback was %d after %u second(s).", gCallback,
+                          uTimeoutElapsedSeconds(gTimeoutStop.timeoutStart));
         U_PORT_TEST_ASSERT(gCallback >= 0);
         if (gCallback != 0) {
             // Sometimes the cloud service (e.g. Here does this on occasion) is

@@ -67,6 +67,8 @@
 
 #include "u_assert.h"
 
+#include "u_timeout.h"
+
 #include "u_at_client.h"
 
 #include "u_device_shared.h"
@@ -675,12 +677,12 @@ static void exitFunctionRequest(uHttpClientContext_t *pContext, int32_t errorCod
 static int32_t block(volatile uHttpClientContext_t *pContext)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-    int32_t startTimeMs;
+    uTimeoutStart_t timeoutStart;
     int32_t statusCodeOrError = 0;
 
     if (pContext->pResponseCallback == NULL) {
         // We're blocking
-        startTimeMs = uPortGetTickTimeMs();
+        timeoutStart = uTimeoutStart();
         errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
         // Wait for the underlying layer to give a response
         // or pKeepGoingCallback=false or a timeout of twice the
@@ -689,7 +691,7 @@ static int32_t block(volatile uHttpClientContext_t *pContext)
         // HTTP status code
         while ((statusCodeOrError == 0) &&
                ((pContext->pKeepGoingCallback == NULL) || pContext->pKeepGoingCallback()) &&
-               (uPortGetTickTimeMs() - startTimeMs < (pContext->timeoutSeconds * 2) * 1000)) {
+               !uTimeoutExpiredSeconds(timeoutStart, pContext->timeoutSeconds * 2)) {
             if (uPortSemaphoreTryTake((uPortSemaphoreHandle_t) pContext->semaphoreHandle, 100) == 0) {
                 statusCodeOrError = pContext->statusCodeOrError;
             }

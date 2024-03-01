@@ -56,6 +56,8 @@
 
 #include "u_test_util_resource_check.h"
 
+#include "u_timeout.h"
+
 #ifdef U_CFG_TEST_CELL_MODULE_TYPE
 # include "u_cell_module_type.h"
 # include "u_cell_test_cfg.h" // For the cellular test macros
@@ -184,7 +186,7 @@ static uPortSemaphoreHandle_t gBleConnectionSem = NULL;
 
 /** Used for keepGoingCallback() timeout.
  */
-static int64_t gStopTimeMs;
+static uTimeoutStop_t gTimeoutStop;
 
 /** Keep track of the current network handle so that the
  * keepGoingCallback() can check it.
@@ -345,7 +347,8 @@ static bool keepGoingCallback(uDeviceHandle_t devHandle)
     bool keepGoing = true;
 
     U_PORT_TEST_ASSERT(devHandle == gDevHandle);
-    if (uPortGetTickTimeMs() > gStopTimeMs) {
+    if (uTimeoutExpiredMs(gTimeoutStop.timeoutStart,
+                          gTimeoutStop.durationMs)) {
         keepGoing = false;
     }
 
@@ -752,7 +755,6 @@ U_PORT_TEST_FUNCTION("[network]", "networkLoc")
     const uLocationTestCfg_t *pLocationCfg;
     int32_t y;
     uLocation_t location;
-    int64_t startTime;
     int32_t resourceCount;
 
     // In case a previous test failed
@@ -799,8 +801,8 @@ U_PORT_TEST_FUNCTION("[network]", "networkLoc")
                     // Just take the first one, we don't care which as this
                     // is a network test not a location test
                     pLocationCfg = gpULocationTestCfg[pTmp->networkType]->pCfgData[0];
-                    startTime = uPortGetTickTimeMs();
-                    gStopTimeMs = startTime + U_LOCATION_TEST_CFG_TIMEOUT_SECONDS * 1000;
+                    gTimeoutStop.timeoutStart = uTimeoutStart();
+                    gTimeoutStop.durationMs = U_LOCATION_TEST_CFG_TIMEOUT_SECONDS * 1000;
                     uLocationTestResetLocation(&location);
                     U_TEST_PRINT_LINE("getting location using %s.",
                                       gpULocationTestTypeStr[pLocationCfg->locationType]);
@@ -810,8 +812,8 @@ U_PORT_TEST_FUNCTION("[network]", "networkLoc")
                                      pLocationCfg->pAuthenticationTokenStr,
                                      &location, keepGoingCallback);
                     if (y == 0) {
-                        U_TEST_PRINT_LINE("location establishment took %d second(s).",
-                                          (int32_t) (uPortGetTickTimeMs() - startTime) / 1000);
+                        U_TEST_PRINT_LINE("location establishment took %u second(s).",
+                                          uTimeoutElapsedSeconds(gTimeoutStop.timeoutStart));
                     }
                     // If we are running on a local cellular network we won't get position but
                     // we should always get time

@@ -40,6 +40,8 @@
 
 #include "u_error_common.h"
 
+#include "u_timeout.h"
+
 #include "u_assert.h"
 
 #include "u_port_clib_platform_specific.h" /* Integer stdio, must be included

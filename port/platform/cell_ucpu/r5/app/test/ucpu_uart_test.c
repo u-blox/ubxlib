@@ -213,7 +213,7 @@ static void mqttThread(void *thread_input)
     char pubMessage[MEG_SIZE];
     char readBuffer[MEG_SIZE];
     size_t readBufferSize;
-    int32_t startTimeMs;
+    uTimeoutStart_t timeoutStart;
     uint32_t count = 0;
     uint32_t result = 0;
     volatile bool messagesAvailable = false;
@@ -265,7 +265,7 @@ static void mqttThread(void *thread_input)
         if (isConnectedToServer) {
             uPortLog("MQTT itteration count = %d\n", ++count);
 
-            startTimeMs = uPortGetTickTimeMs();
+            timeoutStart = uTimeoutStart();
             memset(pubMessage, 0, sizeof(pubMessage));
             snprintf(pubMessage, sizeof(pubMessage), "%s%d", message, count);
 
@@ -282,7 +282,7 @@ static void mqttThread(void *thread_input)
                 // Wait for us to be notified that our new
                 // message is available on the broker
                 while (!messagesAvailable &&
-                       (uPortGetTickTimeMs() - startTimeMs < 20000)) {
+                       !uTimeoutExpiredSeconds(timeoutStart, 20)) {
                     uPortTaskBlock(1000);
                 }
 

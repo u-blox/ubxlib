@@ -46,6 +46,8 @@
 #include "u_port_i2c.h"
 #include "u_port_spi.h"
 
+#include "u_timeout.h"
+
 #include "u_at_client.h"
 
 #include "u_ubx_protocol.h"
@@ -96,7 +98,7 @@ int32_t uGnssUtilUbxTransparentSendReceive(uDeviceHandle_t gnssHandle,
     uGnssPrivateInstance_t *pInstance;
     int32_t privateStreamTypeOrError;
     uDeviceSerial_t *pDeviceSerial = NULL;
-    int32_t startTimeMs;
+    uTimeoutStart_t timeoutStart;
     int32_t x = 0;
     int32_t bytesRead = 0;
     char *pBuffer;
@@ -173,11 +175,11 @@ int32_t uGnssUtilUbxTransparentSendReceive(uDeviceHandle_t gnssHandle,
                     errorCodeOrResponseLength = (int32_t) U_ERROR_COMMON_SUCCESS;
                     if (pResponse != NULL) {
                         errorCodeOrResponseLength = (int32_t) U_GNSS_ERROR_TRANSPORT;
-                        startTimeMs = uPortGetTickTimeMs();
+                        timeoutStart = uTimeoutStart();
                         // Wait for something to start coming back
                         while ((bytesRead < (int32_t) maxResponseLengthBytes) &&
                                ((x = uGnssPrivateStreamGetReceiveSize(pInstance)) <= 0) &&
-                               (uPortGetTickTimeMs() - startTimeMs < pInstance->timeoutMs)) {
+                               !uTimeoutExpiredMs(timeoutStart, pInstance->timeoutMs)) {
                             // Relax a little
                             uPortTaskBlock(U_GNSS_UTIL_TRANSPARENT_RECEIVE_DELAY_MS);
                         }
@@ -185,7 +187,7 @@ int32_t uGnssUtilUbxTransparentSendReceive(uDeviceHandle_t gnssHandle,
                             // Got something; continue receiving until nothing arrives or we time out
                             while ((bytesRead < (int32_t) maxResponseLengthBytes) &&
                                    ((x = uGnssPrivateStreamGetReceiveSize(pInstance)) > 0) &&
-                                   (uPortGetTickTimeMs() - startTimeMs < pInstance->timeoutMs)) {
+                                   !uTimeoutExpiredMs(timeoutStart, pInstance->timeoutMs)) {
                                 if (x > 0) {
                                     if (x > ((int32_t) maxResponseLengthBytes) - bytesRead) {
                                         x = maxResponseLengthBytes - bytesRead;

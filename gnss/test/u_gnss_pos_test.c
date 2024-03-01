@@ -47,6 +47,8 @@
 
 #include "u_error_common.h"
 
+#include "u_timeout.h"
+
 #include "u_at_client.h" // Required by u_gnss_private.h
 
 #include "u_port.h"
@@ -198,7 +200,7 @@
 
 /** Used for keepGoingCallback() timeout.
  */
-static int64_t gStopTimeMs;
+static uTimeoutStop_t gTimeoutStop;
 
 /** Handles.
  */
@@ -282,7 +284,8 @@ static bool keepGoingCallback(uDeviceHandle_t gnssHandle)
     bool keepGoing = true;
 
     U_PORT_TEST_ASSERT(gnssHandle == gHandles.gnssHandle);
-    if (uPortGetTickTimeMs() > gStopTimeMs) {
+    if (uTimeoutExpiredMs(gTimeoutStop.timeoutStart,
+                          gTimeoutStop.durationMs)) {
         keepGoing = false;
     }
 
@@ -365,7 +368,6 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosPos")
     char prefix[2];
     int32_t whole[2];
     int32_t fraction[2];
-    int64_t startTimeMs;
     int32_t resourceCount;
     size_t iterations;
     uGnssTransportType_t transportTypes[U_GNSS_TRANSPORT_MAX_NUM];
@@ -406,8 +408,8 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosPos")
             speedMillimetresPerSecond = INT_MIN;
             svs = 0;
             timeUtc = LONG_MIN;
-            startTimeMs = uPortGetTickTimeMs();
-            gStopTimeMs = startTimeMs + U_GNSS_POS_TEST_TIMEOUT_SECONDS * 1000;
+            gTimeoutStop.timeoutStart = uTimeoutStart();
+            gTimeoutStop.durationMs = U_GNSS_POS_TEST_TIMEOUT_SECONDS * 1000;
             y = uGnssPosGet(gnssHandle,
                             &latitudeX1e7, &longitudeX1e7,
                             &altitudeMillimetres,
@@ -418,8 +420,8 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosPos")
             U_TEST_PRINT_LINE_X("calling uGnssPosGet() returned %d.", z + 1, y);
             U_PORT_TEST_ASSERT(y == 0);
 
-            U_TEST_PRINT_LINE_X("position establishment took %d second(s).", z + 1,
-                                (int32_t) (uPortGetTickTimeMs() - startTimeMs) / 1000);
+            U_TEST_PRINT_LINE_X("position establishment took %u second(s).", z + 1,
+                                uTimeoutElapsedSeconds(gTimeoutStop.timeoutStart));
             prefix[0] = latLongToBits(latitudeX1e7, &(whole[0]), &(fraction[0]));
             prefix[1] = latLongToBits(longitudeX1e7, &(whole[1]), &(fraction[1]));
             U_TEST_PRINT_LINE_X("location %c%d.%07d/%c%d.%07d (radius %d metre(s)), %d metre(s) high,"
@@ -452,8 +454,8 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosPos")
             timeUtc = LONG_MIN;
             gErrorCode = 0xFFFFFFFF;
             gGoodPosCount = 0;
-            startTimeMs = uPortGetTickTimeMs();
-            gStopTimeMs = startTimeMs + U_GNSS_POS_TEST_TIMEOUT_SECONDS * 1000;
+            gTimeoutStop.timeoutStart = uTimeoutStart();
+            gTimeoutStop.durationMs = U_GNSS_POS_TEST_TIMEOUT_SECONDS * 1000;
             if (z == 0) {
                 // Check that calling stop first causes no problem
                 uGnssPosGetStop(gnssHandle);
@@ -467,12 +469,13 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosPos")
                 U_TEST_PRINT_LINE_X("calling uGnssPosGetStart() twice in rapid succession returned %d.", z + 1, y);
                 gErrorCode = 0xFFFFFFFF;
                 gGoodPosCount = 0;
-                startTimeMs = uPortGetTickTimeMs();
-                gStopTimeMs = startTimeMs + U_GNSS_POS_TEST_TIMEOUT_SECONDS * 1000;
+                gTimeoutStop.timeoutStart = uTimeoutStart();
+                gTimeoutStop.durationMs = U_GNSS_POS_TEST_TIMEOUT_SECONDS * 1000;
             }
-            U_TEST_PRINT_LINE_X("waiting up to %d second(s) for results from asynchronous API...", z + 1,
-                                U_GNSS_POS_TEST_TIMEOUT_SECONDS);
-            while ((gErrorCode == 0xFFFFFFFF) && (uPortGetTickTimeMs() < gStopTimeMs)) {
+            U_TEST_PRINT_LINE_X("waiting up to %u second(s) for results from asynchronous API...", z + 1,
+                                gTimeoutStop.durationMs / 1000);
+            while ((gErrorCode == 0xFFFFFFFF) && !uTimeoutExpiredMs(gTimeoutStop.timeoutStart,
+                                                                    gTimeoutStop.durationMs)) {
                 uPortTaskBlock(1000);
             }
 
@@ -483,8 +486,8 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosPos")
             U_TEST_PRINT_LINE_X("asynchonous API received error code %d.", z + 1, gErrorCode);
             U_PORT_TEST_ASSERT(gErrorCode == 0);
             U_PORT_TEST_ASSERT(gGoodPosCount == 1);
-            U_TEST_PRINT_LINE_X("position establishment took %d second(s).", z + 1,
-                                (int32_t) (uPortGetTickTimeMs() - startTimeMs) / 1000);
+            U_TEST_PRINT_LINE_X("position establishment took %u second(s).", z + 1,
+                                uTimeoutElapsedSeconds(gTimeoutStop.timeoutStart));
 
             prefix[0] = latLongToBits(gLatitudeX1e7, &(whole[0]), &(fraction[0]));
             prefix[1] = latLongToBits(gLongitudeX1e7, &(whole[1]), &(fraction[1]));
@@ -535,7 +538,6 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosRrlp")
     uDeviceHandle_t gnssHandle;
     int32_t y;
     char *pBuffer;
-    int64_t startTimeMs;
     int32_t resourceCount;
     size_t iterations;
     uGnssTransportType_t transportTypes[U_GNSS_TRANSPORT_MAX_NUM];
@@ -581,8 +583,8 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosRrlp")
         U_PORT_TEST_ASSERT(y >= 6);
         U_PORT_TEST_ASSERT(y <= U_GNSS_POS_RRLP_SIZE_BYTES);
 
-        startTimeMs = uPortGetTickTimeMs();
-        gStopTimeMs = startTimeMs + U_GNSS_POS_TEST_TIMEOUT_SECONDS * 1000;
+        gTimeoutStop.timeoutStart = uTimeoutStart();
+        gTimeoutStop.durationMs = U_GNSS_POS_TEST_TIMEOUT_SECONDS * 1000;
         U_TEST_PRINT_LINE("asking for RRLP information with thresholds...");
         y = uGnssPosGetRrlp(gnssHandle, pBuffer, U_GNSS_POS_RRLP_SIZE_BYTES,
                             U_GNSS_POS_TEST_RRLP_SVS_THRESHOLD,
@@ -590,8 +592,8 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosRrlp")
                             U_GNSS_POS_TEST_RRLP_MULTIPATH_INDEX_LIMIT,
                             U_GNSS_POS_TEST_RRLP_PSEUDORANGE_RMS_ERROR_INDEX_LIMIT,
                             keepGoingCallback);
-        U_TEST_PRINT_LINE("RRLP took %d second(s) to arrive.",
-                          (int32_t) (uPortGetTickTimeMs() - startTimeMs) / 1000);
+        U_TEST_PRINT_LINE("RRLP took %u second(s) to arrive.",
+                          uTimeoutElapsedSeconds(gTimeoutStop.timeoutStart));
         U_TEST_PRINT_LINE("%d byte(s) of RRLP information was returned.", y);
         // Must contain at least 6 bytes for the header
         U_PORT_TEST_ASSERT(y >= 6);
@@ -632,15 +634,15 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosRrlp")
         if (y == 0) {
             // Do an RRLP get of the 12C compact mode with whacky thresholds, since
             // they should be ignored
-            startTimeMs = uPortGetTickTimeMs();
-            gStopTimeMs = startTimeMs + U_GNSS_POS_TEST_TIMEOUT_SECONDS * 1000;
+            gTimeoutStop.timeoutStart = uTimeoutStart();
+            gTimeoutStop.durationMs = U_GNSS_POS_TEST_TIMEOUT_SECONDS * 1000;
             U_TEST_PRINT_LINE("asking for compact RRLP information 12C...");
             // length should be the UBX protocol overhead plus 12 bytes of data
             y = uGnssPosGetRrlp(gnssHandle, pBuffer, 8 + 12,
                                 INT_MAX, INT_MAX, INT_MAX, INT_MAX,
                                 keepGoingCallback);
-            U_TEST_PRINT_LINE("RRLP took %d second(s) to arrive.",
-                              (int32_t) (uPortGetTickTimeMs() - startTimeMs) / 1000);
+            U_TEST_PRINT_LINE("RRLP took %u second(s) to arrive.",
+                              uTimeoutElapsedSeconds(gTimeoutStop.timeoutStart));
             U_TEST_PRINT_LINE("%d byte(s) of RRLP information was returned.", y);
             // Must contain at least 6 bytes for the header
             U_PORT_TEST_ASSERT(y >= 6);
@@ -679,14 +681,13 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosStreamed")
     char prefix[2];
     int32_t whole[2];
     int32_t fraction[2];
-    int32_t startTimeMs;
-    int32_t posTimeMs = -1;
     int32_t resourceCount;
     size_t iterations;
     uGnssTransportType_t transportTypes[U_GNSS_TRANSPORT_MAX_NUM];
     int32_t a = -1;
     int32_t b = -1;
     uGnssTimeSystem_t t = U_GNSS_TIME_SYSTEM_NONE;
+    uTimeoutStart_t timeoutStart;
 
     // In case a previous test failed
     uGnssTestPrivateCleanup(&gHandles);
@@ -767,19 +768,20 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosStreamed")
                     uGnssPosGetStreamedStop(gnssHandle);
                 }
                 gErrorCode = 0xFFFFFFFF;
-                startTimeMs = uPortGetTickTimeMs();
-                gStopTimeMs = startTimeMs + U_GNSS_POS_TEST_TIMEOUT_SECONDS * 1000;
+                gTimeoutStop.timeoutStart = uTimeoutStart();
+                gTimeoutStop.durationMs = U_GNSS_POS_TEST_TIMEOUT_SECONDS * 1000;
                 y = uGnssPosGetStreamedStart(gnssHandle, U_GNSS_POS_TEST_STREAMED_RATE_MS, posCallback);
                 U_TEST_PRINT_LINE_X("uGnssPosGetStreamedStart() returned %d.", z + 1, y);
                 U_PORT_TEST_ASSERT(y == 0);
-                U_TEST_PRINT_LINE_X("waiting up to %d second(s) for first valid result from streamed API...",
-                                    z + 1, U_GNSS_POS_TEST_TIMEOUT_SECONDS);
-                while ((gErrorCode != 0) && (uPortGetTickTimeMs() < gStopTimeMs)) {
+                U_TEST_PRINT_LINE_X("waiting up to %u second(s) for first valid result from streamed API...",
+                                    z + 1, gTimeoutStop.durationMs / 1000);
+                while ((gErrorCode != 0) && !uTimeoutExpiredMs(gTimeoutStop.timeoutStart,
+                                                               gTimeoutStop.durationMs)) {
                     uPortTaskBlock(1000);
                 }
 
                 if (gErrorCode == 0) {
-                    posTimeMs = uPortGetTickTimeMs();
+                    timeoutStart = uTimeoutStart();
                     U_TEST_PRINT_LINE_X("waiting %d second(s) for rate change to take effect...",
                                         z + 1, U_GNSS_POS_TEST_STREAMED_WAIT_SECONDS);
                     uPortTaskBlock(1000 * U_GNSS_POS_TEST_STREAMED_WAIT_SECONDS);
@@ -795,8 +797,8 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosStreamed")
                     U_TEST_PRINT_LINE_X("streamed position callback received error code %d.", z + 1, gErrorCode);
                     U_PORT_TEST_ASSERT(gErrorCode == 0);
                     if (gGoodPosCount > 0) {
-                        U_TEST_PRINT_LINE_X("position establishment took %d second(s).", z + 1,
-                                            (posTimeMs - startTimeMs) / 1000);
+                        U_TEST_PRINT_LINE_X("position establishment took %u second(s).", z + 1,
+                                            uTimeoutElapsedSeconds(timeoutStart));
                         U_TEST_PRINT_LINE_X("the streamed position callback was called with a good position %d time(s)"
                                             " in %d second(s), average every %d millisecond(s) (expected every"
                                             " %d milliseconds).", z + 1,

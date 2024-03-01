@@ -47,6 +47,8 @@
 #include "u_port_heap.h"
 #include "u_port_debug.h"
 
+#include "u_timeout.h"
+
 #include "u_time.h"
 
 #include "u_ubx_protocol.h"
@@ -363,7 +365,7 @@ int32_t uLocationPrivateCloudLocate(uDeviceHandle_t devHandle,
     char topicBuffer[U_LOCATION_PRIVATE_CLOUD_LOCATE_SUBSCRIBE_TOPIC_LENGTH_BYTES];
     char *pTopicBufferRead;
     char *pMessageRead;
-    int32_t startTimeMs = uPortGetTickTimeMs();
+    uTimeoutStart_t timeoutStart = uTimeoutStart();
     bool subscribed = false;
     size_t z;
 
@@ -447,7 +449,7 @@ int32_t uLocationPrivateCloudLocate(uDeviceHandle_t devHandle,
                                  " location from server...\n");
                         while ((errorCode == (int32_t) U_ERROR_COMMON_TIMEOUT) &&
                                (((pKeepGoingCallback == NULL) &&
-                                 (uPortGetTickTimeMs() - startTimeMs) / 1000 < U_LOCATION_TIMEOUT_SECONDS) ||
+                                 !uTimeoutExpiredSeconds(timeoutStart, U_LOCATION_TIMEOUT_SECONDS)) ||
                                 ((pKeepGoingCallback != NULL) && pKeepGoingCallback(devHandle)))) {
                             if (uMqttClientGetUnread(pMqttClientContext) > 0) {
                                 z = U_LOCATION_PRIVATE_CLOUD_LOCATE_READ_MESSAGE_LENGTH_BYTES;

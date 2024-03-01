@@ -55,6 +55,8 @@
 
 #include "u_test_util_resource_check.h"
 
+#include "u_timeout.h"
+
 #include "u_at_client.h"
 
 #include "u_cell_module_type.h"
@@ -128,7 +130,7 @@ typedef struct uCellTimeTestCellInfoList_t {
 
 /** Used for keepGoingCallback() timeout.
  */
-static int32_t gStopTimeMs = 0;
+static uTimeoutStop_t gTimeoutStop;
 
 /** Handles.
  */
@@ -169,7 +171,10 @@ static bool keepGoingCallback(uDeviceHandle_t unused)
 
     (void) unused;
 
-    if (uPortGetTickTimeMs() > gStopTimeMs) {
+    // Zero duration means abort in this case
+    if ((gTimeoutStop.durationMs == 0) ||
+        uTimeoutExpiredMs(gTimeoutStop.timeoutStart,
+                          gTimeoutStop.durationMs)) {
         keepGoing = false;
     }
 
@@ -273,7 +278,8 @@ static bool cellInfoCallback(uDeviceHandle_t cellHandle,
         }
     }
 
-    if (uPortGetTickTimeMs() > gStopTimeMs) {
+    if (uTimeoutExpiredMs(gTimeoutStop.timeoutStart,
+                          gTimeoutStop.durationMs)) {
         keepGoing = false;
     }
 
@@ -344,7 +350,6 @@ U_PORT_TEST_FUNCTION("[cellTime]", "cellTimeBasic")
     const uCellPrivateModule_t *pModule;
     int32_t resourceCount;
     int32_t y;
-    int32_t startTimeMs;
     uCellTimeTestCellInfoList_t *pTmp;
     bool gnssIsInsideCell;
 #ifndef U_CELL_CFG_SARA_R5_00B
@@ -372,8 +377,8 @@ U_PORT_TEST_FUNCTION("[cellTime]", "cellTimeBasic")
 
     // Make a cellular connection so that we can test that sync works
     // despite that
-    gStopTimeMs = uPortGetTickTimeMs() +
-                  (U_CELL_TEST_CFG_CONNECT_TIMEOUT_SECONDS * 1000);
+    gTimeoutStop.timeoutStart = uTimeoutStart();
+    gTimeoutStop.durationMs = U_CELL_TEST_CFG_CONNECT_TIMEOUT_SECONDS * 1000;
     y = uCellNetConnect(cellHandle, NULL,
 #ifdef U_CELL_TEST_CFG_APN
                         U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_APN),
@@ -409,7 +414,8 @@ U_PORT_TEST_FUNCTION("[cellTime]", "cellTimeBasic")
     gEventCallback = INT_MIN;
     memset(&gEvent, 0xFF, sizeof(gEvent));
     gEvent.synchronised = false;
-    startTimeMs = uPortGetTickTimeMs();
+    gTimeoutStop.timeoutStart = uTimeoutStart();
+    gTimeoutStop.durationMs = U_CELL_TIME_TEST_GUARD_TIME_SECONDS * 1000;
     y = 0;
     // Give this a few goes as sync can fail randomly
     for (size_t x = 0; (y == 0) && !gEvent.synchronised && (x < U_CELL_TIME_TEST_RETRIES + 1); x++) {
@@ -418,7 +424,8 @@ U_PORT_TEST_FUNCTION("[cellTime]", "cellTimeBasic")
         if (pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R5) {
             U_PORT_TEST_ASSERT(y == 0);
             while (!gEvent.synchronised &&
-                   (uPortGetTickTimeMs() - startTimeMs < U_CELL_TIME_TEST_GUARD_TIME_SECONDS * 1000)) {
+                   !uTimeoutExpiredMs(gTimeoutStop.timeoutStart,
+                                      gTimeoutStop.durationMs)) {
                 uPortTaskBlock(100);
             }
             U_TEST_PRINT_LINE("gEventCallback is %d.", gEventCallback);
@@ -446,7 +453,8 @@ U_PORT_TEST_FUNCTION("[cellTime]", "cellTimeBasic")
     gEventCallback = INT_MIN;
     memset(&gEvent, 0xFF, sizeof(gEvent));
     gEvent.synchronised = false;
-    startTimeMs = uPortGetTickTimeMs();
+    gTimeoutStop.timeoutStart = uTimeoutStart();
+    gTimeoutStop.durationMs = U_CELL_TIME_TEST_GUARD_TIME_SECONDS * 1000;
     y = 0;
     // Give this a few goes as sync can fail randomly
     for (size_t x = 0; (y == 0) && !gEvent.synchronised && (x < U_CELL_TIME_TEST_RETRIES + 1); x++) {
@@ -455,7 +463,8 @@ U_PORT_TEST_FUNCTION("[cellTime]", "cellTimeBasic")
         if (pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R5) {
             U_PORT_TEST_ASSERT(y == 0);
             while (!gEvent.synchronised &&
-                   (uPortGetTickTimeMs() - startTimeMs < U_CELL_TIME_TEST_GUARD_TIME_SECONDS * 1000)) {
+                   !uTimeoutExpiredMs(gTimeoutStop.timeoutStart,
+                                      gTimeoutStop.durationMs)) {
                 uPortTaskBlock(100);
             }
             U_TEST_PRINT_LINE("gEventCallback is %d.", gEventCallback);
@@ -489,21 +498,25 @@ U_PORT_TEST_FUNCTION("[cellTime]", "cellTimeBasic")
             gEventCallback = INT_MIN;
             memset(&gEvent, 0xFF, sizeof(gEvent));
             gEvent.synchronised = false;
-            startTimeMs = uPortGetTickTimeMs();
+            gTimeoutStop.timeoutStart = uTimeoutStart();
+            gTimeoutStop.durationMs = U_CELL_TIME_TEST_GUARD_TIME_SECONDS * 1000;
             U_PORT_TEST_ASSERT(uCellTimeEnable(cellHandle, U_CELL_TIME_MODE_ONE_SHOT,
                                                !gnssIsInsideCell, 0,
                                                eventCallback, &gEventCallback) == 0);
             while (!gEvent.synchronised &&
-                   (uPortGetTickTimeMs() - startTimeMs < U_CELL_TIME_TEST_GUARD_TIME_SECONDS * 1000)) {
+                   !uTimeoutExpiredMs(gTimeoutStop.timeoutStart,
+                                      gTimeoutStop.durationMs)) {
                 uPortTaskBlock(100);
             }
             U_TEST_PRINT_LINE("gEventCallback is %d.", gEventCallback);
             if (gEvent.synchronised) {
                 U_PORT_TEST_ASSERT(gEventCallback == 0);
                 printAndCheckEvent(&gEvent, !gnssIsInsideCell);
-                startTimeMs = uPortGetTickTimeMs();
+                gTimeoutStop.timeoutStart = uTimeoutStart();
+                gTimeoutStop.durationMs = U_CELL_TIME_TEST_GUARD_TIME_SECONDS * 1000;
                 while ((gTimeCallback == INT_MIN) &&
-                       (uPortGetTickTimeMs() - startTimeMs < U_CELL_TIME_TEST_GUARD_TIME_SECONDS * 1000)) {
+                       !uTimeoutExpiredMs(gTimeoutStop.timeoutStart,
+                                          gTimeoutStop.durationMs)) {
                     uPortTaskBlock(100);
                 }
                 U_TEST_PRINT_LINE("gTimeCallback is %d.", gTimeCallback);
@@ -538,7 +551,8 @@ U_PORT_TEST_FUNCTION("[cellTime]", "cellTimeBasic")
         gEventCallback = INT_MIN;
         memset(&gEvent, 0xFF, sizeof(gEvent));
         gEvent.synchronised = false;
-        startTimeMs = uPortGetTickTimeMs();
+        gTimeoutStop.timeoutStart = uTimeoutStart();
+        gTimeoutStop.durationMs = U_CELL_TIME_TEST_GUARD_TIME_SECONDS * 1000;
         y = 0;
         // Give this a few goes as sync can fail randomly
         for (size_t x = 0; (y == 0) && !gEvent.synchronised && (x < U_CELL_TIME_TEST_RETRIES + 1); x++) {
@@ -546,16 +560,19 @@ U_PORT_TEST_FUNCTION("[cellTime]", "cellTimeBasic")
                                                !uCellLocGnssInsideCell(cellHandle), 0,
                                                eventCallback, &gEventCallback) == 0);
             while (!gEvent.synchronised &&
-                   (uPortGetTickTimeMs() - startTimeMs < U_CELL_TIME_TEST_GUARD_TIME_SECONDS * 1000)) {
+                   !uTimeoutExpiredMs(gTimeoutStop.timeoutStart,
+                                      gTimeoutStop.durationMs)) {
                 uPortTaskBlock(100);
             }
             U_TEST_PRINT_LINE("gEventCallback is %d.", gEventCallback);
             if (gEvent.synchronised) {
                 U_PORT_TEST_ASSERT(gEventCallback == 0);
                 printAndCheckEvent(&gEvent, !gnssIsInsideCell);
-                startTimeMs = uPortGetTickTimeMs();
+                gTimeoutStop.timeoutStart = uTimeoutStart();
+                gTimeoutStop.durationMs = U_CELL_TIME_TEST_GUARD_TIME_SECONDS * 1000;
                 while ((gTimeCallback == INT_MIN) &&
-                       (uPortGetTickTimeMs() - startTimeMs < U_CELL_TIME_TEST_GUARD_TIME_SECONDS * 1000)) {
+                       !uTimeoutExpiredMs(gTimeoutStop.timeoutStart,
+                                          gTimeoutStop.durationMs)) {
                     uPortTaskBlock(100);
                 }
                 U_TEST_PRINT_LINE("gTimeCallback is %d.", gTimeCallback);
@@ -586,7 +603,7 @@ U_PORT_TEST_FUNCTION("[cellTime]", "cellTimeBasic")
         // ...and again with a callback, but abort immediately
         U_TEST_PRINT_LINE("adding a callback but aborting the deep scan.");
         gCellInfoCallback = INT_MIN;
-        gStopTimeMs = 0;
+        gTimeoutStop.durationMs = 0;
         y = uCellNetDeepScan(cellHandle, cellInfoCallback, &gpCellInfoList);
         U_TEST_PRINT_LINE("aborted uCellNetDeepScan() returned %d.", y);
         U_PORT_TEST_ASSERT(y < 0);
@@ -600,7 +617,8 @@ U_PORT_TEST_FUNCTION("[cellTime]", "cellTimeBasic")
         // Do this a few times as the module can sometimes find nothing
         gCellInfoCallback = INT_MIN;
         for (size_t x = 0; ((gCellInfoCallback == INT_MIN) || (gpCellInfoList == NULL)) && (x < 3); x++) {
-            gStopTimeMs = uPortGetTickTimeMs() + (U_CELL_TIME_TEST_DEEP_SCAN_TIMEOUT_SECONDS * 1000);
+            gTimeoutStop.timeoutStart = uTimeoutStart();
+            gTimeoutStop.durationMs = U_CELL_TIME_TEST_DEEP_SCAN_TIMEOUT_SECONDS * 1000;
             y = uCellNetDeepScan(cellHandle, cellInfoCallback, &gpCellInfoList);
             U_TEST_PRINT_LINE("%d cell(s) found on try %d.", y, x + 1);
             if (y > 0) {
@@ -654,11 +672,13 @@ U_PORT_TEST_FUNCTION("[cellTime]", "cellTimeBasic")
                 gEventCallback = INT_MIN;
                 memset(&gEvent, 0xFF, sizeof(gEvent));
                 gEvent.synchronised = false;
-                startTimeMs = uPortGetTickTimeMs();
+                gTimeoutStop.timeoutStart = uTimeoutStart();
+                gTimeoutStop.durationMs = U_CELL_TIME_TEST_GUARD_TIME_SECONDS * 1000;
                 U_PORT_TEST_ASSERT(uCellTimeEnable(cellHandle, U_CELL_TIME_MODE_EXT_INT_TIMESTAMP, true, 0,
                                                    eventCallback, &gEventCallback) == 0);
                 while (!gEvent.synchronised &&
-                       (uPortGetTickTimeMs() - startTimeMs < U_CELL_TIME_TEST_GUARD_TIME_SECONDS * 1000)) {
+                       !uTimeoutExpiredMs(gTimeoutStop.timeoutStart,
+                                          gTimeoutStop.durationMs)) {
                     uPortTaskBlock(100);
                 }
                 U_TEST_PRINT_LINE("gEventCallback is %d.", gEventCallback);

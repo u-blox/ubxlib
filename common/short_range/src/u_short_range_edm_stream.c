@@ -23,6 +23,7 @@
 #endif
 
 //lint -efile(766, ctype.h)
+#include "limits.h"    // INT32_MAX
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
@@ -39,6 +40,7 @@
 #include "u_port_event_queue.h"
 #include "u_port_uart.h"
 #include "u_port_debug.h"
+#include "u_timeout.h"
 #include "u_at_client.h"
 #include "u_short_range_pbuf.h"
 #include "u_short_range_module_type.h"
@@ -1396,8 +1398,7 @@ int32_t uShortRangeEdmStreamWrite(int32_t handle, int32_t channel,
                 char head[U_SHORT_RANGE_EDM_DATA_HEAD_SIZE];
                 char tail[U_SHORT_RANGE_EDM_TAIL_SIZE];
                 sizeOrErrorCode = 0;
-                int64_t startTime = uPortGetTickTimeMs();
-                int64_t endTime;
+                uTimeoutStart_t timeoutStart = uTimeoutStart();
 
                 do {
                     send = ((int32_t)sizeBytes - sizeOrErrorCode);
@@ -1429,9 +1430,8 @@ int32_t uShortRangeEdmStreamWrite(int32_t handle, int32_t channel,
                     } else {
                         sizeOrErrorCode += send;
                     }
-                    endTime = uPortGetTickTimeMs();
                 } while (((int32_t)sizeBytes > sizeOrErrorCode) &&
-                         (endTime - startTime < timeoutMs));
+                         !uTimeoutExpiredMs(timeoutStart, timeoutMs));
             }
         }
         U_PORT_MUTEX_UNLOCK(gMutex);

@@ -39,6 +39,8 @@
 
 #include "u_error_common.h"
 
+#include "u_timeout.h"
+
 #include "u_device_shared.h"
 
 #include "u_cfg_sw.h"
@@ -1232,14 +1234,17 @@ int32_t uBleSpsSend(uDeviceHandle_t devHandle, int32_t channel, const char *pDat
         return (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
     }
 
-    int64_t startTime = uPortGetTickTimeMs();
+    int32_t startTimeMs = uPortGetTickTimeMs();
     int32_t errorCode = (int32_t)U_ERROR_COMMON_SUCCESS;
     spsConnection_t *pSpsConn = pGetSpsConn(spsConnHandle);
     if (pSpsConn->spsState == SPS_STATE_CONNECTED) {
         uint32_t timeout = pSpsConn->dataSendTimeoutMs;
-        int64_t time = startTime;
+        int32_t time = startTimeMs;
 
-        while ((bytesLeftToSend > 0) && (time - startTime < timeout)) {
+        // Note: this loop is constructed slightly differently to usual
+        // and so can't use uTimeoutExpiredMs() but it
+        // _does_ perform tick time comparisons in a wrap-safe manner
+        while ((bytesLeftToSend > 0) && (time - startTimeMs < timeout)) {
             int32_t bytesToSendNow = bytesLeftToSend;
             int32_t maxDataLength = pSpsConn->mtu - U_BLE_PDU_HEADER_SIZE;
 
@@ -1253,13 +1258,13 @@ int32_t uBleSpsSend(uDeviceHandle_t devHandle, int32_t channel, const char *pDat
                 // again later if we are out of credits.
                 (void)uPortSemaphoreTryTake(pSpsConn->txCreditsSemaphore, 0);
                 if (pSpsConn->txCredits == 0) {
-                    int32_t timeoutLeft = (int32_t)timeout - (int32_t)(time - startTime);
+                    int32_t timeoutLeft = timeout - (time - startTimeMs);
                     if (timeoutLeft < 0) {
                         timeoutLeft = 0;
                     }
                     // We are out of credits, wait for more
                     if (uPortSemaphoreTryTake(pSpsConn->txCreditsSemaphore, timeoutLeft) != 0) {
-                        uPortLog("U_BLE_SPS: SPS Timed out waiting for new TX credits!\n");
+                        uPortLog("U_BLE_SPS: SPS timed out waiting for new TX credits!\n");
                         break;
                     }
                 }

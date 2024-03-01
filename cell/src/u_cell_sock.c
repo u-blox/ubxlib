@@ -43,6 +43,8 @@
 #include "u_port_heap.h"
 #include "u_port_debug.h"
 
+#include "u_timeout.h"
+
 #include "u_at_client.h"
 
 #include "u_hex_bin_convert.h"
@@ -1970,7 +1972,7 @@ int32_t uCellSockGetHostByName(uDeviceHandle_t cellHandle,
     int32_t bytesRead = 0;
     char buffer[U_SOCK_ADDRESS_STRING_MAX_LENGTH_BYTES];
     uSockAddress_t address;
-    int32_t startTimeMs;
+    uTimeoutStart_t timeoutStart;
     int32_t tries = 0;
 
     memset(&address, 0, sizeof(address));
@@ -1991,17 +1993,17 @@ int32_t uCellSockGetHostByName(uDeviceHandle_t cellHandle,
         // instead of "+UDNSRN" (i.e. it adds an extra "U")
         // so, if parsing for the correct response fails and
         // we're on LENA-R8 then allow one retry.
-        startTimeMs = uPortGetTickTimeMs();
+        timeoutStart = uTimeoutStart();
         while (((atError < 0) || (bytesRead <= 0)) &&
-               ((uPortGetTickTimeMs() - startTimeMs <
-                 U_CELL_SOCK_DNS_SHOULD_RETRY_MS) ||
+               (!uTimeoutExpiredMs(timeoutStart,
+                                   U_CELL_SOCK_DNS_SHOULD_RETRY_MS) ||
                 ((pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_LENA_R8) &&
                  (tries < 2)))) {
             if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R422) {
                 // SARA-R422 can get upset if UDNSRN is sent very quickly
                 // after a connection is made so we add a short delay here
-                while (uPortGetTickTimeMs() - pInstance->connectedAtMs <
-                       U_CELL_SOCK_SARA_R422_DNS_DELAY_MILLISECONDS) {
+                while (!uTimeoutExpiredMs(pInstance->connectedAt,
+                                          U_CELL_SOCK_SARA_R422_DNS_DELAY_MILLISECONDS)) {
                     uPortTaskBlock(100);
                 }
             }

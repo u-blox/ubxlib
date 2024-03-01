@@ -324,6 +324,8 @@
 
 #include "u_device_shared.h"
 
+#include "u_timeout.h"
+
 #include "u_port_clib_platform_specific.h" /* struct timeval in some cases and
                                               integer stdio, must be included
                                               before the other port files if
@@ -1291,7 +1293,7 @@ static int32_t receive(const uSockContainer_t *pContainer,
     uDeviceHandle_t devHandle = pContainer->socket.devHandle;
     int32_t sockHandle = pContainer->socket.sockHandle;
     int32_t negErrnoOrSize = -U_SOCK_ENOSYS;
-    int32_t startTimeMs = uPortGetTickTimeMs();
+    uTimeoutStart_t timeoutStart = uTimeoutStart();
     int32_t devType = uDeviceGetDeviceType(devHandle);
 
     // Run around the loop until a packet of data turns up
@@ -1333,8 +1335,8 @@ static int32_t receive(const uSockContainer_t *pContainer,
         }
     } while ((negErrnoOrSize < 0) &&
              (pContainer->socket.blocking) &&
-             (uPortGetTickTimeMs() - startTimeMs <
-              pContainer->socket.receiveTimeoutMs));
+             !uTimeoutExpiredMs(timeoutStart,
+                                pContainer->socket.receiveTimeoutMs));
 
     return negErrnoOrSize;
 }
@@ -1724,7 +1726,7 @@ int32_t uSockOptionSet(uSockDescriptor_t descriptor,
                             (((int64_t) ((const struct timeval *) pOptionValue)->tv_sec) * 1000);
                         uPortLog("U_SOCK: timeout for socket descriptor"
                                  " %d set to %d ms.\n", descriptor,
-                                 (int32_t) pContainer->socket.receiveTimeoutMs);
+                                 pContainer->socket.receiveTimeoutMs);
                     } else {
                         uPortLog("U_SOCK: socket option %d:0x%04x"
                                  " could not be set to value ",
@@ -1827,7 +1829,7 @@ int32_t uSockOptionGet(uSockDescriptor_t descriptor,
                                 *pOptionValueLength = sizeof(struct timeval);
                                 uPortLog("U_SOCK: timeout for socket descriptor"
                                          " %d is %d ms.\n", descriptor,
-                                         (int32_t) pContainer->socket.receiveTimeoutMs);
+                                         pContainer->socket.receiveTimeoutMs);
                             }
                         } else {
                             errnoLocal = U_SOCK_ENONE;

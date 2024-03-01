@@ -54,6 +54,8 @@
 
 #include "u_test_util_resource_check.h"
 
+#include "u_timeout.h"
+
 #include "u_at_client.h"
 
 #include "u_sock.h"
@@ -192,7 +194,7 @@ static uCellTestPrivate_t gHandles = U_CELL_TEST_PRIVATE_DEFAULTS;
   !defined(U_CFG_CELL_DISABLE_UART_POWER_SAVING)
 /** Used for keepGoingCallback() timeout.
  */
-static int64_t gStopTimeMs;
+static uTimeoutStop_t gTimeoutStop;
 
 /** A variable to track errors in the callbacks.
  */
@@ -241,7 +243,8 @@ static bool keepGoingCallback(uDeviceHandle_t cellHandle)
         gCallbackErrorCode = 1;
     }
 
-    if (uPortGetTickTimeMs() > gStopTimeMs) {
+    if (uTimeoutExpiredMs(gTimeoutStop.timeoutStart,
+                          gTimeoutStop.durationMs)) {
         keepGoing = false;
     }
 
@@ -261,7 +264,8 @@ static void testPowerAliveVInt(uCellTestPrivate_t *pHandles,
     bool trulyHardPowerOff = false;
     const uCellPrivateModule_t *pModule;
 #  if U_CFG_APP_PIN_CELL_VINT < 0
-    int64_t timeMs;
+    uTimeoutStart_t timeoutStart;
+    uint32_t y;
 #  endif
 
 #  if U_CFG_APP_PIN_CELL_ENABLE_POWER >= 0
@@ -350,23 +354,23 @@ static void testPowerAliveVInt(uCellTestPrivate_t *pHandles,
             // called here as we've no control over how long the
             // module takes to power off.
             pKeepGoingCallback = keepGoingCallback;
-            gStopTimeMs = uPortGetTickTimeMs() +
-                          (((int64_t) pModule->powerDownWaitSeconds) * 1000);
+            gTimeoutStop.timeoutStart = uTimeoutStart();
+            gTimeoutStop.durationMs = pModule->powerDownWaitSeconds * 1000;
         }
 #  if U_CFG_APP_PIN_CELL_VINT < 0
-        timeMs = uPortGetTickTimeMs();
+        timeoutStart = uTimeoutStart();
 #  endif
         U_TEST_PRINT_LINE("powering off...");
         uCellPwrOff(cellHandle, pKeepGoingCallback);
         U_TEST_PRINT_LINE("power off completed.");
 #  if U_CFG_APP_PIN_CELL_VINT < 0
-        timeMs = uPortGetTickTimeMs() - timeMs;
-        if (timeMs < pModule->powerDownWaitSeconds * 1000) {
-            timeMs = (pModule->powerDownWaitSeconds * 1000) - timeMs;
-            U_TEST_PRINT_LINE("waiting another %d second(s) to be sure of a "
+        y = uTimeoutElapsedMs(timeoutStart);
+        if (y < (uint32_t) pModule->powerDownWaitSeconds * 1000) {
+            y = (pModule->powerDownWaitSeconds * 1000) - y;
+            U_TEST_PRINT_LINE("waiting another %u second(s) to be sure of a "
                               "clean power off as there's no VInt pin to tell us...",
-                              (int32_t) ((timeMs / 1000) + 1));
-            uPortTaskBlock(timeMs);
+                              (y / 1000) + 1);
+            uPortTaskBlock(y);
         }
 #  endif
     }
@@ -398,19 +402,19 @@ static void testPowerAliveVInt(uCellTestPrivate_t *pHandles,
                           pModule->minAwakeTimeSeconds);
         uPortTaskBlock(pModule->minAwakeTimeSeconds * 1000);
 #  if U_CFG_APP_PIN_CELL_VINT < 0
-        timeMs = uPortGetTickTimeMs();
+        timeoutStart = uTimeoutStart();
 #  endif
         U_TEST_PRINT_LINE("hard powering off...");
         uCellPwrOffHard(cellHandle, trulyHardPowerOff, NULL);
         U_TEST_PRINT_LINE("hard power off completed.");
 #  if U_CFG_APP_PIN_CELL_VINT < 0
-        timeMs = uPortGetTickTimeMs() - timeMs;
-        if (!trulyHardPowerOff && (timeMs < pModule->powerDownWaitSeconds * 1000)) {
-            timeMs = (pModule->powerDownWaitSeconds * 1000) - timeMs;
-            U_TEST_PRINT_LINE("waiting another %d second(s) to be sure of"
-                              " a clean power off as there's no VInt pin to"
-                              " tell us...", (int32_t) ((timeMs / 1000) + 1));
-            uPortTaskBlock(timeMs);
+        y = uTimeoutElapsedMs(timeoutStart);
+        if (!trulyHardPowerOff && (y < (uint32_t) pModule->powerDownWaitSeconds * 1000)) {
+            y = (pModule->powerDownWaitSeconds * 1000) - y;
+            U_TEST_PRINT_LINE("waiting another %u second(s) to be sure of a "
+                              "clean power off as there's no VInt pin to tell us...",
+                              (y / 1000) + 1);
+            uPortTaskBlock(y);
         }
 #  endif
     }
@@ -461,8 +465,8 @@ static void wakeCallback(uDeviceHandle_t cellHandle, void *pParam)
 // Connect to a cellular network.
 static int32_t connectNetwork(uDeviceHandle_t cellHandle)
 {
-    gStopTimeMs = uPortGetTickTimeMs() +
-                  (U_CELL_TEST_CFG_CONNECT_TIMEOUT_SECONDS * 1000);
+    gTimeoutStop.timeoutStart = uTimeoutStart();
+    gTimeoutStop.durationMs = U_CELL_TEST_CFG_CONNECT_TIMEOUT_SECONDS * 1000;
     return uCellNetConnect(cellHandle, NULL,
 # ifdef U_CELL_TEST_CFG_APN
                            U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_APN),

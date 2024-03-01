@@ -37,6 +37,8 @@
 #include "u_device.h"
 #include "u_device_shared.h"
 
+#include "u_timeout.h"
+
 #include "u_at_client.h"
 
 #include "u_cell_module_type.h"
@@ -79,7 +81,8 @@ static bool keepGoingCallback(uDeviceHandle_t devHandle)
     if (uDeviceGetInstance(devHandle, &pInstance) == 0) {
         pContext = (uDeviceCellContext_t *) pInstance->pContext;
         if ((pContext == NULL) ||
-            (uPortGetTickTimeMs() < pContext->stopTimeMs)) {
+            !uTimeoutExpiredMs(pContext->timeoutStop.timeoutStart,
+                               pContext->timeoutStop.durationMs)) {
             keepGoing = true;
         }
     }
@@ -168,8 +171,8 @@ static int32_t addDevice(const uDeviceCfgUart_t *pCfgUart,
                                      pDeviceHandle);
                 if (errorCode == 0) {
                     // Set the timeout
-                    pContext->stopTimeMs = uPortGetTickTimeMs() +
-                                           (U_DEVICE_PRIVATE_CELL_POWER_ON_GUARD_TIME_SECONDS * 1000);
+                    pContext->timeoutStop.timeoutStart = uTimeoutStart();
+                    pContext->timeoutStop.durationMs = U_DEVICE_PRIVATE_CELL_POWER_ON_GUARD_TIME_SECONDS * 1000;
                     // Remember the PWR_ON pin 'cos we need it during power down
                     pContext->pinPwrOn = pCfgCell->pinPwrOn;
                     // Hook our context data off the device handle

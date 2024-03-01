@@ -72,6 +72,7 @@
 #include <u_wifi_module_type.h>
 
 // Other common APIs
+#include <u_timeout.h>
 #include <u_device_handle.h>
 #include <u_device.h>
 #include <u_device_serial.h>

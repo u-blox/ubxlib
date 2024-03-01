@@ -42,6 +42,7 @@
 #include "u_port_debug.h"
 #include "u_cfg_os_platform_specific.h"
 
+#include "u_timeout.h"
 #include "u_at_client.h"
 #include "u_short_range_module_type.h"
 #include "u_short_range.h"

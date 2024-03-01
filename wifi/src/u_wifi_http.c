@@ -51,6 +51,8 @@
 #include "u_port_debug.h"
 #include "u_port_event_queue.h"
 
+#include "u_timeout.h"
+
 #include "u_at_client.h"
 
 #include "u_sock.h"

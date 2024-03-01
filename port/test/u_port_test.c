@@ -38,6 +38,7 @@
 #include "string.h"    // strlen() and strcmp()
 #include "stdio.h"     // snprintf()
 #include "time.h"      // time_t and struct tm
+
 #include "u_compiler.h"
 
 #include "u_cfg_sw.h"
@@ -69,6 +70,8 @@
 #endif
 #include "u_port_event_queue.h"
 #include "u_error_common.h"
+
+#include "u_timeout.h"
 
 #include "u_assert.h"
 
@@ -1511,7 +1514,7 @@ U_PORT_TEST_FUNCTION("[port]", "portOs")
     U_PORT_TEST_ASSERT(errorCode == 0);
     U_PORT_TEST_ASSERT(gTaskHandle != NULL);
 
-    U_TEST_PRINT_LINE("time now %d ms.", (int32_t) uPortGetTickTimeMs());
+    U_TEST_PRINT_LINE("time now %d ms.", uPortGetTickTimeMs());
     uPortTaskBlock(200);
     U_TEST_PRINT_LINE("unlocking mutex, allowing task to execute.");
     U_PORT_TEST_ASSERT(uPortMutexUnlock(gMutexHandle) == 0);;
@@ -1602,7 +1605,7 @@ U_PORT_TEST_FUNCTION("[port]", "portOs")
 
     timeNowMs = uPortGetTickTimeMs() - startTimeMs;
     U_TEST_PRINT_LINE("according to uPortGetTickTimeMs()"
-                      " the test took %d ms.", (int32_t) timeNowMs);
+                      " the test took %d ms.", timeNowMs);
 #ifdef U_PORT_TEST_CHECK_TIME_TAKEN
     U_PORT_TEST_ASSERT((timeNowMs > 0) &&
                        (timeNowMs < U_PORT_TEST_OS_GUARD_DURATION_MS));
@@ -1792,7 +1795,7 @@ U_PORT_TEST_FUNCTION("[port]", "portOsSemaphore")
 
     timeNowMs = uPortGetTickTimeMs() - startTimeTestMs;
     U_TEST_PRINT_LINE("according to uPortGetTickTimeMs() the test took %d ms.",
-                      (int32_t) timeNowMs);
+                      timeNowMs);
 #ifdef U_PORT_TEST_CHECK_TIME_TAKEN
     U_PORT_TEST_ASSERT((timeNowMs > 0) &&
                        (timeNowMs < U_PORT_TEST_OS_GUARD_DURATION_MS));
@@ -1842,8 +1845,7 @@ U_PORT_TEST_FUNCTION("[port]", "portOsExtended")
     uPortTaskBlock(U_PORT_TEST_OS_BLOCK_TIME_MS);
     timeDelta = uPortGetTickTimeMs() - timeNowMs;
     U_TEST_PRINT_LINE("uPortTaskBlock(%d) blocked for %d ms.",
-                      U_PORT_TEST_OS_BLOCK_TIME_MS,
-                      (int32_t) (timeDelta));
+                      U_PORT_TEST_OS_BLOCK_TIME_MS, timeDelta);
     U_PORT_TEST_ASSERT((timeDelta >= U_PORT_TEST_OS_BLOCK_TIME_MS -
                         U_PORT_TEST_OS_BLOCK_TIME_TOLERANCE_MS) &&
                        (timeDelta <= U_PORT_TEST_OS_BLOCK_TIME_MS +
@@ -1872,8 +1874,7 @@ U_PORT_TEST_FUNCTION("[port]", "portOsExtended")
     uPortTaskBlock(U_PORT_TEST_OS_BLOCK_TIME_MS);
     timeDelta = uPortGetTickTimeMs() - timeNowMs;
     U_TEST_PRINT_LINE("uPortTaskBlock(%d) blocked for %d ms.",
-                      U_PORT_TEST_OS_BLOCK_TIME_MS,
-                      (int32_t) (timeDelta));
+                      U_PORT_TEST_OS_BLOCK_TIME_MS, timeDelta);
     U_PORT_TEST_ASSERT((timeDelta >= U_PORT_TEST_OS_BLOCK_TIME_MS -
                         U_PORT_TEST_OS_BLOCK_TIME_TOLERANCE_MS) &&
                        (timeDelta <= U_PORT_TEST_OS_BLOCK_TIME_MS +
@@ -1887,8 +1888,7 @@ U_PORT_TEST_FUNCTION("[port]", "portOsExtended")
     uPortTaskBlock(U_PORT_TEST_OS_BLOCK_TIME_MS);
     timeDelta = uPortGetTickTimeMs() - timeNowMs;
     U_TEST_PRINT_LINE("uPortTaskBlock(%d) blocked for %d ms.",
-                      U_PORT_TEST_OS_BLOCK_TIME_MS,
-                      (int32_t) (timeDelta));
+                      U_PORT_TEST_OS_BLOCK_TIME_MS, timeDelta);
     U_PORT_TEST_ASSERT((timeDelta >= U_PORT_TEST_OS_BLOCK_TIME_MS -
                         U_PORT_TEST_OS_BLOCK_TIME_TOLERANCE_MS) &&
                        (timeDelta <= U_PORT_TEST_OS_BLOCK_TIME_MS +
@@ -3043,7 +3043,7 @@ U_PORT_TEST_FUNCTION("[port]", "portTimers")
 {
     int32_t resourceCount;
     int32_t y;
-    int64_t startTime;
+    uTimeoutStart_t timeoutStart;
 
     // Whatever called us likely initialised the
     // port so deinitialise it here to obtain the
@@ -3102,9 +3102,9 @@ U_PORT_TEST_FUNCTION("[port]", "portTimers")
         // one-shot timer expires
         // Note: this test deliberately allows for slop in the actual timer
         // values however their relative values should still be correct
-        startTime = uPortGetTickTimeMs();
+        timeoutStart = uTimeoutStart();
         while ((gTimerParameterValue[2] == 0) &&
-               (uPortGetTickTimeMs() - startTime < 10000)) {
+               !uTimeoutExpiredSeconds(timeoutStart, 10)) {
             uPortTaskBlock(100);
         }
         U_PORT_TEST_ASSERT((gTimerParameterValue[2] == 1) && (gTimerParameterValue[3] == 3));
@@ -3120,9 +3120,9 @@ U_PORT_TEST_FUNCTION("[port]", "portTimers")
         U_PORT_TEST_ASSERT(uPortTimerStart(gTimerHandle[3]) == 0);
         U_PORT_TEST_ASSERT(uPortTimerStart(gTimerHandle[3]) == 0);
         // Wait for the periodic timer to expire one more time
-        startTime = uPortGetTickTimeMs();
+        timeoutStart = uTimeoutStart();
         while ((gTimerParameterValue[3] < 4) &&
-               (uPortGetTickTimeMs() - startTime < 5000)) {
+               !uTimeoutExpiredSeconds(timeoutStart, 5)) {
             uPortTaskBlock(100);
         }
         U_PORT_TEST_ASSERT(gTimerParameterValue[3] == 4);
@@ -3174,7 +3174,7 @@ U_PORT_TEST_FUNCTION("[port]", "portCriticalSection")
     int32_t errorCode;
     int32_t resourceCount;
     uint32_t y;
-    int32_t startTimeMs;
+    uTimeoutStart_t timeoutStart;
     int32_t errorFlag = 0x00;
 
     // Whatever called us likely initialised the
@@ -3210,8 +3210,8 @@ U_PORT_TEST_FUNCTION("[port]", "portCriticalSection")
     U_PORT_TEST_ASSERT(gVariable > 0);
 
     // Start the critical section
-    startTimeMs = uPortGetTickTimeMs();
-    (void)startTimeMs; // Suppress value not being read (it is for Windows)
+    timeoutStart = uTimeoutStart();
+    (void) timeoutStart; // Suppress value not being read (it is for Windows)
     errorCode = uPortEnterCritical();
     // Note: don't assert inside here as we don't want to leave this test
     // with the critical section active, instead just set errorFlag to indicate
@@ -3231,8 +3231,8 @@ U_PORT_TEST_FUNCTION("[port]", "portCriticalSection")
         // long time to _prove_ that the critical section has worked
         //lint -e{441, 550} Suppress loop variable not used in 2nd part of for()
         for (size_t x = 0; (gVariable == y) &&
-             (uPortGetTickTimeMs() - startTimeMs <
-              U_PORT_TEST_CRITICAL_SECTION_TEST_WAIT_TIME_MS); x++) {
+             !uTimeoutExpiredMs(timeoutStart,
+                                U_PORT_TEST_CRITICAL_SECTION_TEST_WAIT_TIME_MS); x++) {
             uPortTaskBlock(100);
         }
 #endif
@@ -3248,11 +3248,11 @@ U_PORT_TEST_FUNCTION("[port]", "portCriticalSection")
         U_PORT_TEST_ASSERT(errorFlag == 0);
 
         // gVariable should start changing again
-        startTimeMs = uPortGetTickTimeMs();
+        timeoutStart = uTimeoutStart();
         //lint -e{441, 550} Suppress loop variable not used in 2nd part of for()
         for (size_t x = 0; (gVariable == y) &&
-             (uPortGetTickTimeMs() - startTimeMs <
-              U_PORT_TEST_CRITICAL_SECTION_TEST_WAIT_TIME_MS); x++) {
+             !uTimeoutExpiredMs(timeoutStart,
+                                U_PORT_TEST_CRITICAL_SECTION_TEST_WAIT_TIME_MS); x++) {
             uPortTaskBlock(10);
         }
         U_PORT_TEST_ASSERT(gVariable != y);

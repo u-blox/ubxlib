@@ -54,6 +54,8 @@
 
 #include "u_error_common.h"
 
+#include "u_timeout.h"
+
 #include "u_linked_list.h"
 
 #include "u_port_debug.h"
@@ -839,7 +841,7 @@ int32_t uPortUartEventTrySend(int32_t handle, uint32_t eventBitMap,
     uErrorCode_t errorCode = U_ERROR_COMMON_NOT_INITIALISED;
     uPortUartData_t *pUartData;
     uPortUartEvent_t event;
-    int64_t startTime = uPortGetTickTimeMs();
+    uTimeoutStart_t timeoutStart = uTimeoutStart();
 
     if (gMutex != NULL) {
 
@@ -858,7 +860,7 @@ int32_t uPortUartEventTrySend(int32_t handle, uint32_t eventBitMap,
                                                    &event, sizeof(event));
                 uPortTaskBlock(U_CFG_OS_YIELD_MS);
             } while ((errorCode != 0) &&
-                     (uPortGetTickTimeMs() - startTime < delayMs));
+                     !uTimeoutExpiredMs(timeoutStart, delayMs));
         }
 
         U_PORT_MUTEX_UNLOCK(gMutex);

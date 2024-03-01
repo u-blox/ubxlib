@@ -49,6 +49,8 @@
 #include "u_port_os.h"
 #include "u_port_uart.h"
 
+#include "u_timeout.h"
+
 #include "u_at_client.h"
 
 #include "u_device_shared.h"

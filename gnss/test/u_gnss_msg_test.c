@@ -48,6 +48,8 @@
 
 #include "u_error_common.h"
 
+#include "u_timeout.h"
+
 #include "u_at_client.h" // Required by u_gnss_private.h
 
 #include "u_port_clib_platform_specific.h" /* Integer stdio, must be included
@@ -167,7 +169,7 @@ typedef struct {
 
 /** Used for keepGoingCallback() timeout.
  */
-static int32_t gStopTimeMs;
+static uTimeoutStop_t gTimeoutStop;
 
 /** Handles.
  */
@@ -198,7 +200,8 @@ static bool keepGoingCallback(uDeviceHandle_t gnssHandle)
         gCallbackErrorCode = 1;
     }
 
-    if (uPortGetTickTimeMs() > gStopTimeMs) {
+    if (uTimeoutExpiredMs(gTimeoutStop.timeoutStart,
+                          gTimeoutStop.durationMs)) {
         keepGoing = false;
     }
 
@@ -414,7 +417,8 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveBlocking")
             U_TEST_PRINT_LINE("receiving response without message filter and with auto-buffer.");
             messageId.type = U_GNSS_PROTOCOL_UBX;
             messageId.id.ubx = U_GNSS_UBX_MESSAGE(U_GNSS_UBX_MESSAGE_CLASS_ALL, U_GNSS_UBX_MESSAGE_ID_ALL);
-            gStopTimeMs = uPortGetTickTimeMs() + U_GNSS_MSG_TEST_MESSAGE_RECEIVE_TIMEOUT_MS;
+            gTimeoutStop.timeoutStart = uTimeoutStart();
+            gTimeoutStop.durationMs = U_GNSS_MSG_TEST_MESSAGE_RECEIVE_TIMEOUT_MS;
             pBuffer3 = NULL;
             gCallbackErrorCode = 0;
             x = uGnssMsgReceive(gnssHandle, &messageId, &pBuffer3, 0,
