@@ -22,8 +22,10 @@
 
 /** @file
  * @brief Test for the u-blox TLS security API: these should pass on all
- * platforms.
+ * platforms that support transport security.
  */
+
+#ifndef U_CFG_TEST_TRANSPORT_SECURITY_DISABLE
 
 #ifdef U_CFG_OVERRIDE
 # include "u_cfg_override.h" // For a customer's configuration override
@@ -694,5 +696,7 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsCleanUp")
     // Printed for information: asserting happens in the postamble
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
 }
+
+#endif // #ifndef U_CFG_TEST_TRANSPORT_SECURITY_DISABLE
 
 // End of file

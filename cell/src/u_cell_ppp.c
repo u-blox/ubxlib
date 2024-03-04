@@ -312,6 +312,9 @@ static void closePpp(uCellPrivateInstance_t *pInstance,
                 // and it was us who started it
                 uCellMuxPrivateDisable(pInstance);
             }
+            // Some modules (e.g. SARA-U201) need a little rest just here
+            // or the next AT command may stall
+            uPortTaskBlock(250);
             // Re-enable UART sleep if we had switched it off
             if (pContext->uartSleepWakeOnDataWasEnabled) {
                 uCellPwrPrivateEnableUartSleep(pInstance);

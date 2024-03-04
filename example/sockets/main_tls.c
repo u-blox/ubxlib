@@ -82,7 +82,7 @@
 // for the module is likely different to that of the MCU: check
 // the data sheet for the module to determine the mapping.
 
-#ifdef U_CFG_TEST_CELL_MODULE_TYPE
+#if defined(U_CFG_TEST_CELL_MODULE_TYPE) && !defined(U_CFG_TEST_TRANSPORT_SECURITY_DISABLE)
 // DEVICE i.e. module/chip configuration: in this case a cellular
 // module connected via UART
 static const uDeviceCfg_t gDeviceCfg = {
@@ -422,7 +422,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSocketsTls")
 
     uPortLog("Done.\n");
 
-#ifdef U_CFG_TEST_CELL_MODULE_TYPE
+#if defined(U_CFG_TEST_CELL_MODULE_TYPE) && !defined(U_CFG_TEST_TRANSPORT_SECURITY_DISABLE)
     // For u-blox internal testing only
     EXAMPLE_FINAL_STATE((txSize == 0) && (rxSize == sizeof(message)));
 #endif

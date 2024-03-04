@@ -1,7 +1,7 @@
 # Module FW Versions
 The module FW versions that these tests are run on are as follows:
 
-- SARA-U201: none - no automated testing is performed on SARA-U201.
+- SARA-U201: 23.60,A01.06.
 - SARA-R410M-02B: M0.11.01,A.02.17.
 - SARA-R410M-03B: none - no automated testing is performed on SARA-R410M-03B.
 - SARA-R412M-02B: M0.11.01,A.02.17.

@@ -770,6 +770,9 @@ uCellNetStatus_t uCellNetGetNetworkStatus(uDeviceHandle_t cellHandle,
  * service then this function will likely return the reason for
  * that denial (e.g. 11 for "PLMN not allowed"), rather than zero.
  *
+ * Note: SARA-U201 always returns error 148, "SM activation error",
+ * even after a connection has succeeded.
+ *
  * @param cellHandle  the handle of the cellular instance.
  * @return            on success the last EMM cause from the network,
  *                    see appendix A.3 of the AT commands manual,

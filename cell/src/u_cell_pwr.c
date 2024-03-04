@@ -1063,12 +1063,15 @@ static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance,
                                        UUPSMR_urc, pInstance);
             }
         }
-        // Update the sleep parameters; note that we ask for the
-        // requested 3GPP power saving state here, rather than the
-        // assigned, since it might not be assigned by the network
-        // at this point but can come along later
-        uCellPwrPrivateGet3gppPowerSaving(pInstance, false, NULL, NULL, NULL);
-        uCellPrivateSetDeepSleepState(pInstance);
+        if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                               U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING)) {
+            // Update the sleep parameters; note that we ask for the
+            // requested 3GPP power saving state here, rather than the
+            // assigned, since it might not be assigned by the network
+            // at this point but can come along later
+            uCellPwrPrivateGet3gppPowerSaving(pInstance, false, NULL, NULL, NULL);
+            uCellPrivateSetDeepSleepState(pInstance);
+        }
         if (success &&
             U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType)) {
             // For SARA-R4, whether the E-DRX URC is on or not does not

@@ -148,6 +148,11 @@
  * with a cellular module.
  */
 #  define U_CFG_APP_CELL_UART       6
+# elif defined(CONFIG_BOARD_NUCLEO_U575ZI_Q)
+/** UART HW block to use inside STM32U575ZI when communicating
+ * with a cellular module.
+ */
+#  define U_CFG_APP_CELL_UART       2
 # else
 /** The UARTE HW block to use inside the NRF52 chip or on Linux
  * when communicating with a cellular module.

@@ -1,5 +1,31 @@
 / { // This portion in the "root" of the device tree
 
+    // The UARTs on this board exposed through the default
+    // .dts file are called USARTs (i.e. with an S inserted),
+    // and LPUARTs, hence we need to use aliases in order
+    // for ubxlib to be able to find them as UARTs
+    aliases {
+        ubxlib-uart2 = &usart2; // For cellular module
+        // Don't need an alias for USART3 as that's the console
+        // and ubxlib doesn't need to open it
+    };
+
+    cfg-device-cellular {
+        compatible = "u-blox,ubxlib-device-cellular";
+        status = "okay";
+        transport-type = "uart2";
+        // Note: allow the cellular module type to be determined automatically
+        pin-pwr-on = <0x5e>;  // Arduino header pin D4, or pin F14 in STM32 port numbering
+        network = <&label_cfg_network_cellular>;
+    };
+
+    label_cfg_network_cellular: cfg-network-cellular {
+        compatible = "u-blox,ubxlib-network-cellular";
+        status = "okay";
+        apn = "iot.1nce.net";
+        timeout-seconds = <240>;
+    };
+
     // A GNSS device connected to I2C1
     cfg-device-gnss {
         compatible = "u-blox,ubxlib-device-gnss";
@@ -36,12 +62,18 @@
 // Guidance from table 136 of reference manual
 // RM0456 and
 // https://github.com/zephyrproject-rtos/zephyr/blob/main/dts/bindings/dma/st%2Cstm32u5-dma.yaml
-// Also, make console logging use DMA for speed
-&usart3 {
-    dmas = <&gpdma1 0 29 STM32_DMA_PERIPH_TX
-            &gpdma1 1 28 STM32_DMA_PERIPH_RX>;
+&usart2 {
+    dmas = <&gpdma1 0 27 STM32_DMA_PERIPH_TX
+            &gpdma1 1 26 STM32_DMA_PERIPH_RX>;
     dma-names = "tx", "rx";
 };
 &gpdma1 {
     status = "okay";
+};
+
+// Also make console logging use DMA for speed
+&usart3 {
+    dmas = <&gpdma1 0 29 STM32_DMA_PERIPH_TX
+            &gpdma1 1 28 STM32_DMA_PERIPH_RX>;
+    dma-names = "tx", "rx";
 };

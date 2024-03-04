@@ -113,12 +113,11 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CTS_CONTROL)                   |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SOCK_SET_LOCAL_PORT)           |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UART_POWER_SAVING)             |
-         // CMUX is supported here but we do not test it hence it is not marked as supported
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CMUX)                          |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UCGED)                         |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_AUTHENTICATION_MODE_AUTOMATIC) |
-         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_HTTP) /* features */
-         // PPP is supported by the module but we do not test its integration with
-         // ubxlib and hence it is not marked as supported
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_HTTP)                          |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_PPP) /* features */
         ),
         6, /* Default CMUX channel for GNSS */
         15 /* AT+CFUN reboot command */

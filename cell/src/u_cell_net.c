@@ -875,9 +875,9 @@ static int32_t setAutomaticMode(const uCellPrivateInstance_t *pInstance)
         // has actually accepted the command,
         // despite what it says
         uAtClientLock(atHandle);
-        uAtClientTimeoutSet(atHandle, 1000);
         uAtClientCommandStart(atHandle, "AT+COPS=0");
         uAtClientCommandStop(atHandle);
+        uAtClientTimeoutSet(atHandle, 1000);
         x = -1;
         while ((x != 0) && keepGoingLocalCb(pInstance) &&
                (deviceError.type ==
@@ -935,7 +935,7 @@ static int32_t storeNextScanItem(uCellPrivateInstance_t *pInstance,
     // (<stat>,<long_name>,<short_name>,<numeric>[,<AcT>]
     // However, there can be gunk on the end of the AT+COPS=?
     // response string, for instance the "test" response:
-    // ,(0-6),(0-2)
+    // ,,(0-6),(0-2)
     // ...may appear there, so check for errors;
     // the <stat> and <numeric> fields must be present, the
     // rest could be absent or zero length strings.
@@ -2968,10 +2968,10 @@ int32_t uCellNetScanGetFirst(uDeviceHandle_t cellHandle,
                 // "test" response to the AT+COPS=? command,
                 // i.e.: +COPS: ,,(0-6),(0-2)
                 // If we get the "test" response instead
-                // readBytes will be 12 whereas for the
+                // readBytes will be 13 whereas for the
                 // intended response of:
                 // (<stat>,<long_name>,<short_name>,<numeric>[,<AcT>])
-                // it will be at longer than that hence we set
+                // it will be longer than that hence we set
                 // a threshold for readBytes of > 12 characters.
                 pInstance->startTimeMs = uPortGetTickTimeMs();
                 for (size_t x = U_CELL_NET_SCAN_RETRIES + 1;
@@ -3026,7 +3026,7 @@ int32_t uCellNetScanGetFirst(uDeviceHandle_t cellHandle,
                         // "test" response or a device error
                         gotAnswer = true;
                     }
-                    if (bytesRead > 12) {
+                    if (bytesRead > 13) {
                         // Got a real answer: process it in
                         // chunks delimited by ")"
                         for (pStr = strtok_r(pBuffer, ")", &pSaved);

@@ -481,7 +481,7 @@ static int32_t getRatRankSaraU2(uCellPrivateInstance_t *pInstance,
         errorCodeOrRank = (int32_t) U_CELL_ERROR_NOT_FOUND;
         // If the first mode is 1, dual mode, then there MUST be a second
         // number which indicates the preference
-        // If the RAT being asked for is 2G or 3G then if it in this
+        // If the RAT being asked for is 2G or 3G then if it is in this
         // second number it is at rank 0, else it must by implication
         // be at rank 1
         if ((rat == U_CELL_NET_RAT_GSM_GPRS_EGPRS) || (rat == U_CELL_NET_RAT_UTRAN)) {
@@ -583,30 +583,47 @@ static int32_t setRatRankSaraU2(uCellPrivateInstance_t *pInstance,
         if ((modes[0] >= 0) && (modes[1] >= 0)) {
             // ...and we already have dual mode...
             if (rank == 0) {
-                // ...and we are setting the first rank,
-                // then set the preference in the second number
-                modes[1] = cellRatToModuleRat(pInstance->pModule->moduleType, rat);
-                validOperation = true;
+                // ...and we are setting the top rank...
+                if (rat != uCellPrivateModuleRatToCellRat(pInstance->pModule->moduleType, modes[1])) {
+                    // ...then if we are setting the RAT to the
+                    // same as the current dual-mode non-preferred
+                    // RAT, switch to single-mode and that RAT.
+                    modes[0] = cellRatToModuleRat(pInstance->pModule->moduleType, rat);
+                    modes[1] = -1;
+                    validOperation = true;
+                } else {
+                    // ...else leave things as they are.
+                    validOperation = true;
+                }
             } else if (rank == 1) {
-                // ...otherwise if we are setting the second
-                // rank then we want to set the OPPOSITE of
-                // the desired RAT in the second number.
-                // In other words, to put 2G at rank 1, we
-                // need to set 3G as our preferred RAT.
-                if (rat == U_CELL_NET_RAT_GSM_GPRS_EGPRS) {
-                    modes[1] = cellRatToModuleRat(pInstance->pModule->moduleType,
-                                                  U_CELL_NET_RAT_UTRAN);
+                // ...and we are setting the second rank...
+                if (rat == uCellPrivateModuleRatToCellRat(pInstance->pModule->moduleType, modes[1])) {
+                    // ...and the RAT we are setting is also the first rank,
+                    // then switch to single mode with that RAT.
+                    modes[0] = cellRatToModuleRat(pInstance->pModule->moduleType, rat);
+                    modes[1] = -1;
                     validOperation = true;
-                } else if (rat == U_CELL_NET_RAT_UTRAN) {
-                    modes[1] = cellRatToModuleRat(pInstance->pModule->moduleType,
-                                                  U_CELL_NET_RAT_GSM_GPRS_EGPRS);
-                    validOperation = true;
+                } else {
+                    // ...otherwise if we are setting the second
+                    // rank then we want to set the OPPOSITE of
+                    // the desired RAT in the preferred RAT position.
+                    // In other words, to put 2G in second rank, we
+                    // need to set 3G as our preferred RAT.
+                    if (rat == U_CELL_NET_RAT_GSM_GPRS_EGPRS) {
+                        modes[1] = cellRatToModuleRat(pInstance->pModule->moduleType,
+                                                      U_CELL_NET_RAT_UTRAN);
+                        validOperation = true;
+                    } else if (rat == U_CELL_NET_RAT_UTRAN) {
+                        modes[1] = cellRatToModuleRat(pInstance->pModule->moduleType,
+                                                      U_CELL_NET_RAT_GSM_GPRS_EGPRS);
+                        validOperation = true;
+                    }
                 }
             }
         } else if ((modes[0] >= 0) && (modes[1] < 0)) {
             // ...and we are in single mode...
             if (rank == 0) {
-                // ...then if we are setting rank 0 just set it
+                // ...then if we are setting rank 0 just set it.
                 modes[0] = cellRatToModuleRat(pInstance->pModule->moduleType, rat);
                 validOperation = true;
             } else if (rank == 1) {
@@ -628,7 +645,7 @@ static int32_t setRatRankSaraU2(uCellPrivateInstance_t *pInstance,
                         validOperation = true;
                     }
                 } else {
-                    // ...else leave things as they are
+                    // ...else leave things as they are.
                     validOperation = true;
                 }
             }
@@ -642,7 +659,7 @@ static int32_t setRatRankSaraU2(uCellPrivateInstance_t *pInstance,
                 // If are removing the top-most rank
                 // then we set the single mode to be
                 // the opposite of the currently
-                // preferred RAT
+                // preferred RAT.
                 if (uCellPrivateModuleRatToCellRat(pInstance->pModule->moduleType, modes[1]) ==
                     U_CELL_NET_RAT_GSM_GPRS_EGPRS) {
                     modes[0] = cellRatToModuleRat(pInstance->pModule->moduleType,

@@ -378,17 +378,17 @@ int32_t uCellCfgGetUdconf(uDeviceHandle_t cellHandle, int32_t param1,
  *
  *  @param cellHandle    the handle of the cellular instance.
  *  @param fsRestoreType the file system factory restore type. Valid options
- *                       are 0, 1 and 2.
- *                       0: no factory restore.
- *                       1: Check datasheet, if this option is
- *                          supported by your module.
+ *                       are 0, 1 and 2:
+ *                       0: no factory restore,
+ *                       1: check AT interface manual to see if this
+ *                          option is supported by your module,
  *                       2: all files stored in FS deleted.
  * @param nvmRestoreType the file system factory restore type. Valid options
- *                       are 0, 1 and 2.
- *                       0: no factory restore.
- *                       1: NVM flash sectors erased.
- *                       2: Check datasheet, if this option is
- *                          supported by your module.
+ *                       are 0, 1 and 2:
+ *                       0: no factory restore,
+ *                       1: NVM flash sectors erased,
+ *                       2: check AT interface manual to see if this
+ *                          option is supported by your module.
  * @return               zero on success or negative error code on
  *                       failure.
  */
@@ -406,6 +406,9 @@ int32_t uCellCfgFactoryReset(uDeviceHandle_t cellHandle, int32_t fsRestoreType,
  * with a call to uCellCfgSetAutoBaudOff() in the case of SARA-R5
  * and SARA-U201.
  *
+ * Note: DTR must be low in order for a greeting message to be
+ * emitted.
+ *
  * @param cellHandle   the handle of the cellular instance.
  * @param[in] pStr     the null-terminated greeting message; use NULL
  *                     to remove an existing greeting message.
@@ -422,6 +425,9 @@ int32_t uCellCfgSetGreeting(uDeviceHandle_t cellHandle, const char *pStr);
  * Note: if DTR is being used to control power saving (i.e. a DTR
  * pin has been set using uCellPwrSetDtrPowerSavingPin()) then the
  * greeting message is NOT emitted by the module at a reboot.
+ *
+ * Note: DTR must be low in order for a greeting message to be
+ * emitted.
  *
  * Obviously for this to be useful it is important that the greeting
  * message is unique; you may consider using #U_CELL_CFG_GREETING.

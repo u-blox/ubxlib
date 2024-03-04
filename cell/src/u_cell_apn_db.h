@@ -42,6 +42,12 @@ extern "C" {
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+#ifndef U_CELL_CFG_APN_DEFAULT
+/** A default APN to be applied when none is specified.
+ */
+# define U_CELL_CFG_APN_DEFAULT internet
+#endif
+
 /** Helper to generate the APN string.
  */
 //lint -emacro((786), _APN) Suppress use of null
@@ -71,7 +77,7 @@ typedef struct {
 
 /** Default APN settings used by many networks.
  */
-static const char *const pApnDefault = _APN("internet",,);
+static const char *const pApnDefault = _APN(U_PORT_STRINGIFY_QUOTED(U_CELL_CFG_APN_DEFAULT),,);
 
 /** List of special APNs for different network operators.
  *
