@@ -2,7 +2,7 @@
     "name": "ubxlib",
     "description": "Portable C libraries which provide APIs to build applications with u-blox products and services. Delivered as add-on to existing microcontroller and RTOS SDKs.",
     "keywords": "u-blox, ubxlib",
-    "version": "1.3.1",
+    "version": "1.4",
     "repository": {
         "type": "git",
         "url": "https://github.com/u-blox/ubxlib.git"
