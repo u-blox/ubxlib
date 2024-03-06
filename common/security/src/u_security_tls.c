@@ -174,76 +174,81 @@ uSecurityTlsContext_t *pUSecurityTlsAdd(uDeviceHandle_t devHandle,
                     }
                 }
             } else if (devType == (int32_t) U_DEVICE_TYPE_CELL) {
-                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-                // Allocate a cellular security context with
-                // default settings
-                pNetworkSpecific = (void *) pUCellSecSecTlsAdd(devHandle);
-                if (pNetworkSpecific == NULL) {
-                    errorCode = uCellSecTlsResetLastError();
-                } else {
-                    if (pSettings != NULL) {
-                        // Looks like some specific settings have been
-                        // requested: set them
-                        if (pSettings->tlsVersionMin != U_SECURITY_TLS_VERSION_ANY) {
-                            // Set the TLS version (encoding is the
-                            // same in cellular)
-                            errorCode = uCellSecTlsVersionSet((uCellSecTlsContext_t *) pNetworkSpecific,
-                                                              (int32_t) pSettings->tlsVersionMin);
-                        }
-                        if ((errorCode == 0) &&
-                            (pSettings->pRootCaCertificateName != NULL)) {
-                            // Set the root CA certificate name
-                            errorCode = uCellSecTlsRootCaCertificateNameSet((uCellSecTlsContext_t *) pNetworkSpecific,
-                                                                            pSettings->pRootCaCertificateName);
-                        }
-                        if ((errorCode == 0) &&
-                            (pSettings->pClientCertificateName != NULL)) {
-                            // Set the client certificate name
-                            errorCode = uCellSecTlsClientCertificateNameSet((uCellSecTlsContext_t *) pNetworkSpecific,
-                                                                            pSettings->pClientCertificateName);
-                        }
-                        if ((errorCode == 0) &&
-                            (pSettings->pClientPrivateKeyName != NULL)) {
-                            // Set the client private key name
-                            errorCode = uCellSecTlsClientPrivateKeyNameSet((uCellSecTlsContext_t *) pNetworkSpecific,
-                                                                           pSettings->pClientPrivateKeyName,
-                                                                           pSettings->pClientPrivateKeyPassword);
-                        }
-                        if ((errorCode == 0) &&
-                            (pSettings->cipherSuites.num > 0)) {
-                            // Set the cipher suites
-                            for (size_t x = 0; (x < pSettings->cipherSuites.num) &&
-                                 (errorCode == 0); x++) {
-                                errorCode = uCellSecTlsCipherSuiteAdd((uCellSecTlsContext_t *) pNetworkSpecific,
-                                                                      (int32_t) pSettings->cipherSuites.suite[x]);
+                errorCode = (int32_t) U_ERROR_COMMON_TOO_BIG;
+                if ((pSettings == NULL) ||
+                    (pSettings->cipherSuites.num <= 1) ||
+                    uCellSecTlsCipherSuiteMoreThanOne(devHandle)) {
+                    errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                    // Allocate a cellular security context with
+                    // default settings
+                    pNetworkSpecific = (void *) pUCellSecSecTlsAdd(devHandle);
+                    if (pNetworkSpecific == NULL) {
+                        errorCode = uCellSecTlsResetLastError();
+                    } else {
+                        if (pSettings != NULL) {
+                            // Looks like some specific settings have been
+                            // requested: set them
+                            if (pSettings->tlsVersionMin != U_SECURITY_TLS_VERSION_ANY) {
+                                // Set the TLS version (encoding is the
+                                // same in cellular)
+                                errorCode = uCellSecTlsVersionSet((uCellSecTlsContext_t *) pNetworkSpecific,
+                                                                  (int32_t) pSettings->tlsVersionMin);
                             }
-                        }
-                        if ((errorCode == 0) &&
-                            (((pSettings->psk.pBin != NULL) && (pSettings->psk.size > 0) &&
-                              (pSettings->pskId.pBin != NULL) && (pSettings->pskId.size > 0)) ||
-                             pSettings->pskGeneratedByRoT)) {
-                            // Set the pre-shared key and accompanying ID
-                            errorCode = uCellSecTlsClientPskSet((uCellSecTlsContext_t *) pNetworkSpecific,
-                                                                pSettings->psk.pBin, pSettings->psk.size,
-                                                                pSettings->pskId.pBin, pSettings->pskId.size,
-                                                                pSettings->pskGeneratedByRoT);
-                        }
-                        if (errorCode == 0) {
-                            // Set the certificate checking
-                            errorCode = uCellSecTlsCertificateCheckSet((uCellSecTlsContext_t *) pNetworkSpecific,
-                                                                       (uCellSecTlsCertficateCheck_t) pSettings->certificateCheck,
-                                                                       pSettings->pExpectedServerUrl);
-                        }
-                        if ((errorCode == 0) && (pSettings->pSni != NULL)) {
-                            // Set the Server Name Indication string
-                            errorCode = uCellSecTlsSniSet((uCellSecTlsContext_t *) pNetworkSpecific,
-                                                          pSettings->pSni);
-                        }
-                        if ((errorCode == 0) && (pSettings->useDeviceCertificate)) {
-                            // Set that the device certificate from security sealing
-                            // should be used as the client certificate
-                            errorCode = uCellSecTlsUseDeviceCertificateSet((uCellSecTlsContext_t *) pNetworkSpecific,
-                                                                           pSettings->includeCaCertificates);
+                            if ((errorCode == 0) &&
+                                (pSettings->pRootCaCertificateName != NULL)) {
+                                // Set the root CA certificate name
+                                errorCode = uCellSecTlsRootCaCertificateNameSet((uCellSecTlsContext_t *) pNetworkSpecific,
+                                                                                pSettings->pRootCaCertificateName);
+                            }
+                            if ((errorCode == 0) &&
+                                (pSettings->pClientCertificateName != NULL)) {
+                                // Set the client certificate name
+                                errorCode = uCellSecTlsClientCertificateNameSet((uCellSecTlsContext_t *) pNetworkSpecific,
+                                                                                pSettings->pClientCertificateName);
+                            }
+                            if ((errorCode == 0) &&
+                                (pSettings->pClientPrivateKeyName != NULL)) {
+                                // Set the client private key name
+                                errorCode = uCellSecTlsClientPrivateKeyNameSet((uCellSecTlsContext_t *) pNetworkSpecific,
+                                                                               pSettings->pClientPrivateKeyName,
+                                                                               pSettings->pClientPrivateKeyPassword);
+                            }
+                            if ((errorCode == 0) &&
+                                (pSettings->cipherSuites.num > 0)) {
+                                // Set the cipher suites
+                                for (size_t x = 0; (x < pSettings->cipherSuites.num) &&
+                                     (errorCode == 0); x++) {
+                                    errorCode = uCellSecTlsCipherSuiteAdd((uCellSecTlsContext_t *) pNetworkSpecific,
+                                                                          (int32_t) pSettings->cipherSuites.suite[x]);
+                                }
+                            }
+                            if ((errorCode == 0) &&
+                                (((pSettings->psk.pBin != NULL) && (pSettings->psk.size > 0) &&
+                                  (pSettings->pskId.pBin != NULL) && (pSettings->pskId.size > 0)) ||
+                                 pSettings->pskGeneratedByRoT)) {
+                                // Set the pre-shared key and accompanying ID
+                                errorCode = uCellSecTlsClientPskSet((uCellSecTlsContext_t *) pNetworkSpecific,
+                                                                    pSettings->psk.pBin, pSettings->psk.size,
+                                                                    pSettings->pskId.pBin, pSettings->pskId.size,
+                                                                    pSettings->pskGeneratedByRoT);
+                            }
+                            if (errorCode == 0) {
+                                // Set the certificate checking
+                                errorCode = uCellSecTlsCertificateCheckSet((uCellSecTlsContext_t *) pNetworkSpecific,
+                                                                           (uCellSecTlsCertficateCheck_t) pSettings->certificateCheck,
+                                                                           pSettings->pExpectedServerUrl);
+                            }
+                            if ((errorCode == 0) && (pSettings->pSni != NULL)) {
+                                // Set the Server Name Indication string
+                                errorCode = uCellSecTlsSniSet((uCellSecTlsContext_t *) pNetworkSpecific,
+                                                              pSettings->pSni);
+                            }
+                            if ((errorCode == 0) && (pSettings->useDeviceCertificate)) {
+                                // Set that the device certificate from security sealing
+                                // should be used as the client certificate
+                                errorCode = uCellSecTlsUseDeviceCertificateSet((uCellSecTlsContext_t *) pNetworkSpecific,
+                                                                               pSettings->includeCaCertificates);
+                            }
                         }
                     }
                 }

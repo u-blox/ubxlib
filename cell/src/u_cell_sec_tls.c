@@ -974,6 +974,28 @@ void uCellSecTlsCipherSuiteListLast(uCellSecTlsContext_t *pContext)
     }
 }
 
+// Determine if the module supports more than one cipher suite.
+bool uCellSecTlsCipherSuiteMoreThanOne(uDeviceHandle_t cellHandle)
+{
+    bool moreThanOneCipherSuite = false;
+    const uCellPrivateModule_t *pModule;
+
+    if (gUCellPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        pModule = pUCellPrivateGetModule(cellHandle);
+        if (U_CELL_PRIVATE_HAS(pModule,
+                               U_CELL_PRIVATE_FEATURE_SECURITY_TLS_CIPHER_LIST)) {
+            moreThanOneCipherSuite = true;
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return moreThanOneCipherSuite;
+}
+
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS: MISC SETTINGS
  * -------------------------------------------------------------- */

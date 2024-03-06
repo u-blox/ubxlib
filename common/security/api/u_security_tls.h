@@ -282,7 +282,11 @@ typedef enum {
 typedef struct {
     size_t num; /**< the number of valid entries in the
                      cipherSuites array; set to 0 for
-                     automatic selection. */
+                     automatic selection.  If an attempt
+                     is made to select more than one cipher
+                     suite where this is not supported
+                     by the underlying module then
+                     #U_ERROR_COMMON_TOO_BIG will be returned. */
     uSecurityTlsCipherSuiteIana_t suite[U_SECURITY_TLS_MAX_NUM_CIPHER_SUITES];
 } uSecurityTlsCipherSuites_t;
 

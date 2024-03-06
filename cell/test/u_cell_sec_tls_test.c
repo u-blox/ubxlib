@@ -300,6 +300,7 @@ U_PORT_TEST_FUNCTION("[cellSecTls]", "cellSecTlsSettings")
 
     if (U_CELL_PRIVATE_HAS(pModule,
                            U_CELL_PRIVATE_FEATURE_SECURITY_TLS_CIPHER_LIST)) {
+        U_PORT_TEST_ASSERT(uCellSecTlsCipherSuiteMoreThanOne(cellHandle));
         // For modules which support a list of ciphers, add a cipher that we
         // know all cellular modules support
         U_PORT_TEST_ASSERT(uCellSecTlsCipherSuiteAdd(pContext,
@@ -355,6 +356,7 @@ U_PORT_TEST_FUNCTION("[cellSecTls]", "cellSecTlsSettings")
         }
         U_PORT_TEST_ASSERT(z == numCiphers);
     } else {
+        U_PORT_TEST_ASSERT(!uCellSecTlsCipherSuiteMoreThanOne(cellHandle));
         // Should still be able to add and remove one cipher
         U_PORT_TEST_ASSERT(uCellSecTlsCipherSuiteAdd(pContext,
                                                      U_CELL_SEC_TLS_TEST_CIPHER_1) == 0);

@@ -56,6 +56,12 @@ U_WEAK void uCellSecTlsRemove(uCellSecTlsContext_t *pContext)
     (void) pContext;
 }
 
+U_WEAK bool uCellSecTlsCipherSuiteMoreThanOne(uDeviceHandle_t cellHandle)
+{
+    (void) cellHandle;
+    return false;
+}
+
 U_WEAK int32_t uCellSecTlsResetLastError()
 {
     return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
