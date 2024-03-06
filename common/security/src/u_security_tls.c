@@ -175,6 +175,8 @@ uSecurityTlsContext_t *pUSecurityTlsAdd(uDeviceHandle_t devHandle,
                 }
             } else if (devType == (int32_t) U_DEVICE_TYPE_CELL) {
                 errorCode = (int32_t) U_ERROR_COMMON_TOO_BIG;
+                // Make sure that the number of cipher suites selected is
+                // supported by the cellular module we are using
                 if ((pSettings == NULL) ||
                     (pSettings->cipherSuites.num <= 1) ||
                     uCellSecTlsCipherSuiteMoreThanOne(devHandle)) {
