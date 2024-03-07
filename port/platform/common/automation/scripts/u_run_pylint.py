@@ -113,8 +113,8 @@ def run(ubxlib_dir, reporter):
                                     if rating < MIN_RATING:
                                         reporter.event(u_report.EVENT_TYPE_CHECK,
                                                        u_report.EVENT_ERROR,
-                                                       "rating {} < minimum ({})".  \
-                                                       format(rating, MIN_RATING))
+                                                       f"rating {rating} <"      \
+                                                       f" minimum ({MIN_RATING})")
                                         for line in text.splitlines():
                                             line = line.strip().decode()
                                             if line:
@@ -122,8 +122,8 @@ def run(ubxlib_dir, reporter):
                                 else:
                                     reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
                                                    u_report.EVENT_FAILED,
-                                                   "Pylint returned no rating for file \"{}\"". \
-                                                   format(py_file))
+                                                   "Pylint returned no rating for" \
+                                                   f" file \"{py_file}\"")
                                     U_LOG.info("Pylint returned no rating.")
                                     # No rating returned, flag an error
                                     return_value += 1
