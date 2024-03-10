@@ -23,7 +23,7 @@ set(CMAKE_BUILD_TYPE Debug)
 # The Posix implementations require these libraries
 set(UBXLIB_REQUIRED_LINK_LIBS -lm -lssl -lpthread -lrt -lgpiod)
 # Warnings are errors
-add_compile_options(-Wall -Werror -Wno-format-truncation -funsigned-char)
+add_compile_options(-Wall -Werror -Wno-format-truncation -Wno-stringop-truncation -funsigned-char)
 
 # Add any #defines specified by the environment variable U_FLAGS
 if (DEFINED ENV{U_FLAGS})
