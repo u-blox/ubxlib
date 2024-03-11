@@ -1400,7 +1400,7 @@ static void cmuxDecode(uCellMuxPrivateContext_t *pContext, uint32_t eventBitMap)
                                             parserContext.informationLengthBytes = bufferLength;
                                         }
 #ifdef U_CELL_MUX_ENABLE_DEBUG
-                                        uPortLog("U_CELL_CMUX_%d: writing %d byte(s) of decode I-field, buffer %d/%d.\n",
+                                        uPortLog("U_CELL_CMUX_%d: writing %d byte(s) of decoded I-field, buffer %d/%d.\n",
                                                  pChannelContext->channel,
                                                  parserContext.informationLengthBytes,
                                                  serialGetReceiveSizeInnards(pDeviceSerial),

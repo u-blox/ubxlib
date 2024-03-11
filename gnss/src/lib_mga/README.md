@@ -11,7 +11,7 @@ This directory contains a copy of the source code of `libMga`, a C library provi
 - `time()` becomes `uPortGetTickTimeMs()`,
 - `lock()` and `unlock()` use the `uPortMutexXxx()` API rather than native WIN32/Posix.
 - `timezone` becomes `uPortGetTimezoneOffsetSeconds()`, which will work on both Linux and Windows,
-- unused functions are `#if`'ed out, which also means that that the Linux/Windows-specific headers can be `if`'ed out.
+- unused functions are `#if`'ed out, which also means that the Linux/Windows-specific headers can be `if`'ed out.
 - renamed to match the `ubxlib` file naming convention and to namespace the files nicely.
 
 Search for "MODIFIED" in the source code to find all of the modifications.

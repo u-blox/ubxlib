@@ -698,7 +698,7 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveNonBlocking")
                 U_TEST_PRINT_LINE("%d byte(s) lost at the input to the ring-buffer during that test.", c);
                 U_TEST_PRINT_LINE("%d byte(s) lost by the asynchronous read task during that test.", d);
                 if (a != U_ERROR_COMMON_NOT_SUPPORTED) {
-                    U_TEST_PRINT_LINE("the minimum stack of the callback task  was %d.", a);
+                    U_TEST_PRINT_LINE("the minimum stack of the callback task was %d.", a);
                 }
                 U_TEST_PRINT_LINE("the callback error code was %d.", gCallbackErrorCode);
 

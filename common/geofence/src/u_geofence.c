@@ -462,11 +462,11 @@ static void reverseHaversine(double latitude, double longitude,
     }
 }
 
-// The intersection calculation here is derived from the equstion for
+// The intersection calculation here is derived from the equation for
 // the intersection of two great circles.  The original is "Intersection of
 // two paths" at https://www.movable-type.co.uk/scripts/latlong.html.
 // IMPORTANT: this function doesn't always behave (for narrow angles or
-// medirian/equatorial lines).  Should it detect that this is the case
+// meridian/equatorial lines).  Should it detect that this is the case
 // it will still give an answer but will also return false.
 // Implementation note: it would be possible, of course, to have
 // sub-functions to obtain bearing etc. but then it wouldn't be possible
