@@ -452,11 +452,23 @@ static void UUMQTTC_UUMQTTSNC_urc(uAtClientHandle_t atHandle,
             if (urcParam1 == 0) {
                 // Connected
                 pContext->connected = true;
+            } else {
+                if (pContext->connected && (pContext->pDisconnectCallback != NULL)) {
+                    uAtClientCallback(atHandle, disconnectCallback, (void *) pInstance);
+                }
+                pContext->keptAlive = false;
+                pContext->connected = false;
             }
         } else {
             if (urcParam1 == 1) {
                 // Connected
                 pContext->connected = true;
+            } else {
+                if (pContext->connected && (pContext->pDisconnectCallback != NULL)) {
+                    uAtClientCallback(atHandle, disconnectCallback, (void *) pInstance);
+                }
+                pContext->keptAlive = false;
+                pContext->connected = false;
             }
         }
         pUrcStatus->flagsBitmap |= 1 << U_CELL_MQTT_URC_FLAG_CONNECT_UPDATED;
