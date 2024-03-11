@@ -323,8 +323,11 @@ U_PORT_TEST_FUNCTION("[example]", "exampleMqttClient")
                     // uMqttClientSnSubscribeNormalTopic() instead and
                     // capture the returned MQTT-SN topic name for use with
                     // uMqttClientSnPublish() a few lines below
+                    // Note: >= in this case since the function
+                    // returns the QOS of the subscription, which
+                    // can be 0, 1 or 2
                     if (uMqttClientSubscribe(pContext, topic,
-                                             U_MQTT_QOS_EXACTLY_ONCE)) {
+                                             U_MQTT_QOS_EXACTLY_ONCE) >= 0) {
 
                         // Publish our message to our topic on the
                         // MQTT broker
