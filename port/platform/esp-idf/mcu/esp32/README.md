@@ -36,6 +36,9 @@ If you aren't already familiar with the ESP-IDF build environment, here's a step
   - Remove `ubxlib_runner` from the `EXTRA_COMPONENT_DIRS` and `COMPONENTS` set-lines ('cos we aint building `runner` anymore).
   - Remove the `TEST_COMPONENTS` set-line ('cos we aint building tests anymore).
   - Change the `../components` path in the `EXTRA_COMPONENT_DIRS` set-line to where you have put the `ubxlib` components, i.e. `<path to the ubxlib root directory>/port/platform/esp-idf/mcu/esp32/components`.
+> [!TIP]
+> If you have spaces in path, then escape spaces with '\\' or escape complete path with \\"..\\".
+> e.g: "/some/path/with\\ space/"
   - Modify the `project()` line to have your project name in it :-).
 - At a command prompt, `CD` to the above directory and run 
   - `<path to the esp-idf installation directory>/install.bat`
