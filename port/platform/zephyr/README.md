@@ -29,7 +29,7 @@ Follow the instructions to install the development tools:
 # SDK Installation For Other MCUs (Native Zephyr)
 Please follow the [Zephyr](https://docs.zephyrproject.org/latest/develop/getting_started/index.html) instructions to install Zephyr and the `west` tool that configures and builds Zephyr.
 
-`ubxlib` is tested with native Zephyr version 3.5.0.
+`ubxlib` is tested with native Zephyr version 3.6.0.
 
 If you intend to use Zephyr on Linux/posix then you must also follow the instructions here: https://docs.zephyrproject.org/latest/boards/posix/native_posix/doc/index.html.
 
@@ -269,7 +269,7 @@ Notes:
 FYI, for transports and GPIOs, what `ubxlib` is trying to get is the HW block number, for example the `0` on the end of `&uart0`; however, there is no way (see [discussion](https://github.com/zephyrproject-rtos/zephyr/issues/67046)), from within C code, to get that `0`, or even `uart0`, those references are all resolved inside the Zephyr device tree parser before any C code is compiled.  This is why the `transport-type` and `pin-xxx` labels, which would naturally just be `phandle` references, e.g. `<&uart0>` and `<gpio1 3 0>`, have to instead be strings and integers.  Should Zephyr provide a mechanism to obtain this information in future then we will adopt it and the properties will become conventional.
 
 # PPP-Level Integration With Cellular
-PPP support in Zephyr, at least in Zephyr version 3.4.99, is marked as "experimental": despite the presence of a PAP configuration item, there is no way to configure the authentication mode or the username/password (which are hard-coded in `zephyr/subsys/net/l2/ppp/pap.c`, see function `pap_config_info_add()`) and there doesn't appear to be any code to support CHAP authentication; hence, if your operator requires a user name and password along with the APN, you have no choice but to edit the Zephyr source code.
+Before version 3.5.0, PPP support in Zephyr was marked as "experimental" and, even now, despite the presence of a PAP configuration item, there is no way to configure the authentication mode or the username/password (which are hard-coded in `zephyr/subsys/net/l2/ppp/pap.c`, see function `pap_config_info_add()`) and there doesn't appear to be any code to support CHAP authentication; hence, if your operator requires a user name and password along with the APN, you have no choice but to edit the Zephyr source code.
 
 Also, the only integration mechanism provided at the bottom of Zephyr PPP is to a \[single\] UART (`zephyr,ppp-uart`); hence the port layer here makes the PPP stream of the \[cellular\] module appear as a UART which must be pulled-in by the application's `.dts` or a `.overlay` file to complete the connection (see below for how to do this).
 
@@ -297,7 +297,7 @@ If you want to use sockets from Zephyr and if you want to use BSD names for stuf
 - `CONFIG_NET_TCP_MAX_SEND_WINDOW_SIZE=256` (since the PPP link is relatively slow, keep the window size small)
 - `CONFIG_NET_TCP_MAX_RECV_WINDOW_SIZE=256`
 - `CONFIG_NET_SOCKETS=y`
-- `CONFIG_NET_SOCKETS_POSIX_NAMES=y` (if you do not set this then you will beed to prefix all sockets calls with `zsock_`, e.g. `zsock_connect()`)
+- `CONFIG_NET_SOCKETS_POSIX_NAMES=y` (if you do not set this then you will need to prefix all sockets calls with `zsock_`, e.g. `zsock_connect()`)
 
 Depending on how much data you expect to receive, you may want to increase `CONFIG_NET_PPP_RINGBUF_SIZE` from the default of 256 and you may need to [tune the buffer sizes that the network stack inside Zephyr uses](https://docs.zephyrproject.org/latest/connectivity/networking/net_config_guide.html#network-buffer-configuration-options).  If you have trouble getting data through then look for TCP errors in the Zephyr logging output like "E: TCP failed to allocate buffer in retransmission" and "E: Data buffer (1034) allocation failed", which indicates that you need bigger buffers.  In our Zephyr native sockets test, `zephyrSockTcp()`, where we send 2 kbytes up and back down again, we set `CONFIG_NET_BUF_DATA_SIZE=256`.
 
@@ -324,7 +324,5 @@ If this is not correct then Zephyr `ppp.c` will fail to compile in `ppp_start()`
 
 You can find an example of how to do all this and make a sockets connection in [main_ppp_zephyr.c](/example/sockets/main_ppp_zephyr.c).
 
-## Zephyr PPP Issue
-There is an issue in Zephyr PPP, discussed in [Github issue 67627](https://github.com/zephyrproject-rtos/zephyr/issues/67627), which means that Zephyr does not shut the PPP link down properly, leaving the module "hanging", such that it will not connect again next time around, unless the module is power cycled or rebooted.  A workaround for this is included, so everything works fine, _except_ that when a cellular connection is disconnected Zephyr must be allowed 20 seconds for its side of the PPP connection to time out; this delay is included within the ubxlib code.  If you do not want this delay (e.g. because you are going to switch the cellular module off anyway, or because your application is not going to connect again for at least 20 seconds) then you can remove it by defining `U_CFG_PPP_ZEPHYR_TERMINATE_WAIT_DISABLE`.
-
-Once the Zephyr issue is fixed and the fix is available in a version of Zephyr that forms a part of nRFConnect SDK the delay will be removed.
+## Zephyr PPP Issue In Zephyr Versions Before 3.6.0
+Before version 3.6.0 there was an issue in Zephyr PPP, discussed in [Github issue 67627](https://github.com/zephyrproject-rtos/zephyr/issues/67627), which meant that Zephyr did not shut the PPP link down properly, leaving the module "hanging", such that it would not connect again next time around unless the module was power cycled or rebooted.  A workaround for this is included, so everything works fine, _except_ that when a cellular connection is disconnected Zephyr must be allowed 20 seconds for its side of the PPP connection to time out.  If your application naturally leaves such a delay (e.g. because you are going to switch the cellular module off anyway, or because your application is not going to connect again for at least 20 seconds) then you can ignore this issue; otherwise you may set `U_CFG_PPP_ZEPHYR_TERMINATE_WAIT_SECONDS` to, for instance, 20, and the `ubxlib` code will add that delay on PPP closure.

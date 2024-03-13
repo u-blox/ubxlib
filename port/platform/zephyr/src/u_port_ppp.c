@@ -80,16 +80,17 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
-#ifndef U_PORT_PPP_UART_DEVICE_ID
-/** The name that the virtual UART device which represents the
- * PPP interface will appear as; this is the name which must
- * be select as the Zephry PPP UART in the application's device
- * tree for a PPP interface to work with Zephyr.
- *
- * IMPORTANT: MUST BE OF THE FORM pppuartx, where x is a decimal
- * number
+#ifndef U_CFG_PPP_ZEPHYR_TERMINATE_WAIT_SECONDS
+/** The number of seconds of delay added on closure of PPP
+ * to allow the Zephyr-side of the PPP connection to time out;
+ * should be set to 20 for Zephyr versions before 3.6.0,
+ * see https://github.com/zephyrproject-rtos/zephyr/issues/67627.
  */
-# define U_PORT_PPP_UART_DEVICE_ID uartppp
+# if KERNEL_VERSION_NUMBER >= ZEPHYR_VERSION(3,6,0)
+#  define U_CFG_PPP_ZEPHYR_TERMINATE_WAIT_SECONDS 0
+# else
+#  define U_CFG_PPP_ZEPHYR_TERMINATE_WAIT_SECONDS 20
+# endif
 #endif
 
 #ifndef U_PORT_PPP_CONNECT_TIMEOUT_SECONDS
@@ -502,7 +503,8 @@ static void txTask(void *pParameters, size_t paramLength)
         (gpPppInterface->pppRunning)) {
         pUartDriver = &(gpPppInterface->pppUartDriver);
         // Send off the data
-        while ((len > 0) && (x >= 0) && (k_uptime_get() - startTimeMs < timeoutMs)) {
+        while ((len > 0) && (x >= 0) &&
+               ((timeoutMs <= 0) || (k_uptime_get() - startTimeMs < timeoutMs))) {
             x = gpPppInterface->pTransmitCallback(gpPppInterface->pDevHandle, pBuf + sent,
                                                   len - sent);
             if (x > 0) {
@@ -648,22 +650,15 @@ static void pppDetach(uPortPppInterface_t *pPppInterface)
     int32_t startTimeMs;
 
     if ((pPppInterface != NULL) && (pPppInterface->pNetIf != NULL)) {
-        // START: HACK HACK HACK HACK HACK HACK HACK
+        // There is a bug in Zephyr versions before 3.6.0 which means
+        // that Zephyr PPP does not terminate the link with the peer,
+        // the peer is left entirely up, which does no good at all as
+        // it then won't connect the next time you try.
         //
-        // See here: https://github.com/zephyrproject-rtos/zephyr/issues/67627
-        // There is a bug in Zephyr 3.4.99 which means that Zephyr
-        // PPP does not terminate the link with the peer, the peer
-        // is left entirely up, which does no good at all as it
-        // then won't connect the next time you try.
-        //
-        // As a workaround, we call net_if_carrier_off() ('cos
-        // when the issue is fixed we don't want to be falling over
-        // each other) and let the disconnect callback conduct
-        // the PPP shut-down process on its behalf
+        // As a workaround, we call net_if_carrier_off() and let the
+        // disconnect callback conduct the PPP shut-down process on
+        // its behalf
         net_if_carrier_off(pPppInterface->pNetIf);
-        // The Zephyr-side PPP connection will time out by itself.
-        //
-        // END: HACK HACK HACK HACK HACK HACK HACK
 
         // Disconnect PPP; this will eventually bring the interface down
         net_if_down(pPppInterface->pNetIf);
@@ -688,19 +683,13 @@ static void pppDetach(uPortPppInterface_t *pPppInterface)
         pPppInterface->pppRunning = false;
         uPortLog("U_PORT_PPP: disconnected.\n");
 
-#ifndef U_CFG_PPP_ZEPHYR_TERMINATE_WAIT_DISABLE
-        // START: HACK HACK HACK HACK HACK HACK HACK
-        //
-        // For the reason detailed above, we need to wait here for
+#if (U_CFG_PPP_ZEPHYR_TERMINATE_WAIT_SECONDS > 0) && !defined(U_CFG_PPP_ZEPHYR_TERMINATE_WAIT_DISABLE)
+        // In Zephyr versions before 3.6.0 we need to wait here for
         // Zephyr PPP to actually exit (to time out) or otherwise
-        // it won't come up correctly again.  If this is not necessary
-        // in your particular application you may disable it by
-        // defining U_CFG_PPP_ZEPHYR_TERMINATE_WAIT_DISABLE for your build
-        uPortLog("U_PORT_PPP: waiting 20 seconds for Zephyr PPP to terminate;"
-                 " compile with U_CFG_PPP_ZEPHYR_TERMINATE_WAIT_DISABLE to disable this.\n");
-        uPortTaskBlock(20000);
-        //
-        // END: HACK HACK HACK HACK HACK HACK HACK
+        // it won't come up correctly again.
+        uPortLog("U_PORT_PPP: waiting %d seconds for Zephyr PPP to terminate.\n",
+                 U_CFG_PPP_ZEPHYR_TERMINATE_WAIT_SECONDS);
+        uPortTaskBlock(U_CFG_PPP_ZEPHYR_TERMINATE_WAIT_SECONDS * 1000);
 #endif
     }
 }
