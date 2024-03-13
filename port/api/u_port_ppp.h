@@ -65,8 +65,12 @@ extern "C" {
 #ifndef U_PORT_PPP_SHUTDOWN_TIMEOUT_SECONDS
 /** How long to wait for the IP stack that PPP is attached to to
  * shut down any connections that may be running over PPP down.
+ * ESP-IDF, at least, has a 10 second timeout of its own and so
+ * a 15 second timeout here is good for smoe margin.  If you don't
+ * give the MCU-based FW enough time it may go bang later so
+ * best be generous.
  */
-# define U_PORT_PPP_SHUTDOWN_TIMEOUT_SECONDS 10
+# define U_PORT_PPP_SHUTDOWN_TIMEOUT_SECONDS 15
 #endif
 
 #ifndef U_PORT_PPP_DNS_PRIMARY_DEFAULT_STR

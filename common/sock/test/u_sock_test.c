@@ -1460,7 +1460,11 @@ U_PORT_TEST_FUNCTION("[sock]", "sockMaxNumSockets")
                           " %d byte(s).",
                           heapSockInitLoss + heapXxxSockInitLoss,
                           heapUsed - (heapSockInitLoss + heapXxxSockInitLoss));
-        U_PORT_TEST_ASSERT(heapUsed <= heapSockInitLoss + heapXxxSockInitLoss);
+        // Note: the process of cleaning up sockets, when this is run as
+        // part of a test campaign, can make the heap used fall rather than
+        // rise, hence the check below is slightly different
+        U_PORT_TEST_ASSERT((heapUsed < 0) ||
+                           (heapUsed <= heapSockInitLoss + heapXxxSockInitLoss));
     }
 
     // Remove each network type

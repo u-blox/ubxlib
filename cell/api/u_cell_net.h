@@ -837,6 +837,10 @@ int32_t uCellNetGetMccMnc(uDeviceHandle_t cellHandle,
 
 /** Return the IP address of the currently active connection.
  *
+ * Note: if you are using PPP also, the IP address here _may_
+ * not be the same as that of the PPP connection: please refer
+ * to your PPP client for the IP address of the PPP connection.
+ *
  * @param cellHandle  the handle of the cellular instance.
  * @param[out] pStr   should point to storage of length at least
  *                    #U_CELL_NET_IP_ADDRESS_SIZE bytes in size.
@@ -857,6 +861,10 @@ int32_t uCellNetGetIpAddressStr(uDeviceHandle_t cellHandle, char *pStr);
  * use hostnames in these API functions, only IP addresses.  Note
  * that some modules do not support reading out the DNS address
  * (e.g. LENA-R8 does not).
+ *
+ * Note: if you are using PPP also, the DNS addresses here _may_
+ * not be the same as that of the PPP connection: please refer
+ * to your PPP client for the DNS addresses of the PPP connection.
  *
  * @param cellHandle    the handle of the cellular instance.
  * @param v6            set this to true if IPV6 DNS addresses

@@ -119,6 +119,7 @@
 typedef struct {
     uDeviceHandle_t cellHandle;
     uDeviceSerial_t *pDeviceSerial;
+    int32_t contextId;
     uPortPppReceiveCallback_t *pReceiveCallback;
     void *pReceiveCallbackParam;
     char *pReceiveBuffer;
@@ -150,13 +151,16 @@ static const char gLcpTerminateAck[] = {0x7e, 0xff, 0x7d, 0x23, 0xc0, 0x21, 0x7d
 
 // Check if the given buffer contains the given buffer; returns
 // the number of characters matched: if this is non-zero but less
-// than the length of pBufferWanted then the caller should keep that
-// many characters in the buffer and call this again with any additions.
+// than the length of pBufferWanted then the caller should move
+// *pStartMatchOffset characters out of the buffer but keep the rest
+// and call this again with any additions.
 static int32_t bufferContains(const char *pBuffer, size_t size,
-                              const char *pBufferWanted, size_t bufferLength)
+                              const char *pBufferWanted, size_t bufferLength,
+                              size_t *pStartMatchOffset)
 {
     size_t count = 0;
 
+    *pStartMatchOffset = 0;
     if (pBufferWanted != NULL) {
         for (size_t x = 0; (x < size) && (count < bufferLength); x++) {
             if (*pBuffer == *(pBufferWanted + count)) {
@@ -165,6 +169,8 @@ static int32_t bufferContains(const char *pBuffer, size_t size,
                 count = 0;
                 if (*pBuffer == *pBufferWanted) {
                     count = 1;
+                } else {
+                    (*pStartMatchOffset)++;
                 }
             }
             pBuffer++;
@@ -205,6 +211,7 @@ static int32_t sendExpect(uCellPppContext_t *pContext,
     int32_t startTimeMs;
     int32_t x = 0;
     int32_t y = 0;
+    size_t startMatchOffset;
 
     if (pSend != NULL) {
         errorCode = pDeviceSerial->write(pDeviceSerial, pSend, sendLength);
@@ -228,20 +235,25 @@ static int32_t sendExpect(uCellPppContext_t *pContext,
                     uPortLog("U_CELL_PPP: received ");
                     printBuffer(buffer, x);
                     uPortLog("\n");
+                    startMatchOffset = 0;
                     y = bufferContains(buffer, x, pResponse,
-                                       responseLength);
+                                       responseLength,
+                                       &startMatchOffset);
                     if (y == (int32_t) responseLength) {
                         errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
                     } else if (y == 0) {
+                        startMatchOffset = 0;
                         y = bufferContains(buffer, x, U_CELL_PPP_ERROR_STRING,
-                                           U_CELL_PPP_ERROR_STRING_LENGTH);
+                                           U_CELL_PPP_ERROR_STRING_LENGTH,
+                                           &startMatchOffset);
                         if (y == U_CELL_PPP_ERROR_STRING_LENGTH) {
                             errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
                         }
                     }
-                    // Keep y characters, in case there was a partial match,
-                    // moved down to the start of the buffer
-                    memmove(buffer, buffer + y, sizeof(buffer) - y);
+                    // Keep startMatchOffset characters, in case there was
+                    // a partial match, moved down to the start of the buffer
+                    memmove(buffer, buffer + startMatchOffset,
+                            sizeof(buffer) - startMatchOffset);
                 } else {
                     // Wait a little while for more to arrive
                     uPortTaskBlock(100);
@@ -260,11 +272,11 @@ static int32_t connectPpp(uCellPppContext_t *pContext,
                           bool (*pKeepGoingCallback) (uDeviceHandle_t cellHandle))
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
-    char buffer[16]; // Enough room for "ATD*99***1#\r"
+    char buffer[16]; // Enough room for "ATD*99***x#\r"
     int32_t x;
 
     x = snprintf(buffer, sizeof(buffer), U_CELL_PPP_DIAL_STRING,
-                 U_CELL_NET_CONTEXT_ID, U_AT_CLIENT_COMMAND_DELIMITER);
+                 (int) pContext->contextId, U_AT_CLIENT_COMMAND_DELIMITER);
     if (x < sizeof(buffer)) {
         errorCode = sendExpect(pContext, buffer, x, U_CELL_PPP_DIAL_RESPONSE_STRING,
                                U_CELL_PPP_DIAL_RESPONSE_STRING_LENGTH, pKeepGoingCallback,
@@ -403,6 +415,10 @@ int32_t uCellPppOpen(uDeviceHandle_t cellHandle,
                         if (pContext != NULL) {
                             memset(pContext, 0, sizeof(*pContext));
                             pContext->cellHandle = cellHandle;
+                            pContext->contextId = U_CELL_NET_CONTEXT_ID;
+                            if (pInstance->pModule->pppContextId >= 0) {
+                                pContext->contextId = pInstance->pModule->pppContextId;
+                            }
                         }
                     }
                     if ((pContext != NULL) && (pContext->pDeviceSerial == NULL)) {

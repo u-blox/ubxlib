@@ -46,7 +46,9 @@ On the following platforms:
 
 ...and with following \[cellular\] modules:
 
+- SARA-U201
 - SARA-R5
 - SARA-R422
+- LENA-R8
 
 ...it is possible to make a PPP connection between the module and the bottom of the platform's own IP stack, allowing the native applications of that platform (e.g. MQTT) to connect through the module.  Set-up for `ubxlib` is as above, plus you must define `U_CFG_PPP_ENABLE` when building `ubxlib`.  Unfortunately there will _always_ be additional platform-specific setup: for this, refer to the `README.md` of the relevant platform directory or also look at the top of the example `.c` file.

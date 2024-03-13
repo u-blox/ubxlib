@@ -308,6 +308,7 @@ typedef struct {
     uPortMutexHandle_t mutexUserDataRead;
     uCellMuxPrivateTraffic_t traffic;
     uCellMuxPrivateEventCallback_t eventCallback;
+    int32_t discTimeoutMs;
 } uCellMuxPrivateChannelContext_t;
 
 /* ----------------------------------------------------------------

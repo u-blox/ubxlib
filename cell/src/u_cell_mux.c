@@ -509,50 +509,57 @@ static int32_t sendCommandCheckResponse(uDeviceSerial_t *pDeviceSerial,
             }
             uPortLog(".\n");
 #endif
-            errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
-            // Wait for a response
-            startTimeMs = uPortGetTickTimeMs();
-            while ((pTraffic->wantedResponseFrameType != U_CELL_MUX_PRIVATE_FRAME_TYPE_NONE) &&
-                   (uPortGetTickTimeMs() - startTimeMs < timeoutMs)) {
-                uPortTaskBlock(10);
-            }
-            if (pTraffic->wantedResponseFrameType == U_CELL_MUX_PRIVATE_FRAME_TYPE_NONE) {
-#ifdef U_CELL_MUX_ENABLE_DEBUG
-                if (pChannelContext->channel == 0) {
-                    // For the control channel we need to print the frame type out
-                    // here as the message is removed before it gets to cmuxDecode()
-                    uPortLog("U_CELL_CMUX_%d: rx frame type 0x%02x.\n", pChannelContext->channel,
-                             pFrameCheck->type);
+            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+            if (timeoutMs > 0) {
+                errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
+                // Wait for a response
+                startTimeMs = uPortGetTickTimeMs();
+                while ((pTraffic->wantedResponseFrameType != U_CELL_MUX_PRIVATE_FRAME_TYPE_NONE) &&
+                       (uPortGetTickTimeMs() - startTimeMs < timeoutMs)) {
+                    uPortTaskBlock(10);
                 }
-#endif
-                if (pFrameCheck->informationLengthBytes > 0) {
-                    // Need to look for the right information field contents also
-                    length = serialReadInnards(pTraffic, buffer, sizeof(buffer));
-                    pTmp = buffer;
-                    while ((length >= (int32_t) pFrameCheck->informationLengthBytes) &&
-                           (memcmp(pTmp, pFrameCheck->information,
-                                   pFrameCheck->informationLengthBytes) != 0)) {
-                        pTmp++;
-                        length--;
-                    }
-                    if (length >= (int32_t) pFrameCheck->informationLengthBytes) {
+                if (pTraffic->wantedResponseFrameType == U_CELL_MUX_PRIVATE_FRAME_TYPE_NONE) {
 #ifdef U_CELL_MUX_ENABLE_DEBUG
-                        uPortLog("U_CELL_CMUX_%d: decoded I-field %d byte(s):",
-                                 pChannelContext->channel,
-                                 pFrameCheck->informationLengthBytes);
-                        for (size_t x = 0; x < pFrameCheck->informationLengthBytes; x++) {
-                            uPortLog(" %02x", *(pTmp + x));
-                        }
-                        uPortLog(".\n");
+                    if (pChannelContext->channel == 0) {
+                        // For the control channel we need to print the frame type out
+                        // here as the message is removed before it gets to cmuxDecode()
+                        uPortLog("U_CELL_CMUX_%d: rx frame type 0x%02x.\n", pChannelContext->channel,
+                                 pFrameCheck->type);
+                    }
 #endif
+                    if (pFrameCheck->informationLengthBytes > 0) {
+                        // Need to look for the right information field contents also
+                        length = serialReadInnards(pTraffic, buffer, sizeof(buffer));
+                        pTmp = buffer;
+                        while ((length >= (int32_t) pFrameCheck->informationLengthBytes) &&
+                               (memcmp(pTmp, pFrameCheck->information,
+                                       pFrameCheck->informationLengthBytes) != 0)) {
+                            pTmp++;
+                            length--;
+                        }
+                        if (length >= (int32_t) pFrameCheck->informationLengthBytes) {
+#ifdef U_CELL_MUX_ENABLE_DEBUG
+                            uPortLog("U_CELL_CMUX_%d: decoded I-field %d byte(s):",
+                                     pChannelContext->channel,
+                                     pFrameCheck->informationLengthBytes);
+                            for (size_t x = 0; x < pFrameCheck->informationLengthBytes; x++) {
+                                uPortLog(" %02x", *(pTmp + x));
+                            }
+                            uPortLog(".\n");
+#endif
+                            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                        }
+                    } else {
                         errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
                     }
                 } else {
-                    errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+#ifdef U_CELL_MUX_ENABLE_DEBUG
+                    uPortLog("U_CELL_CMUX_%d: no response.\n", pChannelContext->channel);
+#endif
                 }
             } else {
 #ifdef U_CELL_MUX_ENABLE_DEBUG
-                uPortLog("U_CELL_CMUX_%d: no response.\n", pChannelContext->channel);
+                uPortLog("U_CELL_CMUX_%d: not waiting for a response.\n", pChannelContext->channel);
 #endif
             }
         }
@@ -653,13 +660,13 @@ static void serialClose(struct uDeviceSerial_t *pDeviceSerial)
             memcpy(frameCheck.information, gMuxCldResponse, x);
             frameCheck.informationLengthBytes = sizeof(gMuxCldResponse);
             sendCommandCheckResponse(pDeviceSerial, &frameSend, &frameCheck,
-                                     U_CELL_MUX_DISC_TIMEOUT_MS);
+                                     pChannelContext->discTimeoutMs);
         } else {
             // For any other channel, send DISC and wait for UA
             frameSend.type = U_CELL_MUX_PRIVATE_FRAME_TYPE_DISC_COMMAND;
             frameCheck.type = U_CELL_MUX_PRIVATE_FRAME_TYPE_UA_RESPONSE;
             sendCommandCheckResponse(pDeviceSerial, &frameSend, &frameCheck,
-                                     U_CELL_MUX_DISC_TIMEOUT_MS);
+                                     pChannelContext->discTimeoutMs);
         }
 
         pChannelContext->state = U_CELL_MUX_PRIVATE_CHANNEL_STATE_NULL;
@@ -1147,6 +1154,12 @@ static int32_t openChannel(uCellMuxPrivateContext_t *pContext,
                 pChannelContext->pContext = pContext;
                 pChannelContext->channel = channel;
                 pChannelContext->markedForDeletion = false;
+                pChannelContext->discTimeoutMs = 0;
+                if ((channel == 0) ||
+                    U_CELL_PRIVATE_HAS(pContext->pInstance->pModule,
+                                       U_CELL_PRIVATE_FEATURE_CMUX_CHANNEL_CLOSE)) {
+                    pChannelContext->discTimeoutMs = U_CELL_MUX_DISC_TIMEOUT_MS;
+                }
                 memset(&(pChannelContext->traffic), 0, sizeof(pChannelContext->traffic));
                 memset(&(pChannelContext->eventCallback), 0, sizeof(pChannelContext->eventCallback));
                 errorCode = pDeviceSerial->open(pDeviceSerial, NULL, receiveBufferSizeBytes);

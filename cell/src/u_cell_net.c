@@ -280,6 +280,10 @@ static void activateContextCallback(uAtClientHandle_t atHandle,
     (void) atHandle;
 
     activateContext(pInstance, U_CELL_NET_CONTEXT_ID, U_CELL_NET_PROFILE_ID);
+    if (pInstance->pModule->pppContextId >= 0) {
+        // Activate the separate PDP context for PPP if there is one
+        activateContext(pInstance, pInstance->pModule->pppContextId, -1);
+    }
 
     if (U_CELL_PRIVATE_HAS(pInstance->pModule, U_CELL_PRIVATE_FEATURE_PPP)) {
         if ((uCellNetGetIpAddressStr(cellHandle, buffer) > 0) &&
@@ -1568,6 +1572,9 @@ static int32_t getApnStr(const uCellPrivateInstance_t *pInstance,
     // as you can tell +CGCONTRDP which context
     // you want to know about
     uAtClientCommandStart(atHandle, "AT+CGCONTRDP=");
+    // Note: we only need to get the APN string for
+    // U_CELL_NET_CONTEXT_ID as the APN used for
+    // PPP is the same
     uAtClientWriteInt(atHandle, U_CELL_NET_CONTEXT_ID);
     uAtClientCommandStop(atHandle);
     uAtClientResponseStart(atHandle, "+CGCONTRDP:");
@@ -1654,9 +1661,13 @@ static int32_t activateContext(const uCellPrivateInstance_t *pInstance,
     bool activated = false;
     bool ours;
     bool cgActCalled;
+    size_t maxNumContexts = 1;
 
     deviceError.type = U_AT_CLIENT_DEVICE_ERROR_TYPE_NO_ERROR;
     uAtClientLock(atHandle);
+    if (pInstance->pModule->pppContextId >= 0) {
+        maxNumContexts++;
+    }
     for (size_t x = 5; (x > 0) && keepGoingLocalCb(pInstance) &&
          (errorCode != 0) &&
          ((deviceError.type == U_AT_CLIENT_DEVICE_ERROR_TYPE_NO_ERROR) ||
@@ -1680,8 +1691,7 @@ static int32_t activateContext(const uCellPrivateInstance_t *pInstance,
         uAtClientCommandStart(atHandle, "AT+CGACT?");
         uAtClientCommandStop(atHandle);
         ours = false;
-        for (size_t y = 0; (y < U_CELL_NET_MAX_NUM_CONTEXTS) &&
-             !ours; y++) {
+        for (size_t y = 0; (y < maxNumContexts) && !ours; y++) {
             uAtClientResponseStart(atHandle, "+CGACT:");
             // Check if this is our context ID
             if (uAtClientReadInt(atHandle) == contextId) {
@@ -1693,15 +1703,24 @@ static int32_t activateContext(const uCellPrivateInstance_t *pInstance,
         uAtClientResponseStop(atHandle);
         // Do NOT unlock the AT client here
         if (activated) {
-            errorCode = uCellPrivateActivateProfileNoAtLock(pInstance, contextId,
-                                                            profileId, 5, keepGoingLocalCb);
+            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+            if (profileId >= 0) {
+                errorCode = uCellPrivateActivateProfileNoAtLock(pInstance, contextId,
+                                                                profileId, 5, keepGoingLocalCb);
+            }
         } else {
             if (!cgActCalled) {
                 // If AT+CGACT wasn't called above, do it now
                 sendCgact(atHandle, contextId, &deviceError);
             }
-            // Don't hit the module too hard
-            uPortTaskBlock(2000);
+            // Note: historically (back in 2020) a 2 second
+            // wait was included here so as not to "hit the
+            // module too hard"; since we now have a case where
+            // more than one PDP context is being activated
+            // (for LENA-R8 when PPP is enabled) that 2 second
+            // wait is even more undesirable than it once was,
+            // hence it has been removed and regression testing
+            // show no adverse effects
         }
     }
     uAtClientUnlock(atHandle);
@@ -1841,12 +1860,15 @@ static bool isActive(const uCellPrivateInstance_t *pInstance,
     bool active = false;
     uAtClientHandle_t atHandle = pInstance->atHandle;
     int32_t y = 0;
+    size_t maxNumContexts = 1;
 
+    if (pInstance->pModule->pppContextId >= 0) {
+        maxNumContexts++;
+    }
     uAtClientLock(atHandle);
     uAtClientCommandStart(atHandle, "AT+CGACT?");
     uAtClientCommandStop(atHandle);
-    for (size_t x = 0; (x < U_CELL_NET_MAX_NUM_CONTEXTS) &&
-         (y >= 0) && !ours; x++) {
+    for (size_t x = 0; (x < maxNumContexts) && (y >= 0) && !ours; x++) {
         uAtClientResponseStart(atHandle, "+CGACT:");
         // Check if this is our context ID
         y = uAtClientReadInt(atHandle);
@@ -1901,7 +1923,7 @@ static int32_t deactivate(uCellPrivateInstance_t *pInstance,
         uAtClientLock(atHandle);
         uAtClientCommandStart(atHandle, "AT+CGACT=");
         uAtClientWriteInt(atHandle, 0);
-        uAtClientWriteInt(atHandle, U_CELL_NET_CONTEXT_ID);
+        uAtClientWriteInt(atHandle, contextId);
         uAtClientCommandStopReadResponse(atHandle);
         errorCode = uAtClientUnlock(atHandle);
     }
@@ -1955,7 +1977,9 @@ static int32_t handleExistingContext(uCellPrivateInstance_t *pInstance,
                                U_CELL_PRIVATE_FEATURE_USE_UPSD_CONTEXT_ACTIVATION)) {
             hasContext = isActiveUpsd(pInstance, U_CELL_NET_PROFILE_ID);
         } else {
-            hasContext = isActive(pInstance, U_CELL_NET_CONTEXT_ID);
+            hasContext = isActive(pInstance, U_CELL_NET_CONTEXT_ID) &&
+                         ((pInstance->pModule->pppContextId < 0) ||
+                          isActive(pInstance, pInstance->pModule->pppContextId));
         }
         if (!hasContext) {
             uPortTaskBlock(500);
@@ -2010,6 +2034,9 @@ static int32_t handleExistingContext(uCellPrivateInstance_t *pInstance,
                     deactivateUpsd(pInstance, U_CELL_NET_PROFILE_ID);
                 } else {
                     deactivate(pInstance, U_CELL_NET_CONTEXT_ID);
+                    if (pInstance->pModule->pppContextId >= 0) {
+                        deactivate(pInstance, pInstance->pModule->pppContextId);
+                    }
                 }
             }
         }
@@ -2046,6 +2073,12 @@ static int32_t getDnsStr(const uCellPrivateInstance_t *pInstance,
         }
         uAtClientLock(atHandle);
         uAtClientCommandStart(atHandle, "AT+CGCONTRDP=");
+        // Note: we get the DNS address only for the
+        // U_CELL_NET_CONTEXT_ID; if a different PDP context
+        // has been opened for PPP then the DNS addresses,
+        // for that PDP context (likely the same anyway, since
+        // the same APN will be used) will be obtained by the
+        // PPP peer entity during LCP negotiation
         uAtClientWriteInt(atHandle, U_CELL_NET_CONTEXT_ID);
         uAtClientCommandStop(atHandle);
         // Two rows may be returned, the first
@@ -2322,6 +2355,23 @@ static int32_t connectPpp(uDeviceHandle_t cellHandle,
     return errorCode;
 }
 
+// Reset a data counter on the given context ID.
+static int32_t sendDataCounterReset(uAtClientHandle_t atHandle,
+                                    int32_t contextId)
+{
+    int32_t errorCode;
+
+    uAtClientLock(atHandle);
+    uAtClientCommandStart(atHandle, "AT+UGCNTSET=");
+    uAtClientWriteInt(atHandle, contextId);
+    uAtClientWriteInt(atHandle, 0);
+    uAtClientWriteInt(atHandle, 0);
+    uAtClientCommandStopReadResponse(atHandle);
+    errorCode = uAtClientUnlock(atHandle);
+
+    return errorCode;
+}
+
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -2449,6 +2499,16 @@ int32_t uCellNetConnect(uDeviceHandle_t cellHandle,
                                     errorCode = 0;
                                 }
                             }
+                            if ((errorCode == 0) && (pInstance->pModule->pppContextId >= 0)) {
+                                // If a separate PDP context is required for,
+                                // PPP then set define that one also.
+                                // Note: no need to do anything with authentication
+                                // since that will be carried out by the peer PPP
+                                // entity when it starts up
+                                errorCode = defineContext(pInstance,
+                                                          pInstance->pModule->pppContextId,
+                                                          pApn);
+                            }
                         }
                         if (errorCode == 0) {
                             if (pMccMnc == NULL) {
@@ -2507,6 +2567,11 @@ int32_t uCellNetConnect(uDeviceHandle_t cellHandle,
                                 errorCode = activateContext(pInstance,
                                                             U_CELL_NET_CONTEXT_ID,
                                                             U_CELL_NET_PROFILE_ID);
+                                if ((errorCode == 0) && (pInstance->pModule->pppContextId >= 0)) {
+                                    // Activate the separate PDP context for PPP if there is one
+                                    errorCode = activateContext(pInstance,
+                                                                pInstance->pModule->pppContextId, -1);
+                                }
                             }
                             if (errorCode != 0) {
                                 uPortLog("U_CELL_NET: unable to activate a PDP context");
@@ -2751,6 +2816,16 @@ int32_t uCellNetActivate(uDeviceHandle_t cellHandle,
                                     errorCode = 0;
                                 }
                             }
+                            if ((errorCode == 0) && (pInstance->pModule->pppContextId >= 0)) {
+                                // If a separate one has been requested, also
+                                // define the PDP context for PPP
+                                // Note: no need to do anything with authentication
+                                // since that will be carried out by the peer PPP
+                                // entity when it starts up
+                                errorCode = defineContext(pInstance,
+                                                          pInstance->pModule->pppContextId,
+                                                          pApn);
+                            }
                             if (errorCode == 0) {
                                 if (!uCellPrivateIsRegistered(pInstance)) {
                                     // The process of handling an existing context
@@ -2777,6 +2852,11 @@ int32_t uCellNetActivate(uDeviceHandle_t cellHandle,
                                 errorCode = activateContext(pInstance,
                                                             U_CELL_NET_CONTEXT_ID,
                                                             U_CELL_NET_PROFILE_ID);
+                                if ((errorCode == 0) && (pInstance->pModule->pppContextId >= 0)) {
+                                    // Activate the separate PDP context for PPP if there is one
+                                    errorCode = activateContext(pInstance,
+                                                                pInstance->pModule->pppContextId, -1);
+                                }
                             }
                         }
                         // Exit if there are no errors or if the APN
@@ -2854,6 +2934,9 @@ int32_t uCellNetDeactivate(uDeviceHandle_t cellHandle,
                     } else {
                         // SARA-R4/R5/R6 style, with AT+CGACT
                         errorCode = deactivate(pInstance, U_CELL_NET_CONTEXT_ID);
+                        if ((errorCode == 0) && (pInstance->pModule->pppContextId >= 0)) {
+                            errorCode = deactivate(pInstance, pInstance->pModule->pppContextId);
+                        }
                     }
                 }
                 if (errorCode != 0) {
@@ -3529,6 +3612,10 @@ int32_t uCellNetGetIpAddressStr(uDeviceHandle_t cellHandle,
                                    U_CELL_PRIVATE_FEATURE_USE_UPSD_CONTEXT_ACTIVATION)) {
                 active = isActiveUpsd(pInstance, U_CELL_NET_PROFILE_ID);
             } else {
+                // Note: we get the IP address of U_CELL_NET_CONTEXT_ID;
+                // should a different PDP context have been opened for
+                // PPP the IP address there will will be obtained by
+                // the PPP peer entity during LCP negotiation
                 active = isActive(pInstance, U_CELL_NET_CONTEXT_ID);
             }
             if (active) {
@@ -3673,7 +3760,7 @@ int32_t uCellNetGetDataCounterTx(uDeviceHandle_t cellHandle)
     int32_t errorCodeOrCount = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
     uAtClientHandle_t atHandle;
-    bool ours = false;
+    size_t contextsWanted = 1;
     int32_t bytesSent = 0;
     int32_t y = 0;
 
@@ -3688,25 +3775,29 @@ int32_t uCellNetGetDataCounterTx(uDeviceHandle_t cellHandle)
             if (U_CELL_PRIVATE_HAS(pInstance->pModule,
                                    U_CELL_PRIVATE_FEATURE_DATA_COUNTERS)) {
                 errorCodeOrCount = (int32_t) U_CELL_ERROR_AT;
+                if (pInstance->pModule->pppContextId >= 0) {
+                    contextsWanted++;
+                }
                 atHandle = pInstance->atHandle;
                 uAtClientLock(atHandle);
                 uAtClientCommandStart(atHandle, "AT+UGCNTRD");
                 uAtClientCommandStop(atHandle);
                 for (size_t x = 0; (x < U_CELL_NET_MAX_NUM_CONTEXTS) &&
-                     (y >= 0) && !ours; x++) {
+                     (y >= 0) && (contextsWanted > 0); x++) {
                     uAtClientResponseStart(atHandle, "+UGCNTRD:");
                     // Check if this is our context ID
                     y = uAtClientReadInt(atHandle);
-                    if (y == U_CELL_NET_CONTEXT_ID) {
-                        ours = true;
+                    if ((y == U_CELL_NET_CONTEXT_ID) ||
+                        ((y > 0) && (y == pInstance->pModule->pppContextId))) {
+                        contextsWanted--;
                         // If it is, the next byte is the sent
                         // count for this session
-                        bytesSent = uAtClientReadInt(atHandle);
+                        bytesSent += uAtClientReadInt(atHandle);
                     }
                 }
                 uAtClientResponseStop(atHandle);
-                if ((uAtClientUnlock(atHandle) == 0) && ours &&
-                    (bytesSent >= 0)) {
+                if ((uAtClientUnlock(atHandle) == 0) &&
+                    (contextsWanted == 0) && (bytesSent >= 0)) {
                     errorCodeOrCount = bytesSent;
                 }
             }
@@ -3724,7 +3815,7 @@ int32_t uCellNetGetDataCounterRx(uDeviceHandle_t cellHandle)
     int32_t errorCodeOrCount = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
     uAtClientHandle_t atHandle;
-    bool ours = false;
+    size_t contextsWanted = 1;
     int32_t bytesReceived = 0;
     int32_t y = 0;
 
@@ -3739,26 +3830,30 @@ int32_t uCellNetGetDataCounterRx(uDeviceHandle_t cellHandle)
             if (U_CELL_PRIVATE_HAS(pInstance->pModule,
                                    U_CELL_PRIVATE_FEATURE_DATA_COUNTERS)) {
                 errorCodeOrCount = (int32_t) U_CELL_ERROR_AT;
+                if (pInstance->pModule->pppContextId >= 0) {
+                    contextsWanted++;
+                }
                 atHandle = pInstance->atHandle;
                 uAtClientLock(atHandle);
                 uAtClientCommandStart(atHandle, "AT+UGCNTRD");
                 uAtClientCommandStop(atHandle);
                 for (size_t x = 0; (x < U_CELL_NET_MAX_NUM_CONTEXTS) &&
-                     (y >= 0) && !ours; x++) {
+                     (y >= 0) && (contextsWanted > 0); x++) {
                     uAtClientResponseStart(atHandle, "+UGCNTRD:");
                     // Check if this is our context ID
                     y = uAtClientReadInt(atHandle);
-                    if (y == U_CELL_NET_CONTEXT_ID) {
-                        ours = true;
+                    if ((y == U_CELL_NET_CONTEXT_ID) ||
+                        ((y > 0) && (y == pInstance->pModule->pppContextId))) {
+                        contextsWanted--;
                         // Skip the transmitted byte count
                         uAtClientSkipParameters(atHandle, 1);
                         // Get the received count for this session
-                        bytesReceived = uAtClientReadInt(atHandle);
+                        bytesReceived += uAtClientReadInt(atHandle);
                     }
                 }
                 uAtClientResponseStop(atHandle);
-                if ((uAtClientUnlock(atHandle) == 0) && ours &&
-                    (bytesReceived >= 0)) {
+                if ((uAtClientUnlock(atHandle) == 0) &&
+                    (contextsWanted == 0) && (bytesReceived >= 0)) {
                     errorCodeOrCount = bytesReceived;
                 }
             }
@@ -3788,13 +3883,11 @@ int32_t uCellNetResetDataCounters(uDeviceHandle_t cellHandle)
             if (U_CELL_PRIVATE_HAS(pInstance->pModule,
                                    U_CELL_PRIVATE_FEATURE_DATA_COUNTERS)) {
                 atHandle = pInstance->atHandle;
-                uAtClientLock(atHandle);
-                uAtClientCommandStart(atHandle, "AT+UGCNTSET=");
-                uAtClientWriteInt(atHandle, U_CELL_NET_CONTEXT_ID);
-                uAtClientWriteInt(atHandle, 0);
-                uAtClientWriteInt(atHandle, 0);
-                uAtClientCommandStopReadResponse(atHandle);
-                errorCode = uAtClientUnlock(atHandle);
+                errorCode = sendDataCounterReset(atHandle, U_CELL_NET_CONTEXT_ID);
+                if ((errorCode == 0) && (pInstance->pModule->pppContextId >= 0)) {
+                    errorCode = sendDataCounterReset(atHandle,
+                                                     pInstance->pModule->pppContextId);
+                }
             }
         }
 

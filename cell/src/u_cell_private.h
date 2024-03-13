@@ -192,6 +192,25 @@ extern "C" {
  */
 #define U_CELL_PRIVATE_CELL_ID_LOGICAL_SIZE  8
 
+#ifdef U_CFG_PPP_ENABLE
+# ifndef U_CELL_PRIVATE_PPP_CONTEXT_ID_LENA_R8
+/** On LENA-R8 it is not possible to use the same PDP context
+ * for PPP as for AT-command-based operation: if you do so
+ * then, once PPP is active, commands such as AT+UDNSRN
+ * and any attempt to use the on-module MQTT or HTTP clients
+ * will fail.  Hence we set the PDP context for PPP operation
+ * to be different.  It is POSSIBLE that there are cellular
+ * networks out there which will not allow more than one
+ * PDP context, in which case you should compile this code with
+ * U_CELL_PRIVATE_PPP_CONTEXT_ID_LENA_R8 set to -1 and then not
+ * use the on-module clients while PPP is active.
+ */
+#  define U_CELL_PRIVATE_PPP_CONTEXT_ID_LENA_R8 (U_CELL_NET_CONTEXT_ID + 1)
+# endif
+#else
+#  define U_CELL_PRIVATE_PPP_CONTEXT_ID_LENA_R8 -1
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -238,12 +257,13 @@ typedef enum {
     U_CELL_PRIVATE_FEATURE_FOTA,
     U_CELL_PRIVATE_FEATURE_UART_POWER_SAVING,
     U_CELL_PRIVATE_FEATURE_CMUX,
+    U_CELL_PRIVATE_FEATURE_CMUX_CHANNEL_CLOSE,
     U_CELL_PRIVATE_FEATURE_SNR_REPORTED,
     U_CELL_PRIVATE_FEATURE_AUTHENTICATION_MODE_AUTOMATIC,
     U_CELL_PRIVATE_FEATURE_LWM2M,
     U_CELL_PRIVATE_FEATURE_UCGED,
     U_CELL_PRIVATE_FEATURE_HTTP,
-    U_CELL_PRIVATE_FEATURE_PPP
+    U_CELL_PRIVATE_FEATURE_PPP,
 } uCellPrivateFeature_t;
 
 /** The characteristics that may differ between cellular modules.
@@ -299,6 +319,7 @@ typedef struct {
                                   characteristics of this module. */
     int32_t defaultMuxChannelGnss; /**< the default mux channel to use for attached/embedded GNSS, -1 if not supported. */
     int32_t atCFunRebootCommand; /** Normally 15, but in some cases 16. */
+    int32_t pppContextId; /** The PDP context ID to use for PPP, -1 to use the same as for everything else. */
 } uCellPrivateModule_t;
 
 /** The radio parameters.
