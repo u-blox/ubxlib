@@ -781,6 +781,113 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwr")
 
 # endif // if (U_CFG_APP_PIN_CELL_PWR_ON >= 0) && !defined(U_CFG_TEST_CELL_PWR_DISABLE)
 
+# if (U_CFG_APP_PIN_CELL_PWR_ON >= 0)
+
+/** Power on process testing for any module type.
+  */
+U_PORT_TEST_FUNCTION("[cellPwr]", "uCellPwrAnyModule")
+{
+    uAtClientStreamHandle_t stream;
+    int32_t resourceCount;
+    int32_t returnCode;
+    uDeviceHandle_t cellHandle;
+    const uCellPrivateModule_t *pModule;
+
+    // In case a previous test failed
+    uCellTestPrivateCleanup(&gHandles);
+
+    // Obtain the initial resource count
+    resourceCount = uTestUtilGetDynamicResourceCount();
+
+    // Note: not using the standard preamble here as
+    // we need to fiddle with the parameters into
+    // uCellInit().
+    U_PORT_TEST_ASSERT(uPortInit() == 0);
+#ifdef U_CFG_APP_UART_PREFIX
+    U_PORT_TEST_ASSERT(uPortUartPrefix(U_PORT_STRINGIFY_QUOTED(U_CFG_APP_UART_PREFIX)) == 0);
+#endif
+    gHandles.uartHandle = uPortUartOpen(U_CFG_APP_CELL_UART,
+                                        115200, NULL,
+                                        U_CELL_UART_BUFFER_LENGTH_BYTES,
+                                        U_CFG_APP_PIN_CELL_TXD,
+                                        U_CFG_APP_PIN_CELL_RXD,
+                                        U_CFG_APP_PIN_CELL_CTS,
+                                        U_CFG_APP_PIN_CELL_RTS);
+    U_PORT_TEST_ASSERT(gHandles.uartHandle >= 0);
+
+    U_PORT_TEST_ASSERT(uAtClientInit() == 0);
+
+    U_TEST_PRINT_LINE("adding an AT client on UART %d...",
+                      U_CFG_APP_CELL_UART);
+    stream.type = U_AT_CLIENT_STREAM_TYPE_UART;
+    stream.handle.int32 = gHandles.uartHandle;
+    gHandles.atClientHandle = uAtClientAddExt(&stream, NULL, U_CELL_AT_BUFFER_LENGTH_BYTES);
+    U_PORT_TEST_ASSERT(gHandles.atClientHandle != NULL);
+
+    // So that we can see what we're doing
+    uAtClientPrintAtSet(gHandles.atClientHandle, true);
+
+    U_PORT_TEST_ASSERT(uCellInit() == 0);
+
+    U_TEST_PRINT_LINE("adding a cellular instance on the AT client...");
+    returnCode = uCellAdd(U_CELL_MODULE_TYPE_ANY,
+                          gHandles.atClientHandle,
+                          U_CFG_APP_PIN_CELL_ENABLE_POWER,
+                          U_CFG_APP_PIN_CELL_PWR_ON,
+#if U_CFG_APP_PIN_CELL_VINT >= 0
+                          U_CFG_APP_PIN_CELL_VINT,
+#else
+                          -1,
+#endif
+                          false, &gHandles.cellHandle);
+    U_PORT_TEST_ASSERT_EQUAL((int32_t) U_ERROR_COMMON_SUCCESS, returnCode);
+    cellHandle = gHandles.cellHandle;
+
+#if defined(U_CFG_APP_PIN_CELL_DTR) && (U_CFG_APP_PIN_CELL_DTR >= 0)
+    uCellPwrSetDtrPowerSavingPin(cellHandle, U_CFG_APP_PIN_CELL_DTR);
+#endif
+
+    // If the module is on at the start, switch it off.
+    if (uCellPwrIsAlive(cellHandle)) {
+        U_TEST_PRINT_LINE("powering off to begin test.");
+        uCellPwrOff(cellHandle, NULL);
+        U_TEST_PRINT_LINE("power off completed.");
+
+    }
+    // Get the private module data as we need it for testing
+    pModule = pUCellPrivateGetModule(cellHandle);
+    U_PORT_TEST_ASSERT(pModule != NULL);
+
+    // Allow the things to settle.
+    uPortTaskBlock(pModule->powerDownWaitSeconds * 1000);
+    // check whether it is completely off
+    U_PORT_TEST_ASSERT(!uCellPwrIsAlive(cellHandle));
+
+    U_TEST_PRINT_LINE("powering on...");
+
+    // Power on and configure the module.
+    U_PORT_TEST_ASSERT(uCellPwrOn(cellHandle, U_CELL_TEST_CFG_SIM_PIN,
+                                  NULL) == 0);
+    U_TEST_PRINT_LINE("checking that module is alive...");
+    U_PORT_TEST_ASSERT(uCellPwrIsAlive(cellHandle));
+
+#  ifdef U_CELL_TEST_MUX_ALWAYS
+    U_PORT_TEST_ASSERT(uCellMuxEnable(cellHandle) == 0);
+#  endif
+
+    // Do the standard postamble, leaving the module on for the next
+    // test to speed things up
+    uCellTestPrivatePostamble(&gHandles, false);
+
+    // Check for resource leaks
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
+}
+
+# endif // if (U_CFG_APP_PIN_CELL_PWR_ON >= 0)
+
 /** Test reboot.
  */
 U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrReboot")

@@ -430,7 +430,8 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
     {
         // The module attributes set here are such that they help in identifying
         // the actual module type.
-        U_CELL_MODULE_TYPE_ANY, 2000 /* Pwr On pull ms */, 3100 /* Pwr off pull ms */,
+        U_CELL_MODULE_TYPE_ANY, -1, /* Pwr On pull ms, negative is set to enable the retry behaviour*/
+        3100 /* Pwr off pull ms */,
         5 /* Boot wait */, 30 /* Min awake */, 35 /* Pwr down wait */, 5 /* Reboot wait */, 10 /* AT timeout */,
         100 /* Cmd wait ms */, 3000 /* Resp max wait ms */, 4 /* radioOffCfun */, 16500 /* resetHoldMilliseconds */,
         1 /* Simultaneous RATs */,

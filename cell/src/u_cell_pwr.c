@@ -93,6 +93,11 @@
 # define U_CELL_PWR_GNSS_PROFILE_BITS_EXTRA 0
 #endif
 
+/** The number of time to try to get the module configured
+ * successfully.
+ */
+#define U_CELL_INITIAL_CONFIG_RETRIES 2
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -212,16 +217,22 @@ static const int32_t gEdrxNb1SecondsToNumber[] = {-1, -1, 20, 41, 20, 82, 20, 20
  * This string array and the uCellModuleType_t should be kept synchronized.
  * The order of module types must match.
  */
-static const char *gModuleNames[] = {"SARA-U2",
-                                     "SARA-R410M-02B",
-                                     "SARA-R412M-02B",
-                                     "SARA-R412M-03B",
-                                     "SARA-R5",
-                                     "SARA-R410M-03B",
-                                     "SARA-R422",
-                                     "LARA-R6",
-                                     "LENA-R8"
-                                    };
+static const char *gpModuleNames[] = {"SARA-U2",
+                                      "SARA-R410M-02B",
+                                      "SARA-R412M-02B",
+                                      "SARA-R412M-03B",
+                                      "SARA-R5",
+                                      "SARA-R410M-03B",
+                                      "SARA-R422",
+                                      "LARA-R6",
+                                      "LENA-R8"
+                                     };
+
+/** The PWR_ON pin pulse durations, in milliseconds, to be
+ * used for the "any module" identification case.
+ */
+static const int32_t gPwrOnPinDurationMs[] = {300, 2000};
+
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS: 3GPP POWER SAVING
  * -------------------------------------------------------------- */
@@ -1256,10 +1267,13 @@ static uCellModuleType_t identifyCellModuleType(uDeviceHandle_t cellHandle)
     int32_t errorCodeOrType = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
     int32_t idSize;
     uCellPrivateInstance_t *pInstance;
+    const char *pIdStr;
+    const char *pCmpStr;
+    bool match;
 
     pInstance = pUCellPrivateGetInstance(cellHandle);
     if (pInstance != NULL) {
-        // Two goes here in case if the module type is not read successfully
+        // few retries here in case if the module type is not read successfully
         // or some URC is interrupting us.
         for (size_t x = 2; (x > 0) && (errorCodeOrType < 0); x--) {
             errorCodeOrType = uCellPrivateGetIdStr(pInstance->atHandle, "AT+CGMM",
@@ -1270,7 +1284,25 @@ static uCellModuleType_t identifyCellModuleType(uDeviceHandle_t cellHandle)
                 // compare the module type with the supported ones
                 for (size_t y = 0; (y < (U_CELL_MODULE_TYPE_MAX_NUM - 1)) &&
                      (errorCodeOrType < 0); y++) {
-                    if (strstr(buffer, gModuleNames[y]) != NULL) {
+                    match = true;
+                    pIdStr = buffer;
+                    pCmpStr = gpModuleNames[y];
+                    while ((*pIdStr != 0) && (*pCmpStr != 0)) {
+                        if (*pCmpStr != '|') {
+                            // Haven't reached a separator, check for a match failure
+                            if (match) {
+                                match = (*pCmpStr == *pIdStr);
+                            }
+                            pCmpStr++;
+                            pIdStr++;
+                        } else {
+                            // Separator, start again
+                            pIdStr = buffer;
+                            match = true;
+                            pCmpStr++;
+                        }
+                    }
+                    if (match) {
                         errorCodeOrType = (uCellModuleType_t) y;
                     }
                 }
@@ -1279,6 +1311,105 @@ static uCellModuleType_t identifyCellModuleType(uDeviceHandle_t cellHandle)
     }
 
     return errorCodeOrType;
+}
+
+// power on the module by toggling the PWR_ON pin
+static int32_t modulePwrOnPinControl(uCellPrivateInstance_t *pInstance,
+                                     bool (*pKeepGoingCallback) (uDeviceHandle_t))
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
+    int32_t platformError = 0;
+    uDeviceHandle_t cellHandle = pInstance->cellHandle;
+
+    // Check if the PWR_ON pin is available.
+    if (pInstance->pinPwrOn >= 0) {
+        // if the powerOnPullMs is non-negative, it means
+        // that we are not going to have retries in the power-
+        // cycle of the module.
+        if (pInstance->pModule->powerOnPullMs > 0) {
+            // Power the module on by holding the PWR_ON pin in
+            // the relevant state for the correct number of milliseconds.
+            errorCode = uPortGpioSet(pInstance->pinPwrOn,
+                                     U_CELL_PRIVATE_PWR_ON_PIN_TOGGLE_TO_STATE(pInstance->pinStates));
+            if (errorCode == 0) {
+                uPortTaskBlock(pInstance->pModule->powerOnPullMs);
+                errorCode = uPortGpioSet(pInstance->pinPwrOn,
+                                         (int32_t) !U_CELL_PRIVATE_PWR_ON_PIN_TOGGLE_TO_STATE(pInstance->pinStates));
+            }
+        } else {
+            for (size_t retryCount = 0;
+                 (retryCount < sizeof(gPwrOnPinDurationMs) / sizeof(gPwrOnPinDurationMs[0])) &&
+                 (platformError == 0) && (errorCode != 0) &&
+                 ((pKeepGoingCallback == NULL) || (pKeepGoingCallback(cellHandle)));
+                 retryCount++) {
+                platformError = uPortGpioSet(pInstance->pinPwrOn,
+                                             U_CELL_PRIVATE_PWR_ON_PIN_TOGGLE_TO_STATE(pInstance->pinStates));
+                if (platformError == 0) {
+                    // Get the retry time for the attempt.
+                    uPortTaskBlock(gPwrOnPinDurationMs[retryCount]);
+                    // Not bothering with checking return code here
+                    // as it would have barfed on the last one if
+                    // it were going to
+                    uPortGpioSet(pInstance->pinPwrOn,
+                                 (int32_t) !U_CELL_PRIVATE_PWR_ON_PIN_TOGGLE_TO_STATE(pInstance->pinStates));
+                    // Check if the module is alive, if it is
+                    // then we don't need to have a second attempt.
+                    errorCode = uCellPwrPrivateIsAlive(pInstance, U_CELL_PWR_IS_ALIVE_ATTEMPTS_POWER_ON);
+                }
+            }
+        }
+    }
+
+    return errorCode;
+}
+
+// It first identifies the module type and then configure it.
+static int32_t identifyAndConfigureModule(uCellPrivateInstance_t *pInstance,
+                                          bool (*pKeepGoingCallback) (uDeviceHandle_t),
+                                          bool asleepAtStart,
+                                          bool allowPrinting)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
+    uCellModuleType_t readModuleType = U_CELL_MODULE_TYPE_ANY;
+    uDeviceHandle_t cellHandle = pInstance->cellHandle;
+
+    if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_ANY) {
+        errorCode = U_ERROR_COMMON_UNKNOWN_MODULE_TYPE;
+        // Read and compare the name with available module types.
+        readModuleType = identifyCellModuleType(cellHandle);
+        if ((readModuleType >= 0) && (readModuleType < (U_CELL_MODULE_TYPE_MAX_NUM - 1))) {
+            pInstance->pModule = &(gUCellPrivateModuleList[readModuleType]);
+            if (allowPrinting) {
+                uPortLog("U_CELL_PWR: Identified module type: %s\n", gpModuleNames[readModuleType]);
+            }
+            uCellPrivateModuleSpecificSetting(pInstance);
+            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+        } else {
+            if (allowPrinting) {
+                uPortLog("U_CELL_PWR: could not identify the module type.\n");
+            }
+        }
+    }
+
+    if (pInstance->pModule->moduleType != U_CELL_MODULE_TYPE_ANY) {
+        // Configure the module.  Since it was already
+        // powered on we might have been called from
+        // a state where everything was already fine
+        // and dandy so only switch the radio off at
+        // the end of configuration if we are not
+        // already registered.
+        errorCode = moduleConfigure(pInstance,
+                                    !uCellPrivateIsRegistered(pInstance),
+                                    asleepAtStart);
+        if (errorCode != 0) {
+            // I have seen situations where the module responds
+            // initially and then fails configuration.  If that is
+            // the case then make sure it's definitely off before
+            // we go any further
+            quickPowerOff(pInstance, pKeepGoingCallback);
+        }
+    }
+    return errorCode;
 }
 
 /* ----------------------------------------------------------------
@@ -1299,9 +1430,9 @@ int32_t uCellPwrPrivateOn(uCellPrivateInstance_t *pInstance,
     int32_t errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
     int32_t platformError = 0;
     int32_t enablePowerAtStart = 1;
+    bool isModuleAlreadyOn = true;
     bool asleepAtStart = (pInstance->deepSleepState == U_CELL_PRIVATE_DEEP_SLEEP_STATE_ASLEEP);
     uDeviceHandle_t cellHandle = pInstance->cellHandle;
-    uCellModuleType_t readModuleType = U_CELL_MODULE_TYPE_ANY;
     uCellPrivateSleep_t *pSleepContext = pInstance->pSleepContext;
     uCellPwrDeepSleepWakeUpCallback_t *pCallback;
 
@@ -1314,128 +1445,74 @@ int32_t uCellPwrPrivateOn(uCellPrivateInstance_t *pInstance,
     if (pInstance->pinEnablePower >= 0) {
         enablePowerAtStart = uPortGpioGet(pInstance->pinEnablePower);
     }
-    // For some modules the power-on pulse on PWR_ON and the
-    // power-off pulse on PWR_ON are the same duration,
-    // in effect a toggle.  To avoid accidentally powering
-    // the module off, check if it is already on.
-    // Note: doing this even if there is an enable power
-    // pin for safety sake
-    // Note: also doing this even if we were asleep because the module
-    // might be asleep as far as the protocol stack is concerned but
-    // not yet actually powered down.
-    if (((pInstance->pinVInt >= 0) &&
-         (uPortGpioGet(pInstance->pinVInt) == U_CELL_PRIVATE_VINT_PIN_ON_STATE(pInstance->pinStates))) ||
-        ((pInstance->pinVInt < 0) &&
-         (uCellPwrPrivateIsAlive(pInstance, 1) == 0))) {
-        uPortLog("U_CELL_PWR: powering on, module is already on.\n");
-        if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_ANY) {
-            // Read and compare the name with available module types.
-            readModuleType = identifyCellModuleType(cellHandle);
-            errorCode = readModuleType;
-            if ((errorCode >= 0) && (readModuleType < (U_CELL_MODULE_TYPE_MAX_NUM - 1))) {
-                pInstance->pModule = &(gUCellPrivateModuleList[readModuleType]);
-                uPortLog("U_CELL_PWR: Identified module type: %s\n", gModuleNames[readModuleType]);
-                uCellPrivateModuleSpecificSetting(pInstance);
-            } else {
-                uPortLog("U_CELL_PWR: could not identify the module type.\n");
-                errorCode = U_ERROR_COMMON_UNKNOWN_MODULE_TYPE;
-            }
-        }
-        if (pInstance->pModule->moduleType != U_CELL_MODULE_TYPE_ANY) {
-            // Configure the module.  Since it was already
-            // powered on we might have been called from
-            // a state where everything was already fine
-            // and dandy so only switch the radio off at
-            // the end of configuration if we are not
-            // already registered
-            errorCode = moduleConfigure(pInstance,
-                                        !uCellPrivateIsRegistered(pInstance),
-                                        asleepAtStart);
-            if (errorCode != 0) {
-                // I have seen situations where the module responds
-                // initially and then fails configuration.  If that is
-                // the case then make sure it's definitely off before
-                // we go any further
-                quickPowerOff(pInstance, pKeepGoingCallback);
-            }
-        }
-    }
-    // Two goes at this, 'cos I've seen some module types
+
+    // Few retries at this, 'cos I've seen some module types
     // fail during initial configuration.
-    for (size_t x = 2; (x > 0) && (errorCode != 0) && (platformError == 0) &&
+    for (size_t x = U_CELL_INITIAL_CONFIG_RETRIES; (x > 0) && (errorCode != 0) &&
+         (platformError == 0) &&
          ((pKeepGoingCallback == NULL) || pKeepGoingCallback(cellHandle)); x--) {
-        if (allowPrinting) {
-            uPortLog("U_CELL_PWR: powering on.\n");
-        }
-        // First, switch on the volts
+
+        // First, switch on the volts if the Enable Power Pin
+        // is available.
         if (!asleepAtStart && (pInstance->pinEnablePower >= 0)) {
             platformError = uPortGpioSet(pInstance->pinEnablePower,
                                          U_CELL_PRIVATE_ENABLE_POWER_PIN_ON_STATE(pInstance->pinStates));
         }
+
         if (platformError == 0) {
             // Wait for things to settle
             uPortTaskBlock(100);
 
-            if (pInstance->pinPwrOn >= 0) {
-                // Power the module on by holding the PWR_ON pin in
-                // the relevant state for the correct number of milliseconds
-                platformError = uPortGpioSet(pInstance->pinPwrOn,
-                                             U_CELL_PRIVATE_PWR_ON_PIN_TOGGLE_TO_STATE(pInstance->pinStates));
-                if (platformError == 0) {
-                    uPortTaskBlock(pInstance->pModule->powerOnPullMs);
-                    // Not bothering with checking return code here
-                    // as it would have barfed on the last one if
-                    // it were going to
-                    uPortGpioSet(pInstance->pinPwrOn,
-                                 (int32_t) !U_CELL_PRIVATE_PWR_ON_PIN_TOGGLE_TO_STATE(pInstance->pinStates));
-                } else {
-                    if (allowPrinting) {
-                        uPortLog("U_CELL_PWR: uPortGpioSet() for PWR_ON"
-                                 " pin %d returned error code %d.\n",
-                                 pInstance->pinPwrOn, platformError);
-                    }
+            // For some modules the power-on pulse on PWR_ON and the
+            // power-off pulse on PWR_ON are the same duration,
+            // in effect a toggle.  To avoid accidentally powering
+            // the module off, check if it is not on.
+            // Note: doing this even if there is an enable power
+            // pin for safety sake
+            // Note: also doing this even if we were asleep because the module
+            // might be asleep as far as the protocol stack is concerned but
+            // not yet actually powered down.
+
+            if (((pInstance->pinVInt >= 0) &&
+                 (uPortGpioGet(pInstance->pinVInt) != U_CELL_PRIVATE_VINT_PIN_ON_STATE(pInstance->pinStates))) ||
+                ((pInstance->pinVInt < 0) &&
+                 (uCellPwrPrivateIsAlive(pInstance, 1) != 0))) {
+
+                if (allowPrinting) {
+                    uPortLog("U_CELL_PWR: powering on.\n");
                 }
+                errorCode = modulePwrOnPinControl(pInstance, pKeepGoingCallback);
+                if ((errorCode != 0) && allowPrinting) {
+                    uPortLog("U_CELL_PWR: uPortGpioSet() for PWR_ON"
+                             " pin %d returned error code %d.\n",
+                             pInstance->pinPwrOn, errorCode);
+                }
+                isModuleAlreadyOn = false;
             }
-            // Cellular module should be up, see if it's there
-            // and, if so, configure it
+
+            // Cellular module should be up
             for (size_t y = U_CELL_PWR_IS_ALIVE_ATTEMPTS_POWER_ON;
                  (y > 0) && (errorCode != 0) &&
                  ((pKeepGoingCallback == NULL) || pKeepGoingCallback(cellHandle));
                  y--) {
                 errorCode = uCellPwrPrivateIsAlive(pInstance, 1);
             }
-            if (errorCode == 0) {
-                if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_ANY) {
-                    // Read and compare the name with available module types.
-                    readModuleType = identifyCellModuleType(cellHandle);
-                    errorCode = readModuleType;
-                    if ((errorCode >= 0) && (readModuleType < (U_CELL_MODULE_TYPE_MAX_NUM - 1))) {
-                        pInstance->pModule = &(gUCellPrivateModuleList[readModuleType]);
-                        uPortLog("U_CELL_PWR: Identified module type: %s\n", gModuleNames[readModuleType]);
-                        uCellPrivateModuleSpecificSetting(pInstance);
-                    } else {
-                        uPortLog("U_CELL_PWR: could not identify the module type.\n");
-                        errorCode = U_ERROR_COMMON_UNKNOWN_MODULE_TYPE;
-                    }
-                }
-                if (pInstance->pModule->moduleType != U_CELL_MODULE_TYPE_ANY) {
-                    // Check here again 'cos the module type should be changed
-                    // if read successfully from the cellular device. Also for
-                    // backward compatibility.
 
-                    // Configure the module, only putting into radio-off
-                    // mode if we weren't already registered at the start
-                    // (e.g. we might have been in 3GPP sleep, which retains
-                    // the registration status)
-                    errorCode = moduleConfigure(pInstance,
-                                                !uCellPrivateIsRegistered(pInstance),
-                                                asleepAtStart);
-                    if (errorCode != 0) {
-                        // If the module fails configuration, power it
-                        // off and try again
-                        quickPowerOff(pInstance, pKeepGoingCallback);
+            // If the module is alive
+            if ((errorCode == 0) ||
+                ((pInstance->pinVInt < 0) &&
+                 (uCellPwrPrivateIsAlive(pInstance, 1) == 0))) {
+                if (allowPrinting) {
+                    if (isModuleAlreadyOn) {
+                        uPortLog("U_CELL_PWR: powering on, module is already on.\n");
+                    } else {
+                        uPortLog("U_CELL_PWR: powering on, module is alive.\n");
                     }
                 }
+                errorCode = identifyAndConfigureModule(pInstance,
+                                                       pKeepGoingCallback,
+                                                       asleepAtStart,
+                                                       allowPrinting);
             }
         } else {
             if (allowPrinting) {
@@ -2185,12 +2262,12 @@ int32_t uCellPwrReboot(uDeviceHandle_t cellHandle,
                 pInstance->rebootIsRequired = false;
                 // Wait for the module to boot
                 uPortTaskBlock(pInstance->pModule->rebootCommandWaitSeconds * 1000);
-                // Two goes at this with a power-off inbetween,
+                // Few retries at this with a power-off inbetween,
                 // 'cos I've seen some modules
                 // fail during initial configuration.
                 // IMPORTANT: this won't work if a SIM PIN needs
-                // to be entered at a power cycle
-                for (size_t x = 2; (x > 0) && (!success) &&
+                // to be entered at a power cycle.
+                for (size_t x = U_CELL_INITIAL_CONFIG_RETRIES; (x > 0) && (!success) &&
                      ((pKeepGoingCallback == NULL) || pKeepGoingCallback(cellHandle)); x--) {
                     if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R5) {
                         // SARA-R5 chucks out a load of stuff after
@@ -2243,11 +2320,7 @@ int32_t uCellPwrReboot(uDeviceHandle_t cellHandle,
                             uPortTaskBlock(100);
                         }
                         if (pInstance->pinPwrOn >= 0) {
-                            uPortGpioSet(pInstance->pinPwrOn,
-                                         U_CELL_PRIVATE_PWR_ON_PIN_TOGGLE_TO_STATE(pInstance->pinStates));
-                            uPortTaskBlock(pInstance->pModule->powerOnPullMs);
-                            uPortGpioSet(pInstance->pinPwrOn,
-                                         (int32_t) !U_CELL_PRIVATE_PWR_ON_PIN_TOGGLE_TO_STATE(pInstance->pinStates));
+                            modulePwrOnPinControl(pInstance, pKeepGoingCallback);
                             uPortTaskBlock(pInstance->pModule->bootWaitSeconds * 1000);
                         }
                     }
