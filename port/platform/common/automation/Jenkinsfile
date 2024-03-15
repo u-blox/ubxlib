@@ -24,7 +24,7 @@ timeout_checkout_seconds = 60 * 5
 timeout_build_seconds = 60 * 30 // Long because on first run tools may have to be installed
 timeout_power_up_seconds = 60
 timeout_flash_seconds = 60 * 30 // Long because on first run tools may have to be installed
-timeout_test_seconds = 60 * 60
+timeout_test_seconds = 85 * 60 // Really don't want more than 3600 but testing is just beginning to edge over that
 check_instance_max = 9
 dut_start_time_seconds = 10
 
