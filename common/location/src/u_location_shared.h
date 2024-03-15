@@ -101,6 +101,7 @@ int32_t uLocationSharedInit();
 void uLocationSharedDeinit();
 
 /** Add a new location request to the FIFO.
+ *
  * IMPORTANT: gULocationMutex should be locked before this
  * is called.
  *
@@ -127,6 +128,7 @@ int32_t uLocationSharedRequestPush(uDeviceHandle_t devHandle,
                                                       const uLocation_t *pLocation));
 
 /** Pop the oldest location request of the given FIFO.
+ *
  * IMPORTANT: gULocationMutex should be locked before this
  * is called.
  *
@@ -136,6 +138,16 @@ int32_t uLocationSharedRequestPush(uDeviceHandle_t devHandle,
  *             when done; NULL is returned if the FIFO is empty.
  */
 uLocationSharedFifoEntry_t *pULocationSharedRequestPop(uLocationSharedFifo_t fifo);
+
+/** Free a FIFO entry (e.g. as returned by
+ * pULocationSharedRequestPop()) when done.
+ *
+ * IMPORTANT: gULocationMutex should be locked before this
+ * is called.
+ *
+ * @param[in] pFifoEntry  the FIFO entry to free.
+ */
+void uLocationSharedFifoEntryFree(uLocationSharedFifoEntry_t *pFifoEntry);
 
 #ifdef __cplusplus
 }

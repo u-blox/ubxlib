@@ -182,8 +182,8 @@ static void gnssPosCallback(uDeviceHandle_t devHandle,
                                            pEntry->desiredRateMs, NULL,
                                            pEntry->pCallback);
             }
+            uLocationSharedFifoEntryFree(pEntry);
         }
-        uPortFree(pEntry);
 
         U_PORT_MUTEX_UNLOCK(gULocationMutex);
     }
@@ -233,8 +233,8 @@ static void cellLocCallback(uDeviceHandle_t devHandle,
                            pEntry->type, NULL, NULL,
                            pEntry->pCallback);
             }
+            uLocationSharedFifoEntryFree(pEntry);
         }
-        uPortFree(pEntry);
 
         U_PORT_MUTEX_UNLOCK(gULocationMutex);
     }
@@ -267,7 +267,6 @@ static void wifiPosCallback(uDeviceHandle_t wifiHandle,
                 pApiKey = pWifiSettings->pApiKey;
                 locationAssist.accessPointsFilter = pWifiSettings->accessPointsFilter;
                 locationAssist.rssiDbmFilter = pWifiSettings->rssiDbmFilter;
-                uPortFree((void *) pWifiSettings);
                 // startAsync() might return busy or out of memory temporarily
                 // so give it a few goes and make sure to yield so that OS
                 // things sort themselves out before even trying
@@ -282,7 +281,7 @@ static void wifiPosCallback(uDeviceHandle_t wifiHandle,
                     retryCount++;
                 } while ((x < 0) && (retryCount < 10));
             }
-            uPortFree(pEntry);
+            uLocationSharedFifoEntryFree(pEntry);
         }
 
         U_PORT_MUTEX_UNLOCK(gULocationMutex);
@@ -324,7 +323,7 @@ static int32_t startAsyncGnss(uDeviceHandle_t devHandle,
             errorCode = uGnssPosGetStart(devHandle, gnssPosCallback);
         }
         if (errorCode != 0) {
-            uPortFree(pULocationSharedRequestPop(U_LOCATION_SHARED_FIFO_GNSS));
+            uLocationSharedFifoEntryFree(pULocationSharedRequestPop(U_LOCATION_SHARED_FIFO_GNSS));
         }
     }
 
@@ -374,7 +373,7 @@ int32_t startAsync(uDeviceHandle_t devHandle, int32_t desiredRateMs,
                                                          pWifiSettings->rssiDbmFilter,
                                                          wifiPosCallback);
                             if (errorCode != 0) {
-                                uPortFree(pULocationSharedRequestPop(U_LOCATION_SHARED_FIFO_WIFI));
+                                uLocationSharedFifoEntryFree(pULocationSharedRequestPop(U_LOCATION_SHARED_FIFO_WIFI));
                             }
                         } else {
                             uPortFree(pWifiSettings);
@@ -400,7 +399,7 @@ int32_t startAsync(uDeviceHandle_t devHandle, int32_t desiredRateMs,
                     if (errorCode == 0) {
                         errorCode = uCellLocGetStart(devHandle, cellLocCallback);
                         if (errorCode != 0) {
-                            uPortFree(pULocationSharedRequestPop(U_LOCATION_SHARED_FIFO_CELL_LOCATE));
+                            uLocationSharedFifoEntryFree(pULocationSharedRequestPop(U_LOCATION_SHARED_FIFO_CELL_LOCATE));
                         }
                     }
                 }
@@ -630,18 +629,18 @@ void uLocationGetStop(uDeviceHandle_t devHandle)
 
         int32_t devType = uDeviceGetDeviceType(devHandle);
         if (devType == (int32_t) U_DEVICE_TYPE_SHORT_RANGE) {
-            uPortFree(pULocationSharedRequestPop(U_LOCATION_SHARED_FIFO_WIFI));
+            uLocationSharedFifoEntryFree(pULocationSharedRequestPop(U_LOCATION_SHARED_FIFO_WIFI));
             uWifiLocGetStop(devHandle);
         } else if (devType == (int32_t) U_DEVICE_TYPE_CELL) {
-            uPortFree(pULocationSharedRequestPop(U_LOCATION_SHARED_FIFO_CELL_LOCATE));
+            uLocationSharedFifoEntryFree(pULocationSharedRequestPop(U_LOCATION_SHARED_FIFO_CELL_LOCATE));
             uCellLocGetStop(devHandle);
             // Also stop these here in case the GNSS device
             // was being accessed via the cellular device
-            uPortFree(pULocationSharedRequestPop(U_LOCATION_SHARED_FIFO_GNSS));
+            uLocationSharedFifoEntryFree(pULocationSharedRequestPop(U_LOCATION_SHARED_FIFO_GNSS));
             uGnssPosGetStop(devHandle);
             uGnssPosGetStreamedStop(devHandle);
         } else if (devType == (int32_t) U_DEVICE_TYPE_GNSS) {
-            uPortFree(pULocationSharedRequestPop(U_LOCATION_SHARED_FIFO_GNSS));
+            uLocationSharedFifoEntryFree(pULocationSharedRequestPop(U_LOCATION_SHARED_FIFO_GNSS));
             uGnssPosGetStop(devHandle);
             uGnssPosGetStreamedStop(devHandle);
         }

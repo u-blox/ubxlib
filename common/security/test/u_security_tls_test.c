@@ -149,6 +149,10 @@ static const char *const gpEchoServerCaCertPem = "-----BEGIN CERTIFICATE-----\r\
                                                  "iDO9Bnw=\r\n"
                                                  "-----END CERTIFICATE-----";
 
+/** Hook to hold buffer for test data received.
+ */
+static char *gpDataReceived = NULL;
+
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -209,7 +213,6 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
     uDeviceHandle_t devHandle = NULL;
     uSockDescriptor_t descriptor = -1;
     uSockAddress_t remoteAddress;
-    char *pDataReceived;
     int32_t startTimeMs;
     size_t sizeBytes;
     size_t offset;
@@ -362,11 +365,12 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
                           sizeof(gData) - 1, (int32_t) uPortGetTickTimeMs());
 
         // ...and capture them all again afterwards
-        pDataReceived = (char *) pUPortMalloc(sizeof(gData) - 1);
-        U_PORT_TEST_ASSERT(pDataReceived != NULL);
+        uPortFree(gpDataReceived); // In case the previous test failed
+        gpDataReceived = (char *) pUPortMalloc(sizeof(gData) - 1);
+        U_PORT_TEST_ASSERT(gpDataReceived != NULL);
         //lint -e(668) Suppress possible use of NULL pointer
-        // for pDataReceived
-        memset(pDataReceived, 0, sizeof(gData) - 1);
+        // for gpDataReceived
+        memset(gpDataReceived, 0, sizeof(gData) - 1);
         startTimeMs = uPortGetTickTimeMs();
         offset = 0;
         //lint -e{441} Suppress loop variable not found in
@@ -374,7 +378,7 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
         for (y = 0; (offset < sizeof(gData) - 1) &&
              (uPortGetTickTimeMs() - startTimeMs < 20000); y++) {
             sizeBytes = uSockRead(descriptor,
-                                  pDataReceived + offset,
+                                  gpDataReceived + offset,
                                   (sizeof(gData) - 1) - offset);
             if (sizeBytes > 0) {
                 U_TEST_PRINT_LINE("received %d byte(s) on secure TCP socket.", sizeBytes);
@@ -392,9 +396,10 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
         }
 
         // Check that we reassembled everything correctly
-        U_PORT_TEST_ASSERT(memcmp(pDataReceived, gData, sizeof(gData) - 1) == 0);
+        U_PORT_TEST_ASSERT(memcmp(gpDataReceived, gData, sizeof(gData) - 1) == 0);
 
-        uPortFree(pDataReceived);
+        uPortFree(gpDataReceived);
+        gpDataReceived = NULL;
 
         // Close the socket
         if (!closeSock(descriptor)) {
@@ -446,7 +451,6 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsUdpSock")
     uDeviceHandle_t devHandle = NULL;
     uSockDescriptor_t descriptor = -1;
     uSockAddress_t remoteAddress;
-    char *pDataReceived;
     int32_t startTimeMs;
     size_t sizeBytes;
     size_t offset;
@@ -599,11 +603,12 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsUdpSock")
                           sizeof(gData) - 1, (int32_t) uPortGetTickTimeMs());
 
         // ...and capture them all again afterwards
-        pDataReceived = (char *) pUPortMalloc(sizeof(gData) - 1);
-        U_PORT_TEST_ASSERT(pDataReceived != NULL);
+        uPortFree(gpDataReceived); // In case the previous test failed
+        gpDataReceived = (char *) pUPortMalloc(sizeof(gData) - 1);
+        U_PORT_TEST_ASSERT(gpDataReceived != NULL);
         //lint -e(668) Suppress possible use of NULL pointer
-        // for pDataReceived
-        memset(pDataReceived, 0, sizeof(gData) - 1);
+        // for gpDataReceived
+        memset(gpDataReceived, 0, sizeof(gData) - 1);
         startTimeMs = uPortGetTickTimeMs();
         offset = 0;
         //lint -e{441} Suppress loop variable not found in
@@ -611,7 +616,7 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsUdpSock")
         for (y = 0; (offset < sizeof(gData) - 1) &&
              (uPortGetTickTimeMs() - startTimeMs < 20000); y++) {
             sizeBytes = uSockRead(descriptor,
-                                  pDataReceived + offset,
+                                  gpDataReceived + offset,
                                   (sizeof(gData) - 1) - offset);
             if (sizeBytes > 0) {
                 U_TEST_PRINT_LINE("received %d byte(s) on secure UDP socket.", sizeBytes);
@@ -629,7 +634,10 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsUdpSock")
         }
 
         // Check that we reassembled everything correctly
-        U_PORT_TEST_ASSERT(memcmp(pDataReceived, gData, sizeof(gData) - 1) == 0);
+        U_PORT_TEST_ASSERT(memcmp(gpDataReceived, gData, sizeof(gData) - 1) == 0);
+
+        uPortFree(gpDataReceived);
+        gpDataReceived = NULL;
 
         // Close the socket
         if (!closeSock(descriptor)) {
@@ -685,6 +693,8 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsCleanUp")
 
     // Clean-up the TLS security mutex
     uSecurityTlsCleanUp();
+
+    uPortFree(gpDataReceived);
 
     // The network test configuration is shared between
     // the network, sockets, security and location tests

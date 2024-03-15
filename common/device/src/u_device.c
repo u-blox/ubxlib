@@ -333,18 +333,22 @@ int32_t uDeviceClose(uDeviceHandle_t devHandle, bool powerOff)
         deviceType = uDeviceGetDeviceType(devHandle);
         switch (deviceType) {
             case U_DEVICE_TYPE_CELL:
+                uNetworkCfgFree(devHandle);
                 errorCode = uDevicePrivateCellRemove(devHandle, powerOff);
                 break;
             case U_DEVICE_TYPE_GNSS:
+                uNetworkCfgFree(devHandle);
                 errorCode = uDevicePrivateGnssRemove(devHandle, powerOff);
                 break;
             case U_DEVICE_TYPE_SHORT_RANGE:
                 if (!powerOff) {
+                    uNetworkCfgFree(devHandle);
                     errorCode = uDevicePrivateShortRangeRemove(devHandle);
                 }
                 break;
             case U_DEVICE_TYPE_SHORT_RANGE_OPEN_CPU:
                 if (!powerOff) {
+                    uNetworkCfgFree(devHandle);
                     errorCode = uDevicePrivateShortRangeOpenCpuRemove(devHandle);
                 }
                 break;
@@ -357,8 +361,6 @@ int32_t uDeviceClose(uDeviceHandle_t devHandle, bool powerOff)
             void *pDeviceType = (void *) deviceType;
             void *pPowerOff = (void *) powerOff;
             errorCode = uDeviceCallback("close", pDeviceType, pPowerOff);
-            // Free any storage allocated for network configuration data
-            uNetworkCfgFree(devHandle);
         }
 
         // ...and done

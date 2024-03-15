@@ -316,7 +316,9 @@ U_WEAK void uPortFree(void *pMemory)
     }
 #endif
 
-    gHeapAllocCount--;
+    if (pMemory != NULL) {
+        gHeapAllocCount--;
+    }
     free(pMemory);
 }
 

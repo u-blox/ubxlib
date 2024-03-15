@@ -106,8 +106,7 @@ void uLocationSharedDeinit()
              x < (int32_t) U_LOCATION_TYPE_MAX_NUM;
              x++) {
             while ((pEntry = pULocationSharedRequestPop((uLocationSharedFifo_t) x)) != NULL) {
-                uPortFree((void *) pEntry->pWifiSettings);
-                uPortFree(pEntry);
+                uLocationSharedFifoEntryFree(pEntry);
             }
         }
         U_PORT_MUTEX_UNLOCK(gULocationMutex);
@@ -210,6 +209,15 @@ uLocationSharedFifoEntry_t *pULocationSharedRequestPop(uLocationSharedFifo_t fif
     }
 
     return pSaved;
+}
+
+// Free a FIFO entry.
+void uLocationSharedFifoEntryFree(uLocationSharedFifoEntry_t *pFifoEntry)
+{
+    if (pFifoEntry != NULL) {
+        uPortFree((void *) pFifoEntry->pWifiSettings);
+        uPortFree(pFifoEntry);
+    }
 }
 
 // End of file

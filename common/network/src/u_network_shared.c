@@ -155,6 +155,7 @@ void uNetworkCfgFree(uDeviceHandle_t devHandle)
         for (size_t x = 0; (x < sizeof(pInstance->networkData) /
                             sizeof(pInstance->networkData[0])); x++) {
             uPortFree(pInstance->networkData[x].pCfg);
+            pInstance->networkData[x].pCfg = NULL;
         }
     }
 }

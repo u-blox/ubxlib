@@ -118,6 +118,7 @@ bool uTestUtilResourceCheck(const char *pPrefix,
     bool resourcesClean = true;
     int32_t x;
     int32_t osShouldBeOutstanding = uPortOsResourcePerpetualCount();
+    int32_t heapShouldBeOutstanding = uPortHeapPerpetualAllocCount();
 
     if (pPrefix == NULL) {
         pPrefix = "";
@@ -157,10 +158,12 @@ bool uTestUtilResourceCheck(const char *pPrefix,
 
     // Check that all heap pUPortMalloc()s have uPortFree()s
     x = uPortHeapAllocCount();
-    if (x > 0) {
+    if (x > heapShouldBeOutstanding) {
         if (printIt) {
-            uPortLog("%s%s%d outstanding call(s) to pUPortMalloc().\n",
-                     pPrefix, pErrorMarker, x);
+            uPortLog("%s%sexpected %d outstanding call(s) to pUPortMalloc()"
+                     " but got %d%s.\n",
+                     pPrefix, pErrorMarker, heapShouldBeOutstanding, x,
+                     (x > heapShouldBeOutstanding) ? "; they might yet be cleaned up" : "");
             uPortHeapDump(pPrefix);
         }
         resourcesClean = false;
