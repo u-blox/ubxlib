@@ -21,7 +21,6 @@ For the remainder of the \#defines (see "Using A xxx Module" below) you may eith
 Follow the instructions in the [port/platform/arduino](/port/platform/arduino) directory to create the Arduino library version of `ubxlib`, which will include the example here.
 
 # Using A Cellular Module
-
 `U_CFG_TEST_CELL_MODULE_TYPE`: consult [u_cell_module_type.h](/cell/api/u_cell_module_type.h) to determine the type name for the cellular module you intend to use.  For instance, to use SARA-R5 you would set `U_CFG_TEST_CELL_MODULE_TYPE` to `U_CELL_MODULE_TYPE_SARA_R5`.
 
 `U_CFG_APP_PIN_CELL_xxx`: the default values for the MCU pins connecting your cellular module to your MCU are \#defined in the file [port/platform](/port/platform)`/<platform>/mcu/<mcu>/cfg/cfg_app_platform_specific.h`.  You should check if these are correct for your board and, if not, override the values of the \#defines (where -1 means "not connected").
@@ -31,7 +30,6 @@ Follow the instructions in the [port/platform/arduino](/port/platform/arduino) d
 Obviously you will need a SIM in your board, an antenna connected and you may need to know the APN associated with the SIM (though accepting the network default often works).
 
 # Using A Wi-Fi Module
-
 `U_CFG_TEST_SHORT_RANGE_MODULE_TYPE`: consult [u_short_range_module_type.h](/common/short_range/api/u_short_range_module_type.h) to determine the type name for the short range module module you intend to use.  For instance, to use NINA-W13 you would set `U_CFG_TEST_SHORT_RANGE_MODULE_TYPE` to `U_SHORT_RANGE_MODULE_TYPE_NINA_W13`.
 
 `U_CFG_APP_PIN_SHORT_RANGE_xxx`: the default values for the MCU pins connecting your short range module to your MCU are \#defined in the file [port/platform](/port/platform)`/<platform>/mcu/<mcu>/cfg/cfg_app_platform_specific.h`.  You should check if these are correct for your board and, if not, override the values of the \#defines (where -1 means "not connected").
@@ -43,6 +41,7 @@ On the following platforms:
 
 - [ESP-IDF](/port/platform/esp-idf)
 - [Zephyr](/port/platform/zephyr)
+- [Linux](/port/platform/linux)
 
 ...and with following \[cellular\] modules:
 

@@ -47,6 +47,7 @@
 #include "u_port_os.h"
 #include "u_port_heap.h"
 #include "u_port_uart.h"
+#include "u_port_ppp.h"
 
 #include "u_time.h"
 
@@ -683,6 +684,12 @@ int32_t uCellTimeSyncCellEnable(uDeviceHandle_t cellHandle,
     int32_t startTimeMs;
 
     if (gUCellPrivateMutex != NULL) {
+
+        // Since this function requires the normal radio
+        // operation of the module to be disabled, take any
+        // PPP connection down first (since we can't do so
+        // while the cellular API mutex is locked)
+        uPortPppDisconnect(cellHandle);
 
         U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
 

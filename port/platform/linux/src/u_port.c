@@ -44,6 +44,7 @@
 #include "u_port_uart.h"
 #include "u_port_event_queue_private.h"
 #include "u_port_os_private.h"
+#include "u_port_ppp_private.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -94,12 +95,16 @@ int32_t uPortInit()
     if (errorCode == 0) {
         errorCode = uPortUartInit();
     }
+    if (errorCode == 0) {
+        errorCode = uPortPppPrivateInit();
+    }
     return errorCode;
 }
 
 // Deinitialise the porting layer.
 void uPortDeinit()
 {
+    uPortPppPrivateDeinit();
     uPortUartDeinit();
     uPortEventQueuePrivateDeinit();
     uPortOsPrivateDeinit();

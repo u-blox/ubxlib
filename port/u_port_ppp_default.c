@@ -67,6 +67,13 @@ void uPortPppDefaultPrivateLink()
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
+// Set the name of the device that is the MCU-end PPP entity.
+U_WEAK int32_t uPortPppSetLocalDeviceName(const char *pDevice)
+{
+    (void) pDevice;
+    return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+}
+
 // Attach a PPP interface to the bottom of the IP stack of a platform.
 U_WEAK int32_t uPortPppAttach(void *pDevHandle,
                               uPortPppConnectCallback_t *pConnectCallback,

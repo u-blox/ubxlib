@@ -1135,6 +1135,8 @@ static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance,
                 uPortTaskBlock(1000);
             }
             uAtClientLock(atHandle);
+            // This can sometimes take a little longer than the norm
+            uAtClientTimeoutSet(atHandle, 15000);
             uAtClientCommandStart(atHandle, "AT+CFUN=");
             uAtClientWriteInt(atHandle,
                               pInstance->pModule->radioOffCfun);

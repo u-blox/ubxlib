@@ -60,7 +60,14 @@ set(UBXLIB_SRC_PORT
     ${UBXLIB_BASE}/port/platform/${UBXLIB_PLATFORM}/src/u_port_uart.c
     ${UBXLIB_BASE}/port/platform/${UBXLIB_PLATFORM}/src/u_port_i2c.c
     ${UBXLIB_BASE}/port/platform/${UBXLIB_PLATFORM}/src/u_port_spi.c
+    ${UBXLIB_BASE}/port/platform/${UBXLIB_PLATFORM}/src/u_port_ppp.c
     ${UBXLIB_BASE}/port/clib/u_port_clib_mktime64.c)
+
+# Add the platform-specific tests and examples
+list(APPEND UBXLIB_TEST_SRC
+    ${UBXLIB_BASE}/port/platform/${UBXLIB_PLATFORM}/test/u_linux_ppp_test.c
+    ${UBXLIB_BASE}/example/sockets/main_ppp_linux.c
+)
 
 # Generate a library of ubxlib
 add_library(ubxlib OBJECT ${UBXLIB_SRC} ${UBXLIB_SRC_PORT})

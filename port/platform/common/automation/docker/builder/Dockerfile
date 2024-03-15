@@ -148,11 +148,19 @@ WORKDIR /workdir
 RUN chmod 1777 /tmp && \
     pip3 install pyserial pylint psutil pylink-square requests_toolbelt rpyc debugpy invoke==2.0.0 coloredlogs verboselogs && \
     apt-get update && apt-get install -y --no-install-recommends  \
-        usbutils gawk iputils-ping openssh-client socat ppp \
+        usbutils gawk iputils-ping openssh-client socat ppp picocom \
 # Needed for OpenOCD
         libhidapi-hidraw0 && \
 # Cleanup
     apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# Set permission on pppd so that we can run it without having to be root
+# and it doesn't require a serial modem to be a server capable of
+# authenticating itself
+RUN chown root /usr/sbin/pppd && chmod 4755 /usr/sbin/pppd && \
+    sed 's/^auth/noauth/' /etc/ppp/options > options && \
+    cp options /etc/ppp/options && \
+    rm options
 
 #***************************************************
 # Setup environmental variables

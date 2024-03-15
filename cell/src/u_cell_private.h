@@ -628,6 +628,14 @@ int32_t uCellPrivateCFunGet(const uCellPrivateInstance_t *pInstance);
  * uCellPrivateCFunMode() can be called subseqently to put it
  * back again.
  *
+ * Note: if you are calling this with a mode that powers the
+ * module down (e.g. 0 or 4) then make sure that the calling
+ * function calls uPortPppDisconnect(), _before_ it locks the
+ * cellular API mutex, in order to bring any PPP connections
+ * down first; must be before the API mutex is locked as the
+ * process of bringing down a PPP connection will call into the
+ * cellular API.
+ *
  * @param pInstance  pointer to the cellular instance.
  * @return           the previous mode or negative error code.
  */

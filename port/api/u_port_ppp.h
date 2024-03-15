@@ -45,7 +45,8 @@
  * are documented in the same place.
  *
  * Please also note that the application NEVER needs to call
- * any of the functions defined here; they are purely called
+ * any of the functions defined here aside from possibly
+ * uPortPppSetLocalDeviceName(); they are purely called
  * from within ubxlib to connect a platform's PPP interface.
  */
 
@@ -87,6 +88,14 @@ extern "C" {
  * to provide no default.
  */
 # define U_PORT_PPP_DNS_SECONDARY_DEFAULT_STR "8.8.4.4"
+#endif
+
+#ifndef U_PORT_PPP_LOCAL_DEVICE_NAME_LENGTH
+/** The maximum length of the string passed to
+ * uPortPppSetLocalDeviceName(), not including the null terminator
+ * (what strlen() would return).
+ */
+# define U_PORT_PPP_LOCAL_DEVICE_NAME_LENGTH 32
 #endif
 
 /* ----------------------------------------------------------------
@@ -241,6 +250,28 @@ void uPortPppDefaultPrivateLink(void);
  * FUNCTIONS
  * -------------------------------------------------------------- */
 
+/** Set the name (mostly port number) of the IP-stack-end PPP device
+ * on this MCU that uPortPppAttach() will connect with; this must be
+ * called *before* uDeviceOpen() is called on the device where you
+ * expect to use PPP.
+ *
+ * This is currently only applicable for the Linux platform, where
+ * it must be an IP address with a port number; the default if
+ * this function is not called will be U_PORT_PPP_LOCAL_DEVICE_NAME
+ * (e.g. 127.0.0.1:5000).
+ *
+ * If a PPP interface is not supported by a platform this function
+ * does not need to be implemented: a weakly-linked implementation
+ * will take over and return #U_ERROR_COMMON_NOT_SUPPORTED.
+ *
+ * @param[in] pDevice  a pointer to a string giving the name
+ *                     of the device, up to
+ *                     #U_PORT_PPP_LOCAL_DEVICE_NAME_LENGTH
+ *                     characters long.
+ * @return             zero on success else negative error code.
+ */
+int32_t uPortPppSetLocalDeviceName(const char *pDevice);
+
 /** Attach a PPP interface to the bottom of the IP stack of a
  * platform.  This is called by a ubxlib layer (e.g. cellular)
  * when a device is powered-up that is able to support PPP.  This
@@ -327,20 +358,29 @@ int32_t uPortPppAttach(void *pDevHandle,
  *                                   name for PPP authentication; should
  *                                   be set to NULL if no user name or
  *                                   password is required.  This value
- *                                   is currently IGNORED in the Zephyr
+ *                                   is currently IGNORED (a) in the Zephyr,
  *                                   case since the user name is hard-coded
- *                                   by Zephyr (see pap.c inside Zephyr).
+ *                                   by Zephyr (see pap.c inside Zephyr)
+ *                                   and (b) in the Linux case, since the
+ *                                   username must be provided to pppd
+ *                                   itself, there is no way for this code
+ *                                   to pass it to pppd.
  * @param[in] pPassword              pointer to a string giving the
  *                                   password for PPP authentication; must
  *                                   be non-NULL if pUsername is non-NULL,
  *                                   ignored if pUsername is NULL.  This
- *                                   value is currently IGNORED in the Zephyr
+ *                                   value is currently IGNORED (a) in the Zephyr
  *                                   case since the password is hard-coded
- *                                   by Zephyr (see pap.c inside Zephyr).
+ *                                   by Zephyr (see pap.c inside Zephyr) and
+ *                                   (b) in the Linux case, since the password
+ *                                   must be provided to pppd itself, there
+ *                                   is no way for this code to pass it to
+ *                                   pppd.
  * @param authenticationMode         the authentication mode, ignored if
  *                                   pUsername is NULL; ignored by Zephyr
  *                                   (PAP will be used if authentication is
- *                                   required).
+ *                                   required) and not used in the Linux case
+ *                                   for the reasons given above.
  * @return                           zero on success, else negative error
  *                                   code.
  */

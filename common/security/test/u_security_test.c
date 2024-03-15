@@ -120,9 +120,6 @@ static uNetworkTestList_t *pStdPreamble()
 {
     uNetworkTestList_t *pList;
 
-    // In case a previous test failed
-    uNetworkTestCleanUp();
-
     U_PORT_TEST_ASSERT(uPortInit() == 0);
     U_PORT_TEST_ASSERT(uDeviceInit() == 0);
 
@@ -262,6 +259,10 @@ U_PORT_TEST_FUNCTION("[security]", "securitySeal")
     // Close the devices once more and free the list
     for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
         if (*pTmp->pDevHandle != NULL) {
+            U_TEST_PRINT_LINE("taking down %s...",
+                              gpUNetworkTestTypeName[pTmp->networkType]);
+            U_PORT_TEST_ASSERT(uNetworkInterfaceDown(*pTmp->pDevHandle,
+                                                     pTmp->networkType) == 0);
             U_TEST_PRINT_LINE("closing device %s...",
                               gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType]);
             U_PORT_TEST_ASSERT(uDeviceClose(*pTmp->pDevHandle, false) == 0);
@@ -400,6 +401,10 @@ U_PORT_TEST_FUNCTION("[security]", "securityPskGeneration")
     // Close the devices once more and free the list
     for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
         if (*pTmp->pDevHandle != NULL) {
+            U_TEST_PRINT_LINE("taking down %s...",
+                              gpUNetworkTestTypeName[pTmp->networkType]);
+            U_PORT_TEST_ASSERT(uNetworkInterfaceDown(*pTmp->pDevHandle,
+                                                     pTmp->networkType) == 0);
             U_TEST_PRINT_LINE("closing device %s...",
                               gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType]);
             U_PORT_TEST_ASSERT(uDeviceClose(*pTmp->pDevHandle, false) == 0);
@@ -526,6 +531,10 @@ U_PORT_TEST_FUNCTION("[security]", "securityZtp")
     // Close the devices once more and free the list
     for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
         if (*pTmp->pDevHandle != NULL) {
+            U_TEST_PRINT_LINE("taking down %s...",
+                              gpUNetworkTestTypeName[pTmp->networkType]);
+            U_PORT_TEST_ASSERT(uNetworkInterfaceDown(*pTmp->pDevHandle,
+                                                     pTmp->networkType) == 0);
             U_TEST_PRINT_LINE("closing device %s...",
                               gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType]);
             U_PORT_TEST_ASSERT(uDeviceClose(*pTmp->pDevHandle, false) == 0);
