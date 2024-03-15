@@ -749,8 +749,8 @@ static bool keepGoingLocalCb(const uCellPrivateInstance_t *pInstance)
         keepGoing = pInstance->pKeepGoingCallback(pInstance->cellHandle);
     } else {
         if ((pInstance->startTimeMs > 0) &&
-            !U_PORT_TICK_TIME_EXPIRED_OR_WRAP_MS(pInstance->startTimeMs,
-                                                 U_CELL_NET_CONNECT_TIMEOUT_SECONDS * 1000)) {
+            !uPortTickTimeExpired(pInstance->startTimeMs,
+                                  U_CELL_NET_CONNECT_TIMEOUT_SECONDS * 1000)) {
             keepGoing = false;
         }
     }
@@ -770,8 +770,8 @@ static int32_t radioOff(uCellPrivateInstance_t *pInstance)
     pInstance->profileState = U_CELL_PRIVATE_PROFILE_STATE_SHOULD_BE_DOWN;
     for (size_t x = 3; (x > 0) && (errorCode < 0); x--) {
         // Wait for flip time to expire
-        while (!U_PORT_TICK_TIME_EXPIRED_OR_WRAP_MS(pInstance->lastCfunFlipTimeMs,
-                                                    U_CELL_PRIVATE_AT_CFUN_FLIP_DELAY_SECONDS * 1000)) {
+        while (!uPortTickTimeExpired(pInstance->lastCfunFlipTimeMs,
+                                     U_CELL_PRIVATE_AT_CFUN_FLIP_DELAY_SECONDS * 1000)) {
             uPortTaskBlock(1000);
         }
         uAtClientLock(atHandle);
@@ -1242,8 +1242,8 @@ static int32_t registerNetwork(uCellPrivateInstance_t *pInstance,
 
     // Come out of airplane mode and try to register
     // Wait for flip time to expire first though
-    while (!U_PORT_TICK_TIME_EXPIRED_OR_WRAP_MS(pInstance->lastCfunFlipTimeMs,
-                                                U_CELL_PRIVATE_AT_CFUN_FLIP_DELAY_SECONDS * 1000)) {
+    while (!uPortTickTimeExpired(pInstance->lastCfunFlipTimeMs,
+                                 U_CELL_PRIVATE_AT_CFUN_FLIP_DELAY_SECONDS * 1000)) {
         uPortTaskBlock(1000);
     }
     // Reset the current registration status
@@ -1804,8 +1804,8 @@ static int32_t activateContextUpsd(const uCellPrivateInstance_t *pInstance,
         deviceError.type = U_AT_CLIENT_DEVICE_ERROR_TYPE_NO_ERROR;
         while (!activated && keepGoingLocalCb(pInstance) &&
                (deviceError.type == U_AT_CLIENT_DEVICE_ERROR_TYPE_NO_ERROR) &&
-               !U_PORT_TICK_TIME_EXPIRED_OR_WRAP_MS(startTimeMs,
-                                                    U_CELL_NET_UPSD_CONTEXT_ACTIVATION_TIME_SECONDS * 1000)) {
+               !uPortTickTimeExpired(startTimeMs,
+                                     U_CELL_NET_UPSD_CONTEXT_ACTIVATION_TIME_SECONDS * 1000)) {
             uAtClientClearError(atHandle);
             uAtClientResponseStart(atHandle, NULL);
             activated = (uAtClientErrorGet(atHandle) == 0);
@@ -2990,8 +2990,8 @@ int32_t uCellNetScanGetFirst(uDeviceHandle_t cellHandle,
                     bytesRead = -1;
                     innerStartTimeMs = uPortGetTickTimeMs();
                     while ((bytesRead <= 0) &&
-                           !U_PORT_TICK_TIME_EXPIRED_OR_WRAP_MS(innerStartTimeMs,
-                                                                U_CELL_NET_SCAN_TIME_SECONDS * 1000) &&
+                           !uPortTickTimeExpired(innerStartTimeMs,
+                                                 U_CELL_NET_SCAN_TIME_SECONDS * 1000) &&
                            ((pKeepGoingCallback == NULL) || (pKeepGoingCallback(cellHandle)))) {
                         uAtClientResponseStart(atHandle, "+COPS:");
                         // We use uAtClientReadBytes() here because the
@@ -3148,8 +3148,8 @@ int32_t uCellNetDeepScan(uDeviceHandle_t cellHandle,
                 startTimeMs = uPortGetTickTimeMs();
                 for (size_t x = U_CELL_NET_DEEP_SCAN_RETRIES + 1;
                      (x > 0) && (errorCodeOrNumber < 0) && keepGoing &&
-                     !U_PORT_TICK_TIME_EXPIRED_OR_WRAP_MS(startTimeMs,
-                                                          U_CELL_NET_DEEP_SCAN_TIME_SECONDS * 1000);
+                     !uPortTickTimeExpired(startTimeMs,
+                                           U_CELL_NET_DEEP_SCAN_TIME_SECONDS * 1000);
                      x--) {
                     number = 0;
                     errorCodeOrNumber = (int32_t) U_ERROR_COMMON_TIMEOUT;
@@ -3166,8 +3166,8 @@ int32_t uCellNetDeepScan(uDeviceHandle_t cellHandle,
                     // want to be able to stop the command part way through,
                     // hence the AT handling code below is more complex than usual.
                     while ((errorCodeOrNumber == (int32_t) U_ERROR_COMMON_TIMEOUT) && keepGoing &&
-                           !U_PORT_TICK_TIME_EXPIRED_OR_WRAP_MS(startTimeMs,
-                                                                U_CELL_NET_DEEP_SCAN_TIME_SECONDS * 1000)) {
+                           !uPortTickTimeExpired(startTimeMs,
+                                                 U_CELL_NET_DEEP_SCAN_TIME_SECONDS * 1000)) {
                         if (uAtClientResponseStart(atHandle, NULL) == 0) {
                             // See if we have a line
                             errorCodeOrNumber = parseDeepScanLine(atHandle, &cell);

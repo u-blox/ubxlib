@@ -61,10 +61,20 @@ Since the commit messages are our only change documentation, and since Github is
 
 - when merging a PR, try to stick to squash-merges or rebase-merges, rather than plain-old merges of a branch,
 - if a customer makes a PR to the public `ubxlib` repo, bring it in as follows:
-  - make sure that the customer PR is a single commit (ask them to squash it and re-push if it is not),
+  - if the customer PR is NEITHER (a) a single commit, NOR (b) made up of nice discrete/sensible changes that would make sense to any other customer, then ask them to squash it into a nice clean single commit and re-push,
   - pull the PR into a branch of `ubxlib_priv` so that you can throw it at the test system to prove that it is all good,
   - make sure that `ubxlib` `master` is up to date with `ubxlib_priv` `master` (i.e. push `ubxlib_priv` `master` to `ubxlib` `master`, which should always be possible, see above),
   - do a rebase-merge of the customer PR into `ubxlib` `master` (i.e. directly, not going via `ubxlib_priv`),
-  - pull `ubxlib` `master` back into `ubxlib_priv` `master` (i.e. with the latest `ubxlib_priv` `master` on your machine, pull `ubxlib` `master` and then push that to `ubxlib_priv` `master`).
-  
+  - pull `ubxlib` `master` back into `ubxlib_priv` `master` (i.e. with the latest `ubxlib_priv` `master` checked-out on your machine, pull `ubxlib` `master` and then push that to `ubxlib_priv` `master`).
+
 The only exception to the above is when there has been active work on the `ubxlib_priv` `development` branch and that is ready to be brought into `master`: this should be brought into `ubxlib_priv` `master` through a normal (i.e. non-rebase, non-squash) merge since it will likely be a _very_ large commit of disparate things that will not be describable when in one big blob.
+
+As an aside, if `master` moves on underneath a branch **THAT YOU ALONE** are working on, please do a `rebase` of that development branch onto `master`, rather then merging the changes from `master` onto your branch, (i.e. checkout `master` locally, pull the latest `master` and then `rebase` your branch onto `master`); the reason for this is that, otherwise, the merge process can be confused and end up thinking that you intend to remove things that have just been added in the `master` branch.  If you share the branch with someone else, i.e. you are not working on it alone, then take care because rebasing obviously changes history; it may still be the right thing to do, 'cos the ground has indeed moved underneath you, history _has_ changed, but make sure that anyone else who is working on the branch with you is aware of what you have done when you push the branch back to the repo.
+
+# Beware The Wrap
+Embedded systems usually have no better than a 32 bit millisecond tick count, i.e. a signed 32 bit counter that will wrap at `INT32_MAX`, so modulo 2^31, or 2,147,483,648, or about 25 days; the return value of the port layer `uPortGetTickTimeMs()` is an `int32_t` for this reason.
+
+The systems that `ubxlib` is built into will need to be up for longer than 25 days, so the `ubxlib` code must behave well around such a wrap and, specifically, not unintentionally become stuck for 25 days if the tick counter happens to wrap while the code is waiting on it.  Always use the `uPortTickTimeExpired()` or `uPortTickTimeBeyondStop()` functions (see [u_port.h](/port/api/u_port.h)) while waiting for a number of ticks to pass; these are designed to ensure that nothing will get stuck.
+
+# Be Explicit About Units
+Where a number represents a quantity it will have a unit: seconds, milliseconds, nanoseconds, Volts, milliVolts, decibels, decibels relative to one milliWatt (dBm), words (as opposed to bytes), sheep, etc.  You may recall the tale of the [Mars Climate Orbiter](https://en.wikipedia.org/wiki/Mars_Climate_Orbiter), a $327 million spacecraft that was lost because the NASA navigation software expected measurements in newton-seconds while their contractor was providing measurements in pound-force seconds, a factor of 4.5 different; where a number represents a quantity, **be explicit** about the unit by including it in the variable/parameter name.  For instance, presented with a variable/parameter named `timeout`, you could get things wrong by three orders of magnitude or more when applying that parameter, without realising it; naming it something like `timeoutMs` or `timeoutSeconds` will make the intended usage clear.

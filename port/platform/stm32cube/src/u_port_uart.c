@@ -1337,8 +1337,8 @@ int32_t uPortUartWrite(int32_t handle,
                 // was wrong and it's not connected to the right
                 // thing.
                 while (!(txOk = LL_USART_IsActiveFlag_TXE(pReg)) &&
-                       !U_PORT_TICK_TIME_EXPIRED_OR_WRAP_MS(startTimeMs,
-                                                            U_PORT_UART_WRITE_TIMEOUT_MS)) {}
+                       !uPortTickTimeExpired(startTimeMs,
+                                             U_PORT_UART_WRITE_TIMEOUT_MS)) {}
                 if (txOk) {
                     pDataPtr++;
                     sizeBytes--;
@@ -1347,8 +1347,8 @@ int32_t uPortUartWrite(int32_t handle,
             // Wait for transmission to complete so that we don't
             // write over stuff the next time
             while (!LL_USART_IsActiveFlag_TC(pReg) &&
-                   !U_PORT_TICK_TIME_EXPIRED_OR_WRAP_MS(startTimeMs,
-                                                        U_PORT_UART_WRITE_TIMEOUT_MS)) {}
+                   !uPortTickTimeExpired(startTimeMs,
+                                         U_PORT_UART_WRITE_TIMEOUT_MS)) {}
             sizeOrErrorCode -= (int32_t) sizeBytes;
         }
 
@@ -1543,7 +1543,7 @@ int32_t uPortUartEventTrySend(int32_t handle, uint32_t eventBitMap,
                                                    &event, sizeof(event));
                 uPortTaskBlock(U_CFG_OS_YIELD_MS);
             } while ((errorCode != 0) &&
-                     !U_PORT_TICK_TIME_EXPIRED_OR_WRAP_MS(startTimeMs, delayMs));
+                     !uPortTickTimeExpired(startTimeMs, delayMs));
         }
 
         U_PORT_MUTEX_UNLOCK(gMutex);

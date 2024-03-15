@@ -183,7 +183,7 @@ static bool keepGoingCallback(void)
 {
     bool keepGoing = true;
 
-    if (U_PORT_TICK_TIME_BEYOND_STOP_OR_WRAP_MS(gStopTimeMs)) {
+    if (uPortTickTimeBeyondStop(gStopTimeMs)) {
         keepGoing = false;
     }
 
@@ -808,8 +808,8 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClientSn")
                     U_TEST_PRINT_LINE_MQTTSN("waiting for an unread message indication...");
                     startTimeMs = uPortGetTickTimeMs();
                     while ((gNumUnread == 0) &&
-                           !U_PORT_TICK_TIME_EXPIRED_OR_WRAP_MS(startTimeMs,
-                                                                U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000)) {
+                           !uPortTickTimeExpired(startTimeMs,
+                                                 U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000)) {
                         uPortTaskBlock(1000);
                     }
 

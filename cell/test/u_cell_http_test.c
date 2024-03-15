@@ -183,7 +183,7 @@ static bool keepGoingCallback(uDeviceHandle_t unused)
 
     (void) unused;
 
-    if (U_PORT_TICK_TIME_BEYOND_STOP_OR_WRAP_MS(gStopTimeMs)) {
+    if (uPortTickTimeBeyondStop(gStopTimeMs)) {
         keepGoing = false;
     }
 
@@ -297,7 +297,7 @@ static bool waitCheckHttpResponse(int32_t timeoutSeconds,
 
     U_TEST_PRINT_LINE("waiting up to %d second(s) for response to request type %s...",
                       timeoutSeconds, pHttpRequestTypeStr(requestType));
-    while (!U_PORT_TICK_TIME_EXPIRED_OR_WRAP_MS(startTimeMs, timeoutSeconds * 1000) &&
+    while (!uPortTickTimeExpired(startTimeMs, timeoutSeconds * 1000) &&
            !pCallbackData->called) {
         uPortTaskBlock(100);
     }

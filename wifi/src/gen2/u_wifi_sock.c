@@ -535,7 +535,7 @@ int32_t uWifiSockReceiveFrom(uDeviceHandle_t devHandle,
         }
     }
     int32_t startTimeMs = uPortGetTickTimeMs();
-    while (!U_PORT_TICK_TIME_EXPIRED_OR_WRAP_MS(startTimeMs, 5000) &&
+    while (!uPortTickTimeExpired(startTimeMs, 5000) &&
            (dataSizeBytes > 0) &&
            ((res = uWifiSockRead(devHandle, sockHandle, pData, dataSizeBytes)) >= 0)) {
         tot += res;

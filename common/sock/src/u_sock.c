@@ -1250,8 +1250,8 @@ static int32_t receive(const uSockContainer_t *pContainer,
         }
     } while ((negErrnoOrSize < 0) &&
              (pContainer->socket.blocking) &&
-             !U_PORT_TICK_TIME_EXPIRED_OR_WRAP_MS(startTimeMs,
-                                                  pContainer->socket.receiveTimeoutMs));
+             !uPortTickTimeExpired(startTimeMs,
+                                   pContainer->socket.receiveTimeoutMs));
 
     return negErrnoOrSize;
 }

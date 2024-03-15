@@ -3104,7 +3104,7 @@ U_PORT_TEST_FUNCTION("[port]", "portTimers")
         // values however their relative values should still be correct
         startTimeMs = uPortGetTickTimeMs();
         while ((gTimerParameterValue[2] == 0) &&
-               !U_PORT_TICK_TIME_EXPIRED_OR_WRAP_MS(startTimeMs, 10000)) {
+               !uPortTickTimeExpired(startTimeMs, 10000)) {
             uPortTaskBlock(100);
         }
         U_PORT_TEST_ASSERT((gTimerParameterValue[2] == 1) && (gTimerParameterValue[3] == 3));
@@ -3122,7 +3122,7 @@ U_PORT_TEST_FUNCTION("[port]", "portTimers")
         // Wait for the periodic timer to expire one more time
         startTimeMs = uPortGetTickTimeMs();
         while ((gTimerParameterValue[3] < 4) &&
-               !U_PORT_TICK_TIME_EXPIRED_OR_WRAP_MS(startTimeMs, 5000)) {
+               !uPortTickTimeExpired(startTimeMs, 5000)) {
             uPortTaskBlock(100);
         }
         U_PORT_TEST_ASSERT(gTimerParameterValue[3] == 4);
@@ -3231,8 +3231,8 @@ U_PORT_TEST_FUNCTION("[port]", "portCriticalSection")
         // long time to _prove_ that the critical section has worked
         //lint -e{441, 550} Suppress loop variable not used in 2nd part of for()
         for (size_t x = 0; (gVariable == y) &&
-             !U_PORT_TICK_TIME_EXPIRED_OR_WRAP_MS(startTimeMs,
-                                                  U_PORT_TEST_CRITICAL_SECTION_TEST_WAIT_TIME_MS); x++) {
+             !uPortTickTimeExpired(startTimeMs,
+                                   U_PORT_TEST_CRITICAL_SECTION_TEST_WAIT_TIME_MS); x++) {
             uPortTaskBlock(100);
         }
 #endif
@@ -3251,8 +3251,8 @@ U_PORT_TEST_FUNCTION("[port]", "portCriticalSection")
         startTimeMs = uPortGetTickTimeMs();
         //lint -e{441, 550} Suppress loop variable not used in 2nd part of for()
         for (size_t x = 0; (gVariable == y) &&
-             !U_PORT_TICK_TIME_EXPIRED_OR_WRAP_MS(startTimeMs,
-                                                  U_PORT_TEST_CRITICAL_SECTION_TEST_WAIT_TIME_MS); x++) {
+             !uPortTickTimeExpired(startTimeMs,
+                                   U_PORT_TEST_CRITICAL_SECTION_TEST_WAIT_TIME_MS); x++) {
             uPortTaskBlock(10);
         }
         U_PORT_TEST_ASSERT(gVariable != y);

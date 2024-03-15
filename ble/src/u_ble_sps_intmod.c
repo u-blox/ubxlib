@@ -1239,7 +1239,10 @@ int32_t uBleSpsSend(uDeviceHandle_t devHandle, int32_t channel, const char *pDat
         uint32_t timeout = pSpsConn->dataSendTimeoutMs;
         int32_t time = startTime;
 
-        while ((bytesLeftToSend > 0) && (time - startTime < timeout)) {
+        // Note: this loop is constructed slightly differently to usual
+        // and so can't use uPortTickTimeExpired() but it
+        // _does_ perform tick time comparisons in a wrap-safe manner
+        while ((bytesLeftToSend > 0) && (time - startTimeMs < timeout)) {
             int32_t bytesToSendNow = bytesLeftToSend;
             int32_t maxDataLength = pSpsConn->mtu - U_BLE_PDU_HEADER_SIZE;
 

@@ -1100,8 +1100,8 @@ static int32_t doSaraR4OldSyntaxUmqttQuery(const uCellPrivateInstance_t *pInstan
         // and don't bother with keepGoingCallback
         startTimeMs = uPortGetTickTimeMs();
         while ((!checkUrcStatusField(pUrcStatus, number)) &&
-               !U_PORT_TICK_TIME_EXPIRED_OR_WRAP_MS(startTimeMs,
-                                                    U_CELL_MQTT_LOCAL_URC_TIMEOUT_MS)) {
+               !uPortTickTimeExpired(startTimeMs,
+                                     U_CELL_MQTT_LOCAL_URC_TIMEOUT_MS)) {
             uPortTaskBlock(250);
         }
         if (checkUrcStatusField(pUrcStatus, number)) {
@@ -1347,8 +1347,8 @@ static int32_t connect(const uCellPrivateInstance_t *pInstance,
         // take a little while to find out that the connection
         // has actually been made and hence we wait here for
         // it to be ready to connect
-        while (!U_PORT_TICK_TIME_EXPIRED_OR_WRAP_MS(pInstance->connectedAtMs,
-                                                    U_CELL_MQTT_CONNECT_DELAY_MILLISECONDS)) {
+        while (!uPortTickTimeExpired(pInstance->connectedAtMs,
+                                     U_CELL_MQTT_CONNECT_DELAY_MILLISECONDS)) {
             uPortTaskBlock(100);
         }
     }
@@ -1401,8 +1401,8 @@ static int32_t connect(const uCellPrivateInstance_t *pInstance,
                 errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
                 startTimeMs = uPortGetTickTimeMs();
                 while (((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_CONNECT_UPDATED)) == 0) &&
-                       !U_PORT_TICK_TIME_EXPIRED_OR_WRAP_MS(startTimeMs,
-                                                            U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000) &&
+                       !uPortTickTimeExpired(startTimeMs,
+                                             U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000) &&
                        ((pContext->pKeepGoingCallback == NULL) ||
                         pContext->pKeepGoingCallback())) {
                     uPortTaskBlock(1000);
@@ -1702,8 +1702,8 @@ static int32_t publish(const uCellPrivateInstance_t *pInstance,
                         errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
                         startTimeMs = uPortGetTickTimeMs();
                         while (((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_PUBLISH_UPDATED)) == 0) &&
-                               !U_PORT_TICK_TIME_EXPIRED_OR_WRAP_MS(startTimeMs,
-                                                                    U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000) &&
+                               !uPortTickTimeExpired(startTimeMs,
+                                                     U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000) &&
                                ((pContext->pKeepGoingCallback == NULL) ||
                                 pContext->pKeepGoingCallback())) {
                             uPortTaskBlock(1000);
@@ -1809,8 +1809,8 @@ static int32_t subscribe(const uCellPrivateInstance_t *pInstance,
                 errorCodeOrQos = (int32_t) U_ERROR_COMMON_TIMEOUT;
                 startTimeMs = uPortGetTickTimeMs();
                 while (((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_SUBSCRIBE_UPDATED)) == 0) &&
-                       !U_PORT_TICK_TIME_EXPIRED_OR_WRAP_MS(startTimeMs,
-                                                            U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000) &&
+                       !uPortTickTimeExpired(startTimeMs,
+                                             U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000) &&
                        ((pContext->pKeepGoingCallback == NULL) ||
                         pContext->pKeepGoingCallback())) {
                     uPortTaskBlock(1000);
@@ -1898,8 +1898,8 @@ static int32_t unsubscribe(const uCellPrivateInstance_t *pInstance,
                     errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
                     startTimeMs = uPortGetTickTimeMs();
                     while (((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_UNSUBSCRIBE_UPDATED)) == 0) &&
-                           !U_PORT_TICK_TIME_EXPIRED_OR_WRAP_MS(startTimeMs,
-                                                                U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000) &&
+                           !uPortTickTimeExpired(startTimeMs,
+                                                 U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000) &&
                            ((pContext->pKeepGoingCallback == NULL) ||
                             pContext->pKeepGoingCallback())) {
                         uPortTaskBlock(1000);
@@ -1988,8 +1988,8 @@ static int32_t readMessage(const uCellPrivateInstance_t *pInstance,
                 errorCode = (int32_t) U_ERROR_COMMON_EMPTY;
                 startTimeMs = uPortGetTickTimeMs();
                 while (!pUrcMessage->messageRead &&
-                       !U_PORT_TICK_TIME_EXPIRED_OR_WRAP_MS(startTimeMs,
-                                                            U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000) &&
+                       !uPortTickTimeExpired(startTimeMs,
+                                             U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000) &&
                        ((pContext->pKeepGoingCallback == NULL) ||
                         pContext->pKeepGoingCallback())) {
                     uPortTaskBlock(1000);
@@ -3389,8 +3389,8 @@ int32_t uCellMqttSnRegisterNormalTopic(uDeviceHandle_t cellHandle,
                         errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
                         startTimeMs = uPortGetTickTimeMs();
                         while (((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_REGISTER_UPDATED)) == 0) &&
-                               !U_PORT_TICK_TIME_EXPIRED_OR_WRAP_MS(startTimeMs,
-                                                                    U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000) &&
+                               !uPortTickTimeExpired(startTimeMs,
+                                                     U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000) &&
                                ((pContext->pKeepGoingCallback == NULL) ||
                                 pContext->pKeepGoingCallback())) {
                             uPortTaskBlock(1000);
@@ -3659,8 +3659,8 @@ int32_t uCellMqttSnSetWillMessaage(uDeviceHandle_t cellHandle,
                         errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
                         startTimeMs = uPortGetTickTimeMs();
                         while (((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_WILL_MESSAGE_UPDATED)) == 0) &&
-                               !U_PORT_TICK_TIME_EXPIRED_OR_WRAP_MS(startTimeMs,
-                                                                    U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000) &&
+                               !uPortTickTimeExpired(startTimeMs,
+                                                     U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000) &&
                                ((pContext->pKeepGoingCallback == NULL) ||
                                 pContext->pKeepGoingCallback())) {
                             uPortTaskBlock(1000);
@@ -3735,8 +3735,8 @@ int32_t uCellMqttSnSetWillParameters(uDeviceHandle_t cellHandle,
                         errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
                         startTimeMs = uPortGetTickTimeMs();
                         while (((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_WILL_PARAMETERS_UPDATED)) == 0) &&
-                               !U_PORT_TICK_TIME_EXPIRED_OR_WRAP_MS(startTimeMs,
-                                                                    U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000) &&
+                               !uPortTickTimeExpired(startTimeMs,
+                                                     U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000) &&
                                ((pContext->pKeepGoingCallback == NULL) ||
                                 pContext->pKeepGoingCallback())) {
                             uPortTaskBlock(1000);

@@ -167,7 +167,7 @@ static bool keepGoingCallback(uDeviceHandle_t param)
 
     (void) param;
 
-    if (U_PORT_TICK_TIME_BEYOND_STOP_OR_WRAP_MS(gStopTimeMs)) {
+    if (uPortTickTimeBeyondStop(gStopTimeMs)) {
         keepGoing = false;
     }
 
@@ -354,8 +354,8 @@ U_PORT_TEST_FUNCTION("[wifiLoc]", "wifiLocBasic")
             U_PORT_TEST_ASSERT(z == 0);
             U_TEST_PRINT_LINE("waiting %d second(s) for result...", U_WIFI_LOC_TEST_TIMEOUT_SECONDS);
             while ((gCallback == INT_MIN) &&
-                   !U_PORT_TICK_TIME_EXPIRED_OR_WRAP_MS(startTimeMs,
-                                                        U_WIFI_LOC_TEST_TIMEOUT_SECONDS * 1000)) {
+                   !uPortTickTimeExpired(startTimeMs,
+                                         U_WIFI_LOC_TEST_TIMEOUT_SECONDS * 1000)) {
                 uPortTaskBlock(250);
             }
             if (gCallback != 0) {

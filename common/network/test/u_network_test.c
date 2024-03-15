@@ -345,7 +345,7 @@ static bool keepGoingCallback(uDeviceHandle_t devHandle)
     bool keepGoing = true;
 
     U_PORT_TEST_ASSERT(devHandle == gDevHandle);
-    if (U_PORT_TICK_TIME_BEYOND_STOP_OR_WRAP_MS(gStopTimeMs)) {
+    if (uPortTickTimeBeyondStop(gStopTimeMs)) {
         keepGoing = false;
     }
 

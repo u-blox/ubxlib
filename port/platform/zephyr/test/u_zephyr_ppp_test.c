@@ -290,7 +290,7 @@ static size_t sendTcp(int32_t sock, const char *pData, size_t sizeBytes)
     U_TEST_PRINT_LINE("sending %d byte(s) of TCP data...", sizeBytes);
     startTimeMs = uPortGetTickTimeMs();
     while ((sentSizeBytes < sizeBytes) &&
-           !U_PORT_TICK_TIME_EXPIRED_OR_WRAP_MS(startTimeMs, 10000)) {
+           !uPortTickTimeExpired(startTimeMs, 10000)) {
         x = zsock_send(sock, (const void *) pData, sizeBytes - sentSizeBytes, 0);
         if (x > 0) {
             sentSizeBytes += x;

@@ -248,7 +248,7 @@ static bool keepGoingCallback(uDeviceHandle_t param)
 
     (void) param;
 
-    if (U_PORT_TICK_TIME_BEYOND_STOP_OR_WRAP_MS(gStopTimeMs)) {
+    if (uPortTickTimeBeyondStop(gStopTimeMs)) {
         keepGoing = false;
     }
 

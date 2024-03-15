@@ -162,7 +162,7 @@ static size_t send(uSockDescriptor_t descriptor,
     U_TEST_PRINT_LINE("sending %d byte(s) of data...", sizeBytes);
     startTimeMs = uPortGetTickTimeMs();
     while ((sentSizeBytes < sizeBytes) &&
-           !U_PORT_TICK_TIME_EXPIRED_OR_WRAP_MS(startTimeMs, 10000)) {
+           !uPortTickTimeExpired(startTimeMs, 10000)) {
         x = uSockWrite(descriptor, (const void *) pData,
                        sizeBytes - sentSizeBytes);
         if (x > 0) {
@@ -370,7 +370,7 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
         //lint -e{441} Suppress loop variable not found in
         // condition: we're using time instead
         for (y = 0; (offset < sizeof(gData) - 1) &&
-             !U_PORT_TICK_TIME_EXPIRED_OR_WRAP_MS(startTimeMs, 20000); y++) {
+             !uPortTickTimeExpired(startTimeMs, 20000); y++) {
             sizeBytes = uSockRead(descriptor,
                                   pDataReceived + offset,
                                   (sizeof(gData) - 1) - offset);
@@ -607,7 +607,7 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsUdpSock")
         //lint -e{441} Suppress loop variable not found in
         // condition: we're using time instead
         for (y = 0; (offset < sizeof(gData) - 1) &&
-             !U_PORT_TICK_TIME_EXPIRED_OR_WRAP_MS(startTimeMs, 20000); y++) {
+             !uPortTickTimeExpired(startTimeMs, 20000); y++) {
             sizeBytes = uSockRead(descriptor,
                                   pDataReceived + offset,
                                   (sizeof(gData) - 1) - offset);

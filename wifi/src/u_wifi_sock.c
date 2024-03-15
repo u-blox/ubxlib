@@ -1765,8 +1765,8 @@ int32_t uWifiSockAccept(uDeviceHandle_t devHandle,
             *pRemoteAddress = pClientSock->remoteAddress;
             return pClientSock->sockHandle;
         } else if (gUWifiSocketAcceptTimeoutS >= 0) {
-            if (U_PORT_TICK_TIME_EXPIRED_OR_WRAP_MS(startTimeMs,
-                                                    gUWifiSocketAcceptTimeoutS * 1000)) {
+            if (uPortTickTimeExpired(startTimeMs,
+                                     gUWifiSocketAcceptTimeoutS * 1000)) {
                 return U_ERROR_COMMON_TIMEOUT;
             }
         }

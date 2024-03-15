@@ -141,8 +141,8 @@ static bool keepGoingCallback(uDeviceHandle_t devHandle)
     U_PORT_TEST_ASSERT(devHandle == gDeviceHandle);
 
     if ((gStartTimeMs >= 0) &&
-        !U_PORT_TICK_TIME_EXPIRED_OR_WRAP_MS(gStartTimeMs,
-                                             U_WIFI_CAPTIVE_PORTAL_TEST_TIMEOUT_SECONDS * 1000)) {
+        !uPortTickTimeExpired(gStartTimeMs,
+                              U_WIFI_CAPTIVE_PORTAL_TEST_TIMEOUT_SECONDS * 1000)) {
         keepGoing = false;
     }
 

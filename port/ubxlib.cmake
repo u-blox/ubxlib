@@ -164,6 +164,9 @@ endif()
 # Default malloc()/free() implementation
 list(APPEND UBXLIB_SRC ${UBXLIB_BASE}/port/u_port_heap.c)
 
+# Safe tick timeout implementations
+list(APPEND UBXLIB_SRC ${UBXLIB_BASE}/port/u_port_tick_time.c)
+
 # Default uPortGetTimezoneOffsetSeconds() implementation
 list(APPEND UBXLIB_SRC ${UBXLIB_BASE}/port/u_port_timezone.c)
 

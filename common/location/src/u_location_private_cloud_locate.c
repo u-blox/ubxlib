@@ -447,7 +447,7 @@ int32_t uLocationPrivateCloudLocate(uDeviceHandle_t devHandle,
                                  " location from server...\n");
                         while ((errorCode == (int32_t) U_ERROR_COMMON_TIMEOUT) &&
                                (((pKeepGoingCallback == NULL) &&
-                                 !U_PORT_TICK_TIME_EXPIRED_OR_WRAP_MS(startTimeMs, U_LOCATION_TIMEOUT_SECONDS * 1000)) ||
+                                 !uPortTickTimeExpired(startTimeMs, U_LOCATION_TIMEOUT_SECONDS * 1000)) ||
                                 ((pKeepGoingCallback != NULL) && pKeepGoingCallback(devHandle)))) {
                             if (uMqttClientGetUnread(pMqttClientContext) > 0) {
                                 z = U_LOCATION_PRIVATE_CLOUD_LOCATE_READ_MESSAGE_LENGTH_BYTES;

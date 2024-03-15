@@ -164,7 +164,7 @@ static bool keepGoingCallback(uDeviceHandle_t param)
 
     (void) param;
 
-    if (U_PORT_TICK_TIME_BEYOND_STOP_OR_WRAP_MS(gStopTimeMs)) {
+    if (uPortTickTimeBeyondStop(gStopTimeMs)) {
         keepGoing = false;
     }
 
@@ -315,8 +315,8 @@ U_PORT_TEST_FUNCTION("[wifiGeofence]", "wifiGeofenceBasic")
     U_PORT_TEST_ASSERT(x == 0);
     U_TEST_PRINT_LINE("waiting %d second(s) for result...", U_WIFI_GEOFENCE_TEST_TIMEOUT_SECONDS);
     while ((gErrorCode >= 0) && (gErrorCode < 2) &&
-           !U_PORT_TICK_TIME_EXPIRED_OR_WRAP_MS(startTimeMs,
-                                                U_WIFI_GEOFENCE_TEST_TIMEOUT_SECONDS * 1000)) {
+           !uPortTickTimeExpired(startTimeMs,
+                                 U_WIFI_GEOFENCE_TEST_TIMEOUT_SECONDS * 1000)) {
         uPortTaskBlock(250);
     }
     // On really fast systems (e.g. Linux machines) it is possible

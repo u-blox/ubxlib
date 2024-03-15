@@ -250,7 +250,7 @@ static inline int32_t statusQueueWaitForWifiDisabled(const uPortQueueHandle_t qu
                                                      int32_t timeoutSec)
 {
     int32_t startTimeMs = uPortGetTickTimeMs();
-    while (!U_PORT_TICK_TIME_EXPIRED_OR_WRAP_MS(startTimeMs, timeoutSec * 1000)) {
+    while (!uPortTickTimeExpired(startTimeMs, timeoutSec * 1000)) {
         uStatusMessage_t msg;
         int32_t errorCode = uPortQueueTryReceive(queueHandle, 1000, &msg);
         if ((errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) &&
@@ -266,7 +266,7 @@ static inline int32_t statusQueueWaitForWifiConnected(const uPortQueueHandle_t q
                                                       int32_t timeoutSec)
 {
     int32_t startTimeMs = uPortGetTickTimeMs();
-    while (!U_PORT_TICK_TIME_EXPIRED_OR_WRAP_MS(startTimeMs, timeoutSec * 1000)) {
+    while (!uPortTickTimeExpired(startTimeMs, timeoutSec * 1000)) {
         uStatusMessage_t msg;
         int32_t errorCode = uPortQueueTryReceive(queueHandle, 1000, &msg);
         if ((errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) &&
@@ -284,7 +284,7 @@ static inline int32_t statusQueueWaitForNetworkUp(const uPortQueueHandle_t queue
         U_WIFI_STATUS_MASK_IPV4_UP | U_WIFI_STATUS_MASK_IPV6_UP;
     uint32_t lastNetStatusMask = 0;
     int32_t startTimeMs = uPortGetTickTimeMs();
-    while (!U_PORT_TICK_TIME_EXPIRED_OR_WRAP_MS(startTimeMs, timeoutSec * 1000)) {
+    while (!uPortTickTimeExpired(startTimeMs, timeoutSec * 1000)) {
         uStatusMessage_t msg;
         int32_t errorCode = uPortQueueTryReceive(queueHandle, 1000, &msg);
         if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {

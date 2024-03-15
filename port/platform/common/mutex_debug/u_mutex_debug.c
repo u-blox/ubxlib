@@ -417,8 +417,8 @@ static void watchdogTask(void *pParam)
             pMutexInfo = pMutexInfo->pNext;
 
             // Don't call the callback too often though
-            if (!U_PORT_TICK_TIME_EXPIRED_OR_WRAP_MS(calledMs,
-                                                     U_MUTEX_DEBUG_WATCHDOG_MAX_BARK_SECONDS * 1000)) {
+            if (!uPortTickTimeExpired(calledMs,
+                                      U_MUTEX_DEBUG_WATCHDOG_MAX_BARK_SECONDS * 1000)) {
                 callCallback = false;
             }
         }

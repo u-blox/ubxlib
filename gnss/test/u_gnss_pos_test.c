@@ -282,7 +282,7 @@ static bool keepGoingCallback(uDeviceHandle_t gnssHandle)
     bool keepGoing = true;
 
     U_PORT_TEST_ASSERT(gnssHandle == gHandles.gnssHandle);
-    if (U_PORT_TICK_TIME_BEYOND_STOP_OR_WRAP_MS(gStopTimeMs)) {
+    if (uPortTickTimeBeyondStop(gStopTimeMs)) {
         keepGoing = false;
     }
 

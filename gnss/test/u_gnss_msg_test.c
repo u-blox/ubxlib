@@ -198,7 +198,7 @@ static bool keepGoingCallback(uDeviceHandle_t gnssHandle)
         gCallbackErrorCode = 1;
     }
 
-    if (U_PORT_TICK_TIME_BEYOND_STOP_OR_WRAP_MS(gStopTimeMs)) {
+    if (uPortTickTimeBeyondStop(gStopTimeMs)) {
         keepGoing = false;
     }
 

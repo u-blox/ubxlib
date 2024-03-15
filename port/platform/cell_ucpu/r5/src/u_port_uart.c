@@ -831,7 +831,7 @@ int32_t uPortUartEventTrySend(int32_t handle, uint32_t eventBitMap,
                                                    NULL, 0);
                 uPortTaskBlock(U_CFG_OS_YIELD_MS);
             } while ((errorCode != 0) &&
-                     !U_PORT_TICK_TIME_EXPIRED_OR_WRAP_MS(startTimeMs, delayMs));
+                     !uPortTickTimeExpired(startTimeMs, delayMs));
         }
     }
 
