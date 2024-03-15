@@ -61,7 +61,7 @@ Since the commit messages are our only change documentation, and since Github is
 
 - when merging a PR, try to stick to squash-merges or rebase-merges, rather than plain-old merges of a branch,
 - if a customer makes a PR to the public `ubxlib` repo, bring it in as follows:
-  - make sure that the customer PR is a single commit (ask them to squash it and re-push if it is not),
+  - if the customer PR is NEITHER (a) a single commit, NOR (b) made up of nice discrete/sensible changes, then ask them to squash it into a nice clean single commit and re-push,
   - pull the PR into a branch of `ubxlib_priv` so that you can throw it at the test system to prove that it is all good,
   - make sure that `ubxlib` `master` is up to date with `ubxlib_priv` `master` (i.e. push `ubxlib_priv` `master` to `ubxlib` `master`, which should always be possible, see above),
   - do a rebase-merge of the customer PR into `ubxlib` `master` (i.e. directly, not going via `ubxlib_priv`),
