@@ -179,7 +179,9 @@ U_PORT_TEST_FUNCTION("[preamble]", "preambleHeapDefence")
     uPortI2cInit();
     handle = uPortI2cOpen(U_CFG_APP_GNSS_I2C, U_CFG_APP_PIN_GNSS_SDA,
                           U_CFG_APP_PIN_GNSS_SCL, true);
-    uPortI2cClose(handle);
+    if (handle >= 0) {
+        uPortI2cClose(handle);
+    }
     uPortI2cDeinit();
 #endif
 

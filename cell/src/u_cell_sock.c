@@ -727,8 +727,7 @@ int32_t uCellSockInitInstance(uDeviceHandle_t cellHandle)
 void uCellSockDeinit()
 {
     if (gInitialised) {
-        // Nothing to do, URCs will have been
-        // removed on close
+        // Nothing to do; URCs are removed by clean-up function
         gInitialised = false;
     }
 }
@@ -938,8 +937,17 @@ int32_t uCellSockClose(uDeviceHandle_t cellHandle,
 // Clean-up.
 void uCellSockCleanup(uDeviceHandle_t cellHandle)
 {
-    // Nothing to do
-    (void) cellHandle;
+    uCellPrivateInstance_t *pInstance;
+
+    pInstance = pUCellPrivateGetInstance(cellHandle);
+    if (pInstance != NULL) {
+        // Remove the URCs
+        for (size_t x = 0; x < sizeof(gUrcHandlers) /
+             sizeof(gUrcHandlers[0]); x++) {
+            uAtClientRemoveUrcHandler(pInstance->atHandle,
+                                      gUrcHandlers[x].pPrefix);
+        }
+    }
 }
 
 /* ----------------------------------------------------------------

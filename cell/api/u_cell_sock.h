@@ -50,7 +50,7 @@ extern "C" {
 
 /** The maximum size of a datagram and the maximum size of a
  * single TCP segment sent to the cellular module (defined by the
- * cellular module AT interface).  Note the if hex mode is
+ * cellular module AT interface).  Note that if hex mode is
   set (using uCellSockHexModeOn()) then the number is halved.
  */
 #define U_CELL_SOCK_MAX_SEGMENT_SIZE_BYTES 1024

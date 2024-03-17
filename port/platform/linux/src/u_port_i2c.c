@@ -129,7 +129,7 @@ void uPortI2cDeinit()
 int32_t uPortI2cOpen(int32_t i2c, int32_t pinSda, int32_t pinSdc,
                      bool controller)
 {
-    int32_t errorCode;
+    int32_t errorCodeOrHandle;
     if ((pinSda != -1) || (pinSdc != -1) || !controller) {
         return (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
     }
@@ -139,11 +139,11 @@ int32_t uPortI2cOpen(int32_t i2c, int32_t pinSda, int32_t pinSdc,
     char devName[25];
     snprintf(devName, sizeof(devName), "/dev/i2c-%d", i2c);
     // Open the I2C bus
-    errorCode = open(devName, O_RDWR);
-    if (errorCode == 0) {
+    errorCodeOrHandle = open(devName, O_RDWR);
+    if (errorCodeOrHandle >= 0) {
         U_ATOMIC_INCREMENT(&gResourceAllocCount);
     }
-    return errorCode;
+    return errorCodeOrHandle;
 }
 
 // Adopt an I2C instance.

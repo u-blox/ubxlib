@@ -82,17 +82,19 @@ int32_t uTestUtilGetDynamicResourceCount()
     y = uPortHeapPerpetualAllocCount();
     if (x > 0) {
         resources += x;
-        if (y >= x) {
-            resources -= x;
+        if (y > x) {
+            y = x;
         }
+        resources -= y;
     }
     x = uPortOsResourceAllocCount();
     y = uPortOsResourcePerpetualCount();
     if (x > 0) {
         resources += x;
-        if (y >= x) {
-            resources -= x;
+        if (y > x) {
+            y = x;
         }
+        resources -= y;
     }
     x = uPortUartResourceAllocCount();
     if (x > 0) {
