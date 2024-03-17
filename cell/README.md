@@ -132,7 +132,7 @@ int app_start() {
 ```
 
 # PPP-Level Integration With A Platform
-PPP-level integration between the bottom of a platform's IP stack and cellular is supported on some platforms and some module types, currently only ESP-IDF with SARA-U201, SARA-R5, SARA-R422 and LENA-R8.  This allows the native clients of the platform (e.g. MQTT etc.) to be used in your application with a cellular transport beneath them.
+PPP-level integration between the bottom of a platform's IP stack and cellular is supported on some platforms and some module types, currently only ESP-IDF, Zephyr and Linux with SARA-U201, SARA-R5, SARA-R422 and LENA-R8.  This allows the native clients of the platform (e.g. MQTT etc.) to be used in your application with a cellular transport beneath them.
 
 To enable this integration you must define `U_CFG_PPP_ENABLE` for your build.  Other switches/components/whatevers may also be required on the platform side: see the README.md in the relevant platform directory for details.
 
@@ -140,4 +140,4 @@ To use the integration, just make a cellular connection with `ubxlib` in the usu
 
 Note: in the case of LENA-R8 it is not possible to use the same PDP context for PPP as for AT-command-based operation: if you do so then, once PPP is active, commands such as `uSockGetHostByName()` and any attempt to use the MQTT or HTTP clients inside LENA-R8 will fail.  Hence we set the PDP context for PPP operation to be separate.  It is POSSIBLE that there are cellular networks out there which will not allow more than one PDP context, in which case connections for LENA-R8 will fail when `U_CFG_PPP_ENABLE` is defined for the build; should this happen then you should compile this code with `U_CELL_PRIVATE_PPP_CONTEXT_ID_LENA_R8` set to -1 and the code will use the same PDP context for both (and the on-module clients will not be available to your application while PPP is active).
 
-Note: if you are required to supply a username and password for your connection then, when using PPP, you must call `uCellNetSetAuthenticationMode()` to set the authentication mode explicitly; automatic authentication mode will not work with PPP.
+Note: if you are required to supply a username and password for your connection and your platform permits you to do that via a `ubxlib` API (only ESP-IDF currently does this; see the `README.md` files in the Zephyr and Linux directories for how to do this on those platforms) then, when using PPP, you must call `uCellNetSetAuthenticationMode()` to set the authentication mode explicitly; automatic authentication mode will not work with PPP.

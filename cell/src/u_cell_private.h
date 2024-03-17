@@ -274,7 +274,11 @@ typedef enum {
 typedef struct {
     uCellModuleType_t moduleType; /**< The module type. */
     int32_t powerOnPullMs; /**< The time for which PWR_ON must be
-                                pulled down to effect power-on. */
+                                pulled down to effect power-on; use
+                                -1 for #U_CELL_MODULE_TYPE_ANY (i.e.
+                                where the duration is now known) and
+                                a few known-good durations will be
+                                tried. */
     int32_t powerOffPullMs; /**< The time for which PWR_ON must be
                                  pulled down to effect power-off. */
     int32_t bootWaitSeconds; /**< How long to wait before the module is

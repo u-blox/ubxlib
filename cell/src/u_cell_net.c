@@ -2501,7 +2501,7 @@ int32_t uCellNetConnect(uDeviceHandle_t cellHandle,
                             }
                             if ((errorCode == 0) && (pInstance->pModule->pppContextId >= 0)) {
                                 // If a separate PDP context is required for,
-                                // PPP then set define that one also.
+                                // PPP then define that one also.
                                 // Note: no need to do anything with authentication
                                 // since that will be carried out by the peer PPP
                                 // entity when it starts up
