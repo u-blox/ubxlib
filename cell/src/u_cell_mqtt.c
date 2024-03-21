@@ -1716,14 +1716,25 @@ static int32_t publish(const uCellPrivateInstance_t *pInstance,
                                ((pContext->pKeepGoingCallback == NULL) ||
                                 pContext->pKeepGoingCallback())) {
                             uPortTaskBlock(1000);
+#ifndef U_CELL_MQTT_POKE_DURING_PUBLISH_DISABLE
                             // When UART power saving is switched on some
-                            // modules (e.g. SARA-R422) can somteimes
+                            // modules (e.g. SARA-R422) can sometimes
                             // withhold URCs so poke the module here to be
                             // sure that it has not gone to sleep on us
+                            // Since we are either publishing a message or
+                            // waiting for an acknowledgement of that
+                            // publish from the MQTT broker the module
+                            // is unlikely to be able to do any sleeping but,
+                            // if you are especially concerned about power
+                            // saving, you may disable this code, just make
+                            // sureto test that you do not have a
+                            // URCs-held-back issue with your particular
+                            // module
                             uAtClientLock(atHandle);
                             uAtClientCommandStart(atHandle, "AT");
                             uAtClientCommandStopReadResponse(atHandle);
                             uAtClientUnlock(atHandle);
+#endif
                         }
                         if ((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_PUBLISH_SUCCESS)) != 0) {
                             errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
