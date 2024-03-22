@@ -193,7 +193,7 @@ int32_t uCellSockClose(uDeviceHandle_t cellHandle,
 /** Clean-up.  This function should be called when
  * there is no socket activity, either locally or from
  * the remote host, in order to free memory occupied
- * by closed sockets.
+ * by sockets that have been closed.
  *
  * @param cellHandle  the handle of the cellular instance.
  */
