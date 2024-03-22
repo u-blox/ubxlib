@@ -95,10 +95,10 @@ static const uDeviceCfg_t gDeviceCfg = {
         .cfgUart = {
             .uart = U_CFG_APP_SHORT_RANGE_UART,
             .baudRate = U_SHORT_RANGE_UART_BAUD_RATE,
-            .pinTxd = U_CFG_APP_PIN_SHORT_RANGE_TXD,
-            .pinRxd = U_CFG_APP_PIN_SHORT_RANGE_RXD,
-            .pinCts = U_CFG_APP_PIN_SHORT_RANGE_CTS,
-            .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS,
+            .pinTxd = U_CFG_APP_PIN_SHORT_RANGE_TXD,  // Use -1 if on Zephyr or Linux or Windows
+            .pinRxd = U_CFG_APP_PIN_SHORT_RANGE_RXD,  // Use -1 if on Zephyr or Linux or Windows
+            .pinCts = U_CFG_APP_PIN_SHORT_RANGE_CTS,  // Use -1 if on Zephyr
+            .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS,  // Use -1 if on Zephyr
 #ifdef U_CFG_APP_UART_PREFIX
             .pPrefix = U_PORT_STRINGIFY_QUOTED(U_CFG_APP_UART_PREFIX) // Relevant for Linux only
 #else
@@ -146,10 +146,10 @@ static const uDeviceCfg_t gDeviceCfg = {
         .cfgUart = {
             .uart = U_CFG_APP_CELL_UART,
             .baudRate = U_CELL_UART_BAUD_RATE,
-            .pinTxd = U_CFG_APP_PIN_CELL_TXD,
-            .pinRxd = U_CFG_APP_PIN_CELL_RXD,
-            .pinCts = U_CFG_APP_PIN_CELL_CTS,
-            .pinRts = U_CFG_APP_PIN_CELL_RTS,
+            .pinTxd = U_CFG_APP_PIN_CELL_TXD,  // Use -1 if on Zephyr or Linux or Windows
+            .pinRxd = U_CFG_APP_PIN_CELL_RXD,  // Use -1 if on Zephyr or Linux or Windows
+            .pinCts = U_CFG_APP_PIN_CELL_CTS,  // Use -1 if on Zephyr
+            .pinRts = U_CFG_APP_PIN_CELL_RTS,  // Use -1 if on Zephyr
 #ifdef U_CFG_APP_UART_PREFIX
             .pPrefix = U_PORT_STRINGIFY_QUOTED(U_CFG_APP_UART_PREFIX) // Relevant for Linux only
 #else

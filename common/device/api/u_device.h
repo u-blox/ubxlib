@@ -139,15 +139,23 @@ typedef struct {
     int32_t baudRate;         /**< UART speed value; specify 0 to try the
                                    possible baud rates and find the correct one. */
     int32_t pinTxd;           /**< The output pin that sends UART data to
-                                   the module. */
+                                   the module.  If you are using a platform
+                                   such as Zephyr, Linux or Windows, where the
+                                   pins are fixed by the application, then
+                                   use -1. */
     int32_t pinRxd;           /**< The input pin that receives UART data from
-                                   the module. */
+                                   the module. If you are using a platform
+                                   such as Zephyr, Linux or Windows, where the
+                                   pins are fixed by the application, then
+                                   use -1. */
     int32_t pinCts;           /**< The input pin that the module
                                    will use to indicate that data can be sent
-                                   to it; use -1 if there is no such connection. */
+                                   to it; use -1 if there is no such connection,
+                                   and always on Zephyr. */
     int32_t pinRts;           /**< The output pin output pin that tells the
                                    module that it can send more UART
-                                   data; use -1 if there is no such connection. */
+                                   data; use -1 if there is no such connection,
+                                   and always on Zephyr. */
     const char *pPrefix;      /**< Linux only: this will be prepended to uart,
                                    e.g. if pPrefix is "/dev/tty" and uart is 3
                                    then the UART is "/dev/tty3"; if NULL then
@@ -199,8 +207,14 @@ typedef struct {
                                     compiler to initialise this to zero
                                     unless otherwise specified below. */
     int32_t i2c;               /**< The I2C HW block to use. */
-    int32_t pinSda;            /**< I2C data pin. */
-    int32_t pinScl;            /**< I2C clock pin. */
+    int32_t pinSda;            /**< I2C data pin;  If you are using a platform
+                                    such as Zephyr or Linux, where the I2C
+                                    pins are fixed by the application, then
+                                    use -1. */
+    int32_t pinScl;            /**< I2C clock pin;  If you are using a platform
+                                    such as Zephyr or Linux, where the I2C
+                                    pins are fixed by the application, then
+                                    use -1. */
     int32_t clockHertz;        /**< To use the default I2C clock frequency
                                     of #U_PORT_I2C_CLOCK_FREQUENCY_HERTZ
                                     then do NOT set this field, simply
@@ -251,9 +265,19 @@ typedef struct {
                                               compiler to initialise this to zero
                                               unless otherwise specified below. */
     int32_t spi;                         /**< The SPI HW block to use. */
-    int32_t pinMosi;                     /**< The master-in, slave-out data pin. */
-    int32_t pinMiso;                     /**< The master-out, slave-in data pin. */
-    int32_t pinClk;                      /**< The clock pin. */
+    int32_t pinMosi;                     /**< The master-in, slave-out data pin;
+                                              if you are using a platform such as
+                                              Zephyr or Linux, where the SPI pins are
+                                              fixed by the application, then use -1. */
+    int32_t pinMiso;                     /**< The master-out, slave-in data pin;
+                                              if you are using a platform such as
+                                              Zephyr or Linux, where the SPI pins
+                                              are fixed by the application, then
+                                              use -1. */
+    int32_t pinClk;                      /**< The clock pin; if you are using a
+                                              platform such as Zephyr or Linux,
+                                              where the SPI pins are fixed by the
+                                              application, then use -1. */
     uCommonSpiControllerDevice_t device; /**< The device configuration. */
     size_t maxSegmentSize;               /**< The maximum size of SPI transfer to
                                               perform at any one time; this is ONLY

@@ -111,8 +111,8 @@ static const uDeviceCfg_t gDeviceCfg = {
         .cfgUart = {
             .uart = U_CFG_APP_CELL_UART,
             .baudRate = U_CELL_UART_BAUD_RATE,
-            .pinTxd = U_CFG_APP_PIN_CELL_TXD,
-            .pinRxd = U_CFG_APP_PIN_CELL_RXD,
+            .pinTxd = -1,
+            .pinRxd = -1,
             .pinCts = U_CFG_APP_PIN_CELL_CTS,
             .pinRts = U_CFG_APP_PIN_CELL_RTS,
 #ifdef U_CFG_APP_UART_PREFIX

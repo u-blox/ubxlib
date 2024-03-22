@@ -160,10 +160,10 @@ static const uDeviceCfg_t gDeviceCfg = {
         .cfgUart = {
             .uart = U_CFG_APP_CELL_UART,
             .baudRate = U_CELL_UART_BAUD_RATE,
-            .pinTxd = U_CFG_APP_PIN_CELL_TXD,
-            .pinRxd = U_CFG_APP_PIN_CELL_RXD,
-            .pinCts = U_CFG_APP_PIN_CELL_CTS,
-            .pinRts = U_CFG_APP_PIN_CELL_RTS,
+            .pinTxd = -1,
+            .pinRxd = -1,
+            .pinCts = -1,
+            .pinRts = -1,
 #ifdef U_CFG_APP_UART_PREFIX
             .pPrefix = U_PORT_STRINGIFY_QUOTED(U_CFG_APP_UART_PREFIX) // Relevant for Linux only
 #else

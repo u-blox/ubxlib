@@ -116,8 +116,8 @@ static const uDeviceCfg_t gDeviceCfg = {
     .transportCfg = {
         .cfgI2c = {
             .i2c = U_CFG_APP_GNSS_I2C,
-            .pinSda = U_CFG_APP_PIN_GNSS_SDA,
-            .pinScl = U_CFG_APP_PIN_GNSS_SCL
+            .pinSda = U_CFG_APP_PIN_GNSS_SDA,  // Use -1 if on Zephyr or Linux
+            .pinScl = U_CFG_APP_PIN_GNSS_SCL   // Use -1 if on Zephyr or Linux
             // There are three additional fields here,
             // "clockHertz", "alreadyOpen" and
             // "maxSegmentSize", which we do not set,
@@ -152,9 +152,9 @@ static const uDeviceCfg_t gDeviceCfg = {
     .transportCfg = {
         .cfgSpi = {
             .spi = U_CFG_APP_GNSS_SPI,
-            .pinMosi = U_CFG_APP_PIN_GNSS_SPI_MOSI,
-            .pinMiso = U_CFG_APP_PIN_GNSS_SPI_MISO,
-            .pinClk = U_CFG_APP_PIN_GNSS_SPI_CLK,
+            .pinMosi = U_CFG_APP_PIN_GNSS_SPI_MOSI,  // Use -1 if on Zephyr or Linux
+            .pinMiso = U_CFG_APP_PIN_GNSS_SPI_MISO,  // Use -1 if on Zephyr or Linux
+            .pinClk = U_CFG_APP_PIN_GNSS_SPI_CLK,    // Use -1 if on Zephyr or Linux
             // Note: Zephyr users may find it more natural to use
             // .device = U_COMMON_SPI_CONTROLLER_DEVICE_INDEX_DEFAULTS(x)
             // instead of the below, where x is the index of a `cs-gpios`
@@ -185,10 +185,10 @@ static const uDeviceCfg_t gDeviceCfg = {
             .uart = U_CFG_APP_GNSS_UART,
             .baudRate = U_GNSS_UART_BAUD_RATE, /* Use 0 to try all possible baud rates
                                                   and find the correct one. */
-            .pinTxd = U_CFG_APP_PIN_GNSS_TXD,
-            .pinRxd = U_CFG_APP_PIN_GNSS_RXD,
-            .pinCts = U_CFG_APP_PIN_GNSS_CTS,
-            .pinRts = U_CFG_APP_PIN_GNSS_RTS,
+            .pinTxd = U_CFG_APP_PIN_GNSS_TXD,  // Use -1 if on Zephyr or Linux or Windows
+            .pinRxd = U_CFG_APP_PIN_GNSS_RXD,  // Use -1 if on Zephyr or Linux or Windows
+            .pinCts = U_CFG_APP_PIN_GNSS_CTS,  // Use -1 if on Zephyr
+            .pinRts = U_CFG_APP_PIN_GNSS_RTS,  // Use -1 if on Zephyr
 #ifdef U_CFG_APP_UART_PREFIX
             .pPrefix = U_PORT_STRINGIFY_QUOTED(U_CFG_APP_UART_PREFIX) // Relevant for Linux only
 #else
