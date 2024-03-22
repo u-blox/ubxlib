@@ -535,6 +535,89 @@ static void deinitButNotMutex()
     }
 }
 
+// Free memory from any sockets.
+static void cleanUp(bool forced)
+{
+    uSockContainer_t *pContainer = gpContainerListHead;
+    uSockContainer_t *pTmp;
+    size_t numNonClosedSockets = 0;
+    uDeviceHandle_t devHandle;
+
+    if (gInitialised) {
+
+        U_PORT_MUTEX_LOCK(gMutexContainer);
+
+        // Move through the list removing closed sockets
+        while (pContainer != NULL) {
+            if (forced ||
+                (pContainer->socket.state == U_SOCK_STATE_CLOSED) ||
+                (pContainer->socket.state == U_SOCK_STATE_CLOSING)) {
+                devHandle = NULL;
+                if (!(pContainer->isStatic)) {
+                    // If this socket is not static, uncouple it
+                    // If there is a previous container, move its pNext
+                    if (pContainer->pPrevious != NULL) {
+                        pContainer->pPrevious->pNext = pContainer->pNext;
+                    } else {
+                        // If there is no previous container, must be
+                        // at the start of the list so move the head
+                        // pointer on instead
+                        gpContainerListHead = pContainer->pNext;
+                    }
+                    // If there is a next container, move its pPrevious
+                    if (pContainer->pNext != NULL) {
+                        pContainer->pNext->pPrevious = pContainer->pPrevious;
+                    }
+
+                    // Remember the next pointer and the
+                    // network handle
+                    pTmp = pContainer->pNext;
+                    devHandle = pContainer->socket.devHandle;
+
+                    // Free any security context associated with the socket
+                    uSecurityTlsRemove(pContainer->socket.pSecurityContext);
+                    // Free the memory
+                    uPortFree(pContainer);
+                    // Move to the next entry
+                    pContainer = pTmp;
+                } else {
+                    // Remember the network handle
+                    devHandle = pContainer->socket.devHandle;
+                    pContainer->socket.state = U_SOCK_STATE_CLOSED;
+                    // Free any security context associated with the socket
+                    uSecurityTlsRemove(pContainer->socket.pSecurityContext);
+                    pContainer->socket.pSecurityContext = NULL;
+                    pContainer->socket.devHandle = NULL;
+                    // Move on
+                    pContainer = pContainer->pNext;
+                }
+
+                if (devHandle != NULL) {
+                    int32_t devType = uDeviceGetDeviceType(devHandle);
+                    // Call the clean-up function in the underlying
+                    // socket layer, where present
+                    if (devType == (int32_t) U_DEVICE_TYPE_CELL) {
+                        uCellSockCleanup(devHandle);
+                    } else if (devType == (int32_t) U_DEVICE_TYPE_SHORT_RANGE) {
+                        uWifiSockCleanup(devHandle);
+                    }
+                }
+            } else {
+                // Move on but count the number of non-closed sockets
+                numNonClosedSockets++;
+                pContainer = pContainer->pNext;
+            }
+        }
+
+        // If everything has been closed, we can deinit();
+        if (numNonClosedSockets == 0) {
+            deinitButNotMutex();
+        }
+
+        U_PORT_MUTEX_UNLOCK(gMutexContainer);
+    }
+}
+
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS: CONTAINER STUFF
  * -------------------------------------------------------------- */
@@ -1458,83 +1541,13 @@ int32_t uSockClose(uSockDescriptor_t descriptor)
 // Free memory from any sockets that are no longer in use.
 void uSockCleanUp()
 {
-    uSockContainer_t *pContainer = gpContainerListHead;
-    uSockContainer_t *pTmp;
-    size_t numNonClosedSockets = 0;
-    uDeviceHandle_t devHandle;
+    cleanUp(false);
+}
 
-    if (gInitialised) {
-
-        U_PORT_MUTEX_LOCK(gMutexContainer);
-
-        // Move through the list removing closed sockets
-        while (pContainer != NULL) {
-            if ((pContainer->socket.state == U_SOCK_STATE_CLOSED) ||
-                (pContainer->socket.state == U_SOCK_STATE_CLOSING)) {
-                devHandle = NULL;
-                if (!(pContainer->isStatic)) {
-                    // If this socket is not static, uncouple it
-                    // If there is a previous container, move its pNext
-                    if (pContainer->pPrevious != NULL) {
-                        pContainer->pPrevious->pNext = pContainer->pNext;
-                    } else {
-                        // If there is no previous container, must be
-                        // at the start of the list so move the head
-                        // pointer on instead
-                        gpContainerListHead = pContainer->pNext;
-                    }
-                    // If there is a next container, move its pPrevious
-                    if (pContainer->pNext != NULL) {
-                        pContainer->pNext->pPrevious = pContainer->pPrevious;
-                    }
-
-                    // Remember the next pointer and the
-                    // network handle
-                    pTmp = pContainer->pNext;
-                    devHandle = pContainer->socket.devHandle;
-
-                    // Free any security context associated with the socket
-                    uSecurityTlsRemove(pContainer->socket.pSecurityContext);
-                    // Free the memory
-                    uPortFree(pContainer);
-                    // Move to the next entry
-                    pContainer = pTmp;
-                } else {
-                    // Remember the network handle
-                    devHandle = pContainer->socket.devHandle;
-                    pContainer->socket.state = U_SOCK_STATE_CLOSED;
-                    // Free any security context associated with the socket
-                    uSecurityTlsRemove(pContainer->socket.pSecurityContext);
-                    pContainer->socket.pSecurityContext = NULL;
-                    pContainer->socket.devHandle = NULL;
-                    // Move on
-                    pContainer = pContainer->pNext;
-                }
-
-                if (devHandle != NULL) {
-                    int32_t devType = uDeviceGetDeviceType(devHandle);
-                    // Call the clean-up function in the underlying
-                    // socket layer, where present
-                    if (devType == (int32_t) U_DEVICE_TYPE_CELL) {
-                        uCellSockCleanup(devHandle);
-                    } else if (devType == (int32_t) U_DEVICE_TYPE_SHORT_RANGE) {
-                        uWifiSockCleanup(devHandle);
-                    }
-                }
-            } else {
-                // Move on but count the number of non-closed sockets
-                numNonClosedSockets++;
-                pContainer = pContainer->pNext;
-            }
-        }
-
-        // If everything has been closed, we can deinit();
-        if (numNonClosedSockets == 0) {
-            deinitButNotMutex();
-        }
-
-        U_PORT_MUTEX_UNLOCK(gMutexContainer);
-    }
+// Free memory from any sockets.
+void uSockForgetAll()
+{
+    cleanUp(true);
 }
 
 // Close all sockets and free resource.
