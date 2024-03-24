@@ -2,7 +2,7 @@
 This is intended as key/concise advice to those active in developing `ubxlib` and is placed here so that it cannot be missed.
 
 # All That Matters
-`ubxlib` exists to facilitate the use of u-blox modules at source-code level, by making it easier for a customer to integrate with current and future u-blox modules; that's it. `ubxlib` has no meaning/value of itself, it is solely a means to that end. Think that way and you will behave in the right way.
+`ubxlib` exists to make it easier for customers to integrate with current and future u-blox modules; that's it. `ubxlib` has no meaning/value of itself, it is solely a means to that end. Think that way and you will behave in the right way.
 
 # Be The Tail
 There is a phrase in English "the tail wagging the dog", used to describe situations where something less important has ended up controlling something rather more important.  `ubxlib` is the tail: a driver for just one or two components in a customers application, it should bend/flex to whatever the customers' application requires, it should NOT place requirements on or limit the customers' application if at all possible.  Examples include:
