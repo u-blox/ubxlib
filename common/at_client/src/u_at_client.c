@@ -445,7 +445,7 @@ typedef struct uAtClientInstance_t {
     uAtClientUrc_t *pUrcRead;  /** Pointer used when reading the URC handlers. */
     int32_t lastResponseStopMs; /** The time the last response ended in milliseconds. */
     int32_t lockTimeMs; /** The time when the stream was locked. */
-    int32_t lastTxTimeMs; /** The time when the last transmit activity was carried out, set to -1 initially. */
+    int32_t lastTxTimeMs; /** The time when the last transmit activity was carried out. */
     size_t urcMaxStringLength; /** The longest URC string to monitor for. */
     size_t maxRespLength; /** The max length of OK, (CME) (CMS) ERROR and URCs. */
     bool delimiterRequired; /** Is a delimiter to be inserted before the next parameter or not. */
@@ -1268,9 +1268,7 @@ static int32_t pollTimeRemaining(int32_t atTimeoutMs,
         timeRemainingMs = 0;
     }
 
-    // No need to worry about overflow here, we're never awake
-    // for long enough
-    return (int32_t) timeRemainingMs;
+    return timeRemainingMs;
 }
 
 // Zero the buffer.
