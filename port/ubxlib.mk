@@ -76,6 +76,9 @@ SRC_LIST += ${UBXLIB_BASE}/port/u_port_resource.c
 SRC_LIST += ${UBXLIB_BASE}/port/u_port_i2c_default.c
 SRC_LIST += ${UBXLIB_BASE}/port/u_port_spi_default.c
 
+# Default implementation for uPortNamePipeXxx()
+SRC_LIST += ${UBXLIB_BASE}/port/u_port_named_pipe_default.c
+
 # Default uPortPppAttach()/uPortPppDetach() implementation
 SRC_LIST += ${UBXLIB_BASE}/port/u_port_ppp_default.c
 

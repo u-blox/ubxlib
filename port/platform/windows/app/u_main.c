@@ -26,6 +26,8 @@
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
+#include "string.h"
+#include "stdlib.h"    // getenv
 
 #include "u_cfg_sw.h"
 #include "u_cfg_os_platform_specific.h"
@@ -82,21 +84,31 @@ static void appTask(void *pParam)
 
     uPortLog("U_APP: functions available:\n\n");
     uRunnerPrintAll("U_APP: ");
+    const char *pEnvVar = getenv("U_CFG_APP_FILTER");
+    if ((pEnvVar != NULL) && (strlen(pEnvVar) > 0)) {
+        uPortLog("U_APP: * runtime function filter specified.\n");
+        uPortLog("U_APP: running functions that begin with \"%s\".\n", pEnvVar);
+        uRunnerRunFiltered(pEnvVar, "U_APP: ");
+    } else {
 #ifdef U_CFG_APP_FILTER
-    uPortLog("U_APP: running functions that begin with \"%s\".\n",
-             U_PORT_STRINGIFY_QUOTED(U_CFG_APP_FILTER));
-    uRunnerRunFiltered(U_PORT_STRINGIFY_QUOTED(U_CFG_APP_FILTER),
-                       "U_APP: ");
+        uPortLog("U_APP: running functions that begin with \"%s\".\n",
+                 U_PORT_STRINGIFY_QUOTED(U_CFG_APP_FILTER));
+        uRunnerRunFiltered(U_PORT_STRINGIFY_QUOTED(U_CFG_APP_FILTER),
+                           "U_APP: ");
 #else
-    uPortLog("U_APP: running all functions.\n");
-    uRunnerRunAll("U_APP: ");
+        uPortLog("U_APP: running all functions.\n");
+        uRunnerRunAll("U_APP: ");
 #endif
-
+    }
     // The things that we have run may have
     // called deinit so call init again here.
     uPortInit();
 
-    UNITY_END();
+    // Don't show the unity completion if this is a spawned test.
+    pEnvVar = getenv("U_CFG_TEST_SPAWNED");
+    if ((pEnvVar == NULL) || (strlen(pEnvVar) == 0)) {
+        UNITY_END();
+    }
 
     uPortLog("\n\nU_APP: application task ended.\n");
     uPortDeinit();

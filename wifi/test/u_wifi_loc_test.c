@@ -36,7 +36,7 @@
 //lint -efile(766, u_wifi_module_type.h)
 #include "u_wifi_module_type.h"
 
-// *** UCX WORKAROUND FIX ***
+// *** UCX MISSING FUNCTION ***
 // Currently no support for http in ucx, hence disabled
 #ifndef U_UCONNECT_GEN2
 

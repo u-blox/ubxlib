@@ -330,7 +330,7 @@ int32_t uShortRangeOpenUart(uShortRangeModuleType_t moduleType,
                 handleOrErrorCode = U_SHORT_RANGE_ERROR_INIT_INTERNAL;
             }
         }
-        if (handleOrErrorCode > (int32_t)U_ERROR_COMMON_SUCCESS) {
+        if (handleOrErrorCode >= (int32_t)U_ERROR_COMMON_SUCCESS) {
             if (restart) {
                 uShortrangePrivateRestartDevice(pInstance->devHandle, false);
             }

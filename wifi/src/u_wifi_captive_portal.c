@@ -340,7 +340,7 @@ int32_t uWifiCaptivePortal(uDeviceHandle_t deviceHandle,
 {
 
     int32_t errorCode = 0;
-    // *** UCX WORKAROUND FIX ***
+    // *** UCX MISSING FUNCTION ***
     // Currently no support for access point ip-address in ucx, hence disabled
 #ifdef U_UCONNECT_GEN2
     return U_ERROR_COMMON_NOT_IMPLEMENTED;

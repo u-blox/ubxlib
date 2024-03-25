@@ -806,7 +806,7 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattMisc")
 
         gapParams.scanInterval = 100;
         gapParams.scanWindow = 100;
-        gapParams.createConnectionTmo = 3000;
+        gapParams.createConnectionTimeout = 3000;
 
         gapParams.connIntervalMin = 10;
         gapParams.connIntervalMax = 20;

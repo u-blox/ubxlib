@@ -79,6 +79,39 @@ extern "C" {
 #define U_BT_LE_AD_GENERAL 0x02  /**< General Discoverable */
 #define U_BT_LE_AD_NO_BREDR 0x04 /**< BR/EDR not supported */
 
+/** BLE radio modes (PHY) */
+#define U_BT_LE_PHY_DONT_CARE 0 /**< Let other side decide */
+#define U_BT_LE_PHY_1_MPBS    1 /**< 1 Mbps */
+#define U_BT_LE_PHY_2_MBPS    2 /**< 2 Mbps */
+#define U_BT_LE_PHY_CODED     4 /**< Coded PHY (when supported by the module) */
+
+/** BLE device I/O capabilities for bonding */
+#define U_BT_LE_IO_NONE        0 /**< No input and no output */
+#define U_BT_LE_IO_DISP_ONLY   1 /**< Display only */
+#define U_BT_LE_IO_DISP_YES_NO 2 /**< Display yes/no */
+#define U_BT_LE_IO_KEYB_ONLY   3 /**< Keyboard only */
+#define U_BT_LE_IO_KEYB_DISP   4 /**< Keyboard and display */
+
+/** BLE bonding security modes */
+#define U_BT_LE_BOND_NO_SEC    0 /**< Security disabled */
+#define U_BT_LE_BOND_UNAUTH    1 /**< Allow unauthenticated bonding (Just Works) */
+#define U_BT_LE_BOND_AUTH      2 /**< Only allow authenticated bonding */
+#define U_BT_LE_BOND_AUTH_ENCR 3 /**< Only allow authenticated bonding with
+                                      encrypted Bluetooth link. Fallback to
+                                      simple bonding if the remote side does not
+                                      support secure connections */
+#define U_BT_LE_BOND_STRICT    4 /**< Only allow authenticated bonding with encrypted
+                                      Bluetooth link. Strictly uses secure connections */
+
+/** BLE bonding error codes */
+#define U_BT_LE_BOND_ERR_SUCCESS  0 /**< Bonding procedure succeeded */
+#define U_BT_LE_BOND_ERR_TIMEOUT  1 /**< Bonding procedure failed due to timeout */
+#define U_BT_LE_BOND_ERR_FAILED   2 /**< Bonding failed because of authentication or
+                                         pairing failed. */
+#define U_BT_LE_BOND_ERR_WEAK     3 /**< Bonding failed because the protection against
+                                         Man-In-The-Middle attack could not be guaranteed,
+                                         the generated link key was too weak */
+
 #define U_SHORT_RANGE_BT_ADDRESS_SIZE 14
 
 /* ----------------------------------------------------------------
@@ -112,7 +145,7 @@ typedef struct {
 typedef bool (*uBleGapScanCallback_t)(uBleScanResult_t *pScanResult);
 
 /** Connect/disconnect callback for central and peripheral.
- *  @param[in]  connHandle  connection handle identifying the peer.
+ *  @param      connHandle  connection handle identifying the peer.
  *                          Must later be used for uBleGapDisconnect and
  *                          in subsequent call to related gatt functions.
  *  @param[in]  pAddress    peer address.
@@ -123,15 +156,64 @@ typedef void (*uBleGapConnectCallback_t)(int32_t connHandle, char *pAddress, boo
 /** BLE advertisement configuration parameters.
 */
 typedef struct {
-    uint32_t minIntervalMs; /**< Advertising interval minimum in ms */
-    uint32_t maxIntervalMs; /**< Advertising interval maximum in ms */
-    bool connectable;       /**< Peripheral connectable */
-    uint8_t maxClients;     /**< Maximum number of connected clients */
-    uint8_t *pAdvData;      /**< Advertisement data */
-    uint8_t advDataLength;  /**< Advertisement data size */
-    uint8_t *pRespData;     /**< Advertisement response data */
-    uint8_t respDataLength; /**< Advertisement response data size */
+    uint32_t minIntervalMs; /**< Advertising interval minimum in ms. */
+    uint32_t maxIntervalMs; /**< Advertising interval maximum in ms. */
+    bool connectable;       /**< Peripheral connectable. */
+    uint8_t maxClients;     /**< Maximum number of connected clients. */
+    uint8_t *pAdvData;      /**< Advertisement data. */
+    uint8_t advDataLength;  /**< Advertisement data size. */
+    uint8_t *pRespData;     /**< Advertisement response data. */
+    uint8_t respDataLength; /**< Advertisement response data size. */
 } uBleGapAdvConfig_t;
+
+/** BLE connection configuration settings.
+*/
+typedef struct {
+    uint16_t scanIntervalMs;         /**< Scan interval in ms. */
+    uint16_t scanWindowMs;           /**< Scan window in ms. */
+    uint32_t connCreateTimeoutMs;    /**< Timeout for connection in ms. */
+    uint16_t connIntervalMinMs;      /**< Connection interval minimum in ms. */
+    uint16_t connIntervalMaxMs;      /**< Connection interval maximum in ms. */
+    uint16_t connLatency;            /**< Connection peripheral latency. */
+    uint32_t linkLossTimeoutMs;      /**< Connection link loss timeout in ms. */
+    uint16_t preferredTxPhy;         /**< Preferred transmitter PHY. */
+    uint16_t preferredRxPhy;         /**< Preferred receiver PHY. */
+} uBleGapConnectConfig_t;
+
+/** PHY update callback, the result of a call to uBleGapRequestPhyChange().
+ *  @param      connHandle  connection handle identifying the peer.
+ *  @param      status      Bluetooth status code.
+ *  @param      txPhy       transmitter PHY.
+ *  @param      rxPhy       receiver PHY.
+ */
+typedef void (*uBleGapPhyUpdateCallback_t)(int32_t connHandle, int32_t status,
+                                           int32_t txPhy, int32_t rxPhy);
+
+/** Bonding callback when I/O capability set to #U_BT_LE_IO_DISP_YES_NO.
+ *  Confirm or deny by calling uBleGapBondConfirm().
+ *  @param[in]  pAddress   mac address of the bonding remote.
+ *  @param      num_val    numeric value to confirm.
+ */
+typedef void (*uBleGapBondConfirmCallback_t)(const char *pAddress, int32_t numericValue);
+
+/** Bonding callback when I/O capability set to #U_BT_LE_IO_KEYB_ONLY.
+ *  The passkey show on the remote device must be returned by calling uBleGapBondEnterPasskey().
+ *  @param[in]  pAddress   mac address of the bonding remote.
+ */
+typedef void (*uBleGapBondPasskeyRequestCallback_t)(const char *pAddress);
+
+/** Bonding callback when I/O capability set to #U_BT_LE_IO_DISP_ONLY.
+ *  The passkey provided must be entered on the remote device.
+ *  @param[in]  pAddress   mac address of the bonding remote.
+ *  @param      passkey    passkey to be shown.
+ */
+typedef void (*uBleGapBondPasskeyEntryCallback_t)(const char *pAddress, int32_t passkey);
+
+/** Callback indicating the completion result of a bonding started by uBleGapBond().
+ *  @param[in]  pAddress   mac address of the bonding remote.
+ *  @param      status     value from one of the U_BT_LE_BOND_ERR_x constants.
+ */
+typedef void (*uBleGapBondCompleteCallback_t)(const char *pAddress, int32_t status);
 
 /* ----------------------------------------------------------------
  * FUNCTIONS
@@ -139,17 +221,90 @@ typedef struct {
 
 /** Get the mac address of the BLE device.
  *
- * @param[in]  devHandle  the handle of the u-blox BLE device.
+ * @param      devHandle  the handle of the u-blox BLE device.
  * @param[out] pMac       pointer to a string for the address.
  *                        Must at least be of size #U_SHORT_RANGE_BT_ADDRESS_SIZE
  * @return                zero on success, on failure negative error code.
  */
 int32_t uBleGapGetMac(uDeviceHandle_t devHandle, char *pMac);
 
+/** Enable or disable pairing mode. The default mode if this function is not called
+ *  is that the the device is pairable.
+ *
+ * @param      devHandle  the handle of the u-blox BLE device.
+ * @param      isPairable set to true to enable pairing.
+ * @return                zero on success, on failure negative error code.
+ */
+int32_t uBleGapSetPairable(uDeviceHandle_t devHandle, bool isPairable);
+
+/** Configure bonding security. If this function is not called before any bonding attempts
+ *  the security level will be "Security disabled".
+ *
+ * @param      devHandle        the handle of the u-blox BLE device.
+ * @param      ioCapabilities   current device I/O capabilities.
+ * @param      bondSecurity     bonding security level.
+ * @param[in]  confirmCb        function to be called when bonding requires confirmation.
+ *                              Can be set to NULL when not applicable.
+ * @param[in]  passKeyRequestCb function to be called when bonding requires passkey entry
+ *                              on the remote.device. Can be set to NULL when not applicable.
+ * @param[in]  passKeyEntryCb   function to be called when bonding requires passkey entry
+ *                              from the local device. Can be set to NULL when not applicable.
+ * @return                      zero on success, on failure negative error code.
+ */
+int32_t uBleSetBondParameters(uDeviceHandle_t devHandle,
+                              int32_t ioCapabilities,
+                              int32_t bondSecurity,
+                              uBleGapBondConfirmCallback_t confirmCb,
+                              uBleGapBondPasskeyRequestCallback_t passKeyRequestCb,
+                              uBleGapBondPasskeyEntryCallback_t passKeyEntryCb);
+
+/** Request bonding with a peripheral when in central mode.
+ *
+ * @param      devHandle       the handle of the u-blox BLE device.
+ * @param[in]  pAddress        mac address of the peripheral.
+ * @param[in]  cb              callback when bonding has completed.
+ * @return                     zero on success, on failure negative error code.
+ */
+int32_t uBleGapBond(uDeviceHandle_t devHandle, const char *pAddress,
+                    uBleGapBondCompleteCallback_t cb);
+
+/** Remove bonding from this device.
+ *
+ * @param      devHandle       the handle of the u-blox BLE device.
+ * @param[in]  pAddress        mac address of the bonded device,
+ *                             can be set to NULL to remove all bonded devices.
+ * @return                     zero on success, on failure negative error code.
+ */
+int32_t uBleGapRemoveBond(uDeviceHandle_t devHandle, const char *pAddress);
+
+/** Confirm or deny bonding from a central. This function shoule be called after that the
+ *  function "yesNoCallback" earlier specified in uBleSetBondParameters() has been called
+ *  (and only then).
+ *
+ * @param      devHandle       the handle of the u-blox BLE device.
+ * @param      confirm         set to true to confirm or false to deny.
+ * @param[in]  pAddress        mac address of the central requesting a bond.
+ * @return                     zero on success, on failure negative error code.
+ */
+int32_t uBleGapBondConfirm(uDeviceHandle_t devHandle, bool confirm, const char *pAddress);
+
+/** Confirm or deny bonding by specifying a passkey. This function should be called after
+ *  that the function "confirmCb" earlier specified in uBleSetBondParameters() has been
+ *  called (and only then).
+ *
+ * @param      devHandle       the handle of the u-blox BLE device.
+ * @param      confirm         set to true to confirm or false to deny.
+ * @param[in]  pAddress        mac address of the central requesting a bond.
+ * @param      passkey         passkey used to confirm bonding, ignored if confirm is false.
+ * @return                     zero on success, on failure negative error code.
+ */
+int32_t uBleGapBondEnterPasskey(uDeviceHandle_t devHandle, bool confirm,
+                                const char *pAddress, int32_t passkey);
+
 /** Set callback for connection events. These can occur both when in central and
  *  peripheral mode.
  *
- * @param[in] devHandle   the handle of the u-blox BLE device.
+ * @param     devHandle   the handle of the u-blox BLE device.
  * @param[in] cb          the callback routine, set to NULL to remove the callback.
  * @return                zero on success, on failure negative error code.
  */
@@ -162,61 +317,78 @@ int32_t uBleGapSetConnectCallback(uDeviceHandle_t devHandle, uBleGapConnectCallb
  *  can be performed in the callback.
  *  Requires the BLE device to be in central mode.
  *
- * @param[in] devHandle   the handle of the u-blox BLE device.
- * @param[in] discType    type of scan to perform.
- * @param[in] activeScan  active or passive scan.
- * @param[in] timeousMs   total time interval in milliseconds used for the scan.
+ * @param     devHandle   the handle of the u-blox BLE device.
+ * @param     discType    type of scan to perform.
+ * @param     activeScan  active or passive scan.
+ * @param     timeousMs   total time interval in milliseconds used for the scan.
  * @param[in] cb          a callback routine for the found devices.
  * @return                zero on success, on failure negative error code.
  */
-int32_t uBleGapScan(uDeviceHandle_t devHandle,
-                    uBleGapDiscoveryType_t discType,
-                    bool activeScan,
-                    uint32_t timeousMs,
-                    uBleGapScanCallback_t cb);
+int32_t uBleGapScan(uDeviceHandle_t devHandle, uBleGapDiscoveryType_t discType, bool activeScan,
+                    uint32_t timeousMs, uBleGapScanCallback_t cb);
+
+/** Set the connection configuration parameters to be used for the next call to uBleGapConnect.
+ *  If not called then the module's default ones will be used.
+ *
+ * @param     devHandle   the handle of the u-blox BLE device.
+ * @param[in] pConfig     connection configuration parameters.
+ * @return                zero on success, on failure negative error code.
+ */
+int32_t uBleGapSetConnectParams(uDeviceHandle_t devHandle, uBleGapConnectConfig_t *pConfig);
 
 /** Try connecting to another peripheral BLE device.
  *  If a connection callback has been set via uBleGapSetConnectCallback() then
  *  this will be called when the connection has been completed.
  *  Requires the BLE device to be in central mode.
  *
- * @param[in] devHandle   the handle of the u-blox BLE device.
+ * @param     devHandle   the handle of the u-blox BLE device.
  * @param[in] pAddress    mac address of the peripheral.
  * @return                zero on success, on failure negative error code.
  */
 int32_t uBleGapConnect(uDeviceHandle_t devHandle, const char *pAddress);
 
+/** Request a new PHY configuration for an existing BLE connection.
+ *
+ * @param     devHandle   the handle of the u-blox BLE device.
+ * @param     connHandle  the connection handle received when connection was made.
+ * @param     txPhy       transmitter PHY.
+ * @param     rxPhy       receiver PHY.
+ * @param[in] cb          callback for the result of the request.
+ * @return                zero on success, on failure negative error code.
+ */
+int32_t uBleGapRequestPhyChange(uDeviceHandle_t devHandle, int32_t connHandle,
+                                int32_t txPhy, int32_t rxPhy, uBleGapPhyUpdateCallback_t cb);
+
 /** Start to disconnect a connected peripheral BLE device.
  *  If a connection callback has been set via uBleGapSetConnectCallback() then
  *  this will be called when the devices have completed the disconnect.
  *
- * @param[in] devHandle   the handle of the u-blox BLE device.
- * @param[in] connHandle  the connection handle received when connection was made.
+ * @param     devHandle   the handle of the u-blox BLE device.
+ * @param     connHandle  the connection handle received when connection was made.
  * @return                zero on success, on failure negative error code.
  */
 int32_t uBleGapDisconnect(uDeviceHandle_t devHandle, int32_t connHandle);
 
 /** Convenience routine for creating advertisement data with a full name
- *  or manufacturer data or both. This data can then be used for uBleGapAdvertiseStart.
+ *  or manufacturer data or both. This data can then be used for uBleGapAdvertiseStart().
  *  Set possible unused parameter to NULL.
  *
  * @param[in]  pName          name string, or NULL.
  * @param[in]  pManufData     pointer to manufacturer data or NULL.
- * @param[in]  manufDataSize  size of manufacturer data.
+ * @param      manufDataSize  size of manufacturer data.
  * @param[out] pAdvData       pointer to advertisement storage.
- * @param[in]  advDataSize    max size of the advertisement storage.
+ * @param      advDataSize    max size of the advertisement storage.
  * @return                    size of the created package, on failure negative error code.
  */
-int32_t uBleGapSetAdvData(const char *pName,
-                          const uint8_t *pManufData, uint8_t manufDataSize,
+int32_t uBleGapSetAdvData(const char *pName, const uint8_t *pManufData, uint8_t manufDataSize,
                           uint8_t *pAdvData, uint8_t advDataSize);
 
 /** Start BLE advertisement using the the specified configuration.
  *  Requires the BLE device to be in peripheral mode.
  *  If the device is set to connectable and a connection callback has been set
- *  via uBleGapSetConnectCallback, then this will be called if a central connects.
+ *  via uBleGapSetConnectCallback(), then this will be called if a central connects.
  *
- * @param[in] devHandle   the handle of the u-blox BLE device.
+ * @param     devHandle   the handle of the u-blox BLE device.
  * @param[in] pConfig     advertisement configuration.
  * @return                zero on success, on failure negative error code.
  */
@@ -224,14 +396,14 @@ int32_t uBleGapAdvertiseStart(uDeviceHandle_t devHandle, const uBleGapAdvConfig_
 
 /** Stop ongoing BLE advertisement.
  *
- * @param[in] devHandle   the handle of the u-blox BLE device.
+ * @param     devHandle   the handle of the u-blox BLE device.
  * @return                zero on success, on failure negative error code.
  */
 int32_t uBleGapAdvertiseStop(uDeviceHandle_t devHandle);
 
 /** Reset all GAP settings on the BLE device to factory values.
  *
- * @param[in] devHandle   the handle of the u-blox BLE device.
+ * @param     devHandle   the handle of the u-blox BLE device.
  * @return                zero on success, on failure negative error code.
  */
 int32_t uBleGapReset(uDeviceHandle_t devHandle);

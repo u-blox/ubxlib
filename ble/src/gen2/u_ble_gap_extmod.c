@@ -78,6 +78,8 @@
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
+// Callback wrappers
+
 static void bleConnectCallback(struct uCxHandle *pUcxHandle, int32_t connHandle,
                                uBtLeAddress_t *pBdAddr)
 {
@@ -86,7 +88,7 @@ static void bleConnectCallback(struct uCxHandle *pUcxHandle, int32_t connHandle,
         pState->connHandle = connHandle;
         if (pState->connectCallback != NULL) {
             char bdAddrString[U_BD_STRING_MAX_LENGTH_BYTES];
-            if (uCxBdAddressToString(pBdAddr, bdAddrString, sizeof(bdAddrString) == 0)) {
+            if (uCxBdAddressToString(pBdAddr, bdAddrString, sizeof(bdAddrString)) > 0) {
                 pState->connectCallback(connHandle, bdAddrString, true);
             }
         }
@@ -100,6 +102,72 @@ static void bleDisconnectCallback(struct uCxHandle *pUcxHandle, int32_t connHand
         pState->connHandle = -1;
         if (pState->connectCallback != NULL) {
             pState->connectCallback(connHandle, NULL, false);
+        }
+    }
+}
+
+static void blePhyUpdateCallback(struct uCxHandle *pUcxHandle, int32_t connHandle, int32_t status,
+                                 int32_t txPhy, int32_t rxPhy)
+{
+    uBleDeviceState_t *pState = pGetBleContext(pUcxHandle->pAtClient->pConfig->pContext);
+    if (pState != NULL) {
+        if (pState->phyUpdateCallback != NULL) {
+            pState->phyUpdateCallback(connHandle, status, txPhy, rxPhy);
+        }
+    }
+}
+
+static void bleBondCompleteCallback(struct uCxHandle *pUcxHandle, uBtLeAddress_t *pBdAddr,
+                                    uBondStatus_t status)
+{
+    uBleDeviceState_t *pState = pGetBleContext(pUcxHandle->pAtClient->pConfig->pContext);
+    if (pState != NULL) {
+        if (pState->bondCompleteCb != NULL) {
+            char bdAddrString[U_BD_STRING_MAX_LENGTH_BYTES];
+            if ((pState->bondCompleteCb != NULL) &&
+                (uCxBdAddressToString(pBdAddr, bdAddrString, sizeof(bdAddrString)) > 0)) {
+                pState->bondCompleteCb(bdAddrString, (int32_t)status);
+            }
+        }
+    }
+}
+
+static void bleBondConfirmCallback(struct uCxHandle *pUcxHandle, uBtLeAddress_t *pBdAddr,
+                                   int32_t numericValue)
+{
+    uBleDeviceState_t *pState = pGetBleContext(pUcxHandle->pAtClient->pConfig->pContext);
+    if (pState != NULL) {
+        if (pState->confirmCb != NULL) {
+            char bdAddrString[U_BD_STRING_MAX_LENGTH_BYTES];
+            if ((pState->confirmCb != NULL) &&
+                (uCxBdAddressToString(pBdAddr, bdAddrString, sizeof(bdAddrString)) > 0)) {
+                pState->confirmCb(bdAddrString, numericValue);
+            }
+        }
+    }
+}
+
+static void bleBondPassKeyRequestCallback(struct uCxHandle *pUcxHandle, uBtLeAddress_t *pBdAddr)
+{
+    uBleDeviceState_t *pState = pGetBleContext(pUcxHandle->pAtClient->pConfig->pContext);
+    if (pState != NULL) {
+        char bdAddrString[U_BD_STRING_MAX_LENGTH_BYTES];
+        if ((pState->passKeyRequestCb != NULL) &&
+            (uCxBdAddressToString(pBdAddr, bdAddrString, sizeof(bdAddrString)) > 0)) {
+            pState->passKeyRequestCb(bdAddrString);
+        }
+    }
+}
+
+static void bleBondPassKeyEntryCallback(struct uCxHandle *pUcxHandle, uBtLeAddress_t *pBdAddr,
+                                        int32_t passKey)
+{
+    uBleDeviceState_t *pState = pGetBleContext(pUcxHandle->pAtClient->pConfig->pContext);
+    if (pState != NULL) {
+        char bdAddrString[U_BD_STRING_MAX_LENGTH_BYTES];
+        if ((pState->passKeyEntryCb != NULL) &&
+            (uCxBdAddressToString(pBdAddr, bdAddrString, sizeof(bdAddrString)) > 0)) {
+            pState->passKeyEntryCb(bdAddrString, passKey);
         }
     }
 }
@@ -123,6 +191,126 @@ int32_t uBleGapGetMac(uDeviceHandle_t devHandle, char *pMac)
     return errorCode;
 }
 
+int32_t uBleGapSetPairable(uDeviceHandle_t devHandle, bool isPairable)
+{
+    int32_t errorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
+    uCxHandle_t *pUcxHandle = pShortRangePrivateGetUcxHandle(devHandle);
+    if (pUcxHandle != NULL) {
+        errorCode = uCxBluetoothSetPairingMode(pUcxHandle,
+                                               isPairable ?
+                                               U_PAIRING_MODE_PAIRING_MODE_ENABLE :
+                                               U_PAIRING_MODE_PAIRING_MODE_DISABLE);
+    }
+    return errorCode;
+}
+
+int32_t uBleSetBondParameters(uDeviceHandle_t devHandle, int32_t ioCapabilities,
+                              int32_t bondSecurity,
+                              uBleGapBondConfirmCallback_t confirmCb,
+                              uBleGapBondPasskeyRequestCallback_t passKeyRequestCb,
+                              uBleGapBondPasskeyEntryCallback_t passKeyEntryCb)
+{
+    int32_t errorCode = uShortRangeLock();
+    if (errorCode == 0) {
+        errorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
+        uShortRangePrivateInstance_t *pInstance = pUShortRangePrivateGetInstance(devHandle);
+        uCxHandle_t *pUcxHandle = pShortRangePrivateGetUcxHandle(devHandle);
+        if ((pUcxHandle != NULL) && (pInstance != NULL)) {
+            errorCode = checkCreateBleContext(pInstance);
+            if (errorCode == 0) {
+                errorCode =
+                    uCxBluetoothSetIoCapabilities(pUcxHandle, (uIoCapabilities_t)ioCapabilities);
+                if (errorCode == 0) {
+                    errorCode =
+                        uCxBluetoothSetSecurityMode(pUcxHandle, (uBtSecurityMode_t)bondSecurity);
+                }
+                if (errorCode == 0) {
+                    uBleDeviceState_t *pBleContext = (uBleDeviceState_t *)(pInstance->pBleContext);
+                    uCxBluetoothRegisterUserConfirmation(pUcxHandle, bleBondConfirmCallback);
+                    pBleContext->confirmCb = confirmCb;
+                    uCxBluetoothRegisterPasskeyRequest(pUcxHandle, bleBondPassKeyRequestCallback);
+                    pBleContext->passKeyRequestCb = passKeyRequestCb;
+                    uCxBluetoothRegisterPasskeyEntry(pUcxHandle, bleBondPassKeyEntryCallback);
+                    pBleContext->passKeyEntryCb = passKeyEntryCb;
+                }
+            }
+        }
+        uShortRangeUnlock();
+    }
+    return errorCode;
+}
+
+int32_t uBleGapBond(uDeviceHandle_t devHandle, const char *pAddress,
+                    uBleGapBondCompleteCallback_t cb)
+{
+    int32_t errorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
+    uShortRangePrivateInstance_t *pInstance = pUShortRangePrivateGetInstance(devHandle);
+    uCxHandle_t *pUcxHandle = pShortRangePrivateGetUcxHandle(devHandle);
+    if ((pUcxHandle != NULL) && (pInstance != NULL)) {
+        uBtLeAddress_t bdAddr;
+        errorCode = uCxStringToBdAddress(pAddress, &bdAddr);
+        if (errorCode == 0) {
+            errorCode = checkCreateBleContext(pInstance);
+            if (errorCode == 0) {
+                ((uBleDeviceState_t *)(pInstance->pBleContext))->bondCompleteCb = cb;
+                uCxBluetoothRegisterBondStatus(pUcxHandle, bleBondCompleteCallback);
+                errorCode = uCxBluetoothBond(pUcxHandle, &bdAddr);
+            }
+        }
+    }
+    return errorCode;
+}
+
+int32_t uBleGapRemoveBond(uDeviceHandle_t devHandle, const char *pAddress)
+{
+    int32_t errorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
+    uCxHandle_t *pUcxHandle = pShortRangePrivateGetUcxHandle(devHandle);
+    if (pUcxHandle != NULL) {
+        if (pAddress == NULL) {
+            errorCode = uCxBluetoothUnbondAll(pUcxHandle);
+        } else {
+            uBtLeAddress_t bdAddr;
+            errorCode = uCxStringToBdAddress(pAddress, &bdAddr);
+            if (errorCode == 0) {
+                errorCode = uCxBluetoothUnbond(pUcxHandle, &bdAddr);
+            }
+        }
+    }
+    return errorCode;
+}
+
+int32_t uBleGapBondConfirm(uDeviceHandle_t devHandle, bool confirm, const char *pAddress)
+{
+    int32_t errorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
+    uCxHandle_t *pUcxHandle = pShortRangePrivateGetUcxHandle(devHandle);
+    if (pUcxHandle != NULL) {
+        uBtLeAddress_t bdAddr;
+        errorCode = uCxStringToBdAddress(pAddress, &bdAddr);
+        if (errorCode == 0) {
+            errorCode = uCxBluetoothUserConfirmation(pUcxHandle, &bdAddr,
+                                                     confirm ? U_YES_NO_YES : U_YES_NO_NO);
+        }
+    }
+    return errorCode;
+}
+
+int32_t uBleGapBondEnterPasskey(uDeviceHandle_t devHandle, bool confirm, const char *pAddress,
+                                int32_t passkey)
+{
+    int32_t errorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
+    uCxHandle_t *pUcxHandle = pShortRangePrivateGetUcxHandle(devHandle);
+    if (pUcxHandle != NULL) {
+        uBtLeAddress_t bdAddr;
+        errorCode = uCxStringToBdAddress(pAddress, &bdAddr);
+        if (errorCode == 0) {
+            errorCode = uCxBluetoothUserPasskeyEntry3(pUcxHandle, &bdAddr,
+                                                      confirm ? U_YES_NO_YES : U_YES_NO_NO,
+                                                      passkey);
+        }
+    }
+    return errorCode;
+}
+
 int32_t uBleGapSetConnectCallback(uDeviceHandle_t devHandle, uBleGapConnectCallback_t cb)
 {
     int32_t errorCode = uShortRangeLock();
@@ -136,7 +324,6 @@ int32_t uBleGapSetConnectCallback(uDeviceHandle_t devHandle, uBleGapConnectCallb
                 ((uBleDeviceState_t *)(pInstance->pBleContext))->connectCallback = cb;
                 uCxBluetoothRegisterConnect(pUcxHandle, bleConnectCallback);
                 uCxBluetoothRegisterDisconnect(pUcxHandle, bleDisconnectCallback);
-                errorCode = (int32_t)U_ERROR_COMMON_SUCCESS;
             }
         }
         uShortRangeUnlock();
@@ -181,12 +368,45 @@ int32_t uBleGapScan(uDeviceHandle_t devHandle,
             }
             errorCode = uCxEnd(pUcxHandle);
             if (errorCode == U_CX_ERROR_CMD_TIMEOUT) {
-                // *** UCX WORKAROUND FIX ***
+                // *** UCX MISSING FUNCTION ***
                 // Ignore timeout for now, not possible to set ucx timeout value
                 errorCode = (int32_t)U_ERROR_COMMON_SUCCESS;
             }
         }
         uShortRangeUnlock();
+    }
+    return errorCode;
+}
+
+int32_t uBleGapSetConnectParams(uDeviceHandle_t devHandle, uBleGapConnectConfig_t *pConfig)
+{
+    int32_t errorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
+    uCxHandle_t *pUcxHandle = pShortRangePrivateGetUcxHandle(devHandle);
+    if (pUcxHandle != NULL) {
+        // *** UCX MISSING FUNCTION ***
+        /* Currently no ucx command for the following settings:
+         scanIntervalMs
+         scanWindowMs
+         connCreateTimeoutMs
+        */
+        errorCode = uCxBluetoothSetConnectionIntervalMin(pUcxHandle,
+                                                         (pConfig->connIntervalMinMs) * 4 / 5);
+        if (errorCode == 0) {
+            errorCode = uCxBluetoothSetConnectionIntervalMax(pUcxHandle,
+                                                             (pConfig->connIntervalMaxMs) * 4 / 5);
+        }
+        if (errorCode == 0) {
+            errorCode = uCxBluetoothSetConnectionPeripheralLatency(pUcxHandle, pConfig->connLatency);
+        }
+        if (errorCode == 0) {
+            errorCode = uCxBluetoothSetConnectionLinklossTimeout(pUcxHandle, pConfig->linkLossTimeoutMs);
+        }
+        if (errorCode == 0) {
+            errorCode = uCxBluetoothSetPreferredTxPhy(pUcxHandle, pConfig->preferredTxPhy);
+        }
+        if (errorCode == 0) {
+            errorCode = uCxBluetoothSetPreferredRxPhy(pUcxHandle, pConfig->preferredRxPhy);
+        }
     }
     return errorCode;
 }
@@ -207,6 +427,27 @@ int32_t uBleGapConnect(uDeviceHandle_t devHandle, const char *pAddress)
                 if (errorCode == 0) {
                     errorCode = uCxBluetoothConnect(pUcxHandle, &bdAddr);
                 }
+            }
+        }
+        uShortRangeUnlock();
+    }
+    return errorCode;
+}
+
+int32_t uBleGapRequestPhyChange(uDeviceHandle_t devHandle, int32_t connHandle,
+                                int32_t txPhy, int32_t rxPhy, uBleGapPhyUpdateCallback_t cb)
+{
+    int32_t errorCode = uShortRangeLock();
+    if (errorCode == 0) {
+        errorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
+        uCxHandle_t *pUcxHandle = pShortRangePrivateGetUcxHandle(devHandle);
+        uShortRangePrivateInstance_t *pInstance = pUShortRangePrivateGetInstance(devHandle);
+        if ((pUcxHandle != NULL) && (pInstance != NULL)) {
+            errorCode = checkCreateBleContext(pInstance);
+            if (errorCode == 0) {
+                ((uBleDeviceState_t *)(pInstance->pBleContext))->phyUpdateCallback = cb;
+                uCxBluetoothRegisterPhyUpdate(pUcxHandle, blePhyUpdateCallback);
+                errorCode = uCxBluetoothRequestPhy(pUcxHandle, connHandle, txPhy, rxPhy);
             }
         }
         uShortRangeUnlock();
@@ -259,8 +500,16 @@ int32_t uBleGapAdvertiseStart(uDeviceHandle_t devHandle, const uBleGapAdvConfig_
     int32_t errorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
     uCxHandle_t *pUcxHandle = pShortRangePrivateGetUcxHandle(devHandle);
     if (pUcxHandle != NULL) {
-        errorCode = uCxBluetoothSetAdvertiseData(pUcxHandle, pConfig->pAdvData,
-                                                 pConfig->advDataLength);
+        // *** UCX MISSING FUNCTION ***
+        // Currently no ucx command for setting connectable and maxClients
+        errorCode = uCxBluetoothSetAdvIntervalMin(pUcxHandle, (int32_t)(pConfig->minIntervalMs * 16 / 10));
+        if (errorCode == 0) {
+            errorCode = uCxBluetoothSetAdvIntervalMax(pUcxHandle, (int32_t)(pConfig->maxIntervalMs * 16 / 10));
+        }
+        if ((errorCode == 0) && (pConfig->pAdvData != NULL)) {
+            errorCode = uCxBluetoothSetAdvertiseData(pUcxHandle, pConfig->pAdvData,
+                                                     pConfig->advDataLength);
+        }
         if (errorCode == 0) {
             errorCode = uCxBluetoothSetAdvertisements(pUcxHandle, 1);
         }

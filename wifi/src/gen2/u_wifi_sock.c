@@ -497,7 +497,7 @@ int32_t uWifiSockSendTo(uDeviceHandle_t devHandle,
                         const void *pData,
                         size_t dataSizeBytes)
 {
-    // *** UCX WORKAROUND FIX ***
+    // *** UCX MISSING FUNCTION ***
     // Currently no corresponding ucx api. Use normal connect and write.
     int32_t errorCodeOrLength = uWifiSockConnect(devHandle, sockHandle, pRemoteAddress);
     if (errorCodeOrLength == 0) {
@@ -594,10 +594,10 @@ int32_t uWifiSockGetLocalAddress(uDeviceHandle_t devHandle,
     int32_t errorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
     uCxHandle_t *pUcxHandle = pShortRangePrivateGetUcxHandle(devHandle);
     if (pUcxHandle != NULL) {
-        uCxWifiStationGetNetworkStatus_t resp;
-        errorCode = uCxWifiStationGetNetworkStatus(pUcxHandle, 0, &resp);
+        uSockIpAddress_t addr;
+        errorCode = uCxWifiStationGetNetworkStatus(pUcxHandle, 0, &addr);
         if (errorCode == 0) {
-            pLocalAddress->ipAddress = resp.status_val;
+            pLocalAddress->ipAddress = addr;
             pLocalAddress->port = 0;
         }
     }

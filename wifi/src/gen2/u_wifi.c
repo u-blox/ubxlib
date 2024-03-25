@@ -314,10 +314,10 @@ bool uWifiStationHasStoredConfig(uDeviceHandle_t devHandle)
     bool has = false;
     uCxHandle_t *pUcxHandle = pShortRangePrivateGetUcxHandle(devHandle);
     if (pUcxHandle != NULL) {
-        uCxWifiStationGetConnectionParams_t params;
-        int32_t errorCode = uCxWifiStationGetConnectionParamsBegin(pUcxHandle,
-                                                                   WLAN_HANDLE, &params);
-        has = errorCode == 0 && strlen(params.ssid) > 0;
+        const char *pSsid;
+        int32_t errorCode =
+            uCxWifiStationGetConnectionParamsBegin(pUcxHandle, WLAN_HANDLE, &pSsid);
+        has = errorCode == 0 && strlen(pSsid) > 0;
         uCxEnd(pUcxHandle);
     }
     return has;
@@ -385,10 +385,10 @@ int32_t uWifiStationScan(uDeviceHandle_t devHandle, const char *pSsid,
     int32_t errorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
     uCxHandle_t *pUcxHandle = pShortRangePrivateGetUcxHandle(devHandle);
     if ((pUcxHandle != NULL) && (pCallback != NULL)) {
-        uCxWifiStationScanBegin(pUcxHandle);
-        uCxWifiStationScan_t uCxresult;
+        uCxWifiStationScanDefaultBegin(pUcxHandle);
+        uCxWifiStationScanDefault_t uCxresult;
         uWifiScanResult_t result;
-        while (uCxWifiStationScanGetNext(pUcxHandle, &uCxresult)) {
+        while (uCxWifiStationScanDefaultGetNext(pUcxHandle, &uCxresult)) {
             result.authSuiteBitmask = uCxresult.authentication_suites;
             memcpy(result.bssid, uCxresult.bssid.address, sizeof(result.bssid));
             result.channel = uCxresult.channel;

@@ -12,7 +12,9 @@ endif()
 set(ENV{UBXLIB_BASE} ${UBXLIB_BASE})
 message("UBXLIB_BASE will be \"${UBXLIB_BASE}\"")
 
-if (NOT DEFINED UBXLIB_FEATURES)
+if (DEFINED ENV{UBXLIB_FEATURES})
+  separate_arguments(UBXLIB_FEATURES NATIVE_COMMAND "$ENV{UBXLIB_FEATURES}")
+elseif (NOT DEFINED UBXLIB_FEATURES)
   # All ubxlib features activated by default
   set(UBXLIB_FEATURES short_range cell gnss)
 endif()
@@ -61,6 +63,7 @@ set(UBXLIB_SRC_PORT
     ${UBXLIB_BASE}/port/platform/${UBXLIB_PLATFORM}/src/u_port_i2c.c
     ${UBXLIB_BASE}/port/platform/${UBXLIB_PLATFORM}/src/u_port_spi.c
     ${UBXLIB_BASE}/port/platform/${UBXLIB_PLATFORM}/src/u_port_ppp.c
+    ${UBXLIB_BASE}/port/platform/${UBXLIB_PLATFORM}/src/u_port_named_pipe.c
     ${UBXLIB_BASE}/port/clib/u_port_clib_mktime64.c)
 
 # Add the platform-specific tests and examples

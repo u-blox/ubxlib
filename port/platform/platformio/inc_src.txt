@@ -82,6 +82,7 @@ port/u_port_heap.c
 port/u_port_resource.c
 port/u_port_i2c_default.c
 port/u_port_spi_default.c
+port/u_port_named_pipe_default.c
 port/u_port_heap.c
 port/u_port_ppp_default.c
 port/u_port_board_cfg.c

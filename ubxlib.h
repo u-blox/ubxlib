@@ -63,6 +63,7 @@
 #include <u_port_uart.h>
 #include <u_port_i2c.h>
 #include <u_port_spi.h>
+#include <u_port_named_pipe.h>
 
 // Module types: used in common APIs hence must come first
 #include <u_ble_module_type.h>

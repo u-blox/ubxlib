@@ -210,6 +210,27 @@ static int32_t restart(const uAtClientHandle_t atHandle, bool store)
     return error;
 }
 
+static int32_t getSecurityOption(const uAtClientHandle_t atHandle)
+{
+    uAtClientLock(atHandle);
+    uAtClientCommandStart(atHandle, "AT+UBTST?");
+    uAtClientCommandStop(atHandle);
+    uAtClientResponseStart(atHandle, "+UBTST:");
+    int32_t opt = uAtClientReadInt(atHandle);
+    uAtClientResponseStop(atHandle);
+    uAtClientUnlock(atHandle);
+    return opt;
+}
+
+static int32_t setSecurityOption(const uAtClientHandle_t atHandle, int32_t opt)
+{
+    uAtClientLock(atHandle);
+    uAtClientCommandStart(atHandle, "AT+UBTST=");
+    uAtClientWriteInt(atHandle, opt);
+    uAtClientCommandStopReadResponse(atHandle);
+    return uAtClientUnlock(atHandle);
+}
+
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS THAT ARE PRIVATE TO BLE EXTMOD
  * -------------------------------------------------------------- */
@@ -273,6 +294,14 @@ int32_t uBleCfgConfigure(uDeviceHandle_t devHandle,
                     int32_t spsServerId = getServer(atHandle, U_BLE_CFG_SERVER_TYPE_SPS);
                     if (spsServerId >= 0) {
                         disableServer(atHandle, spsServerId);
+                        restartNeeded = true;
+                    }
+                }
+
+                int32_t secOpt = getSecurityOption(atHandle);
+                if (secOpt != 1) {
+                    errorCode = setSecurityOption(atHandle, 1);
+                    if (errorCode == (int32_t)U_ERROR_COMMON_SUCCESS) {
                         restartNeeded = true;
                     }
                 }

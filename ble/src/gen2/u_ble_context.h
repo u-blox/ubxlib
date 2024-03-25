@@ -1,13 +1,16 @@
 
 // Ble specific state record to be held in device record
-// The SPS related fields are just void pointers in order
-// to avoid include file bonanza
 typedef struct {
     int32_t connHandle;
     int32_t mtu;
     uBleGapConnectCallback_t connectCallback;
     uBleGattNotificationCallback_t notifyCallback;
     uBleGattWriteCallback_t writeCallback;
+    uBleGapPhyUpdateCallback_t phyUpdateCallback;
+    uBleGapBondConfirmCallback_t confirmCb;
+    uBleGapBondPasskeyRequestCallback_t passKeyRequestCb;
+    uBleGapBondPasskeyEntryCallback_t passKeyEntryCb;
+    uBleGapBondCompleteCallback_t bondCompleteCb;
     bool spsDataAvailable;
     int32_t spsConnHandle;
     char spsAddr[U_BD_STRING_MAX_LENGTH_BYTES];

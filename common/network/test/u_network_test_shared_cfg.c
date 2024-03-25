@@ -627,7 +627,7 @@ bool uNetworkTestHasHttp(uDeviceType_t deviceType,
 
 #ifdef U_UCONNECT_GEN2
     if (deviceType == U_DEVICE_TYPE_SHORT_RANGE) {
-        // *** UCX WORKAROUND FIX ***
+        // *** UCX MISSING FUNCTION ***
         // No http support in ucx yet
         return false;
     }

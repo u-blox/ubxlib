@@ -106,7 +106,7 @@ typedef struct {
  *
  *  @param scanInterval        scan interval (N*0.625 ms).
  *  @param scanWindow          scan window (N*0.625 ms).
- *  @param createConnectionTmo timeout before giving up if
+ *  @param createConnectionTimeout timeout before giving up if
  *                             remote device is not found in ms.
  *  @param connIntervalMin     connection interval (N*1.25 ms).
  *  @param connIntervalMax     connection interval (N*1.25 ms).
@@ -117,7 +117,7 @@ typedef struct {
     // For central
     uint16_t scanInterval;
     uint16_t scanWindow;
-    uint32_t createConnectionTmo;
+    uint32_t createConnectionTimeout;
     uint16_t connIntervalMin;
     uint16_t connIntervalMax;
     uint16_t connLatency;

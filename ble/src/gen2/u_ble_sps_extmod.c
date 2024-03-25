@@ -197,11 +197,8 @@ int32_t uBleSpsConnectSps(uDeviceHandle_t devHandle,
                 }
                 if (errorCode == 0) {
                     uBleDeviceState_t *pState = (uBleDeviceState_t *)pInstance->pBleContext;
-                    uCxBluetoothGetConnectionStatus_t resp;
-                    resp.status_val = 20; // Best guess in case we fail
                     uCxBluetoothGetConnectionStatus(pUcxHandle, pState->connHandle,
-                                                    U_PROPERTY_ID_MTU_SIZE, &resp);
-                    pState->mtu = resp.status_val;
+                                                    U_PROPERTY_ID_MTU_SIZE, &pState->mtu);
                     errorCode = uCxSpsConnect1(pUcxHandle, pState->connHandle);
                 }
             }

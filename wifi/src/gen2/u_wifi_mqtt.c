@@ -404,16 +404,16 @@ int32_t uWifiMqttMessageRead(const uMqttClientContext_t *pContext,
     uMqttDeviceState_t *pMqttDeviceState = (uMqttDeviceState_t *)pContext->pPriv;
     uCxHandle_t *pUcxHandle = pShortRangePrivateGetUcxHandle(pContext->devHandle);
     if ((pMqttDeviceState != NULL) && (pUcxHandle != NULL)) {
-        uCxMqttRead_t resp;
+        const char *topic;
         uint32_t len = uCxMqttReadBegin(pUcxHandle, MQTT_ID, (uint8_t *)pMessage, *pMessageSizeBytes,
-                                        &resp);
+                                        &topic);
         if (len > 0) {
             pMqttDeviceState->unReadCnt--;
             if (pQos != NULL) {
                 *pQos = 0; // Not available in the response
             }
             memset(pTopicNameStr, 0, topicNameSizeBytes);
-            strncpy(pTopicNameStr, resp.topic, topicNameSizeBytes - 1);
+            strncpy(pTopicNameStr, topic, topicNameSizeBytes - 1);
             *pMessageSizeBytes = len;
         }
         errorCode = uCxEnd(pUcxHandle);

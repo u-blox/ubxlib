@@ -59,8 +59,6 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
-#define DONT_CHECK_ROLE 0
-
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -78,9 +76,21 @@ typedef enum { BLE_ROLE_ANY,
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-static uint64_t msToTick(uint32_t ms)
+static uint32_t msToTick(uint32_t ms)
 {
     return ms * 1000 / 625;
+}
+
+static int32_t setUrcHandler(uAtClientHandle_t atHandle, const char *pPrefix,
+                             void (*pHandler)(uAtClientHandle_t, void *), void *pHandlerParam)
+{
+    // Remove possible existing URC and add new one if specified
+    int32_t errorCode = 0;
+    uAtClientRemoveUrcHandler(atHandle, pPrefix);
+    if (pHandler != NULL) {
+        errorCode = uAtClientSetUrcHandler(atHandle, pPrefix, pHandler, pHandlerParam);
+    }
+    return errorCode;
 }
 
 static bool validateBle(uShortRangePrivateInstance_t *pInstance, bleRoleCheck_t roleCheck)
@@ -131,19 +141,69 @@ static void disconnectUrc(uAtClientHandle_t atHandle, void *pParameter)
 // Use common connect urc callback using the provided application callback as parameter
 static int32_t setConnectUrc(uAtClientHandle_t atHandle, uBleGapConnectCallback_t cb)
 {
-    // Remove possible existing callback
-    uAtClientRemoveUrcHandler(atHandle, "+UUBTACLC:");
-    uAtClientRemoveUrcHandler(atHandle, "+UUBTACLD:");
     int32_t errorCode = (int32_t)U_ERROR_COMMON_SUCCESS;
     if (cb) {
-        errorCode = uAtClientSetUrcHandler(atHandle, "+UUBTACLC:",
-                                           connectUrc, cb);
+        errorCode = setUrcHandler(atHandle, "+UUBTACLC:", connectUrc, cb);
         if (errorCode == (int32_t)U_ERROR_COMMON_SUCCESS) {
-            errorCode = uAtClientSetUrcHandler(atHandle, "+UUBTACLD:",
-                                               disconnectUrc, cb);
+            errorCode = setUrcHandler(atHandle, "+UUBTACLD:", disconnectUrc, cb);
         }
     }
     return errorCode;
+}
+
+static void phyUpdateUrc(uAtClientHandle_t atHandle, void *pParameter)
+{
+    uBleGapPhyUpdateCallback_t cb = (uBleGapPhyUpdateCallback_t)pParameter;
+    int32_t connHandle = uAtClientReadInt(atHandle);
+    int32_t status = uAtClientReadInt(atHandle);
+    int32_t txPhy = uAtClientReadInt(atHandle);
+    int32_t rxPhy = uAtClientReadInt(atHandle);
+    cb(connHandle, status, txPhy, rxPhy);
+}
+
+static void bleBondCompleteUrc(uAtClientHandle_t atHandle, void *pParameter)
+{
+    uBleGapBondCompleteCallback_t cb = (uBleGapBondCompleteCallback_t)pParameter;
+    char address[U_SHORT_RANGE_BT_ADDRESS_SIZE];
+    uAtClientReadString(atHandle, address, sizeof(address), false);
+    int32_t status = uAtClientReadInt(atHandle);
+    cb(address, status);
+}
+
+static void bleBondConfirmCUrc(uAtClientHandle_t atHandle, void *pParameter)
+{
+    uBleGapBondConfirmCallback_t cb = (uBleGapBondConfirmCallback_t)pParameter;
+    char address[U_SHORT_RANGE_BT_ADDRESS_SIZE];
+    uAtClientReadString(atHandle, address, sizeof(address), false);
+    int32_t numVal = uAtClientReadInt(atHandle);
+    cb(address, numVal);
+}
+
+static void bleBondPassKeyRequestUrc(uAtClientHandle_t atHandle, void *pParameter)
+{
+    uBleGapBondPasskeyRequestCallback_t cb = (uBleGapBondPasskeyRequestCallback_t)pParameter;
+    char address[U_SHORT_RANGE_BT_ADDRESS_SIZE];
+    uAtClientReadString(atHandle, address, sizeof(address), false);
+    cb(address);
+}
+
+static void bleBondPassKeyEnterUrc(uAtClientHandle_t atHandle, void *pParameter)
+{
+    uBleGapBondPasskeyEntryCallback_t cb = (uBleGapBondPasskeyEntryCallback_t)pParameter;
+    char address[U_SHORT_RANGE_BT_ADDRESS_SIZE];
+    uAtClientReadString(atHandle, address, sizeof(address), false);
+    int32_t passKey = uAtClientReadInt(atHandle);
+    cb(address, passKey);
+}
+
+static bool setBleConfig(const uAtClientHandle_t atHandle, int32_t parameter, uint64_t value)
+{
+    uAtClientLock(atHandle);
+    uAtClientCommandStart(atHandle, "AT+UBTLECFG=");
+    uAtClientWriteInt(atHandle, parameter);
+    uAtClientWriteUint64(atHandle, value);
+    uAtClientCommandStopReadResponse(atHandle);
+    return uAtClientUnlock(atHandle) == 0;
 }
 
 /* ----------------------------------------------------------------
@@ -165,14 +225,161 @@ int32_t uBleGapGetMac(uDeviceHandle_t devHandle, char *pMac)
             uAtClientCommandStart(atHandle, "AT+UMLA=1");
             uAtClientCommandStop(atHandle);
             if (uAtClientResponseStart(atHandle, "+UMLA:") == 0) {
-                errorCode = uAtClientReadString(atHandle,
-                                                pMac,
-                                                U_SHORT_RANGE_BT_ADDRESS_SIZE,
-                                                false);
+                uAtClientReadString(atHandle,
+                                    pMac,
+                                    U_SHORT_RANGE_BT_ADDRESS_SIZE,
+                                    false);
+                uAtClientResponseStop(atHandle);
             }
-            uAtClientResponseStop(atHandle);
-            uAtClientUnlock(atHandle);
+            errorCode = uAtClientUnlock(atHandle);
         }
+        uShortRangeUnlock();
+    }
+    return errorCode;
+}
+
+int32_t uBleGapSetPairable(uDeviceHandle_t devHandle, bool isPairable)
+{
+    int32_t errorCode = (int32_t)U_ERROR_COMMON_NOT_INITIALISED;
+    uShortRangePrivateInstance_t *pInstance;
+    if (uShortRangeLock() == (int32_t)U_ERROR_COMMON_SUCCESS) {
+        pInstance = pUShortRangePrivateGetInstance(devHandle);
+        uAtClientHandle_t atHandle = pInstance->atHandle;
+        uAtClientLock(atHandle);
+        uAtClientCommandStart(atHandle, "AT+UBTPM=");
+        uAtClientWriteInt(atHandle, isPairable ? 2 : 1);
+        uAtClientCommandStopReadResponse(atHandle);
+        errorCode = uAtClientUnlock(atHandle);
+        uShortRangeUnlock();
+    }
+    return errorCode;
+}
+
+int32_t uBleSetBondParameters(uDeviceHandle_t devHandle, int32_t ioCapabilities,
+                              int32_t bondSecurity,
+                              uBleGapBondConfirmCallback_t confirmCb,
+                              uBleGapBondPasskeyRequestCallback_t passKeyRequestCb,
+                              uBleGapBondPasskeyEntryCallback_t passKeyEntryCb)
+{
+    int32_t errorCode = (int32_t)U_ERROR_COMMON_NOT_INITIALISED;
+    uShortRangePrivateInstance_t *pInstance;
+    if (uShortRangeLock() == (int32_t)U_ERROR_COMMON_SUCCESS) {
+        pInstance = pUShortRangePrivateGetInstance(devHandle);
+        uAtClientHandle_t atHandle = pInstance->atHandle;
+        uAtClientLock(atHandle);
+        // Try to map the never UCX concept parameters to the old ones.
+        int32_t secMode = 2;
+        if (bondSecurity == U_BT_LE_BOND_NO_SEC) {
+            secMode = 1;
+        } else if (bondSecurity == U_BT_LE_BOND_UNAUTH) {
+            secMode = 2;
+        } else if (bondSecurity >= U_BT_LE_BOND_AUTH) {
+            if (ioCapabilities == U_BT_LE_IO_DISP_ONLY) {
+                secMode = 3;
+            } else if (ioCapabilities == U_BT_LE_IO_DISP_YES_NO) {
+                secMode = 4;
+            } else if (ioCapabilities == U_BT_LE_IO_KEYB_ONLY) {
+                secMode = 5;
+            }
+        }
+        uAtClientCommandStart(atHandle, "AT+UBTSM=");
+        uAtClientWriteInt(atHandle, secMode);
+        uAtClientWriteInt(atHandle, 0);
+        uAtClientCommandStopReadResponse(atHandle);
+        errorCode = uAtClientUnlock(atHandle);
+        if (errorCode == 0) {
+            errorCode = setUrcHandler(atHandle, "+UUBTUC:", bleBondConfirmCUrc, confirmCb);
+            if (errorCode == 0) {
+                errorCode = setUrcHandler(atHandle, "+UUBTUPE:", bleBondPassKeyRequestUrc,
+                                          passKeyRequestCb);
+            }
+            if (errorCode == 0) {
+                errorCode = setUrcHandler(atHandle, "+UUBTUPD:", bleBondPassKeyEnterUrc,
+                                          passKeyEntryCb);
+            }
+        }
+        uShortRangeUnlock();
+    }
+    return errorCode;
+}
+
+int32_t uBleGapBond(uDeviceHandle_t devHandle, const char *pAddress,
+                    uBleGapBondCompleteCallback_t cb)
+{
+    int32_t errorCode = (int32_t)U_ERROR_COMMON_NOT_INITIALISED;
+    uShortRangePrivateInstance_t *pInstance;
+    if (uShortRangeLock() == 0) {
+        pInstance = pUShortRangePrivateGetInstance(devHandle);
+        errorCode = (int32_t)U_BLE_ERROR_INVALID_MODE;
+        if (validateBle(pInstance, BLE_ROLE_CENTRAL)) {
+            uAtClientHandle_t atHandle = pInstance->atHandle;
+            errorCode = setUrcHandler(atHandle, "+UUBTB:", bleBondCompleteUrc, cb);
+            if (errorCode == 0) {
+                uAtClientLock(atHandle);
+                uAtClientCommandStart(atHandle, "AT+UBTB=");
+                uAtClientWriteString(atHandle, pAddress, false);
+                uAtClientWriteInt(atHandle, 1);
+                uAtClientCommandStopReadResponse(atHandle);
+                errorCode = uAtClientUnlock(atHandle);
+            }
+        }
+        uShortRangeUnlock();
+    }
+    return errorCode;
+}
+
+int32_t uBleGapRemoveBond(uDeviceHandle_t devHandle, const char *pAddress)
+{
+    int32_t errorCode = (int32_t)U_ERROR_COMMON_NOT_INITIALISED;
+    uShortRangePrivateInstance_t *pInstance;
+    if (uShortRangeLock() == 0) {
+        pInstance = pUShortRangePrivateGetInstance(devHandle);
+        if (pAddress == NULL) {
+            pAddress = "FFFFFFFFFFFF";
+        }
+        uAtClientHandle_t atHandle = pInstance->atHandle;
+        uAtClientRemoveUrcHandler(atHandle, "+UUBTB:");
+        uAtClientLock(atHandle);
+        uAtClientCommandStart(atHandle, "AT+UBTUB=");
+        uAtClientWriteString(atHandle, pAddress, false);
+        uAtClientCommandStopReadResponse(atHandle);
+        errorCode = uAtClientUnlock(atHandle);
+        uShortRangeUnlock();
+    }
+    return errorCode;
+}
+
+int32_t uBleGapBondConfirm(uDeviceHandle_t devHandle, bool confirm, const char *pAddress)
+{
+    // This will be called from URC callback so don't call uShortRangeLock here.
+    int32_t errorCode = (int32_t)U_ERROR_COMMON_NOT_INITIALISED;
+    uShortRangePrivateInstance_t *pInstance;
+    pInstance = pUShortRangePrivateGetInstance(devHandle);
+    uAtClientHandle_t atHandle = pInstance->atHandle;
+    uAtClientCommandStart(atHandle, "AT+UBTUC=");
+    uAtClientWriteString(atHandle, pAddress, false);
+    uAtClientWriteInt(atHandle, confirm ? 1 : 0);
+    uAtClientCommandStopReadResponse(atHandle);
+    errorCode = uAtClientErrorGet(atHandle);
+    return errorCode;
+}
+
+int32_t uBleGapBondEnterPasskey(uDeviceHandle_t devHandle, bool confirm, const char *pAddress,
+                                int32_t passkey)
+{
+    // Respond to passkey request.
+    int32_t errorCode = (int32_t)U_ERROR_COMMON_NOT_INITIALISED;
+    uShortRangePrivateInstance_t *pInstance;
+    if (uShortRangeLock() == 0) {
+        pInstance = pUShortRangePrivateGetInstance(devHandle);
+        uAtClientHandle_t atHandle = pInstance->atHandle;
+        uAtClientLock(atHandle);
+        uAtClientCommandStart(atHandle, "AT+UBTUPE=");
+        uAtClientWriteString(atHandle, pAddress, false);
+        uAtClientWriteInt(atHandle, confirm ? 1 : 0);
+        uAtClientWriteInt(atHandle, passkey);
+        uAtClientCommandStopReadResponse(atHandle);
+        errorCode = uAtClientUnlock(atHandle);
         uShortRangeUnlock();
     }
     return errorCode;
@@ -261,6 +468,31 @@ int32_t uBleGapScan(uDeviceHandle_t devHandle,
     return errorCode;
 }
 
+int32_t uBleGapSetConnectParams(uDeviceHandle_t devHandle, uBleGapConnectConfig_t *pConfig)
+{
+    int32_t errorCode = (int32_t)U_ERROR_COMMON_NOT_INITIALISED;
+    uShortRangePrivateInstance_t *pInstance;
+    if (uShortRangeLock() == (int32_t)U_ERROR_COMMON_SUCCESS) {
+        pInstance = pUShortRangePrivateGetInstance(devHandle);
+        errorCode = (int32_t)U_BLE_ERROR_INVALID_MODE;
+        if (validateBle(pInstance, U_BLE_CFG_ROLE_CENTRAL)) {
+            uAtClientHandle_t atHandle = pInstance->atHandle;
+            bool ok = setBleConfig(atHandle, 4, msToTick(pConfig->connIntervalMinMs));
+            ok = ok && setBleConfig(atHandle, 5, msToTick(pConfig->connIntervalMaxMs));
+            ok = ok && setBleConfig(atHandle, 6, pConfig->connLatency);
+            ok = ok && setBleConfig(atHandle, 7, msToTick(pConfig->linkLossTimeoutMs));
+            ok = ok && setBleConfig(atHandle, 8, msToTick(pConfig->connCreateTimeoutMs));
+            ok = ok && setBleConfig(atHandle, 9, msToTick(pConfig->scanIntervalMs));
+            ok = ok && setBleConfig(atHandle, 10, msToTick(pConfig->scanWindowMs));
+            ok = ok && setBleConfig(atHandle, 27, pConfig->preferredTxPhy);
+            ok = ok && setBleConfig(atHandle, 28, pConfig->preferredRxPhy);
+            errorCode = ok ? 0 : uAtClientErrorGet(atHandle);
+        }
+        uShortRangeUnlock();
+    }
+    return errorCode;
+}
+
 int32_t uBleGapConnect(uDeviceHandle_t devHandle, const char *pAddress)
 {
     int32_t errorCode = (int32_t)U_ERROR_COMMON_NOT_INITIALISED;
@@ -274,8 +506,31 @@ int32_t uBleGapConnect(uDeviceHandle_t devHandle, const char *pAddress)
             uAtClientCommandStart(atHandle, "AT+UBTACLC=");
             uAtClientWriteString(atHandle, pAddress, false);
             uAtClientCommandStopReadResponse(atHandle);
-            errorCode = uAtClientErrorGet(atHandle);
-            uAtClientUnlock(atHandle);
+            errorCode = uAtClientUnlock(atHandle);
+        }
+        uShortRangeUnlock();
+    }
+    return errorCode;
+}
+
+int32_t uBleGapRequestPhyChange(uDeviceHandle_t devHandle, int32_t connHandle,
+                                int32_t txPhy, int32_t rxPhy, uBleGapPhyUpdateCallback_t cb)
+{
+    int32_t errorCode = (int32_t)U_ERROR_COMMON_NOT_INITIALISED;
+    uShortRangePrivateInstance_t *pInstance;
+    if (uShortRangeLock() == (int32_t)U_ERROR_COMMON_SUCCESS) {
+        pInstance = pUShortRangePrivateGetInstance(devHandle);
+        errorCode = (int32_t)U_BLE_ERROR_INVALID_MODE;
+        if (validateBle(pInstance, U_BLE_CFG_ROLE_CENTRAL)) {
+            uAtClientHandle_t atHandle = pInstance->atHandle;
+            setUrcHandler(atHandle, "+UUBTLEPHYU:", phyUpdateUrc, cb);
+            uAtClientLock(atHandle);
+            uAtClientCommandStart(atHandle, "AT+UBTLEPHYR=");
+            uAtClientWriteInt(atHandle, connHandle);
+            uAtClientWriteInt(atHandle, txPhy);
+            uAtClientWriteInt(atHandle, rxPhy);
+            uAtClientCommandStopReadResponse(atHandle);
+            errorCode = uAtClientUnlock(atHandle);
         }
         uShortRangeUnlock();
     }
@@ -347,42 +602,32 @@ int32_t uBleGapAdvertiseStart(uDeviceHandle_t devHandle, const uBleGapAdvConfig_
             uAtClientCommandStart(atHandle, "AT+UBTCM=");
             uAtClientWriteInt(atHandle, pConfig->connectable ? 2 : 1);
             uAtClientCommandStopReadResponse(atHandle);
-            ok = uAtClientErrorGet(atHandle) >= 0;
+            ok = uAtClientUnlock(atHandle) == 0;
+            ok = ok && setBleConfig(atHandle, 1, msToTick(pConfig->minIntervalMs));
+            ok = ok && setBleConfig(atHandle, 2, msToTick(pConfig->maxIntervalMs));
             if (ok) {
-                uAtClientCommandStart(atHandle, "AT+UBTLECFG=");
-                uAtClientWriteInt(atHandle, 1);
-                uAtClientWriteUint64(atHandle, msToTick(pConfig->minIntervalMs));
-                uAtClientCommandStopReadResponse(atHandle);
-                ok = uAtClientErrorGet(atHandle) >= 0;
-            }
-            if (ok) {
-                uAtClientCommandStart(atHandle, "AT+UBTLECFG=");
-                uAtClientWriteInt(atHandle, 2);
-                uAtClientWriteUint64(atHandle, msToTick(pConfig->maxIntervalMs));
-                uAtClientCommandStopReadResponse(atHandle);
-                ok = uAtClientErrorGet(atHandle) >= 0;
-            }
-            if (ok) {
+                uAtClientLock(atHandle);
                 uAtClientCommandStart(atHandle, "AT+UBTCFG=");
                 uAtClientWriteInt(atHandle, 2);
                 uAtClientWriteUint64(atHandle, msToTick(pConfig->maxClients));
                 uAtClientCommandStopReadResponse(atHandle);
-                ok = uAtClientErrorGet(atHandle) >= 0;
+                ok = uAtClientUnlock(atHandle) == 0;
             }
             if (ok && pConfig->pAdvData) {
+                uAtClientLock(atHandle);
                 uAtClientCommandStart(atHandle, "AT+UBTAD=");
                 uAtClientWriteHexData(atHandle, pConfig->pAdvData, pConfig->advDataLength);
                 uAtClientCommandStopReadResponse(atHandle);
-                ok = ok && uAtClientErrorGet(atHandle) >= 0;
+                ok = uAtClientUnlock(atHandle) == 0;
             }
             if (ok && pConfig->pRespData) {
+                uAtClientLock(atHandle);
                 uAtClientCommandStart(atHandle, "AT+UBTSD=");
                 uAtClientWriteHexData(atHandle, pConfig->pRespData, pConfig->respDataLength);
                 uAtClientCommandStopReadResponse(atHandle);
-                ok = ok && uAtClientErrorGet(atHandle) >= 0;
+                ok = uAtClientUnlock(atHandle) == 0;
             }
-            errorCode = ok ? (int32_t)U_ERROR_COMMON_SUCCESS : (int32_t)U_BLE_ERROR_TEMPORARY_FAILURE;
-            uAtClientUnlock(atHandle);
+            errorCode = ok ? 0 : uAtClientErrorGet(atHandle);
         }
         uShortRangeUnlock();
     }
@@ -412,8 +657,7 @@ int32_t uBleGapReset(uDeviceHandle_t devHandle)
             uAtClientCommandStopReadResponse(atHandle);
             uAtClientCommandStart(atHandle, "AT+CPWROFF");
             uAtClientCommandStopReadResponse(atHandle);
-            errorCode = uAtClientErrorGet(atHandle);
-            uAtClientUnlock(atHandle);
+            errorCode = uAtClientUnlock(atHandle);
             // Wait for restart to complete
             if (errorCode == (int32_t)U_ERROR_COMMON_SUCCESS) {
                 uPortTaskBlock(5000);

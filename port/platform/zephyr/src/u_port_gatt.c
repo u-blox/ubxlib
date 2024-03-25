@@ -905,7 +905,7 @@ static struct bt_conn *connectGapAsCentral(const bt_addr_le_t *pPeer, int32_t *p
     if (pGapParams == NULL) {
         createParam.interval = uPortGattGapParamsDefault.scanInterval;
         createParam.window = uPortGattGapParamsDefault.scanWindow;
-        createParam.timeout = (uint16_t) (uPortGattGapParamsDefault.createConnectionTmo / 10);
+        createParam.timeout = (uint16_t) (uPortGattGapParamsDefault.createConnectionTimeout / 10);
         connParam.interval_min = uPortGattGapParamsDefault.connIntervalMin;
         connParam.interval_max = uPortGattGapParamsDefault.connIntervalMax;
         connParam.latency = uPortGattGapParamsDefault.connLatency;
@@ -913,7 +913,7 @@ static struct bt_conn *connectGapAsCentral(const bt_addr_le_t *pPeer, int32_t *p
     } else {
         createParam.interval = pGapParams->scanInterval;
         createParam.window = pGapParams->scanWindow;
-        createParam.timeout = (uint16_t) (pGapParams->createConnectionTmo / 10);
+        createParam.timeout = (uint16_t) (pGapParams->createConnectionTimeout / 10);
 
         connParam.interval_min = pGapParams->connIntervalMin;
         connParam.interval_max = pGapParams->connIntervalMax;

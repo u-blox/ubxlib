@@ -174,6 +174,9 @@ list(APPEND UBXLIB_SRC ${UBXLIB_BASE}/port/u_port_resource.c)
 list(APPEND UBXLIB_SRC ${UBXLIB_BASE}/port/u_port_i2c_default.c)
 list(APPEND UBXLIB_SRC ${UBXLIB_BASE}/port/u_port_spi_default.c)
 
+# Default implementation for uPortNamePipeXxx()
+list(APPEND UBXLIB_SRC ${UBXLIB_BASE}/port/u_port_named_pipe_default.c)
+
 # Default uPortPppAttach()/uPortPppDetach() implementation
 list(APPEND UBXLIB_SRC ${UBXLIB_BASE}/port/u_port_ppp_default.c)
 

@@ -28,7 +28,7 @@
  * macro.
  */
 
-// *** UCX WORKAROUND FIX ***
+// *** UCX MISSING FUNCTION ***
 // Currently no support for http in ucx, hence disabled
 #ifndef U_UCONNECT_GEN2
 

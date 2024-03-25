@@ -37,7 +37,7 @@
 
 #include "u_short_range_test_selector.h"
 
-// *** UCX WORKAROUND FIX ***
+// *** UCX MISSING FUNCTION ***
 // Currently no support for access point ip-address in ucx, hence disabled
 #ifndef U_UCONNECT_GEN2
 
