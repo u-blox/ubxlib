@@ -459,6 +459,21 @@ void uSockCleanUp();
  */
 void uSockDeinit();
 
+/** This function has a VERY SPECIFIC purpose, you do not normally
+ * need to use it.  It causes the ubxlib code to forget about
+ * any open sockets; the associated module(s) are NOT contacted,
+ * it is simply as though no sockets have yet been opened.
+ *
+ * This is useful if you are running sockets with a module which
+ * can, without notice, lose the lot of them; for instance if
+ * the module is a cellular module that has entered 3GPP power
+ * saving, when it will lose all data in RAM, including sockets.
+ *
+ * This function effectively clears the sockets on this MCU so that
+ * the state of this code matches the module.
+ */
+void uSockForgetAll();
+
 /* ----------------------------------------------------------------
  * FUNCTIONS: CONFIGURE
  * -------------------------------------------------------------- */
