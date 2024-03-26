@@ -131,6 +131,8 @@ int32_t uWifiHttpOpen(uDeviceHandle_t wifiHandle, const char *pServerName,
 // Shut-down the given Wi-Fi HTTP client instance.
 void uWifiHttpClose(uDeviceHandle_t wifiHandle, int32_t httpHandle)
 {
+    (void)wifiHandle;
+    (void)httpHandle;
 }
 
 // Perform an HTTP request. Primary used for GET and DELETE

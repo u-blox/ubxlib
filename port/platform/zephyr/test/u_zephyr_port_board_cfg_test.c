@@ -29,6 +29,9 @@
  * macro.
  */
 
+// Conditional on not being U_UCONNECT_GEN2 since NINA-W15/W13 are used
+#ifndef U_UCONNECT_GEN2
+
 #ifdef U_CFG_OVERRIDE
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
@@ -606,5 +609,7 @@ U_PORT_TEST_FUNCTION("[zephyrPortBoardCfg]", "zephyrPortBoardCfgCleanUp")
 #endif // #if DT_HAS_COMPAT_STATUS_OKAY(u_blox_ubxlib_device_cellular) ||
 //            DT_HAS_COMPAT_STATUS_OKAY(u_blox_ubxlib_device_gnss) ||
 //            DT_HAS_COMPAT_STATUS_OKAY(u_blox_ubxlib_device_short_range)
+
+#endif // #ifndef U_UCONNECT_GEN2
 
 // End of file

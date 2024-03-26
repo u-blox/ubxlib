@@ -239,6 +239,9 @@ def analyze(ctx, cmake_dir=DEFAULT_CMAKE_DIR, board_name=DEFAULT_BOARD_NAME,
         os.environ["UBXLIB_FEATURES"] = features
     if "UBXLIB_FEATURES" in os.environ:
         features_string = f'-DUBXLIB_FEATURES={os.environ["UBXLIB_FEATURES"].replace(" ", ";")}'
+        if u_utils.is_linux():
+            # A semicolon is a special character on Linux
+            features_string = features_string.replace(";", "\\;")
 
     # Start by getting the compile commands by using the CMAKE_EXPORT_COMPILE_COMMANDS setting
     # This will generate compile_commands.json

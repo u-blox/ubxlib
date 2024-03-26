@@ -147,6 +147,7 @@ static int32_t pollTimeRemaining(int32_t atTimeoutMs,
 static int32_t read(uCxAtClient_t *pClient, void *pStreamHandle, void *pData, size_t length,
                     int32_t timeoutMs)
 {
+    (void)pClient;
     int32_t start = uPortGetTickTimeMs();
     int32_t readLength;
     while (true) {
@@ -154,6 +155,7 @@ static int32_t read(uCxAtClient_t *pClient, void *pStreamHandle, void *pData, si
         if (readLength != 0) {
             break;
         }
+        // codechecker_suppress [readability-suspicious-call-argument]
         if (pollTimeRemaining(start, timeoutMs) <= 0) {
             readLength = 0;
             break;
@@ -438,7 +440,7 @@ int32_t uShortRangeAtClientHandleGet(uDeviceHandle_t devHandle,
     // for now to avoid assertions in lots of the tests
     int32_t errorCode = (int32_t)U_ERROR_COMMON_SUCCESS;
     // But return an invalid handle to indicate error
-    pAtHandle = NULL;
+    *pAtHandle = NULL;
     return errorCode;
 }
 

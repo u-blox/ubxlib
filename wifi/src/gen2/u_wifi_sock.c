@@ -142,6 +142,7 @@ static uWifiSocket_t *getSocketByUcxHandle(int32_t uCxSockHandle)
 
 static void socketConnectCallback(struct uCxHandle *puCxHandle, int32_t uCxSockHandle)
 {
+    (void)puCxHandle;
     uWifiSocket_t *pSock = getSocketByUcxHandle(uCxSockHandle);
     if (pSock) {
         uPortSemaphoreGive(pSock->semaphore);
@@ -151,6 +152,7 @@ static void socketConnectCallback(struct uCxHandle *puCxHandle, int32_t uCxSockH
 static void socketDataCallback(struct uCxHandle *puCxHandle, int32_t uCxSockHandle,
                                int32_t number_bytes)
 {
+    (void)puCxHandle;
     (void)number_bytes;
     uWifiSocket_t *pSock = getSocketByUcxHandle(uCxSockHandle);
     if (pSock) {
@@ -165,6 +167,7 @@ static void socketIncomingConnectCallback(struct uCxHandle *puCxHandle, int32_t 
                                           uSockIpAddress_t *pRemoteIp,
                                           int32_t listeningSocketHandle)
 {
+    (void)puCxHandle;
     uWifiSocket_t *pSock = getSocketByUcxHandle(uCxSockHandle);
     if (pSock) {
         uPortMutexLock(gSocketsMutex);
@@ -188,6 +191,7 @@ static void socketIncomingConnectCallback(struct uCxHandle *puCxHandle, int32_t 
 
 static void socketClosedCallback(struct uCxHandle *puCxHandle, int32_t uCxSockHandle)
 {
+    (void)puCxHandle;
     uWifiSocket_t *pSock = getSocketByUcxHandle(uCxSockHandle);
     if (pSock) {
         if (pSock->pClosedCallback != NULL) {
@@ -591,6 +595,7 @@ int32_t uWifiSockGetLocalAddress(uDeviceHandle_t devHandle,
                                  uSockAddress_t *pLocalAddress)
 {
     (void)devHandle;
+    (void)sockHandle;
     int32_t errorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
     uCxHandle_t *pUcxHandle = pShortRangePrivateGetUcxHandle(devHandle);
     if (pUcxHandle != NULL) {

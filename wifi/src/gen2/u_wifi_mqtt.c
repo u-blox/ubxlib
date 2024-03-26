@@ -136,6 +136,7 @@ static void disconnectCallback(struct uCxHandle *pUcxHandle, int32_t mqttId,
 static void dataAvailableCallback(struct uCxHandle *pUcxHandle, int32_t mqttId, int32_t messageLen)
 {
     (void)mqttId;
+    (void)messageLen;
     uShortRangePrivateInstance_t *pInstance = pUcxHandle->pAtClient->pConfig->pContext;
     uMqttDeviceState_t *pMqttDeviceState = pGetMqttDeviceState(pInstance->devHandle);
     if (pMqttDeviceState != NULL) {
@@ -183,9 +184,7 @@ int32_t uWifiMqttInit(uDeviceHandle_t devHandle, void **ppMqttSession)
             errorCode = U_ERROR_COMMON_NO_MEMORY;
         }
     }
-    (void)devHandle;
-    (void)ppMqttSession;
-    return (int32_t)U_ERROR_COMMON_SUCCESS;
+    return errorCode;
 }
 
 int32_t uWifiMqttConnect(const uMqttClientContext_t *pContext,

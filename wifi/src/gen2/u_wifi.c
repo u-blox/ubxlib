@@ -329,6 +329,7 @@ int32_t uWifiAccessPointStart(uDeviceHandle_t devHandle,
                               const char *pPassPhrase,
                               const char *pIpAddress)
 {
+    (void)pIpAddress; // Not possible to use for now
     int32_t errorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
     uCxHandle_t *pUcxHandle = pShortRangePrivateGetUcxHandle(devHandle);
     if (pUcxHandle != NULL) {
@@ -392,7 +393,7 @@ int32_t uWifiStationScan(uDeviceHandle_t devHandle, const char *pSsid,
             result.authSuiteBitmask = uCxresult.authentication_suites;
             memcpy(result.bssid, uCxresult.bssid.address, sizeof(result.bssid));
             result.channel = uCxresult.channel;
-            result.grpCipherBitmask = uCxresult.group_ciphers;
+            result.grpCipherBitmask = (uint8_t)uCxresult.group_ciphers;
             result.opMode = U_WIFI_OP_MODE_INFRASTRUCTURE; // Only one available for now
             result.rssi = uCxresult.rssi;
             memset(result.ssid, 0, sizeof(result.ssid));

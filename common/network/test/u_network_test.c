@@ -1039,6 +1039,14 @@ U_PORT_TEST_FUNCTION("[network]", "networkOutage")
                                                          networkStatusCallback,
                                                          gNetworkStatusCallbackParameters) == 0);
             switch (pTmp->networkType) {
+# ifdef U_CFG_TEST_NET_STATUS_CELL
+                case U_NETWORK_TYPE_CELL:
+                    // For cellular, we have network access, so we
+                    // should be able to perform a sockets operation
+                    U_PORT_TEST_ASSERT(openSocketAndUseIt(devHandle, pTmp->networkType) == 0);
+                    break;
+# endif
+# ifdef U_CFG_TEST_NET_STATUS_SHORT_RANGE
                 case U_NETWORK_TYPE_BLE:
                     // For BLE, make a connection with our test peer
                     U_TEST_PRINT_LINE_X("connecting SPS: %s.", a, gRemoteSpsAddress);
@@ -1054,16 +1062,12 @@ U_PORT_TEST_FUNCTION("[network]", "networkOutage")
                     }
                     U_PORT_TEST_ASSERT(gConnHandle >= 0);
                     break;
-                case U_NETWORK_TYPE_CELL:
-                    // For cellular, we have network access, so we
-                    // should be able to perform a sockets operation
-                    U_PORT_TEST_ASSERT(openSocketAndUseIt(devHandle, pTmp->networkType) == 0);
-                    break;
                 case U_NETWORK_TYPE_WIFI:
                     // Nothing to do for Wi-Fi, connecting to the AP
                     // is enough; it is a local one that we can control
                     // and so does not have internet access
                     break;
+# endif
                 default:
                     break;
             }
@@ -1092,19 +1096,23 @@ U_PORT_TEST_FUNCTION("[network]", "networkOutage")
             U_PORT_TEST_ASSERT(pCallbackParameters->devHandle == *pTmp->pDevHandle);
             U_PORT_TEST_ASSERT(!pCallbackParameters->isUp);
             switch (pTmp->networkType) {
-                case U_NETWORK_TYPE_BLE:
-                    U_PORT_TEST_ASSERT(pCallbackParameters->status.ble.pAddress == NULL);
-                    U_PORT_TEST_ASSERT(pCallbackParameters->status.ble.status == U_BLE_SPS_DISCONNECTED);
-                    break;
+# ifdef U_CFG_TEST_NET_STATUS_CELL
                 case U_NETWORK_TYPE_CELL:
                     U_PORT_TEST_ASSERT(pCallbackParameters->status.cell.domain == (int32_t) U_CELL_NET_REG_DOMAIN_PS);
                     U_PORT_TEST_ASSERT(pCallbackParameters->status.cell.status == (int32_t)
                                        U_CELL_NET_STATUS_OUT_OF_COVERAGE);
                     break;
+# endif
+# ifdef U_CFG_TEST_NET_STATUS_SHORT_RANGE
+                case U_NETWORK_TYPE_BLE:
+                    U_PORT_TEST_ASSERT(pCallbackParameters->status.ble.pAddress == NULL);
+                    U_PORT_TEST_ASSERT(pCallbackParameters->status.ble.status == U_BLE_SPS_DISCONNECTED);
+                    break;
                 case U_NETWORK_TYPE_WIFI:
                     U_PORT_TEST_ASSERT(pCallbackParameters->status.wifi.pBssid == NULL);
                     U_PORT_TEST_ASSERT(pCallbackParameters->status.wifi.disconnectReason == U_WIFI_REASON_OUT_OF_RANGE);
                     break;
+# endif
                 case U_NETWORK_TYPE_GNSS:
                 default:
                     break;
@@ -1200,16 +1208,19 @@ U_PORT_TEST_FUNCTION("[network]", "networkOutage")
                     U_PORT_TEST_ASSERT(pCallbackParameters->devHandle == *pTmp->pDevHandle);
                     U_PORT_TEST_ASSERT(pCallbackParameters->isUp);
                     switch (pTmp->networkType) {
+# ifdef U_CFG_TEST_NET_STATUS_CELL
+                        case U_NETWORK_TYPE_CELL:
+                            U_PORT_TEST_ASSERT(pCallbackParameters->status.cell.domain == (int32_t) U_CELL_NET_REG_DOMAIN_PS);
+                            U_PORT_TEST_ASSERT(pCallbackParameters->status.cell.status == (int32_t)
+                                               U_CELL_NET_STATUS_REGISTERED_HOME);
+                            break;
+# endif
+# ifdef U_CFG_TEST_NET_STATUS_SHORT_RANGE
                         case U_NETWORK_TYPE_BLE:
                             U_PORT_TEST_ASSERT(pCallbackParameters->status.ble.pAddress != NULL);
                             U_PORT_TEST_ASSERT(pCallbackParameters->status.ble.status == (int32_t) U_BLE_SPS_CONNECTED);
                             U_PORT_TEST_ASSERT(pCallbackParameters->status.ble.channel >= 0);
                             U_PORT_TEST_ASSERT(pCallbackParameters->status.ble.mtu > 0);
-                            break;
-                        case U_NETWORK_TYPE_CELL:
-                            U_PORT_TEST_ASSERT(pCallbackParameters->status.cell.domain == (int32_t) U_CELL_NET_REG_DOMAIN_PS);
-                            U_PORT_TEST_ASSERT(pCallbackParameters->status.cell.status == (int32_t)
-                                               U_CELL_NET_STATUS_REGISTERED_HOME);
                             break;
                         case U_NETWORK_TYPE_WIFI:
                             U_PORT_TEST_ASSERT(pCallbackParameters->status.wifi.connId >= 0);
@@ -1218,6 +1229,7 @@ U_PORT_TEST_FUNCTION("[network]", "networkOutage")
                             U_PORT_TEST_ASSERT(pCallbackParameters->status.wifi.channel >= 0);
                             U_PORT_TEST_ASSERT(pCallbackParameters->status.wifi.pBssid != NULL);
                             break;
+# endif
                         case U_NETWORK_TYPE_GNSS:
                         default:
                             break;
