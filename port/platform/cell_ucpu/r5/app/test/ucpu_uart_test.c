@@ -282,7 +282,7 @@ static void mqttThread(void *thread_input)
                 // Wait for us to be notified that our new
                 // message is available on the broker
                 while (!messagesAvailable &&
-                       !uPortTickTimeExpired(startTimeMs, 20000)) {
+                       !uPortTickTimeExpiredMs(startTimeMs, 20000)) {
                     uPortTaskBlock(1000);
                 }
 

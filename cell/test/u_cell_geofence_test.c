@@ -176,7 +176,7 @@ static bool keepGoingCallback(uDeviceHandle_t cellHandle)
     bool keepGoing = true;
 
     U_PORT_TEST_ASSERT(cellHandle == gHandles.cellHandle);
-    if (uPortTickTimeBeyondStop(gStopTimeMs)) {
+    if (uPortTickTimeBeyondStopMs(gStopTimeMs)) {
         keepGoing = false;
     }
 

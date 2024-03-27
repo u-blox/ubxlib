@@ -79,7 +79,7 @@ static bool keepGoingCallback(uDeviceHandle_t devHandle)
     if (uDeviceGetInstance(devHandle, &pInstance) == 0) {
         pContext = (uDeviceCellContext_t *) pInstance->pContext;
         if ((pContext == NULL) ||
-            (uPortGetTickTimeMs() < pContext->stopTimeMs)) {
+            !uPortTickTimeBeyondStopMs(pContext->stopTimeMs)) {
             keepGoing = true;
         }
     }

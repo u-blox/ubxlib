@@ -673,8 +673,8 @@ static void pppDetach(uPortPppInterface_t *pPppInterface)
         // will set gpPppInterface->ipConnected
         startTimeMs = uPortGetTickTimeMs();
         while ((gpPppInterface->ipConnected) &&
-               !uPortTickTimeExpired(startTimeMs,
-                                     U_PORT_PPP_DISCONNECT_TIMEOUT_SECONDS * 1000)) {
+               !uPortTickTimeExpiredMs(startTimeMs,
+                                       U_PORT_PPP_DISCONNECT_TIMEOUT_SECONDS * 1000)) {
             uPortTaskBlock(250);
         }
         pPppInterface->ipConnected = false;
@@ -902,8 +902,8 @@ int32_t uPortPppConnect(void *pDevHandle,
                         // will set gpPppInterface->ipConnected
                         startTimeMs = uPortGetTickTimeMs();
                         while ((!gpPppInterface->ipConnected) &&
-                               !uPortTickTimeExpired(startTimeMs,
-                                                     U_PORT_PPP_CONNECT_TIMEOUT_SECONDS * 1000)) {
+                               !uPortTickTimeExpiredMs(startTimeMs,
+                                                       U_PORT_PPP_CONNECT_TIMEOUT_SECONDS * 1000)) {
                             uPortTaskBlock(250);
                         }
                         if (gpPppInterface->ipConnected) {

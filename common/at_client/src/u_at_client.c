@@ -2262,8 +2262,8 @@ static size_t write(uAtClientInstance_t *pClient,
            (pClient->error == U_ERROR_COMMON_SUCCESS)) {
         lengthToWrite = length - (pData - pDataStart);
         if ((pClient->pWakeUp != NULL) &&
-            uPortTickTimeExpired(pClient->lastTxTimeMs,
-                                 pClient->pWakeUp->inactivityTimeoutMs) &&
+            uPortTickTimeExpiredMs(pClient->lastTxTimeMs,
+                                   pClient->pWakeUp->inactivityTimeoutMs) &&
             (uPortMutexTryLock(pClient->pWakeUp->inWakeUpHandlerMutex, 0) == 0)) {
             // We have a wake-up handler, the inactivity timeout
             // has expired and we've managed to lock the wake-up
@@ -2446,8 +2446,8 @@ static uPortMutexHandle_t tryLock(uAtClientInstance_t *pClient)
         pClient->lockTimeMs = uPortGetTickTimeMs();
         if (pClient->pActivityPin != NULL) {
             // If an activity pin is set then switch it on
-            while (!uPortTickTimeExpired(pClient->pActivityPin->lastToggleTime,
-                                         pClient->pActivityPin->hysteresisMs)) {
+            while (!uPortTickTimeExpiredMs(pClient->pActivityPin->lastToggleTime,
+                                           pClient->pActivityPin->hysteresisMs)) {
                 uPortTaskBlock(U_AT_CLIENT_ACTIVITY_PIN_HYSTERESIS_INTERVAL_MS);
             }
             if (uPortGpioSet(pClient->pActivityPin->pin,
@@ -2489,8 +2489,8 @@ static void unlockNoDataCheck(uAtClientInstance_t *pClient,
 
         if (pClient->pActivityPin != NULL) {
             // If an activity pin is set then switch it off
-            while (!uPortTickTimeExpired(pClient->pActivityPin->lastToggleTime,
-                                         pClient->pActivityPin->hysteresisMs)) {
+            while (!uPortTickTimeExpiredMs(pClient->pActivityPin->lastToggleTime,
+                                           pClient->pActivityPin->hysteresisMs)) {
                 uPortTaskBlock(U_AT_CLIENT_ACTIVITY_PIN_HYSTERESIS_INTERVAL_MS);
             }
             if (uPortGpioSet(pClient->pActivityPin->pin,
@@ -3259,8 +3259,8 @@ void uAtClientLock(uAtClientHandle_t atHandle)
         streamMutex = streamLock(pClient);
         mutexStackPush(&(pClient->lockedStreamMutexStack), streamMutex);
         if (pClient->pActivityPin != NULL) {
-            while (!uPortTickTimeExpired(pClient->pActivityPin->lastToggleTime,
-                                         pClient->pActivityPin->hysteresisMs)) {
+            while (!uPortTickTimeExpiredMs(pClient->pActivityPin->lastToggleTime,
+                                           pClient->pActivityPin->hysteresisMs)) {
                 uPortTaskBlock(U_AT_CLIENT_ACTIVITY_PIN_HYSTERESIS_INTERVAL_MS);
             }
             // If an activity pin is set then switch it on
@@ -3389,8 +3389,8 @@ void uAtClientCommandStart(uAtClientHandle_t atHandle,
     if (pClient->error == U_ERROR_COMMON_SUCCESS) {
         // Wait for delay period if required
         if (pClient->delayMs > 0) {
-            while (!uPortTickTimeExpired(pClient->lastResponseStopMs,
-                                         pClient->delayMs)) {
+            while (!uPortTickTimeExpiredMs(pClient->lastResponseStopMs,
+                                           pClient->delayMs)) {
                 uPortTaskBlock(10);
             }
         }
@@ -3966,7 +3966,7 @@ int32_t uAtClientWaitCharacter(uAtClientHandle_t atHandle,
                             pClient->numConsecutiveAtTimeouts = 0;
                         }
                     } else {
-                        if (uPortTickTimeExpired(startTimeMs, pClient->atTimeoutMs)) {
+                        if (uPortTickTimeExpiredMs(startTimeMs, pClient->atTimeoutMs)) {
                             // If we're stuck, set an error
                             setError(pClient, U_ERROR_COMMON_DEVICE_ERROR);
                             consecutiveTimeout(pClient);

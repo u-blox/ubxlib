@@ -343,7 +343,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleMqttClient")
                             // Wait for us to be notified that our new
                             // message is available on the broker
                             while (!messagesAvailable &&
-                                   !uPortTickTimeExpired(startTimeMs, 10000)) {
+                                   !uPortTickTimeExpiredMs(startTimeMs, 10000)) {
                                 uPortTaskBlock(1000);
                             }
 

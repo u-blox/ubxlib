@@ -1258,17 +1258,17 @@ static uGeofencePositionState_t testSquareExtent(const uGeofenceSquare_t *pSquar
 static uGeofencePositionState_t testSpeed(const uGeofenceDynamic_t *pPreviousDistance)
 {
     uGeofencePositionState_t positionState = U_GEOFENCE_POSITION_STATE_NONE;
-    int32_t timeNowMs;
+    int32_t timeDifferenceMs;
     int64_t distanceTravelledMillimetres;
 
     if ((pPreviousDistance->lastStatus.distanceMillimetres != LLONG_MIN) &&
         (pPreviousDistance->maxHorizontalSpeedMillimetresPerSecond >= 0)) {
         // Work out how far we can have travelled in the time
-        timeNowMs = uPortGetTickTimeMs();
+        timeDifferenceMs = uPortGetTickTimeMs() - pPreviousDistance->lastStatus.timeMs;
         // Guard against wrap
-        if (timeNowMs > pPreviousDistance->lastStatus.timeMs) {
+        if (timeDifferenceMs > 0) {
             // Divide by 1000 below to get per second
-            distanceTravelledMillimetres = ((int64_t) (timeNowMs - pPreviousDistance->lastStatus.timeMs)) *
+            distanceTravelledMillimetres = ((int64_t) timeDifferenceMs) *
                                            pPreviousDistance->maxHorizontalSpeedMillimetresPerSecond / 1000;
             if (distanceTravelledMillimetres < pPreviousDistance->lastStatus.distanceMillimetres) {
                 positionState = U_GEOFENCE_POSITION_STATE_OUTSIDE;

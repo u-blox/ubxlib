@@ -157,7 +157,7 @@ static bool keepGoingCallback(uDeviceHandle_t unused)
 
     (void) unused;
 
-    if (uPortTickTimeBeyondStop(gStopTimeMs)) {
+    if (uPortTickTimeBeyondStopMs(gStopTimeMs)) {
         keepGoing = false;
     }
 

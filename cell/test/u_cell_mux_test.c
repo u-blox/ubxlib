@@ -226,7 +226,7 @@ static bool keepGoingCallback(uDeviceHandle_t unused)
 
     (void) unused;
 
-    if (uPortTickTimeBeyondStop(gStopTimeMs)) {
+    if (uPortTickTimeBeyondStopMs(gStopTimeMs)) {
         keepGoing = false;
     }
 
@@ -383,7 +383,7 @@ static bool httpWaitCheckResponse(int32_t timeoutSeconds,
 
     U_TEST_PRINT_LINE("waiting up to %d second(s) for response to HTTP request...",
                       timeoutSeconds);
-    while (!uPortTickTimeExpired(startTimeMs, timeoutSeconds * 1000) &&
+    while (!uPortTickTimeExpiredMs(startTimeMs, timeoutSeconds * 1000) &&
            !pCallbackData->called) {
         uPortTaskBlock(100);
     }
@@ -787,8 +787,8 @@ U_PORT_TEST_FUNCTION("[cellMux]", "cellMuxMqtt")
         U_TEST_PRINT_LINE("waiting %d second(s) for message to be sent back...",
                           U_CELL_MUX_TEST_MQTT_RESPONSE_TIMEOUT_MS);
         while ((gMqttMessagesAvailable == 0) &&
-               !uPortTickTimeExpired(startTimeMs,
-                                     U_CELL_MUX_TEST_MQTT_RESPONSE_TIMEOUT_MS)) {
+               !uPortTickTimeExpiredMs(startTimeMs,
+                                       U_CELL_MUX_TEST_MQTT_RESPONSE_TIMEOUT_MS)) {
             uPortTaskBlock(1000);
         }
 

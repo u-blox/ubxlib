@@ -241,7 +241,7 @@ static bool keepGoingCallback(uDeviceHandle_t cellHandle)
         gCallbackErrorCode = 1;
     }
 
-    if (uPortTickTimeBeyondStop(gStopTimeMs)) {
+    if (uPortTickTimeBeyondStopMs(gStopTimeMs)) {
         keepGoing = false;
     }
 

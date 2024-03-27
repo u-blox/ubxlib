@@ -177,7 +177,7 @@ static bool keepGoingCallback(uDeviceHandle_t devHandle)
     bool keepGoing = true;
 
     U_PORT_TEST_ASSERT((gDevHandle == NULL) || (devHandle == gDevHandle));
-    if (uPortTickTimeBeyondStop(gStopTimeMs)) {
+    if (uPortTickTimeBeyondStopMs(gStopTimeMs)) {
         keepGoing = false;
     }
 
@@ -295,8 +295,8 @@ static bool httpPostCheck(uLocationType_t locationType,
         success = false;
         startTimeMs = uPortGetTickTimeMs();
         while ((*pHttpStatusCode != 200) &&
-               !uPortTickTimeExpired(startTimeMs,
-                                     U_LOCATION_TEST_HTTP_TIMEOUT_SECONDS * 1000)) {
+               !uPortTickTimeExpiredMs(startTimeMs,
+                                       U_LOCATION_TEST_HTTP_TIMEOUT_SECONDS * 1000)) {
             uPortTaskBlock(100);
         }
         if (*pHttpStatusCode != 200) {
@@ -490,7 +490,7 @@ static void testOneShot(uDeviceHandle_t devHandle,
                                   " one-shot API...",
                                   timeoutMs);
                 while ((gErrorCode == INT_MIN) &&
-                       !uPortTickTimeExpired(startTimeMs, timeoutMs)) {
+                       !uPortTickTimeExpiredMs(startTimeMs, timeoutMs)) {
                     // Location establishment status is only supported for cell locate
                     y = uLocationGetStatus(devHandle);
                     if (locationType == U_LOCATION_TYPE_CLOUD_CELL_LOCATE) {
@@ -622,7 +622,7 @@ static void testContinuous(uDeviceHandle_t devHandle,
                               timeoutMs * U_LOCATION_TEST_CFG_CONTINUOUS_COUNT,
                               U_LOCATION_TEST_CFG_CONTINUOUS_COUNT);
             while ((gCount < U_LOCATION_TEST_CFG_CONTINUOUS_COUNT) &&
-                   !uPortTickTimeExpired(startTimeMs, timeoutMs)) {
+                   !uPortTickTimeExpiredMs(startTimeMs, timeoutMs)) {
                 // Location establishment status is only supported for cell locate
                 y = uLocationGetStatus(devHandle);
                 if (locationType == U_LOCATION_TYPE_CLOUD_CELL_LOCATE) {

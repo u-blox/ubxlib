@@ -1240,7 +1240,7 @@ int32_t uBleSpsSend(uDeviceHandle_t devHandle, int32_t channel, const char *pDat
         int32_t time = startTime;
 
         // Note: this loop is constructed slightly differently to usual
-        // and so can't use uPortTickTimeExpired() but it
+        // and so can't use uPortTickTimeExpiredMs() but it
         // _does_ perform tick time comparisons in a wrap-safe manner
         while ((bytesLeftToSend > 0) && (time - startTimeMs < timeout)) {
             int32_t bytesToSendNow = bytesLeftToSend;

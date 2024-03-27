@@ -22,6 +22,8 @@
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
 
+#include "u_compiler.h" // U_INLINE
+
 /** \addtogroup __port __Port
  *  @{
  */
@@ -180,17 +182,16 @@ int32_t uPortGetTickTimeMs();
  * ...then do this instead:
  *
  * ```
- * if (uPortTickTimeExpired(startTimeMs, timeoutMs)) {
+ * if (uPortTickTimeExpiredMs(startTimeMs, timeoutMs)) {
  *     // Do something because the timeout has expired
  * }
  * ```
  *
  * If you only have a stop time, rather than a start time and a timeout,
- * use uPortTickTimeBeyondStop() instead.
+ * use uPortTickTimeBeyondStopMs() instead.
  *
- * Note: this function is implemented in the common file
- * u_port_tick_time.c, it is not necessary to implement it in
- * each individual port layer.
+ * Note: this function is implemented in this header file so
+ * that it can be guaranteed to be in-lined by the compiler.
  *
  * @param startTimeMs the start time in milliseconds, derived
  *                    from uPortGetTickTimeMs().
@@ -199,9 +200,13 @@ int32_t uPortGetTickTimeMs();
  *                    the timeout, or if the current tick time
  *                    has wrapped.
  */
-bool uPortTickTimeExpired(int32_t startTimeMs, int32_t timeoutMs);
+static U_INLINE bool uPortTickTimeExpiredMs(int32_t startTimeMs,
+                                            int32_t timeoutMs)
+{
+    return (uPortGetTickTimeMs() - startTimeMs > timeoutMs);
+}
 
-/** Like uPortTickTimeExpired() but for the case where
+/** Like uPortTickTimeExpiredMs() but for the case where
  * you have a stop time rather than a start time and a timeout.
  * Where you would have had:
  *
@@ -214,14 +219,13 @@ bool uPortTickTimeExpired(int32_t startTimeMs, int32_t timeoutMs);
  * ...then call this macro with the stop time instead:
  *
  * ```
- * if (uPortTickTimeBeyondStop(stopTimeMs)) {
+ * if (uPortTickTimeBeyondStopMs(stopTimeMs)) {
  *     // Do something because we are beyond the stop time
  * }
  * ```
  *
- * Note: this function is implemented in the common file
- * u_port_tick_time.c, it is not necessary to implement it in
- * each individual port layer.
+ * Note: this function is implemented in this header file so
+ * that it can be guaranteed to be in-lined by the compiler.
  *
  * @param stopTimeMs  the stop time in milliseconds, derived
  *                    from uPortGetTickTimeMs().
@@ -229,7 +233,10 @@ bool uPortTickTimeExpired(int32_t startTimeMs, int32_t timeoutMs);
  *                    than stopTimeMs or the current tick time
  *                    has wrapped.
  */
-bool uPortTickTimeBeyondStop(int32_t stopTimeMs);
+static U_INLINE bool uPortTickTimeBeyondStopMs(int32_t stopTimeMs)
+{
+    return (uPortGetTickTimeMs() - stopTimeMs > 0);
+}
 
 /** Get the heap high watermark, the minimum amount of heap
  * free, ever.

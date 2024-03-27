@@ -689,7 +689,7 @@ static int32_t block(volatile uHttpClientContext_t *pContext)
         // HTTP status code
         while ((statusCodeOrError == 0) &&
                ((pContext->pKeepGoingCallback == NULL) || pContext->pKeepGoingCallback()) &&
-               !uPortTickTimeExpired(startTimeMs, pContext->timeoutSeconds * 2 * 1000)) {
+               !uPortTickTimeExpiredMs(startTimeMs, pContext->timeoutSeconds * 2 * 1000)) {
             if (uPortSemaphoreTryTake((uPortSemaphoreHandle_t) pContext->semaphoreHandle, 100) == 0) {
                 statusCodeOrError = pContext->statusCodeOrError;
             }

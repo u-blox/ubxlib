@@ -177,8 +177,8 @@ int32_t uGnssUtilUbxTransparentSendReceive(uDeviceHandle_t gnssHandle,
                         // Wait for something to start coming back
                         while ((bytesRead < (int32_t) maxResponseLengthBytes) &&
                                ((x = uGnssPrivateStreamGetReceiveSize(pInstance)) <= 0) &&
-                               !uPortTickTimeExpired(startTimeMs,
-                                                     pInstance->timeoutMs)) {
+                               !uPortTickTimeExpiredMs(startTimeMs,
+                                                       pInstance->timeoutMs)) {
                             // Relax a little
                             uPortTaskBlock(U_GNSS_UTIL_TRANSPARENT_RECEIVE_DELAY_MS);
                         }
@@ -186,8 +186,8 @@ int32_t uGnssUtilUbxTransparentSendReceive(uDeviceHandle_t gnssHandle,
                             // Got something; continue receiving until nothing arrives or we time out
                             while ((bytesRead < (int32_t) maxResponseLengthBytes) &&
                                    ((x = uGnssPrivateStreamGetReceiveSize(pInstance)) > 0) &&
-                                   !uPortTickTimeExpired(startTimeMs,
-                                                         pInstance->timeoutMs)) {
+                                   !uPortTickTimeExpiredMs(startTimeMs,
+                                                           pInstance->timeoutMs)) {
                                 if (x > 0) {
                                     if (x > ((int32_t) maxResponseLengthBytes) - bytesRead) {
                                         x = maxResponseLengthBytes - bytesRead;

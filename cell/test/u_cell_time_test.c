@@ -169,7 +169,7 @@ static bool keepGoingCallback(uDeviceHandle_t unused)
 
     (void) unused;
 
-    if (uPortTickTimeBeyondStop(gStopTimeMs)) {
+    if (uPortTickTimeBeyondStopMs(gStopTimeMs)) {
         keepGoing = false;
     }
 
@@ -273,7 +273,7 @@ static bool cellInfoCallback(uDeviceHandle_t cellHandle,
         }
     }
 
-    if (uPortTickTimeBeyondStop(gStopTimeMs)) {
+    if (uPortTickTimeBeyondStopMs(gStopTimeMs)) {
         keepGoing = false;
     }
 
@@ -418,8 +418,8 @@ U_PORT_TEST_FUNCTION("[cellTime]", "cellTimeBasic")
         if (pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R5) {
             U_PORT_TEST_ASSERT(y == 0);
             while (!gEvent.synchronised &&
-                   !uPortTickTimeExpired(startTimeMs,
-                                         U_CELL_TIME_TEST_GUARD_TIME_SECONDS * 1000)) {
+                   !uPortTickTimeExpiredMs(startTimeMs,
+                                           U_CELL_TIME_TEST_GUARD_TIME_SECONDS * 1000)) {
                 uPortTaskBlock(100);
             }
             U_TEST_PRINT_LINE("gEventCallback is %d.", gEventCallback);
@@ -456,8 +456,8 @@ U_PORT_TEST_FUNCTION("[cellTime]", "cellTimeBasic")
         if (pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R5) {
             U_PORT_TEST_ASSERT(y == 0);
             while (!gEvent.synchronised &&
-                   !uPortTickTimeExpired(startTimeMs,
-                                         U_CELL_TIME_TEST_GUARD_TIME_SECONDS * 1000)) {
+                   !uPortTickTimeExpiredMs(startTimeMs,
+                                           U_CELL_TIME_TEST_GUARD_TIME_SECONDS * 1000)) {
                 uPortTaskBlock(100);
             }
             U_TEST_PRINT_LINE("gEventCallback is %d.", gEventCallback);
@@ -496,8 +496,8 @@ U_PORT_TEST_FUNCTION("[cellTime]", "cellTimeBasic")
                                                !gnssIsInsideCell, 0,
                                                eventCallback, &gEventCallback) == 0);
             while (!gEvent.synchronised &&
-                   !uPortTickTimeExpired(startTimeMs,
-                                         U_CELL_TIME_TEST_GUARD_TIME_SECONDS * 1000)) {
+                   !uPortTickTimeExpiredMs(startTimeMs,
+                                           U_CELL_TIME_TEST_GUARD_TIME_SECONDS * 1000)) {
                 uPortTaskBlock(100);
             }
             U_TEST_PRINT_LINE("gEventCallback is %d.", gEventCallback);
@@ -506,8 +506,8 @@ U_PORT_TEST_FUNCTION("[cellTime]", "cellTimeBasic")
                 printAndCheckEvent(&gEvent, !gnssIsInsideCell);
                 startTimeMs = uPortGetTickTimeMs();
                 while ((gTimeCallback == INT_MIN) &&
-                       !uPortTickTimeExpired(startTimeMs,
-                                             U_CELL_TIME_TEST_GUARD_TIME_SECONDS * 1000)) {
+                       !uPortTickTimeExpiredMs(startTimeMs,
+                                               U_CELL_TIME_TEST_GUARD_TIME_SECONDS * 1000)) {
                     uPortTaskBlock(100);
                 }
                 U_TEST_PRINT_LINE("gTimeCallback is %d.", gTimeCallback);
@@ -550,8 +550,8 @@ U_PORT_TEST_FUNCTION("[cellTime]", "cellTimeBasic")
                                                !uCellLocGnssInsideCell(cellHandle), 0,
                                                eventCallback, &gEventCallback) == 0);
             while (!gEvent.synchronised &&
-                   !uPortTickTimeExpired(startTimeMs,
-                                         U_CELL_TIME_TEST_GUARD_TIME_SECONDS * 1000)) {
+                   !uPortTickTimeExpiredMs(startTimeMs,
+                                           U_CELL_TIME_TEST_GUARD_TIME_SECONDS * 1000)) {
                 uPortTaskBlock(100);
             }
             U_TEST_PRINT_LINE("gEventCallback is %d.", gEventCallback);
@@ -560,8 +560,8 @@ U_PORT_TEST_FUNCTION("[cellTime]", "cellTimeBasic")
                 printAndCheckEvent(&gEvent, !gnssIsInsideCell);
                 startTimeMs = uPortGetTickTimeMs();
                 while ((gTimeCallback == INT_MIN) &&
-                       !uPortTickTimeExpired(startTimeMs,
-                                             U_CELL_TIME_TEST_GUARD_TIME_SECONDS * 1000)) {
+                       !uPortTickTimeExpiredMs(startTimeMs,
+                                               U_CELL_TIME_TEST_GUARD_TIME_SECONDS * 1000)) {
                     uPortTaskBlock(100);
                 }
                 U_TEST_PRINT_LINE("gTimeCallback is %d.", gTimeCallback);
@@ -664,8 +664,8 @@ U_PORT_TEST_FUNCTION("[cellTime]", "cellTimeBasic")
                 U_PORT_TEST_ASSERT(uCellTimeEnable(cellHandle, U_CELL_TIME_MODE_EXT_INT_TIMESTAMP, true, 0,
                                                    eventCallback, &gEventCallback) == 0);
                 while (!gEvent.synchronised &&
-                       !uPortTickTimeExpired(startTimeMs,
-                                             U_CELL_TIME_TEST_GUARD_TIME_SECONDS * 1000)) {
+                       !uPortTickTimeExpiredMs(startTimeMs,
+                                               U_CELL_TIME_TEST_GUARD_TIME_SECONDS * 1000)) {
                     uPortTaskBlock(100);
                 }
                 U_TEST_PRINT_LINE("gEventCallback is %d.", gEventCallback);

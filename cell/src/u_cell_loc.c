@@ -1780,7 +1780,7 @@ int32_t uCellLocGet(uDeviceHandle_t cellHandle,
                 startTimeMs = uPortGetTickTimeMs();
                 while ((fixDataStorageBlock.errorCode == (int32_t) U_ERROR_COMMON_TIMEOUT) &&
                        (((pKeepGoingCallback == NULL) &&
-                         !uPortTickTimeExpired(startTimeMs, U_CELL_LOC_TIMEOUT_SECONDS * 1000)) ||
+                         !uPortTickTimeExpiredMs(startTimeMs, U_CELL_LOC_TIMEOUT_SECONDS * 1000)) ||
                         ((pKeepGoingCallback != NULL) && pKeepGoingCallback(cellHandle)))) {
                     // Relax a little
                     uPortTaskBlock(1000);

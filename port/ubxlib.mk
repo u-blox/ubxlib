@@ -66,9 +66,6 @@ UBXLIB_PRIVATE_INC += ${UBXLIB_BASE}/common/device/src
 # Default malloc()/free() implementation
 SRC_LIST += ${UBXLIB_BASE}/port/u_port_heap.c
 
-# Safe tick timeout implementations
-SRC_LIST += ${UBXLIB_BASE}/port/u_port_tick_time.c
-
 # Default uPortGetTimezoneOffsetSeconds() implementation
 SRC_LIST += ${UBXLIB_BASE}/port/u_port_timezone.c
 

@@ -819,8 +819,8 @@ int32_t  uCellPrivateCFunOne(uCellPrivateInstance_t *pInstance)
     // Set powered-up mode if it wasn't already
     if (errorCodeOrMode != 1) {
         // Wait for flip time to expire
-        while (!uPortTickTimeExpired(pInstance->lastCfunFlipTimeMs,
-                                     U_CELL_PRIVATE_AT_CFUN_FLIP_DELAY_SECONDS * 1000)) {
+        while (!uPortTickTimeExpiredMs(pInstance->lastCfunFlipTimeMs,
+                                       U_CELL_PRIVATE_AT_CFUN_FLIP_DELAY_SECONDS * 1000)) {
             uPortTaskBlock(1000);
         }
         uAtClientLock(atHandle);
@@ -844,8 +844,8 @@ void uCellPrivateCFunMode(uCellPrivateInstance_t *pInstance,
     uAtClientHandle_t atHandle = pInstance->atHandle;
 
     // Wait for flip time to expire
-    while (!uPortTickTimeExpired(pInstance->lastCfunFlipTimeMs,
-                                 U_CELL_PRIVATE_AT_CFUN_FLIP_DELAY_SECONDS * 1000)) {
+    while (!uPortTickTimeExpiredMs(pInstance->lastCfunFlipTimeMs,
+                                   U_CELL_PRIVATE_AT_CFUN_FLIP_DELAY_SECONDS * 1000)) {
         uPortTaskBlock(1000);
     }
     uAtClientLock(atHandle);
@@ -1453,8 +1453,8 @@ void uCellPrivateSetPinDtr(uCellPrivateInstance_t *pInstance, bool doNotPowerSav
         if (!doNotPowerSave) {
             targetState = !targetState;
         }
-        while (!uPortTickTimeExpired(pInstance->lastDtrPinToggleTimeMs,
-                                     U_CELL_PWR_UART_POWER_SAVING_DTR_HYSTERESIS_MS)) {
+        while (!uPortTickTimeExpiredMs(pInstance->lastDtrPinToggleTimeMs,
+                                       U_CELL_PWR_UART_POWER_SAVING_DTR_HYSTERESIS_MS)) {
             uPortTaskBlock(U_CELL_PRIVATE_DTR_PIN_HYSTERESIS_INTERVAL_MS);
         }
         if (uPortGpioSet(pInstance->pinDtrPowerSaving, targetState) == 0) {

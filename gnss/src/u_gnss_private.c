@@ -323,7 +323,7 @@ static int32_t streamGetFromRingBuffer(uGnssPrivateInstance_t *pInstance,
         startTimeMs = uPortGetTickTimeMs();
         errorCodeOrLength = (int32_t) U_ERROR_COMMON_TIMEOUT;
         while ((leftToRead > 0) &&
-               !uPortTickTimeExpired(startTimeMs, maxTimeMs)) {
+               !uPortTickTimeExpiredMs(startTimeMs, maxTimeMs)) {
             if (andRemove) {
                 receiveSize = (int32_t) uRingBufferReadHandle(&(pInstance->ringBuffer),
                                                               readHandle,
@@ -2235,10 +2235,10 @@ int32_t uGnssPrivateStreamFillRingBuffer(uGnssPrivateInstance_t *pInstance,
                      // The first condition below is the "not yet received anything case", guarded by timeoutMs
                      // the second condition below is when we're receiving stuff, guarded by maxTimeMs
                      (((totalReceiveSize == 0) &&
-                       !uPortTickTimeExpired(startTimeMs, timeoutMs)) ||
+                       !uPortTickTimeExpiredMs(startTimeMs, timeoutMs)) ||
                       ((receiveSize > 0) && ((maxTimeMs == 0) ||
-                                             !uPortTickTimeExpired(startTimeMs,
-                                                                   maxTimeMs)))));
+                                             !uPortTickTimeExpiredMs(startTimeMs,
+                                                                     maxTimeMs)))));
         }
     }
 
@@ -2479,7 +2479,7 @@ int32_t uGnssPrivateReceiveStreamMessage(uGnssPrivateInstance_t *pInstance,
         } while ((((errorCodeOrLength < 0) && (errorCodeOrLength != (int32_t) U_GNSS_ERROR_NACK) &&
                    (errorCodeOrLength != (int32_t) U_ERROR_COMMON_NO_MEMORY)) || (discardSize > 0)) &&
                  (timeoutMs > 0) &&
-                 !uPortTickTimeExpired(startTimeMs, timeoutMs) &&
+                 !uPortTickTimeExpiredMs(startTimeMs, timeoutMs) &&
                  ((pKeepGoingCallback == NULL) || pKeepGoingCallback(pInstance->gnssHandle)));
 
         // Read pointer can be unlocked now
@@ -2620,7 +2620,7 @@ int32_t uGnssPrivateSendUbxMessage(uGnssPrivateInstance_t *pInstance,
                (ackBody[1] != (char) messageId) &&
                !((response.id == 0x01) || (response.id == 0x00)) &&
                (uGnssPrivateGetStreamType(pInstance->transportType) >= 0) &&
-               !uPortTickTimeExpired(startTimeMs, timeoutMs)) {
+               !uPortTickTimeExpiredMs(startTimeMs, timeoutMs)) {
             response.cls = 0x05;
             response.id = -1;
             errorCode = receiveUbxMessageStream(pInstance, &response,

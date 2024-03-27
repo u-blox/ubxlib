@@ -107,7 +107,7 @@ static bool keepGoingCallback()
 {
     bool keepGoing = true;
 
-    if (uPortTickTimeBeyondStop(gStopTimeMs)) {
+    if (uPortTickTimeBeyondStopMs(gStopTimeMs)) {
         keepGoing = false;
     }
 

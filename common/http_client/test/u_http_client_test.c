@@ -435,8 +435,8 @@ static int32_t checkResponse(uHttpClientTestOperation_t operation,
                                       " %d second(s)...", (pConnection->timeoutSeconds * 2) +
                                       U_HTTP_CLIENT_TEST_RESPONSE_TIMEOUT_EXTRA_SECONDS);
                     while (!pCallbackData->called &&
-                           !uPortTickTimeExpired(startTimeMs, ((pConnection->timeoutSeconds * 2) +
-                                                               U_HTTP_CLIENT_TEST_RESPONSE_TIMEOUT_EXTRA_SECONDS) * 1000)) {
+                           !uPortTickTimeExpiredMs(startTimeMs, ((pConnection->timeoutSeconds * 2) +
+                                                                 U_HTTP_CLIENT_TEST_RESPONSE_TIMEOUT_EXTRA_SECONDS) * 1000)) {
                         uPortTaskBlock(100);
                     }
 

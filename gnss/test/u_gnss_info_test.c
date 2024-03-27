@@ -295,8 +295,8 @@ U_PORT_TEST_FUNCTION("[gnssInfo]", "gnssInfoTime")
                           U_GNSS_TIME_TEST_TIMEOUT_SECONDS);
         startTimeMs = uPortGetTickTimeMs();
         while ((y < 0) &&
-               !uPortTickTimeExpired(startTimeMs,
-                                     U_GNSS_TIME_TEST_TIMEOUT_SECONDS * 1000)) {
+               !uPortTickTimeExpiredMs(startTimeMs,
+                                       U_GNSS_TIME_TEST_TIMEOUT_SECONDS * 1000)) {
             y = uGnssInfoGetTimeUtc(gnssHandle);
         }
         if (y > 0) {
