@@ -17,6 +17,13 @@
 #ifndef _U_PORT_CLIB_PLATFORM_SPECIFIC_H_
 #define _U_PORT_CLIB_PLATFORM_SPECIFIC_H_
 
+/* Only header files representing a direct and unavoidable
+ * dependency between the API of this module and the API
+ * of another module should be included here; otherwise
+ * please keep #includes to your .c files. */
+
+#include "time.h"
+
 /** @file
  * @brief Implementations of C library functions not available on this
  * platform.
