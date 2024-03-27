@@ -119,6 +119,26 @@
 # define U_GNSS_PRIVATE_STREAMED_POS_ENSURE_SETTINGS_RETRIES 2
 #endif
 
+#ifndef U_GNSS_PRIVATE_SENT_MESSAGE_STRING
+/** There is a Python script in the gnss/api directory which
+ * looks for the string below as a key to find the commands sent
+ * to the GNSS device in order to write them to a file which the
+ * uCenter tool can import.  Should you ever change the string
+ * below you must change the script to match.
+ */
+# define U_GNSS_PRIVATE_SENT_MESSAGE_STRING "U_GNSS: sent command"
+#endif
+
+#ifndef U_GNSS_PRIVATE_RECEIVED_MESSAGE_STRING_WITH_CLASS_AND_ID
+/** There is a Python script in the gnss/api directory which
+ * looks for the string below as a key to find the commands received
+ * from the GNSS device in order to write them to a file which the
+ * uCenter tool can import.  Should you ever change the string
+ * below you must change the script to match.
+ */
+# define U_GNSS_PRIVATE_RECEIVED_MESSAGE_STRING_WITH_CLASS_AND_ID "U_GNSS: decoded UBX response 0x%02x 0x%02x"
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -429,7 +449,7 @@ static int32_t sendMessageStream(uGnssPrivateInstance_t *pInstance,
     }
 
     if (printIt && (errorCodeOrSentLength == messageLengthBytes)) {
-        uPortLog("U_GNSS: sent command");
+        uPortLog(U_GNSS_PRIVATE_SENT_MESSAGE_STRING);
         uGnssPrivatePrintBuffer(pMessage, messageLengthBytes);
         uPortLog(".\n");
     }
@@ -485,7 +505,7 @@ static int32_t receiveUbxMessageStream(uGnssPrivateInstance_t *pInstance,
             if (*(pResponse->ppBody) != NULL) {
                 memcpy(*(pResponse->ppBody), pBuffer + U_UBX_PROTOCOL_HEADER_LENGTH_BYTES, errorCodeOrLength);
                 if (printIt) {
-                    uPortLog("U_GNSS: decoded UBX response 0x%02x 0x%02x",
+                    uPortLog(U_GNSS_PRIVATE_RECEIVED_MESSAGE_STRING_WITH_CLASS_AND_ID,
                              privateMessageId.id.ubx >> 8, privateMessageId.id.ubx & 0xff);
                     if (errorCodeOrLength > 0) {
                         uPortLog(":");
@@ -566,7 +586,7 @@ static int32_t sendReceiveUbxMessageAt(const uAtClientHandle_t atHandle,
         // Read the response
         uAtClientCommandStop(atHandle);
         if (printIt) {
-            uPortLog("U_GNSS: sent UBX command");
+            uPortLog(U_GNSS_PRIVATE_SENT_MESSAGE_STRING);
             uGnssPrivatePrintBuffer(pSend, sendLengthBytes);
             uPortLog(".\n");
         }
@@ -616,7 +636,7 @@ static int32_t sendReceiveUbxMessageAt(const uAtClientHandle_t atHandle,
                 }
                 if (printIt) {
                     if (errorCodeOrLength >= 0) {
-                        uPortLog("U_GNSS: decoded UBX response 0x%02x 0x%02x",
+                        uPortLog(U_GNSS_PRIVATE_RECEIVED_MESSAGE_STRING_WITH_CLASS_AND_ID,
                                  pResponse->cls, pResponse->id);
                         if (errorCodeOrLength > 0) {
                             uPortLog(":");

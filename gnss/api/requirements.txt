@@ -1,0 +1,4 @@
+# Requirements for u_gnss_ucenter_ubx.py, install with
+# pip3 install -r ./requirements.txt
+
+pyserial
