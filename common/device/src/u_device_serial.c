@@ -102,7 +102,7 @@ static int32_t serialDefaultEventCallbackSet(struct uDeviceSerial_t *pDeviceSeri
 static uint32_t serialDefaultEventCallbackFilterGet(struct uDeviceSerial_t *pDeviceSerial)
 {
     (void) pDeviceSerial;
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
+    return (uint32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 }
 
 static int32_t serialDefaultEventTrySend(struct uDeviceSerial_t *pDeviceSerial,
