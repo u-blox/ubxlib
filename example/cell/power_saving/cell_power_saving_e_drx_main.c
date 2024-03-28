@@ -211,6 +211,9 @@ U_PORT_TEST_FUNCTION("[example]", "exampleCellPowerSavingEDrx")
     bool onMyRat = true;
     int32_t x = -1;
     int32_t returnCode;
+    bool eDrxOnNotOff = false;
+    int32_t eDrxSeconds = -1;
+    int32_t pagingWindowSeconds = -1;
 
     // Initialise the APIs we will need
     uPortInit();
@@ -260,9 +263,32 @@ U_PORT_TEST_FUNCTION("[example]", "exampleCellPowerSavingEDrx")
                     }
 
                     if (gEDrxSet) {
-                        uPortLog("### The E-DRX settings have been agreed.\n");
+                        uPortLog("### Callback called, the E-DRX settings"
+                                 " have been agreed.\n");
                     } else {
-                        uPortLog("### Unable to switch E-DRX on!\n");
+                        // The callback has not been called, which might
+                        // be the case, network dependent, dependent on
+                        // the timing of RRC connections being dropped
+                        // etc.; call the API instead
+                        if (uCellPwrGetEDrx(devHandle, MY_RAT,
+                                            &eDrxOnNotOff, &eDrxSeconds,
+                                            &pagingWindowSeconds) == 0) {
+                            if (eDrxOnNotOff) {
+                                uPortLog("### The E-DRX settings have been agreed");
+                                if (eDrxSeconds >= 0) {
+                                    uPortLog(", assigned E-DRX %d seconds", eDrxSeconds);
+                                }
+                                if (pagingWindowSeconds >= 0) {
+                                    uPortLog(", assigned paging window %d seconds",
+                                             pagingWindowSeconds);
+                                }
+                                uPortLog(".\n");
+                            } else {
+                                uPortLog("### Unable to switch E-DRX on!\n");
+                            }
+                        } else {
+                            uPortLog("### Unable to get assigned E-DRX!\n");
+                        }
                     }
 
                     // When finished with the network layer
@@ -295,7 +321,8 @@ U_PORT_TEST_FUNCTION("[example]", "exampleCellPowerSavingEDrx")
     uPortLog("### Done.\n");
 
 # ifndef U_CFG_CELL_DISABLE_UART_POWER_SAVING
-    // For u-blox internal testing only
+    // For u-blox internal testing only; in our test setup we
+    // can be sure that the callback should have been called
     EXAMPLE_FINAL_STATE((x < 0) || gEDrxSet);
 #  ifdef U_PORT_TEST_ASSERT
     // We don't want E-DRX on for our internal testing, so
