@@ -191,8 +191,8 @@ typedef void (*uBleGapPhyUpdateCallback_t)(int32_t connHandle, int32_t status,
 
 /** Bonding callback when I/O capability set to #U_BT_LE_IO_DISP_YES_NO.
  *  Confirm or deny by calling uBleGapBondConfirm().
- *  @param[in]  pAddress   mac address of the bonding remote.
- *  @param      num_val    numeric value to confirm.
+ *  @param[in]  pAddress      mac address of the bonding remote.
+ *  @param      numericValue  numeric value to confirm.
  */
 typedef void (*uBleGapBondConfirmCallback_t)(const char *pAddress, int32_t numericValue);
 
