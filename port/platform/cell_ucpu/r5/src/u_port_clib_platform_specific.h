@@ -45,6 +45,10 @@ extern "C" {
  * FUNCTIONS
  * -------------------------------------------------------------- */
 
+/** gmtime_r().
+ */
+struct tm *gmtime_r(const time_t *pTime, struct tm *pBuf);
+
 #ifdef __cplusplus
 }
 #endif
