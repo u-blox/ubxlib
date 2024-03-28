@@ -236,7 +236,7 @@ static char gTestPrefix[50];
 static const char *pIntToStr(uint32_t i)
 {
     static char result[10];
-    snprintf(result, sizeof(result), "%d", i);
+    snprintf(result, sizeof(result), "%d", (int) i);
     return result;
 }
 
@@ -435,7 +435,7 @@ static void passKeyEntryCallback(const char *pAddress, int32_t numericValue)
     } else {
         // Send to remote
         char buff[20];
-        snprintf(buff, sizeof(buff), "%d,%d", CMD_ENTER_PASS, gPasskey);
+        snprintf(buff, sizeof(buff), "%d,%d", (int) CMD_ENTER_PASS, (int) gPasskey);
         U_PORT_TEST_ASSERT(uPortNamedPipeWriteStr(gPipe, buff) == 0);
     }
 }
@@ -464,7 +464,8 @@ static void setParams(uDeviceHandle_t handle, int32_t cap, int32_t sec, bool pai
     } else if (gInitiatorDeviceHandle != NULL) {
         char buff[20];
         memset(buff, 0, sizeof(buff));
-        snprintf(buff, sizeof(buff) - 1, CMD_SETPARAM_FORM, CMD_SETPARAM, cap, sec, pairable);
+        snprintf(buff, sizeof(buff) - 1, CMD_SETPARAM_FORM, CMD_SETPARAM, (int) cap,
+                 (int) sec, (int) pairable);
         U_PORT_TEST_ASSERT(uPortNamedPipeWriteStr(gPipe, buff) == 0);
     }
 }
@@ -513,18 +514,19 @@ static void runAsResponder()
         if (strlen(cmd) > 0) {
             // Incoming command
             int32_t op;
-            U_PORT_TEST_ASSERT(sscanf(cmd, "%d", &op) == 1);
+            U_PORT_TEST_ASSERT(sscanf(cmd, "%d", (int *) &op) == 1);
             if (op == CMD_SETPARAM) {
                 int32_t cap, sec, pairable;
-                int cnt = sscanf(cmd, CMD_SETPARAM_FORM, &op, &cap, &sec, &pairable);
+                int cnt = sscanf(cmd, CMD_SETPARAM_FORM, (int *) &op, (int *) &cap,
+                                 (int *) &sec, (int *) &pairable);
                 U_PORT_TEST_ASSERT(cnt == 4);
                 setParams(gResponderDeviceHandle, cap, sec, pairable == 1);
             } else if (op == CMD_RESP_MAC) {
                 U_PORT_TEST_ASSERT(uPortNamedPipeWriteStr(gPipe, gResponderMacAddr) == 0);
             } else if (op == CMD_INIT_MAC) {
-                U_PORT_TEST_ASSERT(sscanf(cmd, "%d,%s", &op, gInitiatorMacAddr) == 2);
+                U_PORT_TEST_ASSERT(sscanf(cmd, "%d,%s", (int *) &op, gInitiatorMacAddr) == 2);
             } else if (op == CMD_ENTER_PASS) {
-                sscanf(cmd + 2, "%d", &gPasskey);
+                sscanf(cmd + 2, "%d", (int *) &gPasskey);
                 uBleGapBondEnterPasskey(gResponderDeviceHandle, true, gInitiatorMacAddr, gPasskey);
             } else if (op == CMD_REM_BOND) {
                 U_PORT_TEST_ASSERT(uBleGapRemoveBond(gResponderDeviceHandle, NULL) == 0);
@@ -546,7 +548,7 @@ U_PORT_TEST_FUNCTION("[bleBond]", "bleBond")
 {
     const char *envOpt = getenv("U_CFG_TEST_BLE_BOND_OP");
     if (envOpt != NULL) {
-        U_PORT_TEST_ASSERT(sscanf(envOpt, "%d", &gTestOption) == 1);
+        U_PORT_TEST_ASSERT(sscanf(envOpt, "%d", (int *) &gTestOption) == 1);
     } else {
 #ifndef U_UCONNECT_GEN2
         // Older versions of u-connectXpress can only run in separate instances
@@ -556,7 +558,8 @@ U_PORT_TEST_FUNCTION("[bleBond]", "bleBond")
     if (gTestOption == 0) {
         snprintf(gTestPrefix, sizeof(gTestPrefix) - 1, "%s: ", U_TEST_PREFIX);
     } else {
-        snprintf(gTestPrefix, sizeof(gTestPrefix) - 1, "%s(%d): ", U_TEST_PREFIX, gTestOption);
+        snprintf(gTestPrefix, sizeof(gTestPrefix) - 1, "%s(%d): ", U_TEST_PREFIX,
+                 (int) gTestOption);
     }
     preamble();
     if (gInitiatorDeviceHandle != NULL) {
