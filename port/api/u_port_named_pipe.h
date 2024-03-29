@@ -27,7 +27,16 @@
  */
 
 /** @file
- * @brief Porting layer for named pipes for inter-application communication.
+ * @brief Porting layer for named pipes for inter-application
+ * communication.
+ *
+ * Note: this API is currently only used while testing BLE bonding,
+ * it is not used in the core ubxlib code.  It is currently only
+ * implemented on Windows and native Linux platforms.  If you are
+ * creating your own port and do not wish to test BLE bonding you
+ * do not need to implement it.  Where it is not implemented a weak
+ * implementation in u_port_named_pipe_default.c will take over and
+ * return #U_ERROR_COMMON_NOT_SUPPORTED.
  */
 
 #ifdef __cplusplus
@@ -51,6 +60,7 @@ typedef void *uPortNamePipeHandle_t;
  * -------------------------------------------------------------- */
 
 /** Create a named pipe in server or client mode.
+ *
  * When in server mode the pipe is created on a system wide basis and
  * the caller program instance will be the owner of this.
  * If client mode this function just establishes what reference
