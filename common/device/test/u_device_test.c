@@ -51,6 +51,7 @@
 
 #include "u_interface.h"
 #include "u_device_serial.h"
+#include "u_device_serial_wrapped.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -359,8 +360,12 @@ static void interfaceSerialInit(struct uDeviceSerial_t *pDeviceSerial)
     pContext->pinRx = U_CFG_TEST_PIN_UART_A_RXD;
     pContext->pinCts = U_CFG_TEST_PIN_UART_A_CTS;
     pContext->pinRts = U_CFG_TEST_PIN_UART_A_RTS;
+#ifdef U_CFG_APP_UART_PREFIX
+    pContext->pPrefix = U_PORT_STRINGIFY_QUOTED(U_CFG_APP_UART_PREFIX) // Relevant for Linux only
+#else
     pContext->pPrefix = NULL;
-    pContext->pDeviceSerial = pDeviceSerial;
+#endif
+                        pContext->pDeviceSerial = pDeviceSerial; // *NOPAD* otherwise AStyle messes up here
     pContext->pEventCallback = NULL;
     pContext->pEventCallbackParam = NULL;
 }
@@ -373,6 +378,7 @@ static void interfaceSerialInit(struct uDeviceSerial_t *pDeviceSerial)
 
 #if (U_CFG_TEST_UART_A >= 0) && (U_CFG_TEST_UART_B < 0)
 
+// Test device serial stuff using a real serial port.
 U_PORT_TEST_FUNCTION("[device]", "deviceSerial")
 {
     int32_t resourceCount;
@@ -418,6 +424,116 @@ U_PORT_TEST_FUNCTION("[device]", "deviceSerial")
 
     // From here on is basically a copy of the latter half of
     // runUartTest() over in u_port_test.c
+
+    // Send data over the serial device N times, the callback will check it
+    while (bytesSent < U_DEVICE_TEST_SERIAL_SEND_SIZE_BYTES) {
+        // -1 to omit the gSerialTestData string terminator
+        bytesToSend = sizeof(gSerialTestData) - 1;
+        if (bytesToSend > U_DEVICE_TEST_SERIAL_SEND_SIZE_BYTES - bytesSent) {
+            bytesToSend = U_DEVICE_TEST_SERIAL_SEND_SIZE_BYTES - bytesSent;
+        }
+        U_PORT_TEST_ASSERT(gpDeviceSerial->write(gpDeviceSerial,
+                                                 gSerialTestData,
+                                                 bytesToSend) == bytesToSend);
+        bytesSent += bytesToSend;
+        U_TEST_PRINT_LINE("%d byte(s) sent.", bytesSent);
+        uPortTaskBlock(U_CFG_OS_YIELD_MS);
+    }
+
+    // Wait long enough for everything to have been received
+    uPortTaskBlock(U_DEVICE_TEST_SERIAL_TIME_TO_ARRIVE_MS);
+
+    // Print out some useful stuff
+    if (serialCallbackData.errorCode == -5) {
+        U_TEST_PRINT_LINE("error after %d character(s), %d block(s).",
+                          serialCallbackData.bytesReceived,
+                          serialCallbackData.blockNumber);
+        U_TEST_PRINT_LINE("expected %c (0x%02x), received %c (0x%02x).",
+                          gSerialTestData[serialCallbackData.indexInBlock],
+                          gSerialTestData[serialCallbackData.indexInBlock],
+                          serialCallbackData.pReceive, serialCallbackData.pReceive);
+    } else if (serialCallbackData.errorCode < 0) {
+        U_TEST_PRINT_LINE("finished with error code %d after"
+                          " correctly receiving %d byte(s).",
+                          serialCallbackData.errorCode,
+                          serialCallbackData.bytesReceived);
+    }
+
+    U_TEST_PRINT_LINE("at end of test %d byte(s) sent, %d byte(s) received.",
+                      bytesSent, serialCallbackData.bytesReceived);
+    U_PORT_TEST_ASSERT(serialCallbackData.bytesReceived == bytesSent);
+
+    // Close the serial device
+    gpDeviceSerial->close(gpDeviceSerial);
+
+    // Delete the serial device instance
+    uDeviceSerialDelete(gpDeviceSerial);
+    gpDeviceSerial = NULL;
+
+    uPortDeinit();
+
+    // Check for resource leaks
+    uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
+    resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
+    U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
+    U_PORT_TEST_ASSERT(resourceCount <= 0);
+}
+
+// Test serial wrapper.
+U_PORT_TEST_FUNCTION("[device]", "deviceSerialWrapper")
+{
+    uDeviceCfgUart_t cfgUart = {0};
+    int32_t resourceCount;
+    uDeviceTestSerialCallbackData_t serialCallbackData = {0};
+    int32_t bytesToSend;
+    int32_t bytesSent = 0;
+
+    serialCallbackData.callCount = 0;
+    serialCallbackData.pReceive = gSerialBuffer;
+
+    cfgUart.uart = U_CFG_TEST_UART_A;
+    cfgUart.baudRate = 115200;
+    cfgUart.pinTxd = U_CFG_TEST_PIN_UART_A_TXD;
+    cfgUart.pinRxd = U_CFG_TEST_PIN_UART_A_RXD;
+    cfgUart.pinCts = U_CFG_TEST_PIN_UART_A_CTS;
+    cfgUart.pinRts = U_CFG_TEST_PIN_UART_A_RTS;
+#ifdef U_CFG_APP_UART_PREFIX
+    cfgUart.pPrefix = U_PORT_STRINGIFY_QUOTED(U_CFG_APP_UART_PREFIX) // Relevant for Linux only
+#endif
+
+    if (gpDeviceSerial != NULL) {
+        gpDeviceSerial->close(gpDeviceSerial);
+        uDeviceSerialDelete(gpDeviceSerial);
+    }
+
+    // Whatever called us likely initialised the
+    // port so deinitialise it here to obtain the
+    // correct initial heap size
+    uPortDeinit();
+    resourceCount = uTestUtilGetDynamicResourceCount();
+
+    U_TEST_PRINT_LINE("testing serial device wrapper.");
+
+    uPortInit();
+
+    // Wrap a real UART with a virtual interface.
+    gpDeviceSerial = pDeviceSerialCreateWrappedUart(&cfgUart);
+    U_PORT_TEST_ASSERT(gpDeviceSerial != NULL);
+
+    serialCallbackData.pDeviceSerial = gpDeviceSerial;
+
+    // Now run a UART test over the wrapped serial device
+    U_TEST_PRINT_LINE("running virtual serial wrapper...");
+    U_PORT_TEST_ASSERT(gpDeviceSerial->open(gpDeviceSerial, NULL,
+                                            U_CFG_TEST_UART_BUFFER_LENGTH_BYTES) == 0);
+
+    // Set our event callback and filter
+    U_PORT_TEST_ASSERT(gpDeviceSerial->eventCallbackSet(gpDeviceSerial,
+                                                        (uint32_t) U_DEVICE_SERIAL_EVENT_BITMASK_DATA_RECEIVED,
+                                                        serialCallback,
+                                                        (void *) &serialCallbackData,
+                                                        U_PORT_EVENT_QUEUE_MIN_TASK_STACK_SIZE_BYTES,
+                                                        U_CFG_OS_APP_TASK_PRIORITY + 1) == 0);
 
     // Send data over the serial device N times, the callback will check it
     while (bytesSent < U_DEVICE_TEST_SERIAL_SEND_SIZE_BYTES) {
