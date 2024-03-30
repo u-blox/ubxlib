@@ -55,6 +55,7 @@ UBXLIB_INC += ${UBXLIB_BASE}/common/network/api
 UBXLIB_PRIVATE_INC += ${UBXLIB_BASE}/common/network/src
 SRC_LIST += ${UBXLIB_BASE}/common/device/src/u_device.c
 SRC_LIST += ${UBXLIB_BASE}/common/device/src/u_device_serial.c
+SRC_LIST += ${UBXLIB_BASE}/common/device/src/u_device_serial_wrapped.c
 SRC_LIST += ${UBXLIB_BASE}/common/device/src/u_device_shared.c
 SRC_LIST += ${UBXLIB_BASE}/common/device/src/u_device_private.c
 SRC_LIST += ${UBXLIB_BASE}/common/device/src/u_device_private_cell_stub.c

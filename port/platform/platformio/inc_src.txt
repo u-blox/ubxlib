@@ -96,6 +96,7 @@ common/network/src/u_network_private_gnss_stub.c
 common/network/src/u_network_private_wifi_stub.c
 common/device/src/u_device.c
 common/device/src/u_device_serial.c
+common/device/src/u_device_serial_wrapped.c
 common/device/src/u_device_shared.c
 common/device/src/u_device_private.c
 common/device/src/u_device_private_cell_stub.c
