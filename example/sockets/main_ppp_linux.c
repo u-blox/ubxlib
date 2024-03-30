@@ -37,9 +37,6 @@
 
 #ifdef U_CFG_PPP_ENABLE
 
-// snprintf()
-#include "stdlib.h"
-
 // The BSD sockets interface
 #include "unistd.h"
 #include "sys/socket.h"
@@ -60,8 +57,12 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
-// Echo server URL and port number
-#define MY_SERVER_NAME "ubxlib.com"
+// Echo server and port number
+// Note: using the IP address of the server here rather than ubxlib.com
+// as, when running in our test system as a Docker container on Centos8
+// domain name resolution seems to fail somewhere.  It works fine
+// when we run our Docker container on Raspbian, not sure why that is.
+#define MY_SERVER_NAME "18.133.144.142"
 #define MY_SERVER_PORT 5055
 
 // For u-blox internal testing only
@@ -116,19 +117,48 @@ static const uDeviceCfg_t gDeviceCfg = {
             .pinCts = U_CFG_APP_PIN_CELL_CTS,
             .pinRts = U_CFG_APP_PIN_CELL_RTS,
 #ifdef U_CFG_APP_UART_PREFIX
-            .pPrefix = U_PORT_STRINGIFY_QUOTED(U_CFG_APP_UART_PREFIX) // Relevant for Linux only
+            .pPrefix = U_PORT_STRINGIFY_QUOTED(U_CFG_APP_UART_PREFIX)
 #else
             .pPrefix = NULL
 #endif
         },
     },
 };
+
+#ifdef U_CFG_APP_CELL_UART_PPP
+// See pUartPpp in gNetworkCfg below for how this is used.
+static uDeviceCfgUart_t gNetworkCfgCellUartPpp = {
+    .uart = U_CFG_APP_CELL_UART_PPP,
+    .baudRate = U_CELL_UART_BAUD_RATE,
+    .pinTxd = -1, // Since this is Linux TXD and RXD,
+    .pinRxd = -1, // pins are not relevant
+    .pinCts = U_CFG_APP_PIN_CELL_CTS, // Same flow control flags
+    .pinRts = U_CFG_APP_PIN_CELL_RTS, // as for the other UART
+# ifdef U_CFG_APP_UART_PREFIX
+    .pPrefix = U_PORT_STRINGIFY_QUOTED(U_CFG_APP_UART_PREFIX)
+# else
+    .pPrefix = NULL
+# endif
+};
+#endif
+
 // NETWORK configuration
 static const uNetworkCfgCell_t gNetworkCfg = {
     .type = U_NETWORK_TYPE_CELL,
     .pApn = NULL, /* APN: NULL to accept default.  If using a Thingstream SIM enter "tsiot" here */
-    .timeoutSeconds = 240 /* Connection timeout in seconds */
-    // There are four additional fields here which we do NOT set,
+    .timeoutSeconds = 240, /* Connection timeout in seconds */
+#ifdef U_CFG_APP_CELL_UART_PPP
+    // Populating pUartPpp is ONLY REQUIRED if U_CFG_PPP_ENABLE is defined
+    // AND you wish to run a PPP interface to the cellular module over a
+    // DIFFERENT serial port to that which was specified in the device
+    // configuration above.  This is useful if you are using the USB
+    // interface of a cellular module, which does not support the CMUX
+    // protocol that multiplexes PPP with AT.
+    .pUartPpp = &gNetworkCfgCellUartPpp
+#else
+    .pUartPpp = NULL
+#endif
+    // There are five additional fields here which we do NOT set,
     // we allow the compiler to set them to 0 and all will be fine.
     // The fields are:
     //
@@ -187,8 +217,6 @@ U_PORT_TEST_FUNCTION("[example]", "examplePppLinuxSockets")
     char buffer[128];
     size_t rxSize = 0;
     int32_t returnCode;
-    struct ifreq interface = {0};
-
     // Initialise the APIs we will need
     uPortInit();
     uDeviceInit();
@@ -198,10 +226,15 @@ U_PORT_TEST_FUNCTION("[example]", "examplePppLinuxSockets")
     uPortLog("Opened device with return code %d.\n", returnCode);
 
     if (returnCode == 0) {
+
         // Bring up the network interface
         uPortLog("Bringing up the network...\n");
-        if (uNetworkInterfaceUp(devHandle, U_NETWORK_TYPE_CELL,
-                                &gNetworkCfg) == 0) {
+        returnCode = uNetworkInterfaceUp(devHandle,
+                                         U_NETWORK_TYPE_CELL,
+                                         &gNetworkCfg);
+        uPortLog("Bringing up the network returned %d.\n", returnCode);
+
+        if (returnCode == 0) {
 
             // Linux is now connected to the internet
             // via pppd and the cellular module
@@ -213,38 +246,28 @@ U_PORT_TEST_FUNCTION("[example]", "examplePppLinuxSockets")
                 uPortLog("Found %s at %s.\n", MY_SERVER_NAME,
                          inet_ntoa(*(struct in_addr *) pHostEnt->h_addr));
 
-                // Call the native BSD sockets APIs to send data
-
                 destinationAddress.sin_addr = *(struct in_addr *) pHostEnt->h_addr;
                 destinationAddress.sin_family = pHostEnt->h_addrtype;
                 destinationAddress.sin_port = htons(MY_SERVER_PORT);
                 sock = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
                 if (sock >= 0) {
-                    // You wouldn't normally do this but, while testing, this
-                    // Linux instance will likely also have an Ethernet connection,
-                    // so we bind the socket to the "ppp0" interface that pppd
-                    // will have created to ensure that we are sending data over
-                    // the PPP/cellular connection
-                    snprintf(interface.ifr_name, sizeof(interface.ifr_name), "ppp0");
-                    if (setsockopt(sock, SOL_SOCKET, SO_BINDTODEVICE,
-                                   &interface, sizeof(interface)) == 0) {
-                        if (connect(sock, (struct sockaddr *) &destinationAddress, sizeof(destinationAddress)) == 0) {
-                            if (send(sock, message, txSize, 0) == txSize) {
-                                uPortLog("Sent %d byte(s) to echo server.\n", txSize);
-                                rxSize = recv(sock, buffer, sizeof(buffer), 0);
-                                if (rxSize > 0) {
-                                    uPortLog("\nReceived echo back (%d byte(s)): %s\n", rxSize, buffer);
-                                } else {
-                                    uPortLog("\nNo reply received!\n");
-                                }
+                    uPortLog("Connecting to %s on port %d.\n",
+                             inet_ntoa(*(struct in_addr *) pHostEnt->h_addr),
+                             MY_SERVER_PORT);
+                    if (connect(sock, (struct sockaddr *) &destinationAddress, sizeof(destinationAddress)) == 0) {
+                        if (send(sock, message, txSize, 0) == txSize) {
+                            uPortLog("Sent %d byte(s) to echo server.\n", txSize);
+                            rxSize = recv(sock, buffer, sizeof(buffer), 0);
+                            if (rxSize > 0) {
+                                uPortLog("\nReceived echo back (%d byte(s)): %s\n", rxSize, buffer);
                             } else {
-                                uPortLog("Unable to send to server (errno %d)!\n", errno);
+                                uPortLog("\nNo reply received!\n");
                             }
                         } else {
-                            uPortLog("Unable to connect to server (errno %d)!\n", errno);
+                            uPortLog("Unable to send to server (errno %d)!\n", errno);
                         }
                     } else {
-                        uPortLog("Unable to bind socket to interface ppp0 (errno %d)!\n", errno);
+                        uPortLog("Unable to connect to server (errno %d)!\n", errno);
                     }
                 } else {
                     uPortLog("Unable to create socket (errno %d)!\n", errno);

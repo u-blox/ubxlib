@@ -45,6 +45,7 @@
 #include "u_device.h"
 #include "u_device_shared.h"
 #include "u_device_shared_cell.h"
+#include "u_device_serial_wrapped.h"
 
 #include "u_network_shared.h"
 
@@ -52,6 +53,7 @@
 #include "u_cell.h"
 #include "u_cell_net.h"
 #include "u_cell_pwr.h"
+#include "u_cell_ppp.h"
 
 #include "u_network.h"
 #include "u_network_config_cell.h"
@@ -186,6 +188,26 @@ int32_t uNetworkPrivateChangeStateCell(uDeviceHandle_t devHandle,
                     // for uNetworkInterfaceUp(), so change it to "invalid parameter"
                     errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
                 }
+                if ((errorCode == 0) && (pCfg->pUartPpp != NULL)) {
+                    errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
+                    // We've been given a UART configuration for PPP;
+                    // create a serial device on it and let cellular
+                    // know about it
+                    if (pContext->pPppDeviceSerial != NULL) {
+                        // If we already had one, remove it first
+                        uCellPppDevice(devHandle, NULL);
+                        uDeviceSerialDelete(pContext->pPppDeviceSerial);
+                    }
+                    pContext->pPppDeviceSerial = pDeviceSerialCreateWrappedUart(pCfg->pUartPpp);
+                    if (pContext->pPppDeviceSerial != NULL) {
+                        errorCode = uCellPppDevice(devHandle, pContext->pPppDeviceSerial);
+                        if (errorCode < 0) {
+                            // Clean up on error
+                            uDeviceSerialDelete(pContext->pPppDeviceSerial);
+                            pContext->pPppDeviceSerial = NULL;
+                        }
+                    }
+                }
                 if (errorCode == 0) {
                     errorCode = uCellNetConnect(devHandle,
                                                 pCfg->pMccMnc,
@@ -197,6 +219,11 @@ int32_t uNetworkPrivateChangeStateCell(uDeviceHandle_t devHandle,
             } else {
                 // Disconnect
                 errorCode = uCellNetDisconnect(devHandle, pKeepGoingCallback);
+                if ((errorCode == 0) && (pContext->pPppDeviceSerial != NULL)) {
+                    errorCode = uCellPppDevice(devHandle, NULL);
+                    uDeviceSerialDelete(pContext->pPppDeviceSerial);
+                    pContext->pPppDeviceSerial = NULL;
+                }
             }
         }
     }

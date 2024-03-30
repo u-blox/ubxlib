@@ -177,7 +177,7 @@ static const uNetworkCfgCell_t gNetworkCfg = {
     .type = U_NETWORK_TYPE_CELL,
     .pApn = NULL, /* APN: NULL to accept default.  If using a Thingstream SIM enter "tsiot" here */
     .timeoutSeconds = 240 /* Connection timeout in seconds */
-    // There are four additional fields here which we do NOT set,
+    // There are six additional fields here which we do NOT set,
     // we allow the compiler to set them to 0 and all will be fine.
     // The fields are:
     //
@@ -209,6 +209,13 @@ static const uNetworkCfgCell_t gNetworkCfg = {
     //   MCC/MNC rather than to the best available network; should point
     //   to the null-terminated string giving the MCC and MNC of the PLMN
     //   to use (for example "23410").
+    //
+    // - "pUartPpp": ONLY REQUIRED if U_CFG_PPP_ENABLE is defined AND
+    //   you wish to run a PPP interface to the cellular module over a
+    //   DIFFERENT serial port to that which was specified in the device
+    //   configuration passed to uDeviceOpen().  This is useful if you
+    //   are using the USB interface of a cellular module, which does not
+    //   support the CMUX protocol that multiplexes PPP with AT.
 };
 #else
 // No module available - set some dummy values to make test system happy

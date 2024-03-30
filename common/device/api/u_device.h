@@ -163,14 +163,20 @@ typedef struct {
                                    if uart is negative then pPrefix alone will
                                    be used, maximum length (strlen(pPrefix)) is
                                    #U_PORT_UART_MAX_PREFIX_LENGTH. */
-    /* This is the end of version 0 of this structure:
-       should any fields be added to this structure in
-       future they must be added AFTER this point and
-       instructions must be given against each one
-       as to how to set the version field if any of
-       the new fields are populated. For example,
-       if int32_t pinMagic were added, the comment
-       against it might and with the clause"; if this
+    /* IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT
+     * See note above.
+     */
+    /* This is the end of version 0 of this
+       structure: should any fields (that cannot
+       be interpreted as absent by dint of being
+       initialised to zero) be added to this
+       structure in future they must be
+       added AFTER this point and instructions
+       must be given against each one as to how
+       to set the version field if any of the
+       new fields are populated. For example, if
+       int32_t magic were added, the comment
+       against it might end with the clause "; if this
        field is populated then the version field of
        this structure must be set to 1 or higher". */
 } uDeviceCfgUart_t;
@@ -182,14 +188,20 @@ typedef struct {
                                    compiler to initialise this to zero
                                    unless otherwise specified below. */
     uDeviceSerial_t *pDevice; /**< The virtual serial interface. */
-    /* This is the end of version 0 of this structure:
-       should any fields be added to this structure in
-       future they must be added AFTER this point and
-       instructions must be given against each one
-       as to how to set the version field if any of
-       the new fields are populated. For example,
-       if int32_t pinMagic were added, the comment
-       against it might and with the clause"; if this
+    /* IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT
+     * See note above.
+     */
+    /* This is the end of version 0 of this
+       structure: should any fields (that cannot
+       be interpreted as absent by dint of being
+       initialised to zero) be added to this
+       structure in future they must be
+       added AFTER this point and instructions
+       must be given against each one as to how
+       to set the version field if any of the
+       new fields are populated. For example, if
+       int32_t magic were added, the comment
+       against it might end with the clause "; if this
        field is populated then the version field of
        this structure must be set to 1 or higher". */
 } uDeviceCfgVirtualSerial_t;
@@ -240,13 +252,19 @@ typedef struct {
                                     zero a transfer larger than this size
                                     will be split into several transfers no
                                     larger than this size. */
-    /* This is the end of version 0 of this structure:
-       should any fields be added to this structure in
-       future they must be added AFTER this point and
-       instructions must be given against each one
-       as to how to set the version field if any of
-       the new fields are populated. For example,
-       if int32_t pinMagic were added, the comment
+    /* IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT
+     * See note above.
+     */
+    /* This is the end of version 0 of this
+       structure: should any fields (that cannot
+       be interpreted as absent by dint of being
+       initialised to zero) be added to this
+       structure in future they must be
+       added AFTER this point and instructions
+       must be given against each one as to how
+       to set the version field if any of the
+       new fields are populated. For example, if
+       int32_t magic were added, the comment
        against it might end with the clause "; if this
        field is populated then the version field of
        this structure must be set to 1 or higher". */
@@ -289,13 +307,19 @@ typedef struct {
                                               Where it is greater than zero a transfer
                                               larger than this size will be split into
                                               several transfers no larger than this size. */
-    /* This is the end of version 0 of this structure:
-       should any fields be added to this structure in
-       future they must be added AFTER this point and
-       instructions must be given against each one
-       as to how to set the version field if any of
-       the new fields are populated. For example,
-       if int32_t pinMagic were added, the comment
+    /* IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT
+     * See note above.
+     */
+    /* This is the end of version 0 of this
+       structure: should any fields (that cannot
+       be interpreted as absent by dint of being
+       initialised to zero) be added to this
+       structure in future they must be
+       added AFTER this point and instructions
+       must be given against each one as to how
+       to set the version field if any of the
+       new fields are populated. For example, if
+       int32_t magic were added, the comment
        against it might end with the clause "; if this
        field is populated then the version field of
        this structure must be set to 1 or higher". */
@@ -331,16 +355,22 @@ typedef struct {
                                     pin to tell the module whether it can enter
                                     power-saving or not then put that pin number
                                     here, else set it to -1. */
-    /* This is the end of version 0 of this structure:
-       should any fields be added to this structure in
-       future they must be added AFTER this point and
-       instructions must be given against each one
-       as to how to set the version field if any of
-       the new fields are populated. For example,
-       if int32_t pinMagic were added, the comment
+    /* IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT
+     * See note above.
+     */
+    /* This is the end of version 0 of this
+       structure: should any fields (that cannot
+       be interpreted as absent by dint of being
+       initialised to zero) be added to this
+       structure in future they must be
+       added AFTER this point and instructions
+       must be given against each one as to how
+       to set the version field if any of the
+       new fields are populated. For example, if
+       int32_t magic were added, the comment
        against it might end with the clause "; if this
-       field is populated then the version field
-       of this structure must be set to 1 or higher". */
+       field is populated then the version field of
+       this structure must be set to 1 or higher". */
 } uDeviceCfgCell_t;
 
 /* NOTE TO MAINTAINERS: if you change this structure you will
@@ -387,13 +417,19 @@ typedef struct {
                                       the GNSS device is using is NOT the default
                                       #U_GNSS_I2C_ADDRESS; otherwise let the
                                       compiler initialise this to 0. */
-    /* This is the end of version 0 of this structure:
-       should any fields be added to this structure in
-       future they must be added AFTER this point and
-       instructions must be given against each one
-       as to how to set the version field if any of
-       the new fields are populated. For example,
-       if int32_t pinMagic were added, the comment
+    /* IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT
+     * See note above.
+     */
+    /* This is the end of version 0 of this
+       structure: should any fields (that cannot
+       be interpreted as absent by dint of being
+       initialised to zero) be added to this
+       structure in future they must be
+       added AFTER this point and instructions
+       must be given against each one as to how
+       to set the version field if any of the
+       new fields are populated. For example, if
+       int32_t magic were added, the comment
        against it might end with the clause "; if this
        field is populated then the version field of
        this structure must be set to 1 or higher". */
@@ -414,13 +450,19 @@ typedef struct {
     int32_t moduleType;       /**< The module type that is connected,
                                    see #uShortRangeModuleType_t in
                                    u_short_range_module_type.h. */
-    /* This is the end of version 0 of this structure:
-       should any fields be added to this structure in
-       future they must be added AFTER this point and
-       instructions must be given against each one
-       as to how to set the version field if any of
-       the new fields are populated. For example,
-       if int32_t pinMagic were added, the comment
+    /* IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT
+     * See note above.
+     */
+    /* This is the end of version 0 of this
+       structure: should any fields (that cannot
+       be interpreted as absent by dint of being
+       initialised to zero) be added to this
+       structure in future they must be
+       added AFTER this point and instructions
+       must be given against each one as to how
+       to set the version field if any of the
+       new fields are populated. For example, if
+       int32_t magic were added, the comment
        against it might end with the clause "; if this
        field is populated then the version field of
        this structure must be set to 1 or higher". */
@@ -481,13 +523,19 @@ typedef struct {
                                pCfgName wrong this will NOT throw an error,
                                since pCfgName may be used for other
                                purposes in future; you need to get it right. */
-    /* This is the end of version 0 of this structure:
-       should any fields be added to this structure in
-       future they must be added AFTER this point and
-       instructions must be given against each one
-       as to how to set the version field if any of
-       the new fields are populated. For example,
-       if int32_t magic were added, the comment
+    /* IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT
+     * See note above.
+     */
+    /* This is the end of version 0 of this
+       structure: should any fields (that cannot
+       be interpreted as absent by dint of being
+       initialised to zero) be added to this
+       structure in future they must be
+       added AFTER this point and instructions
+       must be given against each one as to how
+       to set the version field if any of the
+       new fields are populated. For example, if
+       int32_t magic were added, the comment
        against it might end with the clause "; if this
        field is populated then the version field of
        this structure must be set to 1 or higher". */

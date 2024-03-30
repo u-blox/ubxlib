@@ -1,0 +1,25 @@
+# The device tree bindings that describe the UART configuration
+# of a [separate to the AT interface] PPP connection for cellular;
+# uDeviceCfgUart_t (see /common/device/api/u_device.h) but in .yaml
+# form, ONLY USED if the interface used for PPP is not the
+# same physical interface as the one used for AT.
+#
+# Note: this is NOTHING TO DO WITH uart-ppp; uart-ppp is a virtual
+# thing that Zephyr needs to make a PPP connection, this is the
+# physical PPP connection to the module
+
+description: "ubxlib UART configuration for PPP with cellular."
+
+compatible: "u-blox,ubxlib-network-cellular-uart-ppp"
+
+properties:
+# transportType
+    transport-type:
+        type: string
+        required: true
+        description: "The node label STRING for the transport that the cellular module is connected on, e.g. \"uart0\", no ampersand, no angle brackets and not an alias; make sure that &uart0, or whatever, is enabled in your device tree of course."
+# baudRate for UART
+    uart-baud-rate:
+        type: int
+        default: 115200
+        description: "The baud-rate that the UART is running at, if not the default of 115200."

@@ -159,6 +159,7 @@ static int32_t addDevice(uGnssTransportHandle_t gnssTransportHandle,
 
     pContext = (uDeviceGnssInstance_t *) pUPortMalloc(sizeof(uDeviceGnssInstance_t));
     if (pContext != NULL) {
+        memset(pContext, 0, sizeof(*pContext));
         populateContext(pContext, gnssTransportHandle, deviceTransportType);
         // Add the GNSS instance, which actually creates pDeviceHandle
         errorCode = uGnssAdd((uGnssModuleType_t) pCfgGnss->moduleType,

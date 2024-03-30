@@ -90,6 +90,12 @@
         password = "blogs";
         authentication-mode = <1>;
         mccmnc = "23410";
+        uart-ppp = <&label_cfg_network_cellular_uart_ppp>;
+    };
+    label_cfg_network_cellular_uart_ppp: cfg-network-cellular-uart-ppp {
+        compatible = "u-blox,ubxlib-network-cellular-uart-ppp";
+        transport-type = "uart5";
+        uart-baud-rate = <9600>;
     };
     label_cfg_network_gnss_inside: cfg-network-gnss-inside {
         compatible = "u-blox,ubxlib-network-gnss";

@@ -64,13 +64,19 @@ typedef struct {
     int32_t role;        /**< peripheral, central or, peripheral and central,
                               see uBleCfgRole_t in u_ble_cfg.h. */
     bool spsServer;      /**< true if sps server is to be enabled. */
-    /* This is the end of version 0 of this structure:
-       should any fields be added to this structure in
-       future they must be added AFTER this point and
-       instructions must be given against each one
-       as to how to set the version field if any of
-       the new fields are populated. For example,
-       if int32_t magic were added, the comment
+    /* IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT
+     * See note above.
+     */
+    /* This is the end of version 0 of this
+       structure: should any fields (that cannot
+       be interpreted as absent by dint of being
+       initialised to zero) be added to this
+       structure in future they must be
+       added AFTER this point and instructions
+       must be given against each one as to how
+       to set the version field if any of the
+       new fields are populated. For example, if
+       int32_t magic were added, the comment
        against it might end with the clause "; if this
        field is populated then the version field of
        this structure must be set to 1 or higher". */

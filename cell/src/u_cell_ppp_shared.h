@@ -74,10 +74,11 @@ extern "C" {
  * Note: this will invoke multiplexer mode in the cellular device
  * and hence will only work on interfaces that support multiplexer
  * mode (for example the USB interface of a cellular device does not
- * support multiplexer mode).  Also, since multiplexer mode is a
- * frame-oriented protocol it will be broken if a character is lost
- * on the interface and hence, on a UART interface, it is HIGHLY
- * RECOMMENDED that the UART flow control lines are connected.
+ * support multiplexer mode); for that case see uCellPppDevice().
+ * Also, since multiplexer mode is a frame-oriented protocol it will
+ * be broken if a character is lost on the interface and hence, on
+ * a UART interface, it is HIGHLY RECOMMENDED that the UART flow
+ * control lines are connected.
  *
  * Note: this function will allocate memory that is not released,
  * for thread-safety reasons, until the cellular device is closed.

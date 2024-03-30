@@ -504,6 +504,7 @@ typedef struct uCellPrivateInstance_t {
     uCellPrivateSleep_t *pSleepContext; /**< Context for sleep stuff. */
     uCellPrivateUartSleepCache_t uartSleepCache; /**< Used only by uCellPwrEnable/DisableUartSleep(). */
     uCellPrivateProfileState_t profileState; /**< To track whether a profile is meant to be active. */
+    uDeviceSerial_t *pPppDeviceSerial; /**< Only used if a separate serial port is used for PPP. */
     void *pFotaContext; /**< FOTA context, lodged here as a void * to
                              avoid spreading its types all over. */
     void *pHttpContext;  /**< Hook for a HTTP context. */

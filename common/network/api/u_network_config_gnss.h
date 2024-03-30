@@ -94,9 +94,14 @@ typedef struct {
                                        module pin 24 and hence 24
                                        would be used here. If no Data Ready
                                        signalling is required then specify -1. */
+    /* IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT
+     * See note above.
+     */
     /* This is the end of version 0 of this
-       structure: should any fields be added to
-       this structure in future they must be
+       structure: should any fields (that cannot
+       be interpreted as absent by dint of being
+       initialised to zero) be added to this
+       structure in future they must be
        added AFTER this point and instructions
        must be given against each one as to how
        to set the version field if any of the

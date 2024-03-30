@@ -104,9 +104,22 @@ typedef struct {
                              should point to the null-terminated string giving
                              the MCC and MNC of the PLMN to use (for example
                              "23410"). */
+    const uDeviceCfgUart_t *pUartPpp; /** ONLY REQUIRED if U_CFG_PPP_ENABLE is defined AND
+                                          you wish to run the PPP interface to the cellular
+                                          module over a DIFFERENT serial port to that which
+                                          is already in use.  This is useful if you are
+                                          using the USB interface of a cellular module,
+                                          which does not support the CMUX protocol that
+                                          is used to multiplex PPP with AT.  Otherwise,
+                                          please let your compiler initialise this to zero. */
+    /* IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT
+     * See note above.
+     */
     /* This is the end of version 0 of this
-       structure: should any fields be added to
-       this structure in future they must be
+       structure: should any fields (that cannot
+       be interpreted as absent by dint of being
+       initialised to zero) be added to this
+       structure in future they must be
        added AFTER this point and instructions
        must be given against each one as to how
        to set the version field if any of the

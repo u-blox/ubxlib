@@ -5,6 +5,9 @@ MAINTAINER Andreas Anderberg <andreas.anderberg@u-blox.com>
 # Non-interactive debconf package configuration
 ARG DEBIAN_FRONTEND=noninteractive
 
+# The "ubxlib" user that we switch to at the end
+ARG USER="ubxlib"
+
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # gcc-multilib (needed by codechecker and deps to compile for 32-bit
@@ -137,8 +140,6 @@ RUN if [ "$(arch)" == "aarch64" ]; then                                         
         apt-get update && apt-get install --no-install-recommends -y valgrind;  \
     fi
 
-WORKDIR /workdir
-
 #***************************************************
 # Add missing Python modules and apk packages here
 #***************************************************
@@ -163,6 +164,22 @@ RUN chown root /usr/sbin/pppd && chmod 4755 /usr/sbin/pppd && \
     rm options
 
 #***************************************************
+# Give our user CAP_NET_RAW capability
+#***************************************************
+
+# When running on Linux, we need to be able to disable eth0 network
+# access to make sure that, in the few cases where ubxlib is running
+# on the Linux of the Docker container, packets do not get routed
+# through the wired connection instead of the PPP interface of the
+# device under test.
+RUN apt-get update && apt-get install --no-install-recommends -y iproute2 && \
+    chmod 4755 /usr/sbin/ip &&                                               \
+# Cleanup
+    apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+WORKDIR /workdir
+
+#***************************************************
 # Setup environmental variables
 #***************************************************
 
@@ -171,7 +188,6 @@ RUN chown root /usr/sbin/pppd && chmod 4755 /usr/sbin/pppd && \
 #***************************************************
 
 # Add and switch to "ubxlib" user, making it a member of the right groups
-ARG USER="ubxlib"
 RUN groupadd -f -g 1000 -o $USER && \
     useradd -ms /bin/bash -u 1000 -g 1000 -G gpio,i2c,spi,dialout $USER && \
     chown ubxlib:ubxlib /workdir

@@ -166,6 +166,40 @@ static const uDeviceCfg_t gDeviceCfgCell = {
 #endif
 };
 
+/** Optional PPP bit of cellular network configuration used during testing.
+ */
+#if defined(U_CFG_TEST_CELL_MODULE_TYPE) && defined(U_CELL_TEST_CFG_UART_PPP)
+static const uDeviceCfgUart_t gUartPpp = {
+    .uart = U_CELL_TEST_CFG_UART_PPP,
+    .baudRate = U_CELL_UART_BAUD_RATE,
+# ifdef U_CFG_APP_PIN_CELL_PPP_TXD
+    .pinTxd = U_CFG_APP_PIN_CELL_PPP_TXD,
+# else
+    .pinTxd = -1,
+# endif
+# ifdef U_CFG_APP_PIN_CELL_PPP_RXD
+    .pinRxd = U_CFG_APP_PIN_CELL_PPP_RXD,
+# else
+    .pinRxd = -1,
+# endif
+# ifdef U_CFG_APP_PIN_CELL_PPP_CTS
+    .pinCts = U_CFG_APP_PIN_CELL_PPP_CTS,
+# else
+    .pinCts = -1,
+# endif
+# ifdef U_CFG_APP_PIN_CELL_PPP_RTS
+    .pinRts = U_CFG_APP_PIN_CELL_PPP_RTS,
+# else
+    .pinRts = -1,
+# endif
+# ifdef U_CFG_APP_UART_PREFIX
+    .pPrefix = U_PORT_STRINGIFY_QUOTED(U_CFG_APP_UART_PREFIX) // Relevant for Linux only
+# else
+    .pPrefix = NULL
+# endif
+}
+#endif
+
 /** Cellular network configuration used during testing.
  */
 static const uNetworkCfgCell_t gNetworkCfgCell = {
@@ -192,6 +226,11 @@ static const uNetworkCfgCell_t gNetworkCfgCell = {
     .authenticationMode = (int32_t) U_CELL_TEST_CFG_AUTHENTICATION_MODE,
 # else
     .authenticationMode = 0,
+# endif
+# ifdef U_CELL_TEST_CFG_UART_PPP
+    .pUartPpp = &gUartPpp,
+# else
+    .pUartPpp = NULL,
 # endif
 #else
     .type = U_NETWORK_TYPE_NONE

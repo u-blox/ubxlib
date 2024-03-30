@@ -950,10 +950,12 @@ static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance,
         // control and power saving mode correctly for it
         // TODO: check if AT&K3 requires both directions
         // of flow control to be on or just one of them
+        // Note: we don't check the return code of moduleConfigureOne()
+        // here since AT&K is not supported on the USB interface
+        // of a cellular module
         if (uPortUartIsRtsFlowControlEnabled(stream.handle.int32) &&
             uPortUartIsCtsFlowControlEnabled(stream.handle.int32)) {
-            success = moduleConfigureOne(atHandle, "AT&K3",
-                                         U_CELL_PWR_CONFIGURATION_COMMAND_TRIES);
+            moduleConfigureOne(atHandle, "AT&K3", 1);
             if (uAtClientWakeUpHandlerIsSet(atHandle)) {
                 // The RTS/CTS handshaking lines are being used
                 // for flow control by the UART HW.  This complicates
@@ -976,8 +978,7 @@ static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance,
                 }
             }
         } else {
-            success = moduleConfigureOne(atHandle, "AT&K0",
-                                         U_CELL_PWR_CONFIGURATION_COMMAND_TRIES);
+            moduleConfigureOne(atHandle, "AT&K0", 1);
             // RTS/CTS handshaking is not used by the UART HW, we
             // can use the wake-up on TX line feature without any
             // complications
