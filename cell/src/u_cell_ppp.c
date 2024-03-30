@@ -37,6 +37,7 @@
 
 #include "u_cfg_sw.h"
 #include "u_error_common.h"
+#include "u_cfg_os_platform_specific.h" // For U_CFG_OS_PRIORITY_MAX
 
 #include "u_port_clib_platform_specific.h" /* integer stdio, must be included
                                               before the other port files if
@@ -108,6 +109,26 @@
 /** The length of #U_CELL_PPP_ERROR_STRING.
  */
 # define U_CELL_PPP_ERROR_STRING_LENGTH 9
+#endif
+
+#ifndef U_CELL_PPP_UART_EVENT_TASK_STACK_SIZE_BYTES
+/** The stack size for the event task used when PPP
+ * is over a real UART, rather than a CMUX channel;
+ * while the value used by the AT client isn't
+ * necessarily the right value here we use it to
+ * keep the planets aligned.
+ */
+# define U_CELL_PPP_UART_EVENT_TASK_STACK_SIZE_BYTES U_AT_CLIENT_URC_TASK_STACK_SIZE_BYTES
+#endif
+
+#ifndef U_CELL_PPP_UART_EVENT_TASK_PRIORITY
+/** The task priority for the event task used when PPP
+ * is over a real UART, rather than a CMUX channel;
+ * while the value used by the AT client isn't
+ * necessarily the right value here we use it to
+ * keep the planets aligned.
+ */
+# define U_CELL_PPP_UART_EVENT_TASK_PRIORITY U_AT_CLIENT_URC_TASK_PRIORITY
 #endif
 
 /* ----------------------------------------------------------------
@@ -314,10 +335,15 @@ static void closePpp(uCellPrivateInstance_t *pInstance,
                         pInstance->rebootIsRequired = true;
                     }
                 }
-                // Remove the multiplexer channel
-                uCellMuxPrivateCloseChannel((uCellMuxPrivateContext_t *) pInstance->pMuxContext,
-                                            U_CELL_MUX_PRIVATE_CHANNEL_ID_PPP);
-                pContext->pDeviceSerial = NULL;
+                if (pInstance->pPppDeviceSerial != NULL) {
+                    // We were given a serial device to use, close it
+                    pDeviceSerial->close(pDeviceSerial);
+                } else {
+                    // Must have been using the CMUX; remove the channel
+                    uCellMuxPrivateCloseChannel((uCellMuxPrivateContext_t *) pInstance->pMuxContext,
+                                                U_CELL_MUX_PRIVATE_CHANNEL_ID_PPP);
+                    pContext->pDeviceSerial = NULL;
+                }
             }
             if (!pContext->muxAlreadyEnabled) {
                 // Disable the multiplexer if one was in use
@@ -379,7 +405,7 @@ void uCellPppPrivateRemoveContext(uCellPrivateInstance_t *pInstance)
 }
 
 /* ----------------------------------------------------------------
- * PUBLIC FUNCTIONS
+ * PUBLIC FUNCTIONS KEPT WITHIN THE SRC DIRECTORY
  * -------------------------------------------------------------- */
 
 // Open the PPP interface of a cellular module.
@@ -446,44 +472,59 @@ int32_t uCellPppOpen(uDeviceHandle_t cellHandle,
                             pInstance->pPppContext = pContext;
                             pContext->pReceiveCallback = pReceiveCallback;
                             pContext->pReceiveCallbackParam = pReceiveCallbackParam;
-                            // Determine if CMUX and "wake-up on UART data line" UART power saving
-                            // are already enabled
+                            // Determine if CMUX was already enabled
                             pContext->muxAlreadyEnabled = uCellMuxPrivateIsEnabled(pInstance);
-                            pContext->uartSleepWakeOnDataWasEnabled = uCellPwrPrivateUartSleepIsEnabled(pInstance);
-                            if (uCellPwrPrivateGetDtrPowerSavingPin(pInstance) >= 0) {
-                                pContext->uartSleepWakeOnDataWasEnabled = false;
-                            }
-                            // Enable CMUX
-                            errorCode = uCellMuxPrivateEnable(pInstance);
-                            if (errorCode == 0) {
-                                // Add the PPP channel
-                                errorCode = uCellMuxPrivateAddChannel(pInstance,
-                                                                      U_CELL_MUX_PRIVATE_CHANNEL_ID_PPP,
-                                                                      &(pContext->pDeviceSerial));
-                            }
-                            if (errorCode == 0) {
-                                // If we're on wake-up-on-data UART power saving and CMUX, switch
-                                // UART power saving off, just in case
-                                errorCode = uCellPwrPrivateDisableUartSleep(pInstance);
+                            if (pInstance->pPppDeviceSerial != NULL) {
+                                // We have been given a serial device, open it
+                                errorCode = pInstance->pPppDeviceSerial->open(pInstance->pPppDeviceSerial,
+                                                                              pContext->pReceiveBuffer,
+                                                                              receiveDataSize);
+                                if (errorCode == 0) {
+                                    pContext->pDeviceSerial = pInstance->pPppDeviceSerial;
+                                }
+                            } else {
+                                // Determine if "wake-up on UART data line" UART power saving
+                                // was already enabled
+                                pContext->uartSleepWakeOnDataWasEnabled = uCellPwrPrivateUartSleepIsEnabled(pInstance);
+                                if (uCellPwrPrivateGetDtrPowerSavingPin(pInstance) >= 0) {
+                                    pContext->uartSleepWakeOnDataWasEnabled = false;
+                                }
+                                // Enable CMUX
+                                errorCode = uCellMuxPrivateEnable(pInstance);
+                                if (errorCode == 0) {
+                                    // Add the PPP channel
+                                    errorCode = uCellMuxPrivateAddChannel(pInstance,
+                                                                          U_CELL_MUX_PRIVATE_CHANNEL_ID_PPP,
+                                                                          &(pContext->pDeviceSerial));
+                                }
+                                if (errorCode == 0) {
+                                    // If we're on wake-up-on-data UART power saving and CMUX,
+                                    // switch UART power saving off, just in case
+                                    errorCode = uCellPwrPrivateDisableUartSleep(pInstance);
+                                }
                             }
                             if (errorCode == 0) {
                                 pDeviceSerial = pContext->pDeviceSerial;
                                 // We now have a second serial interface to
                                 // the module: do a PPP dial-up on it.  Could
-                                // attach an AT handler to it but that would be
-                                // an overhead in terms of RAM that we can do
+                                // attach an AT handler but that would be an
+                                // overhead in terms of RAM that we can do
                                 // without, instead just send the dial-up string
                                 // and wait for the response
                                 uPortTaskBlock(1000);
                                 errorCode = connectPpp(pContext, pKeepGoingCallback);
                                 if ((errorCode == 0) && (pReceiveCallback != NULL)) {
                                     pppTerminateRequired = (errorCode == 0);
-                                    // Note: the priority and stack size parameters
-                                    // to eventCallbackSet() are ignored, hence use of -1
+                                    // The stack size and task priority values
+                                    // passed to eventCallbackSet will be ignored
+                                    // if the serial device is a CMUX channel; they
+                                    // will intead be #U_AT_CLIENT_URC_TASK_STACK_SIZE_BYTES
+                                    // and #U_AT_CLIENT_URC_TASK_PRIORITY
                                     errorCode = pDeviceSerial->eventCallbackSet(pDeviceSerial,
                                                                                 U_DEVICE_SERIAL_EVENT_BITMASK_DATA_RECEIVED,
                                                                                 callback, pContext,
-                                                                                -1, -1);
+                                                                                U_CELL_PPP_UART_EVENT_TASK_STACK_SIZE_BYTES,
+                                                                                U_CELL_PPP_UART_EVENT_TASK_PRIORITY);
                                 }
                             }
                             if (errorCode < 0) {
@@ -605,6 +646,43 @@ void uCellPppFree(uDeviceHandle_t cellHandle)
 
         U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
     }
+}
+
+/* ----------------------------------------------------------------
+ * PUBLIC FUNCTIONS EXPOSED VIA THE API DIRECTORY
+ * -------------------------------------------------------------- */
+
+// Provide a serial device for the PPP connection.
+int32_t uCellPppDevice(uDeviceHandle_t cellHandle,
+                       uDeviceSerial_t *pDeviceSerial)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance;
+
+    if (gUCellPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        pInstance = pUCellPrivateGetInstance(cellHandle);
+        if (pInstance != NULL) {
+            errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+            if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                   U_CELL_PRIVATE_FEATURE_PPP)) {
+                // Close PPP if we might be already running it
+                if ((pInstance->pPppDeviceSerial != NULL) &&
+                    (pInstance->pPppDeviceSerial != pDeviceSerial)) {
+                    closePpp(pInstance, true);
+                }
+                pInstance->pPppDeviceSerial = pDeviceSerial;
+                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return errorCode;
 }
 
 // End of file

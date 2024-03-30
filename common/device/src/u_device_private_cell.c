@@ -132,6 +132,7 @@ static int32_t addDevice(const uDeviceCfgUart_t *pCfgUart,
 
     pContext = (uDeviceCellContext_t *) pUPortMalloc(sizeof(uDeviceCellContext_t));
     if (pContext != NULL) {
+        memset(pContext, 0, sizeof(*pContext));
         if (pCfgUart->pPrefix != NULL) {
             uPortUartPrefix(pCfgUart->pPrefix);
         }

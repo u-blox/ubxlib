@@ -35,4 +35,16 @@ SUBSYSTEM=="tty", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="3748", ENV{ID_STLI
 
 # STLink V3 debugger, as used on Nucleo U575ZI boards
 SUBSYSTEMS=="usb", ENV{ID_STLINK_V3_INTERFACE_NUMBER}="$attr{bInterfaceNumber}", MODE:="0666", SYMLINK+="stlink_v3"
-SUBSYSTEM=="tty", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="374e", ENV{ID_STLINK_V3_INTERFACE_NUMBER}=="07", MODE:="0666", SYMLINK+="stlink_v3"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="374e", ENV{ID_STLINK_V3_INTERFACE_NUMBER}=="08", MODE:="0666", SYMLINK+="stlink_v3"
+
+# u-blox LARA-R6 rules to bring up its USB interfaces as /dev/ttyUSB0 to 3 (AT interfaces on 1 and 2)
+ACTION=="add", ATTRS{idVendor}=="05c6", ATTRS{idProduct}=="908b", RUN+="/sbin/modprobe option", \
+RUN+="/bin/sh -c 'echo 05c6 908b > /sys/bus/usb-serial/drivers/option1/new_id'"
+
+# Map LARA-R6 /dev/ttyUSB1 to something fixed
+SUBSYSTEMS=="usb", ENV{ID_UBLOX_LARA_R6_USB_INTERFACE_NUMBER_0}="$attr{bInterfaceNumber}"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="05c6", ATTRS{idProduct}=="908b", ENV{ID_UBLOX_LARA_R6_USB_INTERFACE_NUMBER_0}=="01", MODE:="0666", SYMLINK+="ublox_lara_r6_usb_at_0"
+
+# Map LARA-R6 /dev/ttyUSB2 to something fixed
+SUBSYSTEMS=="usb", ENV{ID_UBLOX_LARA_R6_USB_INTERFACE_NUMBER_1}="$attr{bInterfaceNumber}"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="05c6", ATTRS{idProduct}=="908b", ENV{ID_UBLOX_LARA_R6_USB_INTERFACE_NUMBER_1}=="02", MODE:="0666", SYMLINK+="ublox_lara_r6_usb_at_1"

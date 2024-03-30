@@ -41,6 +41,7 @@
 
 #include "u_network_config_gnss.h"
 #include "u_network_private_gnss.h"
+#include "u_network_config_cell.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -154,6 +155,10 @@ void uNetworkCfgFree(uDeviceHandle_t devHandle)
     if (uDeviceGetInstance(devHandle, &pInstance) == 0) {
         for (size_t x = 0; (x < sizeof(pInstance->networkData) /
                             sizeof(pInstance->networkData[0])); x++) {
+            // For cellular, free the optional pUartPpp bit first
+            if (pInstance->networkData[x].networkType == (int32_t) U_NETWORK_TYPE_CELL) {
+                uPortFree((void *) ((uNetworkCfgCell_t *) pInstance->networkData[x].pCfg)->pUartPpp);
+            }
             uPortFree(pInstance->networkData[x].pCfg);
             pInstance->networkData[x].pCfg = NULL;
         }

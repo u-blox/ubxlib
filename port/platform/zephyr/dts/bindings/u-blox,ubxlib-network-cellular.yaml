@@ -39,3 +39,7 @@ properties:
     mccmnc:
         type: string
         description: "ONLY REQUIRED if you want to connect to a specific cellular network (e.g. \"23410\") rather than letting the module just choose the best one."
+# Optional PPP UART
+    uart-ppp:
+        type: phandle
+        description: "UART configuration for PPP, ONLY REQUIRED if the PPP interface to the cellular module is different to that of the AT interface, e.g. if the connection to the module is USB, where CMUX is not supported."

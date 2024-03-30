@@ -147,8 +147,9 @@ static int32_t networkInterfaceChangeState(uDeviceHandle_t devHandle,
 static bool cfgEnsureMemory(uDeviceNetworkData_t *pNetworkData,
                             const void *pCfg)
 {
-    bool success = false;
     size_t cfgSize = gNetworkCfgSize[pNetworkData->networkType];
+    const uDeviceCfgUart_t *pCellUartPppSrc = NULL;
+    const uDeviceCfgUart_t *pCellUartPppDest = NULL;
 
     if (pNetworkData->pCfg == NULL) {
         // Allocate memory if we've not had any before
@@ -157,15 +158,40 @@ static bool cfgEnsureMemory(uDeviceNetworkData_t *pNetworkData,
             memset(pNetworkData->pCfg, 0, cfgSize);
         }
     }
-    if (pNetworkData->pCfg != NULL) {
-        success = true;
-        if (pCfg != NULL) {
-            // If we've been given configuration data then copy it in
-            memcpy(pNetworkData->pCfg, pCfg, cfgSize);
+    if ((pNetworkData->pCfg != NULL) &&
+        (pNetworkData->networkType == (int32_t) U_NETWORK_TYPE_CELL)) {
+        // Cellular has the pUartPpp bit also
+        pCellUartPppSrc = ((uNetworkCfgCell_t *) pCfg)->pUartPpp;
+        pCellUartPppDest = ((uNetworkCfgCell_t *) pNetworkData->pCfg)->pUartPpp;
+        if ((pCellUartPppDest != NULL) && (pCellUartPppSrc == NULL)) {
+            // If the old network configuration had a PPP UART and the
+            // new one doesn't, free the memory we had
+            uPortFree((void *) pCellUartPppDest);
+            pCellUartPppDest = NULL;
+        }
+        if ((pCellUartPppSrc != NULL) && (pCellUartPppDest == NULL)) {
+            // Need to allocate memory
+            pCellUartPppDest = (const uDeviceCfgUart_t *) pUPortMalloc(sizeof(*pCellUartPppDest));
+            if (pCellUartPppDest != NULL) {
+                memset((void *) pCellUartPppDest, 0, sizeof(*pCellUartPppDest));
+            } else {
+                // Clean up on error
+                uPortFree(pNetworkData->pCfg);
+                pNetworkData->pCfg = NULL;
+            }
         }
     }
 
-    return success;
+    if ((pNetworkData->pCfg != NULL) && (pCfg != NULL)) {
+        // If we've been given configuration data then copy it in
+        memcpy(pNetworkData->pCfg, pCfg, cfgSize);
+        if (pCellUartPppDest != NULL) {
+            memcpy((void *) pCellUartPppDest, pCellUartPppSrc, sizeof(*pCellUartPppDest));
+            ((uNetworkCfgCell_t *) pNetworkData->pCfg)->pUartPpp = pCellUartPppDest;
+        }
+    }
+
+    return (pNetworkData->pCfg != NULL);
 }
 
 /* ----------------------------------------------------------------

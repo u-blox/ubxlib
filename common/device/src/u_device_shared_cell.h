@@ -48,6 +48,7 @@ typedef struct {
     uAtClientHandle_t at;
     int64_t stopTimeMs;
     int32_t pinPwrOn;
+    uDeviceSerial_t *pPppDeviceSerial;
 } uDeviceCellContext_t;
 
 #ifdef __cplusplus

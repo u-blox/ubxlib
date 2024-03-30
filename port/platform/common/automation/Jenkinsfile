@@ -175,7 +175,11 @@ def dockerCommand(cmd, relWorkspaceDir=".", extra_env=[]) {
     def id = sh(script: "id -u -n", returnStdout: true).trim()
     // Needs --privileged to access TTY devices (since there is no dialout group
     // in the docker image) and -v /dev:/dev to map the devices into the docker image
-    sh "docker run -i -u ${id} --rm --privileged -v /dev:/dev -w ${env.WORKSPACE}/$relWorkspaceDir $volume_args $env_args ubxlib_builder /bin/bash -c \"$cmd\""
+    // NET_ADMIN capability is added so that, for the case where we are running on
+    // Linux inside the Docker image, the script can prevent Linux from using eth0
+    // by mistake (rather than some PPP or whatever interface provided by the module
+    // it is meant to be testing)
+    sh "docker run -i -u ${id} --rm --privileged --cap-add NET_ADMIN -v /dev:/dev -w ${env.WORKSPACE}/$relWorkspaceDir $volume_args $env_args ubxlib_builder /bin/bash -c \"$cmd\""
 }
 
 // Perform a check-out stage

@@ -59,8 +59,11 @@
 
 #include "u_ble_cfg.h" // For uBleCfgRole_t
 
-#include "u_port_board_cfg.h"
+#include "u_port.h"
+#include "u_port_os.h"
+#include "u_port_heap.h"
 #include "u_port_debug.h"
+#include "u_port_board_cfg.h"
 
 #include <version.h>
 
@@ -129,10 +132,46 @@
 
 /** Get the given string property of a node referenced by "network",
  * for up to two "network" phandles in a ubxlib-device, as an array,
- * appling NULL where there are none (the comma at the end is significant).
+ * applying NULL where there are none (the comma at the end is significant).
  */
 #define U_PORT_BOARD_CFG_GET_NETWORK_LIST_STRING(i, stringName) {DT_PROP_BY_PHANDLE_IDX_OR(i, network, 0, stringName, NULL),  \
                                                                  DT_PROP_BY_PHANDLE_IDX_OR(i, network, 1, stringName, NULL)},
+
+/** Get the named property of the phandle "uart_ppp" or the default,
+ * note that the extra bracketing is _required_.
+ */
+#define U_PORT_BOARD_CFG_GET_UART_PPP_OR_DEFAULT(i, name, default) \
+  COND_CODE_1(DT_NODE_HAS_PROP(i, uart_ppp), (DT_PROP_BY_PHANDLE(i, uart_ppp, name)), (default))
+
+/** Get the given string property of phandle node "uart_ppp"
+ * referenced by "network", for up to two "network" phandles in a
+ * ubxlib-device, as an array, applying NULL where there are none
+ * (the comma at the end is significant and the extra bracketing
+ * is _required_).
+ */
+#define U_PORT_BOARD_CFG_GET_NETWORK_LIST_UART_PPP_STRING(i, stringName) {COND_CODE_1(DT_PROP_HAS_IDX(i, network, 0),                                             \
+                                                                                      (U_PORT_BOARD_CFG_GET_UART_PPP_OR_DEFAULT(DT_PHANDLE_BY_IDX(i, network, 0), \
+                                                                                                                                stringName, NULL)),               \
+                                                                                      (NULL)),                                                                    \
+                                                                          COND_CODE_1(DT_PROP_HAS_IDX(i, network, 1),                                             \
+                                                                                      (U_PORT_BOARD_CFG_GET_UART_PPP_OR_DEFAULT(DT_PHANDLE_BY_IDX(i, network, 1), \
+                                                                                                                                stringName, NULL)),                \
+                                                                                      (NULL))},
+
+/** Get the given integer property of a phandle node "uart_ppp"
+ * referenced by "network", for up to two "network" phandles in a
+ * ubxlib-device, as an array, applying -1 where there are none
+ * (the comma at the end is significant and the extra bracketing
+ * is _required_).
+ */
+#define U_PORT_BOARD_CFG_GET_NETWORK_LIST_UART_PPP_INT(i, integerName) {COND_CODE_1(DT_PROP_HAS_IDX(i, network, 0),                                             \
+                                                                                    (U_PORT_BOARD_CFG_GET_UART_PPP_OR_DEFAULT(DT_PHANDLE_BY_IDX(i, network, 0), \
+                                                                                                                             integerName, -1)),                 \
+                                                                                    (-1)),                                                                      \
+                                                                        COND_CODE_1(DT_PROP_HAS_IDX(i, network, 1),                                             \
+                                                                                    (U_PORT_BOARD_CFG_GET_UART_PPP_OR_DEFAULT(DT_PHANDLE_BY_IDX(i, network, 1), \
+                                                                                                                             integerName, -1)),                 \
+                                                                                    (-1))},
 
 #ifndef U_PORT_BOARD_CFG_SPI_PREFIX
 /** The prefix to expect on the node name of an SPI port in the
@@ -380,6 +419,32 @@ static const char *const gpDeviceCfgCellNetworkListMccMnc[][2] = {
     DT_FOREACH_STATUS_OKAY_VARGS(u_blox_ubxlib_device_cellular,
                                  U_PORT_BOARD_CFG_GET_NETWORK_LIST_STRING,
                                  mccmnc)
+};
+
+/* Then the ubxlib-network-cellular-uart-ppp compatible properties that
+ * the "uart-ppp" property of a ubxlib-network-cellular might refer to.
+ */
+
+/** The "transport-type" property of the "uart-ppp" phandle
+ * pointed-to by the first two "network" phandles of each of
+ * the ubxlib-device-cellular compatible devices, or NULL
+ * where not present, in the order they appear in the device tree.
+ */
+static const char *const gpDeviceCfgCellUartPppListTransportType[][2] = {
+    DT_FOREACH_STATUS_OKAY_VARGS(u_blox_ubxlib_device_cellular,
+                                 U_PORT_BOARD_CFG_GET_NETWORK_LIST_UART_PPP_STRING,
+                                 transport_type)
+};
+
+/** The "uart-baud-rate" property pointed-to by an optional
+ * "uart-ppp" phandle of each of the ubxlib-network-cellular
+ * compatible devices, or NULL where not present, in the order
+ * they appear in the device tree.
+ */
+static const int32_t gpDeviceCfgCellUartPppListUartBaudRate[][2] = {
+    DT_FOREACH_STATUS_OKAY_VARGS(u_blox_ubxlib_device_cellular,
+                                 U_PORT_BOARD_CFG_GET_NETWORK_LIST_UART_PPP_INT,
+                                 uart_baud_rate)
 };
 
 # if DT_HAS_COMPAT_STATUS_OKAY(u_blox_ubxlib_network_gnss)
@@ -1431,7 +1496,11 @@ static void cfgNetworkCellular(int32_t deviceIndex, int32_t networkIndex,
                                uNetworkCfgCell_t *pNetworkCfg)
 {
     bool (*pKeepGoingCallback) (uDeviceHandle_t) = pNetworkCfg->pKeepGoingCallback;
+    uDeviceCfgUart_t *pUartPpp = (uDeviceCfgUart_t *) pNetworkCfg->pUartPpp;
+    int32_t x;
 
+    // Free any memory that the application may have allocated for a PPP UART
+    uPortFree(pUartPpp);
     memset(pNetworkCfg, 0, sizeof(*pNetworkCfg));
     pNetworkCfg->type = U_NETWORK_TYPE_CELL;
     // Special case: we would like the application to still be able to use
@@ -1452,6 +1521,23 @@ static void cfgNetworkCellular(int32_t deviceIndex, int32_t networkIndex,
     pNetworkCfg->authenticationMode =
         gDeviceCfgCellNetworkListAuthenticationMode[deviceIndex][networkIndex];
     pNetworkCfg->pMccMnc = gpDeviceCfgCellNetworkListMccMnc[deviceIndex][networkIndex];
+    if (gpDeviceCfgCellUartPppListTransportType[deviceIndex][networkIndex] != NULL) {
+        pUartPpp = (uDeviceCfgUart_t *) pUPortMalloc(sizeof(*pUartPpp));
+        if (pUartPpp != NULL) {
+            memset(pUartPpp, 0, sizeof(*pUartPpp));
+            pUartPpp->uart = -1;
+            x = getUart(gpDeviceCfgCellUartPppListTransportType[deviceIndex][networkIndex]);
+            if (x >= 0) {
+                pUartPpp->uart = x;
+                pUartPpp->baudRate = gpDeviceCfgCellUartPppListUartBaudRate[deviceIndex][networkIndex];
+                pUartPpp->pinTxd = -1;
+                pUartPpp->pinRxd = -1;
+                pUartPpp->pinCts = -1;
+                pUartPpp->pinRts = -1;
+            }
+            pNetworkCfg->pUartPpp = pUartPpp;
+        }
+    }
     uPortLog("U_PORT_BOARD_CFG: using CELLULAR network configuration"
              " associated with device \"%s\" from the device tree,"
              " timeout-seconds ", gpCfgCellDeviceName[deviceIndex]);
@@ -1468,11 +1554,18 @@ static void cfgNetworkCellular(int32_t deviceIndex, int32_t networkIndex,
         uPortLog(" APN NULL,");
     }
     uPortLog(" username \"%s\", password \"%s\","
-             " authentication-mode %d, MCC/MNC %s.\n",
+             " authentication-mode %d, MCC/MNC %s",
              pNetworkCfg->pUsername ? pNetworkCfg->pUsername : "",
              pNetworkCfg->pPassword ? U_PORT_BOARD_CFG_SECRET_STRING : "",
              pNetworkCfg->authenticationMode,
              pNetworkCfg->pMccMnc ? pNetworkCfg->pMccMnc : "NULL");
+    if (pNetworkCfg->pUartPpp) {
+        uPortLog(", uart-ppp: uart %d, uart-baud-rate %d.\n",
+                 pNetworkCfg->pUartPpp->uart,
+                 pNetworkCfg->pUartPpp->baudRate);
+    } else {
+        uPortLog(", uart-ppp: NULL.\n");
+    }
 }
 
 #endif // #if DT_HAS_COMPAT_STATUS_OKAY(u_blox_ubxlib_device_cellular)
