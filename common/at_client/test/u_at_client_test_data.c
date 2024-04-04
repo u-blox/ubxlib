@@ -872,7 +872,6 @@ static int32_t handleReadOnError(uAtClientHandle_t atClientHandle,
     int32_t lastError;
     uint64_t uint64;
     uTimeoutStart_t timeoutStart;
-    int32_t durationMs;
     const uAtClientTestEchoError_t *pError;
 
 #if !U_CFG_ENABLE_LOGGING
@@ -942,21 +941,22 @@ static int32_t handleReadOnError(uAtClientHandle_t atClientHandle,
     }
 
     // The errors should be returned within the guard times
-    durationMs = uTimeoutElapsedMs(timeoutStart);
     if (lastError == 0) {
-        if (durationMs < pError->timeMinMs) {
-            U_TEST_PRINT_LINE_X("reads took %d ms when a minimum of %d ms was"
-                                " expected.", index + 1, durationMs,
-                                pError->timeMinMs);
+        if (uTimeoutExpiredMs(timeoutStart, pError->timeMinMs) {
+        U_TEST_PRINT_LINE_X("reads took %u ms when a minimum of %d ms was"
+                            " expected.", index + 1,
+                            uTimeoutElapsedMs(timeoutStart),
+                            pError->timeMinMs);
             lastError = 6;
         }
     }
 
     if (lastError == 0) {
-        if (durationMs > pError->timeMaxMs) {
-            U_TEST_PRINT_LINE_X("reads took %d ms when a maximum of %d ms"
-                                " was expected.", index + 1, durationMs,
-                                pError->timeMaxMs);
+        if (uTimeoutExpiredMs(timeoutStop.timeoutStart, pError->timeMaxMs) {
+        U_TEST_PRINT_LINE_X("reads took %u ms when a maximum of %d ms"
+                            " was expected.", index + 1,
+                            uTimeoutElapsedMs(timeoutStart),
+                            pError->timeMaxMs);
             lastError = 7;
         }
     }

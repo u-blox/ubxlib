@@ -23,7 +23,6 @@
 #endif
 
 //lint -efile(766, ctype.h)
-#include "limits.h"    // INT32_MAX
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"

@@ -379,7 +379,7 @@ static void watchdogTask(void *pParam)
 {
     uMutexInfo_t *pMutexInfo;
     uMutexFunctionInfo_t *pWaiting;
-    uTimeoutStart_t called = uTimeoutStart();
+    uTimeoutStart_t timeoutStart = uTimeoutStart();
     bool callCallback = false;
 
     (void) pParam;
@@ -418,8 +418,8 @@ static void watchdogTask(void *pParam)
             pMutexInfo = pMutexInfo->pNext;
 
             // Don't call the callback too often though
-            if (!uTimeoutExpiredMs(called,
-                                   U_MUTEX_DEBUG_WATCHDOG_MAX_BARK_SECONDS * 1000)) {
+            if (!uTimeoutExpiredSeconds(timeoutStart,
+                                        U_MUTEX_DEBUG_WATCHDOG_MAX_BARK_SECONDS)) {
                 callCallback = false;
             }
         }
@@ -429,7 +429,7 @@ static void watchdogTask(void *pParam)
         if (callCallback) {
             // Call the callback outside the locks so that it can have them
             gpWatchdogCallback(gpWatchdogCallbackParam);
-            called = uTimeoutStart();
+            timeoutStart = uTimeoutStart();
         }
 
         // Sleep until the next go

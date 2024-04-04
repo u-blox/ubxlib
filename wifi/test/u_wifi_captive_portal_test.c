@@ -130,7 +130,7 @@ static uDeviceCfg_t gDeviceCfg = {
     }
 };
 
-static uTimeoutStop_t gTimeoutStop = {0};
+static uTimeoutStop_t gTimeoutStop;
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS

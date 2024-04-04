@@ -858,10 +858,10 @@ U_PORT_TEST_FUNCTION("[geofence]", "geofenceBasic")
                 }
                 if (t > 0) {
                     uPortLog(U_TEST_PREFIX_A "testing %d shape(s) (%d edge(s)) against %d point(s),"
-                             " %d times each (print time excluded), averaged %u us per point",
+                             " %d times each (print time excluded), averaged %u ms per point",
                              (char) (x + 0x41), numShapes, numEdges, pTestData->numPoints,
                              sizeof(gTestParameters) / sizeof(gTestParameters[0]),
-                             (uTimeoutElapsedSeconds(timeoutStart) /
+                             (uTimeoutElapsedMs(timeoutStart) /
                               (pTestData->numPoints * sizeof(gTestParameters) / sizeof(gTestParameters[0]))));
                     if (numFailedCalculations > 0) {
                         uPortLog(" AND %d CALCULATION(S) FAILED.\n", numFailedCalculations);

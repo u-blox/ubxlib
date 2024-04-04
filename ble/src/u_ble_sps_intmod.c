@@ -1234,17 +1234,12 @@ int32_t uBleSpsSend(uDeviceHandle_t devHandle, int32_t channel, const char *pDat
         return (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
     }
 
-    int32_t startTimeMs = uPortGetTickTimeMs();
     int32_t errorCode = (int32_t)U_ERROR_COMMON_SUCCESS;
     spsConnection_t *pSpsConn = pGetSpsConn(spsConnHandle);
     if (pSpsConn->spsState == SPS_STATE_CONNECTED) {
-        uint32_t timeout = pSpsConn->dataSendTimeoutMs;
-        int32_t time = startTimeMs;
-
-        // Note: this loop is constructed slightly differently to usual
-        // and so can't use uTimeoutExpiredMs() but it
-        // _does_ perform tick time comparisons in a wrap-safe manner
-        while ((bytesLeftToSend > 0) && (time - startTimeMs < timeout)) {
+        uint32_t timeoutMs = pSpsConn->dataSendTimeoutMs;
+        uTimeoutStart_t timeoutStart = uTimeoutStart();
+        while ((bytesLeftToSend > 0) && !uTimeoutExpiredMs(timeoutStart, timeoutMs)) {
             int32_t bytesToSendNow = bytesLeftToSend;
             int32_t maxDataLength = pSpsConn->mtu - U_BLE_PDU_HEADER_SIZE;
 
@@ -1258,12 +1253,10 @@ int32_t uBleSpsSend(uDeviceHandle_t devHandle, int32_t channel, const char *pDat
                 // again later if we are out of credits.
                 (void)uPortSemaphoreTryTake(pSpsConn->txCreditsSemaphore, 0);
                 if (pSpsConn->txCredits == 0) {
-                    int32_t timeoutLeft = timeout - (time - startTimeMs);
-                    if (timeoutLeft < 0) {
-                        timeoutLeft = 0;
-                    }
+                    uint32_t elapsedMs = uTimeoutElapsedMs(timeoutStart);
+                    uint32_t timeoutLeftMs = (elapsedMs >= timeoutMs) ? 0 : timeoutMs - elapsedMs;
                     // We are out of credits, wait for more
-                    if (uPortSemaphoreTryTake(pSpsConn->txCreditsSemaphore, timeoutLeft) != 0) {
+                    if (uPortSemaphoreTryTake(pSpsConn->txCreditsSemaphore, timeoutLeftMs) != 0) {
                         uPortLog("U_BLE_SPS: SPS timed out waiting for new TX credits!\n");
                         break;
                     }
@@ -1281,9 +1274,6 @@ int32_t uBleSpsSend(uDeviceHandle_t devHandle, int32_t channel, const char *pDat
                 // Something is very wrong.
                 errorCode = (int32_t)U_ERROR_COMMON_UNKNOWN;
                 break;
-            }
-            if (bytesLeftToSend > 0) {
-                time = uPortGetTickTimeMs();
             }
         }
     }

@@ -2774,6 +2774,7 @@ static uAtClientHandle_t clientAdd(const uAtClientStreamHandle_t *pStream,
     bool receiveBufferIsMalloced = false;
     uDeviceSerial_t *pDeviceSerial;
     int32_t errorCode = -1;
+    uTimeoutStart_t timeoutStart;
 
     U_PORT_MUTEX_LOCK(gMutex);
 
@@ -2805,6 +2806,7 @@ static uAtClientHandle_t clientAdd(const uAtClientStreamHandle_t *pStream,
                         (uPortMutexCreate(&(pClient->urcPermittedMutex)) == 0)) {
                         // Set all the non-zero initial values before we set
                         // the event handlers which might call us
+                        timeoutStart = uTimeoutStart();
                         pClient->newSendNextTime = true;
                         pClient->stream = *pStream;
                         pClient->atTimeoutMs = U_AT_CLIENT_DEFAULT_TIMEOUT_MS;
@@ -2817,10 +2819,10 @@ static uAtClientHandle_t clientAdd(const uAtClientStreamHandle_t *pStream,
                         clearError(pClient);
                         // This will also set stopTag
                         setScope(pClient, U_AT_CLIENT_SCOPE_NONE);
-                        pClient->lastTxTime = uTimeoutStart();
+                        pClient->lastTxTime = timeoutStart;
                         pClient->urcMaxStringLength = U_AT_CLIENT_INITIAL_URC_LENGTH;
                         pClient->maxRespLength = U_AT_CLIENT_MAX_LENGTH_INFORMATION_RESPONSE_PREFIX;
-                        pClient->lastResponseStop = uTimeoutStart();
+                        pClient->lastResponseStop = timeoutStart;
                         // Set up the buffer and its protection markers
                         pClient->pReceiveBuffer->dataBufferSize = receiveBufferSize -
                                                                   U_AT_CLIENT_BUFFER_OVERHEAD_BYTES;
