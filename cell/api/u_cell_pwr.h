@@ -526,6 +526,12 @@ int32_t uCellPwrGetDtrPowerSavingPin(uDeviceHandle_t cellHandle);
  * Cat-M1/NB1 mode and only effective when the module is connected
  * to the cellular network.
  *
+ * IMPORTANT: the 3GPP power saving setting is _remembered_ by
+ * the module; if you have called this function once with onNotOff
+ * set to true then power saving will be _on_ for that module forever
+ * more until you call this function again with onNotOff set
+ * to false.
+ *
  * If the module is registered with the network and there is no
  * radio activity (i.e. transmission to or reception from the
  * cellular network) for the duration of the active time then the

@@ -187,7 +187,6 @@ int32_t uNetworkPrivateChangeStateCell(uDeviceHandle_t devHandle,
                     errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
                 }
                 if (errorCode == 0) {
-                    // Connect using automatic selection
                     errorCode = uCellNetConnect(devHandle,
                                                 pCfg->pMccMnc,
                                                 pCfg->pApn,
