@@ -969,14 +969,24 @@ def merge_filter(defines, filter_string):
     if defines:
         for define in defines:
             if define.startswith(FILTER_MACRO_NAME):
-                # Find the bit after "U_CFG_APP_FILTER=" if it's there
+                # Find the bit after "U_CFG_APP_FILTER=" if it is there
                 parts = define.split("=")
                 if parts and len(parts) > 1:
                     # Find the individual parts of the filter "thinga.thingb"
                     filters = parts[1].split(".")
                     if filters and len(filters) > 0:
-                        # Add them to our filter list
-                        filter_list.extend(filters)
+                        if not filters[len(filters) - 1] or \
+                           filters[len(filters) - 1][0].isspace:
+                            # If the U_CFG_APP_FILTER entry ends
+                            # with a "." (i.e. the last entry in
+                            # filters is empty or is white-space)
+                            # then this indicates that we are not
+                            # allowed to extend U_CFG_APP_FILTER;
+                            # just replace filter_list with filters
+                            filter_list = filters
+                        else:
+                            # Otherwise, merge the two together
+                            filter_list.extend(filters)
             else:
                 # If it's not "U_CFG_APP_FILTER" then just add it
                 defines_returned.append(define)
