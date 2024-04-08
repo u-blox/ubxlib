@@ -275,7 +275,7 @@ bool nameInFilter(const char *pName, const char *pFilter)
             buffer[y] = *(pFilter + x);
             y++;
         } else {
-            if (y < sizeof(buffer) - 1) {
+            if ((y > 0) && (y < sizeof(buffer) - 1)) {
                 y++;
                 buffer[y] = 0;
                 if (strncmp(buffer, pName, y - 1) == 0) {
