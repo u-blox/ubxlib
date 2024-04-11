@@ -416,7 +416,7 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
     if (gMutex == NULL) {
         return U_ERROR_COMMON_NOT_INITIALISED;
     }
-    if (pFindUartById(uart) != NULL) {
+    if ((uart >= 0) && (pFindUartById(uart) != NULL)) {
         return (int32_t)U_ERROR_COMMON_BUSY;
     }
     uPortUartData_t *pUartData = pUPortMalloc(sizeof(uPortUartData_t));

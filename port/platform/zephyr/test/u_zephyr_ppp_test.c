@@ -423,8 +423,7 @@ U_PORT_TEST_FUNCTION("[zephyrSock]", "zephyrSockTcp")
 
             errno = 0;
             sock = zsock_socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
-            U_TEST_PRINT_LINE("opening socket() to %s:%d returned %d (errno %d).",
-                              hostIp, U_SOCK_TEST_ECHO_TCP_SERVER_PORT, sock, errno);
+            U_TEST_PRINT_LINE("opening socket() returned %d (errno %d).", sock, errno);
             U_PORT_TEST_ASSERT(sock >= 0);
 
             // Set socket to be non-blocking for our asynchronous receive
@@ -435,7 +434,8 @@ U_PORT_TEST_FUNCTION("[zephyrSock]", "zephyrSockTcp")
 
             errorCode = zsock_connect(sock, (struct sockaddr *) &destinationAddress,
                                       sizeof(destinationAddress));
-            U_TEST_PRINT_LINE("connect() returned %d (errno %d).", errorCode, errno);
+            U_TEST_PRINT_LINE("connecting socket to %s:%d returned %d (errno %d).",
+                              hostIp, U_SOCK_TEST_ECHO_TCP_SERVER_PORT, errorCode, errno);
             U_PORT_TEST_ASSERT(errorCode == 0);
 
             memset(&gTestConfig, 0, sizeof(gTestConfig));
