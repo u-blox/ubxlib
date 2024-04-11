@@ -503,6 +503,18 @@ int32_t uGnssCfgValGetListAlloc(uDeviceHandle_t gnssHandle,
  * from u_gnss_cfg_val_key.h you may find it easier to use the macro
  * #U_GNSS_CFG_SET_VAL_RAM.
  *
+ * Note: should a requested configuration somehow be incompatible
+ * with another configuration setting of the device then this
+ * configuration call will likely fail.  For instance, asking for
+ * power saving when BeiDou B1C signals are enabled will do this.
+ * Hence, should configuration fail, please check the interface
+ * manual for your device (to confirm that the configuration value
+ * is supported), the integration manual for your device (which should
+ * indicate any cross-dependencies), or the data sheet for your
+ * device.  Otherwise you may raise a Github issue but, when you do so,
+ * please include a complete list of the things you have configured,
+ * as well as the response of uGnssInfoGetVersions().
+ *
  * @param gnssHandle   the handle of the GNSS instance.
  * @param keyId        the ID of the key to set; may be found in the
  *                     u-blox GNSS reference manual or you may use
@@ -557,6 +569,18 @@ int32_t uGnssCfgValSet(uDeviceHandle_t gnssHandle,
  * find it easier to use the macro #U_GNSS_CFG_SET_VAL_RAM multiple times;
  * this function comes into its own when setting values that have been read
  * using uGnssCfgValGetAlloc() or uGnssCfgValGetListAlloc(), e.g. with wildcards.
+ *
+ * Note: should a requested configuration somehow be incompatible
+ * with another configuration setting of the device then this
+ * configuration call will likely fail.  For instance, asking for
+ * power saving when BeiDou B1C signals are enabled will do this.
+ * Hence, should configuration fail, please check the interface
+ * manual for your device (to confirm that the configuration value
+ * is supported), the integration manual for your device (which should
+ * indicate any cross-dependencies), or the data sheet for your
+ * device.  Otherwise you may raise a Github issue but, when you do so,
+ * please include a complete list of the things you have configured,
+ * as well as the response of uGnssInfoGetVersions().
  *
  * @param gnssHandle   the handle of the GNSS instance.
  * @param[in] pList    a pointer to an array defining one or more
