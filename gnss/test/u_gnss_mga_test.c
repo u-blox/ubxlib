@@ -505,7 +505,7 @@ static bool databaseCallback(uDeviceHandle_t devHandle,
                 if ((size >= 2 + 2) &&            // +2 for length
                     (*(pBuffer + 0 + 2) == 3) &&  // AUXDB
                     (*(pBuffer + 2 + 2) == 5)) {  // QZSS
-                    uPortLog("#### gDatabaseHasQzss %s.\n", gDatabaseHasQzss ? "true" : "false");
+                    U_TEST_PRINT_LINE("gDatabaseHasQzss %s.", gDatabaseHasQzss ? "true" : "false");
                     gDatabaseHasQzss = true;
                 }
                 paramLocal += size;
