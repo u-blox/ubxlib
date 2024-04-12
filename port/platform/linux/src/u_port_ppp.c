@@ -219,6 +219,24 @@ static const char gConnectionTerminatedString[] = {'\r', '\n', 'N', 'O', ' ', 'C
 
 #ifdef U_CFG_PPP_ENABLE
 
+# ifdef U_PORT_PPP_PRINT_ENABLE
+// Wot it says.
+static void printHex(const char *pStr, size_t length)
+{
+#  if U_CFG_ENABLE_LOGGING
+    char c;
+
+    for (size_t x = 0; x < length; x++) {
+        c = *pHex++;
+        uPortLog(" %02x", (unsigned char) c);
+    }
+#  else
+    (void) pHex;
+    (void) length;
+#  endif
+}
+# endif
+
 // Find the local device name set by the given thread.
 static uPortPppLocalDevice_t *pFindLocalDeviceName(pthread_t threadId)
 {
@@ -416,6 +434,13 @@ static void moduleDataCallback(void *pDevHandle, const char *pData,
     int32_t written = 0;
     size_t retryCount = 0;
 
+#ifdef U_PORT_PPP_PRINT_ENABLE
+    if (dataSize > 0) {
+        uPortLog("U_PORT_PPP: received %d byte(s) from module:");
+        printHex(pData, dataSize);
+        uPortLog(".\n");
+    }
+#endif
     // Write the data to the connected socket, if there is one
     while (!pPppInterface->dataTransferSuspended && (x > 0) &&
            (written >= 0) && (retryCount < U_PORT_PPP_TX_LOOP_GUARD) &&
@@ -484,6 +509,11 @@ static void socketTask(void *pParameters)
                                        (x > 0) && (written >= 0) && (retryCount < U_PORT_PPP_TX_LOOP_GUARD)) {
                                     written = pPppInterface->pTransmitCallback(pPppInterface->pDevHandle, pData, x);
                                     if (written > 0) {
+#ifdef U_PORT_PPP_PRINT_ENABLE
+                                        uPortLog("U_PORT_PPP: sent %d byte(s) to module:");
+                                        printHex(pData, written);
+                                        uPortLog(".\n");
+#endif
                                         x -= written;
                                         pData += written;
                                     } else {
