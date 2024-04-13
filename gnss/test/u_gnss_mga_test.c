@@ -379,7 +379,7 @@ static void printHex(const char *pHex, size_t length)
         uPortLog("%02x", (unsigned char) c);
     }
 #else
-    (void) pStr;
+    (void) pHex;
     (void) length;
 #endif
 }
