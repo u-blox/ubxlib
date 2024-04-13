@@ -18,10 +18,10 @@
 #define _U_CFG_APP_PLATFORM_SPECIFIC_H_
 
 /** @file
- * @brief This header file contains configuration information for
- * the Linux platform that is fed in at application level.  On
- * Linux many of the values are irrelevant, e.g. processor pin
- * numbers are not required.
+ * @brief This header file contains configuration information for the
+ * Linux platform that is fed in at application level; NONE of the
+ * parameters here are compiled into ubxlib itself.  On Linux many of
+ * the values are irrelevant, e.g. processor pin numbers are not required.
  */
 
 /* ----------------------------------------------------------------

@@ -19,7 +19,8 @@
 
 /** @file
  * @brief This header file contains configuration information for
- * an ESP32 platform that is fed in at application level.  You should
+ * an ESP32 platform that is fed in at application level; NONE of the
+ * parameters here are compiled into ubxlib itself.  You should
  * override these values as necessary for your particular platform.
  * Note that the pin numbers used below should be those of the MCU: if you
  * are using an MCU inside a u-blox module the IO pin numbering for

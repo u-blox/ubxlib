@@ -33,9 +33,10 @@
 /** @file
  * @brief This header file contains configuration information for
  * a Zephyr platform that is fed in at application level, with one
- * exception (see below).  It assumes an nRF5x MCU, e.g. nRF52840 or
- * nRF5340. You should override these values as necessary for your particular
- * platform.
+ * exception (see below).  You should override these values as necessary
+ * for your particular platform.   NONE of the parameters here are
+ * compiled into ubxlib itself.
+ *
  * Note that the pin numbers used below should be those of the MCU: if you
  * are using an MCU inside a u-blox module the IO pin numbering for
  * the module is likely different to that from the MCU: check the data

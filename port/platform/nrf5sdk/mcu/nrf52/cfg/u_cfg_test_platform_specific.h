@@ -22,7 +22,9 @@
 
 /** @file
  * @brief Porting layer and configuration items passed in at application
- * level when executing tests on the NRF52 platform.
+ * level when executing tests on the NRF52 platform.  NONE of the parameters
+ * here are compiled into ubxlib itself.
+ *
  * Note that the pin numbers used below should be those of the MCU: if you
  * are using an MCU inside a u-blox module the IO pin numbering for
  * the module is likely different to that from the MCU: check the data

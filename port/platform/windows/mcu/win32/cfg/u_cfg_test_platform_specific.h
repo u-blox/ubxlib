@@ -22,7 +22,8 @@
 
 /** @file
  * @brief Porting layer and configuration items passed in at application
- * level when executing tests on Windows.
+ * level when executing tests on Windows.  NONE of the parameters here are
+ * compiled into ubxlib itself.
  */
 
 /* ----------------------------------------------------------------

@@ -20,7 +20,9 @@
 /* Only bring in #includes specifically related to the test framework. */
 
 /* These inclusions required to get the UART CTS/RTS pin assignments
- * from the Zephyr device tree.
+ * from the Zephyr device tree when compiling the ubxlib test code;
+ * NONE of the parameters here are compiled into ubxlib itself.
+ *
  * Note that the pin numbers used below should be those of the MCU:
  * if you are using an MCU inside a u-blox module the IO pin numbering
  * for the module is likely different to that from the MCU: check the

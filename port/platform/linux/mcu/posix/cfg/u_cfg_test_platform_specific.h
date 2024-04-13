@@ -22,7 +22,8 @@
 
 /** @file
  * @brief Porting layer and configuration items passed in at application
- * level when executing tests on Linux.
+ * level when executing tests on Linux; NONE of the parameters here are
+ * compiled into ubxlib itself.
  */
 
 /* ----------------------------------------------------------------

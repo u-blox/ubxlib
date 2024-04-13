@@ -19,7 +19,8 @@
 
 /** @file
  * @brief This header file contains configuration information for
- * the Windows platform that is fed in at application level.  On
+ * the Windows platform that is fed in at application level; NONE of
+ * the parameters here are compiled into ubxlib itself.  On
  * Windows many of the values are irrelevant, e.g. processor pin
  * numbers are not required.
  */
