@@ -3310,9 +3310,16 @@ U_PORT_TEST_FUNCTION("[port]", "portCleanUp")
 
     uPortDeinit();
 
-    U_PORT_TEST_ASSERT(uTestUtilResourceCheck(U_TEST_PREFIX,
-                                              U_TEST_UTIL_RESOURCE_CHECK_ERROR_MARKER,
-                                              true));
+    if (!uTestUtilResourceCheck(U_TEST_PREFIX,
+                                U_TEST_UTIL_RESOURCE_CHECK_ERROR_MARKER,
+                                true)) {
+        U_TEST_PRINT_LINE("too many resources outstanding.");
+        // We do not assert if the number of failed tests is non-zero; this
+        // is because clean-up is inevitably skpped when a test failure
+        // occurs and so bleating about resources only adds more
+        // needless noise: of _course_ there will be leaked resources!
+        U_PORT_TEST_ASSERT(uTestUtilGetNumFailed() != 0);
+    }
 }
 
 // End of file

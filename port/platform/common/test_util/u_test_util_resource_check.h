@@ -79,6 +79,15 @@ bool uTestUtilResourceCheck(const char *pPrefix,
                             const char *pErrorMarker,
                             bool printIt);
 
+/** Get the current number of failed tests; since clean-up processes
+ * are skipped when a test fails, you may call this determine
+ * whether it is worth asserting about failed resources, which only
+ * adds more noise.
+ *
+ * @return  the number of failed tests.
+ */
+size_t uTestUtilGetNumFailed();
+
 #ifdef __cplusplus
 }
 #endif

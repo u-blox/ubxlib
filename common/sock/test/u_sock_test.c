@@ -2591,8 +2591,16 @@ U_PORT_TEST_FUNCTION("[sock]", "sockCleanUp")
 
     // Resources should now all be cleaned up
     if (!uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true)) {
-        U_TEST_PRINT_LINE("resources not cleaned up.");
-        U_PORT_TEST_ASSERT(false);
+        if (uTestUtilGetNumFailed() == 0) {
+            // Only assert if the number of failed tests is zero; this is
+            // because clean-up is inevitably skpped when a test failure
+            // occurs and so bleating about resources only adds more
+            // needless noise: of _course_ there will be leaked resources!
+            U_TEST_PRINT_LINE("too many resources outstanding.");
+            U_PORT_TEST_ASSERT(false);
+        } else {
+            U_TEST_PRINT_LINE("*** WARNING *** too many resources outstanding.");
+        }
     }
 }
 

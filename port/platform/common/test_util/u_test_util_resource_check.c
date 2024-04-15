@@ -211,4 +211,10 @@ bool uTestUtilResourceCheck(const char *pPrefix,
     return resourcesClean;
 }
 
+// Get the current number of failed tests from Unity.
+size_t uTestUtilGetNumFailed()
+{
+    return Unity.TestFailures;
+}
+
 // End of file
