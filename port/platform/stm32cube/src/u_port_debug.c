@@ -15,7 +15,7 @@
  */
 
 /** @file
- * @brief Implementation of the port debug API for the STM32F4 platform.
+ * @brief Implementation of the port debug API for the STM32 platform.
  */
 
 #ifdef U_CFG_OVERRIDE
@@ -33,7 +33,12 @@
 
 #include "u_error_common.h"
 
-#include "stm32f437xx.h" // For ITM_SendChar()
+// For ITM_SendChar()
+#ifdef STM32U575xx
+# include "stm32u575xx.h"
+#else
+# include "stm32f437xx.h"
+#endif
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS

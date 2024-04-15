@@ -15,7 +15,7 @@
  */
 
 /** @file
- * @brief Implementation of generic porting functions for the STM32F4 platform.
+ * @brief Implementation of generic porting functions for the STM32 platform.
  */
 
 #ifdef U_CFG_OVERRIDE
@@ -39,19 +39,33 @@
 
 #include "u_heap_check.h"
 
-#include "FreeRTOS.h" // For xPortGetFreeHeapSize()
-#include "task.h"     // For taskENTER_CRITICAL()/taskEXIT_CRITICAL()
-#include "stm32f437xx.h"
-#include "stm32f4xx_hal.h"
+#ifdef STM32U575xx
+# include "stm32u575xx.h"
+# include "stm32u5xx_hal.h"
+#else
+# include "FreeRTOS.h" // For xPortGetFreeHeapSize()
+# include "task.h"     // For taskENTER_CRITICAL()/taskEXIT_CRITICAL()
+# include "stm32f437xx.h"
+# include "stm32f4xx_hal.h"
+#endif
+
 #ifdef CMSIS_V2
 # include "cmsis_os2.h"
 #else
-#include "cmsis_os.h"
+# include "cmsis_os.h"
 #endif
 
 #include "stdio.h"
 
 #include "u_port_private.h" // Down here 'cos it needs GPIO_TypeDef
+
+#if defined(U_PORT_STM32_PURE_CMSIS) && defined(U_PORT_STM32_CMSIS_ON_FREERTOS)
+// xPortGetFreeHeapSize(), which we implement in heap_useNewlib.c,
+// is a FreeRTOS function signature but, in fact, the implementation
+// is nothing at all to do with FreeRTOS and so we can use it even
+// in the pure CMSIS case.
+extern size_t xPortGetFreeHeapSize(void);
+#endif
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -78,6 +92,45 @@ static void systemClockConfig(void)
     RCC_OscInitTypeDef RCC_OscInitStruct = {0};
     RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
+#ifdef STM32U575xx
+    // Configure the main internal regulator output voltage
+    if (HAL_PWREx_ControlVoltageScaling(PWR_REGULATOR_VOLTAGE_SCALE1) != HAL_OK) {
+        U_ASSERT(false);
+    }
+
+    // Initialize the CPU, AHB and APB buses clocks
+    RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_MSI;
+    RCC_OscInitStruct.MSIState = RCC_MSI_ON;
+    RCC_OscInitStruct.MSICalibrationValue = RCC_MSICALIBRATION_DEFAULT;
+    RCC_OscInitStruct.MSIClockRange = RCC_MSIRANGE_4;
+    RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+    RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_MSI;
+    RCC_OscInitStruct.PLL.PLLMBOOST = RCC_PLLMBOOST_DIV1;
+    RCC_OscInitStruct.PLL.PLLM = 1;
+    RCC_OscInitStruct.PLL.PLLN = 80;
+    RCC_OscInitStruct.PLL.PLLP = 2;
+    RCC_OscInitStruct.PLL.PLLQ = 2;
+    RCC_OscInitStruct.PLL.PLLR = 2;
+    RCC_OscInitStruct.PLL.PLLRGE = RCC_PLLVCIRANGE_0;
+    RCC_OscInitStruct.PLL.PLLFRACN = 0;
+    if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK) {
+        U_ASSERT(false);
+    }
+
+    // Initialize the CPU, AHB and APB buses clocks
+    RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK |
+                                  RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2 |
+                                  RCC_CLOCKTYPE_PCLK3;
+    RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+    RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
+    RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
+    RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
+    RCC_ClkInitStruct.APB3CLKDivider = RCC_HCLK_DIV1;
+
+    if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_4) != HAL_OK) {
+        U_ASSERT(false);
+    }
+#else
     // Configure the main internal regulator output voltage
     __HAL_RCC_PWR_CLK_ENABLE();
     __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE3);
@@ -105,7 +158,12 @@ static void systemClockConfig(void)
     if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_5) != HAL_OK) {
         U_ASSERT(false);
     }
+#endif
 }
+
+/* ----------------------------------------------------------------
+ * PUBLIC FUNCTIONS
+ * -------------------------------------------------------------- */
 
 #ifdef USE_FULL_ASSERT
 void assert_failed(uint8_t *pFile, uint32_t line)
@@ -116,10 +174,6 @@ void assert_failed(uint8_t *pFile, uint32_t line)
     U_ASSERT(false);
 }
 #endif /* USE_FULL_ASSERT */
-
-/* ----------------------------------------------------------------
- * PUBLIC FUNCTIONS
- * -------------------------------------------------------------- */
 
 // Start the platform.
 int32_t uPortPlatformStart(void (*pEntryPoint)(void *),
@@ -145,11 +199,6 @@ int32_t uPortPlatformStart(void (*pEntryPoint)(void *),
         // Configure the system clock
         systemClockConfig();
 
-        // TODO: if I put an iprintf() here then all is fine.
-        // If I don't then any attempt to print later
-        // results in a hard fault.  Need to find out why.
-        iprintf("\n\nU_APP: starting RTOS...\n");
-
         // Create the task, noting that the stack
         // size is in words not bytes
 #ifdef CMSIS_V2
@@ -161,6 +210,11 @@ int32_t uPortPlatformStart(void (*pEntryPoint)(void *),
         attr.stack_size = stackSizeBytes;
         threadId = osThreadNew(pEntryPoint, pParameter, &attr);
 #else
+        // TODO: if I put an iprintf() here then all is fine.
+        // If I don't then any attempt to print later
+        // results in a hard fault.  Need to find out why.
+        iprintf("\n\nU_APP: starting RTOS...\n");
+
         threadDef.name = "EntryPoint";
         threadDef.pthread = (void (*) (void const *)) pEntryPoint;
         threadDef.tpriority = priority;
@@ -228,36 +282,60 @@ int32_t uPortGetTickTimeMs()
 // Get the minimum amount of heap free, ever, in bytes.
 int32_t uPortGetHeapMinFree()
 {
+#if !defined(U_PORT_STM32_PURE_CMSIS) || defined(U_PORT_STM32_CMSIS_ON_FREERTOS)
+    //  Can get this if on FreeRTOS as we just use newlib's mallocator
     return (int32_t) uHeapCheckGetMinFree();
+#else
+    // Can't get this information from the ST_provided
+    // CMSIS layer or from ThreadX's memory pool implementation
+    // directly
+    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
+#endif
 }
 
 // Get the current free heap.
 int32_t uPortGetHeapFree()
 {
+#if !defined(U_PORT_STM32_PURE_CMSIS) || defined(U_PORT_STM32_CMSIS_ON_FREERTOS)
+    //  Can get this if on FreeRTOS as we just use newlib's mallocator
     return (int32_t) xPortGetFreeHeapSize();
+#else
+    // Can't get this information from the ST_provided
+    // CMSIS layer or from ThreadX's memory pool implementation
+    // directly
+    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
+#endif
 }
 
 // Enter a critical section.
 // Implementation note: FreeRTOS only locks-out tasks
-// with interrupt priority up
-// to configMAX_SYSCALL_INTERRUPT_PRIORITY, interrupts
+// with interrupt priority up to
+// configMAX_SYSCALL_INTERRUPT_PRIORITY, interrupts
 // at a higher priority than that are NOT masked
 // during a critical section, so beware!
 // Also note that the system tick is disabled
 // during a critical section (that's how it does
-// what it does) and in the case of this STM32F4
+// what it does) and in the case of this STM32
 // port that will stop time since uPortGetTickTimeMs()
 // is incremented by the system tick.
 U_INLINE int32_t uPortEnterCritical()
 {
+#ifdef U_PORT_STM32_PURE_CMSIS
+    return uPortPrivateEnterCriticalCmsis();
+#else
     taskENTER_CRITICAL();
     return (int32_t) U_ERROR_COMMON_SUCCESS;
+#endif
 }
 
 // Leave a critical section.
 U_INLINE void uPortExitCritical()
 {
+#ifdef U_PORT_STM32_PURE_CMSIS
+    uPortPrivateExitCriticalCmsis();
+#else
     taskEXIT_CRITICAL();
+#endif
 }
 
 // End of file

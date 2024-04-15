@@ -15,27 +15,41 @@
  */
 
 /** @file
- * @brief Cortex M4 exception handlers.
+ * @brief Cortex M4/M33 exception handlers.
  */
 
 #include "stdbool.h"
 
-#include "stm32f4xx.h"
-#include "cmsis_os.h"
-#include "core_cm4.h"
-
-#include "task_snapshot.h"
+#ifdef STM32U575xx
+# include "stm32u5xx.h"
+# include "core_cm33.h"
+#else
+# include "stm32f4xx.h"
+# include "core_cm4.h"
+#endif
 
 #include "u_assert.h"
 #include "u_port_debug.h"
+
 #include "u_debug_utils.h"
 #include "u_debug_utils_internal.h"
 
-#include "FreeRTOS.h" // For xPortGetFreeHeapSize()
-#include "task.h"     // For xTaskGetSchedulerState()
+#ifdef CMSIS_V2
+# include "cmsis_os2.h"
+#else
+# include "cmsis_os.h"
+#endif
 
-/* FreeRTOS tick timer interrupt handler prototype */
+#if defined(U_PORT_STM32_PURE_CMSIS) && !defined(U_PORT_STM32_CMSIS_ON_FREERTOS)
+// The ThreadX SysTick handler over in tx_initialise_low_level.S
+extern void TxSysTick_Handler(void);
+#else
+# include "task_snapshot.h"
+# include "FreeRTOS.h" // For xPortGetFreeHeapSize()
+# include "task.h"     // For xTaskGetSchedulerState()
+// FreeRTOS tick timer interrupt handler prototype
 extern void xPortSysTickHandler(void);
+#endif
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -67,13 +81,11 @@ typedef struct __attribute__((packed))
 }
 uExceptionFrame_t;
 
-extern uint32_t uDebugUtilsGetThreadStackTop(TaskHandle_t handle);
-
 /* ----------------------------------------------------------------
  * VARIABLES
  * -------------------------------------------------------------- */
 
-/* Need to update this value in cellular_port_private.c. */
+/* Need to update this value in u_port_private.c. */
 extern int32_t gTickTimerRtosCount;
 
 /* ----------------------------------------------------------------
@@ -237,20 +249,46 @@ void DebugMon_Handler(void)
 {
 }
 
+#if defined(U_PORT_STM32_PURE_CMSIS) && defined(U_PORT_STM32_CMSIS_ON_FREERTOS)
+// Note: for whatever reason, the CM33 port of FreeRTOS (i.e. STM32U5)
+// grabs the SysTick_Handler for itself (see the FreeRTOS file port.c)
+// and so in that case we enable the tick hook in FreeRTOSConfig.h
+// and increment gTickTimerRtosCount in the hook function (see below).
+#else
 /**
   * @brief  SysTick handler.
   */
 void SysTick_Handler(void)
 {
     gTickTimerRtosCount++;
-#ifdef CMSIS_V2
+# ifdef CMSIS_V2
+#  ifdef U_PORT_STM32_PURE_CMSIS
+    // Must be CMSIS on ThreadX
+    if (osKernelGetState() >= osKernelRunning) {
+        TxSysTick_Handler();
+    }
+#  else
+    // A FreeRTOS where SysTick_Handler() isn't nabbed and
+    // the function xPortSysTickHandler() exists
     if (xTaskGetSchedulerState() != taskSCHEDULER_NOT_STARTED) {
         /* Call tick handler */
         xPortSysTickHandler();
     }
-#else
+#  endif
+# else
+    // CMSIS v1
     osSystickHandler();
-#endif
+# endif
 }
+#endif
+
+#if configUSE_TICK_HOOK
+// Tick hook function used to increment our tick counter in
+// the CM33 (STM32U5) case.
+void vApplicationTickHook()
+{
+    gTickTimerRtosCount++;
+}
+#endif
 
 // End of file

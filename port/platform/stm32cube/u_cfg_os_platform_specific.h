@@ -24,11 +24,11 @@
 
 /** @file
  * @brief This header file contains OS configuration information for
- * an STM32F4 processor.
+ * STM32 processors.
  */
 
 /* ----------------------------------------------------------------
- * COMPILE-TIME MACROS FOR STM32F4: HEAP
+ * COMPILE-TIME MACROS FOR STM32: HEAP
  * -------------------------------------------------------------- */
 
 /** \deprecated Not stricty speaking part of the OS but there's nowhere
@@ -49,7 +49,7 @@
 #define U_CFG_OS_CLIB_LEAKS 0
 
 /* ----------------------------------------------------------------
- * COMPILE-TIME MACROS FOR STM32F4: OS GENERIC
+ * COMPILE-TIME MACROS FOR STM32: OS GENERIC
  * -------------------------------------------------------------- */
 
 #ifndef U_CFG_OS_PRIORITY_MIN
@@ -61,7 +61,7 @@
 
 #ifndef U_CFG_OS_PRIORITY_MAX
 /** The maximum task priority, should be less than configMAX_PRIORITIES
-* defined in FreeRTOSConfig.h.
+ * defined in FreeRTOSConfig.h.
  */
 # ifdef CMSIS_V2
 #  define U_CFG_OS_PRIORITY_MAX 55
@@ -72,14 +72,20 @@
 
 #ifndef U_CFG_OS_YIELD_MS
 /** The amount of time to block for to ensure that a yield
- * occurs. This set to 2 ms as the STM32F4 platform has a
- * 1 ms tick.
+ * occurs. This set to 2 ms for STM32F4 with FreeRTOS which has
+ * a 1 ms tick, while for STM32U5, in the case of pure CMSIS
+ * with ThreadX underneath it we have a 10 ms tick and so we
+ * set CMSIS with FreeRTOS underneath it the same way.
  */
-# define U_CFG_OS_YIELD_MS 2
+# if defined(U_PORT_STM32_PURE_CMSIS)
+#  define U_CFG_OS_YIELD_MS 20
+# else
+#  define U_CFG_OS_YIELD_MS 2
+# endif
 #endif
 
 /* ----------------------------------------------------------------
- * COMPILE-TIME MACROS FOR STM32F4: STACK SIZES/PRIORITIES
+ * COMPILE-TIME MACROS FOR STM32: STACK SIZES/PRIORITIES
  * -------------------------------------------------------------- */
 
 /** How much stack the task running all the examples/tests needs in
@@ -93,7 +99,7 @@
 #define U_CFG_OS_APP_TASK_PRIORITY (U_CFG_OS_PRIORITY_MIN + 1)
 
 /* ----------------------------------------------------------------
- * COMPILE-TIME MACROS FOR STM32F4: OS TIMERS
+ * COMPILE-TIME MACROS FOR STM32: OS TIMERS
  * -------------------------------------------------------------- */
 
 #ifndef U_CFG_OS_TIMER_MAX_NUM

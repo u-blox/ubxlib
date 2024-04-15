@@ -15,7 +15,7 @@
  */
 
 /** @file
- * @brief Implementation of the port GPIO API for the STM32F4 platform.
+ * @brief Implementation of the port GPIO API for the STM32 platform.
  */
 
 #ifdef U_CFG_OVERRIDE
@@ -29,8 +29,13 @@
 #include "u_port.h"
 #include "u_port_gpio.h"
 
-#include "stm32f4xx_hal.h"
-#include "stm32f4xx_hal_gpio.h"
+#ifdef STM32U575xx
+# include "stm32u5xx_hal.h"
+# include "stm32u5xx_hal_gpio.h"
+#else
+# include "stm32f4xx_hal.h"
+# include "stm32f4xx_hal_gpio.h"
+#endif
 
 #include "u_port_os.h"
 #include "u_port_private.h" // Down here 'cos it needs GPIO_TypeDef
@@ -63,7 +68,7 @@ int32_t uPortGpioConfig(uPortGpioConfig_t *pConfig)
     GPIO_InitTypeDef config = {0};
 
     // Note that Pin is a bitmap
-    config.Pin = 1U << U_PORT_STM32F4_GPIO_PIN(pConfig->pin);
+    config.Pin = 1U << U_PORT_STM32_GPIO_PIN(pConfig->pin);
     config.Mode = GPIO_MODE_INPUT;
     config.Pull = GPIO_NOPULL;
     config.Speed = GPIO_SPEED_FREQ_LOW;
@@ -116,7 +121,7 @@ int32_t uPortGpioConfig(uPortGpioConfig_t *pConfig)
         if (!badConfig) {
             // Enable the clocks to the port for this pin
             uPortPrivateGpioEnableClock(pConfig->pin);
-            // The GPIO init function for STM32F4 takes a pointer
+            // The GPIO init function for STM32 takes a pointer
             // to the port register, the index for which is the upper
             // nibble of pin (they are in banks of 16), and then
             // the configuration structure which has the pin number
@@ -137,7 +142,7 @@ int32_t uPortGpioSet(int32_t pin, int32_t level)
     uPortPrivateGpioEnableClock(pin);
 
     HAL_GPIO_WritePin(pUPortPrivateGpioGetReg(pin),
-                      (uint16_t) (1U << U_PORT_STM32F4_GPIO_PIN(pin)),
+                      (uint16_t) (1U << U_PORT_STM32_GPIO_PIN(pin)),
                       level);
 
     return (int32_t) U_ERROR_COMMON_SUCCESS;
@@ -150,7 +155,7 @@ int32_t uPortGpioGet(int32_t pin)
     uPortPrivateGpioEnableClock(pin);
 
     return HAL_GPIO_ReadPin(pUPortPrivateGpioGetReg(pin),
-                            (uint16_t) (1U << U_PORT_STM32F4_GPIO_PIN(pin)));
+                            (uint16_t) (1U << U_PORT_STM32_GPIO_PIN(pin)));
 }
 
 // End of file

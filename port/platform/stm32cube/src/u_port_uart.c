@@ -15,13 +15,22 @@
  */
 
 /** @file
- * @brief Implementation of the port UART API for the STM32F4 platform.
+ * @brief Implementation of the port UART API for the STM32 platform.
+ *
+ * Two quite different approaches are involved for the STM32F4 series and
+ * the STM32U5 series MCUs.  In the STM32F4 case the UART HW blocks have
+ * only a single byte buffer and hence DMA must be used or characters
+ * will be lost.  The STM32U5 UART HW blocks, on the other hand, have
+ * 8 byte UART buffers and so the complication of DMA, which is implemented
+ * differently between the "normal" UARTs and the LPUARTs that the STM32U5
+ * also includes, is NOT required.
  */
 
 #ifdef U_CFG_OVERRIDE
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
 
+#include "limits.h"    // UINT16_MAX
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
@@ -46,10 +55,19 @@
 #include "u_port_event_queue.h"
 #include "u_port_uart.h"
 
-#include "stm32f4xx_ll_bus.h"
-#include "stm32f4xx_ll_gpio.h"
-#include "stm32f4xx_ll_dma.h"
-#include "stm32f4xx_ll_usart.h"
+#ifdef STM32U575xx
+# include "stm32u5xx_ll_bus.h"
+# include "stm32u5xx_ll_gpio.h"
+# include "stm32u5xx_ll_dma.h"
+# include "stm32u5xx_ll_usart.h"
+# include "stm32u5xx_ll_lpuart.h"
+# include "stm32u5xx_ll_rcc.h"
+#else
+# include "stm32f4xx_ll_bus.h"
+# include "stm32f4xx_ll_gpio.h"
+# include "stm32f4xx_ll_dma.h"
+# include "stm32f4xx_ll_usart.h"
+#endif
 
 #include "cmsis_os.h"
 
@@ -57,8 +75,8 @@
 
 #include "string.h" // for memcpy()
 
-/* The code here was written using the really useful information
- * here:
+/* The code for the STM32F4 DMA case was written using the really
+ * useful information here:
  *
  * https://stm32f4-discovery.net/2017/07/stm32-tutorial-efficiently-receive-uart-data-using-dma/
  *
@@ -75,16 +93,26 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
-// The maximum number of UART HW blocks on an STM32F4.
-#define U_PORT_MAX_NUM_UARTS 8
+#ifdef STM32U575xx
+// The maximum number of UART HW blocks on an STM32; up to 8
+// on STM32F4, up to 5 on the STM32U575 but note that STM32U575
+// also has a single LP UART, which _is_ supported in the zeroth
+// elements of the arrays.
+# define U_PORT_MAX_NUM_UARTS 5
+#else
+# define U_PORT_MAX_NUM_UARTS 8
+#endif
 
-// The maximum number of DMA engines on an STM32F4.
+// The maximum number of DMA engines on an STM32F4; not used
+// by this code for STM32U5.
 #define U_PORT_MAX_NUM_DMA_ENGINES 2
 
-// The maximum number of DMA streams on an STM32F4.
+// The maximum number of DMA streams on an STM32F4; not used
+// by this code for STM32U5.
 #define U_PORT_MAX_NUM_DMA_STREAMS 8
 
-// Determine if the given DMA engine/stream interrupt is in use
+// Determine if the given DMA engine/stream interrupt is in use,
+// not used for STM32U5.
 #define U_PORT_DMA_INTERRUPT_IN_USE(x, y) (((U_CFG_HW_UART1_AVAILABLE != 0) && (U_CFG_HW_UART1_DMA_ENGINE == x) && (U_CFG_HW_UART1_DMA_STREAM == y)) || \
                                            ((U_CFG_HW_UART2_AVAILABLE != 0) && (U_CFG_HW_UART2_DMA_ENGINE == x) && (U_CFG_HW_UART2_DMA_STREAM == y)) || \
                                            ((U_CFG_HW_UART3_AVAILABLE != 0) && (U_CFG_HW_UART3_DMA_ENGINE == x) && (U_CFG_HW_UART3_DMA_STREAM == y)) || \
@@ -93,6 +121,34 @@
                                            ((U_CFG_HW_UART6_AVAILABLE != 0) && (U_CFG_HW_UART6_DMA_ENGINE == x) && (U_CFG_HW_UART6_DMA_STREAM == y)) || \
                                            ((U_CFG_HW_UART7_AVAILABLE != 0) && (U_CFG_HW_UART7_DMA_ENGINE == x) && (U_CFG_HW_UART7_DMA_STREAM == y)) || \
                                            ((U_CFG_HW_UART8_AVAILABLE != 0) && (U_CFG_HW_UART8_DMA_ENGINE == x) && (U_CFG_HW_UART8_DMA_STREAM == y)))
+
+// The size of the UART HW buffer, STM32U5 only.
+#define U_PORT_UART_HW_BUFFER_SIZE 8
+
+#ifndef U_PORT_UART_FIFO_THRESHOLD
+// The Rx FIFO threshold, not used in the DMA case.
+# define U_PORT_UART_FIFO_THRESHOLD (U_PORT_UART_HW_BUFFER_SIZE / 2)
+#endif
+
+// This will call a function named LL_LPUART_Xxx or LL_USART_Xxx,
+// as appopriate, with the argument pUartReg, depending on the value
+// of uart (which is 0 for the LPUART case).  So for instance:
+// U_PORT_FUNCTION_USART_OR_LPUART(Disable, pUartReg, 0) would
+// result in a call to LL_LPUART_Disable(pUartReg) while
+// U_PORT_FUNCTION_USART_OR_LPUART(Disable, pUartReg, 1) would
+// result in a call to LL_USART_Disable(pUartReg); for STM32F4
+// series MCUs, LPUART is not an option.
+#ifdef STM32U575xx
+# define U_PORT_FUNCTION_USART_OR_LPUART(functionName, pUartReg, uart, ...) ((uart) != 0 ? LL_USART_##functionName(pUartReg __VA_OPT__(,) __VA_ARGS__) : LL_LPUART_##functionName(pUartReg __VA_OPT__(,) __VA_ARGS__))
+#else
+# define U_PORT_FUNCTION_USART_OR_LPUART(functionName, pUartReg, uart,  ...) LL_USART_##functionName(pUartReg __VA_OPT__(,) __VA_ARGS__)
+#endif
+
+#ifndef U_PORT_CLOCK_SOURCE_LPUART_MORE_THAN_9600
+// The clock source to use for the LPUART if the rate required
+// is greater than 9600 (which it usually is).
+# define U_PORT_CLOCK_SOURCE_LPUART_MORE_THAN_9600 LL_RCC_LPUART1_CLKSOURCE_SYSCLK
+#endif
 
 /* ----------------------------------------------------------------
  * TYPES
@@ -108,9 +164,11 @@ typedef int32_t uPortUartEventData_t;
  */
 typedef struct {
     USART_TypeDef *pReg;
+#ifndef STM32U575xx
     uint32_t dmaEngine;
     uint32_t dmaStream;
     uint32_t dmaChannel;
+#endif
     IRQn_Type irq;
 } uPortUartConstData_t;
 
@@ -140,11 +198,12 @@ typedef struct {
     uint32_t eventBitMap;
 } uPortUartEvent_t;
 
-/** Function pointers for STM32Cube functions
+/** Function pointers for STM32Cube functions.
  */
 typedef void (*uClockEnFunc_t)(uint32_t);
 typedef void (*uDmaFunc_t)(DMA_TypeDef *);
 typedef uint32_t (*uDmaActiveFunc_t)(DMA_TypeDef *);
+typedef void (*llEnableDisableFunc_t)(USART_TypeDef *);
 
 /* ----------------------------------------------------------------
  * VARIABLES
@@ -161,30 +220,43 @@ static int32_t gNextHandle = 0;
 
 // Get the bus enable function for the given UART/USART.
 static const uClockEnFunc_t gLlApbClkEnable[] = {
-    0, // This to avoid having to -1 all the time
-    LL_APB2_GRP1_EnableClock,
-    LL_APB1_GRP1_EnableClock,
-    LL_APB1_GRP1_EnableClock,
-    LL_APB1_GRP1_EnableClock,
-    LL_APB1_GRP1_EnableClock,
-    LL_APB2_GRP1_EnableClock,
-    LL_APB1_GRP1_EnableClock,
-    LL_APB1_GRP1_EnableClock
+#ifdef STM32U575xx
+    LL_APB3_GRP1_EnableClock,  // We sneak in the single LPUART on STM32U5 here
+#else
+    NULL, // This to avoid having to -1 all the time
+#endif
+    LL_APB2_GRP1_EnableClock,  // USART1
+    LL_APB1_GRP1_EnableClock,  // USART2
+    LL_APB1_GRP1_EnableClock,  // USART3
+    LL_APB1_GRP1_EnableClock,  // UART4
+    LL_APB1_GRP1_EnableClock,  // UART5
+#ifndef STM32U575xx
+    LL_APB2_GRP1_EnableClock,  // STM32F4 USART6
+    LL_APB1_GRP1_EnableClock,  // STM32F4 UART7
+    LL_APB1_GRP1_EnableClock   // STM32F4 UART8
+#endif
 };
 
-// Get the LL driver peripheral number for a given UART/USART.
+// Get the LL driver peripheral number for a given UART/USART/LPUART.
 static const uint32_t gLlApbGrpPeriphUart[] = {
+#ifdef STM32U575xx
+    LL_APB3_GRP1_PERIPH_LPUART1,  // We sneak in the single LPUART on STM32U5 here
+#else
     0, // This to avoid having to -1 all the time
+#endif
     LL_APB2_GRP1_PERIPH_USART1,
     LL_APB1_GRP1_PERIPH_USART2,
     LL_APB1_GRP1_PERIPH_USART3,
     LL_APB1_GRP1_PERIPH_UART4,
     LL_APB1_GRP1_PERIPH_UART5,
+#ifndef STM32U575xx
     LL_APB2_GRP1_PERIPH_USART6,
     LL_APB1_GRP1_PERIPH_UART7,
     LL_APB1_GRP1_PERIPH_UART8
+#endif
 };
 
+#ifndef STM32U575xx
 // Get the LL driver peripheral number for a given DMA engine.
 static const uint32_t gLlApbGrpPeriphDma[] = {
     0, // This to avoid having to -1 all the time
@@ -194,25 +266,35 @@ static const uint32_t gLlApbGrpPeriphDma[] = {
 
 // Get the DMA base address for a given DMA engine
 static DMA_TypeDef *const gpDmaReg[] =  {
-    0,  // This to avoid having to -1 all the time
+    NULL,  // This to avoid having to -1 all the time
     DMA1,
     DMA2
 };
+#endif
 
 // Get the alternate function required on a GPIO line for a given UART.
 // Note: which function a GPIO line actually performs on that UART is
-// hard coded in the chip; for instance see table 12 of the STM32F437 data sheet.
+// hard coded in the chip; for instance see table 12 of the STM32F437
+// data sheet and table 27 of the STM32U575 data sheet.
 static const uint32_t gGpioAf[] = {
+#ifdef STM32U575xx
+    LL_GPIO_AF_8,  // We sneak in the single LPUART on STM32U5 here
+#else
     0, // This to avoid having to -1 all the time
+#endif
     LL_GPIO_AF_7,  // USART 1
     LL_GPIO_AF_7,  // USART 2
     LL_GPIO_AF_7,  // USART 3
     LL_GPIO_AF_8,  // UART 4
     LL_GPIO_AF_8,  // UART 5
-    LL_GPIO_AF_8,  // USART 6
-    LL_GPIO_AF_8,  // USART 7
-    LL_GPIO_AF_8
-}; // UART 8
+#ifndef STM32U575xx
+    LL_GPIO_AF_8,  // STM32F4 USART 6
+    LL_GPIO_AF_8,  // STM32F4 UART 7
+    LL_GPIO_AF_8   // STM32F4 UART 8
+#endif
+};
+
+#ifndef STM32U575xx
 
 // Table of stream IRQn for DMA engine 1
 static const IRQn_Type gDma1StreamIrq[] = {
@@ -341,43 +423,66 @@ static const uDmaActiveFunc_t gpLlDmaIsActiveFlagTc[] = {
     LL_DMA_IsActiveFlag_TC7
 };
 
+#endif // #ifndef STM32U575xx
+
 // Table of the constant data per UART.
-static const uPortUartConstData_t gUartCfg[] = {{}, // This to avoid having to -1 all the time
+static const uPortUartConstData_t gUartCfg[] = {
+#ifdef STM32U575xx
+    {
+        // STM32U5 single LPUART snuck-in here
+        LPUART1,
+        LPUART1_IRQn
+    },
+#else
+    {}, // This to avoid having to -1 all the time
+#endif
     {
         USART1,
+#ifndef STM32U575xx
         U_CFG_HW_UART1_DMA_ENGINE,
         U_CFG_HW_UART1_DMA_STREAM,
         U_CFG_HW_UART1_DMA_CHANNEL,
+#endif
         USART1_IRQn
     },
     {
         USART2,
+#ifndef STM32U575xx
         U_CFG_HW_UART2_DMA_ENGINE,
         U_CFG_HW_UART2_DMA_STREAM,
         U_CFG_HW_UART2_DMA_CHANNEL,
+#endif
         USART2_IRQn
     },
     {
         USART3,
+#ifndef STM32U575xx
         U_CFG_HW_UART3_DMA_ENGINE,
         U_CFG_HW_UART3_DMA_STREAM,
         U_CFG_HW_UART3_DMA_CHANNEL,
+#endif
         USART3_IRQn
     },
     {
         UART4,
+#ifndef STM32U575xx
         U_CFG_HW_UART4_DMA_ENGINE,
         U_CFG_HW_UART4_DMA_STREAM,
         U_CFG_HW_UART4_DMA_CHANNEL,
+#endif
         UART4_IRQn
     },
     {
         UART5,
+#ifndef STM32U575xx
         U_CFG_HW_UART5_DMA_ENGINE,
         U_CFG_HW_UART5_DMA_STREAM,
         U_CFG_HW_UART5_DMA_CHANNEL,
+#endif
         UART5_IRQn
-    },
+    }
+#ifndef STM32U575xx
+    ,
     {
         USART6,
         U_CFG_HW_UART6_DMA_ENGINE,
@@ -399,15 +504,18 @@ static const uPortUartConstData_t gUartCfg[] = {{}, // This to avoid having to -
         U_CFG_HW_UART8_DMA_CHANNEL,
         UART8_IRQn
     }
+#endif
 };
 
 // Table to make it possible for UART interrupts to get to the UART data
 // without having to trawl through a list.  +1 is for the usual reason.
 static uPortUartData_t *gpUart[U_PORT_MAX_NUM_UARTS + 1] = {NULL};
 
+#ifndef STM32U575xx
 // Table to make it possible for a DMA interrupt to
 // get to the UART data.  +1 is for the usual reason.
 static uPortUartData_t *gpDmaUart[U_PORT_MAX_NUM_DMA_ENGINES + 1][U_PORT_MAX_NUM_DMA_STREAMS] = {NULL};
+#endif
 
 /** Variable to keep track of the number of UARTs open.
  */
@@ -452,9 +560,11 @@ static uPortUartData_t *pAddUart(uPortUartData_t *pUartData)
         // Set the UART table up to point to it
         // so that the UART interrupt can find it
         gpUart[pUartData->uart] = *ppUartData;
-        // And set the other table up so that the
+#ifndef STM32U575xx
+        // For STM32F4, set the other table up so that the
         // DMA interrupt can find the UART data as well
         gpDmaUart[pUartData->pConstData->dmaEngine][pUartData->pConstData->dmaStream] = *ppUartData;
+#endif
     }
 
     return *ppUartData;
@@ -524,7 +634,9 @@ static bool removeUart(uPortUartData_t *pUartData)
         }
         // NULL the entries in the two tables
         gpUart[pList->uart] = NULL;
+#ifndef STM32U575xx
         gpDmaUart[pList->pConstData->dmaEngine][pList->pConstData->dmaStream] = NULL;
+#endif
         // Set the new head pointer if it's the head and free memory
         if (pList == gpUartDataHead) {
             gpUartDataHead = pList->pNext;
@@ -563,27 +675,36 @@ static void uartClose(int32_t handle)
 {
     uPortUartData_t *pUartData;
     USART_TypeDef *pUartReg;
+#ifndef STM32U575xx
     uint32_t dmaEngine;
     uint32_t dmaStream;
+#endif
 
     pUartData = pGetUartDataByHandle(handle);
     if (pUartData != NULL) {
 
         pUartReg = gUartCfg[pUartData->uart].pReg;
+#ifndef STM32U575xx
         dmaEngine = gUartCfg[pUartData->uart].dmaEngine;
         dmaStream = gUartCfg[pUartData->uart].dmaStream;
 
-        // Disable DMA and UART/USART interrupts
+        // Disable DMA interrupts
         NVIC_DisableIRQ(gpDmaStreamIrq[dmaEngine][dmaStream]);
+#endif
+
+        // Disable UART/USART/LPUART interrupts
         NVIC_DisableIRQ(gUartCfg[pUartData->uart].irq);
 
-        // Disable DMA and USART, waiting for DMA to be
-        // disabled first according to the note in
-        // section 10.3.17 of ST's RM0090.
+#ifndef STM32U575xx
+        // Disable DMA, waiting for DMA to be disabled
+        // first according to the note in section 10.3.17
+        // of ST's RM0090.
         LL_DMA_DisableStream(gpDmaReg[dmaEngine], dmaStream);
         while (LL_DMA_IsEnabledStream(gpDmaReg[dmaEngine], dmaStream)) {}
-        LL_USART_Disable(pUartReg);
-        LL_USART_DeInit(pUartReg);
+#endif
+        // Disable UART/USART/LPUART.
+        U_PORT_FUNCTION_USART_OR_LPUART(Disable, pUartReg, pUartData->uart);
+        U_PORT_FUNCTION_USART_OR_LPUART(DeInit, pUartReg, pUartData->uart);
 
         // Remove the callback if there is one
         if (pUartData->eventQueueHandle >= 0) {
@@ -599,27 +720,29 @@ static void uartClose(int32_t handle)
     }
 }
 
-// Deal with data already received by the DMA; this
-// code is run in INTERRUPT CONTEXT.
+// Deal with data received either (a) by DMA or (b)
+// directly from the UART interrupt in the non-DMA
+// case.
+// This code is run in INTERRUPT CONTEXT.
 static inline void dataIrqHandler(uPortUartData_t *pUartData,
-                                  char *pRxBufferWriteDma)
+                                  char *pRxBufferWriteNew)
 {
     uPortUartEventData_t uartSizeOrError = 0;
 
     // Work out how much new data there is
-    if (pUartData->pRxBufferWrite < pRxBufferWriteDma) {
-        // The current write pointer is behind the DMA write pointer,
+    if (pUartData->pRxBufferWrite < pRxBufferWriteNew) {
+        // The current write pointer is behind the new write pointer,
         // the number of bytes received is simply the difference
-        uartSizeOrError = pRxBufferWriteDma - pUartData->pRxBufferWrite;
-    } else if (pUartData->pRxBufferWrite > pRxBufferWriteDma) {
-        // The current write pointer is ahead of the DMA
+        uartSizeOrError = pRxBufferWriteNew - pUartData->pRxBufferWrite;
+    } else if (pUartData->pRxBufferWrite > pRxBufferWriteNew) {
+        // The current write pointer is ahead of the new
         // write pointer, the number of bytes received
         // is up to the end of the buffer then wrap
-        // around to the DMA write pointer pointer
+        // around to the new write pointer pointer
         uartSizeOrError = (pUartData->pRxBufferStart +
                            pUartData->rxBufferSizeBytes -
                            pUartData->pRxBufferWrite) +
-                          (pRxBufferWriteDma - pUartData->pRxBufferStart);
+                          (pRxBufferWriteNew - pUartData->pRxBufferStart);
     }
 
     // Move the write pointer on
@@ -645,7 +768,8 @@ static inline void dataIrqHandler(uPortUartData_t *pUartData,
  * PUBLIC FUNCTIONS: INTERRUPT HANDLERS
  * -------------------------------------------------------------- */
 
-// DMA interrupt handler
+#ifndef STM32U575xx
+// DMA interrupt handler for STM32F4.
 void dmaIrqHandler(uint32_t dmaEngine, uint32_t dmaStream)
 {
     DMA_TypeDef *const pDmaReg = gpDmaReg[dmaEngine];
@@ -683,34 +807,80 @@ void dmaIrqHandler(uint32_t dmaEngine, uint32_t dmaStream)
         dataIrqHandler(pUartData, pRxBufferWriteDma);
     }
 }
+#endif // #ifndef STM32U575xx
 
-// UART interrupt handler
+// UART interrupt handler.
+// Note: you might expect U_PORT_FUNCTION_USART_OR_LPUART() to
+// be used here but this is interrupt space and we don't want
+// to be switching between the two function types at run-time;
+// instead we have tested this and it works for both cases with
+// the LL_USART_Xxx() calls and so we use only those.
 void uartIrqHandler(uPortUartData_t *pUartData)
 {
     const uPortUartConstData_t *pUartCfg = pUartData->pConstData;
     USART_TypeDef *const pUartReg = pUartCfg->pReg;
+    bool idle;
+    char *pRxBufferWriteNew;
 
+    // Capture the idle flag here since we need it for both
+    // the DMA and non-DMA cases
+    idle = LL_USART_IsEnabledIT_IDLE(pUartReg) &&
+           LL_USART_IsActiveFlag_IDLE(pUartReg);
+    // Clear the idle flag
+    LL_USART_ClearFlag_IDLE(pUartReg);
+
+#ifndef STM32U575xx
     // Check for IDLE line interrupt
-    if (LL_USART_IsEnabledIT_IDLE(pUartReg) &&
-        LL_USART_IsActiveFlag_IDLE(pUartReg)) {
-        char *pRxBufferWriteDma;
-
-        // Clear flag
-        LL_USART_ClearFlag_IDLE(pUartReg);
-
+    if (idle) {
         // Get the new DMA pointer
         // LL_DMA_GetDataLength() returns a value in the sense
         // of "number of bytes left to be transmitted", so for
         // an Rx DMA we have to subtract the number from
         // the Rx buffer size
-        pRxBufferWriteDma = pUartData->pRxBufferStart +
+        pRxBufferWriteNew = pUartData->pRxBufferStart +
                             pUartData->rxBufferSizeBytes -
                             LL_DMA_GetDataLength(gpDmaReg[pUartCfg->dmaEngine],
                                                  pUartCfg->dmaStream);
+
         // Deal with the data
-        dataIrqHandler(pUartData, pRxBufferWriteDma);
+        dataIrqHandler(pUartData, pRxBufferWriteNew);
+    }
+#else
+    // No DMA in this case: the UART has a HW buffer that
+    // we pull the data out of and into the rx buffer
+    if (idle ||
+        (LL_USART_IsEnabledIT_RXFT(pUartReg) &&
+         LL_USART_IsActiveFlag_RXFT(pUartReg))) {
+
+        // Note: no need to clear the RXFT flag, reading data does that
+
+        // Either we have hit the threshold or we are idle;
+        // read data until RX FIFO Not Empty is cleared
+        pRxBufferWriteNew = (char *) pUartData->pRxBufferWrite;
+        char *pRxBufferWriteEnd = pUartData->pRxBufferStart + pUartData->rxBufferSizeBytes;
+        while (LL_USART_IsActiveFlag_RXNE_RXFNE(pUartReg)) {
+            *pRxBufferWriteNew = LL_USART_ReceiveData8(pUartReg);
+            pRxBufferWriteNew++;
+            if (pRxBufferWriteNew >= pRxBufferWriteEnd) {
+                pRxBufferWriteNew = pUartData->pRxBufferStart;
+            }
+        }
+
+        // Deal with the data
+        dataIrqHandler(pUartData, pRxBufferWriteNew);
+    }
+#endif
+}
+
+#if defined(STM32U575xx) && U_CFG_HW_LPUART1_AVAILABLE
+// LPUART 1 interrupt handler, which we slot-in at index 0.
+void LPUART1_IRQHandler()
+{
+    if (gpUart[0] != NULL) {
+        uartIrqHandler(gpUart[0]);
     }
 }
+#endif
 
 #if U_CFG_HW_UART1_AVAILABLE
 // USART 1 interrupt handler.
@@ -762,7 +932,9 @@ void UART5_IRQHandler()
 }
 #endif
 
-#if U_CFG_HW_UART6_AVAILABLE
+#ifndef STM32U575xx
+
+# if U_CFG_HW_UART6_AVAILABLE
 // USART 6 interrupt handler.
 void USART6_IRQHandler()
 {
@@ -770,9 +942,9 @@ void USART6_IRQHandler()
         uartIrqHandler(gpUart[6]);
     }
 }
-#endif
+# endif
 
-#if U_CFG_HW_UART7_AVAILABLE
+# if U_CFG_HW_UART7_AVAILABLE
 // UART 7 interrupt handler.
 void UART7_IRQHandler()
 {
@@ -780,9 +952,9 @@ void UART7_IRQHandler()
         uartIrqHandler(gpUart[7]);
     }
 }
-#endif
+# endif
 
-#if U_CFG_HW_UART8_AVAILABLE
+# if U_CFG_HW_UART8_AVAILABLE
 // UART 8 interrupt handler.
 void UART8_IRQHandler()
 {
@@ -790,119 +962,121 @@ void UART8_IRQHandler()
         uartIrqHandler(gpUart[8]);
     }
 }
-#endif
+# endif
 
-#if U_PORT_DMA_INTERRUPT_IN_USE(1, 0)
+# if U_PORT_DMA_INTERRUPT_IN_USE(1, 0)
 void DMA1_Stream0_IRQHandler()
 {
     dmaIrqHandler(1, 0);
 }
-#endif
+# endif
 
-#if U_PORT_DMA_INTERRUPT_IN_USE(1, 1)
+# if U_PORT_DMA_INTERRUPT_IN_USE(1, 1)
 void DMA1_Stream1_IRQHandler()
 {
     dmaIrqHandler(1, 1);
 }
-#endif
+# endif
 
-#if U_PORT_DMA_INTERRUPT_IN_USE(1, 2)
+# if U_PORT_DMA_INTERRUPT_IN_USE(1, 2)
 void DMA1_Stream2_IRQHandler()
 {
     dmaIrqHandler(1, 2);
 }
-#endif
+# endif
 
-#if U_PORT_DMA_INTERRUPT_IN_USE(1, 3)
+# if U_PORT_DMA_INTERRUPT_IN_USE(1, 3)
 void DMA1_Stream3_IRQHandler()
 {
     dmaIrqHandler(1, 3);
 }
-#endif
+# endif
 
-#if U_PORT_DMA_INTERRUPT_IN_USE(1, 4)
+# if U_PORT_DMA_INTERRUPT_IN_USE(1, 4)
 void DMA1_Stream4_IRQHandler()
 {
     dmaIrqHandler(1, 4);
 }
-#endif
+# endif
 
-#if U_PORT_DMA_INTERRUPT_IN_USE(1, 5)
+# if U_PORT_DMA_INTERRUPT_IN_USE(1, 5)
 void DMA1_Stream5_IRQHandler()
 {
     dmaIrqHandler(1, 5);
 }
-#endif
+# endif
 
-#if U_PORT_DMA_INTERRUPT_IN_USE(1, 6)
+# if U_PORT_DMA_INTERRUPT_IN_USE(1, 6)
 void DMA1_Stream6_IRQHandler()
 {
     dmaIrqHandler(1, 6);
 }
-#endif
+# endif
 
-#if U_PORT_DMA_INTERRUPT_IN_USE(1, 7)
+# if U_PORT_DMA_INTERRUPT_IN_USE(1, 7)
 void DMA1_Stream7_IRQHandler()
 {
     dmaIrqHandler(1, 7);
 }
-#endif
+# endif
 
-#if U_PORT_DMA_INTERRUPT_IN_USE(2, 0)
+# if U_PORT_DMA_INTERRUPT_IN_USE(2, 0)
 void DMA2_Stream0_IRQHandler()
 {
     dmaIrqHandler(2, 0);
 }
-#endif
+# endif
 
-#if U_PORT_DMA_INTERRUPT_IN_USE(2, 1)
+# if U_PORT_DMA_INTERRUPT_IN_USE(2, 1)
 void DMA2_Stream1_IRQHandler()
 {
     dmaIrqHandler(2, 1);
 }
-#endif
+# endif
 
-#if U_PORT_DMA_INTERRUPT_IN_USE(2, 2)
+# if U_PORT_DMA_INTERRUPT_IN_USE(2, 2)
 void DMA2_Stream2_IRQHandler()
 {
     dmaIrqHandler(2, 2);
 }
-#endif
+# endif
 
-#if U_PORT_DMA_INTERRUPT_IN_USE(2, 3)
+# if U_PORT_DMA_INTERRUPT_IN_USE(2, 3)
 void DMA2_Stream3_IRQHandler()
 {
     dmaIrqHandler(2, 3);
 }
-#endif
+# endif
 
-#if U_PORT_DMA_INTERRUPT_IN_USE(2, 4)
+# if U_PORT_DMA_INTERRUPT_IN_USE(2, 4)
 void DMA2_Stream4_IRQHandler()
 {
     dmaIrqHandler(2, 4);
 }
-#endif
+# endif
 
-#if U_PORT_DMA_INTERRUPT_IN_USE(2, 5)
+# if U_PORT_DMA_INTERRUPT_IN_USE(2, 5)
 void DMA2_Stream5_IRQHandler()
 {
     dmaIrqHandler(2, 5);
 }
-#endif
+# endif
 
-#if U_PORT_DMA_INTERRUPT_IN_USE(2, 6)
+# if U_PORT_DMA_INTERRUPT_IN_USE(2, 6)
 void DMA2_Stream6_IRQHandler()
 {
     dmaIrqHandler(2, 6);
 }
-#endif
+# endif
 
-#if U_PORT_DMA_INTERRUPT_IN_USE(2, 7)
+# if U_PORT_DMA_INTERRUPT_IN_USE(2, 7)
 void DMA2_Stream7_IRQHandler()
 {
     dmaIrqHandler(2, 7);
 }
-#endif
+# endif
+
+#endif // #ifndef STM32U575xx
 
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
@@ -958,19 +1132,21 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
     LL_USART_InitTypeDef usartInitStruct = {0};
     LL_GPIO_InitTypeDef gpioInitStruct = {0};
     USART_TypeDef *pUartReg;
+    IRQn_Type uartIrq;
+#ifndef STM32U575xx
     uint32_t dmaEngine;
     DMA_TypeDef *pDmaReg;
     uint32_t dmaStream;
     uint32_t dmaChannel;
-    IRQn_Type uartIrq;
     IRQn_Type dmaIrq;
+#endif
 
     if (gMutex != NULL) {
 
         U_PORT_MUTEX_LOCK(gMutex);
 
         handleOrErrorCode = U_ERROR_COMMON_INVALID_PARAMETER;
-        if ((uart > 0) && (uart <= U_PORT_MAX_NUM_UARTS) &&
+        if ((uart >= 0) && (uart <= U_PORT_MAX_NUM_UARTS) &&
             (baudRate >= 0) && (rxBufferSizeBytes > 0) &&
             (pinRx >= 0) && (pinTx >= 0)) {
             if (pGetUartDataByUart(uart) == NULL) {
@@ -992,22 +1168,39 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
                     uartData.eventQueueHandle = -1;
 
                     pUartReg = gUartCfg[uart].pReg;
+                    uartIrq = gUartCfg[uart].irq;
+#ifndef STM32U575xx
                     dmaEngine = gUartCfg[uart].dmaEngine;
                     pDmaReg = gpDmaReg[dmaEngine];
                     dmaStream = gUartCfg[uart].dmaStream;
                     dmaChannel = gUartCfg[uart].dmaChannel;
-                    uartIrq = gUartCfg[uart].irq;
                     dmaIrq = gpDmaStreamIrq[dmaEngine][dmaStream];
-
+#endif
                     // Now do the platform stuff
                     handleOrErrorCode = U_ERROR_COMMON_PLATFORM;
 
-                    // Enable clock to the UART/USART HW block
+#ifdef STM32U575xx
+                    if (uart == 0) {
+                        if ((baudRate <= 9600) && LL_RCC_LSE_IsReady()) {
+                            // Use the low speed clock for the LPUART
+                            LL_RCC_SetLPUARTClockSource(LL_RCC_LPUART1_CLKSOURCE_LSE);
+                        } else {
+                            // For baud rates higher than 9600 we need the LPUART
+                            // to be clocked from somewhere other than the low
+                            // speed LSE clock
+                            LL_RCC_SetLPUARTClockSource(U_PORT_CLOCK_SOURCE_LPUART_MORE_THAN_9600);
+                        }
+                    }
+#endif
+
+                    // Enable clock to the UART/USART/LPUART HW block
                     gLlApbClkEnable[uart](gLlApbGrpPeriphUart[uart]);
 
+#ifndef STM32U575xx
                     // Enable clock to the DMA HW block (all DMAs
                     // are on bus 1)
                     LL_AHB1_GRP1_EnableClock(gLlApbGrpPeriphDma[dmaEngine]);
+#endif
 
                     // Configure the GPIOs
                     // Note, using the LL driver rather than our
@@ -1049,14 +1242,13 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
                     if ((pinCts >= 0) && (platformError == SUCCESS)) {
                         uPortPrivateGpioEnableClock(pinCts);
                         gpioInitStruct.Pin = 1U << U_PORT_STM32F4_GPIO_PIN(pinCts);
-                        // The u-blox C030-R412M board requires a pull-down here
                         gpioInitStruct.Pull = LL_GPIO_PULL_DOWN;
                         platformError = LL_GPIO_Init(pUPortPrivateGpioGetReg(pinCts),
                                                      &gpioInitStruct);
                     }
 
-                    // Configure DMA
                     if (platformError == SUCCESS) {
+#ifndef STM32U575xx
                         // Set the channel on our DMA/Stream
                         LL_DMA_SetChannelSelection(pDmaReg, dmaStream,
                                                    gLlDmaChannel[dmaChannel]);
@@ -1079,7 +1271,7 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
                                              LL_DMA_PDATAALIGN_BYTE);
                         LL_DMA_SetMemorySize(pDmaReg, dmaStream,
                                              LL_DMA_MDATAALIGN_BYTE);
-                        // Not FIFO mode, whatever that is
+                        // Not FIFO mode, given the paucity of buffer on STM32F4
                         LL_DMA_DisableFifoMode(pDmaReg, dmaStream);
 
                         // Attach the DMA to the UART at one end
@@ -1111,8 +1303,8 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
 
                         // Go!
                         NVIC_EnableIRQ(dmaIrq);
-
-                        // Initialise the UART/USART
+#endif // #ifndef STM32U575xx
+                        // Initialise the UART/USART/LPUART
                         usartInitStruct.BaudRate = baudRate;
                         usartInitStruct.DataWidth = LL_USART_DATAWIDTH_8B;
                         usartInitStruct.StopBits = LL_USART_STOPBITS_1;
@@ -1132,39 +1324,60 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
                             }
                         }
                         usartInitStruct.OverSampling = LL_USART_OVERSAMPLING_16;
+#ifndef STM32U575xx
                         platformError = LL_USART_Init(pUartReg, &usartInitStruct);
+#else
+                        if (uart == 0) {
+                            // The LPUART init structure is identical to that of the
+                            // USART init structure except that it is missing the
+                            // OverSampling field on the end, hence a simple cast
+                            // here is sufficient
+                            platformError = LL_LPUART_Init(pUartReg, (LL_LPUART_InitTypeDef *) &usartInitStruct);
+                        } else {
+                            platformError = LL_USART_Init(pUartReg, &usartInitStruct);
+                        }
+#endif
                     }
 
                     // Connect it all together
                     if (platformError == SUCCESS) {
+#ifndef STM32U575xx
                         // Asynchronous UART/USART with DMA on the receive
-                        // and include only the idle line interrupt,
-                        // DMA does the rest
                         LL_USART_ConfigAsyncMode(pUartReg);
                         LL_USART_EnableDMAReq_RX(pUartReg);
-                        LL_USART_EnableIT_IDLE(pUartReg);
+#else
+                        // We have a HW FIFO, woohoo!
+                        U_PORT_FUNCTION_USART_OR_LPUART(EnableFIFO, pUartReg, uart);
+                        // Set a FIFO threshold and enable an interrupt on it
+                        U_PORT_FUNCTION_USART_OR_LPUART(SetRXFIFOThreshold, pUartReg, uart, U_PORT_UART_FIFO_THRESHOLD);
+                        U_PORT_FUNCTION_USART_OR_LPUART(EnableIT_RXFT, pUartReg, uart);
+#endif
+                        // Both approaches need the idle interrupt
+                        U_PORT_FUNCTION_USART_OR_LPUART(EnableIT_IDLE, pUartReg, uart);
 
-                        // Enable the UART/USART interrupt
+                        // Enable the UART/USART/LPUART interrupt
                         NVIC_SetPriority(uartIrq,
                                          NVIC_EncodePriority(NVIC_GetPriorityGrouping(),
                                                              5, 1));
-                        LL_USART_ClearFlag_IDLE(pUartReg);
+                        U_PORT_FUNCTION_USART_OR_LPUART(ClearFlag_IDLE, pUartReg, uart);
                         NVIC_ClearPendingIRQ(uartIrq);
                         NVIC_EnableIRQ(uartIrq);
 
-                        // Enable DMA and UART/USART
+#ifndef STM32U575xx
+                        // Enable DMA
                         LL_DMA_EnableStream(pDmaReg, dmaStream);
-                        LL_USART_Enable(pUartReg);
-                    }
-
-                    // Finally, add the UART to the list
-                    if (platformError == SUCCESS) {
+#endif
+                        // Add the UART to the list before we enable it, otherwise
+                        // we might get stuck in an unserviced interrupt
                         handleOrErrorCode = U_ERROR_COMMON_NO_MEMORY;
                         uartData.uartHandle = nextHandleGet();
                         if (pAddUart(&uartData) != NULL) {
                             handleOrErrorCode = uartData.uartHandle;
                             U_ATOMIC_INCREMENT(&gResourceAllocCount);
                         }
+
+                        // Enable UART/USART/LPUART
+                        U_PORT_FUNCTION_USART_OR_LPUART(Enable, pUartReg, uart);
                     }
                 }
 
@@ -1316,6 +1529,7 @@ int32_t uPortUartWrite(int32_t handle,
     USART_TypeDef *pReg;
     bool txOk = true;
     uTimeoutStart_t timeoutStart;
+    int32_t uart;
 
     if (gMutex != NULL) {
 
@@ -1324,12 +1538,22 @@ int32_t uPortUartWrite(int32_t handle,
         sizeOrErrorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         pUartData = pGetUartDataByHandle(handle);
         if (pUartData != NULL) {
-            pReg = gUartCfg[pUartData->uart].pReg;
+            uart = pUartData->uart;
+            pReg = gUartCfg[uart].pReg;
             // Do the blocking send
             sizeOrErrorCode = (int32_t) sizeBytes;
             timeoutStart = uTimeoutStart();
-            while ((sizeBytes > 0) && (txOk)) {
-                LL_USART_TransmitData8(pReg, *pDataPtr);
+#ifdef STM32U575xx
+            // In case we are in autonomous mode, set the
+            // number of data bits that are intended to be
+            // transmitted
+            U_PORT_FUNCTION_USART_OR_LPUART(SetNbTxData, pReg, uart,
+                                            sizeBytes >= UINT16_MAX ?
+                                            UINT16_MAX : sizeBytes);
+#endif
+            while ((sizeBytes > 0) && txOk) {
+                U_PORT_FUNCTION_USART_OR_LPUART(TransmitData8, pReg,
+                                                uart, *pDataPtr);
                 // Hint when debugging: if your code stops dead here
                 // it is because the CTS line of this MCU's UART HW
                 // is floating high, stopping the UART from
@@ -1338,7 +1562,8 @@ int32_t uPortUartWrite(int32_t handle,
                 // it or the CTS pin when configuring this UART
                 // was wrong and it's not connected to the right
                 // thing.
-                while (!(txOk = LL_USART_IsActiveFlag_TXE(pReg)) &&
+                while (!(txOk = U_PORT_FUNCTION_USART_OR_LPUART(IsActiveFlag_TXE_TXFNF,
+                                                                pReg, uart)) &&
                        !uTimeoutExpiredMs(timeoutStart,
                                           U_PORT_UART_WRITE_TIMEOUT_MS)) {}
                 if (txOk) {
@@ -1348,7 +1573,8 @@ int32_t uPortUartWrite(int32_t handle,
             }
             // Wait for transmission to complete so that we don't
             // write over stuff the next time
-            while (!LL_USART_IsActiveFlag_TC(pReg) &&
+            while (!U_PORT_FUNCTION_USART_OR_LPUART(IsActiveFlag_TC, pReg,
+                                                    uart) &&
                    !uTimeoutExpiredMs(timeoutStart,
                                       U_PORT_UART_WRITE_TIMEOUT_MS)) {}
             sizeOrErrorCode -= (int32_t) sizeBytes;

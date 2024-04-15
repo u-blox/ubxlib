@@ -1,6 +1,6 @@
 from invoke import Collection, Config
 from scripts import u_utils
-from . import nrfconnect, stm32cubef4, esp_idf, automation, linux
+from . import nrfconnect, stm32cube, esp_idf, automation, linux
 
 ns = Collection()
 
@@ -11,7 +11,7 @@ cfg['cfg_dir'] = u_utils.AUTOMATION_DIR
 
 ns.configure(cfg)
 ns.add_collection(nrfconnect)
-ns.add_collection(stm32cubef4)
+ns.add_collection(stm32cube)
 ns.add_collection(esp_idf)
 ns.add_collection(automation)
 ns.add_collection(linux)

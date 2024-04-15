@@ -15,7 +15,7 @@
  */
 
 /** @file
- * @brief Implementation of the port SPI API for the STM32F4 platform.
+ * @brief Implementation of the port SPI API for the STM32 platform.
  */
 
 #include "stddef.h"
@@ -32,11 +32,19 @@
 #include "u_port_os.h"
 #include "u_port_spi.h"
 
-#include "stm32f4xx_ll_bus.h"
-#include "stm32f4xx_ll_rcc.h"
-#include "stm32f4xx_ll_gpio.h"
-#include "stm32f4xx_ll_spi.h"
-#include "stm32f4xx_hal_spi.h"
+#ifdef STM32U575xx
+# include "stm32u5xx_ll_bus.h"
+# include "stm32u5xx_ll_rcc.h"
+# include "stm32u5xx_ll_gpio.h"
+# include "stm32u5xx_ll_spi.h"
+# include "stm32u5xx_hal_spi.h"
+#else
+# include "stm32f4xx_ll_bus.h"
+# include "stm32f4xx_ll_rcc.h"
+# include "stm32f4xx_ll_gpio.h"
+# include "stm32f4xx_ll_spi.h"
+# include "stm32f4xx_hal_spi.h"
+#endif
 
 #include "u_port_private.h"      // Down here 'cos it needs GPIO_TypeDef
 
@@ -93,9 +101,11 @@ static SPI_TypeDef *const gpSpiReg[] = {NULL,  // This to avoid having to -1
                                         SPI1,
                                         SPI2,
                                         SPI3,
+#ifndef STM32U575xx
                                         SPI4,
                                         SPI5,
                                         SPI6
+#endif
                                        };
 
 /** Storage for the SPI instances.
@@ -145,6 +155,7 @@ static int32_t clockEnable(const SPI_TypeDef *pReg)
             __HAL_RCC_SPI3_CLK_ENABLE();
             errorCodeOrSpi = (int32_t) U_ERROR_COMMON_SUCCESS;
             break;
+#ifndef STM32U575xx
         case 4:
             __HAL_RCC_SPI4_CLK_ENABLE();
             errorCodeOrSpi = (int32_t) U_ERROR_COMMON_SUCCESS;
@@ -157,6 +168,7 @@ static int32_t clockEnable(const SPI_TypeDef *pReg)
             __HAL_RCC_SPI6_CLK_ENABLE();
             errorCodeOrSpi = (int32_t) U_ERROR_COMMON_SUCCESS;
             break;
+#endif
         default:
             break;
     }
@@ -183,6 +195,7 @@ static int32_t clockDisable(const SPI_TypeDef *pReg)
             __HAL_RCC_SPI3_CLK_DISABLE();
             errorCodeOrSpi = (int32_t) U_ERROR_COMMON_SUCCESS;
             break;
+#ifndef STM32U575xx
         case 4:
             __HAL_RCC_SPI4_CLK_DISABLE();
             errorCodeOrSpi = (int32_t) U_ERROR_COMMON_SUCCESS;
@@ -195,6 +208,7 @@ static int32_t clockDisable(const SPI_TypeDef *pReg)
             __HAL_RCC_SPI6_CLK_DISABLE();
             errorCodeOrSpi = (int32_t) U_ERROR_COMMON_SUCCESS;
             break;
+#endif
         default:
             break;
     }
@@ -220,6 +234,7 @@ static uint32_t getPeripheralClock(const SPI_TypeDef *pReg)
         case 3:
             clock = rccClocks.PCLK1_Frequency;
             break;
+#ifndef STM32U575xx
         case 4:
             clock = rccClocks.PCLK2_Frequency;
             break;
@@ -229,6 +244,7 @@ static uint32_t getPeripheralClock(const SPI_TypeDef *pReg)
         case 6:
             clock = rccClocks.PCLK2_Frequency;
             break;
+#endif
         default:
             break;
     }
@@ -311,7 +327,10 @@ static int32_t configureSpi(SPI_TypeDef *pReg,
     // Baud rate control is a 3-bit value where 0 means /2, 1 means /4, etc.
     if ((powerOfTwoClockDivisor > 0) && (powerOfTwoClockDivisor <= 8)) {
         powerOfTwoClockDivisor--;
+#ifndef STM32U575xx
+        // TODO
         LL_SPI_SetBaudRatePrescaler(pReg, powerOfTwoClockDivisor << SPI_CR1_BR_Pos);
+#endif
         // Set clock polarity and phase
         if ((pDevice->mode & U_COMMON_SPI_MODE_CPOL_BIT_MASK) == U_COMMON_SPI_MODE_CPOL_BIT_MASK) {
             LL_SPI_SetClockPolarity(pReg, LL_SPI_POLARITY_HIGH);
@@ -387,10 +406,16 @@ static int32_t transfer(int32_t spi, const char *pSend, size_t bytesToSend,
                 LL_SPI_TransmitData8(pReg, *pSend);
             }
             // Wait for the byte to be sent
+#ifndef STM32U575xx
+            // TODO
             while (!LL_SPI_IsActiveFlag_TXE(pReg)) {}
+#endif
             if (bytesToReceive > 0) {
                 // Wait for a byte to be received
+#ifndef STM32U575xx
+                // TODO
                 while (!LL_SPI_IsActiveFlag_RXNE(pReg)) {}
+#endif
                 // Read it (which will reset RXNE)
                 if (wordSize > 1) {
                     *(uint16_t *) pReceive = LL_SPI_ReceiveData16(pReg);
@@ -425,8 +450,11 @@ static void getDevice(int32_t spi, uCommonSpiControllerDevice_t *pDevice)
 
     memset(pDevice, 0, sizeof(*pDevice));
     pDevice->pinSelect = gSpiData[spi].pinSelect;
+#ifndef STM32U575xx
+    // TODO
     pDevice->frequencyHertz = getPeripheralClock(pReg) >> ((LL_SPI_GetBaudRatePrescaler(
                                                                 pReg) >> SPI_CR1_BR_Pos) + 1);
+#endif
     if (LL_SPI_GetClockPolarity(pReg) == LL_SPI_POLARITY_HIGH) {
         pDevice->mode |= U_COMMON_SPI_MODE_CPOL_BIT_MASK;
     }

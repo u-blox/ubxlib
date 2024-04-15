@@ -119,6 +119,7 @@
  */
 U_PORT_TEST_FUNCTION("[preamble]", "preambleHeapDefence")
 {
+    int32_t x;
 #if U_CFG_ENABLE_LOGGING
     int32_t heapPlatformLoss;
 #endif
@@ -137,12 +138,18 @@ U_PORT_TEST_FUNCTION("[preamble]", "preambleHeapDefence")
 
     // Print out the heap and stack usage before we've done
     // anything: useful information for RAM usage calculations
-    U_TEST_PRINT_LINE("at start(ish) of day main task"
-                      " stack had a minimum of %d byte(s) free.",
-                      uPortTaskStackMinFree(NULL));
-    U_TEST_PRINT_LINE("at start(ish) of day heap had a"
-                      " minimum of %d byte(s) free.",
-                      uPortGetHeapMinFree());
+    x = uPortTaskStackMinFree(NULL);
+    if (x >= 0) {
+        U_TEST_PRINT_LINE("at start(ish) of day main task"
+                          " stack had a minimum of %d byte(s) free.",
+                          uPortTaskStackMinFree(NULL));
+    }
+    x = uPortGetHeapMinFree();
+    if (x >= 0) {
+        U_TEST_PRINT_LINE("at start(ish) of day heap had a"
+                          " minimum of %d byte(s) free.",
+                          uPortGetHeapMinFree());
+    }
 
 #if U_CFG_ENABLE_LOGGING
     heapPlatformLoss = uPortGetHeapFree();

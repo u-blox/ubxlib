@@ -15,7 +15,11 @@
  */
 
 /** @file
- * @brief Implementation of the port OS API for the STM32F4 platform.
+ * @brief Implementation of the port OS API for the STM32F4 platform;
+ * this assumes FreeRTOS, the RTOS pre-integrated by ST for STM32F4,
+ * plus a little CMSIS but not all of it as CMSIS (version 1 at least)
+ * is too limited.  See u_port_os_pure_cmsis.c for the implementation
+ * of the OS port API for the STM32U5 platform.
  */
 
 #ifdef U_CFG_OVERRIDE
@@ -85,8 +89,13 @@
 #include "queue.h"
 #include "timers.h"
 
-#include "stm32f4xx_hal.h"
-#include "stm32f4xx_hal_gpio.h"
+#ifdef STM32U575xx
+# include "stm32u5xx_hal.h"
+# include "stm32u5xx_hal_gpio.h"
+#else
+# include "stm32f4xx_hal.h"
+# include "stm32f4xx_hal_gpio.h"
+#endif
 
 #include "u_port_private.h"  // Down here 'cos it needs GPIO_TypeDef
 

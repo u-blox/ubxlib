@@ -224,6 +224,7 @@ def parse_backtrace(ctx, elf_file, line):
 @task(
     pre=[check_installation],
     help={
+        "toolchain": "Included only for compatibility with other analyzers, ignored in this case",
         "board_name": f"Zephyr board name (default: {DEFAULT_BOARD_NAME})",
         "cmake_dir": f"CMake project directory to build; if not specified cmake_base_dir will apply",
         "cmake_base_dir": f"The base CMake project directory, used if cmake_dir is not provided (default: {DEFAULT_CMAKE_BASE_DIR}); to this will be appended an underscore and then the MCU name for the board",
@@ -233,7 +234,7 @@ def parse_backtrace(ctx, elf_file, line):
         "features": "Feature list, e.g. \"cell short_range\" to leave out gnss; overrides the environment variable UBXLIB_FEATURES"
     }
 )
-def analyze(ctx, board_name=DEFAULT_BOARD_NAME, cmake_dir=None,
+def analyze(ctx, toolchain="", board_name=DEFAULT_BOARD_NAME, cmake_dir=None,
             cmake_base_dir=DEFAULT_CMAKE_BASE_DIR,
             output_name=DEFAULT_OUTPUT_NAME, build_dir=DEFAULT_BUILD_DIR,
             u_flags=None, features=None):

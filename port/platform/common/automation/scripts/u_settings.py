@@ -163,8 +163,8 @@ __DEFAULT_SETTINGS["CONNECTION_INSTANCE_31" + __SETTINGS_POSTFIX_AGENT_SPECIFIC]
      "debugger": "066DFF313937424757082031"}
 __DEFAULT_SETTINGS["CONNECTION_INSTANCE_32" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = \
     {"serial_port": ("/dev/serial/by-id/"
-                     "usb-STMicroelectronics_STLINK-V3_004800273532510F31333430-if02"),
-     "debugger": "004800273532510F31333430"}
+                     "usb-STMicroelectronics_STLINK-V3_003E004C3532510F31333430-if02"),
+     "debugger": "003E004C3532510F31333430"}
 __DEFAULT_SETTINGS["CONNECTION_INSTANCE_33" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = \
     {"serial_port": "/dev/silabs_cp210x_uart"}
 # u_data.py

@@ -452,9 +452,12 @@ def buildAndTestPipeline(instance_str, json_entry, filter) {
                             sh(script: "echo 0 > sudo tee /sys/bus/usb/devices/1-1.3/authorized")
                             sh(script: "echo 0 > sudo tee /sys/bus/usb/devices/1-1.4/authorized")
                             // Set return status to true so that it doesn't cause an exception if this instance doesn't
-                            // happen to have a C030 board or an STM32F407 Discovery board or a Segger J-Link attached
+                            // happen to have a C030 board or an STM32F407 Discovery board, or any number of other ST
+                            // boards, or a Segger J-Link attached
                             sh(script: "sudo udisksctl power-off --block-device  /dev/disk/by-label/UBLOX-R412M", returnStatus : true)
                             sh(script: "sudo udisksctl power-off --block-device  /dev/disk/by-label/DIS_F407VG", returnStatus : true)
+                            sh(script: "sudo udisksctl power-off --block-device  /dev/disk/by-label/NOD_U575ZI", returnStatus : true)
+                            sh(script: "sudo udisksctl power-off --block-device  /dev/disk/by-label/NOD_F767ZI", returnStatus : true)
                             sh(script: "sudo udisksctl power-off --block-device  /dev/disk/by-label/JLINK", returnStatus : true)
                             sh(script: "uhubctl -a 0 -l 1-1 -r 100")
                         }

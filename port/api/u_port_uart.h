@@ -141,6 +141,10 @@ int32_t uPortUartPrefix(const char *pPrefix);
  * the README.md for that platform to find out how the pins
  * are chosen.
  *
+ * SPECIAL CASE FOR STM32U5: you may employ the single LPUART
+ * on STM32U5 platform by specifying uart 0 (the "normal" UARTs on
+ * STM32U5 platform start at HW block 1).
+ *
  * @param uart                   the UART HW block to use.
  * @param baudRate               the baud rate to use.
  * @param[in] pReceiveBuffer     a receive buffer to use,

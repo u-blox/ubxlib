@@ -15,7 +15,7 @@
  */
 
 /** @file
- * @brief Implementation of the port I2C API for the STM32F4 platform.
+ * @brief Implementation of the port I2C API for the STM32 platform.
  */
 
 #include "stddef.h"
@@ -33,10 +33,17 @@
 #include "u_port_gpio.h" // For unblocking
 #include "u_port_i2c.h"
 
+#ifdef STM32U575xx
+#include "stm32u5xx_ll_bus.h"
+#include "stm32u5xx_ll_gpio.h"
+#include "stm32u5xx_ll_i2c.h"
+#include "stm32u5xx_hal_i2c.h"
+#else
 #include "stm32f4xx_ll_bus.h"
 #include "stm32f4xx_ll_gpio.h"
 #include "stm32f4xx_ll_i2c.h"
 #include "stm32f4xx_hal_i2c.h"
+#endif
 
 #include "cmsis_os.h"
 
@@ -116,6 +123,7 @@ typedef struct {
  */
 static uPortMutexHandle_t gMutex = NULL;
 
+#ifndef STM32U575xx
 /** Table of the HW addresses for each I2C block.
  */
 static I2C_TypeDef *const gpI2cReg[] = {NULL,  // This to avoid having to -1
@@ -123,6 +131,7 @@ static I2C_TypeDef *const gpI2cReg[] = {NULL,  // This to avoid having to -1
                                         I2C2,
                                         I2C3
                                        };
+#endif
 
 /** I2C device data.
  */
@@ -136,6 +145,7 @@ static volatile int32_t gResourceAllocCount = 0;
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
+#ifndef STM32U575xx
 // Get the I2C number from a register address.
 static int32_t getI2c(I2C_TypeDef *pReg)
 {
@@ -203,11 +213,18 @@ static int32_t clockDisable(I2C_TypeDef *pReg)
 
     return errorCodeOrI2c;
 }
+#endif
 
 // Configure an I2C HW block; a much reduced version of HAL_I2C_Init(),
 // returning zero on success else negative error code.
 static int32_t configureHw(I2C_TypeDef *pReg, int32_t clockHertz)
 {
+#ifdef STM32U575xx
+    // TODO
+    (void) pReg;
+    (void) clockHertz;
+    return -1;
+#else
     int32_t errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
     uint32_t pclk1 = HAL_RCC_GetPCLK1Freq();
     uint32_t frequencyRange =  I2C_FREQRANGE(pclk1);
@@ -234,8 +251,10 @@ static int32_t configureHw(I2C_TypeDef *pReg, int32_t clockHertz)
     }
 
     return errorCode;
+#endif
 }
 
+#ifndef STM32U575xx
 // Wait until the given flag is at the given state or the stop time
 // has not been reached, returning true on success.
 static bool waitFlagOk(I2C_TypeDef *pReg, uint32_t flag,
@@ -285,7 +304,6 @@ static int32_t sendAddress(I2C_TypeDef *pReg, uint16_t address,
                            int32_t timeoutMs, bool readNotWrite,
                            bool *pIgnoreBusy)
 {
-
     int32_t errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
     bool keepGoing = true;
 
@@ -348,6 +366,7 @@ static int32_t sendAddress(I2C_TypeDef *pReg, uint16_t address,
 
     return errorCode;
 }
+#endif
 
 // Send an I2C message; a simplified version of HAL_I2C_Master_Transmit(),
 // returning zero on success else negative error code.
@@ -356,6 +375,17 @@ static int32_t send(I2C_TypeDef *pReg, uint16_t address,
                     int32_t timeoutMs, bool noStop,
                     bool *pIgnoreBusy)
 {
+#ifdef STM32U575xx
+    // TODO
+    (void) pReg;
+    (void) address;
+    (void) pData;
+    (void) size;
+    (void) timeoutMs;
+    (void) noStop;
+    (void) pIgnoreBusy;
+    return -1;
+#else
     int32_t errorCode;
 
     errorCode = sendAddress(pReg, address, timeoutMs, false, pIgnoreBusy);
@@ -392,6 +422,7 @@ static int32_t send(I2C_TypeDef *pReg, uint16_t address,
     }
 
     return errorCode;
+#endif
 }
 
 // Receive an I2C message; a simplified version of HAL_I2C_Master_Receive(),
@@ -400,6 +431,16 @@ static int32_t receive(I2C_TypeDef *pReg, uint16_t address,
                        char *pData, size_t size, int32_t timeoutMs,
                        bool *pIgnoreBusy)
 {
+#ifdef STM32U575xx
+    // TODO
+    (void) pReg;
+    (void) address;
+    (void) pData;
+    (void) size;
+    (void) timeoutMs;
+    (void) pIgnoreBusy;
+    return -1;
+#else
     int32_t errorCodeOrLength;
     size_t bytesToReceive = size;
     bool keepGoing = true;
@@ -513,11 +554,16 @@ static int32_t receive(I2C_TypeDef *pReg, uint16_t address,
     }
 
     return errorCodeOrLength;
+#endif
 }
 
 // Close an I2C instance.
 static void closeI2c(uPortI2cData_t *pInstance)
 {
+#ifdef STM32U575xx
+    // TODO
+    (void) pInstance;
+#else
     if ((pInstance != NULL) && (pInstance->pReg != NULL)) {
         if (!pInstance->adopted) {
             // Disable the I2C block
@@ -529,8 +575,10 @@ static void closeI2c(uPortI2cData_t *pInstance)
         pInstance->pReg = NULL;
         U_ATOMIC_DECREMENT(&gResourceAllocCount);
     }
+#endif
 }
 
+#ifndef STM32U575xx
 // Our bus recovery function needs a short delay, of the order of
 // 10 microseconds, which the STM32 HAL doesn't have a function for,
 // so here we just do 125 increments which, with a core clock of
@@ -542,11 +590,18 @@ static void shortDelay()
         x++;
     }
 }
+#endif
 
 // Following the advice from:
 // https://www.i2c-bus.org/i2c-primer/analysing-obscure-problems/blocked-bus/
 static int32_t busRecover(int32_t pinSda, int32_t pinSdc)
 {
+#ifdef STM32U575xx
+    // TODO
+    (void) pinSda;
+    (void) pinSdc;
+    return -1;
+#else
     int32_t errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
     uPortGpioConfig_t gpioConfig = U_PORT_GPIO_CONFIG_DEFAULT;
 
@@ -580,6 +635,7 @@ static int32_t busRecover(int32_t pinSda, int32_t pinSdc)
     }
 
     return errorCode;
+#endif
 }
 
 // Open an I2C instance; unlike the other static functions
@@ -587,6 +643,15 @@ static int32_t busRecover(int32_t pinSda, int32_t pinSdc)
 static int32_t openI2c(int32_t i2c, int32_t pinSda, int32_t pinSdc,
                        bool controller, bool adopt)
 {
+#ifdef STM32U575xx
+    // TODO
+    (void) i2c;
+    (void) pinSda;
+    (void) pinSdc;
+    (void) controller;
+    (void) adopt;
+    return -1;
+#else
     int32_t handleOrErrorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     LL_GPIO_InitTypeDef gpioInitStruct = {0};
     I2C_TypeDef *pReg;
@@ -653,6 +718,7 @@ static int32_t openI2c(int32_t i2c, int32_t pinSda, int32_t pinSdc,
     }
 
     return handleOrErrorCode;
+#endif
 }
 
 /* ----------------------------------------------------------------

@@ -11,11 +11,11 @@ from scripts.packages import u_package, u_pkg_utils
 from scripts.u_utils import SwoDecoder
 from pathlib import Path
 
-STM32CUBE_F4_URL="https://github.com/STMicroelectronics/STM32CubeF4.git"
-
+DEFAULT_TOOLCHAIN = "ThreadX"
 DEFAULT_MAKEFILE_DIR = f"{u_utils.UBXLIB_DIR}/port/platform/stm32cube/mcu/stm32f4/runner"
-DEFAULT_OUTPUT_NAME = "runner_stm32f4"
-DEFAULT_BUILD_DIR = os.path.join("_build","stm32cubef4")
+DEFAULT_MAKEFILE_DIR_STM32U5 = f"{u_utils.UBXLIB_DIR}/port/platform/stm32cube/mcu/stm32u5/runner"
+DEFAULT_OUTPUT_NAME = "runner_stm32"
+DEFAULT_BUILD_DIR = os.path.join("_build","stm32cube")
 DEFAULT_JOB_COUNT = 8
 DEFAULT_FLASH_FILE = f"runner.elf"
 
@@ -25,6 +25,16 @@ OPENOCD_DISABLE_PORTS_CMDS = [
     'telnet_port disabled'
 ]
 
+def stm32_get_makefile_dir(ctx, makefile_dir, toolchain):
+    """Get the correct makefile directory"""
+    if not makefile_dir:
+        if ctx.mcu == "stm32u5":
+            makefile_dir=DEFAULT_MAKEFILE_DIR_STM32U5
+            if toolchain:
+                makefile_dir += "_" + toolchain.lower()
+        else:
+            makefile_dir=DEFAULT_MAKEFILE_DIR
+    return makefile_dir
 
 def _to_openocd_args(openocd_cmds):
     argstr = ''
@@ -34,26 +44,37 @@ def _to_openocd_args(openocd_cmds):
 
 @task()
 def check_installation(ctx):
-    """Check STM32CubeF4 SDK installation"""
+    """Check STM32Cube SDK installation"""
     # Load required packages
+
+    # The MCU type will be stm32xx, where xx is f4 or u5;
+    # append those last two characters to "stm32cube" here
+    # to get the name of the FW package
+    stm32cube_pkg_name = "stm32cube" + ctx.mcu[5:7]
+
+    # stm32_cmsis_freertos is only required for STM32U5 but it is
+    # small enough that we can get it for either case.
     pkgs = u_package.load(ctx, [
-        "make", "unity", "arm_embedded_gcc", "stm32cubef4", "openocd"
+        "make", "unity", "arm_embedded_gcc", stm32cube_pkg_name, "stm32_cmsis_freertos", "openocd"
     ])
-    stm32cubef4_pkg = pkgs["stm32cubef4"]
+
+    stm32cube_pkg = pkgs[stm32cube_pkg_name]
     ae_gcc_pkg = pkgs["arm_embedded_gcc"]
     unity_pkg = pkgs["unity"]
+    stm32_cmsis_freertos_pkg=pkgs["stm32_cmsis_freertos"]
 
-    ctx.stm32cubef4_env = [
+    ctx.stm32cube_env = [
         f"ARM_GCC_TOOLCHAIN_PATH={ae_gcc_pkg.get_install_path()}/bin",
         f"UNITY_PATH={unity_pkg.get_install_path()}",
-        f"STM32CUBE_FW_PATH={stm32cubef4_pkg.get_install_path()}",
+        f"STM32CUBE_FW_PATH={stm32cube_pkg.get_install_path()}",
+        f"STM32_CMSIS_FREERTOS_PATH={stm32_cmsis_freertos_pkg.get_install_path()}",
     ]
-    ctx.stm32cubef4_dir = stm32cubef4_pkg.get_install_path()
     ctx.arm_toolchain_path = ae_gcc_pkg.get_install_path() + "/bin"
 
 @task(
     pre=[check_installation],
     help={
+        "toolchain": f"ThreadX or FreeRTOS (default: {DEFAULT_TOOLCHAIN})",
         "makefile_dir": f"Makefile project directory to build (default: {DEFAULT_MAKEFILE_DIR})",
         "output_name": f"An output name (build sub folder, default: {DEFAULT_OUTPUT_NAME}",
         "build_dir": f"Output build directory (default: {DEFAULT_BUILD_DIR})",
@@ -62,11 +83,13 @@ def check_installation(ctx):
         "features": "Feature list, e.g. \"cell short_range\" to leave out gnss; overrides the environment variable UBXLIB_FEATURES and u_flags.yml"
     }
 )
-def build(ctx, makefile_dir=DEFAULT_MAKEFILE_DIR, output_name=DEFAULT_OUTPUT_NAME,
+def build(ctx, toolchain=DEFAULT_TOOLCHAIN, makefile_dir=None, output_name=DEFAULT_OUTPUT_NAME,
           build_dir=DEFAULT_BUILD_DIR, jobs=DEFAULT_JOB_COUNT, u_flags=None,
           features=None):
-    """Build a STM32CubeF4 SDK based application"""
+    """Build a STM32Cube SDK based application"""
     cflags = ""
+
+    makefile_dir = stm32_get_makefile_dir(ctx, makefile_dir, toolchain)
 
     # When user calls the "analyze" task it will in turn call this function
     # with ctx.is_static_analyze=True
@@ -74,8 +97,12 @@ def build(ctx, makefile_dir=DEFAULT_MAKEFILE_DIR, output_name=DEFAULT_OUTPUT_NAM
     if hasattr(ctx, 'is_static_analyze'):
         is_static_analyze = ctx.is_static_analyze
 
-    # Read U_FLAGS and features from stm32cubef4.u_flags, if it is there
-    u_flags_yml = get_cflags_from_u_flags_yml(ctx.config.vscode_dir, "stm32cubef4", output_name)
+    # Read U_FLAGS and features from stm32cube.u_flags or
+    # stm32cubef4.u_flags (for backwards-compatibility),
+    # if they are there
+    u_flags_yml = get_cflags_from_u_flags_yml(ctx.config.vscode_dir, "stm32cube", output_name)
+    if not u_flags_yml:
+        u_flags_yml = get_cflags_from_u_flags_yml(ctx.config.vscode_dir, "stm32cubef4", output_name)
     if u_flags_yml:
         cflags = u_flags_yml["cflags"]
         if not features and "features" in u_flags_yml:
@@ -105,8 +132,8 @@ def build(ctx, makefile_dir=DEFAULT_MAKEFILE_DIR, output_name=DEFAULT_OUTPUT_NAM
             # around the cflags rather than double); the double quotes are
             # the only ones that work with make on Windows, the single ones
             # are the only ones that work with the static analyzer on Linux.
-            build_cmd = f'make -j{jobs} UBXLIB_PATH={ctx.config.root_dir} OUTPUT_DIRECTORY={build_dir} '\
-                        f'CFLAGS=\'{cflags}\' {" ".join(ctx.stm32cubef4_env)}'
+            build_cmd = f'make -j{jobs} UBXLIB_PATH={ctx.config.root_dir} OUTPUT_DIRECTORY={build_dir} ' \
+                        f'CFLAGS=\'{cflags}\' {" ".join(ctx.stm32cube_env)}'
             ctx.analyze_dir = f"{ctx.build_dir}/analyze"
             check_proc = ctx.run(f'CodeChecker check -b "{build_cmd}" -o {ctx.analyze_dir} ' \
                                  f'--config {u_utils.CODECHECKER_CFG_FILE} '
@@ -118,8 +145,8 @@ def build(ctx, makefile_dir=DEFAULT_MAKEFILE_DIR, output_name=DEFAULT_OUTPUT_NAM
             elif check_proc.exited >= 128:
                 raise Exit("CodeChecker fatal error")
         else:
-            build_cmd = f'make -j{jobs} UBXLIB_PATH={ctx.config.root_dir} OUTPUT_DIRECTORY={build_dir} '\
-                        f'CFLAGS=\"{cflags}\" {" ".join(ctx.stm32cubef4_env)}'
+            build_cmd = f'make -j{jobs} UBXLIB_PATH={ctx.config.root_dir} OUTPUT_DIRECTORY={build_dir} ' \
+                        f'CFLAGS=\"{cflags}\" {" ".join(ctx.stm32cube_env)}'
             ctx.run(build_cmd)
 
 @task(
@@ -146,7 +173,7 @@ def clean(ctx, output_name=DEFAULT_OUTPUT_NAME, build_dir=DEFAULT_BUILD_DIR):
 )
 def flash(ctx, file=DEFAULT_FLASH_FILE, debugger_serial="",
           output_name=DEFAULT_OUTPUT_NAME, build_dir=DEFAULT_BUILD_DIR):
-    """Flash a nRF5 SDK based application"""
+    """Flash a STM32 application"""
     build_dir = Path(build_dir, output_name).absolute().as_posix()
     cmds = OPENOCD_DISABLE_PORTS_CMDS
     if debugger_serial != "":
@@ -156,7 +183,7 @@ def flash(ctx, file=DEFAULT_FLASH_FILE, debugger_serial="",
         'exit'
     ]
     args = _to_openocd_args(cmds)
-    ctx.run(f'openocd -f {u_utils.OPENOCD_CFG_DIR}/stm32f4.cfg {args}')
+    ctx.run(f'openocd -f {u_utils.OPENOCD_CFG_DIR}/stm32{ctx.mcu[5:7]}.cfg {args}')
 
 @task(
     pre=[check_installation],
@@ -182,31 +209,31 @@ def log(ctx, debugger_serial="", port=40404,
         cmds.append(f'adapter serial {debugger_serial}')
     cmds += [
         'init',
-        f'stm32f4x.tpiu configure -output :{port}',
-        'stm32f4x.tpiu configure -protocol uart',
-        'stm32f4x.tpiu configure -formatter 0'
+        f'stm32{ctx.mcu[5:7]}x.tpiu configure -output :{port}',
+        f'stm32{ctx.mcu[5:7]}x.tpiu configure -protocol uart',
+        f'stm32{ctx.mcu[5:7]}x.tpiu configure -formatter 0'
     ]
     # On Linux, the dollar that indicates to OpenOCD
     # "get this from the .cfg file" must be escaped,
     # while on Windows it must not
     if u_utils.is_linux():
-        cmds += ['stm32f4x.tpiu configure -traceclk \$_TARGET_SYSTEM_FREQUENCY']
+        cmds += [f'stm32{ctx.mcu[5:7]}x.tpiu configure -traceclk \$_TARGET_SYSTEM_FREQUENCY']
     else:
-        cmds += ['stm32f4x.tpiu configure -traceclk $_TARGET_SYSTEM_FREQUENCY']
+        cmds += [f'stm32{ctx.mcu[5:7]}x.tpiu configure -traceclk $_TARGET_SYSTEM_FREQUENCY']
     if u_utils.is_linux():
-        cmds += ['stm32f4x.tpiu configure -pin-freq \$_TARGET_SWO_FREQUENCY']
+        cmds += [f'stm32{ctx.mcu[5:7]}x.tpiu configure -pin-freq \$_TARGET_SWO_FREQUENCY']
     else:
-        cmds += ['stm32f4x.tpiu configure -pin-freq $_TARGET_SWO_FREQUENCY']
+        cmds += [f'stm32{ctx.mcu[5:7]}x.tpiu configure -pin-freq $_TARGET_SWO_FREQUENCY']
     cmds += [
-        'stm32f4x.tpiu enable',
+        f'stm32{ctx.mcu[5:7]}x.tpiu enable',
         'itm port 0 on',
         'reset init',
         'resume'
     ]
     args = _to_openocd_args(cmds)
-    promise = ctx.run(f'openocd -f {u_utils.OPENOCD_CFG_DIR}/stm32f4.cfg {args}', asynchronous=True)
+    promise = ctx.run(f'openocd -f {u_utils.OPENOCD_CFG_DIR}/stm32{ctx.mcu[5:7]}.cfg {args}', asynchronous=True)
     # Let OpenOCD start up first
-    time.sleep(5)
+    time.sleep(1)
     try:
         line = ""
         decoder = SwoDecoder(0, True)
@@ -239,13 +266,14 @@ def log(ctx, debugger_serial="", port=40404,
 )
 def parse_backtrace(ctx, elf_file, line):
     """Parse a backtrace line
-    Example usage: inv stm32cubef4.parse-backtrace zephyr.elf "Backtrace:0x400ec4df:0x3ffbabb0 0x400df5a6:0x3ffbabd0"
+    Example usage: inv stm32cube.parse-backtrace zephyr.elf "Backtrace:0x400ec4df:0x3ffbabb0 0x400df5a6:0x3ffbabd0"
     """
     task_utils.parse_backtrace(ctx, elf_file, line, toolchain_prefix=f"{ctx.arm_toolchain_path}/arm-none-eabi-")
 
 @task(
     pre=[check_installation],
     help={
+        "toolchain": f"ThreadX or FreeRTOS (default: {DEFAULT_TOOLCHAIN})",
         "makefile_dir": f"Makefile project directory to build (default: {DEFAULT_MAKEFILE_DIR})",
         "output_name": f"An output name (build sub folder, default: {DEFAULT_OUTPUT_NAME}",
         "build_dir": f"Output build directory (default: {DEFAULT_BUILD_DIR})",
@@ -254,11 +282,13 @@ def parse_backtrace(ctx, elf_file, line):
         "features": "Feature list, e.g. \"cell short_range\" to leave out gnss; overrides the environment variable UBXLIB_FEATURES and u_flags.yml"
     }
 )
-def analyze(ctx, makefile_dir=DEFAULT_MAKEFILE_DIR, output_name=DEFAULT_OUTPUT_NAME,
+def analyze(ctx, toolchain=DEFAULT_TOOLCHAIN, makefile_dir=None, output_name=DEFAULT_OUTPUT_NAME,
             build_dir=DEFAULT_BUILD_DIR, jobs=DEFAULT_JOB_COUNT, u_flags=None, features=None):
     """Run CodeChecker static code analyzer (clang-analyze + clang-tidy)"""
     ctx.is_static_analyze = True
-    build(ctx, makefile_dir, output_name, build_dir, jobs, u_flags, features)
+
+    makefile_dir = stm32_get_makefile_dir(ctx, makefile_dir, toolchain)
+    build(ctx, toolchain, makefile_dir, output_name, build_dir, jobs, u_flags, features)
 
     parse_proc = ctx.run(f'CodeChecker parse -e html {ctx.analyze_dir} -o {ctx.build_dir}/analyze_html', warn=True, hide=u_utils.is_automation())
     # Check the return codes

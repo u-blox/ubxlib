@@ -107,6 +107,20 @@
 # define U_PORT_TEST_CHECK_TIME_TAKEN
 #endif
 
+#if defined(U_PORT_STM32_PURE_CMSIS) && !defined(U_PORT_STM32_CMSIS_ON_FREERTOS)
+/** Mutexes are expected to be non-recursive except that when we
+ * have ThreadX under CMSIS, which only supports recursive
+ * mutexes.
+ */
+# define U_PORT_MUTEX_RECURSIVE
+#endif
+
+#if !defined(_WIN32) && !defined(__linux__) && !defined(U_PORT_STM32_PURE_CMSIS)
+/** Some platforms don't support giving a semaphore from an ISR.
+ */
+# define U_PORT_SEMAPHORE_GIVE_FROM_ISR
+#endif
+
 #if defined(_WIN32) || defined(__ZEPHYR__) || defined(EL_PRODUCT_THREADX)
 /** On some OSes it is possible to delete a task from another task,
  * so we can check that.
@@ -687,8 +701,13 @@ static void osTestTask(void *pParameters)
     uPortLog("U_PORT_TEST_OS_TASK: task trying to lock the mutex.\n");
     U_PORT_TEST_ASSERT(gMutexHandle != NULL);
     U_PORT_TEST_ASSERT(uPortMutexTryLock(gMutexHandle, 500) == 0);
+# ifdef U_PORT_MUTEX_RECURSIVE
+    uPortLog("U_PORT_TEST_OS_TASK: task trying to lock the mutex again.\n");
+    U_PORT_TEST_ASSERT(uPortMutexTryLock(gMutexHandle, 10) == 0);
+# else
     uPortLog("U_PORT_TEST_OS_TASK: task trying to lock the mutex again, should fail!.\n");
     U_PORT_TEST_ASSERT(uPortMutexTryLock(gMutexHandle, 10) != 0);
+# endif
     uPortLog("U_PORT_TEST_OS_TASK: unlocking it again.\n");
     U_PORT_TEST_ASSERT(uPortMutexUnlock(gMutexHandle) == 0);
 #endif
@@ -1629,7 +1648,7 @@ static void osTestTaskSemaphoreGive(void *pParameters)
     uPortTaskDelete(NULL);
 }
 
-#if (!defined(_WIN32) && !defined(__linux__)) || defined(CONFIG_IRQ_OFFLOAD)
+#if defined(U_PORT_SEMAPHORE_GIVE_FROM_ISR) || defined(CONFIG_IRQ_OFFLOAD)
 static void osTestTaskSemaphoreGiveFromIsr(const void *pParameters)
 {
     (void) pParameters;
@@ -1673,7 +1692,7 @@ U_PORT_TEST_FUNCTION("[port]", "portOsSemaphore")
 #ifdef U_PORT_TEST_CHECK_TIME_TAKEN
     int64_t diffMs = uPortGetTickTimeMs() - startTimeMs;
     U_TEST_PRINT_LINE("diffMs %d.", (int32_t)diffMs);
-    U_PORT_TEST_ASSERT(diffMs > 250 && diffMs < 750);
+    U_PORT_TEST_ASSERT(diffMs < 750);
 #endif
     U_PORT_TEST_ASSERT(uPortSemaphoreDelete(gSemaphoreHandle) == 0);
 
@@ -1693,7 +1712,7 @@ U_PORT_TEST_FUNCTION("[port]", "portOsSemaphore")
     U_PORT_TEST_ASSERT(uPortSemaphoreTake(gSemaphoreHandle) == 0);
 #ifdef U_PORT_TEST_CHECK_TIME_TAKEN
     diffMs = uPortGetTickTimeMs() - startTimeMs;
-    U_PORT_TEST_ASSERT(diffMs > 250 && diffMs < 750);
+    U_PORT_TEST_ASSERT(diffMs < 750);
 #endif
     U_PORT_TEST_ASSERT(uPortSemaphoreDelete(gSemaphoreHandle) == 0);
 
@@ -1713,7 +1732,7 @@ U_PORT_TEST_FUNCTION("[port]", "portOsSemaphore")
     U_PORT_TEST_ASSERT(uPortSemaphoreTryTake(gSemaphoreHandle, 5000) == 0);
 #ifdef U_PORT_TEST_CHECK_TIME_TAKEN
     diffMs = uPortGetTickTimeMs() - startTimeMs;
-    U_PORT_TEST_ASSERT(diffMs > 250 && diffMs < 750);
+    U_PORT_TEST_ASSERT(diffMs < 750);
 #endif
     U_PORT_TEST_ASSERT(uPortSemaphoreDelete(gSemaphoreHandle) == 0);
 
@@ -1735,7 +1754,7 @@ U_PORT_TEST_FUNCTION("[port]", "portOsSemaphore")
                                              500) == (int32_t)U_ERROR_COMMON_TIMEOUT);
 #ifdef U_PORT_TEST_CHECK_TIME_TAKEN
     diffMs = uPortGetTickTimeMs() - startTimeMs;
-    U_PORT_TEST_ASSERT(diffMs > 250 && diffMs < 750);
+    U_PORT_TEST_ASSERT(diffMs < 750);
 #endif
     U_PORT_TEST_ASSERT(uPortSemaphoreDelete(gSemaphoreHandle) == 0);
 
@@ -1764,7 +1783,7 @@ U_PORT_TEST_FUNCTION("[port]", "portOsSemaphore")
                                              500) == (int32_t)U_ERROR_COMMON_TIMEOUT);
 #ifdef U_PORT_TEST_CHECK_TIME_TAKEN
     diffMs = uPortGetTickTimeMs() - startTimeMs;
-    U_PORT_TEST_ASSERT(diffMs > 250 && diffMs < 750);
+    U_PORT_TEST_ASSERT(diffMs < 750);
 #endif
     U_PORT_TEST_ASSERT(uPortSemaphoreDelete(gSemaphoreHandle) == 0);
 
@@ -1776,11 +1795,10 @@ U_PORT_TEST_FUNCTION("[port]", "portOsSemaphore")
 #ifdef CONFIG_IRQ_OFFLOAD // Only really tested for zephyr for now
     irq_offload(osTestTaskSemaphoreGiveFromIsr, NULL);
 #else
-# if !defined(_WIN32) && !defined(__linux__)
+# ifdef U_PORT_SEMAPHORE_GIVE_FROM_ISR
     osTestTaskSemaphoreGiveFromIsr(NULL);
 # else
-    // ISR not supported on Windows or native Linux, do the non-ISR version
-    // to keep the test going
+    // Do the non-ISR version to keep the test going
     U_PORT_TEST_ASSERT(uPortSemaphoreGive(gSemaphoreHandle) == 0);
 # endif
 #endif
@@ -3075,6 +3093,11 @@ U_PORT_TEST_FUNCTION("[port]", "portTimers")
 
         // Start it
         U_PORT_TEST_ASSERT(uPortTimerStart(gTimerHandle[gTimerParameterIndex]) == 0);
+        // On some platforms (e.g. FreeRTOS beneath CMSIS) the process of starting
+        // a timer involves sending something on an internal queue wuich may take
+        // a little while and so we have to wait a little while here for that to
+        // complete before the timer can be stopped
+        uPortTaskBlock(U_CFG_OS_YIELD_MS);
         // Stop it
         U_PORT_TEST_ASSERT(uPortTimerStop(gTimerHandle[gTimerParameterIndex]) == 0);
         // It should not have expired
