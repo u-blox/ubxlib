@@ -112,8 +112,14 @@ extern "C" {
 #ifndef U_GNSS_AT_POWER_CHANGE_WAIT_MILLISECONDS
 /** Some intermediate modules (for example SARA-R4) can be touchy
  * about a power-up or power-down request occurring close
- * on the heels of a previous GNSS-related command  If you
- * change this and you use the cell locate API then you
+ * on the heels of a previous GNSS-related command.
+ * Also when the gnss module is connected inside a cellular module,
+ * sending "AT+UGPS=1" wakes up UPOS inside the cellular as well and
+ * causes it to talk to configure the GNSS device. In some GNSS modules
+ * (e.g. M10), changing the configuration will trigger a reset
+ * to the GNSSS subsystem. So we need some wait for it.  For details
+ * the GNSS interface manual is referred.
+ * If you change this and you use the cell locate API then you
  * might want to change the value of
  * #U_CELL_LOC_GNSS_POWER_CHANGE_WAIT_MILLISECONDS also.
  */

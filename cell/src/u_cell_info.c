@@ -696,6 +696,7 @@ int32_t uCellInfoRefreshRadioParameters(uDeviceHandle_t cellHandle)
                         // The AT+UCGED=2 formats are module-specific
                         switch (pInstance->pModule->moduleType) {
                             case U_CELL_MODULE_TYPE_SARA_R5:
+                            case U_CELL_MODULE_TYPE_SARA_R52:
                                 errorCode = getRadioParamsUcged2SaraR5(atHandle, pRadioParameters);
                                 break;
                             case U_CELL_MODULE_TYPE_SARA_R422:

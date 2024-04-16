@@ -198,7 +198,7 @@ U_PORT_TEST_FUNCTION("[cellSecTls]", "cellSecTlsSettings")
     U_PORT_TEST_ASSERT((uCellSecTlsVersionGet(pContext) == 0) ||
                        (uCellSecTlsVersionGet(pContext) == 12));
     // SARA-R5, SARA-R422 and LARA-R6 have the default of root CA checking
-    if ((pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R5) ||
+    if ((U_CELL_PRIVATE_MODULE_IS_SARA_R5(pModule->moduleType)) ||
         (pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R422) ||
         (pModule->moduleType == U_CELL_MODULE_TYPE_LARA_R6)) {
         U_PORT_TEST_ASSERT(uCellSecTlsCertificateCheckGet(pContext, NULL, 0) ==
@@ -452,7 +452,7 @@ U_PORT_TEST_FUNCTION("[cellSecTls]", "cellSecTlsSettings")
     U_PORT_TEST_ASSERT((uCellSecTlsVersionGet(pContext) == 0) ||
                        (uCellSecTlsVersionGet(pContext) == 12));
     // SARA-R5, SARA-R422 and LARA-R6 have the default of root CA checking
-    if ((pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R5) ||
+    if ((U_CELL_PRIVATE_MODULE_IS_SARA_R5(pModule->moduleType)) ||
         (pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R422) ||
         (pModule->moduleType == U_CELL_MODULE_TYPE_LARA_R6)) {
         U_PORT_TEST_ASSERT(uCellSecTlsCertificateCheckGet(pContext, NULL, 0) ==

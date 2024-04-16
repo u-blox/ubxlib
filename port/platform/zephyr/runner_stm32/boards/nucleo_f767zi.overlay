@@ -1,5 +1,23 @@
 / { // This portion in the "root" of the device tree
 
+    cfg-device-cellular-0 {
+        compatible = "u-blox,ubxlib-device-cellular";
+        status = "okay";
+        transport-type = "uart6";
+        // Note: allow the cellular module type to be determined automatically
+        pin-pwr-on = <0x5e>;  // Arduino header pin D4, or pin F14 in STM32 port numbering
+        network = <&label_cfg_network_cellular &label_cfg_network_gnss_inside>;
+    };
+    label_cfg_network_cellular: cfg-network-cellular {
+        compatible = "u-blox,ubxlib-network-cellular";
+        status = "okay";
+        timeout-seconds = <240>;
+    };
+    label_cfg_network_gnss_inside: cfg-network-gnss-inside {
+        compatible = "u-blox,ubxlib-network-gnss";
+        // Note: allow the GNSS module type to be determined automatically
+    };
+
     // All of the UARTs on this board exposed through the default
     // .dts file are called USARTs (i.e. with an S inserted),
     // hence we need to use aliases in order for ubxlib to be

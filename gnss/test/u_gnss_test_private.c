@@ -348,9 +348,11 @@ size_t uGnssTestPrivateTransportTypesSet(uGnssTransportType_t *pTransportTypes,
             numEntries++;
         }
         if (numEntries == 0) {
+#ifndef U_CFG_TEST_GNSS_TRANSPORT_AT_DISABLE
             *pTransportTypes = U_GNSS_TRANSPORT_AT;
             pTransportTypes++;
             numEntries++;
+#endif
 #if U_CFG_APP_PIN_CELL_PWR_ON >= 0
             // TODO: temporarily omit testing of GNSS on virtual
             // serial if there is no way to power-cycle the

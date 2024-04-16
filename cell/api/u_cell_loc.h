@@ -146,6 +146,9 @@ extern "C" {
 #ifndef U_CELL_LOC_GNSS_SYSTEM_TYPES
 /** The system types to request when switching-on a GNSS
  * chip attached to a cellular module (all of them).
+ *
+ * While this \#define remains, the default value used
+ * by each module type may be different.
  */
 # define U_CELL_LOC_GNSS_SYSTEM_TYPES 0x7f
 #endif
@@ -262,7 +265,7 @@ int32_t uCellLocSetServer(uDeviceHandle_t cellHandle,
 
 /** Set the GNSS systems that a GNSS chip inside or connected-via a
  * cellular module will employ.  Not all GNSS chips support all system types.
- * If this is not called #U_CELL_LOC_GNSS_SYSTEM_TYPES will be used.
+ * If this is not called all supported GNSS system types will be used.
  *
  * @param cellHandle            the handle of the cellular instance.
  * @param gnssSystemTypesBitMap a bit-map of the GNSS systems that should be used,
@@ -285,6 +288,20 @@ int32_t uCellLocSetSystem(uDeviceHandle_t cellHandle, uint32_t gnssSystemTypesBi
  * @return                            zero on success or negative error code.
  */
 int32_t uCellLocGetSystem(uDeviceHandle_t cellHandle, uint32_t *pGnssSystemTypesBitMap);
+
+/** Get the default GNSS systems that would be employed with a GNSS
+ * chip inside or connected-via a cellular module; this does NOT
+ * interrogate the GNSS chip, it simply returns the default and
+ * may be different from that returned by uCellLocGetSystem().
+ *
+ * @param cellHandle                  the handle of the cellular instance.
+ * @param[out] pGnssSystemTypesBitMap a pointer to a place to put the bit-map of the
+ *                                    GNSS systems, see #uGnssSystem_t (u_gnss_type.h),
+ *                                    where each system is represented by its
+ *                                    bit-position (for example bit 0 represents GPS).
+ * @return                            zero on success or negative error code.
+ */
+int32_t uCellLocGetSystemDefault(uDeviceHandle_t cellHandle, uint32_t *pGnssSystemTypesBitMap);
 
 /** Check whether a GNSS chip is present or not.  Note that this may
  * fail if the cellular module controls power to the GNSS chip and

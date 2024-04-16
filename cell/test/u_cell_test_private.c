@@ -166,8 +166,8 @@ static void contextSet(uDeviceHandle_t cellHandle,
                 uAtClientLock(atHandle);
                 uAtClientCommandStart(atHandle, "AT+CGDCONT=");
                 uAtClientWriteInt(atHandle, contextId);
-                uAtClientWriteString(atHandle, "IP", true);
                 if (pApn != NULL) {
+                    uAtClientWriteString(atHandle, "IP", true);
                     uAtClientWriteString(atHandle, pApn, true);
                 }
                 uAtClientCommandStopReadResponse(atHandle);
@@ -373,6 +373,14 @@ int32_t uCellTestPrivatePreamble(uCellModuleType_t moduleType,
                                     // the module doesn't support it, just carry on
                                     errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
                                 }
+                            }
+
+                            if (errorCode == 0) {
+                                // This code never sets context ID 0 but there have
+                                // been instances of the module reporting a context
+                                // zero, which persists if it is ever set, hence
+                                // we ensure that it is deleted here.
+                                contextSet(cellHandle, 0, NULL);
                             }
 
                             // If we're on cat-M1 or NB1, set the band-mask

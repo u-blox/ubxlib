@@ -145,6 +145,14 @@
 # define U_CELL_MUX_CALLBACK_QUEUE_LENGTH 20
 #endif
 
+#ifndef U_CELL_MUX_DELAY_AFTER_AT_CHANNEL_OPEN_MS
+/** Some modules (e.g. SARA-R52) need a bit of a breather after
+ * CMUX channel for AT is opened and before the first AT command
+ * is sent.
+ */
+# define U_CELL_MUX_DELAY_AFTER_AT_CHANNEL_OPEN_MS 750
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -1069,7 +1077,7 @@ static uint8_t getChannelGnss(const uCellPrivateInstance_t *pInstance)
 {
     uint8_t channel = (uint8_t) pInstance->pModule->defaultMuxChannelGnss;
 
-    if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R5) {
+    if (U_CELL_PRIVATE_MODULE_IS_SARA_R5(pInstance->pModule->moduleType)) {
         // For the SARA-R5 case the CMUX channel for GNSS is different
         // if we are exchanging AT commands on the AUX UART, which is
         // USIO variant 2.
@@ -1727,8 +1735,8 @@ int32_t uCellMuxPrivateEnable(uCellPrivateInstance_t *pInstance)
                                 pDeviceSerial = pUCellMuxPrivateGetDeviceSerial(pContext, U_CELL_MUX_PRIVATE_CHANNEL_ID_AT);
                                 // Some modules (e.g. SARA-R422) can have stored up loads of URCs
                                 // which they like to emit over the new mux channel; flush these
-                                // out here
-                                uPortTaskBlock(500);
+                                // out here, while giving the module a little breather
+                                uPortTaskBlock(U_CELL_MUX_DELAY_AFTER_AT_CHANNEL_OPEN_MS);
                                 do {
                                     uPortTaskBlock(10);
                                 } while (pDeviceSerial->read(pDeviceSerial, tempBuffer, sizeof(tempBuffer)) > 0);

@@ -1519,7 +1519,7 @@ static int32_t setAuthenticationMode(const uCellPrivateInstance_t *pInstance,
         if ((pUsername == NULL) && (pPassword == NULL)) {
             // No authentication is required
             authenticationMode = U_CELL_NET_AUTHENTICATION_MODE_NOT_SET;
-            if ((pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R5) ||
+            if ((U_CELL_PRIVATE_MODULE_IS_SARA_R5(pInstance->pModule->moduleType)) ||
                 (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_U201) ||
                 (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_LENA_R8)) {
                 // For SARA-R5, SARA-U201 and LENA-R8 the user name
@@ -3223,7 +3223,7 @@ int32_t uCellNetDeepScan(uDeviceHandle_t cellHandle,
         pInstance = pUCellPrivateGetInstance(cellHandle);
         if (pInstance != NULL) {
             errorCodeOrNumber = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
-            if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R5) {
+            if (U_CELL_PRIVATE_MODULE_IS_SARA_R5(pInstance->pModule->moduleType)) {
                 // Make sure the radio is on for this
                 cFunMode = uCellPrivateCFunOne(pInstance);
                 atHandle = pInstance->atHandle;

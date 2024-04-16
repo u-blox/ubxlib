@@ -49,6 +49,7 @@
 
 #include "u_cell_module_type.h"
 #include "u_cell.h"              // For uCellAtClientHandleGet()
+#include "u_cell_loc.h"          // For uCellLocGetSystemDefault()
 
 #include "u_gnss_module_type.h"
 #include "u_gnss_type.h"
@@ -155,7 +156,7 @@ static int32_t atPowerOn(uGnssPrivateInstance_t *pInstance,
 {
     int32_t errorCode;
     uint64_t y;
-
+    uint32_t gnssSystemTypesBitMap = U_GNSS_PWR_SYSTEM_TYPES;
     // On a best effort basis, switch on or off an indication
     // which is useful when debugging aiding modes, but gets
     // in the way when we're talking to the GNSS chip directly
@@ -206,25 +207,27 @@ static int32_t atPowerOn(uGnssPrivateInstance_t *pInstance,
                 errorCode = uAtClientUnlock(atHandle);
             }
         }
+        // Try to retrieve the correct default GNSS system bit-map for this module
+        uCellLocGetSystemDefault(pInstance->intermediateHandle, &gnssSystemTypesBitMap);
         if (errorCode == 0) {
             errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
             for (size_t x = 0; (errorCode < 0) &&
                  (x < U_GNSS_AT_POWER_ON_RETRIES + 1); x++) {
                 // Now ask the cellular module to switch GNSS on
-                uPortTaskBlock(U_GNSS_AT_POWER_CHANGE_WAIT_MILLISECONDS);
                 uAtClientLock(atHandle);
                 uAtClientTimeoutSet(atHandle, U_GNSS_AT_POWER_UP_TIME_SECONDS * 1000);
                 uAtClientCommandStart(atHandle, "AT+UGPS=");
                 uAtClientWriteInt(atHandle, 1);
                 // If you change the aiding types and
-                // GNSS system types below you may wish
+                // GNSS system types you may wish
                 // to change them in u_cell_loc.c also.
                 // All aiding types allowed
                 uAtClientWriteInt(atHandle, U_GNSS_PWR_AIDING_TYPES);
-                // All GNSS system types enabled
-                uAtClientWriteInt(atHandle, U_GNSS_PWR_SYSTEM_TYPES);
+                // Set the GNSS system types to be enabled.
+                uAtClientWriteInt(atHandle, gnssSystemTypesBitMap);
                 uAtClientCommandStopReadResponse(atHandle);
                 errorCode = uAtClientUnlock(atHandle);
+                uPortTaskBlock(U_GNSS_AT_POWER_CHANGE_WAIT_MILLISECONDS);
                 if (errorCode < 0) {
                     uPortTaskBlock(U_GNSS_AT_POWER_ON_RETRY_INTERVAL_SECONDS * 1000);
                 }
@@ -239,6 +242,7 @@ static int32_t atPowerOn(uGnssPrivateInstance_t *pInstance,
 static int32_t atPowerOff(uAtClientHandle_t atHandle)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
+    int32_t y;
 
     uPortTaskBlock(U_GNSS_AT_POWER_CHANGE_WAIT_MILLISECONDS);
     // Give this two tries as sometimes, if the GNSS chip is
@@ -248,10 +252,24 @@ static int32_t atPowerOff(uAtClientHandle_t atHandle)
         // Can take a little while if the cellular module is
         // busy talking to the GNSS module at the time
         uAtClientTimeoutSet(atHandle, U_GNSS_AT_POWER_DOWN_TIME_SECONDS * 1000);
-        uAtClientCommandStart(atHandle, "AT+UGPS=");
-        uAtClientWriteInt(atHandle, 0);
-        uAtClientCommandStopReadResponse(atHandle);
+        // Some modules (e.g. SARA-R52) consider being
+        // asked to switch off a GNSS module that is
+        // _already_ off an error, hence check if the
+        // module is already off first
+        uAtClientCommandStart(atHandle, "AT+UGPS?");
+        // Response is +UGPS: <mode>[,<aid_mode>[,<GNSS_systems>]]
+        uAtClientCommandStop(atHandle);
+        uAtClientResponseStart(atHandle, "+UGPS:");
+        y = uAtClientReadInt(atHandle);
+        uAtClientResponseStop(atHandle);
         errorCode = uAtClientUnlock(atHandle);
+        if ((errorCode == 0) && (y != 0)) {
+            uAtClientLock(atHandle);
+            uAtClientCommandStart(atHandle, "AT+UGPS=");
+            uAtClientWriteInt(atHandle, 0);
+            uAtClientCommandStopReadResponse(atHandle);
+            errorCode = uAtClientUnlock(atHandle);
+        }
         if (errorCode < 0) {
             // If we got no response, abort the command
             // before trying again
@@ -486,18 +504,20 @@ static int32_t setOrClearFlags(uDeviceHandle_t gnssHandle, uint32_t bitMap, bool
 // Identify the module type read from GNSS module
 static uGnssModuleType_t identifyGnssModuleType(uDeviceHandle_t gnssHandle)
 {
-    int32_t errorCodeOrType;
+    int32_t errorCodeOrType = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
     uGnssVersionType_t version;
     uGnssPrivateInstance_t *pInstance;
 
     pInstance = pUGnssPrivateGetInstance(gnssHandle);
-    errorCodeOrType = uGnssPrivateInfoGetVersions(pInstance, &version);
-    if (errorCodeOrType == 0) {
-        errorCodeOrType = (int32_t) U_ERROR_COMMON_UNKNOWN_MODULE_TYPE;
-        for (size_t y = 0; (y < (U_GNSS_MODULE_TYPE_MAX_NUM - 1)) &&
-             (errorCodeOrType < 0); y++) {
-            if (strncmp(version.hw, gpHardwareVersion[y], 8) == 0) {
-                errorCodeOrType = (uGnssModuleType_t) y;
+    if (pInstance != NULL) {
+        errorCodeOrType = uGnssPrivateInfoGetVersions(pInstance, &version);
+        if (errorCodeOrType == 0) {
+            errorCodeOrType = (int32_t) U_ERROR_COMMON_UNKNOWN_MODULE_TYPE;
+            for (size_t y = 0; (y < (U_GNSS_MODULE_TYPE_MAX_NUM - 1)) &&
+                 (errorCodeOrType < 0); y++) {
+                if (strncmp(version.hw, gpHardwareVersion[y], 8) == 0) {
+                    errorCodeOrType = (uGnssModuleType_t) y;
+                }
             }
         }
     }

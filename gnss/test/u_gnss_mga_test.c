@@ -583,7 +583,7 @@ U_PORT_TEST_FUNCTION("[gnssMga]", "gnssMgaBasic")
             // on-board-cellular GNSS chip), reset the GNSS chip here so that
             // the navigation database won't be huge; this improves the
             // stability of testing
-            U_TEST_PRINT_LINE("reseting GNSS before starting.");
+            U_TEST_PRINT_LINE("resetting GNSS before starting.");
             U_PORT_TEST_ASSERT(uUbxProtocolEncode(0x06, 0x04, reset, sizeof(reset), buffer) ==  sizeof(buffer));
             if (uGnssMsgSend(gnssDevHandle, buffer, sizeof(buffer)) == sizeof(buffer)) {
                 uPortTaskBlock(U_GNSS_RESET_TIME_SECONDS * 1000);
@@ -593,10 +593,12 @@ U_PORT_TEST_FUNCTION("[gnssMga]", "gnssMgaBasic")
         // So that we can see what we're doing
         uGnssSetUbxMessagePrint(gnssDevHandle, true);
 
+#ifndef U_GNSS_MGA_TEST_ASSIST_NOW_AUTONOMOUS_NOT_SUPPORTED
+
         // Check that setting AssistNow Autonomous works
         a = uGnssMgaAutonomousIsOn(gnssDevHandle);
         U_TEST_PRINT_LINE("AssistNow Autonomous is initially %s.", a ? "on" : "off");
-#ifndef U_GNSS_MGA_TEST_ASSIST_NOW_AUTONOMOUS_NOT_SUPPORTED
+
         U_PORT_TEST_ASSERT(uGnssMgaSetAutonomous(gnssDevHandle, !a) == 0);
         b = uGnssMgaAutonomousIsOn(gnssDevHandle);
         U_TEST_PRINT_LINE("AssistNow Autonomous is now %s.", b ? "on" : "off");
@@ -631,6 +633,7 @@ U_PORT_TEST_FUNCTION("[gnssMga]", "gnssMgaBasic")
             // Not supported on AT transport
             U_PORT_TEST_ASSERT(y < 0);
         }
+
         U_PORT_TEST_ASSERT(uGnssMgaIniPosSend(gnssDevHandle, NULL) < 0);
         y = uGnssMgaIniPosSend(gnssDevHandle, &gMgaPosFilter);
         U_TEST_PRINT_LINE("sending initial position returned %d.\n", y);

@@ -317,6 +317,7 @@ static uCellSockTestOption_t gSupportedOptions[] = {
         (1UL << U_CELL_MODULE_TYPE_SARA_R410M_03B) |
         (1UL << U_CELL_MODULE_TYPE_SARA_R422)      |
         (1UL << U_CELL_MODULE_TYPE_SARA_R5)        |
+        (1UL << U_CELL_MODULE_TYPE_SARA_R52)       |
         (1UL << U_CELL_MODULE_TYPE_LARA_R6)        |
         (1UL << U_CELL_MODULE_TYPE_LENA_R8),
         U_SOCK_OPT_LEVEL_SOCK, U_SOCK_OPT_LINGER, sizeof(uSockLinger_t), compareLinger, changeLinger

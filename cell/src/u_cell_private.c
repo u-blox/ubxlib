@@ -60,6 +60,7 @@
 #include "u_cell_cfg.h"
 #include "u_cell_http.h"
 #include "u_cell_time.h"
+#include "u_cell_loc.h"
 #include "u_cell_http_private.h"
 #include "u_cell_pwr_private.h"
 #include "u_cell_time_private.h"
@@ -122,8 +123,9 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
         ),
         6, /* Default CMUX channel for GNSS */
         15, /* AT+CFUN reboot command */
-        -1  /* PPP PDP context ID; we don't support anything other than -1 for
+        -1, /* PPP PDP context ID; we don't support anything other than -1 for
              * the solely UPSD-type context activation used on SARA-U201 */
+        U_CELL_LOC_GNSS_SYSTEM_TYPES /* GNSS system types for an attached GNSS chip */
     },
     {
         U_CELL_MODULE_TYPE_SARA_R410M_02B, 300 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
@@ -156,7 +158,8 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
         ),
         3, /* Default CMUX channel for GNSS */
         15, /* AT+CFUN reboot command */
-        -1  /* PPP PDP context ID */
+        -1, /* PPP PDP context ID */
+        U_CELL_LOC_GNSS_SYSTEM_TYPES /* GNSS system types for an attached GNSS chip */
     },
     {
         U_CELL_MODULE_TYPE_SARA_R412M_02B, 300 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
@@ -194,7 +197,8 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
         ),
         3, /* Default CMUX channel for GNSS */
         15, /* AT+CFUN reboot command */
-        -1  /* PPP PDP context ID */
+        -1, /* PPP PDP context ID */
+        U_CELL_LOC_GNSS_SYSTEM_TYPES /* GNSS system types for an attached GNSS chip */
     },
     {
         U_CELL_MODULE_TYPE_SARA_R412M_03B, 300 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
@@ -222,7 +226,8 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
         ),
         3, /* Default CMUX channel for GNSS */
         15, /* AT+CFUN reboot command */
-        -1  /* PPP PDP context ID */
+        -1, /* PPP PDP context ID */
+        U_CELL_LOC_GNSS_SYSTEM_TYPES /* GNSS system types for an attached GNSS chip */
     },
     {
         U_CELL_MODULE_TYPE_SARA_R5, 1500 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
@@ -274,7 +279,8 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
         ),
         4, /* Default CMUX channel for GNSS */
         16, /* AT+CFUN reboot command */
-        -1  /* PPP PDP context ID */
+        -1, /* PPP PDP context ID */
+        U_CELL_LOC_GNSS_SYSTEM_TYPES /* GNSS system types for an attached GNSS chip */
     },
     {
         U_CELL_MODULE_TYPE_SARA_R410M_03B, 300 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
@@ -305,7 +311,8 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
         ),
         3, /* Default CMUX channel for GNSS */
         15, /* AT+CFUN reboot command */
-        -1  /* PPP PDP context ID */
+        -1, /* PPP PDP context ID */
+        U_CELL_LOC_GNSS_SYSTEM_TYPES /* GNSS system types for an attached GNSS chip */
     },
     {
         U_CELL_MODULE_TYPE_SARA_R422, 300 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
@@ -352,7 +359,8 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
         ),
         3, /* Default CMUX channel for GNSS */
         15, /* AT+CFUN reboot command */
-        -1  /* PPP PDP context ID */
+        -1, /* PPP PDP context ID */
+        U_CELL_LOC_GNSS_SYSTEM_TYPES /* GNSS system types for an attached GNSS chip */
     },
     {
         U_CELL_MODULE_TYPE_LARA_R6, 300 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
@@ -388,7 +396,8 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
         ),
         3, /* Default CMUX channel for GNSS */
         15, /* AT+CFUN reboot command */
-        -1  /* PPP PDP context ID */
+        -1, /* PPP PDP context ID */
+        U_CELL_LOC_GNSS_SYSTEM_TYPES /* GNSS system types for an attached GNSS chip */
     },
     {
         U_CELL_MODULE_TYPE_LENA_R8, 2000 /* Pwr On pull ms */, 3100 /* Pwr off pull ms */,
@@ -422,7 +431,56 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
         ),
         -1, /* Default CMUX channel for GNSS */
         16, /* AT+CFUN reboot command */
-        U_CELL_PRIVATE_PPP_CONTEXT_ID_LENA_R8 /* PPP PDP context ID */
+        U_CELL_PRIVATE_PPP_CONTEXT_ID_LENA_R8, /* PPP PDP context ID */
+        U_CELL_LOC_GNSS_SYSTEM_TYPES /* GNSS system types for an attached GNSS chip */
+    },
+    {
+        U_CELL_MODULE_TYPE_SARA_R52, 150 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
+        6 /* Boot wait */, 10 /* Min awake */, 20 /* Pwr down wait */, 15 /* Reboot wait */, 10 /* AT timeout */,
+        20 /* Cmd wait ms */, 3000 /* Resp max wait ms */, 4 /* radioOffCfun */, 150 /* resetHoldMilliseconds */,
+        1 /* Simultaneous RATs */,
+        ((1ULL << (int32_t) U_CELL_NET_RAT_CATM1) |
+         (1ULL << (int32_t) U_CELL_NET_RAT_NB1)) /* RATs */,
+        ((1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE)                         |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CSCON)                               |
+         /* There is no root of trust inside SARA-R52 */
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_DATA_COUNTERS)                       |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_IANA_NUMBERING)         |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_CIPHER_LIST)            |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_SERVER_NAME_INDICATION) |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT)                                |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_BINARY_PUBLISH)                 |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_WILL)                           |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_KEEP_ALIVE)                     |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SECURITY)                       |
+         /* Context mapping is not required on SARA-R52 */
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_AUTO_BAUDING)                        |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_AT_PROFILES)                         |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_ZTP)                        |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_FILE_SYSTEM_TAG)                     |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_DTR_POWER_SAVING)                    |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_DEEP_SLEEP_URC)                      |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING)                   |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING_PAGING_WINDOW_SET) |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_EDRX)                                |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTTSN)                              |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTTSN_SECURITY)                     |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CTS_CONTROL)                         |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SOCK_SET_LOCAL_PORT)                 |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_FOTA)                                |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UART_POWER_SAVING)                   |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CMUX)                                |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SNR_REPORTED)                        |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_AUTHENTICATION_MODE_AUTOMATIC)       |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_LWM2M)                               |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UCGED)                               |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_HTTP)                                |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_PPP) /* features */
+        ),
+        4, /* Default CMUX channel for GNSS */
+        16, /* AT+CFUN reboot command */
+        -1, /* PPP PDP context ID */
+        0x127 /* GNSS system types for an attached GNSS chip (GPS, SBAS, Galileo and QZSS) */
     },
     // Add new module types here, before the U_CELL_MODULE_TYPE_ANY entry (since
     // the uCellModuleType_t value is used as an index into this array).
@@ -439,7 +497,8 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_DTR_POWER_SAVING) /* features */,
         3, /* Default CMUX channel for GNSS */
         15, /* AT+CFUN reboot command */
-        -1  /* PPP PDP context ID */
+        -1, /* PPP PDP context ID */
+        U_CELL_LOC_GNSS_SYSTEM_TYPES /* GNSS system types for an attached GNSS chip */
     }
 };
 

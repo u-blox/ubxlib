@@ -183,10 +183,10 @@ static void testBandMask(uDeviceHandle_t cellHandle,
     U_TEST_PRINT_LINE("getting band masks for %s...", pRatString);
     errorCode = uCellCfgGetBandMask(cellHandle, rat,
                                     &originalBandMask1, &originalBandMask2);
-    // For SARA-R4 and LARA-R6 the module reports the band mask for
-    // all of the RATs it supports, while SARA-R5 only reports
-    // the band masks for the RAT that is enabled, which in the
-    // case of these tests is only one, the one at rank 0
+    // For SARA-R4, LARA-R6 and SARA-R52 the module reports the
+    // band mask for all of the RATs it supports, while SARA-R5
+    // only reports the band masks for the RAT that is enabled,
+    // which in the case of these tests is only one, the one at rank 0
     if (((moduleType != U_CELL_MODULE_TYPE_SARA_R5) ||
          (uCellCfgGetRatRank(cellHandle, rat) == 0)) &&
         (supportedRatsBitmap & (1UL << (int32_t) rat))) {
@@ -220,7 +220,7 @@ static void testBandMask(uDeviceHandle_t cellHandle,
 #endif
         U_PORT_TEST_ASSERT(!uCellPwrRebootIsRequired(cellHandle));
         // For SARA-R5 we can only read it back if it is the current RAT
-        if ((moduleType != U_CELL_MODULE_TYPE_SARA_R5) ||
+        if ((!U_CELL_PRIVATE_MODULE_IS_SARA_R5(moduleType)) ||
             (uCellCfgGetRatRank(cellHandle, rat) == 0)) {
             U_TEST_PRINT_LINE("reading new band mask for %s...",
                               pRatString);

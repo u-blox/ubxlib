@@ -216,16 +216,20 @@ static const int32_t gEdrxNb1SecondsToNumber[] = {-1, -1, 20, 41, 20, 82, 20, 20
 /** Array to compare the module names from the devices.
  * This string array and the uCellModuleType_t should be kept synchronized.
  * The order of module types must match.
+ * Where more than one module type string is required for a single module
+ * type from uCellModuleType_t then they should both be included
+ * in the same string with a "|" separating them, e.g. "blah|blim".
  */
 static const char *gpModuleNames[] = {"SARA-U2",
                                       "SARA-R410M-02B",
                                       "SARA-R412M-02B",
                                       "SARA-R412M-03B",
-                                      "SARA-R5",
+                                      "SARA-R50|SARA-R51",
                                       "SARA-R410M-03B",
                                       "SARA-R422",
                                       "LARA-R6",
-                                      "LENA-R8"
+                                      "LENA-R8",
+                                      "SARA-R52"
                                      };
 
 /** The PWR_ON pin pulse durations, in milliseconds, to be
@@ -1432,6 +1436,7 @@ int32_t uCellPwrPrivateOn(uCellPrivateInstance_t *pInstance,
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
     int32_t platformError = 0;
+    bool isModuleAlive = false;
     int32_t enablePowerAtStart = 1;
     bool isModuleAlreadyOn = true;
     bool asleepAtStart = (pInstance->deepSleepState == U_CELL_PRIVATE_DEEP_SLEEP_STATE_ASLEEP);
@@ -1495,10 +1500,13 @@ int32_t uCellPwrPrivateOn(uCellPrivateInstance_t *pInstance,
 
             // Cellular module should be up
             for (size_t y = U_CELL_PWR_IS_ALIVE_ATTEMPTS_POWER_ON;
-                 (y > 0) && (errorCode != 0) &&
+                 (y > 0) && !isModuleAlive &&
                  ((pKeepGoingCallback == NULL) || pKeepGoingCallback(cellHandle));
                  y--) {
-                errorCode = uCellPwrPrivateIsAlive(pInstance, 1);
+                isModuleAlive = (uCellPwrPrivateIsAlive(pInstance, 1) == 0);
+            }
+            if (isModuleAlive) {
+                errorCode = 0;
             }
 
             // If the module is alive
@@ -2272,11 +2280,6 @@ int32_t uCellPwrReboot(uDeviceHandle_t cellHandle,
                 // to be entered at a power cycle.
                 for (size_t x = U_CELL_INITIAL_CONFIG_RETRIES; (x > 0) && (!success) &&
                      ((pKeepGoingCallback == NULL) || pKeepGoingCallback(cellHandle)); x--) {
-                    if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R5) {
-                        // SARA-R5 chucks out a load of stuff after
-                        // boot in its development version: flush it away
-                        uAtClientFlush(atHandle);
-                    }
                     // Wait for the module to return to life and configure it
                     errorCode = uCellPwrPrivateIsAlive(pInstance,
                                                        U_CELL_PWR_IS_ALIVE_ATTEMPTS_POWER_ON);
@@ -2411,11 +2414,6 @@ int32_t uCellPwrResetHard(uDeviceHandle_t cellHandle, int32_t pinReset)
                     uPortGpioSet(pinReset, (int32_t) !U_CELL_RESET_PIN_TOGGLE_TO_STATE);
                     // Wait for the module to boot
                     uPortTaskBlock(pInstance->pModule->rebootCommandWaitSeconds * 1000);
-                    if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R5) {
-                        // SARA-R5 chucks out a load of stuff after
-                        // boot in its development version: flush it away
-                        uAtClientFlush(pInstance->atHandle);
-                    }
                     // Wait for the module to return to life and configure it
                     pInstance->lastCfunFlipTimeMs = uPortGetTickTimeMs();
                     errorCode = uCellPwrPrivateIsAlive(pInstance,

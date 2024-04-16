@@ -453,6 +453,7 @@ U_PORT_TEST_FUNCTION("[cellMux]", "cellMuxBasic")
     uDeviceHandle_t cellHandle;
     const uCellPrivateModule_t *pModule;
     int32_t resourceCount;
+    bool uartSleepWasEnabled;
     // +1 and zero init so that we can treat it as a string
     char buffer1[U_CELL_INFO_IMEI_SIZE + 1] = {0};
     char buffer2[U_CELL_INFO_IMEI_SIZE + 1] = {0};
@@ -481,6 +482,11 @@ U_PORT_TEST_FUNCTION("[cellMux]", "cellMuxBasic")
         U_PORT_TEST_ASSERT(uCellInfoGetImei(cellHandle, buffer1) == 0);
         U_TEST_PRINT_LINE("IMEI is %s.", buffer1);
 
+        // Disable UART sleep as CMUX won't work reliably with it on
+        uartSleepWasEnabled = uCellPwrUartSleepIsEnabled(cellHandle);
+        if (uartSleepWasEnabled) {
+            U_PORT_TEST_ASSERT(uCellPwrDisableUartSleep(cellHandle) == 0);
+        }
         for (size_t x = 0; x < U_CELL_MUX_TEST_BASIC_NUM_ITERATIONS; x++) {
 
             uPortLog(U_TEST_PREFIX_BASE "_%d: enabling CMUX...\n", x + 1);
@@ -503,6 +509,9 @@ U_PORT_TEST_FUNCTION("[cellMux]", "cellMuxBasic")
             U_PORT_TEST_ASSERT(uCellInfoGetImei(cellHandle, buffer2) == 0);
             uPortLog(U_TEST_PREFIX_BASE "_%d: IMEI read after disabling CMUX gives %s.\n", x + 1, buffer2);
             U_PORT_TEST_ASSERT(strncmp(buffer1, buffer2, sizeof(buffer1)) == 0);
+        }
+        if (uartSleepWasEnabled) {
+            U_PORT_TEST_ASSERT(uCellPwrEnableUartSleep(cellHandle) == 0);
         }
     } else {
         U_TEST_PRINT_LINE("CMUX is not supported, not running tests.");
@@ -536,6 +545,7 @@ U_PORT_TEST_FUNCTION("[cellMux]", "cellMuxSock")
     int32_t z;
     size_t count;
     char *pBuffer;
+    bool uartSleepWasEnabled;
 
     // In case a previous test failed
     uCellTestPrivateCleanup(&gHandles);
@@ -557,6 +567,11 @@ U_PORT_TEST_FUNCTION("[cellMux]", "cellMuxSock")
     // for pModule from now on
 
     if (U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_CMUX)) {
+        // Disable UART sleep as CMUX won't work reliably with it on
+        uartSleepWasEnabled = uCellPwrUartSleepIsEnabled(cellHandle);
+        if (uartSleepWasEnabled) {
+            U_PORT_TEST_ASSERT(uCellPwrDisableUartSleep(cellHandle) == 0);
+        }
         // Malloc a buffer to receive things into.
         pBuffer = (char *) pUPortMalloc(U_CELL_SOCK_MAX_SEGMENT_SIZE_BYTES);
         U_PORT_TEST_ASSERT(pBuffer != NULL);
@@ -674,6 +689,10 @@ U_PORT_TEST_FUNCTION("[cellMux]", "cellMuxSock")
 
         // Free memory
         uPortFree(pBuffer);
+
+        if (uartSleepWasEnabled) {
+            U_PORT_TEST_ASSERT(uCellPwrEnableUartSleep(cellHandle) == 0);
+        }
     } else {
         U_TEST_PRINT_LINE("CMUX is not supported, not running tests.");
         U_PORT_TEST_ASSERT(uCellMuxEnable(cellHandle) < 0);
@@ -708,6 +727,7 @@ U_PORT_TEST_FUNCTION("[cellMux]", "cellMuxMqtt")
     int32_t startTimeMs;
     size_t messageSize = sizeof(gMqttSendData) - 1;
     uCellMqttQos_t qos;
+    bool uartSleepWasEnabled;
 
     // In case a previous test failed
     uCellTestPrivateCleanup(&gHandles);
@@ -730,6 +750,12 @@ U_PORT_TEST_FUNCTION("[cellMux]", "cellMuxMqtt")
 
     if (U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_CMUX) &&
         uCellMqttIsSupported(cellHandle)) {
+
+        // Disable UART sleep as CMUX won't work reliably with it on
+        uartSleepWasEnabled = uCellPwrUartSleepIsEnabled(cellHandle);
+        if (uartSleepWasEnabled) {
+            U_PORT_TEST_ASSERT(uCellPwrDisableUartSleep(cellHandle) == 0);
+        }
 
         // Get some memory to put a received MQTT message/topic in
         pMessageIn = (char *) pUPortMalloc(messageSize);
@@ -817,6 +843,9 @@ U_PORT_TEST_FUNCTION("[cellMux]", "cellMuxMqtt")
         uPortFree(pMessageIn);
         uPortFree(pTopicStrIn);
 
+        if (uartSleepWasEnabled) {
+            U_PORT_TEST_ASSERT(uCellPwrEnableUartSleep(cellHandle) == 0);
+        }
     } else {
         U_TEST_PRINT_LINE("Either MQTT or CMUX are not supported, skipping...");
     }
@@ -846,6 +875,7 @@ U_PORT_TEST_FUNCTION("[cellMux]", "cellMuxHttp")
     // +1 and zero init so that we can treat it as a string
     char imeiBuffer[U_CELL_INFO_IMEI_SIZE + 1] = {0};
     char pathBuffer[64];
+    bool uartSleepWasEnabled;
 
     // In case a previous test failed
     uCellTestPrivateCleanup(&gHandles);
@@ -871,6 +901,12 @@ U_PORT_TEST_FUNCTION("[cellMux]", "cellMuxHttp")
     // NOLINTNEXTLINE(misc-redundant-expression)
     if (U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_CMUX) &&
         U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_HTTP)) {
+        // Disable UART sleep as CMUX won't work reliably with it on
+        uartSleepWasEnabled = uCellPwrUartSleepIsEnabled(cellHandle);
+        if (uartSleepWasEnabled) {
+            U_PORT_TEST_ASSERT(uCellPwrDisableUartSleep(cellHandle) == 0);
+        }
+
         // Create the complete URL from the IP address of the server
         // and the port number; testing with the domain name of the
         // server is done in the tests of u_http_client_test.c.
@@ -952,6 +988,10 @@ U_PORT_TEST_FUNCTION("[cellMux]", "cellMuxHttp")
         U_PORT_TEST_ASSERT(uCellMuxDisable(cellHandle) == 0);
 
         U_PORT_TEST_ASSERT(uCellNetDisconnect(cellHandle, NULL) == 0);
+
+        if (uartSleepWasEnabled) {
+            U_PORT_TEST_ASSERT(uCellPwrEnableUartSleep(cellHandle) == 0);
+        }
     } else {
         U_TEST_PRINT_LINE("CMUX or HTTP is not supported, not running tests.");
     }

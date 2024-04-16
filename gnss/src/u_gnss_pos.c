@@ -754,8 +754,8 @@ int32_t uGnssPosGetStreamedStart(uDeviceHandle_t gnssHandle,
                                                                &pCfgVal,
                                                                U_GNSS_CFG_VAL_LAYER_RAM) == 1) {
                                 messageRate = (int32_t) pCfgVal->value;
-                                uPortFree(pCfgVal);
                             }
+                            uPortFree(pCfgVal);
                             if (messageRate != (int32_t) cfgVal.value) {
                                 errorCode = uGnssCfgPrivateValSetList(pInstance, &cfgVal, 1,
                                                                       U_GNSS_CFG_VAL_TRANSACTION_NONE,

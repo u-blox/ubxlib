@@ -88,6 +88,12 @@ extern "C" {
      ((moduleType) == U_CELL_MODULE_TYPE_SARA_R412M_03B) || \
      ((moduleType) == U_CELL_MODULE_TYPE_SARA_R410M_03B))
 
+/** Return true if the given module type is SARA-R5xx.
+ */
+#define U_CELL_PRIVATE_MODULE_IS_SARA_R5(moduleType)      \
+    (((moduleType) == U_CELL_MODULE_TYPE_SARA_R5) || \
+     ((moduleType) == U_CELL_MODULE_TYPE_SARA_R52))
+
 /** Return true if the supported RATS bitmap includes LTE.
  */
 #define U_CELL_PRIVATE_SUPPORTED_RATS_LTE(supportedRatsBitmap)  \
@@ -324,6 +330,7 @@ typedef struct {
     int32_t defaultMuxChannelGnss; /**< the default mux channel to use for attached/embedded GNSS, -1 if not supported. */
     int32_t atCFunRebootCommand; /** Normally 15, but in some cases 16. */
     int32_t pppContextId; /** The PDP context ID to use for PPP, -1 to use the same as for everything else. */
+    uint32_t gnssSystemTypesBitMap; /** The default set of GNSS system types to use with an attached/included GNSS chip. */
 } uCellPrivateModule_t;
 
 /** The radio parameters.

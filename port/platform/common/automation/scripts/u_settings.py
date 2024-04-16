@@ -156,7 +156,7 @@ __DEFAULT_SETTINGS["CONNECTION_INSTANCE_27" + __SETTINGS_POSTFIX_AGENT_SPECIFIC]
 __DEFAULT_SETTINGS["CONNECTION_INSTANCE_29" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = \
     {"serial_port": "/dev/silabs_cp210x_uart"}
 __DEFAULT_SETTINGS["CONNECTION_INSTANCE_30" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = \
-    {"serial_port": "/dev/stlink_v2_1", "debugger": "0674FF575377524867061450"}
+    {"serial_port": "/dev/stlink_v2_1", "debugger": "066CFF515551678367014712"}
 __DEFAULT_SETTINGS["CONNECTION_INSTANCE_31" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = \
     {"serial_port": ("/dev/serial/by-id/"
                      "usb-STMicroelectronics_STM32_STLink_066DFF313937424757082031-if02"),

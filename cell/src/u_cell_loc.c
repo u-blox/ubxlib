@@ -1246,6 +1246,24 @@ int32_t uCellLocGetSystem(uDeviceHandle_t cellHandle, uint32_t *pGnssSystemTypes
     return errorCode;
 }
 
+// Get the default GNSS systems.
+int32_t uCellLocGetSystemDefault(uDeviceHandle_t cellHandle, uint32_t *pGnssSystemTypesBitMap)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance = NULL;
+
+    U_CELL_LOC_ENTRY_FUNCTION(cellHandle, &pInstance, &errorCode);
+
+    if ((errorCode == 0) && (pInstance != NULL) &&
+        (pGnssSystemTypesBitMap != NULL)) {
+        *pGnssSystemTypesBitMap = pInstance->pModule->gnssSystemTypesBitMap;
+    }
+
+    U_CELL_LOC_EXIT_FUNCTION();
+
+    return errorCode;
+}
+
 // Check whether a GNSS chip is present.
 bool uCellLocIsGnssPresent(uDeviceHandle_t cellHandle)
 {

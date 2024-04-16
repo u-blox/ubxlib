@@ -71,9 +71,10 @@
 #else
 # define U_SHORT_RANGE_MODULE_TYPE_NORA_W36 9 /**< Please add short_range_gen2 (and short_range)
                                                    to UBXLIB_FEATURES when using this module type. */
-#endif
 // Add any new module types here, before U_SHORT_RANGE_MODULE_TYPE_ANY,
 // and assign specific values
+// IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT: see note above.
+#endif
 #define U_SHORT_RANGE_MODULE_TYPE_ANY       10 /**< when this module type is used the code will
                                                     interrogate the module and chose the correct
                                                     module type by itself; should this fail, for
@@ -84,10 +85,6 @@
                                                     the specific module type you want instead. */
 #define U_SHORT_RANGE_MODULE_TYPE_INVALID -1
 #define U_SHORT_RANGE_MODULE_TYPE_UNSUPPORTED -2
-
-/* IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT
- * See note above about U_SHORT_RANGE_MODULE_TYPE_XXX.
- */
 
 /** This is a X macro table of the radio features for all supported
  *  short range modules. This is used for automatically generating some

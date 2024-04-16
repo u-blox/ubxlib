@@ -415,7 +415,7 @@ U_PORT_TEST_FUNCTION("[cellTime]", "cellTimeBasic")
     for (size_t x = 0; (y == 0) && !gEvent.synchronised && (x < U_CELL_TIME_TEST_RETRIES + 1); x++) {
         y = uCellTimeEnable(cellHandle, U_CELL_TIME_MODE_PULSE, true, 0,
                             eventCallback, &gEventCallback);
-        if (pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R5) {
+        if (U_CELL_PRIVATE_MODULE_IS_SARA_R5(pModule->moduleType)) {
             U_PORT_TEST_ASSERT(y == 0);
             while (!gEvent.synchronised &&
                    (uPortGetTickTimeMs() - startTimeMs < U_CELL_TIME_TEST_GUARD_TIME_SECONDS * 1000)) {
@@ -452,7 +452,7 @@ U_PORT_TEST_FUNCTION("[cellTime]", "cellTimeBasic")
     for (size_t x = 0; (y == 0) && !gEvent.synchronised && (x < U_CELL_TIME_TEST_RETRIES + 1); x++) {
         y = uCellTimeEnable(cellHandle, U_CELL_TIME_MODE_ONE_SHOT, true, 0,
                             eventCallback, &gEventCallback);
-        if (pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R5) {
+        if (U_CELL_PRIVATE_MODULE_IS_SARA_R5(pModule->moduleType)) {
             U_PORT_TEST_ASSERT(y == 0);
             while (!gEvent.synchronised &&
                    (uPortGetTickTimeMs() - startTimeMs < U_CELL_TIME_TEST_GUARD_TIME_SECONDS * 1000)) {
@@ -484,7 +484,7 @@ U_PORT_TEST_FUNCTION("[cellTime]", "cellTimeBasic")
     // Give this a few goes as sync can fail randomly
     for (size_t x = 0; (y == 0) && !gEvent.synchronised && (x < U_CELL_TIME_TEST_RETRIES + 1); x++) {
         y = uCellTimeSetCallback(cellHandle, timeCallback, &gTimeCallback);
-        if (pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R5) {
+        if (U_CELL_PRIVATE_MODULE_IS_SARA_R5(pModule->moduleType)) {
             U_PORT_TEST_ASSERT(y == 0);
             gEventCallback = INT_MIN;
             memset(&gEvent, 0xFF, sizeof(gEvent));
@@ -533,7 +533,7 @@ U_PORT_TEST_FUNCTION("[cellTime]", "cellTimeBasic")
     gTimeCallback = INT_MIN;
     memset(&gTime, 0xFF, sizeof(gTime));
     y = uCellTimeSetCallback(cellHandle, timeCallback, &gTimeCallback);
-    if (pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R5) {
+    if (U_CELL_PRIVATE_MODULE_IS_SARA_R5(pModule->moduleType)) {
         U_PORT_TEST_ASSERT(y == 0);
         gEventCallback = INT_MIN;
         memset(&gEvent, 0xFF, sizeof(gEvent));
@@ -568,13 +568,13 @@ U_PORT_TEST_FUNCTION("[cellTime]", "cellTimeBasic")
             U_PORT_TEST_ASSERT(y < 0);
         }
     }
-#endif
+#endif // (U_CFG_TEST_PIN_CELL_EXT_INT) && (U_CFG_TEST_PIN_CELL_EXT_INT >= 0)
     U_PORT_TEST_ASSERT((y < 0) || (gEvent.synchronised));
 
     // Do a deep scan, first with no callback
     U_TEST_PRINT_LINE("performing a deep scan, no callback provided.");
     y = uCellNetDeepScan(cellHandle, NULL, NULL);
-    if (pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R5) {
+    if (U_CELL_PRIVATE_MODULE_IS_SARA_R5(pModule->moduleType)) {
         U_TEST_PRINT_LINE("%d cell(s) found.", y);
         U_PORT_TEST_ASSERT(y >= 0);
     } else {
@@ -582,7 +582,7 @@ U_PORT_TEST_FUNCTION("[cellTime]", "cellTimeBasic")
         U_PORT_TEST_ASSERT(y < 0);
     }
 
-    if (pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R5) {
+    if (U_CELL_PRIVATE_MODULE_IS_SARA_R5(pModule->moduleType)) {
         // ...and again with a callback, but abort immediately
         U_TEST_PRINT_LINE("adding a callback but aborting the deep scan.");
         gCellInfoCallback = INT_MIN;
@@ -594,7 +594,7 @@ U_PORT_TEST_FUNCTION("[cellTime]", "cellTimeBasic")
         clearCellInfoList(&gpCellInfoList);
     }
 
-    if (pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R5) {
+    if (U_CELL_PRIVATE_MODULE_IS_SARA_R5(pModule->moduleType)) {
         // Now do it properly
         U_TEST_PRINT_LINE("performing a deep scan, with a callback and no abort this time.");
         // Do this a few times as the module can sometimes find nothing
@@ -655,7 +655,9 @@ U_PORT_TEST_FUNCTION("[cellTime]", "cellTimeBasic")
                 memset(&gEvent, 0xFF, sizeof(gEvent));
                 gEvent.synchronised = false;
                 startTimeMs = uPortGetTickTimeMs();
-                U_PORT_TEST_ASSERT(uCellTimeEnable(cellHandle, U_CELL_TIME_MODE_EXT_INT_TIMESTAMP, true, 0,
+                // SARA-R520M10 does not support U_CELL_TIME_MODE_EXT_INT_TIMESTAMP so we can
+                // test this cell by U_CELL_TIME_MODE_ONE_SHOT which is supported by all modules.
+                U_PORT_TEST_ASSERT(uCellTimeEnable(cellHandle, U_CELL_TIME_MODE_ONE_SHOT, true, 0,
                                                    eventCallback, &gEventCallback) == 0);
                 while (!gEvent.synchronised &&
                        (uPortGetTickTimeMs() - startTimeMs < U_CELL_TIME_TEST_GUARD_TIME_SECONDS * 1000)) {
@@ -667,7 +669,7 @@ U_PORT_TEST_FUNCTION("[cellTime]", "cellTimeBasic")
                 U_PORT_TEST_ASSERT(gEvent.cellIdPhysical == gpCellInfoList->cell.cellIdPhysical);
                 // The time URC won't be emitted since this is one-shot mode and it has already "shot"
                 // Don't disable the callback this time, allow closing to sort it out
-#endif
+#endif // U_CELL_CFG_SARA_R5_00B
             } else {
                 // Free the cell information list, in case we were called
                 // but then the module emitted a +CME ERROR

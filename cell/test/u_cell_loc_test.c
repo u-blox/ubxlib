@@ -310,6 +310,7 @@ static char latLongToBits(int32_t thingX1e7,
 
 #endif //U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN && U_CFG_TEST_CELL_LOCATE
 
+#ifndef U_CFG_LOC_TEST_CHANGE_SYSTEM_TYPES_DISABLE
 // The satellite system configuration tests: pulled out separately so that
 // they can be run when GNSS is powered off and when it is powered on.
 static void cellLocSystemConfigTest(uDeviceHandle_t cellHandle)
@@ -355,6 +356,7 @@ static void cellLocSystemConfigTest(uDeviceHandle_t cellHandle)
     U_PORT_TEST_ASSERT(y == 0);
     U_TEST_PRINT_LINE("system types bit map is now back to 0x%08x.", bitmap1);
 }
+#endif
 
 #ifdef U_CFG_TEST_GNSS_MODULE_TYPE
 
@@ -553,10 +555,12 @@ U_PORT_TEST_FUNCTION("[cellLoc]", "cellLocCfg")
                                                 &gHandles, true) == 0);
     cellHandle = gHandles.cellHandle;
 
+#ifndef U_CFG_LOC_TEST_CHANGE_SYSTEM_TYPES_DISABLE
     // Check system types: since this is done with AT+UGPS=0
     // it's not much of a test (the code just has to remember stuff):
     // for a better test see cellLocAssistNow()
     cellLocSystemConfigTest(cellHandle);
+#endif
 
     // Check desired accuracy
     y = uCellLocGetDesiredAccuracy(cellHandle);
@@ -920,10 +924,12 @@ U_PORT_TEST_FUNCTION("[cellLoc]", "cellLocAssistNow")
         // So that we can see what we're doing
         uGnssSetUbxMessagePrint(gnssHandle, true);
 
+#ifndef U_CFG_LOC_TEST_CHANGE_SYSTEM_TYPES_DISABLE
         // uNetworkInterfaceUp() will have switched the GNSS chip on;
         // check system types with the GNSS device powered up
         U_TEST_PRINT_LINE("testing AssistNow configuration with GNSS device on.");
         cellLocSystemConfigTest(cellHandle);
+#endif
 
         // Test AssistNow configuration
         cellLocAssistNowConfigTest(cellHandle);

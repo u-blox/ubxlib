@@ -459,7 +459,7 @@ int32_t uCellTimeEnable(uDeviceHandle_t cellHandle,
             ((mode == U_CELL_TIME_MODE_PULSE) || (mode == U_CELL_TIME_MODE_ONE_SHOT) ||
              (mode == U_CELL_TIME_MODE_EXT_INT_TIMESTAMP))) {
             errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
-            if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R5) {
+            if (U_CELL_PRIVATE_MODULE_IS_SARA_R5(pInstance->pModule->moduleType)) {
                 errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
                 pContext = (uCellTimePrivateContext_t *) pInstance->pCellTimeContext;
                 if (pContext == NULL) {
@@ -578,7 +578,7 @@ int32_t uCellTimeDisable(uDeviceHandle_t cellHandle)
         pInstance = pUCellPrivateGetInstance(cellHandle);
         if (pInstance != NULL) {
             errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-            if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R5) {
+            if (U_CELL_PRIVATE_MODULE_IS_SARA_R5(pInstance->pModule->moduleType)) {
                 atHandle = pInstance->atHandle;
                 pContext = (uCellTimePrivateContext_t *) pInstance->pCellTimeContext;
                 if (pContext != NULL) {
@@ -640,7 +640,7 @@ int32_t uCellTimeSetCallback(uDeviceHandle_t cellHandle,
                 errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
             } else {
                 errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
-                if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R5) {
+                if (U_CELL_PRIVATE_MODULE_IS_SARA_R5(pInstance->pModule->moduleType)) {
                     errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
                     if (pContext == NULL) {
                         // This may be called before uCellTimeEnable() so need
@@ -697,7 +697,7 @@ int32_t uCellTimeSyncCellEnable(uDeviceHandle_t cellHandle,
         pInstance = pUCellPrivateGetInstance(cellHandle);
         if ((pInstance != NULL) && (pCell != NULL)) {
             errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
-            if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R5) {
+            if (U_CELL_PRIVATE_MODULE_IS_SARA_R5(pInstance->pModule->moduleType)) {
                 errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
                 pContext = (uCellTimeCellSyncPrivateContext_t *) pInstance->pCellTimeCellSyncContext;
                 if (pContext == NULL) {
@@ -780,7 +780,7 @@ int32_t uCellTimeSyncCellDisable(uDeviceHandle_t cellHandle)
         pInstance = pUCellPrivateGetInstance(cellHandle);
         if (pInstance != NULL) {
             errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-            if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R5) {
+            if (U_CELL_PRIVATE_MODULE_IS_SARA_R5(pInstance->pModule->moduleType)) {
                 pContext = (uCellTimeCellSyncPrivateContext_t *) pInstance->pCellTimeCellSyncContext;
                 if (pContext != NULL) {
                     atHandle = pInstance->atHandle;
