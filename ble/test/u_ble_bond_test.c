@@ -393,6 +393,7 @@ static void connectCallback(int32_t connHandle, char *pAddress, bool connected)
 
 static void doBond(bool expectSuccess)
 {
+    uPortTaskBlock(1000);
     // Remove old bonds
     U_PORT_TEST_ASSERT(uBleGapRemoveBond(gInitiatorDeviceHandle, NULL) == 0);
     if (gTestOption == 0) {
@@ -400,6 +401,7 @@ static void doBond(bool expectSuccess)
     } else {
         U_PORT_TEST_ASSERT(uPortNamedPipeWriteStr(gPipe, pIntToStr(CMD_REM_BOND)) == 0);
     }
+    uPortTaskBlock(1000);
     // Start and wait for result callback
     U_PORT_TEST_ASSERT(
         (uBleGapBond(gInitiatorDeviceHandle, gResponderMacAddr, bondResultCallback) == 0) ||
