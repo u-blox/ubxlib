@@ -61,11 +61,10 @@
 #endif
 
 #ifndef U_CFG_OS_PRIORITY_MAX
-/** The maximum task priority, should be less than or
- * equal to configMAX_PRIORITIES defined in FreeRTOSConfig.h,
- * which is usually set to 25.
+/** The maximum task priority, should be less than configMAX_PRIORITIES,
+ * defined in FreeRTOSConfig.h, which is usually set to 25.
  */
-# define U_CFG_OS_PRIORITY_MAX 25
+# define U_CFG_OS_PRIORITY_MAX 24
 #endif
 
 #ifndef U_CFG_OS_YIELD_MS
