@@ -48,6 +48,8 @@
 
 #include "u_ringbuffer.h"
 
+#include "u_timeout.h"
+
 #include "u_at_client.h"
 
 #include "u_cell_module_type.h"
@@ -1135,8 +1137,8 @@ static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance,
         if (andRadioOff) {
             // Switch the radio off until commanded to connect
             // Wait for flip time to expire
-            while (uPortGetTickTimeMs() - pInstance->lastCfunFlipTimeMs <
-                   (U_CELL_PRIVATE_AT_CFUN_FLIP_DELAY_SECONDS * 1000)) {
+            while (!uTimeoutExpiredSeconds(pInstance->lastCfunFlipTime,
+                                           U_CELL_PRIVATE_AT_CFUN_FLIP_DELAY_SECONDS)) {
                 uPortTaskBlock(1000);
             }
             uAtClientLock(atHandle);
@@ -1147,7 +1149,7 @@ static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance,
                               pInstance->pModule->radioOffCfun);
             uAtClientCommandStopReadResponse(atHandle);
             if (uAtClientUnlock(atHandle) == 0) {
-                pInstance->lastCfunFlipTimeMs = uPortGetTickTimeMs();
+                pInstance->lastCfunFlipTime = uTimeoutStart();
                 errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
             }
         } else {
@@ -1164,10 +1166,11 @@ static void waitForPowerOff(uCellPrivateInstance_t *pInstance,
 {
     uAtClientHandle_t atHandle = pInstance->atHandle;
     bool moduleIsOff = false;
-    int32_t startTimeMs = uPortGetTickTimeMs();
+    uTimeoutStart_t timeoutStart = uTimeoutStart();
 
     while (!moduleIsOff &&
-           (uPortGetTickTimeMs() - startTimeMs < pInstance->pModule->powerDownWaitSeconds * 1000) &&
+           !uTimeoutExpiredSeconds(timeoutStart,
+                                   pInstance->pModule->powerDownWaitSeconds) &&
            ((pKeepGoingCallback == NULL) || pKeepGoingCallback(pInstance->cellHandle))) {
         if (pInstance->pinVInt >= 0) {
             // If we have a VInt pin then wait until that
@@ -2250,8 +2253,8 @@ int32_t uCellPwrReboot(uDeviceHandle_t cellHandle,
         if (pInstance != NULL) {
             uPortLog("U_CELL_PWR: rebooting.\n");
             // Wait for flip time to expire
-            while (uPortGetTickTimeMs() - pInstance->lastCfunFlipTimeMs <
-                   (U_CELL_PRIVATE_AT_CFUN_FLIP_DELAY_SECONDS * 1000)) {
+            while (!uTimeoutExpiredSeconds(pInstance->lastCfunFlipTime,
+                                           U_CELL_PRIVATE_AT_CFUN_FLIP_DELAY_SECONDS)) {
                 uPortTaskBlock(1000);
             }
             // Sleep is no longer available
@@ -2347,7 +2350,7 @@ int32_t uCellPwrResetHard(uDeviceHandle_t cellHandle, int32_t pinReset)
     uCellPrivateInstance_t *pInstance;
     int32_t platformError;
     uPortGpioConfig_t gpioConfig;
-    int64_t startTime;
+    uTimeoutStart_t timeoutStart;
     int32_t resetHoldMilliseconds;
     int32_t pinResetToggleToState = (pinReset & U_CELL_PIN_INVERTED) ?
                                     !U_CELL_RESET_PIN_TOGGLE_TO_STATE : U_CELL_RESET_PIN_TOGGLE_TO_STATE;
@@ -2403,8 +2406,8 @@ int32_t uCellPwrResetHard(uDeviceHandle_t cellHandle, int32_t pinReset)
                 if (platformError == 0) {
                     // We have rebooted
                     pInstance->rebootIsRequired = false;
-                    startTime = uPortGetTickTimeMs();
-                    while (uPortGetTickTimeMs() - startTime < resetHoldMilliseconds) {
+                    timeoutStart = uTimeoutStart();
+                    while (!uTimeoutExpiredMs(timeoutStart, resetHoldMilliseconds)) {
                         uPortTaskBlock(100);
                     }
                     // Set the pin back to the "non RESET" state
@@ -2415,7 +2418,7 @@ int32_t uCellPwrResetHard(uDeviceHandle_t cellHandle, int32_t pinReset)
                     // Wait for the module to boot
                     uPortTaskBlock(pInstance->pModule->rebootCommandWaitSeconds * 1000);
                     // Wait for the module to return to life and configure it
-                    pInstance->lastCfunFlipTimeMs = uPortGetTickTimeMs();
+                    pInstance->lastCfunFlipTime = uTimeoutStart();
                     errorCode = uCellPwrPrivateIsAlive(pInstance,
                                                        U_CELL_PWR_IS_ALIVE_ATTEMPTS_POWER_ON);
                     if (errorCode == 0) {

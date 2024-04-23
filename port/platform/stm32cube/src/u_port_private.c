@@ -106,7 +106,7 @@ typedef struct uPortPrivateTimer_t {
  * -------------------------------------------------------------- */
 
 // Counter to keep track of RTOS ticks: NOT static
-// so that the stm32f4xx_it.c can update it.
+// so that the u_exception_handler.c can update it.
 int32_t gTickTimerRtosCount;
 
 // Get the GPIOx address for a given GPIO port.

@@ -37,10 +37,13 @@
 
 #include "u_error_common.h"
 
+#include "u_port.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"
 #include "u_port_heap.h"
 #include "u_port_gpio.h"
+
+#include "u_timeout.h"
 
 #include "u_at_client.h"
 
@@ -297,6 +300,8 @@ int32_t uCellAdd(uCellModuleType_t moduleType,
                     pInstance->pinPwrOn = pinPwrOn;
                     pInstance->pinVInt = pinVInt;
                     pInstance->pinDtrPowerSaving = -1;
+                    pInstance->lastCfunFlipTime = uTimeoutStart();
+                    pInstance->lastDtrPinToggleTime = uTimeoutStart();
                     for (size_t x = 0;
                          x < sizeof(pInstance->networkStatus) / sizeof(pInstance->networkStatus[0]);
                          x++) {

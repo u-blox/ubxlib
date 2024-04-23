@@ -43,6 +43,8 @@
 
 #include "u_error_common.h"
 
+#include "u_timeout.h"
+
 #include "u_port.h"
 #include "u_port_os.h"
 #include "u_port_heap.h"
@@ -163,18 +165,18 @@ static size_t send(uSockDescriptor_t descriptor,
 {
     int32_t x;
     size_t sentSizeBytes = 0;
-    int32_t startTimeMs;
+    uTimeoutStart_t timeoutStart;
 
     U_TEST_PRINT_LINE("sending %d byte(s) of data...", sizeBytes);
-    startTimeMs = uPortGetTickTimeMs();
+    timeoutStart = uTimeoutStart();
     while ((sentSizeBytes < sizeBytes) &&
-           ((uPortGetTickTimeMs() - startTimeMs) < 10000)) {
+           !uTimeoutExpiredSeconds(timeoutStart, 10)) {
         x = uSockWrite(descriptor, (const void *) pData,
                        sizeBytes - sentSizeBytes);
         if (x > 0) {
             sentSizeBytes += x;
             U_TEST_PRINT_LINE("sent %d byte(s) of data @%d ms.",
-                              sentSizeBytes, (int32_t) uPortGetTickTimeMs());
+                              sentSizeBytes, uPortGetTickTimeMs());
         }
     }
 
@@ -213,7 +215,7 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
     uDeviceHandle_t devHandle = NULL;
     uSockDescriptor_t descriptor = -1;
     uSockAddress_t remoteAddress;
-    int32_t startTimeMs;
+    uTimeoutStart_t timeoutStart;
     size_t sizeBytes;
     size_t offset;
     int32_t y;
@@ -362,7 +364,7 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
         U_PORT_TEST_ASSERT(send(descriptor, gData, sizeof(gData) - 1) == sizeof(gData) - 1);
 
         U_TEST_PRINT_LINE("%d byte(s) sent via TCP @%d ms, now receiving...",
-                          sizeof(gData) - 1, (int32_t) uPortGetTickTimeMs());
+                          sizeof(gData) - 1, uPortGetTickTimeMs());
 
         // ...and capture them all again afterwards
         uPortFree(gpDataReceived); // In case the previous test failed
@@ -371,12 +373,12 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
         //lint -e(668) Suppress possible use of NULL pointer
         // for gpDataReceived
         memset(gpDataReceived, 0, sizeof(gData) - 1);
-        startTimeMs = uPortGetTickTimeMs();
+        timeoutStart = uTimeoutStart();
         offset = 0;
         //lint -e{441} Suppress loop variable not found in
         // condition: we're using time instead
         for (y = 0; (offset < sizeof(gData) - 1) &&
-             (uPortGetTickTimeMs() - startTimeMs < 20000); y++) {
+             !uTimeoutExpiredSeconds(timeoutStart, 20); y++) {
             sizeBytes = uSockRead(descriptor,
                                   gpDataReceived + offset,
                                   (sizeof(gData) - 1) - offset);
@@ -387,12 +389,12 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
         }
         sizeBytes = offset;
         if (sizeBytes < sizeof(gData) - 1) {
-            U_TEST_PRINT_LINE("only %d byte(s) received after %d ms.", sizeBytes,
-                              (int32_t) (uPortGetTickTimeMs() - startTimeMs));
+            U_TEST_PRINT_LINE("only %d byte(s) received after %u ms.", sizeBytes,
+                              uTimeoutElapsedMs(timeoutStart));
         } else {
-            U_TEST_PRINT_LINE("all %d byte(s) received back after %d ms, checking"
+            U_TEST_PRINT_LINE("all %d byte(s) received back after %u ms, checking"
                               " if they were as expected...", sizeBytes,
-                              (int32_t) (uPortGetTickTimeMs() - startTimeMs));
+                              uTimeoutElapsedMs(timeoutStart));
         }
 
         // Check that we reassembled everything correctly
@@ -451,7 +453,7 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsUdpSock")
     uDeviceHandle_t devHandle = NULL;
     uSockDescriptor_t descriptor = -1;
     uSockAddress_t remoteAddress;
-    int32_t startTimeMs;
+    uTimeoutStart_t timeoutStart;
     size_t sizeBytes;
     size_t offset;
     int32_t y;
@@ -600,7 +602,7 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsUdpSock")
         U_PORT_TEST_ASSERT(send(descriptor, gData, sizeof(gData) - 1) == sizeof(gData) - 1);
 
         U_TEST_PRINT_LINE("%d byte(s) sent via UDP @%d ms, now receiving...",
-                          sizeof(gData) - 1, (int32_t) uPortGetTickTimeMs());
+                          sizeof(gData) - 1, uPortGetTickTimeMs());
 
         // ...and capture them all again afterwards
         uPortFree(gpDataReceived); // In case the previous test failed
@@ -609,12 +611,12 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsUdpSock")
         //lint -e(668) Suppress possible use of NULL pointer
         // for gpDataReceived
         memset(gpDataReceived, 0, sizeof(gData) - 1);
-        startTimeMs = uPortGetTickTimeMs();
+        timeoutStart = uTimeoutStart();
         offset = 0;
         //lint -e{441} Suppress loop variable not found in
         // condition: we're using time instead
         for (y = 0; (offset < sizeof(gData) - 1) &&
-             (uPortGetTickTimeMs() - startTimeMs < 20000); y++) {
+             !uTimeoutExpiredSeconds(timeoutStart, 20); y++) {
             sizeBytes = uSockRead(descriptor,
                                   gpDataReceived + offset,
                                   (sizeof(gData) - 1) - offset);
@@ -625,12 +627,12 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsUdpSock")
         }
         sizeBytes = offset;
         if (sizeBytes < sizeof(gData) - 1) {
-            U_TEST_PRINT_LINE("only %d byte(s) received after %d ms.", sizeBytes,
-                              (int32_t) (uPortGetTickTimeMs() - startTimeMs));
+            U_TEST_PRINT_LINE("only %d byte(s) received after %u ms.", sizeBytes,
+                              uTimeoutElapsedMs(timeoutStart));
         } else {
-            U_TEST_PRINT_LINE("all %d byte(s) received back after %d ms, checking"
+            U_TEST_PRINT_LINE("all %d byte(s) received back after %u ms, checking"
                               " if they were as expected...", sizeBytes,
-                              (int32_t) (uPortGetTickTimeMs() - startTimeMs));
+                              uTimeoutElapsedMs(timeoutStart));
         }
 
         // Check that we reassembled everything correctly

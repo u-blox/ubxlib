@@ -234,7 +234,8 @@ static UBX_U2 s_flashSequence = 0;
 // Specific support for legacy aiding
 static bool s_bLegacyAiding = false;
 static LEGACY_AIDING_STATE s_aidState = LEGACY_AIDING_IDLE;
-static time_t s_aidingTimeout = 0;
+// MODIFIED: use timeout API
+static uTimeoutStop_t s_aidingTimeout = {0};
 
 static UBX_U2 s_alpfileId = 0;
 static UBX_U1 *s_pAidingData = NULL;
@@ -435,7 +436,8 @@ MGA_API_RESULT mgaSessionStart(void)
         U_ASSERT(s_flashSequence == 0);
 
         U_ASSERT(s_aidState == LEGACY_AIDING_IDLE);
-        U_ASSERT(s_aidingTimeout == 0);
+        // MODIFIED: use timeout API
+        U_ASSERT(s_aidingTimeout.durationMs == 0);
 
         s_sessionState = MGA_ACTIVE_PROCESSING_DATA;
     }
@@ -1035,7 +1037,7 @@ MGA_API_RESULT mgaSessionSendOfflineToFlash(const UBX_U1* pMgaData, UBX_I4 iSize
                     s_pMgaFlashBlockList[i].state = MGA_MSG_WAITING_TO_SEND;
                     s_pMgaFlashBlockList[i].sequenceNumber = (UBX_U2)i;
                     s_pMgaFlashBlockList[i].retryCount = 0;
-                    s_pMgaFlashBlockList[i].timeOut = 0;
+                    s_pMgaFlashBlockList[i].timeOut.durationMs = 0;
                     s_pMgaFlashBlockList[i].mgaFailedReason = MGA_FAILED_REASON_CODE_NOT_SET;
 
                     if ((i == (s_mgaFlashBlockCount - 1)) && (lastBlockSize > 0))
@@ -1108,7 +1110,7 @@ MGA_API_RESULT mgaSessionSendLegacyOfflineToFlash(const UBX_U1* pAidingData, UBX
                     s_pMgaFlashBlockList[i].state = MGA_MSG_WAITING_TO_SEND;
                     s_pMgaFlashBlockList[i].sequenceNumber = (UBX_U2)i;
                     s_pMgaFlashBlockList[i].retryCount = 0;
-                    s_pMgaFlashBlockList[i].timeOut = 0;
+                    s_pMgaFlashBlockList[i].timeOut.durationMs = 0;
                     s_pMgaFlashBlockList[i].mgaFailedReason = MGA_FAILED_REASON_CODE_NOT_SET;
 
                     if ((i == (s_mgaFlashBlockCount - 1)) && (lastBlockSize > 0))
@@ -1180,15 +1182,14 @@ MGA_API_RESULT mgaCheckForTimeOuts(void)
         MgaMsgInfo* pMsgInfo = s_pMgaMsgList;
 
         UBX_U4 i;
-        size_t rob = 0;
         for (i = 0; i < s_mgaBlockCount; i++)
         {
             if (pMsgInfo->state == MGA_MSG_WAITING_FOR_ACK)
             {
-                rob++;
-                int32_t now = uPortGetTickTimeMs();
-
-                if (now > pMsgInfo->timeOut)
+                // MODIFIED: use timeout API
+                if ((pMsgInfo->timeOut.durationMs > 0) &&
+                     uTimeoutExpiredMs(pMsgInfo->timeOut.timeoutStart,
+                                       pMsgInfo->timeOut.durationMs))
                 {
                     if (pMsgInfo->retryCount < s_pFlowConfig->msgRetryCount)
                     {
@@ -1233,8 +1234,10 @@ MGA_API_RESULT mgaCheckForTimeOuts(void)
         if ((s_pLastFlashBlockSent->state == MGA_MSG_WAITING_FOR_ACK) ||
             (s_pLastFlashBlockSent->state == MGA_MSG_WAITING_FOR_ACK_SECOND_CHANCE))
         {
-            int32_t now = uPortGetTickTimeMs();
-            if (now > s_pLastFlashBlockSent->timeOut)
+            // MODIFIED: use timeout API
+            if ((s_pLastFlashBlockSent->timeOut.durationMs > 0) &&
+                uTimeoutExpiredMs(s_pLastFlashBlockSent->timeOut.timeoutStart,
+                                  s_pLastFlashBlockSent->timeOut.durationMs))
             {
                 // Timed out
                 if (s_pLastFlashBlockSent->state == MGA_MSG_WAITING_FOR_ACK_SECOND_CHANCE)
@@ -2238,12 +2241,14 @@ static void handleLegacyAidingTimeout(void)
     // do not lock here - locks must already be in place
 
     U_ASSERT(s_bLegacyAiding);
-    int32_t now = uPortGetTickTimeMs();
 
     switch (s_aidState)
     {
     case LEGACY_AIDING_STARTING:
-        if (now > s_aidingTimeout)
+        // MODIFIED: use timeout API
+        if ((s_aidingTimeout.durationMs > 0) &&
+            uTimeoutExpiredMs(s_aidingTimeout.timeoutStart,
+                              s_aidingTimeout.durationMs))
         {
             U_ASSERT(s_pEvtInterface);
             if (s_pEvtInterface->evtProgress)
@@ -2262,7 +2267,10 @@ static void handleLegacyAidingTimeout(void)
         U_ASSERT((s_pLastFlashBlockSent->state == MGA_MSG_WAITING_FOR_ACK) ||
                (s_pLastFlashBlockSent->state == MGA_MSG_WAITING_FOR_ACK_SECOND_CHANCE));
 
-        if (now > s_pLastFlashBlockSent->timeOut)
+        // MODIFIED: use timeout API
+        if ((s_pLastFlashBlockSent->timeOut.durationMs > 0) &&
+            uTimeoutExpiredMs(s_pLastFlashBlockSent->timeOut.timeoutStart,
+                              s_pLastFlashBlockSent->timeOut.durationMs))
         {
             if (s_pLastFlashBlockSent->state == MGA_MSG_WAITING_FOR_ACK)
             {
@@ -2288,7 +2296,10 @@ static void handleLegacyAidingTimeout(void)
         break;
 
     case LEGACY_AIDING_STOPPING:
-        if (now > s_aidingTimeout)
+        // MODIFIED: use timeout API
+        if ((s_aidingTimeout.durationMs > 0) &&
+            uTimeoutExpiredMs(s_aidingTimeout.timeoutStart,
+                              s_aidingTimeout.durationMs))
         {
             // Give up waiting for 'stop' ack
             if (s_pEvtInterface->evtProgress)
@@ -2419,7 +2430,9 @@ static void sendMgaFlashBlock(bool next)
         s_pEvtInterface->evtWriteDevice(s_pCallbackContext, flashDataMsg, (UBX_I4)flashMsgTotalSize);
 
         s_pLastFlashBlockSent->state = MGA_MSG_WAITING_FOR_ACK;
-        s_pLastFlashBlockSent->timeOut = s_pFlowConfig->msgTimeOut + uPortGetTickTimeMs();
+        // MODIFIED: use timeout API
+        s_pLastFlashBlockSent->timeOut.timeoutStart = uTimeoutStart();
+        s_pLastFlashBlockSent->timeOut.durationMs = s_pFlowConfig->msgTimeOut;
 
         if (s_pEvtInterface->evtProgress)
         {
@@ -2518,7 +2531,9 @@ static void sendFlashMainSeqBlock(void)
         s_pEvtInterface->evtWriteDevice(s_pCallbackContext, aidingFlashDataMsg, (UBX_I4)flashMsgTotalSize);
 
         s_pLastFlashBlockSent->state = MGA_MSG_WAITING_FOR_ACK;
-        s_pLastFlashBlockSent->timeOut = s_pFlowConfig->msgTimeOut + uPortGetTickTimeMs();
+        // MODIFIED: use timeout API
+        s_pLastFlashBlockSent->timeOut.timeoutStart = uTimeoutStart();
+        s_pLastFlashBlockSent->timeOut.durationMs = s_pFlowConfig->msgTimeOut;
 
         if (s_pEvtInterface->evtProgress)
         {
@@ -2565,7 +2580,9 @@ static void sendAidingFlashStop(void)
     U_ASSERT(validChecksum(&aidingFlashStopMsg[2], sizeof(aidingFlashStopMsg) - 4));
     s_pEvtInterface->evtWriteDevice(s_pCallbackContext, aidingFlashStopMsg, sizeof(aidingFlashStopMsg));
 
-    s_aidingTimeout = (s_pFlowConfig->msgTimeOut / 1000) + (uPortGetTickTimeMs() / 1000);
+    // MODIFIED: use timeout API
+    s_aidingTimeout.timeoutStart = uTimeoutStart();
+    s_aidingTimeout.durationMs = s_pFlowConfig->msgTimeOut;
 }
 
 static void addMgaIniTime(const UBX_U1* pMgaData, UBX_I4* iSize, UBX_U1** pMgaDataOut, const MgaTimeAdjust* pTime)
@@ -2788,7 +2805,9 @@ static UBX_I4 sendNextMgaMessage(void)
         msgSize = s_pLastMsgSent->msgSize;
         s_pEvtInterface->evtWriteDevice(s_pCallbackContext, s_pLastMsgSent->pMsg, msgSize);
         s_pLastMsgSent->state = MGA_MSG_WAITING_FOR_ACK;
-        s_pLastMsgSent->timeOut = s_pFlowConfig->msgTimeOut + uPortGetTickTimeMs();
+        // MODIFIED: use timeout API
+        s_pLastMsgSent->timeOut.timeoutStart = uTimeoutStart();
+        s_pLastMsgSent->timeOut.durationMs = s_pFlowConfig->msgTimeOut;
 
         if (s_pEvtInterface->evtProgress)
         {
@@ -2809,7 +2828,9 @@ static void resendMessage(MgaMsgInfo* pResendMsg)
     U_ASSERT(s_pEvtInterface->evtWriteDevice);
     s_pEvtInterface->evtWriteDevice(s_pCallbackContext, pResendMsg->pMsg, pResendMsg->msgSize);
     pResendMsg->state = MGA_MSG_WAITING_FOR_ACK;
-    pResendMsg->timeOut = s_pFlowConfig->msgTimeOut + uPortGetTickTimeMs();
+    // MODIFIED: use timeout API
+    pResendMsg->timeOut.timeoutStart = uTimeoutStart();
+    pResendMsg->timeOut.durationMs = s_pFlowConfig->msgTimeOut;
 
     if (s_pEvtInterface->evtProgress)
     {
@@ -3014,7 +3035,8 @@ static MgaMsgInfo* buildMsgList(const UBX_U1* pMgaData, unsigned int uNumEntries
                 pCurrentBlock->pMsg = pMgaData;
                 pCurrentBlock->msgSize = msgSize;
                 pCurrentBlock->state = MGA_MSG_WAITING_TO_SEND;
-                pCurrentBlock->timeOut = 0; // set when transfer takes place
+                // set when transfer takes place
+                pCurrentBlock->timeOut.durationMs = 0;
                 pCurrentBlock->retryCount = 0;
                 pCurrentBlock->sequenceNumber = (UBX_U2)i;
                 pCurrentBlock->mgaFailedReason = MGA_FAILED_REASON_CODE_NOT_SET;
@@ -3078,7 +3100,8 @@ static void sessionStop(MGA_PROGRESS_EVENT_TYPE evtType, const void* pEventInfo,
     // Tidy up any specific legacy aiding flash transfer settings
     s_bLegacyAiding = false;
     s_aidState = LEGACY_AIDING_IDLE;
-    s_aidingTimeout = 0;
+    // MODIFIED: use timeout API
+    s_aidingTimeout.durationMs = 0;
 
     // Tidy up any legacy aiding server settings
     s_pAidingData = NULL;

@@ -51,6 +51,8 @@
 
 #include "u_error_common.h"
 
+#include "u_timeout.h"
+
 #include "u_at_client.h"
 
 #include "u_location.h"
@@ -144,7 +146,7 @@ static uGeofence_t *gpFenceB = NULL;
 
 /** Used for keepGoingCallback() timeout.
  */
-static int32_t gStopTimeMs;
+static uTimeoutStop_t gTimeoutStop;
 
 /** Variable to track the errors in the callback.
  */
@@ -176,7 +178,8 @@ static bool keepGoingCallback(uDeviceHandle_t cellHandle)
     bool keepGoing = true;
 
     U_PORT_TEST_ASSERT(cellHandle == gHandles.cellHandle);
-    if (uPortGetTickTimeMs() > gStopTimeMs) {
+    if (uTimeoutExpiredMs(gTimeoutStop.timeoutStart,
+                          gTimeoutStop.durationMs)) {
         keepGoing = false;
     }
 
@@ -267,7 +270,6 @@ U_PORT_TEST_FUNCTION("[cellGeofence]", "cellGeofenceLive")
 #if defined(U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN) && defined(U_CFG_TEST_CELL_GEOFENCE)
     uDeviceHandle_t cellHandle;
     int32_t resourceCount;
-    int32_t startTime;
     int32_t x;
     size_t badStatusCount;
 
@@ -313,7 +315,8 @@ U_PORT_TEST_FUNCTION("[cellGeofence]", "cellGeofenceLive")
     U_PORT_TEST_ASSERT(x == 0);
 
     // Make sure we are connected to a network
-    gStopTimeMs = uPortGetTickTimeMs() + (U_CELL_GEOFENCE_TEST_TIMEOUT_SECONDS * 1000);
+    gTimeoutStop.timeoutStart = uTimeoutStart();
+    gTimeoutStop.durationMs = U_CELL_GEOFENCE_TEST_TIMEOUT_SECONDS * 1000;
     x = uCellNetConnect(cellHandle, NULL,
 # ifdef U_CELL_TEST_CFG_APN
                         U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_APN),
@@ -367,8 +370,8 @@ U_PORT_TEST_FUNCTION("[cellGeofence]", "cellGeofenceLive")
 
     // Get position, blocking version
     U_TEST_PRINT_LINE("cell locate, blocking version.");
-    startTime = uPortGetTickTimeMs();
-    gStopTimeMs = startTime + U_CELL_GEOFENCE_TEST_TIMEOUT_SECONDS * 1000;
+    gTimeoutStop.timeoutStart = uTimeoutStart();
+    gTimeoutStop.durationMs = U_CELL_GEOFENCE_TEST_TIMEOUT_SECONDS * 1000;
     x = uCellLocGet(cellHandle, NULL, NULL, NULL, NULL,
                     NULL, NULL, NULL, keepGoingCallback);
     U_TEST_PRINT_LINE("result was %d, gErrorCode was %d.", x, gErrorCode);
@@ -376,8 +379,8 @@ U_PORT_TEST_FUNCTION("[cellGeofence]", "cellGeofenceLive")
                       gpPositionStateString[gPositionStateA],
                       gpPositionStateString[gPositionStateB]);
     if (x == 0) {
-    U_TEST_PRINT_LINE("location establishment took %d second(s).",
-                      (int32_t) (uPortGetTickTimeMs() - startTime) / 1000);
+    U_TEST_PRINT_LINE("location establishment took %u second(s).",
+                      uTimeoutElapsedSeconds(gTimeoutStop.timeoutStart));
     }
     U_PORT_TEST_ASSERT(x == 0);
 
@@ -394,14 +397,15 @@ U_PORT_TEST_FUNCTION("[cellGeofence]", "cellGeofenceLive")
     for (int32_t y = 3; (y > 0) && (gErrorCode == 0); y--) {
         gPositionStateA = U_GEOFENCE_POSITION_STATE_NONE;
         gPositionStateB = U_GEOFENCE_POSITION_STATE_NONE;
-        gStopTimeMs = startTime + U_CELL_GEOFENCE_TEST_TIMEOUT_SECONDS * 1000;
-        startTime = uPortGetTickTimeMs();
+        gTimeoutStop.timeoutStart = uTimeoutStart();
+        gTimeoutStop.durationMs = U_CELL_GEOFENCE_TEST_TIMEOUT_SECONDS * 1000;
         U_PORT_TEST_ASSERT(uCellLocGetStart(cellHandle, posCallback) == 0);
-        U_TEST_PRINT_LINE("waiting up to %d second(s) for results from asynchonous API...",
-                          U_CELL_GEOFENCE_TEST_TIMEOUT_SECONDS);
+        U_TEST_PRINT_LINE("waiting up to %u second(s) for results from asynchonous API...",
+                          gTimeoutStop.durationMs / 1000);
         badStatusCount = 0;
         while ((gErrorCode >= 0) && (gErrorCode < 2) &&
-               (uPortGetTickTimeMs() < gStopTimeMs) &&
+               (!uTimeoutExpiredMs(gTimeoutStop.timeoutStart,
+                                   gTimeoutStop.durationMs)) &&
                (badStatusCount < U_CELL_GEOFENCE_TEST_BAD_STATUS_LIMIT)) {
             x = uCellLocGetStatus(cellHandle);
             U_PORT_TEST_ASSERT((x >= U_LOCATION_STATUS_UNKNOWN) &&
@@ -417,8 +421,8 @@ U_PORT_TEST_FUNCTION("[cellGeofence]", "cellGeofenceLive")
             uPortTaskBlock(1000);
         }
         if (gErrorCode == 2) {
-            U_TEST_PRINT_LINE("location establishment took %d second(s).",
-                              (int32_t) (uPortGetTickTimeMs() - startTime) / 1000);
+            U_TEST_PRINT_LINE("location establishment took %u second(s).",
+                              uTimeoutElapsedSeconds(gTimeoutStop.timeoutStart));
             U_TEST_PRINT_LINE("result was %d, gErrorCode was %d.", x, gErrorCode);
             U_TEST_PRINT_LINE("%s fence A, %s fence B.",
                               gpPositionStateString[gPositionStateA],

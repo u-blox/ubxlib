@@ -32,6 +32,7 @@
 #include "u_cfg_sw.h"
 #include "u_cfg_os_platform_specific.h"
 #include "u_error_common.h"
+#include "u_timeout.h"
 #include "u_assert.h"
 #include "u_port.h"
 #include "u_port_debug.h"
@@ -378,7 +379,7 @@ static void watchdogTask(void *pParam)
 {
     uMutexInfo_t *pMutexInfo;
     uMutexFunctionInfo_t *pWaiting;
-    int64_t calledMs = 0;
+    uTimeoutStart_t timeoutStart = uTimeoutStart();
     bool callCallback = false;
 
     (void) pParam;
@@ -417,7 +418,8 @@ static void watchdogTask(void *pParam)
             pMutexInfo = pMutexInfo->pNext;
 
             // Don't call the callback too often though
-            if (uPortGetTickTimeMs() - calledMs < (U_MUTEX_DEBUG_WATCHDOG_MAX_BARK_SECONDS * 1000)) {
+            if (!uTimeoutExpiredSeconds(timeoutStart,
+                                        U_MUTEX_DEBUG_WATCHDOG_MAX_BARK_SECONDS)) {
                 callCallback = false;
             }
         }
@@ -427,7 +429,7 @@ static void watchdogTask(void *pParam)
         if (callCallback) {
             // Call the callback outside the locks so that it can have them
             gpWatchdogCallback(gpWatchdogCallbackParam);
-            calledMs = uPortGetTickTimeMs();
+            timeoutStart = uTimeoutStart();
         }
 
         // Sleep until the next go

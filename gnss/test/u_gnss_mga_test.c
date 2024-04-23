@@ -71,6 +71,8 @@
 
 #include "u_test_util_resource_check.h"
 
+#include "u_timeout.h"
+
 #include "u_network.h"
 #include "u_network_test_shared_cfg.h"
 
@@ -549,7 +551,7 @@ U_PORT_TEST_FUNCTION("[gnssMga]", "gnssMgaBasic")
     int32_t callbackParameter;
     int32_t z;
     uGnssCommunicationStats_t communicationStats;
-    int32_t startTimeMs;
+    uTimeoutStart_t timeoutStart;
     const char *pProtocolName;
 #endif
 
@@ -667,7 +669,7 @@ U_PORT_TEST_FUNCTION("[gnssMga]", "gnssMgaBasic")
 # ifndef U_GNSS_MGA_TEST_DISABLE_DATABASE
         callbackParameter = 0;
         gDatabaseCalledCount = 0;
-        startTimeMs = uPortGetTickTimeMs();
+        timeoutStart = uTimeoutStart();
         if ((transportTypes[w] != U_GNSS_TRANSPORT_AT) && (intermediateHandle == NULL)) {
             U_TEST_PRINT_LINE("reading database from GNSS device.");
             gDatabaseHasQzss = false;
@@ -675,8 +677,8 @@ U_PORT_TEST_FUNCTION("[gnssMga]", "gnssMgaBasic")
             U_TEST_PRINT_LINE("uGnssMgaGetDatabase() returned %d.", z);
             if (callbackParameter >= 0) {
                 U_TEST_PRINT_LINE("database callback was called %d times, with a total"
-                                  " of %d byte(s) in %d milliseconds.", gDatabaseCalledCount,
-                                  callbackParameter, uPortGetTickTimeMs() - startTimeMs);
+                                  " of %d byte(s) in %u milliseconds.", gDatabaseCalledCount,
+                                  callbackParameter, uTimeoutElapsedMs(timeoutStart));
                 U_PORT_TEST_ASSERT(z == callbackParameter);
             } else {
                 U_TEST_PRINT_LINE("database callback returned error %d.", callbackParameter);

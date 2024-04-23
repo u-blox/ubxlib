@@ -43,6 +43,8 @@
 #include "u_port_heap.h"
 #include "u_port_debug.h"
 
+#include "u_timeout.h"
+
 #include "u_at_client.h"
 
 #include "u_short_range.h"

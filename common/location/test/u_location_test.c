@@ -63,6 +63,8 @@
 
 #include "u_test_util_resource_check.h"
 
+#include "u_timeout.h"
+
 #include "u_network.h"
 #include "u_network_test_shared_cfg.h"
 
@@ -117,7 +119,7 @@
 
 /** Used for keepGoingCallback() timeout.
  */
-static int32_t gStopTimeMs = 0;
+static uTimeoutStop_t gTimeoutStop;
 
 /** Keep track of the current network handle so that the
  * keepGoingCallback() can check it.
@@ -177,7 +179,8 @@ static bool keepGoingCallback(uDeviceHandle_t devHandle)
     bool keepGoing = true;
 
     U_PORT_TEST_ASSERT((gDevHandle == NULL) || (devHandle == gDevHandle));
-    if (uPortGetTickTimeMs() > gStopTimeMs) {
+    if (uTimeoutExpiredMs(gTimeoutStop.timeoutStart,
+                          gTimeoutStop.durationMs)) {
         keepGoing = false;
     }
 
@@ -286,16 +289,17 @@ static bool httpPostCheck(uLocationType_t locationType,
                           volatile int32_t *pHttpStatusCode)
 {
     bool success = true;
-    int32_t startTimeMs;
+    uTimeoutStart_t timeoutStart;
 
     if ((pHttpContext != NULL) &&
         ((locationType == U_LOCATION_TYPE_CLOUD_GOOGLE) ||
          (locationType == U_LOCATION_TYPE_CLOUD_SKYHOOK) ||
          (locationType == U_LOCATION_TYPE_CLOUD_HERE))) {
         success = false;
-        startTimeMs = uPortGetTickTimeMs();
+        timeoutStart = uTimeoutStart();
         while ((*pHttpStatusCode != 200) &&
-               (uPortGetTickTimeMs() - startTimeMs < U_LOCATION_TEST_HTTP_TIMEOUT_SECONDS * 1000)) {
+               !uTimeoutExpiredSeconds(timeoutStart,
+                                       U_LOCATION_TEST_HTTP_TIMEOUT_SECONDS)) {
             uPortTaskBlock(100);
         }
         if (*pHttpStatusCode != 200) {
@@ -328,7 +332,6 @@ static void testBlocking(uDeviceHandle_t devHandle,
                          const uLocationTestCfg_t *pLocationCfg)
 {
     uLocation_t location;
-    int32_t startTimeMs = 0;
     int32_t timeoutMs = U_LOCATION_TEST_CFG_TIMEOUT_SECONDS * 1000;
     int32_t y;
     const uLocationAssist_t *pLocationAssist = NULL;
@@ -356,8 +359,8 @@ static void testBlocking(uDeviceHandle_t devHandle,
         // WiFi can sometimes fail
         y = -1;
         for (int32_t x = 0; (x < 3) && (y != 0); x++) {
-            startTimeMs = uPortGetTickTimeMs();
-            gStopTimeMs = startTimeMs + timeoutMs;
+            gTimeoutStop.timeoutStart = uTimeoutStart();
+            gTimeoutStop.durationMs = timeoutMs;
             y = uLocationGet(devHandle, locationType,
                              pLocationAssist,
                              pAuthenticationTokenStr,
@@ -380,8 +383,8 @@ static void testBlocking(uDeviceHandle_t devHandle,
                                   " position (HTTP status code %d).", y);
             }
         }
-        U_TEST_PRINT_LINE("location establishment took %d second(s).",
-                          (int32_t) (uPortGetTickTimeMs() - startTimeMs) / 1000);
+        U_TEST_PRINT_LINE("location establishment took %u second(s).",
+                          uTimeoutElapsedSeconds(gTimeoutStop.timeoutStart));
         // If we are running on a test cellular network we won't get position but
         // we should always get time
         if ((location.radiusMillimetres > 0) &&
@@ -453,7 +456,7 @@ static void testOneShot(uDeviceHandle_t devHandle,
                         uLocationType_t locationType,
                         const uLocationTestCfg_t *pLocationCfg)
 {
-    int32_t startTimeMs;
+    uTimeoutStart_t timeoutStart;
     int32_t y;
     int32_t timeoutMs = U_LOCATION_TEST_CFG_TIMEOUT_SECONDS * 1000;
     const uLocationAssist_t *pLocationAssist = NULL;
@@ -467,7 +470,7 @@ static void testOneShot(uDeviceHandle_t devHandle,
         pAuthenticationTokenStr = pLocationCfg->pAuthenticationTokenStr;
         pLocationAssist = pLocationCfg->pLocationAssist;
     }
-    startTimeMs = uPortGetTickTimeMs();
+    timeoutStart = uTimeoutStart();
 
     uLocationTestResetLocation(&gLocation);
     if (pLocationCfg != NULL) {
@@ -489,7 +492,7 @@ static void testOneShot(uDeviceHandle_t devHandle,
                                   " one-shot API...",
                                   timeoutMs);
                 while ((gErrorCode == INT_MIN) &&
-                       (uPortGetTickTimeMs() - startTimeMs < timeoutMs)) {
+                       !uTimeoutExpiredMs(timeoutStart, timeoutMs)) {
                     // Location establishment status is only supported for cell locate
                     y = uLocationGetStatus(devHandle);
                     if (locationType == U_LOCATION_TYPE_CLOUD_CELL_LOCATE) {
@@ -501,8 +504,8 @@ static void testOneShot(uDeviceHandle_t devHandle,
                 }
 
                 if (gErrorCode == 0) {
-                    U_TEST_PRINT_LINE("location establishment took %d second(s).",
-                                      (int32_t) (uPortGetTickTimeMs() - startTimeMs) / 1000);
+                    U_TEST_PRINT_LINE("location establishment took %u second(s).",
+                                      uTimeoutElapsedSeconds(timeoutStart));
                     // If we are running on a cellular test network we might not
                     // get position but we should always get time
                     U_PORT_TEST_ASSERT(gDevHandle == devHandle);
@@ -585,7 +588,7 @@ static void testContinuous(uDeviceHandle_t devHandle,
                            uLocationType_t locationType,
                            const uLocationTestCfg_t *pLocationCfg)
 {
-    int32_t startTimeMs;
+    uTimeoutStart_t timeoutStart;
     int32_t timeoutMs = U_LOCATION_TEST_CFG_TIMEOUT_SECONDS * 1000;
     int32_t y;
     const uLocationAssist_t *pLocationAssist = NULL;
@@ -599,7 +602,7 @@ static void testContinuous(uDeviceHandle_t devHandle,
         pAuthenticationTokenStr = pLocationCfg->pAuthenticationTokenStr;
         pLocationAssist = pLocationCfg->pLocationAssist;
     }
-    startTimeMs = uPortGetTickTimeMs();
+    timeoutStart = uTimeoutStart();
 
     uLocationTestResetLocation(&gLocation);
     if (pLocationCfg != NULL) {
@@ -621,7 +624,7 @@ static void testContinuous(uDeviceHandle_t devHandle,
                               timeoutMs * U_LOCATION_TEST_CFG_CONTINUOUS_COUNT,
                               U_LOCATION_TEST_CFG_CONTINUOUS_COUNT);
             while ((gCount < U_LOCATION_TEST_CFG_CONTINUOUS_COUNT) &&
-                   (uPortGetTickTimeMs() - startTimeMs < timeoutMs)) {
+                   !uTimeoutExpiredMs(timeoutStart, timeoutMs)) {
                 // Location establishment status is only supported for cell locate
                 y = uLocationGetStatus(devHandle);
                 if (locationType == U_LOCATION_TYPE_CLOUD_CELL_LOCATE) {
@@ -632,14 +635,9 @@ static void testContinuous(uDeviceHandle_t devHandle,
                 uPortTaskBlock(1000);
             }
 
-            // There has been something off going on with this test on Windows,
-            // so print a little extra diagnostic information here so that we
-            // can watch it
-            U_TEST_PRINT_LINE("startTimeMs is %d, ticks now is %d, gCount is %d.",
-                              startTimeMs, uPortGetTickTimeMs(), gCount);
             if (gCount >= U_LOCATION_TEST_CFG_CONTINUOUS_COUNT) {
-                U_TEST_PRINT_LINE("took %d second(s) to get location %d time(s).",
-                                  (int32_t) (uPortGetTickTimeMs() - startTimeMs) / 1000,
+                U_TEST_PRINT_LINE("took %u second(s) to get location %d time(s).",
+                                  uTimeoutElapsedSeconds(timeoutStart),
                                   gCount);
                 // If we are running on a cellular test network we might not
                 // get position but we should always get time

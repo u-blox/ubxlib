@@ -49,6 +49,8 @@
 #include "u_ringbuffer.h"
 #include "u_interface.h"
 
+#include "u_timeout.h"
+
 #include "u_at_client.h"
 
 #include "u_device_serial.h"

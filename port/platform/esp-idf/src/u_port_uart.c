@@ -32,6 +32,7 @@
 #include "u_compiler.h" // U_ATOMIC_XXX() macros
 
 #include "u_error_common.h"
+#include "u_timeout.h"
 #include "u_port_debug.h"
 #include "u_port.h"
 #include "u_port_os.h"
@@ -646,7 +647,7 @@ int32_t uPortUartEventTrySend(int32_t handle, uint32_t eventBitMap,
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uart_event_t event;
-    int64_t startTime = uPortGetTickTimeMs();
+    uTimeoutStart_t timeoutStart = uTimeoutStart();
 
     if (gMutex != NULL) {
 
@@ -672,7 +673,7 @@ int32_t uPortUartEventTrySend(int32_t handle, uint32_t eventBitMap,
                                               (void *) &event);
                 uPortTaskBlock(U_CFG_OS_YIELD_MS);
             } while ((errorCode != 0) &&
-                     (uPortGetTickTimeMs() - startTime < delayMs));
+                     !uTimeoutExpiredMs(timeoutStart, delayMs));
         }
 
         U_PORT_MUTEX_UNLOCK(gMutex);

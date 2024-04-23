@@ -146,6 +146,8 @@
 
 #include "u_error_common.h"
 
+#include "u_timeout.h"
+
 #include "u_at_client.h"
 
 #include "u_linked_list.h"
@@ -1258,21 +1260,18 @@ static uGeofencePositionState_t testSquareExtent(const uGeofenceSquare_t *pSquar
 static uGeofencePositionState_t testSpeed(const uGeofenceDynamic_t *pPreviousDistance)
 {
     uGeofencePositionState_t positionState = U_GEOFENCE_POSITION_STATE_NONE;
-    int32_t timeNowMs;
+    uint32_t timeDifferenceMs;
     int64_t distanceTravelledMillimetres;
 
     if ((pPreviousDistance->lastStatus.distanceMillimetres != LLONG_MIN) &&
         (pPreviousDistance->maxHorizontalSpeedMillimetresPerSecond >= 0)) {
         // Work out how far we can have travelled in the time
-        timeNowMs = uPortGetTickTimeMs();
-        // Guard against wrap
-        if (timeNowMs > pPreviousDistance->lastStatus.timeMs) {
-            // Divide by 1000 below to get per second
-            distanceTravelledMillimetres = ((int64_t) (timeNowMs - pPreviousDistance->lastStatus.timeMs)) *
-                                           pPreviousDistance->maxHorizontalSpeedMillimetresPerSecond / 1000;
-            if (distanceTravelledMillimetres < pPreviousDistance->lastStatus.distanceMillimetres) {
-                positionState = U_GEOFENCE_POSITION_STATE_OUTSIDE;
-            }
+        timeDifferenceMs = uTimeoutElapsedMs(pPreviousDistance->lastStatus.timeoutStart);
+        // Divide by 1000 below to get per second
+        distanceTravelledMillimetres = ((int64_t) timeDifferenceMs) *
+                                       pPreviousDistance->maxHorizontalSpeedMillimetresPerSecond / 1000;
+        if (distanceTravelledMillimetres < pPreviousDistance->lastStatus.distanceMillimetres) {
+            positionState = U_GEOFENCE_POSITION_STATE_OUTSIDE;
         }
     }
 
@@ -1655,7 +1654,7 @@ bool testPosition(const uGeofence_t *pFence,
                 } else {
                     if (distanceMinMetres == distanceMinMetres) { // NAN test
                         pDynamic->lastStatus.distanceMillimetres = (int64_t) (distanceMinMetres * 1000);
-                        pDynamic->lastStatus.timeMs = uPortGetTickTimeMs();
+                        pDynamic->lastStatus.timeoutStart = uTimeoutStart();
                     }
                 }
             }
@@ -1697,7 +1696,7 @@ int32_t uGeofenceContextEnsure(uGeofenceContext_t **ppFenceContext)
             if (*ppFenceContext != NULL) {
                 memset(*ppFenceContext, 0, sizeof(**ppFenceContext));
                 (*ppFenceContext)->dynamic.lastStatus.distanceMillimetres = LLONG_MIN;
-                (*ppFenceContext)->dynamic.lastStatus.timeMs = uPortGetTickTimeMs();
+                (*ppFenceContext)->dynamic.lastStatus.timeoutStart = uTimeoutStart();
                 (*ppFenceContext)->dynamic.maxHorizontalSpeedMillimetresPerSecond = -1;
                 errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
             }
@@ -1903,7 +1902,7 @@ uGeofencePositionState_t uGeofenceContextTest(uDeviceHandle_t devHandle,
                 if ((dynamic.lastStatus.distanceMillimetres != LLONG_MIN) &&
                     (dynamic.lastStatus.distanceMillimetres < dynamicsMinDistance.lastStatus.distanceMillimetres)) {
                     dynamicsMinDistance.lastStatus.distanceMillimetres = dynamic.lastStatus.distanceMillimetres;
-                    dynamicsMinDistance.lastStatus.distanceMillimetres = uPortGetTickTimeMs();
+                    dynamicsMinDistance.lastStatus.timeoutStart = dynamic.lastStatus.timeoutStart;
                 }
                 if ((pFenceContext->pCallback != NULL) && (devHandle != NULL)) {
                     pFenceContext->pCallback(devHandle, pFence, pFence->pNameStr,

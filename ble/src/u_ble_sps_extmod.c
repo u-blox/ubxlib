@@ -45,6 +45,7 @@
 #include "u_port_event_queue.h"
 #include "u_cfg_os_platform_specific.h"
 
+#include "u_timeout.h"
 #include "u_at_client.h"
 #include "u_ble_sps.h"
 #include "u_ble_private.h"

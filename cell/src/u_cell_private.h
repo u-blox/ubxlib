@@ -470,20 +470,20 @@ typedef struct uCellPrivateInstance_t {
                                                        been requested (set
                                                        to zeroes for automatic
                                                        mode). */
-    int64_t lastCfunFlipTimeMs; /**< The last time a flip of state from
+    uTimeoutStart_t lastCfunFlipTime; /**< The last time a flip of state from
                                      "off" (AT+CFUN=0/4) to "on" (AT+CFUN=1)
                                      or back was performed. */
-    int32_t lastDtrPinToggleTimeMs; /**< The last time DTR was toggled for power-saving. */
+    uTimeoutStart_t lastDtrPinToggleTime; /**< The last time DTR was toggled for power-saving. */
     uCellNetStatus_t
     networkStatus[U_CELL_PRIVATE_NET_REG_TYPE_MAX_NUM]; /**< Registation status for each type, separating CREG, CGREG and CEREG. */
     uCellNetRat_t
     rat[U_CELL_PRIVATE_NET_REG_TYPE_MAX_NUM];  /**< The active RAT for each registration type. */
     int32_t lastEmmRejectCause; /**< Used by uCellNetGetLastEmmRejectCause() only. */
     uCellPrivateRadioParameters_t radioParameters; /**< The radio parameters. */
-    int32_t startTimeMs;     /**< Used while connecting and scanning. */
-    int32_t connectedAtMs;   /**< When a connection was last established,
-                                  can be used for offsetting from that time;
-                                  does NOT mean that we are currently connected. */
+    uTimeoutStart_t timeoutStart;  /**< Used while connecting and scanning. */
+    uTimeoutStart_t connectedAt;  /**< When a connection was last established,
+                                       can be used for offsetting from that time;
+                                       does NOT mean that we are currently connected. */
     bool rebootIsRequired;   /**< Set to true if a reboot of the module is
                                   required, e.g. as a result of a configuration
                                   change. */

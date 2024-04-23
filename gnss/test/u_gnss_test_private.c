@@ -48,6 +48,8 @@
 #include "u_port_i2c.h"
 #include "u_port_spi.h"
 
+#include "u_timeout.h"
+
 #include "u_at_client.h" // Required by u_gnss_private.h
 
 #include "u_cell_module_type.h"

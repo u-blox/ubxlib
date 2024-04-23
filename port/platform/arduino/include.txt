@@ -11,6 +11,7 @@
 cfg
 common/error/api
 common/assert/api
+common/timeout/api
 common/type/api
 common/device/api
 common/device/src

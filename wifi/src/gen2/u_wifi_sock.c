@@ -37,6 +37,8 @@
 
 #include "u_error_common.h"
 
+#include "u_timeout.h"
+
 #include "u_assert.h"
 
 #include "u_port.h"
@@ -538,8 +540,9 @@ int32_t uWifiSockReceiveFrom(uDeviceHandle_t devHandle,
             *pRemoteAddress = pUWiFiSocket->remoteAddress;
         }
     }
-    int32_t startTimeMs = uPortGetTickTimeMs();
-    while (((uPortGetTickTimeMs() - startTimeMs) < 5000) && (dataSizeBytes > 0) &&
+    uTimeoutStart_t timeoutStart = uTimeoutStart();
+    while (!uTimeoutExpiredSeconds(timeoutStart, 5) &&
+           (dataSizeBytes > 0) &&
            ((res = uWifiSockRead(devHandle, sockHandle, pData, dataSizeBytes)) >= 0)) {
         tot += res;
         dataSizeBytes -= res;

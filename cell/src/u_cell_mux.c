@@ -73,6 +73,8 @@
 #include "u_interface.h"
 #include "u_ringbuffer.h"
 
+#include "u_timeout.h"
+
 #include "u_at_client.h"
 
 #include "u_device_shared.h"
@@ -240,7 +242,7 @@ static int32_t sendEvent(uCellMuxPrivateContext_t *pContext,
     uCellMuxPrivateEventCallback_t *pEventCallback;
     uCellMuxEventTrampoline_t trampolineData;
     uint32_t eventCallbackFilter;
-    int64_t startTime = uPortGetTickTimeMs();
+    uTimeoutStart_t timeoutStart = uTimeoutStart();
     bool irqSupported;
 
     if ((pContext != NULL) && (pChannelContext != NULL) && !pChannelContext->markedForDeletion) {
@@ -260,7 +262,7 @@ static int32_t sendEvent(uCellMuxPrivateContext_t *pContext,
                     uPortTaskBlock(U_CFG_OS_YIELD_MS);
                     irqSupported = (errorCode != (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED) &&
                                    (errorCode != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED);
-                } while (irqSupported && (uPortGetTickTimeMs() - startTime < delayMs));
+                } while (irqSupported && !uTimeoutExpiredMs(timeoutStart, delayMs));
 
                 if (!irqSupported) {
                     // If IRQ is not supported, just gotta do the normal send
@@ -371,7 +373,7 @@ static int32_t serialWriteInnards(struct uDeviceSerial_t *pDeviceSerial,
     size_t sizeWritten = 0;
     int32_t thisLengthWritten;
     size_t lengthWritten;
-    int32_t startTimeMs;
+    uTimeoutStart_t timeoutStart;
     bool activityPinIsSet = false;
 
     // Encode the CMUX frame in chunks of the maximum information
@@ -386,9 +388,9 @@ static int32_t serialWriteInnards(struct uDeviceSerial_t *pDeviceSerial,
             activityPinIsSet = true;
             uCellPrivateSetPinDtr(pInstance, true);
         }
-        startTimeMs = uPortGetTickTimeMs();
+        timeoutStart = uTimeoutStart();
         while ((sizeWritten < sizeBytes) && (sizeOrErrorCode >= 0) &&
-               (uPortGetTickTimeMs() - startTimeMs < U_CELL_MUX_WRITE_TIMEOUT_MS)) {
+               !uTimeoutExpiredMs(timeoutStart, U_CELL_MUX_WRITE_TIMEOUT_MS)) {
             // Encode a chunk as UIH
             thisChunkSize = sizeBytes - sizeWritten;
             if (thisChunkSize > U_CELL_MUX_PRIVATE_INFORMATION_LENGTH_MAX_BYTES) {
@@ -401,7 +403,7 @@ static int32_t serialWriteInnards(struct uDeviceSerial_t *pDeviceSerial,
             if (sizeOrErrorCode >= 0) {
                 lengthWritten = 0;
                 while ((sizeOrErrorCode >= 0) && (lengthWritten < (size_t) sizeOrErrorCode) &&
-                       (uPortGetTickTimeMs() - startTimeMs < U_CELL_MUX_WRITE_TIMEOUT_MS)) {
+                       !uTimeoutExpiredMs(timeoutStart, U_CELL_MUX_WRITE_TIMEOUT_MS)) {
                     if (!pChannelContext->traffic.txIsFlowControlledOff) {
                         // Send the data
                         thisLengthWritten = uPortUartWrite(pChannelContext->pContext->underlyingStreamHandle,
@@ -497,7 +499,7 @@ static int32_t sendCommandCheckResponse(uDeviceSerial_t *pDeviceSerial,
     char buffer[U_CELL_MUX_PRIVATE_FRAME_OVERHEAD_MAX_BYTES + sizeof(pFrameSend->information)];
     char *pTmp;
     int32_t length;
-    int32_t startTimeMs;
+    uTimeoutStart_t timeoutStart;
 
     // Flush out any existing information field data
     while (serialReadInnards(pTraffic, buffer, sizeof(buffer)) > 0) {}
@@ -521,9 +523,9 @@ static int32_t sendCommandCheckResponse(uDeviceSerial_t *pDeviceSerial,
             if (timeoutMs > 0) {
                 errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
                 // Wait for a response
-                startTimeMs = uPortGetTickTimeMs();
+                timeoutStart = uTimeoutStart();
                 while ((pTraffic->wantedResponseFrameType != U_CELL_MUX_PRIVATE_FRAME_TYPE_NONE) &&
-                       (uPortGetTickTimeMs() - startTimeMs < timeoutMs)) {
+                       !uTimeoutExpiredMs(timeoutStart, timeoutMs)) {
                     uPortTaskBlock(10);
                 }
                 if (pTraffic->wantedResponseFrameType == U_CELL_MUX_PRIVATE_FRAME_TYPE_NONE) {

@@ -29,6 +29,8 @@
 #include "u_lib_mga_common_types.h"
 // MODIFED: quotes instead of <> for consistency with ubxlib
 #include "time.h"
+// MODIFIED: inclusion of ubxlib timeout API
+#include "u_timeout.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 #ifdef __cplusplus
@@ -233,6 +235,8 @@ extern "C" {
 
     // MODIFIED: the members of this structure have been re-ordered to put the smallest at the end,
     // most likely to lead to efficient structure packing
+    // ALSO timeOut has been changed to uTimeoutStop_t, see /common/timeout/api, and,
+    // in the durationMs field of the structure, zero is used to mean "no timeout set"
     //! Message information structure.
     /*! For each UBX message that needs to be transferred to the receiver, a message info structure instance is maintained by the libMga.
         These are used to manage the transfer of UBX messages to the receiver.
@@ -241,7 +245,7 @@ extern "C" {
         */
     typedef struct
     {
-        time_t              timeOut;            //!< The time in the future when the UBX message is considered to have been lost and not made it to the receiver.
+        uTimeoutStop_t      timeOut;            //!< The time in the future when the UBX message is considered to have been lost and not made it to the receiver.
         const UBX_U1*       pMsg;               //!< Pointer to the start of the UBX message.
         struct                                  //!< Fields related to MGA message transfers
         {

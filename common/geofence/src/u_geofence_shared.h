@@ -42,7 +42,7 @@ extern "C" {
  */
 typedef struct {
     int64_t distanceMillimetres; /**< use LLONG_MIN to mean "not known". */
-    int32_t timeMs; /**< populated from uPortGetTickTimeMs(). */
+    uTimeoutStart_t timeoutStart; /**< populated from uTimeoutStart(). */
 } uGeofenceDynamicStatus_t;
 
 /** Structure to hold the maximum speed that a device will travel

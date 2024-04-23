@@ -48,6 +48,8 @@
 #include "u_port_heap.h"
 #include "u_port_debug.h"
 
+#include "u_timeout.h"
+
 #include "u_at_client.h"
 
 #include "u_location.h"
@@ -611,7 +613,7 @@ int32_t uWifiLocGet(uDeviceHandle_t wifiHandle,
     uShortRangePrivateInstance_t *pInstance;
     volatile uWifiLocContext_t *pContext;
     uAtClientHandle_t atHandle;
-    int32_t startTimeMs;
+    uTimeoutStart_t timeoutStart;
     uLocation_t location;
 
     if (gUShortRangePrivateMutex != NULL) {
@@ -647,10 +649,11 @@ int32_t uWifiLocGet(uDeviceHandle_t wifiHandle,
                                                            uWifiPrivateUudhttpUrc,
                                                            pInstance);
                         if (errorCode == 0) {
-                            startTimeMs = uPortGetTickTimeMs();
+                            timeoutStart = uTimeoutStart();
                             while ((pContext->errorCode == (int32_t) U_ERROR_COMMON_TIMEOUT) &&
                                    (((pKeepGoingCallback == NULL) &&
-                                     ((uPortGetTickTimeMs() - startTimeMs) < U_WIFI_LOC_ANSWER_TIMEOUT_SECONDS * 1000)) ||
+                                     !uTimeoutExpiredSeconds(timeoutStart,
+                                                             U_WIFI_LOC_ANSWER_TIMEOUT_SECONDS)) ||
                                     ((pKeepGoingCallback != NULL) && pKeepGoingCallback(wifiHandle)))) {
                                 uPortTaskBlock(250);
                             }

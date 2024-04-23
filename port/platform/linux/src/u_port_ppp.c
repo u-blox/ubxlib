@@ -44,6 +44,8 @@
 #include "u_cfg_sw.h"
 #include "u_error_common.h"
 
+#include "u_timeout.h"
+
 #include "u_linked_list.h"
 
 #include "u_sock.h"
@@ -328,7 +330,7 @@ static void terminateLink(uPortPppInterface_t *pPppInterface)
     int32_t sent;
     const char *pData;
     size_t retryCount = 0;
-    int32_t startTimeMs;
+    uTimeoutStart_t timeoutStart;
     bool pppdConnected = (pPppInterface->connectedSocket >= 0);
 
     // First, suspend normal data transfer between the entities
@@ -378,9 +380,10 @@ static void terminateLink(uPortPppInterface_t *pPppInterface)
 
     // Wait for the response from pppd on the MCU side, and
     // from the cellular side (via the waitingForModuleDisconnect flag)
-    startTimeMs = uPortGetTickTimeMs();
+    timeoutStart = uTimeoutStart();
     while ((pPppInterface->waitingForModuleDisconnect || pppdConnected) &&
-           (uPortGetTickTimeMs() - startTimeMs < U_PORT_PPP_CONNECT_TIMEOUT_SECONDS * 1000)) {
+           !uTimeoutExpiredSeconds(timeoutStart,
+                                   U_PORT_PPP_CONNECT_TIMEOUT_SECONDS)) {
         // Wait for data to arrive on the connected socket
         if (pppdConnected &&
             socketSelect(pPppInterface->connectedSocket, U_CFG_OS_YIELD_MS)) {
@@ -839,7 +842,7 @@ int32_t uPortPppConnect(void *pDevHandle,
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uPortPppInterface_t *pPppInterface;
-    int32_t startTimeMs;
+    uTimeoutStart_t timeoutStart;
 
     // There is no way for this code to provide the authentication
     // parameters back to pppd, the user has to set them when
@@ -878,9 +881,10 @@ int32_t uPortPppConnect(void *pDevHandle,
                 // people at a PPP kinda problem
                 errorCode = (int32_t) U_ERROR_COMMON_PROTOCOL_ERROR;
                 // Wait for the IP connection to succeed
-                startTimeMs = uPortGetTickTimeMs();
+                timeoutStart = uTimeoutStart();
                 while ((!pPppInterface->ipConnected) &&
-                       (uPortGetTickTimeMs() - startTimeMs < U_PORT_PPP_CONNECT_TIMEOUT_SECONDS * 1000)) {
+                       !uTimeoutExpiredSeconds(timeoutStart,
+                                               U_PORT_PPP_CONNECT_TIMEOUT_SECONDS)) {
                     uPortTaskBlock(250);
                 }
                 if (pPppInterface->ipConnected) {

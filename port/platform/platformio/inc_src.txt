@@ -24,6 +24,7 @@
 common/at_client
 common/error
 common/assert
+common/timeout
 common/location
 common/mqtt_client
 common/http_client

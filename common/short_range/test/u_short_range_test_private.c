@@ -42,6 +42,8 @@
 #include "u_port_debug.h"
 #include "u_port_os.h"
 
+#include "u_timeout.h"
+
 #include "u_at_client.h"
 
 //lint -efile(766, u_ble_sps.h)

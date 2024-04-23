@@ -37,6 +37,8 @@
 
 #include "u_error_common.h"
 
+#include "u_timeout.h"
+
 #include "u_at_client.h"
 
 #include "u_linked_list.h"

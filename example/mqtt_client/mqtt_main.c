@@ -253,7 +253,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleMqttClient")
     char buffer[64];
     size_t bufferSize;
     volatile bool messagesAvailable = false;
-    int32_t startTimeMs;
+    uTimeoutStart_t timeoutStart;
     int32_t returnCode;
 
     // Initialise the APIs we will need
@@ -340,7 +340,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleMqttClient")
                         // MQTT broker
                         uPortLog("Publishing \"%s\" to topic \"%s\"...\n",
                                  message, topic);
-                        startTimeMs = uPortGetTickTimeMs();
+                        timeoutStart = uTimeoutStart();
                         // If you were using MQTT-SN, you would call
                         // uMqttClientSnPublish() instead and pass it
                         // the MQTT-SN topic name returned by
@@ -353,7 +353,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleMqttClient")
                             // Wait for us to be notified that our new
                             // message is available on the broker
                             while (!messagesAvailable &&
-                                   (uPortGetTickTimeMs() - startTimeMs < 10000)) {
+                                   !uTimeoutExpiredSeconds(timeoutStart, 10)) {
                                 uPortTaskBlock(1000);
                             }
 

@@ -62,6 +62,8 @@
 
 #include "u_test_util_resource_check.h"
 
+#include "u_timeout.h"
+
 #include "u_location.h"
 
 #include "u_linked_list.h"
@@ -142,7 +144,7 @@ static uShortRangeUartConfig_t gUart = { .uartPort = U_CFG_APP_SHORT_RANGE_UART,
 
 static uWifiTestPrivate_t gHandles = { -1, -1, NULL, NULL };
 
-static int32_t gStopTimeMs;
+static uTimeoutStop_t gTimeoutStop;
 static int32_t gErrorCode;
 
 static uGeofence_t *gpFenceA = NULL;
@@ -164,7 +166,8 @@ static bool keepGoingCallback(uDeviceHandle_t param)
 
     (void) param;
 
-    if (uPortGetTickTimeMs() > gStopTimeMs) {
+    if (uTimeoutExpiredMs(gTimeoutStop.timeoutStart,
+                          gTimeoutStop.durationMs)) {
         keepGoing = false;
     }
 
@@ -236,7 +239,6 @@ U_PORT_TEST_FUNCTION("[wifiGeofence]", "wifiGeofenceBasic")
 {
     int32_t resourceCount;
     uLocation_t location;
-    int32_t startTimeMs;
     int32_t x;
 
     resourceCount = uTestUtilGetDynamicResourceCount();
@@ -282,16 +284,16 @@ U_PORT_TEST_FUNCTION("[wifiGeofence]", "wifiGeofenceBasic")
     U_PORT_TEST_ASSERT(uWifiGeofenceApply(gHandles.devHandle, gpFenceB) == 0);
 
     U_TEST_PRINT_LINE("testing geofence with blocking Wifi location.");
-    startTimeMs = uPortGetTickTimeMs();
-    gStopTimeMs = startTimeMs + U_WIFI_GEOFENCE_TEST_TIMEOUT_SECONDS * 1000;
+    gTimeoutStop.timeoutStart = uTimeoutStart();
+    gTimeoutStop.durationMs = U_WIFI_GEOFENCE_TEST_TIMEOUT_SECONDS * 1000;
     // Choose Google to do this with as it seems generally the most reliable
     x = uWifiLocGet(gHandles.devHandle, U_LOCATION_TYPE_CLOUD_GOOGLE,
                     U_PORT_STRINGIFY_QUOTED(U_CFG_APP_GOOGLE_MAPS_API_KEY),
                     U_WIFI_GEOFENCE_TEST_AP_FILTER,
                     U_WIFI_GEOFENCE_TEST_RSSI_FILTER_DBM,
                     &location, keepGoingCallback);
-    U_TEST_PRINT_LINE("uWifiLocGet() returned %d in %d ms.",
-                      x, uPortGetTickTimeMs() - startTimeMs);
+    U_TEST_PRINT_LINE("uWifiLocGet() returned %d in %u ms.",
+                      x, uTimeoutElapsedMs(gTimeoutStop.timeoutStart));
     U_TEST_PRINT_LINE("%s fence A, %s fence B.",
                       gpPositionStateString[gPositionStateA],
                       gpPositionStateString[gPositionStateB]);
@@ -305,7 +307,8 @@ U_PORT_TEST_FUNCTION("[wifiGeofence]", "wifiGeofenceBasic")
     gErrorCode = 0;
     gPositionStateA = U_GEOFENCE_POSITION_STATE_NONE;
     gPositionStateB = U_GEOFENCE_POSITION_STATE_NONE;
-    startTimeMs = uPortGetTickTimeMs();
+    gTimeoutStop.timeoutStart = uTimeoutStart();
+    gTimeoutStop.durationMs = U_WIFI_GEOFENCE_TEST_TIMEOUT_SECONDS * 1000;
     x = uWifiLocGetStart(gHandles.devHandle, U_LOCATION_TYPE_CLOUD_GOOGLE,
                          U_PORT_STRINGIFY_QUOTED(U_CFG_APP_GOOGLE_MAPS_API_KEY),
                          U_WIFI_GEOFENCE_TEST_AP_FILTER,
@@ -313,9 +316,10 @@ U_PORT_TEST_FUNCTION("[wifiGeofence]", "wifiGeofenceBasic")
                          posCallback);
     U_TEST_PRINT_LINE("uWifiLocGetStart() returned %d.", x);
     U_PORT_TEST_ASSERT(x == 0);
-    U_TEST_PRINT_LINE("waiting %d second(s) for result...", U_WIFI_GEOFENCE_TEST_TIMEOUT_SECONDS);
+    U_TEST_PRINT_LINE("waiting %u second(s) for result...", gTimeoutStop.durationMs / 1000);
     while ((gErrorCode >= 0) && (gErrorCode < 2) &&
-           ((uPortGetTickTimeMs() - startTimeMs) < U_WIFI_GEOFENCE_TEST_TIMEOUT_SECONDS * 1000)) {
+           !uTimeoutExpiredMs(gTimeoutStop.timeoutStart,
+                              gTimeoutStop.durationMs)) {
         uPortTaskBlock(250);
     }
     // On really fast systems (e.g. Linux machines) it is possible
@@ -323,8 +327,8 @@ U_PORT_TEST_FUNCTION("[wifiGeofence]", "wifiGeofenceBasic")
     // give it a moment to do so
     uPortTaskBlock(250);
     uWifiLocGetStop(gHandles.devHandle);
-    U_TEST_PRINT_LINE("gErrorCode was %d after %d second(s).", gErrorCode,
-                      (uPortGetTickTimeMs() - startTimeMs) / 1000);
+    U_TEST_PRINT_LINE("gErrorCode was %d after %u second(s).", gErrorCode,
+                      uTimeoutElapsedSeconds(gTimeoutStop.timeoutStart));
     U_TEST_PRINT_LINE("%s fence A, %s fence B.",
                       gpPositionStateString[gPositionStateA],
                       gpPositionStateString[gPositionStateB]);

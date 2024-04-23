@@ -41,6 +41,8 @@
 #include "u_port_os.h"
 #include "u_port_heap.h"
 
+#include "u_timeout.h"
+
 #include "u_at_client.h"
 
 #include "u_cell_module_type.h"

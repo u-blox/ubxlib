@@ -50,6 +50,8 @@
 
 #include "u_error_common.h"
 
+#include "u_timeout.h"
+
 #include "u_at_client.h" // Required by u_gnss_private.h
 
 #include "u_linked_list.h"
@@ -169,7 +171,7 @@ static uGnssTestPrivate_t gHandles = U_GNSS_TEST_PRIVATE_DEFAULTS;
 
 /** Used for keepGoingCallback() timeout.
  */
-static int32_t gStopTimeMs;
+static uTimeoutStop_t gTimeoutStop;
 
 /** Variable to track the parameters received by a callback that
  * vary with the position being tested.
@@ -202,7 +204,8 @@ static bool keepGoingCallback(uDeviceHandle_t gnssHandle)
     bool keepGoing = true;
 
     U_PORT_TEST_ASSERT(gnssHandle == gHandles.gnssHandle);
-    if (uPortGetTickTimeMs() > gStopTimeMs) {
+    if (uTimeoutExpiredMs(gTimeoutStop.timeoutStart,
+                          gTimeoutStop.durationMs)) {
         keepGoing = false;
     }
 
@@ -810,7 +813,6 @@ U_PORT_TEST_FUNCTION("[gnssGeofence]", "gnssGeofenceLive")
     uGnssTransportType_t transportTypes[U_GNSS_TRANSPORT_MAX_NUM];
     int32_t y;
     uGnssGeofenceTestCallbackParams_t callbackParams;
-    int32_t startTimeMs;
 
     // In case fence A was left hanging
     uGnssGeofenceRemove(NULL, NULL);
@@ -875,14 +877,14 @@ U_PORT_TEST_FUNCTION("[gnssGeofence]", "gnssGeofenceLive")
                           U_GEOFENCE_POSITION_STATE_INSIDE,
                           U_GEOFENCE_POSITION_STATE_OUTSIDE,
                           LLONG_MIN, LLONG_MIN, INT_MIN, INT_MIN, INT_MIN);
-        startTimeMs = uPortGetTickTimeMs();
-        gStopTimeMs = startTimeMs + U_GNSS_GEOFENCE_TEST_POS_TIMEOUT_SECONDS * 1000;
+        gTimeoutStop.timeoutStart = uTimeoutStart();
+        gTimeoutStop.durationMs = U_GNSS_GEOFENCE_TEST_POS_TIMEOUT_SECONDS * 1000;
         y = uGnssPosGet(gnssDevHandle, NULL, NULL, NULL,
                         NULL, NULL, NULL, NULL, keepGoingCallback);
         U_TEST_PRINT_LINE("calling uGnssPosGet() returned %d.", y);
         U_PORT_TEST_ASSERT(y == 0);
-        U_TEST_PRINT_LINE("position establishment took %d second(s).",
-                          (int32_t) (uPortGetTickTimeMs() - startTimeMs) / 1000);
+        U_TEST_PRINT_LINE("position establishment took %u second(s).",
+                          uTimeoutElapsedSeconds(gTimeoutStop.timeoutStart));
         U_PORT_TEST_ASSERT(checkCallbackResult(&callbackParams, &gCallbackParameters));
 
         // Repeat for the asynchronous position API
@@ -891,14 +893,16 @@ U_PORT_TEST_FUNCTION("[gnssGeofence]", "gnssGeofenceLive")
                           U_GEOFENCE_POSITION_STATE_INSIDE,
                           U_GEOFENCE_POSITION_STATE_OUTSIDE,
                           LLONG_MIN, LLONG_MIN, INT_MIN, INT_MIN, INT_MIN);
-        startTimeMs = uPortGetTickTimeMs();
-        gStopTimeMs = startTimeMs + U_GNSS_GEOFENCE_TEST_POS_TIMEOUT_SECONDS * 1000;
+        gTimeoutStop.timeoutStart = uTimeoutStart();
+        gTimeoutStop.durationMs = U_GNSS_GEOFENCE_TEST_POS_TIMEOUT_SECONDS * 1000;
         y = uGnssPosGetStart(gnssDevHandle, posCallback);
         U_TEST_PRINT_LINE("calling uGnssPosGetStart() returned %d.", y);
         U_PORT_TEST_ASSERT(y == 0);
-        U_TEST_PRINT_LINE("waiting up to %d second(s) for results from asynchronous API...",
-                          U_GNSS_GEOFENCE_TEST_POS_TIMEOUT_SECONDS);
-        while ((gCallbackParameters.called < 2) && (uPortGetTickTimeMs() < gStopTimeMs)) {
+        U_TEST_PRINT_LINE("waiting up to %u second(s) for results from asynchronous API...",
+                          gTimeoutStop.durationMs / 1000);
+        while ((gCallbackParameters.called < 2) &&
+               !uTimeoutExpiredMs(gTimeoutStop.timeoutStart,
+                                  gTimeoutStop.durationMs)) {
             uPortTaskBlock(1000);
         }
         U_PORT_TEST_ASSERT(checkCallbackResult(&callbackParams, &gCallbackParameters));
@@ -910,14 +914,16 @@ U_PORT_TEST_FUNCTION("[gnssGeofence]", "gnssGeofenceLive")
                               U_GEOFENCE_POSITION_STATE_INSIDE,
                               U_GEOFENCE_POSITION_STATE_OUTSIDE,
                               LLONG_MIN, LLONG_MIN, INT_MIN, INT_MIN, INT_MIN);
-            startTimeMs = uPortGetTickTimeMs();
-            gStopTimeMs = startTimeMs + U_GNSS_GEOFENCE_TEST_POS_TIMEOUT_SECONDS * 1000;
+            gTimeoutStop.timeoutStart = uTimeoutStart();
+            gTimeoutStop.durationMs = U_GNSS_GEOFENCE_TEST_POS_TIMEOUT_SECONDS * 1000;
             y = uGnssPosGetStreamedStart(gnssDevHandle, 1000, posCallback);;
             U_TEST_PRINT_LINE("calling uGnssPosGetStreamedStart() returned %d.", y);
             U_PORT_TEST_ASSERT(y == 0);
-            U_TEST_PRINT_LINE("waiting up to %d second(s) for results from streamed API...",
-                              U_GNSS_GEOFENCE_TEST_POS_TIMEOUT_SECONDS);
-            while ((gCallbackParameters.called < 2) && (uPortGetTickTimeMs() < gStopTimeMs)) {
+            U_TEST_PRINT_LINE("waiting up to %u second(s) for results from streamed API...",
+                              gTimeoutStop.durationMs / 1000);
+            while ((gCallbackParameters.called < 2) &&
+                   !uTimeoutExpiredMs(gTimeoutStop.timeoutStart,
+                                      gTimeoutStop.durationMs)) {
                 uPortTaskBlock(1000);
             }
             // Stop the stream before potentially asserting

@@ -41,6 +41,8 @@
 #include "u_port_os.h"
 #include "u_port_heap.h"
 
+#include "u_timeout.h"
+
 #include "u_hex_bin_convert.h"
 
 #include "u_at_client.h"

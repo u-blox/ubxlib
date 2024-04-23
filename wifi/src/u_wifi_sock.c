@@ -45,6 +45,8 @@
 #include "u_port_debug.h"
 #include "u_cfg_os_platform_specific.h"
 
+#include "u_timeout.h"
+
 #include "u_at_client.h"
 
 #include "u_sock_errno.h"
@@ -1756,7 +1758,7 @@ int32_t uWifiSockAccept(uDeviceHandle_t devHandle,
         return -U_SOCK_EBADFD;
     }
     uWifiSockSocket_t *pServerSock = &(gSockets[sockHandle]);
-    int32_t startTimeMs = uPortGetTickTimeMs();
+    uTimeoutStart_t timeoutStart = uTimeoutStart();
     while (true) {
         uShortRangeLock();
         uWifiSockSocket_t *pClientSock = pFindClientSocketByPort(devHandle, pServerSock->localPort);
@@ -1765,8 +1767,8 @@ int32_t uWifiSockAccept(uDeviceHandle_t devHandle,
             *pRemoteAddress = pClientSock->remoteAddress;
             return pClientSock->sockHandle;
         } else if (gUWifiSocketAcceptTimeoutS >= 0) {
-            if ((uPortGetTickTimeMs() - startTimeMs) / 1000 >
-                gUWifiSocketAcceptTimeoutS) {
+            if (uTimeoutExpiredSeconds(timeoutStart,
+                                       gUWifiSocketAcceptTimeoutS)) {
                 return U_ERROR_COMMON_TIMEOUT;
             }
         }

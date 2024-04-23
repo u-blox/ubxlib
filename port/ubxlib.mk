@@ -10,6 +10,7 @@ UBXLIB_MODULE_DIRS = \
 	${UBXLIB_BASE}/common/at_client \
 	${UBXLIB_BASE}/common/error \
 	${UBXLIB_BASE}/common/assert \
+	${UBXLIB_BASE}/common/timeout \
 	${UBXLIB_BASE}/common/location \
 	${UBXLIB_BASE}/common/mqtt_client \
 	${UBXLIB_BASE}/common/http_client \

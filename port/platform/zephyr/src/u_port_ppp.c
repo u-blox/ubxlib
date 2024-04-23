@@ -49,6 +49,8 @@
 #include "u_cfg_sw.h"
 #include "u_error_common.h"
 
+#include "u_timeout.h"
+
 #include "u_sock.h" // uSockStringToAddress()
 
 #include "u_port.h"
@@ -647,7 +649,7 @@ static void netIfEventCallback(struct net_mgmt_event_callback *pCb,
 // Detach the Zephyr PPP interface.
 static void pppDetach(uPortPppInterface_t *pPppInterface)
 {
-    int32_t startTimeMs;
+    uTimeoutStart_t timeoutStart;
 
     if ((pPppInterface != NULL) && (pPppInterface->pNetIf != NULL)) {
         // There is a bug in Zephyr versions before 3.6.0 which means
@@ -666,9 +668,10 @@ static void pppDetach(uPortPppInterface_t *pPppInterface)
         // Wait for netIfEventCallback to be called-back
         // with the event NET_EVENT_IF_DOWN; it
         // will set gpPppInterface->ipConnected
-        startTimeMs = uPortGetTickTimeMs();
+        timeoutStart = uTimeoutStart();
         while ((gpPppInterface->ipConnected) &&
-               (uPortGetTickTimeMs() - startTimeMs < U_PORT_PPP_DISCONNECT_TIMEOUT_SECONDS * 1000)) {
+               !uTimeoutExpiredSeconds(timeoutStart,
+                                       U_PORT_PPP_DISCONNECT_TIMEOUT_SECONDS)) {
             uPortTaskBlock(250);
         }
         pPppInterface->ipConnected = false;
@@ -834,7 +837,7 @@ int32_t uPortPppConnect(void *pDevHandle,
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     struct net_if *pNetIf;
-    int32_t startTimeMs;
+    uTimeoutStart_t timeoutStart;
 
     // Note: Zephyr does not (as of version 3.5 at least) support
     // entering a user name and password, and probably doesn't
@@ -888,9 +891,10 @@ int32_t uPortPppConnect(void *pDevHandle,
                         // Wait for netIfEventCallback to be called back
                         // with the event NET_EVENT_IPV4_ADDR_ADD; it
                         // will set gpPppInterface->ipConnected
-                        startTimeMs = uPortGetTickTimeMs();
+                        timeoutStart = uTimeoutStart();
                         while ((!gpPppInterface->ipConnected) &&
-                               (uPortGetTickTimeMs() - startTimeMs < U_PORT_PPP_CONNECT_TIMEOUT_SECONDS * 1000)) {
+                               !uTimeoutExpiredSeconds(timeoutStart,
+                                                       U_PORT_PPP_CONNECT_TIMEOUT_SECONDS)) {
                             uPortTaskBlock(250);
                         }
                         if (gpPppInterface->ipConnected) {

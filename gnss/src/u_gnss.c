@@ -39,6 +39,8 @@
 #include "u_ringbuffer.h"
 #include "u_linked_list.h"
 
+#include "u_timeout.h"
+
 #include "u_device_shared.h"
 
 #include "u_at_client.h"

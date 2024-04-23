@@ -25,6 +25,7 @@
 #include "u_cfg_sw.h"
 #include "u_error_common.h"
 #include "u_cfg_os_platform_specific.h" // For U_CFG_OS_YIELD_MS
+#include "u_timeout.h"
 
 #include "u_port_debug.h"
 #include "u_port.h"
@@ -813,7 +814,7 @@ int32_t uPortUartEventTrySend(int32_t handle, uint32_t eventBitMap,
                               int32_t delayMs)
 {
     int32_t errorCode = U_ERROR_COMMON_NOT_INITIALISED;
-    int64_t startTime = uPortGetTickTimeMs();
+    uTimeoutStart_t timeoutStart = uTimeoutStart();
 
     if ((gModemUartMutex != NULL) &&
         (!gModemUartContext.markedForDeletion)) {
@@ -831,7 +832,7 @@ int32_t uPortUartEventTrySend(int32_t handle, uint32_t eventBitMap,
                                                    NULL, 0);
                 uPortTaskBlock(U_CFG_OS_YIELD_MS);
             } while ((errorCode != 0) &&
-                     (uPortGetTickTimeMs() - startTime < delayMs));
+                     !uTimeoutExpiredMs(timeoutStart, delayMs));
         }
     }
 

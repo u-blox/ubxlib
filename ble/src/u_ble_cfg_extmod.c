@@ -40,6 +40,8 @@
 #include "u_cfg_sw.h"
 #include "u_port_os.h"
 
+#include "u_timeout.h"
+
 #include "u_at_client.h"
 
 #include "u_short_range_module_type.h"

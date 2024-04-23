@@ -45,6 +45,8 @@
 #include "u_port_event_queue.h"
 #include "u_port_debug.h"
 
+#include "u_timeout.h"
+
 #include "u_at_client.h"
 
 #include "u_sock.h"
@@ -896,15 +898,15 @@ int32_t  uCellPrivateCFunOne(uCellPrivateInstance_t *pInstance)
     // Set powered-up mode if it wasn't already
     if (errorCodeOrMode != 1) {
         // Wait for flip time to expire
-        while (uPortGetTickTimeMs() - pInstance->lastCfunFlipTimeMs <
-               (U_CELL_PRIVATE_AT_CFUN_FLIP_DELAY_SECONDS * 1000)) {
+        while (!uTimeoutExpiredSeconds(pInstance->lastCfunFlipTime,
+                                       U_CELL_PRIVATE_AT_CFUN_FLIP_DELAY_SECONDS)) {
             uPortTaskBlock(1000);
         }
         uAtClientLock(atHandle);
         uAtClientCommandStart(atHandle, "AT+CFUN=1");
         uAtClientCommandStopReadResponse(atHandle);
         if (uAtClientUnlock(atHandle) == 0) {
-            pInstance->lastCfunFlipTimeMs = uPortGetTickTimeMs();
+            pInstance->lastCfunFlipTime = uTimeoutStart();
             // And don't do anything for a second,
             // as the module might not be quite ready yet
             uPortTaskBlock(1000);
@@ -921,8 +923,8 @@ void uCellPrivateCFunMode(uCellPrivateInstance_t *pInstance,
     uAtClientHandle_t atHandle = pInstance->atHandle;
 
     // Wait for flip time to expire
-    while (uPortGetTickTimeMs() - pInstance->lastCfunFlipTimeMs <
-           (U_CELL_PRIVATE_AT_CFUN_FLIP_DELAY_SECONDS * 1000)) {
+    while (!uTimeoutExpiredSeconds(pInstance->lastCfunFlipTime,
+                                   U_CELL_PRIVATE_AT_CFUN_FLIP_DELAY_SECONDS)) {
         uPortTaskBlock(1000);
     }
     uAtClientLock(atHandle);
@@ -937,7 +939,7 @@ void uCellPrivateCFunMode(uCellPrivateInstance_t *pInstance,
     uAtClientWriteInt(atHandle, mode);
     uAtClientCommandStopReadResponse(atHandle);
     if (uAtClientUnlock(atHandle) == 0) {
-        pInstance->lastCfunFlipTimeMs = uPortGetTickTimeMs();
+        pInstance->lastCfunFlipTime = uTimeoutStart();
     }
 }
 
@@ -1530,12 +1532,12 @@ void uCellPrivateSetPinDtr(uCellPrivateInstance_t *pInstance, bool doNotPowerSav
         if (!doNotPowerSave) {
             targetState = !targetState;
         }
-        while (uPortGetTickTimeMs() - pInstance->lastDtrPinToggleTimeMs <
-               U_CELL_PWR_UART_POWER_SAVING_DTR_HYSTERESIS_MS) {
+        while (!uTimeoutExpiredMs(pInstance->lastDtrPinToggleTime,
+                                  U_CELL_PWR_UART_POWER_SAVING_DTR_HYSTERESIS_MS)) {
             uPortTaskBlock(U_CELL_PRIVATE_DTR_PIN_HYSTERESIS_INTERVAL_MS);
         }
         if (uPortGpioSet(pInstance->pinDtrPowerSaving, targetState) == 0) {
-            pInstance->lastDtrPinToggleTimeMs = uPortGetTickTimeMs();
+            pInstance->lastDtrPinToggleTime = uTimeoutStart();
             uPortTaskBlock(U_CELL_PWR_UART_POWER_SAVING_DTR_READY_MS);
         }
     }

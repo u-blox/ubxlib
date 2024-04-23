@@ -22,6 +22,8 @@
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
 
+#include "u_compiler.h" // U_INLINE
+
 /** \addtogroup __port __Port
  *  @{
  */
@@ -102,9 +104,11 @@ extern "C" {
  * and then calls pEntryPoint, i.e. the application, in an RTOS task.
  * This is used as a standard way to start the system for all of the
  * u-blox examples and all of the u-blox tests.
+ *
  * You may have your own mechanism for initialisating the HW and
  * starting an RTOS task, in which case you need not use this
  * function.
+ *
  * This function only returns if there is an error;
  * code execution ends up in pEntryPoint, which should
  * never return.
@@ -143,11 +147,18 @@ int32_t uPortInit();
 void uPortDeinit();
 
 /** Get the current OS tick converted to a time in milliseconds.
- * This is guaranteed to be unaffected by any time setting activity.
- * It is NOT maintained while the processor is in deep sleep, i.e.
- * with clocks stopped; port initialisation should be called on
- * return from deep sleep and that will restart this time from
- * zero once more.
+ *
+ * IMPORTANT: the value returned by this function should NOT
+ * be used for checking time-outs or measuring delays; please
+ * instead use uTimeoutStart(), the return value of which may be
+ * passed to uTimeoutExpiredMs() or uTimeoutExpiredSeconds(),
+ * time-out checking functions that know how to handle tick wraps.
+ *
+ * The return value of this function is guaranteed to be
+ * unaffected by any time setting activity. It is NOT maintained
+ * while the processor is in deep sleep, i.e. with clocks stopped;
+ * port initialisation should be called on return from deep sleep
+ * and that will restart this time from zero once more.
  *
  * @return the current OS tick converted to milliseconds.
  */

@@ -62,6 +62,8 @@
 
 #include "u_test_util_resource_check.h"
 
+#include "u_timeout.h"
+
 #include "u_sock.h"
 
 #include "u_at_client.h"
@@ -128,7 +130,7 @@ static uDeviceCfg_t gDeviceCfg = {
     }
 };
 
-static int32_t gStartTimeMs = -1;
+static uTimeoutStop_t gTimeoutStop;
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -140,8 +142,9 @@ static bool keepGoingCallback(uDeviceHandle_t devHandle)
 
     U_PORT_TEST_ASSERT(devHandle == gDeviceHandle);
 
-    if ((gStartTimeMs >= 0) &&
-        (uPortGetTickTimeMs() - gStartTimeMs > U_WIFI_CAPTIVE_PORTAL_TEST_TIMEOUT_SECONDS * 1000)) {
+    if ((gTimeoutStop.durationMs > 0) &&
+        uTimeoutExpiredMs(gTimeoutStop.timeoutStart,
+                          gTimeoutStop.durationMs)) {
         keepGoing = false;
     }
 
@@ -181,7 +184,8 @@ U_PORT_TEST_FUNCTION("[wifiCaptivePortal]", "wifiCaptivePortal")
     uNetworkInterfaceDown(gDeviceHandle, U_NETWORK_TYPE_WIFI);
 
     // Now do the actual test
-    gStartTimeMs = uPortGetTickTimeMs();
+    gTimeoutStop.timeoutStart = uTimeoutStart();
+    gTimeoutStop.durationMs = U_WIFI_CAPTIVE_PORTAL_TEST_TIMEOUT_SECONDS * 1000;
     int32_t returnCode = uWifiCaptivePortal(gDeviceHandle, "UBXLIB_TEST_PORTAL", NULL,
                                             keepGoingCallback);
     U_TEST_PRINT_LINE("uWifiCaptivePortal() returned %d.", returnCode);

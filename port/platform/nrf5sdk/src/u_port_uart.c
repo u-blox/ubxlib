@@ -47,6 +47,8 @@
 
 #include "u_error_common.h"
 
+#include "u_timeout.h"
+
 #include "u_port_clib_platform_specific.h" /* Integer stdio, must be included
                                               before the other port files if
                                               any print or scan function is used. */
@@ -968,7 +970,7 @@ int32_t uPortUartEventTrySend(int32_t handle, uint32_t eventBitMap,
 {
     uErrorCode_t errorCode = U_ERROR_COMMON_NOT_INITIALISED;
     uPortUartEvent_t event;
-    int32_t startTimeMs = uPortGetTickTimeMs();
+    uTimeoutStart_t timeoutStart = uTimeoutStart();
 
     if (gMutex != NULL) {
 
@@ -988,7 +990,7 @@ int32_t uPortUartEventTrySend(int32_t handle, uint32_t eventBitMap,
                                                    &event, sizeof(event));
                 uPortTaskBlock(U_CFG_OS_YIELD_MS);
             } while ((errorCode != 0) &&
-                     (uPortGetTickTimeMs() - startTimeMs < delayMs));
+                     !uTimeoutExpiredMs(timeoutStart, delayMs));
         }
 
         U_PORT_MUTEX_UNLOCK(gMutex);

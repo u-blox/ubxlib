@@ -40,6 +40,8 @@
 
 #include "u_cfg_os_platform_specific.h"
 
+#include "u_timeout.h"
+
 #include "u_at_client.h"
 
 #include "u_device_shared.h"
@@ -249,8 +251,8 @@ static inline void statusQueueClear(const uPortQueueHandle_t queueHandle)
 static inline int32_t statusQueueWaitForWifiDisabled(const uPortQueueHandle_t queueHandle,
                                                      int32_t timeoutSec)
 {
-    int32_t startTime = (int32_t)uPortGetTickTimeMs();
-    while ((int32_t)uPortGetTickTimeMs() - startTime < timeoutSec * 1000) {
+    uTimeoutStart_t timeoutStart = uTimeoutStart();
+    while (!uTimeoutExpiredSeconds(timeoutStart, timeoutSec)) {
         uStatusMessage_t msg;
         int32_t errorCode = uPortQueueTryReceive(queueHandle, 1000, &msg);
         if ((errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) &&
@@ -265,8 +267,8 @@ static inline int32_t statusQueueWaitForWifiDisabled(const uPortQueueHandle_t qu
 static inline int32_t statusQueueWaitForWifiConnected(const uPortQueueHandle_t queueHandle,
                                                       int32_t timeoutSec)
 {
-    int32_t startTime = (int32_t)uPortGetTickTimeMs();
-    while ((int32_t)uPortGetTickTimeMs() - startTime < timeoutSec * 1000) {
+    uTimeoutStart_t timeoutStart = uTimeoutStart();
+    while (!uTimeoutExpiredSeconds(timeoutStart, timeoutSec)) {
         uStatusMessage_t msg;
         int32_t errorCode = uPortQueueTryReceive(queueHandle, 1000, &msg);
         if ((errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) &&
@@ -283,8 +285,8 @@ static inline int32_t statusQueueWaitForNetworkUp(const uPortQueueHandle_t queue
     static const uint32_t desiredNetStatusMask =
         U_WIFI_STATUS_MASK_IPV4_UP | U_WIFI_STATUS_MASK_IPV6_UP;
     uint32_t lastNetStatusMask = 0;
-    int32_t startTime = (int32_t)uPortGetTickTimeMs();
-    while ((int32_t)uPortGetTickTimeMs() - startTime < timeoutSec * 1000) {
+    uTimeoutStart_t timeoutStart = uTimeoutStart();
+    while (!uTimeoutExpiredSeconds(timeoutStart, timeoutSec)) {
         uStatusMessage_t msg;
         int32_t errorCode = uPortQueueTryReceive(queueHandle, 1000, &msg);
         if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {

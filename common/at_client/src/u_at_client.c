@@ -60,6 +60,8 @@
 
 #include "u_device_serial.h"
 
+#include "u_timeout.h"
+
 #include "u_at_client.h"
 #include "u_short_range_pbuf.h"
 #include "u_short_range_module_type.h"
@@ -405,7 +407,7 @@ typedef struct {
     int32_t pin;
     int32_t readyMs;
     bool highIsOn;
-    int32_t lastToggleTime;
+    uTimeoutStart_t lastToggleTime;
     int32_t hysteresisMs;
 } uAtClientActivityPin_t;
 
@@ -443,9 +445,9 @@ typedef struct uAtClientInstance_t {
     uAtClientTag_t stopTag; /** The stop tag for the current scope. */
     uAtClientUrc_t *pUrcList; /** Linked-list anchor for URC handlers. */
     uAtClientUrc_t *pUrcRead;  /** Pointer used when reading the URC handlers. */
-    int32_t lastResponseStopMs; /** The time the last response ended in milliseconds. */
+    uTimeoutStart_t lastResponseStop; /** The time the last response ended in milliseconds. */
     int32_t lockTimeMs; /** The time when the stream was locked. */
-    int32_t lastTxTimeMs; /** The time when the last transmit activity was carried out, set to -1 initially. */
+    uTimeoutStart_t lastTxTime; /** The time when the last transmit activity was carried out. */
     size_t urcMaxStringLength; /** The longest URC string to monitor for. */
     size_t maxRespLength; /** The max length of OK, (CME) (CMS) ERROR and URCs. */
     bool delimiterRequired; /** Is a delimiter to be inserted before the next parameter or not. */
@@ -1268,9 +1270,7 @@ static int32_t pollTimeRemaining(int32_t atTimeoutMs,
         timeRemainingMs = 0;
     }
 
-    // No need to worry about overflow here, we're never awake
-    // for long enough
-    return (int32_t) timeRemainingMs;
+    return timeRemainingMs;
 }
 
 // Zero the buffer.
@@ -2263,8 +2263,9 @@ static size_t write(uAtClientInstance_t *pClient,
     while (((pData < pDataEnd) || andFlush) &&
            (pClient->error == U_ERROR_COMMON_SUCCESS)) {
         lengthToWrite = length - (pData - pDataStart);
-        if ((pClient->pWakeUp != NULL) && (pClient->lastTxTimeMs >= 0) &&
-            (uPortGetTickTimeMs() - pClient->lastTxTimeMs > pClient->pWakeUp->inactivityTimeoutMs) &&
+        if ((pClient->pWakeUp != NULL) &&
+            uTimeoutExpiredMs(pClient->lastTxTime,
+                              pClient->pWakeUp->inactivityTimeoutMs) &&
             (uPortMutexTryLock(pClient->pWakeUp->inWakeUpHandlerMutex, 0) == 0)) {
             // We have a wake-up handler, the inactivity timeout
             // has expired and we've managed to lock the wake-up
@@ -2372,7 +2373,7 @@ static size_t write(uAtClientInstance_t *pClient,
                 if (thisLengthWritten > 0) {
                     pDataToWrite += thisLengthWritten;
                     lengthToWrite -= thisLengthWritten;
-                    pClient->lastTxTimeMs = uPortGetTickTimeMs();
+                    pClient->lastTxTime = uTimeoutStart();
                 } else {
                     setError(pClient, U_ERROR_COMMON_DEVICE_ERROR);
                 }
@@ -2447,13 +2448,13 @@ static uPortMutexHandle_t tryLock(uAtClientInstance_t *pClient)
         pClient->lockTimeMs = uPortGetTickTimeMs();
         if (pClient->pActivityPin != NULL) {
             // If an activity pin is set then switch it on
-            while (uPortGetTickTimeMs() - pClient->pActivityPin->lastToggleTime <
-                   pClient->pActivityPin->hysteresisMs) {
+            while (!uTimeoutExpiredMs(pClient->pActivityPin->lastToggleTime,
+                                      pClient->pActivityPin->hysteresisMs)) {
                 uPortTaskBlock(U_AT_CLIENT_ACTIVITY_PIN_HYSTERESIS_INTERVAL_MS);
             }
             if (uPortGpioSet(pClient->pActivityPin->pin,
                              (int32_t) pClient->pActivityPin->highIsOn) == 0) {
-                pClient->pActivityPin->lastToggleTime = uPortGetTickTimeMs();
+                pClient->pActivityPin->lastToggleTime = uTimeoutStart();
                 uPortTaskBlock(pClient->pActivityPin->readyMs);
             }
         }
@@ -2490,13 +2491,13 @@ static void unlockNoDataCheck(uAtClientInstance_t *pClient,
 
         if (pClient->pActivityPin != NULL) {
             // If an activity pin is set then switch it off
-            while (uPortGetTickTimeMs() - pClient->pActivityPin->lastToggleTime <
-                   pClient->pActivityPin->hysteresisMs) {
+            while (!uTimeoutExpiredMs(pClient->pActivityPin->lastToggleTime,
+                                      pClient->pActivityPin->hysteresisMs)) {
                 uPortTaskBlock(U_AT_CLIENT_ACTIVITY_PIN_HYSTERESIS_INTERVAL_MS);
             }
             if (uPortGpioSet(pClient->pActivityPin->pin,
                              (int32_t) !pClient->pActivityPin->highIsOn) == 0) {
-                pClient->pActivityPin->lastToggleTime = uPortGetTickTimeMs();
+                pClient->pActivityPin->lastToggleTime = uTimeoutStart();
             }
         }
     }
@@ -2773,6 +2774,7 @@ static uAtClientHandle_t clientAdd(const uAtClientStreamHandle_t *pStream,
     bool receiveBufferIsMalloced = false;
     uDeviceSerial_t *pDeviceSerial;
     int32_t errorCode = -1;
+    uTimeoutStart_t timeoutStart;
 
     U_PORT_MUTEX_LOCK(gMutex);
 
@@ -2804,6 +2806,7 @@ static uAtClientHandle_t clientAdd(const uAtClientStreamHandle_t *pStream,
                         (uPortMutexCreate(&(pClient->urcPermittedMutex)) == 0)) {
                         // Set all the non-zero initial values before we set
                         // the event handlers which might call us
+                        timeoutStart = uTimeoutStart();
                         pClient->newSendNextTime = true;
                         pClient->stream = *pStream;
                         pClient->atTimeoutMs = U_AT_CLIENT_DEFAULT_TIMEOUT_MS;
@@ -2816,9 +2819,10 @@ static uAtClientHandle_t clientAdd(const uAtClientStreamHandle_t *pStream,
                         clearError(pClient);
                         // This will also set stopTag
                         setScope(pClient, U_AT_CLIENT_SCOPE_NONE);
-                        pClient->lastTxTimeMs = -1;
+                        pClient->lastTxTime = timeoutStart;
                         pClient->urcMaxStringLength = U_AT_CLIENT_INITIAL_URC_LENGTH;
                         pClient->maxRespLength = U_AT_CLIENT_MAX_LENGTH_INFORMATION_RESPONSE_PREFIX;
+                        pClient->lastResponseStop = timeoutStart;
                         // Set up the buffer and its protection markers
                         pClient->pReceiveBuffer->dataBufferSize = receiveBufferSize -
                                                                   U_AT_CLIENT_BUFFER_OVERHEAD_BYTES;
@@ -3259,14 +3263,14 @@ void uAtClientLock(uAtClientHandle_t atHandle)
         streamMutex = streamLock(pClient);
         mutexStackPush(&(pClient->lockedStreamMutexStack), streamMutex);
         if (pClient->pActivityPin != NULL) {
-            while (uPortGetTickTimeMs() - pClient->pActivityPin->lastToggleTime <
-                   pClient->pActivityPin->hysteresisMs) {
+            while (!uTimeoutExpiredMs(pClient->pActivityPin->lastToggleTime,
+                                      pClient->pActivityPin->hysteresisMs)) {
                 uPortTaskBlock(U_AT_CLIENT_ACTIVITY_PIN_HYSTERESIS_INTERVAL_MS);
             }
             // If an activity pin is set then switch it on
             if (uPortGpioSet(pClient->pActivityPin->pin,
                              (int32_t) pClient->pActivityPin->highIsOn) == 0) {
-                pClient->pActivityPin->lastToggleTime = uPortGetTickTimeMs();
+                pClient->pActivityPin->lastToggleTime = uTimeoutStart();
                 uPortTaskBlock(pClient->pActivityPin->readyMs);
             }
         }
@@ -3387,10 +3391,10 @@ void uAtClientCommandStart(uAtClientHandle_t atHandle,
     U_AT_CLIENT_LOCK_CLIENT_MUTEX(pClient);
 
     if (pClient->error == U_ERROR_COMMON_SUCCESS) {
-        // Wait for delay period if required, constructed this way
-        // to be safe if uPortGetTickTimeMs() wraps
+        // Wait for delay period if required
         if (pClient->delayMs > 0) {
-            while (uPortGetTickTimeMs() - pClient->lastResponseStopMs < pClient->delayMs) {
+            while (!uTimeoutExpiredMs(pClient->lastResponseStop,
+                                      pClient->delayMs)) {
                 uPortTaskBlock(10);
             }
         }
@@ -3789,7 +3793,7 @@ void uAtClientResponseStop(uAtClientHandle_t atHandle)
         setScope(pClient, U_AT_CLIENT_SCOPE_NONE);
     }
 
-    pClient->lastResponseStopMs = uPortGetTickTimeMs();
+    pClient->lastResponseStop = uTimeoutStart();
 
     U_AT_CLIENT_UNLOCK_CLIENT_MUTEX(pClient);
 }
@@ -3906,7 +3910,7 @@ int32_t uAtClientWaitCharacter(uAtClientHandle_t atHandle,
     uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
     uAtClientInstance_t *pClient = (uAtClientInstance_t *) atHandle;
     uAtClientReceiveBuffer_t *pReceiveBuffer = pClient->pReceiveBuffer;
-    int32_t stopTimeMs;
+    uTimeoutStart_t timeoutStart;
     bool urcFound;
 
     // IMPORTANT: this can't lock pClient->mutex as it
@@ -3924,11 +3928,7 @@ int32_t uAtClientWaitCharacter(uAtClientHandle_t atHandle,
             // gets to zero (in which case we won't call bufferFill())
             // and hence, for safety, we run our own AT timeout guard
             // on the loop as well
-            stopTimeMs = uPortGetTickTimeMs() + pClient->atTimeoutMs;
-            if (stopTimeMs < 0) {
-                // Protect against wrapping
-                stopTimeMs = pClient->atTimeoutMs;
-            }
+            timeoutStart = uTimeoutStart();
             while ((errorCode != U_ERROR_COMMON_SUCCESS) &&
                    (pClient->error == U_ERROR_COMMON_SUCCESS)) {
                 // Continue to look for URCs, you never
@@ -3970,7 +3970,7 @@ int32_t uAtClientWaitCharacter(uAtClientHandle_t atHandle,
                             pClient->numConsecutiveAtTimeouts = 0;
                         }
                     } else {
-                        if (uPortGetTickTimeMs() > stopTimeMs) {
+                        if (uTimeoutExpiredMs(timeoutStart, pClient->atTimeoutMs)) {
                             // If we're stuck, set an error
                             setError(pClient, U_ERROR_COMMON_DEVICE_ERROR);
                             consecutiveTimeout(pClient);
@@ -4571,7 +4571,7 @@ int32_t uAtClientSetActivityPin(uAtClientHandle_t atHandle,
             pClient->pActivityPin->pin = pin;
             pClient->pActivityPin->readyMs = readyMs;
             pClient->pActivityPin->highIsOn = highIsOn;
-            pClient->pActivityPin->lastToggleTime = uPortGetTickTimeMs();
+            pClient->pActivityPin->lastToggleTime = uTimeoutStart();
             pClient->pActivityPin->hysteresisMs = hysteresisMs;
             errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
         }

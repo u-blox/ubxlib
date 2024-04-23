@@ -43,6 +43,8 @@
 #include "u_port_os.h"   // Required by u_cell_private.h
 #include "u_port_uart.h"
 
+#include "u_timeout.h"
+
 #include "u_at_client.h"
 
 #include "u_cell_module_type.h"

@@ -53,6 +53,8 @@
 #include "u_interface.h"
 #include "u_ringbuffer.h"
 
+#include "u_timeout.h"
+
 #include "u_at_client.h"
 
 #include "u_device_shared.h"
@@ -229,7 +231,7 @@ static int32_t sendExpect(uCellPppContext_t *pContext,
     uDeviceHandle_t cellHandle = pContext->cellHandle;
     char buffer[64];
     int32_t timeoutMs = timeoutSeconds * 1000;
-    int32_t startTimeMs;
+    uTimeoutStart_t timeoutStart;
     int32_t x = 0;
     int32_t y = 0;
     size_t startMatchOffset;
@@ -246,9 +248,9 @@ static int32_t sendExpect(uCellPppContext_t *pContext,
         if (pResponse != NULL) {
             // Wait for a response to come back
             errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
-            startTimeMs = uPortGetTickTimeMs();
+            timeoutStart = uTimeoutStart();
             while ((errorCode == (int32_t) U_ERROR_COMMON_TIMEOUT) &&
-                   (uPortGetTickTimeMs() - startTimeMs < timeoutMs) &&
+                   !uTimeoutExpiredMs(timeoutStart, timeoutMs) &&
                    ((pKeepGoingCallback == NULL) || (pKeepGoingCallback(cellHandle)))) {
                 x = pDeviceSerial->read(pDeviceSerial, buffer + y, sizeof(buffer) - y);
                 if (x > 0) {
