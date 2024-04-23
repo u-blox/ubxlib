@@ -66,7 +66,7 @@
 # ifdef CMSIS_V2
 #  define U_CFG_OS_PRIORITY_MAX 55
 # else
-#  define U_CFG_OS_PRIORITY_MAX 15
+#  define U_CFG_OS_PRIORITY_MAX 14
 # endif
 #endif
 
