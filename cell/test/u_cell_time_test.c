@@ -613,7 +613,8 @@ U_PORT_TEST_FUNCTION("[cellTime]", "cellTimeBasic")
 
     if (U_CELL_PRIVATE_MODULE_IS_SARA_R5(pModule->moduleType)) {
         // Now do it properly
-        U_TEST_PRINT_LINE("performing a deep scan, with a callback and no abort this time.");
+        U_TEST_PRINT_LINE("performing a deep scan, with a callback and no abort this time with a "
+                          "timeout of %d seconds and finding at least one cell.", U_CELL_TIME_TEST_DEEP_SCAN_TIMEOUT_SECONDS);
         // Do this a few times as the module can sometimes find nothing
         gCellInfoCallback = INT_MIN;
         for (size_t x = 0; ((gCellInfoCallback == INT_MIN) || (gpCellInfoList == NULL)) && (x < 3); x++) {
@@ -621,7 +622,7 @@ U_PORT_TEST_FUNCTION("[cellTime]", "cellTimeBasic")
             gTimeoutStop.durationMs = U_CELL_TIME_TEST_DEEP_SCAN_TIMEOUT_SECONDS * 1000;
             y = uCellNetDeepScan(cellHandle, cellInfoCallback, &gpCellInfoList);
             U_TEST_PRINT_LINE("%d cell(s) found on try %d.", y, x + 1);
-            if (y > 0) {
+            if ((y > 0) || (gpCellInfoList != NULL)) {
                 U_PORT_TEST_ASSERT(gCellInfoCallback == 0);
                 U_PORT_TEST_ASSERT(gpCellInfoList != NULL);
                 pTmp = gpCellInfoList;
