@@ -971,8 +971,8 @@ bool uGnssMgaAutonomousIsOn(uDeviceHandle_t gnssHandle)
                 if (uGnssCfgPrivateValGetListAlloc(pInstance, &keyId, 1, &pCfgVal,
                                                    U_GNSS_CFG_VAL_LAYER_RAM) == 1) {
                     onNotOff = (bool) pCfgVal->value;
-                    uPortFree(pCfgVal);
                 }
+                uPortFree(pCfgVal);
             } else {
                 // Ye olde way: poll for the UBX-CFG-NAVX5 message
                 if (uGnssPrivateSendReceiveUbxMessage(pInstance,
