@@ -99,7 +99,7 @@ uPortMutexHandle_t gUCellPrivateMutex = NULL;
  */
 const uCellPrivateModule_t gUCellPrivateModuleList[] = {
     {
-        U_CELL_MODULE_TYPE_SARA_U201, 1 /* Pwr On pull ms */, 1500 /* Pwr off pull ms */,
+        U_CELL_MODULE_TYPE_SARA_U201, 10 /* Pwr On pull ms */, 1500 /* Pwr off pull ms */,
         5 /* Boot wait */, 5 /* Min awake */, 5 /* Pwr down wait */, 5 /* Reboot wait */, 10 /* AT timeout */,
         50 /* Cmd wait ms */, 2000 /* Resp max wait ms */, 0 /* radioOffCfun */, 75 /* resetHoldMilliseconds */,
         2 /* Simultaneous RATs */,
