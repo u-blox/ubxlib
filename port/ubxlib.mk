@@ -202,7 +202,7 @@ UBXLIB_TEST_DIRS += \
 UBXLIB_INC += $(wildcard $(addsuffix /api, $(UBXLIB_MODULE_DIRS)))
 UBXLIB_SRC_DIRS += $(wildcard $(addsuffix /src, $(UBXLIB_MODULE_DIRS)))
 UBXLIB_PRIVATE_INC += $(wildcard $(addsuffix /src, $(UBXLIB_MODULE_DIRS)))
-UBXLIB_TEST_DIRS += $(wildcard $(addsuffix /test/, $(UBXLIB_MODULE_DIRS)))
+UBXLIB_TEST_DIRS += $(wildcard $(addsuffix /test, $(UBXLIB_MODULE_DIRS)))
 
 # Get all .c files in each UBXLIB_SRC_DIRS and add these to UBXLIB_SRC
 SRC_LIST += \
