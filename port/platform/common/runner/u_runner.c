@@ -89,6 +89,10 @@
  */
 static uRunnerFunctionDescription_t *gpFunctionList = NULL;
 
+/** Flag to indicate whether the function list has been sorted.
+ */
+static bool gFunctionListHasBeenSorted = false;
+
 /* ----------------------------------------------------------------
  * VARIABLES
  * -------------------------------------------------------------- */
@@ -289,6 +293,22 @@ bool nameInFilter(const char *pName, const char *pFilter)
     return inFilter;
 }
 
+// Ensure that the function list has been sorted at least once.
+static uRunnerFunctionDescription_t *pEnsureFunctionListSorted()
+{
+    if (!gFunctionListHasBeenSorted) {
+        // Sort the function list with U_RUNNER_PREAMBLE_STR at the top,
+        // then U_RUNNER_TOP_STR and U_RUNNER_POSTAMBLE_STR at the bottom
+        sortFunctionList(&gpFunctionList,
+                         U_PORT_STRINGIFY_QUOTED(U_RUNNER_PREAMBLE_STR),
+                         U_PORT_STRINGIFY_QUOTED(U_RUNNER_TOP_STR),
+                         U_PORT_STRINGIFY_QUOTED(U_RUNNER_POSTAMBLE_STR));
+        gFunctionListHasBeenSorted = true;
+    }
+
+    return gpFunctionList;
+}
+
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -325,19 +345,20 @@ void uRunnerFunctionRegister(uRunnerFunctionDescription_t *pDescription)
         pDescription->pNext = NULL;
 #endif
 
-        // Re-sort the function list with U_RUNNER_PREAMBLE_STR at the top,
-        // then U_RUNNER_TOP_STR and U_RUNNER_POSTAMBLE_STR at the bottom
-        sortFunctionList(&gpFunctionList,
-                         U_PORT_STRINGIFY_QUOTED(U_RUNNER_PREAMBLE_STR),
-                         U_PORT_STRINGIFY_QUOTED(U_RUNNER_TOP_STR),
-                         U_PORT_STRINGIFY_QUOTED(U_RUNNER_POSTAMBLE_STR));
+        // Note: we used to sort the function list here when a new entry
+        // is added, however that increases the time spent in this
+        // function unnecessarily, when this function will be called
+        // from C constructors that may be run before the processor
+        // is running at full speed (this is the case with STM32 for
+        // instance).  Hence sortFunctionList() is now called from
+        // each of the uRunnerXxx() functions instead.
     }
 }
 
 // Print out the function names and groups
 void uRunnerPrintAll(const char *pPrefix)
 {
-    const uRunnerFunctionDescription_t *pFunction = gpFunctionList;
+    const uRunnerFunctionDescription_t *pFunction = pEnsureFunctionListSorted();
     size_t count = 0;
     char buffer[16];
 
@@ -358,7 +379,7 @@ void uRunnerPrintAll(const char *pPrefix)
 void uRunnerRunNamed(const char *pName,
                      const char *pPrefix)
 {
-    const uRunnerFunctionDescription_t *pFunction = gpFunctionList;
+    const uRunnerFunctionDescription_t *pFunction = pEnsureFunctionListSorted();
 
     while (pFunction != NULL) {
         if ((pName == NULL) ||
@@ -374,7 +395,7 @@ void uRunnerRunNamed(const char *pName,
 void uRunnerRunFiltered(const char *pFilter,
                         const char *pPrefix)
 {
-    const uRunnerFunctionDescription_t *pFunction = gpFunctionList;
+    const uRunnerFunctionDescription_t *pFunction = pEnsureFunctionListSorted();
 
     while (pFunction != NULL) {
         if ((pFilter == NULL) || nameInFilter(pFunction->pName, pFilter)
@@ -399,7 +420,7 @@ void uRunnerRunFiltered(const char *pFilter,
 void uRunnerRunGroup(const char *pGroup,
                      const char *pPrefix)
 {
-    const uRunnerFunctionDescription_t *pFunction = gpFunctionList;
+    const uRunnerFunctionDescription_t *pFunction = pEnsureFunctionListSorted();
 
     while (pFunction != NULL) {
         if ((pGroup == NULL) ||
@@ -413,7 +434,7 @@ void uRunnerRunGroup(const char *pGroup,
 // Run all of the functions.
 void uRunnerRunAll(const char *pPrefix)
 {
-    const uRunnerFunctionDescription_t *pFunction = gpFunctionList;
+    const uRunnerFunctionDescription_t *pFunction = pEnsureFunctionListSorted();
 
     while (pFunction != NULL) {
         runFunction(pFunction, pPrefix);
