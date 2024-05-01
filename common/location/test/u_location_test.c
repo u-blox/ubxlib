@@ -458,12 +458,12 @@ static void testOneShot(uDeviceHandle_t devHandle,
 {
     uTimeoutStart_t timeoutStart;
     int32_t y;
-    int32_t timeoutMs = U_LOCATION_TEST_CFG_TIMEOUT_SECONDS * 1000;
+    int32_t timeoutSeconds = U_LOCATION_TEST_CFG_TIMEOUT_SECONDS;
     const uLocationAssist_t *pLocationAssist = NULL;
     const char *pAuthenticationTokenStr = NULL;
 
     if (networkType == U_NETWORK_TYPE_WIFI) {
-        timeoutMs = U_LOCATION_TEST_CFG_WIFI_TIMEOUT_SECONDS * 1000;
+        timeoutSeconds = U_LOCATION_TEST_CFG_WIFI_TIMEOUT_SECONDS;
     }
 
     if (pLocationCfg != NULL) {
@@ -490,9 +490,9 @@ static void testOneShot(uDeviceHandle_t devHandle,
             if (y == 0) {
                 U_TEST_PRINT_LINE("waiting up to %d second(s) for results from"
                                   " one-shot API...",
-                                  timeoutMs);
+                                  timeoutSeconds);
                 while ((gErrorCode == INT_MIN) &&
-                       !uTimeoutExpiredMs(timeoutStart, timeoutMs)) {
+                       !uTimeoutExpiredSeconds(timeoutStart, timeoutSeconds)) {
                     // Location establishment status is only supported for cell locate
                     y = uLocationGetStatus(devHandle);
                     if (locationType == U_LOCATION_TYPE_CLOUD_CELL_LOCATE) {
@@ -589,13 +589,13 @@ static void testContinuous(uDeviceHandle_t devHandle,
                            const uLocationTestCfg_t *pLocationCfg)
 {
     uTimeoutStart_t timeoutStart;
-    int32_t timeoutMs = U_LOCATION_TEST_CFG_TIMEOUT_SECONDS * 1000;
+    int32_t timeoutSeconds = U_LOCATION_TEST_CFG_TIMEOUT_SECONDS;
     int32_t y;
     const uLocationAssist_t *pLocationAssist = NULL;
     const char *pAuthenticationTokenStr = NULL;
 
     if (networkType == U_NETWORK_TYPE_WIFI) {
-        timeoutMs = U_LOCATION_TEST_CFG_WIFI_TIMEOUT_SECONDS * 1000;
+        timeoutSeconds = U_LOCATION_TEST_CFG_WIFI_TIMEOUT_SECONDS;
     }
 
     if (pLocationCfg != NULL) {
@@ -621,10 +621,10 @@ static void testContinuous(uDeviceHandle_t devHandle,
         if (y == 0) {
             U_TEST_PRINT_LINE("waiting up to %d second(s) to get at least %d"
                               " results from continuous API...",
-                              timeoutMs * U_LOCATION_TEST_CFG_CONTINUOUS_COUNT,
+                              timeoutSeconds * U_LOCATION_TEST_CFG_CONTINUOUS_COUNT,
                               U_LOCATION_TEST_CFG_CONTINUOUS_COUNT);
             while ((gCount < U_LOCATION_TEST_CFG_CONTINUOUS_COUNT) &&
-                   !uTimeoutExpiredMs(timeoutStart, timeoutMs)) {
+                   !uTimeoutExpiredSeconds(timeoutStart, timeoutSeconds)) {
                 // Location establishment status is only supported for cell locate
                 y = uLocationGetStatus(devHandle);
                 if (locationType == U_LOCATION_TYPE_CLOUD_CELL_LOCATE) {
