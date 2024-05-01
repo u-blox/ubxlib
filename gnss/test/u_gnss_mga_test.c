@@ -535,8 +535,8 @@ U_PORT_TEST_FUNCTION("[gnssMga]", "gnssMgaBasic")
     int64_t timeUtc = 1685651437; // Chosen randomly
     uGnssMgaTimeReference_t timeReference = {U_GNSS_MGA_EXT_INT_0, true, true};
     int32_t y;
-    bool a;
 #ifndef U_GNSS_MGA_TEST_ASSIST_NOW_AUTONOMOUS_NOT_SUPPORTED
+    bool a;
     bool b;
 #endif
     size_t iterations;
@@ -596,7 +596,6 @@ U_PORT_TEST_FUNCTION("[gnssMga]", "gnssMgaBasic")
         uGnssSetUbxMessagePrint(gnssDevHandle, true);
 
 #ifndef U_GNSS_MGA_TEST_ASSIST_NOW_AUTONOMOUS_NOT_SUPPORTED
-
         // Check that setting AssistNow Autonomous works
         a = uGnssMgaAutonomousIsOn(gnssDevHandle);
         U_TEST_PRINT_LINE("AssistNow Autonomous is initially %s.", a ? "on" : "off");
@@ -724,16 +723,16 @@ U_PORT_TEST_FUNCTION("[gnssMga]", "gnssMgaBasic")
                                             communicationStats.rxPeakPercentageUsage);
                         U_TEST_PRINT_LINE_X(" %d 100 ms interval(s) with receive overrun errors.", x + 1,
                                             communicationStats.rxOverrunErrors);
-                        for (size_t a = 0; a < sizeof(communicationStats.rxNumMessages) /
-                             sizeof(communicationStats.rxNumMessages[0]); a++) {
-                            if (communicationStats.rxNumMessages[a] >= 0) {
-                                pProtocolName = pGnssTestPrivateProtocolName((uGnssProtocol_t) a);
+                        for (size_t i = 0; i < sizeof(communicationStats.rxNumMessages) /
+                             sizeof(communicationStats.rxNumMessages[0]); i++) {
+                            if (communicationStats.rxNumMessages[i] >= 0) {
+                                pProtocolName = pGnssTestPrivateProtocolName((uGnssProtocol_t) i);
                                 if (pProtocolName != NULL) {
                                     U_TEST_PRINT_LINE_X(" %d %s message(s) decoded.", x + 1,
-                                                        communicationStats.rxNumMessages[a], pProtocolName);
+                                                        communicationStats.rxNumMessages[i], pProtocolName);
                                 } else {
                                     U_TEST_PRINT_LINE_X(" %d protocol %d message(s) decoded.", x + 1,
-                                                        communicationStats.rxNumMessages[a], a);
+                                                        communicationStats.rxNumMessages[i], i);
                                 }
                             }
                         }
