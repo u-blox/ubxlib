@@ -121,7 +121,7 @@ Place calls to `uLogRam()` anywhere in the `.c` file(s) where you wish to log an
 
 This will record a millisecond timestamp (32 bits), the logging event that occurred (in this case `U_LOG_RAM_EVENT_USER_0`) and the value of `x` (32 bits).  By convention, if no parameter is required for a log event then 0 should be used.  
 
-Near the end of your application, or wherever you want to dump (and empty) the contents of the RAM log, call `uLogRamPrint()`.
+Near the end of your application, or wherever you want to dump (and empty) the contents of the RAM log, call `uLogRamPrint(NULL)`.
 
 Events `U_LOG_RAM_EVENT_USER_0` to `U_LOG_RAM_EVENT_USER_9` are provided; you may add your own RAM log events in [u_log_ram_enum_user.h](/port/platform/common/log_ram/u_log_ram_enum_user.h)/[u_log_ram_string_user.h](/port/platform/common/log_ram/u_log_ram_string_user.h) if the problem is particularly complex.
 
