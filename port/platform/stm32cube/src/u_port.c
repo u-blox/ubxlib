@@ -103,6 +103,10 @@ static void systemClockConfig(void)
     RCC_OscInitStruct.MSIState = RCC_MSI_ON;
     RCC_OscInitStruct.MSICalibrationValue = RCC_MSICALIBRATION_DEFAULT;
     RCC_OscInitStruct.MSIClockRange = RCC_MSIRANGE_4;
+    // We use MSIK at the default rate (4 MHz) with SPI in order
+    // to get a good clock divider
+    RCC_OscInitStruct.MSIKState = RCC_MSIK_ON;
+    RCC_OscInitStruct.MSIKClockRange = RCC_MSIKRANGE_4;
     RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
     RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_MSI;
     RCC_OscInitStruct.PLL.PLLMBOOST = RCC_PLLMBOOST_DIV1;

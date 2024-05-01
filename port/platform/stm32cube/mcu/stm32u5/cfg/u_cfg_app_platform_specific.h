@@ -214,7 +214,7 @@
  * with a GNSS module.  Note that ST number their HW SPI blocks
  * starting at 1 rather than 0.
  */
-# define U_CFG_APP_GNSS_SPI                  -1
+# define U_CFG_APP_GNSS_SPI                  1
 #endif
 
 /* ----------------------------------------------------------------
@@ -280,28 +280,36 @@
 /** The GPIO output pin for SPI towards the GNSS module;
  * use -1 where there is no such connection.
  */
-# define U_CFG_APP_PIN_GNSS_SPI_MOSI          -1
+# define U_CFG_APP_PIN_GNSS_SPI_MOSI          0x07  // AKA PA_7 or D11 on a NUCLEO-U575ZI-Q board
 #endif
 
 #ifndef U_CFG_APP_PIN_GNSS_SPI_MISO
 /** The GPIO input pin for SPI from the GNSS module;
  * use -1 where there is no such connection.
+ *
+ * Note: the ubxlib test system runs tests on a NUCLEO-U575ZI-Q
+ * board.  In order to test using the LPUART and avoid the application
+ * having to call HAL_PWREx_EnableVddIO2() (since the usual pins
+ * for the LPUART, port G, are not normally powered), it uses
+ * PA_2/PA_3/PA_6/PB_1 for the LPUART pins and, unfortunately
+ * PA_6 is also the MISO pin for SPI1, so here we use PE_14 instead,
+ * which is an alternate (see table 27 of the STM32U575 data sheet).
  */
-# define U_CFG_APP_PIN_GNSS_SPI_MISO          -1
+# define U_CFG_APP_PIN_GNSS_SPI_MISO          0x4e  // AKA PE_14 or D31, labelled "IO2", on a NUCLEO-U575ZI-Q board
 #endif
 
 #ifndef U_CFG_APP_PIN_GNSS_SPI_CLK
 /** The GPIO output pin that is the clock for SPI;
  * use -1 where there is no such connection.
  */
-# define U_CFG_APP_PIN_GNSS_SPI_CLK           -1
+# define U_CFG_APP_PIN_GNSS_SPI_CLK           0x05 // AKA PA_5 or D13 on a NUCLEO-U575ZI-Q board
 #endif
 
 #ifndef U_CFG_APP_PIN_GNSS_SPI_SELECT
 /** The GPIO output pin that is the chip select for the GNSS
  * module; use -1 where there is no such connection.
  */
-# define U_CFG_APP_PIN_GNSS_SPI_SELECT        -1
+# define U_CFG_APP_PIN_GNSS_SPI_SELECT        0x10  // AKA PB_0 or D29, labelled "IO1", on a NUCLEO-U575ZI-Q board
 #endif
 
 /* ----------------------------------------------------------------

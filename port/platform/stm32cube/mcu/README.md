@@ -19,9 +19,11 @@ For STM32U5 ST have set the ThreadX system tick to 10 ms; we have aligned the ti
 
 It is a limitation of ThreadX that an item on an RTOS queue has a maximum size of 64 bytes; `ubxlib` is able to work within this constraint.
 
-In the STM32U5 series MCUs, ST have seen the light and implemented 8-byte FIFOs on all UARTs, hence the relatively complex DMA-based UART implementation is not employed for STM32U5.
+In the STM32U5 series MCUs, ST have seen the light and implemented 8-byte FIFOs on all UARTs, hence the relatively complex DMA-based UART implementation used in the STM32F4 port is not employed/required for this STM32U5 port.
 
 STM32U5 supports a single low-power UART; this may be used in `ubxlib` by requesting UART HW block 0 at the [uPortUart](/port/api/u_port_uart.h) API.  It should be noted that the low-power UART is only really low power if the MCU is running from a 32 kHz source clock in which case the maximum UART baud rate is limited to 9600.
+
+The maximum payload size in the I2C HW blocks of the STM32U5 is 255 bytes however this limitation is handled _inside_ the [uPortI2c](/port/api/u_port_i2c.h) API, you do not need to worry about it (i.e. you do NOT need to call `uPortI2cSetMaxSegmentSize()`).
 
 The `ubxlib` code makes no use of the Trust Zone features of the STM32U5; your application may, of course, do so.
 

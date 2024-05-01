@@ -2776,7 +2776,7 @@ U_PORT_TEST_FUNCTION("[port]", "portI2cRequiresSpecificWiring")
                                                           NULL, 0, false) == 0);
             // Write a longer thing; UBX-MON-VER polls the GNSS device for a
             // 40 + n·* 30 byte UBX-MON-VER response containing a 40 byte fixed part, which
-            // is all we captue here; message class 0x0a, message ID 0x04.
+            // is all we capture here; message class 0x0a, message ID 0x04.
 
 # if defined(U_CFG_APP_I2C_MAX_SEGMENT_SIZE) && (U_CFG_APP_I2C_MAX_SEGMENT_SIZE > 0)
             // Where required, do this with segmentation on

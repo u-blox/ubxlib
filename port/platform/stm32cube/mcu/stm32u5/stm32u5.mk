@@ -10,4 +10,5 @@ include $(realpath $(MAKEFILE_PATH)/../..)/stm32.mk
 # Add files specific to the STM32U5 way of working
 UBXLIB_SRC += \
 	$(PLATFORM_PATH)/src/u_port_os_pure_cmsis.c \
-	$(PLATFORM_PATH)/src/u_port_clib.c
+	$(PLATFORM_PATH)/src/u_port_clib.c \
+	$(PLATFORM_PATH)/src/i2c_timing_utility.c

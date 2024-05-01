@@ -16,6 +16,13 @@
 
 /** @file
  * @brief Implementation of the port SPI API for the STM32 platform.
+ *
+ * Note that the SPI HW of the STM32U5 chip, while not as utterly
+ * different to the STM32F4 HW as for the I2C case, is still quite
+ * different (e.g. has FIFOs and the like now) but poor old SPI3
+ * remains its old unaugmented self so, to give the application
+ * the ability to use any SPI, we ignore the new capabilities, just
+ * accommodating the differences.
  */
 
 #include "stddef.h"
@@ -59,9 +66,13 @@
 
 #ifndef U_PORT_SPI_MAX_NUM
 /** The number of SPI HW blocks that are available; there can be up
- * to six SPI controllers.
+ * to six SPI controllers on an STM32F4, only up to 3 on an STM32U5.
  */
-# define U_PORT_SPI_MAX_NUM 6
+# ifndef STM32U575xx
+#  define U_PORT_SPI_MAX_NUM 6
+# else
+#  define U_PORT_SPI_MAX_NUM 3
+#  endif
 #endif
 
 /* ----------------------------------------------------------------
@@ -136,12 +147,38 @@ static int32_t getSpi(const SPI_TypeDef *pReg)
     return errorCodeOrSpi;
 }
 
+// Configure clock source to be peripheral clock: only needed
+// for STM32U5, where the default of PCLK runs too fast for
+// us to achieve a divisor that brings the clock low enough,
+// so we use MSIK instead which defaults to 4 MHz.
+static void clockCfg(int32_t spi)
+{
+#ifdef STM32U575xx
+    switch (spi) {
+        case 1:
+            __HAL_RCC_SPI1_CONFIG(RCC_SPI1CLKSOURCE_MSIK);
+            break;
+        case 2:
+            __HAL_RCC_SPI2_CONFIG(RCC_SPI2CLKSOURCE_MSIK);
+            break;
+        case 3:
+            __HAL_RCC_SPI3_CONFIG(RCC_SPI3CLKSOURCE_MSIK);
+            break;
+        default:
+            break;
+    }
+#else
+    (void) spi;
+#endif
+}
+
 // Enable clock to an SPI block; these are macros so can't be
 // entries in a table.
 static int32_t clockEnable(const SPI_TypeDef *pReg)
 {
     int32_t errorCodeOrSpi = getSpi(pReg);
 
+    clockCfg(errorCodeOrSpi);
     switch (errorCodeOrSpi) {
         case 1:
             __HAL_RCC_SPI1_CLK_ENABLE();
@@ -216,15 +253,18 @@ static int32_t clockDisable(const SPI_TypeDef *pReg)
     return errorCodeOrSpi;
 }
 
-// Get the peripheral clock for the given SPI.
-static uint32_t getPeripheralClock(const SPI_TypeDef *pReg)
+// Get the clock for the given SPI.
+static uint32_t getClock(const SPI_TypeDef *pReg)
 {
     uint32_t clock = LL_RCC_PERIPH_FREQUENCY_NO;
-    LL_RCC_ClocksTypeDef rccClocks;
+    int32_t spi = getSpi(pReg);
 
+#ifndef STM32U575xx
+    LL_RCC_ClocksTypeDef rccClocks;
     LL_RCC_GetSystemClocksFreq(&rccClocks);
-    // From figure 4 of the STM32F437 data sheet
-    switch (getSpi(pReg)) {
+    // The clock for the STM32F4 case is always the peripheral
+    // clock; from figure 4 of the STM32F437 data sheet:
+    switch (spi) {
         case 1:
             clock = rccClocks.PCLK2_Frequency;
             break;
@@ -234,7 +274,6 @@ static uint32_t getPeripheralClock(const SPI_TypeDef *pReg)
         case 3:
             clock = rccClocks.PCLK1_Frequency;
             break;
-#ifndef STM32U575xx
         case 4:
             clock = rccClocks.PCLK2_Frequency;
             break;
@@ -244,11 +283,26 @@ static uint32_t getPeripheralClock(const SPI_TypeDef *pReg)
         case 6:
             clock = rccClocks.PCLK2_Frequency;
             break;
-#endif
         default:
             break;
     }
-
+#else
+    // For the STM32U5 case the clock can be from
+    // four different sources for any given SPI.
+    switch (spi) {
+        case 1:
+            clock = LL_RCC_GetSPIClockFreq(LL_RCC_SPI1_CLKSOURCE);
+            break;
+        case 2:
+            clock = LL_RCC_GetSPIClockFreq(LL_RCC_SPI2_CLKSOURCE);
+            break;
+        case 3:
+            clock = LL_RCC_GetSPIClockFreq(LL_RCC_SPI3_CLKSOURCE);
+            break;
+        default:
+            break;
+    }
+#endif
     return clock;
 }
 
@@ -275,9 +329,17 @@ static int32_t getAf(int32_t spi, int32_t pin, uPortSpiPinType_t pinType)
 
     // From the data sheet for the STM32F437, alternate function
     // is AF5 in all cases except SPI3 which is AF6 unless this
-    // is the MOSI pin and it is on PD6
+    // is the MOSI pin and it is on PD6.  For the STM32U5 the same is
+    // true but there are two additional exceptions for SPI2 where,
+    // if the CLK pin is on PA9/PD3 or the MOSI pin is on PC1, it is AF3.
     if ((spi == 3) && (pinType != U_PORT_SPI_PIN_TYPE_MOSI) && (pin != 0x36)) {
         af = LL_GPIO_AF_6;
+#ifdef STM32U575xx
+    } else if ((spi == 2) &&
+               (((pinType == U_PORT_SPI_PIN_TYPE_CLK) && ((pin == 0x09) || (pin = 0x33))) ||
+                ((pinType == U_PORT_SPI_PIN_TYPE_MOSI) && (pin == 0x21)))) {
+        af = LL_GPIO_AF_3;
+#endif
     }
 
     return af;
@@ -315,21 +377,36 @@ static int32_t configureSpi(SPI_TypeDef *pReg,
     // Disable the SPI block
     LL_SPI_Disable(pReg);
 
+#ifdef STM32U575xx
+    // On STM32U5 the SPI HW can get confused if it sees SELECT
+    // as being low when master mode is enabled: it thinks the
+    // slave may have pulled it low to perform some sort of
+    // multi-master trick so will raise a MODF error and then not
+    // let SPI be enabled (i.e. the PE bit cannot be set).  To
+    // avoid this, if we do not yet have a SELECT pin, set the SW
+    // version of SELECT and set the SW version of the pin high
+    if (pDevice->pinSelect < 0) {
+        LL_SPI_SetNSSMode(pReg, LL_SPI_NSS_SOFT);
+        LL_SPI_SetInternalSSLevel(pReg, LL_SPI_SS_LEVEL_HIGH);
+    }
+#endif
+
     // Set master mode
     LL_SPI_SetMode(pReg, LL_SPI_MODE_MASTER);
 
     // Set the clock frequency: we don't dare change the
     // APB bus frequency, since that may affect many things,
     // we just get as close as we can with the clock divisor
-    powerOfTwoClockDivisor = getPowerOfTwoDivisor(getPeripheralClock(pReg),
+    powerOfTwoClockDivisor = getPowerOfTwoDivisor(getClock(pReg),
                                                   pDevice->frequencyHertz);
 
     // Baud rate control is a 3-bit value where 0 means /2, 1 means /4, etc.
     if ((powerOfTwoClockDivisor > 0) && (powerOfTwoClockDivisor <= 8)) {
         powerOfTwoClockDivisor--;
 #ifndef STM32U575xx
-        // TODO
         LL_SPI_SetBaudRatePrescaler(pReg, powerOfTwoClockDivisor << SPI_CR1_BR_Pos);
+#else
+        LL_SPI_SetBaudRatePrescaler(pReg, powerOfTwoClockDivisor << SPI_CFG1_MBR_Pos);
 #endif
         // Set clock polarity and phase
         if ((pDevice->mode & U_COMMON_SPI_MODE_CPOL_BIT_MASK) == U_COMMON_SPI_MODE_CPOL_BIT_MASK) {
@@ -340,13 +417,18 @@ static int32_t configureSpi(SPI_TypeDef *pReg,
         }
         // Set word size
         if (pDevice->wordSizeBytes > 1) {
+            // Note: for the STM32U5 case SPI HW blocks
+            // 1 and 2 can be more flexible than this,
+            // however HW block 3 cannot and so we stick
+            // to the simple choice of 8 or 16 bits
             LL_SPI_SetDataWidth(pReg, LL_SPI_DATAWIDTH_16BIT);
         }
         // Set bit order
         if (pDevice->lsbFirst) {
             LL_SPI_SetTransferBitOrder(pReg, LL_SPI_LSB_FIRST);
         }
-        // Set NSS mode
+        // Now set the right NSS mode, noting that the pin
+        // must be high or we'll be back in mode-fault again
         if (pDevice->pinSelect >= 0) {
             LL_SPI_SetNSSMode(pReg, LL_SPI_NSS_HARD_OUTPUT);
         }
@@ -384,39 +466,48 @@ static int32_t transfer(int32_t spi, const char *pSend, size_t bytesToSend,
     }
 
     if (transferSize > 0) {
-        // Enable SPI, which will assert CS/NSS/Select
+#ifdef STM32U575xx
+        // For STM32U5 have to set transfer size
+        // (noting that threshold is by default 0,
+        // meaning no RX FIFO, so we can just leave
+        // it alone).
+        LL_SPI_SetTransferSize(pReg, wordSize);
+#endif
+        // Enable SPI, which sets CS/NSS/Select
         LL_SPI_Enable(pReg);
-
+        if (bytesToSend == 0) {
+            // If there's nothing to send, send fill
+            pSend = (const char *) &fillWord;
+        }
         // Do the blocking send/receive
         while (transferSize > 0) {
-            if (bytesToSend == 0) {
-                // If there's nothing to send, send fill
-                // making sure to rotate along the fill
-                // word contents if we are sending single
-                // bytes
-                if ((wordSize > 1) || ((transferSize % 2) == 0)) {
-                    pSend = (const char *) &fillWord;
-                } else {
-                    pSend++;
-                }
-            }
+#ifdef STM32U575xx
+            // For STM32U5 have to set CSTART also
+            LL_SPI_StartMasterTransfer(pReg);
+#endif
+            // Note: for the STM32U5 case SPI HW blocks
+            // 1 and 2 can be more flexible than this,
+            // however HW block 3 cannot and so we stick
+            // to this simple choice
             if (wordSize > 1) {
                 LL_SPI_TransmitData16(pReg, *(uint16_t *) pSend);
             } else {
                 LL_SPI_TransmitData8(pReg, *pSend);
             }
-            // Wait for the byte to be sent
+            // Wait for the data to be sent
 #ifndef STM32U575xx
-            // TODO
             while (!LL_SPI_IsActiveFlag_TXE(pReg)) {}
+#else
+            while (!LL_SPI_IsActiveFlag_TXP(pReg)) {}
 #endif
             if (bytesToReceive > 0) {
-                // Wait for a byte to be received
+                // Wait for data to be received
 #ifndef STM32U575xx
-                // TODO
                 while (!LL_SPI_IsActiveFlag_RXNE(pReg)) {}
+#else
+                while (!LL_SPI_IsActiveFlag_RXP(pReg)) {}
 #endif
-                // Read it (which will reset RXNE)
+                // Read it (which will reset RXNE/RXP)
                 if (wordSize > 1) {
                     *(uint16_t *) pReceive = LL_SPI_ReceiveData16(pReg);
                 } else {
@@ -427,12 +518,35 @@ static int32_t transfer(int32_t spi, const char *pSend, size_t bytesToSend,
                 pReceive += wordSize;
             }
             transferSize -= wordSize;
+            if ((bytesToSend > 0) || (wordSize > 1)) {
+                // Increment send pointer if we're actually
+                // sending stuff or if we're sending fill
+                // and there is more than one byte of it
+                pSend += wordSize;
+            }
             if (bytesToSend >= wordSize) {
                 bytesToSend -= wordSize;
-                if (bytesToSend > 0) {
-                    pSend += wordSize;
+                if (bytesToSend == 0) {
+                    // Start sending fill
+                    pSend = (const char *) &fillWord;
                 }
             }
+            if ((bytesToSend == 0) &&
+                (pSend >= ((const char *) &fillWord) + sizeof(fillWord))) {
+                // Make sure to stay within the fill word if
+                // sending fill
+                pSend = (const char *) &fillWord;
+            }
+
+#ifdef STM32U575xx
+            // For STM32U5 need to wait for end of
+            // transaction and then clear both the
+            // EOT and the TXTF flags otherwise the
+            // HW won't send again
+            while (!LL_SPI_IsActiveFlag_EOT(pReg)) {}
+            LL_SPI_ClearFlag_EOT(pReg);
+            LL_SPI_ClearFlag_TXTF(pReg);
+#endif
         }
 
         // Disable SPI, which will switch off CS/NSS/Select
@@ -451,9 +565,11 @@ static void getDevice(int32_t spi, uCommonSpiControllerDevice_t *pDevice)
     memset(pDevice, 0, sizeof(*pDevice));
     pDevice->pinSelect = gSpiData[spi].pinSelect;
 #ifndef STM32U575xx
-    // TODO
-    pDevice->frequencyHertz = getPeripheralClock(pReg) >> ((LL_SPI_GetBaudRatePrescaler(
-                                                                pReg) >> SPI_CR1_BR_Pos) + 1);
+    pDevice->frequencyHertz = getClock(pReg) >> ((LL_SPI_GetBaudRatePrescaler(
+                                                      pReg) >> SPI_CR1_BR_Pos) + 1);
+#else
+    pDevice->frequencyHertz = getClock(pReg) >> ((LL_SPI_GetBaudRatePrescaler(
+                                                      pReg) >> SPI_CFG1_MBR_Pos) + 1);
 #endif
     if (LL_SPI_GetClockPolarity(pReg) == LL_SPI_POLARITY_HIGH) {
         pDevice->mode |= U_COMMON_SPI_MODE_CPOL_BIT_MASK;

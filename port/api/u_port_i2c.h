@@ -228,11 +228,11 @@ int32_t uPortI2cGetTimeout(int32_t handle);
  * directions; this should be used only on chipsets where the HW
  * interface is limited (e.g. nRF52832, which has a maximum DMA
  * size of 256 for I2C, STM32 on Zephyr which has a similar (though
- * not DMA related) limitation): any transfers above this size will be
- * segmented into N transfers of no more than this size.  If this is
- * not called no segmentation will be applied.  Where this is not
- * supported a weakly-linked function will return
- * #U_ERROR_COMMON_NOT_SUPPORTED.
+ * not DMA related) limitation and STM32U5 on STM32Cube): any
+ * transfers above this size will be segmented into N transfers of
+ * no more than this size.  If this is not called no segmentation will
+ * be applied.  Where this is not supported a weakly-linked function
+ * will return #U_ERROR_COMMON_NOT_SUPPORTED.
  *
  * Note to GNSS users: the receive length of each segment of
  * data from the GNSS device is already limited by

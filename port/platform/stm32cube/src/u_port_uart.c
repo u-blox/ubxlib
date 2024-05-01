@@ -1562,7 +1562,7 @@ int32_t uPortUartWrite(int32_t handle,
                 // it or the CTS pin when configuring this UART
                 // was wrong and it's not connected to the right
                 // thing.
-                while (!(txOk = U_PORT_FUNCTION_USART_OR_LPUART(IsActiveFlag_TXE_TXFNF,
+                while (!(txOk = U_PORT_FUNCTION_USART_OR_LPUART(IsActiveFlag_TXE,
                                                                 pReg, uart)) &&
                        !uTimeoutExpiredMs(timeoutStart,
                                           U_PORT_UART_WRITE_TIMEOUT_MS)) {}
