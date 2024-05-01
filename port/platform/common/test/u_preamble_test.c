@@ -76,7 +76,11 @@
 
 #if defined(__NEWLIB__) && defined(_REENT_SMALL) && \
     !defined(_REENT_GLOBAL_STDIO_STREAMS) && !defined(_UNBUF_STREAM_OPT)
-# define PRE_ALLOCATE_FILE_COUNT 16
+/** Preallocated file handles (see below for how these are used),
+ * no longer required now that the tests do not rely on information
+ * from the native heap when performing memory leak checks.
+ */
+# define PRE_ALLOCATE_FILE_COUNT 0
 #endif
 
 /** The string to put at the start of all prints from this test.
@@ -207,7 +211,7 @@ U_PORT_TEST_FUNCTION("[preamble]", "preambleHeapDefence")
     uPortEventQueueCleanUp();
     uPortDeinit();
 
-#ifdef PRE_ALLOCATE_FILE_COUNT
+#if defined(PRE_ALLOCATE_FILE_COUNT) && (PRE_ALLOCATE_FILE_COUNT > 0)
     // This is a newlib-specific workaround
     // When newlib is built with _REENT_GLOBAL_STDIO_STREAMS *disabled*
     // a global dynamic pool will be used for FILE pointers.
