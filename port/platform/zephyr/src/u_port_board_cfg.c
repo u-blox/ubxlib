@@ -757,11 +757,6 @@ static const bool gDeviceCfgCellShortRangeOpenCpu[] = {
                                  open_cpu)
 };
 
-/* Then the ubxlib-network-ble compatible properties that the
- * "network" property of a ubxlib-device-short-range might refer
- * to.
- */
-
 /** The hidden "do-not-set-network-type" properties pointed-to by
  * the first two "network" phandles of each of the
  * ubxlib-device-short-range compatible devices, or -1 where not
@@ -771,6 +766,25 @@ static const int32_t gpDeviceCfgShortRangeNetworkType[][2] = {
     DT_FOREACH_STATUS_OKAY_VARGS(u_blox_ubxlib_device_short_range,
                                  U_PORT_BOARD_CFG_GET_NETWORK_LIST_INT,
                                  do_not_set_network_type)
+};
+
+#endif // #if DT_HAS_COMPAT_STATUS_OKAY(u_blox_ubxlib_device_short_range)
+
+/* ----------------------------------------------------------------
+ * VARIABLES: BLE NETWORK CONFIGURATION PARAMETERS FROM THE DEVICE TREE
+ * -------------------------------------------------------------- */
+
+#if DT_HAS_COMPAT_STATUS_OKAY(u_blox_ubxlib_network_ble)
+
+/** Table to convert a BLE "role" string into an enum, required because
+ * there is no way to get the string from the DT as a C token when
+ * it is on the other end of a phandle.
+ */
+static uPortBoardCfgStringToEnum_t gNetworkBleRoleStringToEnum[] = {
+    {"U_BLE_CFG_ROLE_DISABLED", U_BLE_CFG_ROLE_DISABLED},
+    {"U_BLE_CFG_ROLE_CENTRAL", U_BLE_CFG_ROLE_CENTRAL},
+    {"U_BLE_CFG_ROLE_PERIPHERAL", U_BLE_CFG_ROLE_PERIPHERAL},
+    {"U_BLE_CFG_ROLE_CENTRAL_AND_PERIPHERAL", U_BLE_CFG_ROLE_CENTRAL_AND_PERIPHERAL}
 };
 
 /** The "role" properties pointed-to by the first two
@@ -798,10 +812,42 @@ static const bool gDeviceCfgBleNetworkListEnableSpsServer[][2] = {
                                  enable_sps_server)
 };
 
-/* And finally, the ubxlib-network-wifi compatible properties that the
- * "network" property of a ubxlib-device-short-range might refer
- * to.
+#endif // #if DT_HAS_COMPAT_STATUS_OKAY(u_blox_ubxlib_network_ble)
+
+/* ----------------------------------------------------------------
+ * VARIABLES: GNSS NETWORK CONFIGURATION PARAMETERS FROM THE DEVICE TREE
+ * -------------------------------------------------------------- */
+
+#if DT_HAS_COMPAT_STATUS_OKAY(u_blox_ubxlib_network_gnss)
+
+/** Table to convert a GNSS "module-type" string into an enum,
+ * required because there is no way to get the string from the DT
+ * as a C token when it is on the other end of a phandle.
  */
+static uPortBoardCfgStringToEnum_t gNetworkGnssModuleTypeStringToEnum[] = {
+    {"U_GNSS_MODULE_TYPE_M8", U_GNSS_MODULE_TYPE_M8},
+    {"U_GNSS_MODULE_TYPE_M9", U_GNSS_MODULE_TYPE_M9},
+    {"U_GNSS_MODULE_TYPE_M10", U_GNSS_MODULE_TYPE_M10}
+};
+
+#endif // #if DT_HAS_COMPAT_STATUS_OKAY(u_blox_ubxlib_network_gnss)
+
+/* ----------------------------------------------------------------
+ * VARIABLES: Wi-FI NETWORK CONFIGURATION PARAMETERS FROM THE DEVICE TREE
+ * -------------------------------------------------------------- */
+
+#if DT_HAS_COMPAT_STATUS_OKAY(u_blox_ubxlib_network_wifi)
+
+/** Table to convert a Wi-Fi "mode" string into an enum,
+ * required because there is no way to get the string from the DT
+ * as a C token when it is on the other end of a phandle.
+ */
+static uPortBoardCfgStringToEnum_t gNetworkWifiModeStringToEnum[] = {
+    {"U_WIFI_MODE_STA", U_WIFI_MODE_STA},
+    {"U_WIFI_MODE_AP", U_WIFI_MODE_AP},
+    {"U_WIFI_MODE_STA_AP", U_WIFI_MODE_STA_AP},
+    {"U_WIFI_MODE_NONE", U_WIFI_MODE_NONE}
+};
 
 /** The "ssid" properties pointed-to by the first two
  * "network" phandles of each of the ubxlib-device-cellular
@@ -903,62 +949,6 @@ static const char *const gpDeviceCfgWifiNetworkListApIpAddress[][2] = {
     DT_FOREACH_STATUS_OKAY_VARGS(u_blox_ubxlib_device_short_range,
                                  U_PORT_BOARD_CFG_GET_NETWORK_LIST_STRING,
                                  ap_ip_address)
-};
-
-#endif // #if DT_HAS_COMPAT_STATUS_OKAY(u_blox_ubxlib_device_short_range)
-
-/* ----------------------------------------------------------------
- * VARIABLES: BLE NETWORK CONFIGURATION PARAMETERS FROM THE DEVICE TREE
- * -------------------------------------------------------------- */
-
-#if DT_HAS_COMPAT_STATUS_OKAY(u_blox_ubxlib_network_ble)
-
-/** Table to convert a BLE "role" string into an enum, required because
- * there is no way to get the string from the DT as a C token when
- * it is on the other end of a phandle.
- */
-static uPortBoardCfgStringToEnum_t gNetworkBleRoleStringToEnum[] = {
-    {"U_BLE_CFG_ROLE_DISABLED", U_BLE_CFG_ROLE_DISABLED},
-    {"U_BLE_CFG_ROLE_CENTRAL", U_BLE_CFG_ROLE_CENTRAL},
-    {"U_BLE_CFG_ROLE_PERIPHERAL", U_BLE_CFG_ROLE_PERIPHERAL},
-    {"U_BLE_CFG_ROLE_CENTRAL_AND_PERIPHERAL", U_BLE_CFG_ROLE_CENTRAL_AND_PERIPHERAL}
-};
-
-#endif // #if DT_HAS_COMPAT_STATUS_OKAY(u_blox_ubxlib_network_ble)
-
-/* ----------------------------------------------------------------
- * VARIABLES: GNSS NETWORK CONFIGURATION PARAMETERS FROM THE DEVICE TREE
- * -------------------------------------------------------------- */
-
-#if DT_HAS_COMPAT_STATUS_OKAY(u_blox_ubxlib_network_gnss)
-
-/** Table to convert a GNSS "module-type" string into an enum,
- * required because there is no way to get the string from the DT
- * as a C token when it is on the other end of a phandle.
- */
-static uPortBoardCfgStringToEnum_t gNetworkGnssModuleTypeStringToEnum[] = {
-    {"U_GNSS_MODULE_TYPE_M8", U_GNSS_MODULE_TYPE_M8},
-    {"U_GNSS_MODULE_TYPE_M9", U_GNSS_MODULE_TYPE_M9},
-    {"U_GNSS_MODULE_TYPE_M10", U_GNSS_MODULE_TYPE_M10}
-};
-
-#endif // #if DT_HAS_COMPAT_STATUS_OKAY(u_blox_ubxlib_network_gnss)
-
-/* ----------------------------------------------------------------
- * VARIABLES: Wi-FI NETWORK CONFIGURATION PARAMETERS FROM THE DEVICE TREE
- * -------------------------------------------------------------- */
-
-#if DT_HAS_COMPAT_STATUS_OKAY(u_blox_ubxlib_network_wifi)
-
-/** Table to convert a Wi-Fi "mode" string into an enum,
- * required because there is no way to get the string from the DT
- * as a C token when it is on the other end of a phandle.
- */
-static uPortBoardCfgStringToEnum_t gNetworkWifiModeStringToEnum[] = {
-    {"U_WIFI_MODE_STA", U_WIFI_MODE_STA},
-    {"U_WIFI_MODE_AP", U_WIFI_MODE_AP},
-    {"U_WIFI_MODE_STA_AP", U_WIFI_MODE_STA_AP},
-    {"U_WIFI_MODE_NONE", U_WIFI_MODE_NONE}
 };
 
 #endif // #if DT_HAS_COMPAT_STATUS_OKAY(u_blox_ubxlib_network_wifi)
