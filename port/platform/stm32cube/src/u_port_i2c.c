@@ -858,6 +858,47 @@ int32_t uPortI2cGetTimeout(int32_t handle)
 }
 
 // Send and/or receive over the I2C interface as a controller.
+int32_t uPortI2cControllerExchange(int32_t handle, uint16_t address,
+                                   const char *pSend, size_t bytesToSend,
+                                   char *pReceive, size_t bytesToReceive,
+                                   bool noInterveningStop)
+{
+    int32_t errorCodeOrLength = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    I2C_TypeDef *pReg;
+
+    if (gMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gMutex);
+
+        errorCodeOrLength = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        // > 0 rather than >= 0 below 'cos ST number their UARTs from 1
+        if ((handle > 0) && (handle < sizeof(gI2cData) / sizeof(gI2cData[0])) &&
+            (gI2cData[handle].pReg != NULL) &&
+            ((pSend != NULL) || (bytesToSend == 0)) &&
+            ((pReceive != NULL) || (bytesToReceive == 0))) {
+            pReg = gI2cData[handle].pReg;
+            errorCodeOrLength = send(gI2cData[handle].pReg, address, pSend, bytesToSend,
+                                     gI2cData[handle].timeoutMs, noInterveningStop,
+                                     &(gI2cData[handle].ignoreBusy));
+            if ((errorCodeOrLength == 0) && noInterveningStop) {
+                // Ignore the busy flag next since we haven't sent a stop
+                gI2cData[handle].ignoreBusy = true;
+            }
+            if ((errorCodeOrLength == 0) && (pReceive != NULL)) {
+                errorCodeOrLength = receive(pReg, address, pReceive, bytesToReceive,
+                                            gI2cData[handle].timeoutMs,
+                                            &(gI2cData[handle].ignoreBusy));
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gMutex);
+    }
+
+    return errorCodeOrLength;
+}
+
+/** \deprecated please use uPortI2cControllerExchange() instead. */
+// Send and/or receive over the I2C interface as a controller.
 int32_t uPortI2cControllerSendReceive(int32_t handle, uint16_t address,
                                       const char *pSend, size_t bytesToSend,
                                       char *pReceive, size_t bytesToReceive)
@@ -895,6 +936,7 @@ int32_t uPortI2cControllerSendReceive(int32_t handle, uint16_t address,
     return errorCodeOrLength;
 }
 
+/** \deprecated please use uPortI2cControllerExchange() instead. */
 // Perform a send over the I2C interface as a controller.
 int32_t uPortI2cControllerSend(int32_t handle, uint16_t address,
                                const char *pSend, size_t bytesToSend,
