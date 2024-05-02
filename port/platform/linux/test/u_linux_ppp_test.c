@@ -426,6 +426,10 @@ U_PORT_TEST_FUNCTION("[testLinuxSock]", "testLinuxSockTcp")
                               gpUNetworkTestTypeName[pTmp->networkType]);
             osCleanup();
 
+            // Allow the network interface to propagate into the
+            // Linux kernel
+            uPortTaskBlock(1000);
+
             inet_pton(AF_INET, hostIp, &destinationAddress.sin_addr);
             destinationAddress.sin_family = AF_INET;
             destinationAddress.sin_port = htons(U_SOCK_TEST_ECHO_TCP_SERVER_PORT);

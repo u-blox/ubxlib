@@ -233,11 +233,16 @@ U_PORT_TEST_FUNCTION("[example]", "examplePppLinuxSockets")
                                          U_NETWORK_TYPE_CELL,
                                          &gNetworkCfg);
         uPortLog("Bringing up the network returned %d.\n", returnCode);
-
         if (returnCode == 0) {
 
             // Linux is now connected to the internet
             // via pppd and the cellular module
+
+            // It can take a little while for the interface
+            // to propagate into the Linux kernel and become
+            // useable so, to make our testing of this example
+            // reliable, we insert a short delay here
+            sleep(1);
 
             // Look up the IP address of the echo server
             errno = 0;
