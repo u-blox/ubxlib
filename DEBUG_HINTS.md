@@ -70,6 +70,9 @@ The same principle applies to all things within `ubxlib` that use tasks: see for
 
 Should you suspect that anything is running out of stack you may add calls to these functions to find out how close things are.
 
+# Debugging A Stack Overflow
+If you find that things "go bang" because a stack breach happens in a very narrow window, before a stack usage diagnostic that you have added (see previous section) is called, you might find in the code where the task's stack is initially allocated (tasks are usually given a name for diagnostic purposes, which some platform stack overflow detectors will print (e.g. ESP-IDF does), so you could search the code for that name) and hack the code to add a fixed amount (e.g. 2048 bytes) to it; then when the "StackMinFree" call goes below 2048, you will know that you've reached the event of interest and can decide whether it is something that can be fixed/optimized or whether it is simply necessary to make the stack size for that task larger.
+
 # Locating A Mutex Lock-Up
 `ubxlib` is designed to be thread-safe and hence makes frequent use of mutexes, all of which are simple non-recursive mutexes.  A down-side of this is that it is possible for code to "get stuck" waiting for a mutex which will never be unlocked.
 
