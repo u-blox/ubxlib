@@ -131,7 +131,7 @@
 #endif
 
 #ifndef U_CFG_APP_PIN_CELL_PWR_ON
-/** The NRF52 GPIO output that that is connected to the PWR_ON
+/** The NRF52 GPIO output that is connected to the PWR_ON
  * pin of the cellular module.
  */
 # define U_CFG_APP_PIN_CELL_PWR_ON            33 // AKA 1.01
@@ -247,7 +247,7 @@
  * -------------------------------------------------------------- */
 
 #ifndef U_CFG_APP_PIN_GNSS_ENABLE_POWER
-/** The NRF52 GPIO output that that enables power to the GNSS
+/** The NRF52 GPIO output that enables power to the GNSS
  * module, use -1 if there is no such control.
  */
 # define U_CFG_APP_PIN_GNSS_ENABLE_POWER     -1

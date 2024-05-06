@@ -101,7 +101,7 @@
 #endif
 
 #ifndef U_CFG_APP_PIN_CELL_PWR_ON
-/** The GPIO output that that is connected to the PWR_ON pin of the
+/** The GPIO output that is connected to the PWR_ON pin of the
  * cellular module; not relevant for Linux and so set to -1.
  */
 # define U_CFG_APP_PIN_CELL_PWR_ON            -1
@@ -201,7 +201,7 @@
  * -------------------------------------------------------------- */
 
 #ifndef U_CFG_APP_PIN_GNSS_ENABLE_POWER
-/** The GPIO output that that enables power to the GNSS
+/** The GPIO output that enables power to the GNSS
  * module; not relevant for Linux and so set to -1.
  */
 # define U_CFG_APP_PIN_GNSS_ENABLE_POWER     -1

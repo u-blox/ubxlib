@@ -154,7 +154,7 @@
 #endif
 
 #ifndef U_CFG_APP_PIN_CELL_PWR_ON
-/** The STM32F4 GPIO output that that is connected to the
+/** The STM32F4 GPIO output that is connected to the
  * PWR_ON pin of the cellular module.  For the u-blox
  * C030 boards this is 0x4e, AKA PE_14.
  */
@@ -275,7 +275,7 @@
  * -------------------------------------------------------------- */
 
 #ifndef U_CFG_APP_PIN_GNSS_ENABLE_POWER
-/** The STM32F4 GPIO output that that enables power to the GNSS
+/** The STM32F4 GPIO output that enables power to the GNSS
  * module, use -1 if there is no such control.
  * For the u-blox C030 boards this should be 0x0f, AKA PA_15.
  */

@@ -1595,7 +1595,7 @@ int32_t uCellPwrPrivateIsAlive(uCellPrivateInstance_t *pInstance,
     } else {
         // See if the cellular module is responding at the AT interface
         // by poking it with "AT" up to "attempts" times.
-        // The response can be "OK" or it can also be "CMS/CMS ERROR"
+        // The response can be "OK" or it can also be "CME/CMS ERROR"
         // if the modem happened to be awake and in the middle
         // of something from a previous command.
         for (int32_t x = 0; !isAlive && (x < attempts); x++) {

@@ -347,7 +347,7 @@
  * -------------------------------------------------------------- */
 
 #ifndef U_CFG_APP_PIN_GNSS_ENABLE_POWER
-/** The NRF5x GPIO output that that enables power to the GNSS
+/** The NRF5x GPIO output that enables power to the GNSS
  * module, use -1 if there is no such control.
  */
 # define U_CFG_APP_PIN_GNSS_ENABLE_POWER       -1
