@@ -1662,13 +1662,9 @@ static int32_t activateContext(const uCellPrivateInstance_t *pInstance,
     bool activated = false;
     bool ours;
     bool cgActCalled;
-    size_t maxNumContexts = 1;
 
     deviceError.type = U_AT_CLIENT_DEVICE_ERROR_TYPE_NO_ERROR;
     uAtClientLock(atHandle);
-    if (pInstance->pModule->pppContextId >= 0) {
-        maxNumContexts++;
-    }
     for (size_t x = 5; (x > 0) && keepGoingLocalCb(pInstance) &&
          (errorCode != 0) &&
          ((deviceError.type == U_AT_CLIENT_DEVICE_ERROR_TYPE_NO_ERROR) ||
@@ -1692,7 +1688,7 @@ static int32_t activateContext(const uCellPrivateInstance_t *pInstance,
         uAtClientCommandStart(atHandle, "AT+CGACT?");
         uAtClientCommandStop(atHandle);
         ours = false;
-        for (size_t y = 0; (y < maxNumContexts) && !ours; y++) {
+        for (size_t y = 0; (y < U_CELL_NET_MAX_NUM_CONTEXTS) && !ours; y++) {
             uAtClientResponseStart(atHandle, "+CGACT:");
             // Check if this is our context ID
             if (uAtClientReadInt(atHandle) == contextId) {
