@@ -159,7 +159,8 @@ static bool cfgEnsureMemory(uDeviceNetworkData_t *pNetworkData,
         }
     }
     if ((pNetworkData->pCfg != NULL) &&
-        (pNetworkData->networkType == (int32_t) U_NETWORK_TYPE_CELL)) {
+        (pNetworkData->networkType == (int32_t) U_NETWORK_TYPE_CELL) &&
+        (pCfg != NULL)) {
         // Cellular has the pUartPpp bit also
         pCellUartPppSrc = ((uNetworkCfgCell_t *) pCfg)->pUartPpp;
         pCellUartPppDest = ((uNetworkCfgCell_t *) pNetworkData->pCfg)->pUartPpp;
