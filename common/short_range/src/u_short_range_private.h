@@ -225,8 +225,10 @@ int32_t uShortrangePrivateRestartDevice(uDeviceHandle_t devHandle, bool storeCon
 #endif
 
 /** Find a short range instance in the list by instance handle.
+ *
  * Note: gUShortRangePrivateMutex should be locked before this is
  * called.
+ *
  * Note: if uShortRangeSetBaudrate() is called then the short-range
  * instance will be recreated and hence the instance pointer returned
  * by this function will become invalid; this function MUST be
@@ -238,6 +240,7 @@ int32_t uShortrangePrivateRestartDevice(uDeviceHandle_t devHandle, bool storeCon
 uShortRangePrivateInstance_t *pUShortRangePrivateGetInstance(uDeviceHandle_t devHandle);
 
 /** Get whether the given instance is registered with the network.
+ *
  * Note: gUShortRangePrivateMutex should be locked before this is called.
  *
  * @param[in] pInstance  a pointer to the ShortRange instance.

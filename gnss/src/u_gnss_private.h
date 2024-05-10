@@ -29,6 +29,11 @@
 /** @file
  * @brief This header file defines types, functions and inclusions that
  * are common and private to the GNSS API.
+ *
+ * IMPORTANT: the vast majority of these functions are NOT thread-safe
+ * as they use the GNSS instance pointer; it is generally up to you
+ * to lock the gUGnssPrivateMutex beforehand in order that the instance
+ * pointer is protected from modification by another thread.
  */
 
 #ifdef __cplusplus
@@ -346,6 +351,8 @@ void uGnssPrivatePrintBuffer(const char *pBuffer, size_t bufferLengthBytes);
 
 /** Get the rate at which position is obtained.
  *
+ * Note: gUGnssPrivateMutex should be locked before this is called.
+ *
  * @param[in] pInstance            a pointer to the GNSS instance, cannot
  *                                 be NULL.
  * @param[in] pMeasurementPeriodMs a place to put the period between
@@ -370,6 +377,8 @@ int32_t uGnssPrivateGetRate(uGnssPrivateInstance_t *pInstance,
                             uGnssTimeSystem_t *pTimeSystem);
 
 /** Set the rate at which position is obtained.
+ *
+ * Note: gUGnssPrivateMutex should be locked before this is called.
  *
  * @param[in] pInstance        a pointer to the GNSS instance, cannot
  *                             be NULL.
@@ -412,6 +421,8 @@ int32_t uGnssPrivateSetRate(uGnssPrivateInstance_t *pInstance,
  * }
  * ```
  *
+ * Note: gUGnssPrivateMutex should be locked before this is called.
+ *
  * @param[in] pInstance          a pointer to the GNSS instance, cannot
  *                               be NULL.
  * @param[in] pPrivateMessageId  a pointer to the private message ID; cannot
@@ -437,6 +448,8 @@ int32_t uGnssPrivateGetMsgRate(uGnssPrivateInstance_t *pInstance,
  *                           U_GNSS_CFG_VAL_TRANSACTION_NONE,
  *                           U_GNSS_CFG_VAL_LAYER_RAM);
  * ```
+ *
+ * Note: gUGnssPrivateMutex should be locked before this is called.
  *
  * @param[in] pInstance          a pointer to the GNSS instance, cannot
  *                               be NULL.
@@ -570,6 +583,8 @@ bool uGnssPrivateMessageIdIsWanted(uGnssPrivateMessageId_t *pMessageId,
 
 /** Get the various information from the GNSS chip.
  *
+ * Note: gUGnssPrivateMutex should be locked before this is called.
+ *
  * @param[in] pInstance  a pointer to the GNSS instance, cannot be NULL.
  * @param[out] pVer      a pointer to structure where information is copied.
  *                       This pointer cannot be NULL.
@@ -598,6 +613,8 @@ int32_t uGnssPrivateGetStreamType(uGnssTransportType_t transportType);
  * there is any data to be received without actually reading it, hence
  * this function does that and stores the data in the internal pSpiRingBuffer
  * from which the caller can extract it.
+ *
+ * Note: gUGnssPrivateMutex should be locked before this is called.
  *
  * @param[in] pInstance  a pointer to the GNSS instance, cannot be NULL.
  * @return              the number of bytes available to be received,

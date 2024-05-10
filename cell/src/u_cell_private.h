@@ -25,6 +25,11 @@
 /** @file
  * @brief This header file defines types, functions and inclusions that
  * are common and private to the cellular API.
+ *
+ * IMPORTANT: the vast majority of these functions are NOT thread-safe
+ * as they use the cellular instance pointer; it is generally up to you
+ * to lock the gUCellPrivateMutex beforehand in order that the instance
+ * pointer is protected from modification by another thread.
  */
 
 #ifdef __cplusplus
@@ -554,14 +559,14 @@ extern uPortMutexHandle_t gUCellPrivateMutex;
  *
  * Note: gUCellPrivateMutex should be locked before this is called.
  *
- * @param pInstance a pointer to the instance.
+ * @param[in] pInstance a pointer to the instance.
  */
 void uCellPrivateAbortAtCommand(const uCellPrivateInstance_t *pInstance);
 
 /** Return true if the given buffer contains only numeric
  * characters (0 to 9).
  *
- * @param pBuffer     pointer to the buffer.
+ * @param[in] pBuffer pointer to the buffer.
  * @param bufferSize  number of characters in pBuffer.
  * @return            true if all the characters in pBuffer are
  *                    numeric characters, else false.
@@ -605,7 +610,7 @@ int32_t uCellPrivateRsrqToDb(int32_t rsrq);
 
 /** Set the radio parameters back to defaults.
  *
- * @param pParameters             pointer to a radio parameters
+ * @param[in] pParameters         pointer to a radio parameters
  *                                structure.
  * @param leaveCellIdLogicalAlone on an LTE RAT the logical cell
  *                                ID cannot be read from the
@@ -624,14 +629,18 @@ void uCellPrivateClearRadioParameters(uCellPrivateRadioParameters_t *pParameters
  * status, the active RAT and the radio parameters.  This should
  * be called when the module is being rebooted or powered off.
  *
- * @param pInstance a pointer to the instance.
+ * Note: gUCellPrivateMutex should be locked before this is called.
+ *
+ * @param[in] pInstance a pointer to the instance.
  */
 void uCellPrivateClearDynamicParameters(uCellPrivateInstance_t *pInstance);
 
 /** Get the current AT+CFUN mode of the module.
  *
- * @param pInstance  pointer to the cellular instance.
- * @return           the AT+CFUN mode or negative error code.
+ * Note: gUCellPrivateMutex should be locked before this is called.
+ *
+ * @param[in] pInstance  pointer to the cellular instance.
+ * @return               the AT+CFUN mode or negative error code.
  */
 int32_t uCellPrivateCFunGet(const uCellPrivateInstance_t *pInstance);
 
@@ -648,15 +657,19 @@ int32_t uCellPrivateCFunGet(const uCellPrivateInstance_t *pInstance);
  * process of bringing down a PPP connection will call into the
  * cellular API.
  *
- * @param pInstance  pointer to the cellular instance.
- * @return           the previous mode or negative error code.
+ * Note: gUCellPrivateMutex should be locked before this is called.
+ *
+ * @param[in] pInstance  pointer to the cellular instance.
+ * @return               the previous mode or negative error code.
  */
 int32_t uCellPrivateCFunOne(uCellPrivateInstance_t *pInstance);
 
 /** Do the opposite of uCellPrivateCFunOne(), put the mode back.
  *
- * @param pInstance  pointer to the cellular instance.
- * @param mode       the AT+CFUN mode to set.
+ * Note: gUCellPrivateMutex should be locked before this is called.
+ *
+ * @param[in] pInstance  pointer to the cellular instance.
+ * @param mode           the AT+CFUN mode to set.
  */
 void uCellPrivateCFunMode(uCellPrivateInstance_t *pInstance,
                           int32_t mode);
@@ -665,10 +678,10 @@ void uCellPrivateCFunMode(uCellPrivateInstance_t *pInstance,
  *
  * Note: gUCellPrivateMutex should be locked before this is called.
  *
- * @param pInstance  a pointer to the cellular instance.
- * @param pImsi      a pointer to 15 bytes in which the IMSI
- *                   will be stored.
- * @return           zero on success else negative error code.
+ * @param[in] pInstance  a pointer to the cellular instance.
+ * @param[out] pImsi     a pointer to 15 bytes in which the IMSI
+ *                       will be stored.
+ * @return               zero on success else negative error code.
  */
 int32_t uCellPrivateGetImsi(const uCellPrivateInstance_t *pInstance,
                             char *pImsi);
@@ -677,10 +690,10 @@ int32_t uCellPrivateGetImsi(const uCellPrivateInstance_t *pInstance,
  *
  * Note: gUCellPrivateMutex should be locked before this is called.
  *
- * @param pInstance  a pointer to the cellular instance.
- * @param pImei      a pointer to 15 bytes in which the IMEI
- *                   will be stored.
- * @return           zero on success else negative error code.
+ * @param[in] pInstance  a pointer to the cellular instance.
+ * @param[out] pImei     a pointer to 15 bytes in which the IMEI
+ *                       will be stored.
+ * @return               zero on success else negative error code.
  */
 int32_t uCellPrivateGetImei(const uCellPrivateInstance_t *pInstance,
                             char *pImei);
@@ -689,8 +702,8 @@ int32_t uCellPrivateGetImei(const uCellPrivateInstance_t *pInstance,
  *
  * Note: gUCellPrivateMutex should be locked before this is called.
  *
- * @param pInstance  a pointer to the cellular instance.
- * @return           true if it is registered, else false.
+ * @param[in] pInstance  a pointer to the cellular instance.
+ * @return               true if it is registered, else false.
  */
 bool uCellPrivateIsRegistered(const uCellPrivateInstance_t *pInstance);
 
@@ -708,33 +721,35 @@ uCellNetRat_t uCellPrivateModuleRatToCellRat(uCellModuleType_t moduleType,
  *
  * Note: gUCellPrivateMutex should be locked before this is called.
  *
- * @param pInstance  a pointer to the cellular instance.
- * @return           the active RAT.
+ * @param[in] pInstance  a pointer to the cellular instance.
+ * @return               the active RAT.
  */
 uCellNetRat_t uCellPrivateGetActiveRat(const uCellPrivateInstance_t *pInstance);
 
 /** Get the operator name.
  *
- * @param pInstance   a pointer to the cellular instance.
- * @param pStr        a pointer to size bytes of storage into which
- *                    the operator name will be copied.  Room
- *                    should be allowed for a null terminator, which
- *                    will be added to terminate the string.  This
- *                    pointer cannot be NULL.
- * @param size        the number of bytes available at pStr, including
- *                    room for a null terminator. Must be greater
- *                    than zero.
- * @return            on success, the number of characters copied into
- *                    pStr NOT including the terminator (i.e. as
- *                    strlen() would return), on failure negative
- *                    error code.
+ * Note: gUCellPrivateMutex should be locked before this is called.
+ *
+ * @param[in] pInstance a pointer to the cellular instance.
+ * @param[out] pStr     a pointer to size bytes of storage into which
+ *                      the operator name will be copied.  Room
+ *                      should be allowed for a null terminator, which
+ *                      will be added to terminate the string.  This
+ *                      pointer cannot be NULL.
+ * @param size          the number of bytes available at pStr, including
+ *                      room for a null terminator. Must be greater
+ *                      than zero.
+ * @return              on success, the number of characters copied into
+ *                      pStr NOT including the terminator (i.e. as
+ *                      strlen() would return), on failure negative
+ *                      error code.
  */
 int32_t uCellPrivateGetOperatorStr(const uCellPrivateInstance_t *pInstance,
                                    char *pStr, size_t size);
 
 /** Free network scan results.
  *
- * @param ppScanResults a pointer to the pointer to the scan results
+ * @param[in] ppScanResults a pointer to the pointer to the scan results.
  */
 void uCellPrivateScanFree(uCellPrivateNet_t **ppScanResults);
 
@@ -752,7 +767,7 @@ const uCellPrivateModule_t *pUCellPrivateGetModule(uDeviceHandle_t cellHandle);
  *
  * Note: gUCellPrivateMutex should be locked before this is called.
  *
- * @param pInstance   a pointer to the cellular instance.
+ * @param[in] pInstance   a pointer to the cellular instance.
  */
 void uCellPrivateLocRemoveContext(uCellPrivateInstance_t *pInstance);
 
@@ -760,7 +775,7 @@ void uCellPrivateLocRemoveContext(uCellPrivateInstance_t *pInstance);
  *
  * Note: gUCellPrivateMutex should be locked before this is called.
  *
- * @param pInstance   a pointer to the cellular instance.
+ * @param[in] pInstance   a pointer to the cellular instance.
  */
 void uCellPrivateSleepRemoveContext(uCellPrivateInstance_t *pInstance);
 
@@ -772,14 +787,16 @@ void uCellPrivateSleepRemoveContext(uCellPrivateInstance_t *pInstance);
  * connections, MQTT, etc. is NOT automatically reattached to the regained
  * context.
  *
- * @param pInstance   a pointer to the cellular instance.
- * @param contextId   the ID for the PDP context.
- * @param profileId   the ID of the profile to associate with the PDP context.
- * @param tries       the number of times to try doing this, should be at
- *                    least 1.
- * @param pKeepGoing  a callback which should return true if the profile
- *                    activation process is to continue, or can be NULL.
- * @return            zero on success else negative error code.
+ * Note: gUCellPrivateMutex should be locked before this is called.
+ *
+ * @param[in] pInstance  a pointer to the cellular instance.
+ * @param contextId      the ID for the PDP context.
+ * @param profileId      the ID of the profile to associate with the PDP context.
+ * @param tries          the number of times to try doing this, should be at
+ *                       least 1.
+ * @param[in] pKeepGoing a callback which should return true if the profile
+ *                       activation process is to continue, or can be NULL.
+ * @return               zero on success else negative error code.
  */
 int32_t uCellPrivateActivateProfile(const uCellPrivateInstance_t *pInstance,
                                     int32_t contextId, int32_t profileId, size_t tries,
@@ -794,14 +811,16 @@ int32_t uCellPrivateActivateProfile(const uCellPrivateInstance_t *pInstance,
  * IMPORTANT: it is up to YOU to lock the AT client before calling this function
  * and to unlock the AT client again afterwards.
  *
- * @param pInstance   a pointer to the cellular instance.
- * @param contextId   the ID for the PDP context.
- * @param profileId   the ID of the profile to associate with the PDP context.
- * @param tries       the number of times to try doing this, should be at
- *                    least 1.
- * @param pKeepGoing  a callback which should return true if the profile
- *                    activation process is to continue, or can be NULL.
- * @return            zero on success else negative error code.
+ * Note: gUCellPrivateMutex should be locked before this is called.
+ *
+ * @param[in] pInstance   a pointer to the cellular instance.
+ * @param contextId       the ID for the PDP context.
+ * @param profileId       the ID of the profile to associate with the PDP context.
+ * @param tries           the number of times to try doing this, should be at
+ *                        least 1.
+ * @param[in] pKeepGoing  a callback which should return true if the profile
+ *                        activation process is to continue, or can be NULL.
+ * @return                zero on success else negative error code.
  */
 int32_t uCellPrivateActivateProfileNoAtLock(const uCellPrivateInstance_t *pInstance,
                                             int32_t contextId, int32_t profileId, size_t tries,
@@ -811,18 +830,22 @@ int32_t uCellPrivateActivateProfileNoAtLock(const uCellPrivateInstance_t *pInsta
  * low; the +UUPSMR URC doesn't count here, it's only actual deep sleep
  * that we care about.
  *
- * @param pInstance  a pointer to the cellular instance.
- * @return           true if the deep sleep is active, else false.
+ * Note: gUCellPrivateMutex should be locked before this is called.
+ *
+ * @param[in] pInstance  a pointer to the cellular instance.
+ * @return               true if the deep sleep is active, else false.
  */
 bool uCellPrivateIsDeepSleepActive(uCellPrivateInstance_t *pInstance);
 
 /** Callback to wake up the cellular module from power saving.
  *
- * @param atHandle   the handle of the AT client that is talking
- *                   to the module.
- * @param pInstance  the parameter for the callback, should be a
- *                   pointer to the instance data.
- * @return           zero on successful wake-up, else negative error.
+ * Note: gUCellPrivateMutex should be locked before this is called.
+ *
+ * @param atHandle       the handle of the AT client that is talking
+ *                       to the module.
+ * @param[in] pInstance  the parameter for the callback, should be a
+ *                       pointer to the instance data.
+ * @return               zero on successful wake-up, else negative error.
  */
 int32_t uCellPrivateWakeUpCallback(uAtClientHandle_t atHandle,
                                    void *pInstance);
@@ -837,7 +860,7 @@ int32_t uCellPrivateWakeUpCallback(uAtClientHandle_t atHandle,
  *
  * Note: gUCellPrivateMutex should be locked before this is called.
  *
- * @param pInstance a pointer to the cellular instance.
+ * @param[in] pInstance a pointer to the cellular instance.
  */
 void uCellPrivateSetDeepSleepState(uCellPrivateInstance_t *pInstance);
 
@@ -847,14 +870,16 @@ void uCellPrivateSetDeepSleepState(uCellPrivateInstance_t *pInstance);
  * with the values placed in pMode and pTimeout, to resume UART power
  * saving.
  *
- * @param pInstance a pointer to the cellular instance.
- * @param pMode     a pointer to a place to put the current AT+UPSV
- *                  mode; cannot be NULL.
- * @param pTimeout  a pointer to a place to put the current AT+UPSV
- *                  timesout; cannot be NULL, if the AT+UPSV mode in
- *                  pMode does not have a timeout then -1 will be
- *                  returned.
- * @return          zero on successful wake-up, else negative error.
+ * Note: gUCellPrivateMutex should be locked before this is called.
+ *
+ * @param[in] pInstance a pointer to the cellular instance.
+ * @param[out] pMode    a pointer to a place to put the current AT+UPSV
+ *                      mode; cannot be NULL.
+ * @param[out] pTimeout a pointer to a place to put the current AT+UPSV
+ *                      timesout; cannot be NULL, if the AT+UPSV mode in
+ *                      pMode does not have a timeout then -1 will be
+ *                      returned.
+ * @return              zero on successful wake-up, else negative error.
  */
 int32_t uCellPrivateSuspendUartPowerSaving(const uCellPrivateInstance_t *pInstance,
                                            int32_t *pMode, int32_t *pTimeout);
@@ -862,15 +887,17 @@ int32_t uCellPrivateSuspendUartPowerSaving(const uCellPrivateInstance_t *pInstan
 /** Resume "32 kHz" or UART/AT+UPSV sleep, the counterpart to
  * uCellPrivateSuspendUartPowerSaving().
  *
- * @param pInstance a pointer to the cellular instance.
- * @param mode      the AT+UPSV mode to apply.
- * @param timeout   the timeout for the AT+UPSV mode; if the mode in
- *                  question does not have a timeout value then
- *                  a negative value should be used, in other words
- *                  the value returned by
- *                  uCellPrivateSuspendUartPowerSaving() can be used
- *                  directly.
- * @return          zero on successful wake-up, else negative error.
+ * Note: gUCellPrivateMutex should be locked before this is called.
+ *
+ * @param[in] pInstance a pointer to the cellular instance.
+ * @param mode          the AT+UPSV mode to apply.
+ * @param timeout       the timeout for the AT+UPSV mode; if the mode in
+ *                      question does not have a timeout value then
+ *                      a negative value should be used, in other words
+ *                      the value returned by
+ *                      uCellPrivateSuspendUartPowerSaving() can be used
+ *                      directly.
+ * @return              zero on successful wake-up, else negative error.
  */
 int32_t uCellPrivateResumeUartPowerSaving(const uCellPrivateInstance_t *pInstance,
                                           int32_t mode, int32_t timeout);
@@ -880,7 +907,7 @@ int32_t uCellPrivateResumeUartPowerSaving(const uCellPrivateInstance_t *pInstanc
  *
  * Note: gUCellPrivateMutex should be locked before this is called.
  *
- * @param pInstance      a pointer to the cellular instance.
+ * @param[in] pInstance  a pointer to the cellular instance.
  * @param[in] pFileName  a pointer to the file name to delete from the
  *                       file system. File names cannot contain these
  *                       characters: / * : % | " < > ?.
@@ -895,17 +922,18 @@ int32_t uCellPrivateFileDelete(const uCellPrivateInstance_t *pInstance,
  *
  * Note: gUCellPrivateMutex should be locked before this is called.
  *
- * @param pInstance           a pointer to the cellular instance.
- * @param ppFileListContainer a pointer to a place to store the pointer
- *                            to the internal file list that this
- *                            function creates; this will be passed to
- *                            uCellPrivateFileListNext() and
- *                            uCellPrivateFileListLast().
- * @param[out] pFileName      pointer to somewhere to store the result;
- *                            at least #U_CELL_FILE_NAME_MAX_LENGTH + 1 bytes
- *                            of storage must be provided.
- * @return                    the total number of file names in the list
- *                            or negative error code.
+ * @param[in] pInstance            a pointer to the cellular instance.
+ * @param[out] ppFileListContainer a pointer to a place to store the
+ *                                 pointer to the internal file list
+ *                                 that this function creates; this
+ *                                 will be passed to
+ *                                 uCellPrivateFileListNext() and
+ *                                 uCellPrivateFileListLast().
+ * @param[out] pFileName           pointer to somewhere to store the result;
+ *                                 at least #U_CELL_FILE_NAME_MAX_LENGTH + 1
+ *                                 bytes of storage must be provided.
+ * @return                        the total number of file names in the list
+ *                                or negative error code.
  */
 int32_t uCellPrivateFileListFirst(const uCellPrivateInstance_t *pInstance,
                                   uCellPrivateFileListContainer_t **ppFileListContainer,
@@ -918,15 +946,15 @@ int32_t uCellPrivateFileListFirst(const uCellPrivateInstance_t *pInstance,
  * of results" times will free the memory that held the list after the
  * final call (can be freed with a call to uCellPrivateFileListLast()).
  *
- * @param ppFileListContainer a pointer to the internal file list that
- *                            MUST already have been populated through
- *                            a call to uCellPrivateFileListFirst().
- * @param[out] pFileName      pointer to somewhere to store the result;
- *                            at least #U_CELL_FILE_NAME_MAX_LENGTH + 1
- *                            bytes of storage must be provided..
- * @return                    the number of entries remaining *after*
- *                            this one has been read or negative error
- *                            code.
+ * @param[in] ppFileListContainer a pointer to the internal file list that
+ *                                MUST already have been populated through
+ *                                a call to uCellPrivateFileListFirst().
+ * @param[out] pFileName          pointer to somewhere to store the result;
+ *                                at least #U_CELL_FILE_NAME_MAX_LENGTH + 1
+ *                                bytes of storage must be provided..
+ * @return                        the number of entries remaining *after*
+ *                                this one has been read or negative error
+ *                                code.
  */
 int32_t uCellPrivateFileListNext(uCellPrivateFileListContainer_t **ppFileListContainer,
                                  char *pFileName);
@@ -935,27 +963,27 @@ int32_t uCellPrivateFileListNext(uCellPrivateFileListContainer_t **ppFileListCon
  * uCellPrivateFileListFirst() if you are not going to iterate
  * through the whole list with uCellPrivateFileListNext().
  *
- * @param ppFileListContainer a pointer to the internal file list that
- *                            MUST already have been populated through
- *                            a call to uCellPrivateFileListFirst().
+ * @param[in] ppFileListContainer a pointer to the internal file list that
+ *                                MUST already have been populated through
+ *                                a call to uCellPrivateFileListFirst().
  */
 void uCellPrivateFileListLast(uCellPrivateFileListContainer_t **ppFileListContainer);
 
 /** Remove the HTTP context for the given instance.
  *
- * Note:  gUCellPrivateMutex and the linked list mutex of the HTTP
+ * Note: gUCellPrivateMutex and the linked list mutex of the HTTP
  * context should be locked before this is called.
  *
- * @param pInstance   a pointer to the cellular instance.
+ * @param[in] pInstance   a pointer to the cellular instance.
  */
 void uCellPrivateHttpRemoveContext(uCellPrivateInstance_t *pInstance);
 
 /** Set the DTR pin in order to prevent power saving, or reset it to
  * allow power saving.
  *
- * Note:  gUCellPrivateMutex should be locked before this is called.
+ * Note: gUCellPrivateMutex should be locked before this is called.
  *
- * @param pInstance      a pointer to the cellular instance.
+ * @param[in] pInstance  a pointer to the cellular instance.
  * @param doNotPowerSave true to set the DTR pin such as to prevent
  *                       power saving, else false to permit power saving.
  */
@@ -963,11 +991,11 @@ void uCellPrivateSetPinDtr(uCellPrivateInstance_t *pInstance, bool doNotPowerSav
 
 /** Get the cellular module's active serial interface configuration.
  *
- * Note:  gUCellPrivateMutex should be locked before this is called.
+ * Note: gUCellPrivateMutex should be locked before this is called.
  *
- * @param pInstance   a pointer to the cellular instance.
- * @return            active variant of serial interface or negative code
- *                    on failure.
+ * @param[in] pInstance a pointer to the cellular instance.
+ * @return              active variant of serial interface or negative code
+ *                      on failure.
  */
 int32_t uCellPrivateGetActiveSerialInterface(const uCellPrivateInstance_t *pInstance);
 
@@ -975,7 +1003,9 @@ int32_t uCellPrivateGetActiveSerialInterface(const uCellPrivateInstance_t *pInst
  * GNSS chip inside or connected via the cellular module will use.  Must
  * be sent before the GNSS module is switched on.
  *
- * @param pInstance      a pointer to the cellular instance.
+ * Note: gUCellPrivateMutex should be locked before this is called.
+ *
+ * @param[in] pInstance  a pointer to the cellular instance.
  * @param profileBitMap  a bit-map of values chosen from #uCellCfgGnssProfile_t.
  * @param pServerName    the null-terminated string that is the destination
  *                       server, including port number; only used if
@@ -988,7 +1018,9 @@ int32_t uCellPrivateSetGnssProfile(const uCellPrivateInstance_t *pInstance,
 
 /** Get the GNSS profile (AT+UGPRF) being used by the cellular module.
  *
- * @param pInstance      a pointer to the cellular instance.
+ * Note: gUCellPrivateMutex should be locked before this is called.
+ *
+ * @param[in] pInstance  a pointer to the cellular instance.
  * @param pServerName    a place to put the server name, will only be populated
  *                       if the GNSS profile includes #U_CELL_CFG_GNSS_PROFILE_IP;
  *                       may be NULL.
@@ -1002,23 +1034,25 @@ int32_t uCellPrivateGetGnssProfile(const uCellPrivateInstance_t *pInstance,
 
 /** Check whether there is a GNSS chip on-board the cellular module.
  *
- * @param pInstance      a pointer to the cellular instance.
- * @return            true if there is a GNSS chip inside the cellular
- *                    module, else false.
+ * Note: gUCellPrivateMutex should be locked before this is called.
+ *
+ * @param[in] pInstance a pointer to the cellular instance.
+ * @return              true if there is a GNSS chip inside the cellular
+ *                       module, else false.
  */
 bool uCellPrivateGnssInsideCell(const uCellPrivateInstance_t *pInstance);
 
 /** Remove the CellTime context for the given instance.
  *
- * Note:  gUCellPrivateMutex should be locked before this is called.
+ * Note: gUCellPrivateMutex should be locked before this is called.
  *
- * @param pInstance   a pointer to the cellular instance.
+ * @param[in] pInstance   a pointer to the cellular instance.
  */
 void uCellPrivateCellTimeRemoveContext(uCellPrivateInstance_t *pInstance);
 
 /** Get an ID string from the cellular module.
  *
- * Note:  gUCellPrivateMutex should be locked before this is called.
+ * Note: gUCellPrivateMutex should be locked before this is called.
  *
  * @param atHandle      the handle of the AT client that is talking
  *                      to the module.
@@ -1038,9 +1072,9 @@ int32_t uCellPrivateGetIdStr(uAtClientHandle_t atHandle,
 
 /** Updates the module related settings for the given instance.
  *
- * Note:  gUCellPrivateMutex should be locked before this is called.
+ * Note: gUCellPrivateMutex should be locked before this is called.
  *
- * @param pInstance   a pointer to the cellular instance.
+ * @param[in] pInstance   a pointer to the cellular instance.
  */
 void uCellPrivateModuleSpecificSetting(uCellPrivateInstance_t *pInstance);
 
