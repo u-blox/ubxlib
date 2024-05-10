@@ -137,3 +137,23 @@ You may find [Visual Studio Code](https://code.visualstudio.com/) a convenient I
 - If you wish to run the `ubxlib` tests on an MCU, open [ubxlib-runner.code-workspace](/ubxlib-runner.code-workspace) in [Visual Studio Code](https://code.visualstudio.com/), select the "Run and Debug" icon on the far left and then select an option from the "RUN AND DEBUG" pull-down on the top left.
 
 From these cases you should be able to figure out how to use [Visual Studio Code](https://code.visualstudio.com/) with `ubxlib` for your own application; likely a lot simpler if you have chosen a single platform and aren't running the `ubxlib` tests.
+
+# Bringing Up A New MCU Board
+When bringing up a new MCU board, particularly an off-the-shelf board, which is usually blessed with a million configuration jumpers and sometimes "useful" peripheral devices, it is often the case that nothing works.  And this is often because which IO pin from the MCU is connected to the outside world is extremely difficult to be certain about.
+
+Most MCUs allow an IO pin to be used as a GPIO as well as a UART/I2C/SPI/whatever pin; if you find that an IO pin is not working, it is a good idea to temporarily configure that pin as a GPIO output, toggle it, and check with a multimeter or [Saleae](https://www.saleae.com/) probe or oscilloscope that the pin really is under your control.  For example, to check if pin 5 is yours you might do something like:
+
+```
+uPortGpioConfig_t gpioConfig = U_PORT_GPIO_CONFIG_DEFAULT;
+
+gpioConfig.pin = 5;
+gpioConfig.direction = U_PORT_GPIO_DIRECTION_OUTPUT;
+uPortGpioSet(gpioConfig.pin, 0);
+uPortGpioConfig(&gpioConfig);
+uPortGpioSet(gpioConfig.pin, 1);
+uPortTaskBlock(1000);
+uPortGpioSet(gpioConfig.pin, 0);
+uPortTaskBlock(1000);
+```
+
+If, when you run this code, pin 5 goes high for 1 second and then low for 1 second, it is yours.
