@@ -1,39 +1,51 @@
 # Rules to make all current known Devices Under Test of the ubxlib test farm accessible
 # to Docker and with sensible names
 
-# USB to UART bridge used by ESP32 boards as TTY (actually a Silicon Labs CP210x USB to UART Bridge)
+# IMPORTANT: the pattern of using an environment variable to pass the bInterfaceNumber
+# characteristic from the SUBSYSTEMS match into the SUBSYSTEM/ATTRS match on the next line
+# is used in quite a few instance below but it is used INCORRECTLY in many of them;
+# bInterfaceNumber is the zero-based index of the end-point presented by a USB port, so
+# for instance a cellular EVK's USB port might carry two serial ports and these will
+# be bInterfaceNumber 0 and bInterfaceNumber 1.  At some point I thought it was an
+# invented number that needed to be indexed for each usage but that is rubbish, it is
+# a physical characteristic that needs to match the situation where the udev rule is used.
+# Since the udev rules are inevitably edited in the exact file for each individual usage,
+# the mistakes have NOT been corrected but the interesting cases where bInterfaceNumber
+# has been used in the right way are specifically marked below (near the bottom).
+
+# USB to UART bridge used by ESP32 boards as TTY (actually a Silicon Labs CP210x USB to UART Bridge); bInterfaceNumber used CORRECTLY here
 SUBSYSTEMS=="usb", ENV{ID_SILABS_UART_INTERFACE_NUMBER}="$attr{bInterfaceNumber}"
 SUBSYSTEM=="tty", ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea60", ENV{ID_SILABS_UART_INTERFACE_NUMBER}=="00", MODE:="0666", SYMLINK+="silabs_cp210x_uart"
 
 # u-blox GNSS receiver as TTY
-SUBSYSTEMS=="usb", ENV{ID_UBLOX_GNSS_UART_INTERFACE_NUMBER}="$attr{bInterfaceNumber}"
+SUBSYSTEMS=="usb", ENV{ID_UBLOX_GNSS_UART_INTERFACE_NUMBER}="$attr{bInterfaceNumber}"; bInterfaceNumber used INCORRECTLY
 SUBSYSTEM=="tty", ATTRS{idVendor}=="1546", ATTRS{idProduct}=="01a9", ENV{ID_UBLOX_GNSS_UART_INTERFACE_NUMBER}=="01", MODE:="0666", SYMLINK+="ublox_gnss"
 
-# u-blox NINA-W1 board as TTY (actually a Future Technology Devices International, Ltd FT4232H Quad HS USB-UART/FIFO IC)
+# u-blox NINA-W1 board as TTY (actually a Future Technology Devices International, Ltd FT4232H Quad HS USB-UART/FIFO IC); bInterfaceNumber used INCORRECTLY
 SUBSYSTEMS=="usb", ENV{ID_FTDI_FT4232H_UART_INTERFACE_NUMBER}="$attr{bInterfaceNumber}"
 SUBSYSTEM=="tty", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6011", ENV{ID_FTDI_FT4232H_UART_INTERFACE_NUMBER}=="02", MODE:="0666", SYMLINK+="ftdi_ft4232h"
 
-# STLink V2.1, as used on the u-blox C030 board and the STM32F407 Discovery board
+# STLink V2.1, as used on the u-blox C030 board and the STM32F407 Discovery board; bInterfaceNumber used INCORRECTLY
 SUBSYSTEMS=="usb", ENV{ID_STLINK_V2_1_INTERFACE_NUMBER}="$attr{bInterfaceNumber}", MODE:="0666", SYMLINK+="stlink_v2_1"
 SUBSYSTEM=="tty", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="374b", ENV{ID_STLINK_V2_1_INTERFACE_NUMBER}=="03", MODE:="0666", SYMLINK+="stlink_v2_1_uart"
 
-# SEGGER JLink Base standalone debugger
+# SEGGER JLink Base standalone debugger; bInterfaceNumber used INCORRECTLY
 SUBSYSTEMS=="usb", ENV{ID_SEGGER_JLINK_BASE_1_INTERFACE_NUMBER}="$attr{bInterfaceNumber}", MODE:="0666", SYMLINK+="segger_jlink_base"
 SUBSYSTEM=="tty", ATTRS{idVendor}=="1366", ATTRS{idProduct}=="0101", ENV{ID_SEGGER_JLINK_BASE_1_INTERFACE_NUMBER}=="04", MODE:="0666", SYMLINK+="segger_jlink_base_uart"
 
-# SEGGER JLink, as used on the Nordic NRF52840DK board
+# SEGGER JLink, as used on the Nordic NRF52840DK board; bInterfaceNumber used INCORRECTLY
 SUBSYSTEMS=="usb", ENV{ID_SEGGER_JLINK_NRF52840DK_INTERFACE_NUMBER}="$attr{bInterfaceNumber}", MODE:="0666", SYMLINK+="segger_jlink_nrf52840"
 SUBSYSTEM=="tty", ATTRS{idVendor}=="1366", ATTRS{idProduct}=="1015", ENV{ID_SEGGER_JLINK_NRF52840DK_INTERFACE_NUMBER}=="05", MODE:="0666", SYMLINK+="segger_jlink_nrf52840_uart"
 
-# SEGGER JLink, as used on the Nordic NRF5340DK board
+# SEGGER JLink, as used on the Nordic NRF5340DK board; bInterfaceNumber used INCORRECTLY
 SUBSYSTEMS=="usb", ENV{ID_SEGGER_JLINK_NRF5240DK_INTERFACE_NUMBER}="$attr{bInterfaceNumber}", MODE:="0666", SYMLINK+="segger_jlink_nrf5340"
 SUBSYSTEM=="tty", ATTRS{idVendor}=="1366", ATTRS{idProduct}=="1055", ENV{ID_SEGGER_JLINK_NRF5240DK_INTERFACE_NUMBER}=="06", MODE:="0666", SYMLINK+="segger_jlink_nrf5340_uart"
 
-# STLink V2.1 standalone debugger
+# STLink V2.1 standalone debugger; bInterfaceNumber used INCORRECTLY
 SUBSYSTEMS=="usb", ENV{ID_STLINK_V2_1_STANDALONE_INTERFACE_NUMBER}="$attr{bInterfaceNumber}", MODE:="0666", SYMLINK+="stlink_v2_1_standalone"
 SUBSYSTEM=="tty", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="3748", ENV{ID_STLINK_V2_1_STANDALONE_INTERFACE_NUMBER}=="07", MODE:="0666", SYMLINK+="stlink_v2_1_standalone_uart"
 
-# STLink V3 debugger, as used on Nucleo U575ZI boards
+# STLink V3 debugger, as used on Nucleo U575ZI boards; bInterfaceNumber used INCORRECTLY
 SUBSYSTEMS=="usb", ENV{ID_STLINK_V3_INTERFACE_NUMBER}="$attr{bInterfaceNumber}", MODE:="0666", SYMLINK+="stlink_v3"
 SUBSYSTEM=="tty", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="374e", ENV{ID_STLINK_V3_INTERFACE_NUMBER}=="08", MODE:="0666", SYMLINK+="stlink_v3"
 
@@ -41,10 +53,10 @@ SUBSYSTEM=="tty", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="374e", ENV{ID_STLI
 ACTION=="add", ATTRS{idVendor}=="05c6", ATTRS{idProduct}=="908b", RUN+="/sbin/modprobe option", \
 RUN+="/bin/sh -c 'echo 05c6 908b > /sys/bus/usb-serial/drivers/option1/new_id'"
 
-# Map LARA-R6 /dev/ttyUSB1 to something fixed
+# Map LARA-R6 /dev/ttyUSB1 to something fixed; bInterfaceNumber used CORRECTLY here
 SUBSYSTEMS=="usb", ENV{ID_UBLOX_LARA_R6_USB_INTERFACE_NUMBER_0}="$attr{bInterfaceNumber}"
 SUBSYSTEM=="tty", ATTRS{idVendor}=="05c6", ATTRS{idProduct}=="908b", ENV{ID_UBLOX_LARA_R6_USB_INTERFACE_NUMBER_0}=="01", MODE:="0666", SYMLINK+="ublox_lara_r6_usb_at_0"
 
-# Map LARA-R6 /dev/ttyUSB2 to something fixed
+# Map LARA-R6 /dev/ttyUSB2 to something fixed; bInterfaceNumber used CORRECTLY here
 SUBSYSTEMS=="usb", ENV{ID_UBLOX_LARA_R6_USB_INTERFACE_NUMBER_1}="$attr{bInterfaceNumber}"
 SUBSYSTEM=="tty", ATTRS{idVendor}=="05c6", ATTRS{idProduct}=="908b", ENV{ID_UBLOX_LARA_R6_USB_INTERFACE_NUMBER_1}=="02", MODE:="0666", SYMLINK+="ublox_lara_r6_usb_at_1"
