@@ -228,6 +228,20 @@ int32_t uNetworkInterfaceUp(uDeviceHandle_t devHandle, uNetworkType_t netType,
  * Note: for a Wi-Fi network, this function uses the
  * uWifiSetConnectionStatusCallback() callback.
  *
+ * Note: if you call uNetworkInterfaceDown() on a GNSS network that
+ * is inside a cellular device, it is possible your RTOS will assert
+ * that a mutex is being released by a task that does not own it; for
+ * example FreeRTOS may do this.  The reason for this is that, when
+ * uNetworkInterfaceUp() was called, the cellular module will have
+ * been told to create a CMUX channel (to carry AT and GNSS traffic
+ * simultaneously) and the original AT client will have been left
+ * locked.  If uNetworkInterfaceDown() is called from a _different_
+ * _task_ to the one that called uNetworkInterfaceUp(), the
+ * assert will be triggered when the original AT client is unlocked.
+ * A fix for this is to call uNetworkInterfaceDown() from the same
+ * task that called uNetworkInterfaceUp().  We're investigating
+ * whether there is a way to remove this restriction.
+ *
  * @param devHandle the handle of the device that is carrying the
  *                  network.
  * @param netType   which of the module interfaces to take down.
