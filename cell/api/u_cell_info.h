@@ -58,6 +58,16 @@ extern "C" {
  */
 #define U_CELL_INFO_ICCID_BUFFER_SIZE 21
 
+#ifndef U_CELL_INFO_RADIO_REFRESH_DELAY_MS
+/** Some modules may not like the AT commands for a radio refresh
+ * being called repeatedly, hence by default we add a delay, however
+ * if your application is sensitive to power consumption/time you
+ * may wish to override this to zero and manage any delay from
+ * your application instead.
+ */
+# define U_CELL_INFO_RADIO_REFRESH_DELAY_MS 500
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -66,11 +76,17 @@ extern "C" {
  * FUNCTIONS
  * -------------------------------------------------------------- */
 
-/** Refresh the RF status values.  Call this to refresh
- * RSSI, RSRP, RSRQ, Cell ID, EARFCN, etc.  This way all of the
- * values read are synchronised to a given point in time.  The
- * radio parameters stored by this function are cleared on
- * disconnect and reboot.
+/** Refresh the RF status values.  Call this to refresh RSSI, RSRP,
+ * RSRQ, Cell ID, EARFCN, etc.  This way all of the values read are
+ * synchronised to a given point in time.  The radio parameters
+ * stored by this function are cleared on disconnect and reboot.
+ *
+ * Note: some modules do not like the AT commands for a radio refresh
+ * being called repeatedly, hence this function includes a delay of
+ * #U_CELL_INFO_RADIO_REFRESH_DELAY_MS.  If your application is
+ * sensitive to power consumption/time you may wish to override the
+ * value of that delay to zero at compile time and manage timing
+ * from your application instead.
  *
  * @param cellHandle  the handle of the cellular instance.
  * @return            zero on success, negative error code on

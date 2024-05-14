@@ -683,7 +683,7 @@ int32_t uCellInfoRefreshRadioParameters(uDeviceHandle_t cellHandle)
                     // reporting answers.
                     // Allow a little sleepy-byes here, don't want to overtask
                     // the module if this is being called repeatedly
-                    uPortTaskBlock(500);
+                    uPortTaskBlock(U_CELL_INFO_RADIO_REFRESH_DELAY_MS);
                     if (U_CELL_PRIVATE_HAS(pInstance->pModule, U_CELL_PRIVATE_FEATURE_UCGED5)) {
                         // SARA-R4 (except 422) only supports UCGED=5, and it only
                         // supports it in EUTRAN mode
