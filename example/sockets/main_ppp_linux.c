@@ -240,8 +240,9 @@ U_PORT_TEST_FUNCTION("[example]", "examplePppLinuxSockets")
 
             // It can take a little while for the interface
             // to propagate into the Linux kernel and become
-            // useable so, to make our testing of this example
-            // reliable, we insert a short delay here
+            // useable (see the parameter connect-delay in
+            // /etc/ppp/options); to make our testing of this
+            // example reliable, we insert a short delay here
             sleep(1);
 
             // Look up the IP address of the echo server

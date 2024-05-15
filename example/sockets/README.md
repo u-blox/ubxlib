@@ -15,7 +15,7 @@ To build and run these examples on a supported platform you need to travel down 
 
 `U_CFG_APP_FILTER`: set this to `exampleSockets` (noting that NO quotation marks should be included) to run *just* these example, as opposed to all the examples and unit tests.
 
-For the remainder of the \#defines (see "Using A xxx Module" below) you may either override their values in the same way or, if you are only running these examples, you may edit the values directly in [main.c](main.c), [main_tls.c](main_tls.c) and [main_dtls.c](main_dtls.c) before compiling.
+For the remainder of the \#defines (see "Using A xxx Module" below) you may either override their values in the same way or, if you are only running these examples, you may edit the values directly in [main.c](main.c), [main_tls.c](main_tls.c), [main_dtls.c](main_dtls.c), [main_ppp_espidf.c](main_ppp_espidf.c), [main_ppp_linux.c](main_ppp_linux.c) or [main_ppp_zephyr.c](main_ppp_zephyr.c) before compiling.
 
 # Usage (Arduino Example)
 Follow the instructions in the [port/platform/arduino](/port/platform/arduino) directory to create the Arduino library version of `ubxlib`, which will include the example here.

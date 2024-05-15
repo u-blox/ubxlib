@@ -427,7 +427,8 @@ U_PORT_TEST_FUNCTION("[testLinuxSock]", "testLinuxSockTcp")
             osCleanup();
 
             // Allow the network interface to propagate into the
-            // Linux kernel
+            // Linux kernel; see the parameter connect-delay
+            // in /etc/ppp/options, which defaults to 1 second
             uPortTaskBlock(1000);
 
             inet_pton(AF_INET, hostIp, &destinationAddress.sin_addr);
