@@ -108,7 +108,7 @@ addr2line.exe -e my_app.elf 0x400d3e6f
 
 ...where `0x400d3e6f` is the last address in the backtrace; repeat until done.
 
-# Debugging A U_ASSERT
+# Debugging A `U_ASSERT()`
 There are a few [U_ASSERT()](/common/assert) checks in the `ubxlib` code; deliberately few: as a library we prefer return-values that give the application control, to going "bang" in an unstructured fashion.  You may add your own assert function at run-time, by calling `uAssertHookSet()`, to make more sense of what might be going on; if you do not do so, an assertion will print a useful message (through `uPortLog()`) and the code will sit in an infinite loop.
 
 If you add your own assert function then, during testing, you may also chose to define `U_ASSERT_HOOK_FUNCTION_TEST_RETURN` for your build; in this case code execution will continue as normal after the assertion.  To be clear, `U_ASSERT_HOOK_FUNCTION_TEST_RETURN` ONLY takes effect if you have added your own assert function, it does nothing if the default assert function is in use, and you should _really_ only use it when testing as assertions indicate that the world has likely fallen apart; you do not normally want to continue.
