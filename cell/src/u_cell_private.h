@@ -229,6 +229,15 @@ extern "C" {
 /** Features of a module that require different compile-time
  * behaviours in this implementation.
  */
+/* Note to implementers: the enumerated values below are used to
+ * populate the 64-bit variable featuresBitmap in the
+ * uCellPrivateModule_t of each module type, therefore there
+ * is a limit of 64 values available; in other words, this is a
+ * valuable resource.  Only add a new value to it for situations
+ * where a few modules do (or don't) support a given feature; if
+ * a _single_ module is the exception then just check the moduleType
+ * field and take whatever action instead.
+ */
 //lint -esym(756, uCellPrivateFeature_t) Suppress not referenced,
 // Lint can't seem to find it inside macros.
 typedef enum {
