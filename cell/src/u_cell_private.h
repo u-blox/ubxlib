@@ -237,9 +237,9 @@ extern "C" {
  * a few modules do (or don't) support a given feature; if
  * a _single_ module, or a distinct family (e.g. SARA-R4), or
  * something "internal" (e.g. a missed parameter inside an AT
- * command), as opposed to a recognisable feature, is the exception
- * then just check the moduleType field in your code and take
- * whatever action instead.
+ * command), as opposed to a recognisable feature, is the
+ * exception then just check the moduleType field in your code
+ * and take whatever action instead.
  */
 //lint -esym(756, uCellPrivateFeature_t) Suppress not referenced,
 // Lint can't seem to find it inside macros.
@@ -286,7 +286,8 @@ typedef enum {
     U_CELL_PRIVATE_FEATURE_LWM2M,
     U_CELL_PRIVATE_FEATURE_UCGED,
     U_CELL_PRIVATE_FEATURE_HTTP,
-    U_CELL_PRIVATE_FEATURE_PPP,
+    U_CELL_PRIVATE_FEATURE_PPP
+    // Read note above before adding a new value here
 } uCellPrivateFeature_t;
 
 /** The characteristics that may differ between cellular modules.
