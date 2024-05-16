@@ -20,6 +20,19 @@
  * target and the Linux/Posix versions: this is because the Zephyr
  * Linux/Posix platform does not support the interrupt-driven UART API;
  * interrupts are supported, just not that UART API.
+ *
+ * Also, when Zephyr is run on an STM32Fxxxx device, since the ST UART
+ * driver within Zephyr does not use DMA, it _will_ lose characters:
+ * the STM32Fx chipsets have a single-byte buffer which is simply not,
+ * sufficient; the HW is intended for use with DMA, which the ubxlib
+ * STM32Cube-platform UART drivers implement.  The ST UART driver
+ * within Zephyr will use DMA if the Zephyr asynchronous UART API is
+ * called (requiring Zephyr to be compiled with CONFIG_UART_ASYNC_API
+ * set to "y").  This code can be made to use the Zephyr asynchronous
+ * UART API by defining U_ZEPHYR_PORT_UART_ASYNC; this should be
+ * defined when building ubxlib for use with Zephyr on an
+ * STM32Fx-family chip.  Note that this issue does not occur on STM32U5-
+ *-family devices as they have 8-byte UART HW buffers.
  */
 
 #ifdef U_CFG_OVERRIDE
@@ -74,7 +87,29 @@
 /** The number of NOPS to execute at the start of uartCb(),
  * see explanation at the top of that function.
  */
-#define U_ZEPHYR_PORT_UART_INTERRUPT_DRIVEN_NUM_NOPS 50
+# define U_ZEPHYR_PORT_UART_INTERRUPT_DRIVEN_NUM_NOPS 50
+#endif
+
+#ifndef U_ZEPHYR_UART_RX_ASYNC_BUFFER_SIZE_BYTES
+/** A buffer for asynchronous operation;
+ * #U_ZEPHYR_UART_RX_ASYNC_BUFFER_NUMBER of these are
+ * allocated.
+ */
+# define U_ZEPHYR_UART_RX_ASYNC_BUFFER_SIZE_BYTES 128
+#endif
+
+#ifndef U_ZEPHYR_UART_RX_ASYNC_BUFFER_NUMBER
+/** The number of buffers of size #U_ZEPHYR_UART_RX_ASYNC_BUFFER_SIZE_BYTES
+ * to use for asynchronous reception.
+ */
+# define U_ZEPHYR_UART_RX_ASYNC_BUFFER_NUMBER 2
+#endif
+
+#ifndef U_ZEPHYR_UART_RX_ASYNC_TIMEOUT_US
+/** The RX timeout when doing things asynchronously (either
+ * polled or with U_ZEPHYR_PORT_UART_ASYNC) in microseconds.
+ */
+# define U_ZEPHYR_UART_RX_ASYNC_TIMEOUT_US 1000
 #endif
 
 /* ----------------------------------------------------------------
@@ -96,14 +131,20 @@ typedef struct {
     uint32_t bufferRead;
     int32_t bufferWrite;
     bool bufferFull;
-    struct k_timer rxTimer;
-#ifdef CONFIG_UART_INTERRUPT_DRIVEN
+#if defined(U_ZEPHYR_PORT_UART_ASYNC) && defined(CONFIG_UART_ASYNC_API)
+    struct k_sem txSem;
+    char asyncRxBuffers[U_ZEPHYR_UART_RX_ASYNC_BUFFER_SIZE_BYTES *
+                        U_ZEPHYR_UART_RX_ASYNC_BUFFER_NUMBER];
+    char *pAsyncRxBuffer;
+#elif defined(CONFIG_UART_INTERRUPT_DRIVEN)
     struct uartData_t *pTxData;
     struct k_fifo fifoTxData;
     uint32_t txWritten;
     struct k_sem txSem;
+    struct k_timer rxTimer;
 #else
     struct k_timer pollTimer;
+    struct k_timer rxTimer;
 #endif
 } uPortUartData_t;
 
@@ -135,7 +176,7 @@ static uLinkedList_t *gpUartData = NULL;
 static volatile int32_t gResourceAllocCount = 0;
 
 /* ----------------------------------------------------------------
- * STATIC FUNCTIONS
+ * STATIC FUNCTIONS: MISC
  * -------------------------------------------------------------- */
 
 // Get the Zephyr device pointer for the given UART number.
@@ -247,7 +288,10 @@ static void eventHandler(void *pParam, size_t paramLength)
 static void uartClose(uPortUartData_t *pUartData)
 {
     k_free(pUartData->pBuffer);
-#ifdef CONFIG_UART_INTERRUPT_DRIVEN
+    pUartData->pBuffer = NULL;
+#if defined(U_ZEPHYR_PORT_UART_ASYNC) && defined(CONFIG_UART_ASYNC_API)
+    uart_rx_disable(pUartData->pDevice);
+#elif defined(CONFIG_UART_INTERRUPT_DRIVEN)
     uart_irq_rx_disable(pUartData->pDevice);
     uart_irq_tx_disable(pUartData->pDevice);
 #else
@@ -258,6 +302,19 @@ static void uartClose(uPortUartData_t *pUartData)
     U_ATOMIC_DECREMENT(&gResourceAllocCount);
 }
 
+#if defined(U_ZEPHYR_PORT_UART_ASYNC) && defined(CONFIG_UART_ASYNC_API)
+// Start receiving in the async API case.
+static void asyncStartRx(uPortUartData_t *pUartData)
+{
+    pUartData->pAsyncRxBuffer = pUartData->asyncRxBuffers;
+    uart_rx_enable(pUartData->pDevice,
+                   pUartData->pAsyncRxBuffer,
+                   sizeof(pUartData->asyncRxBuffers) / U_ZEPHYR_UART_RX_ASYNC_BUFFER_NUMBER,
+                   U_ZEPHYR_UART_RX_ASYNC_TIMEOUT_US);
+}
+#else
+// Callback for when receive has gone idle, only used in the
+// non-async API case.
 static void rxTimer(struct k_timer *pTimerId)
 {
     uPortUartData_t *pUartData = (uPortUartData_t *)(pTimerId->user_data);
@@ -272,8 +329,99 @@ static void rxTimer(struct k_timer *pTimerId)
                                &event, sizeof(event));
     }
 }
+#endif
 
-#ifdef CONFIG_UART_INTERRUPT_DRIVEN
+/* ----------------------------------------------------------------
+ * STATIC FUNCTIONS: CALLBACKS
+ * -------------------------------------------------------------- */
+
+#if defined(U_ZEPHYR_PORT_UART_ASYNC) && defined(CONFIG_UART_ASYNC_API)
+// uartCb called by the asynchronous UART API driver.
+static void uartCb(const struct device *pDevice, struct uart_event *pEvt,
+                   void *pUserData)
+{
+    uPortUartData_t *pUartData = (uPortUartData_t *)(pUserData);
+
+    if ((pUartData != NULL) && (pEvt != NULL)) {
+        switch (pEvt->type) {
+            case UART_TX_DONE:
+                // Just give the semaphore, since this event definitely
+                // means that all of the data has been transmitted
+                k_sem_give(&(pUartData->txSem));
+                break;
+            case UART_RX_RDY:
+                if (pUartData->pBuffer != NULL) {
+                    // Something has been received, copy it into the space available
+                    struct uart_event_rx *pUartEventRx = &(pEvt->data.rx);
+                    size_t receivedLength = pUartEventRx->len;
+                    uint32_t bufferRead = pUartData->bufferRead;
+                    size_t thisSize;
+                    if (!pUartData->bufferFull && (receivedLength > 0)) {
+                        if (bufferRead <= pUartData->bufferWrite) {
+                            // Copy into the space between the write index and the
+                            // end of the buffer to begin with
+                            thisSize = pUartData->receiveBufferSizeBytes - pUartData->bufferWrite;
+                        } else {
+                            // Copy into the space between the write and read pointers
+                            thisSize = bufferRead - pUartData->bufferWrite;
+                        }
+                        if (thisSize > receivedLength) {
+                            thisSize = receivedLength;
+                        }
+                        memcpy(pUartData->pBuffer + pUartData->bufferWrite,
+                               pUartEventRx->buf + pUartEventRx->offset, thisSize);
+                        receivedLength -= thisSize;
+                        if ((receivedLength > 0) && (bufferRead <= pUartData->bufferWrite)) {
+                            // If there is more to copy and we were in the case where
+                            // the free space wraps around the end of the receive buffer,
+                            // copy the remainder into the space between the start of the
+                            // buffer and the read index
+                            thisSize = bufferRead;
+                            if (thisSize > receivedLength) {
+                                thisSize = receivedLength;
+                            }
+                            memcpy(pUartData->pBuffer,
+                                   pUartEventRx->buf + pUartEventRx->offset + (pUartEventRx->len - receivedLength),
+                                   thisSize);
+                            receivedLength -= thisSize;
+                        }
+                        pUartData->bufferWrite += pUartEventRx->len - receivedLength;
+                        pUartData->bufferWrite %= pUartData->receiveBufferSizeBytes;
+                        if (pUartData->bufferWrite == bufferRead) {
+                            pUartData->bufferFull = true;
+                        }
+                    }
+                    if ((pUartData->eventQueueHandle >= 0) &&
+                        (pUartData->eventFilter & U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED)) {
+                        uPortUartEvent_t event;
+                        event.uartHandle = pUartData->uart;
+                        event.eventBitMap = U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED;
+                        uPortEventQueueSendIrq(pUartData->eventQueueHandle,
+                                               &event, sizeof(event));
+                    }
+                }
+                break;
+            case UART_RX_BUF_REQUEST:
+                if (!pUartData->bufferFull) {
+                    // Provide the next buffer for continuous reception
+                    pUartData->pAsyncRxBuffer += sizeof(pUartData->asyncRxBuffers) /
+                                                 U_ZEPHYR_UART_RX_ASYNC_BUFFER_NUMBER;
+                    if (pUartData->pAsyncRxBuffer >= pUartData->asyncRxBuffers + sizeof(pUartData->asyncRxBuffers)) {
+                        pUartData->pAsyncRxBuffer = pUartData->asyncRxBuffers;
+                    }
+                    uart_rx_buf_rsp(pUartData->pDevice,
+                                    pUartData->pAsyncRxBuffer,
+                                    sizeof(pUartData->asyncRxBuffers) / U_ZEPHYR_UART_RX_ASYNC_BUFFER_NUMBER);
+                }
+                break;
+            default:
+                break;
+        }
+    }
+}
+
+#elif defined(CONFIG_UART_INTERRUPT_DRIVEN)
+
 // uartCb called by the interrupt-based UART driver.
 static void uartCb(const struct device *pDevice, void *pUserData)
 {
@@ -320,7 +468,9 @@ static void uartCb(const struct device *pDevice, void *pUserData)
                 }
 
                 if (read) {
-                    k_timer_start(&(pUartData->rxTimer), K_MSEC(1), K_NO_WAIT);
+                    k_timer_start(&(pUartData->rxTimer),
+                                  K_MSEC(U_ZEPHYR_UART_RX_ASYNC_TIMEOUT_US / 1000),
+                                  K_NO_WAIT);
                 }
             }
         }
@@ -355,7 +505,7 @@ static void uartCb(const struct device *pDevice, void *pUserData)
     }
 }
 
-#else
+#else // #elif defined(CONFIG_UART_INTERRUPT_DRIVEN)
 
 // Polled receive for when an interrupt-driven UART driver
 // is not available (though note that pollTimer is still
@@ -391,12 +541,14 @@ static void pollTimer(struct k_timer *pTimerId)
         }
 
         if (read) {
-            k_timer_start(&(pUartData->rxTimer), K_MSEC(1), K_NO_WAIT);
+            k_timer_start(&(pUartData->rxTimer),
+                          K_MSEC(U_ZEPHYR_UART_RX_ASYNC_TIMEOUT_US / 1000),
+                          K_NO_WAIT);
         }
     }
 }
 
-#endif // #ifdef CONFIG_UART_INTERRUPT_DRIVEN
+#endif // #elif defined(CONFIG_UART_INTERRUPT_DRIVEN)
 
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
@@ -450,10 +602,10 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
     uPortUartData_t *pUartData;
 
     // Note that the pins passed into this function must be set
-    // to -1 since the Zephyr platform used on NRF53 does not
-    // permit the pin assignments to be set at run-time, only at
-    // compile-time.  To obtain the real values for your peripheral
-    // pin assignments take a look at the macros U_CFG_TEST_PIN_UART_A_xxx_GET
+    // to -1 since the Zephyr platform does not permit the pin
+    // assignments to be set at run-time, only at compile-time.
+    // To obtain the real values for your peripheral pin
+    // assignments take a look at the macros U_CFG_TEST_PIN_UART_A_xxx_GET
     // (e.g. U_CFG_TEST_PIN_UART_A_TXD_GET) in the file
     // `u_cfg_test_plaform_specific.h` for this platform, which
     // demonstrate a mechanism for doing this.
@@ -478,15 +630,18 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
                         if (uLinkedListAdd(&gpUartData, pUartData)) {
                             pUartData->uart = uart;
                             pUartData->pDevice = pDevice;
-#ifdef CONFIG_UART_INTERRUPT_DRIVEN
+#if defined(U_ZEPHYR_PORT_UART_ASYNC) && defined(CONFIG_UART_ASYNC_API)
+                            k_sem_init(&(pUartData->txSem), 0, 1);
+#elif defined(CONFIG_UART_INTERRUPT_DRIVEN)
                             k_sem_init(&(pUartData->txSem), 0, 1);
                             k_fifo_init(&(pUartData->fifoTxData));
 #endif
                             pUartData->receiveBufferSizeBytes = receiveBufferSizeBytes;
                             pUartData->eventQueueHandle = -1;
+#if !(defined(U_ZEPHYR_PORT_UART_ASYNC) && defined(CONFIG_UART_ASYNC_API))
                             k_timer_init(&(pUartData->rxTimer), rxTimer, NULL);
                             k_timer_user_data_set(&(pUartData->rxTimer), (void *)pUartData);
-
+#endif
                             uart_config_get(pUartData->pDevice, &(pUartData->config));
                             // Flow control is set in the .overlay file
                             // by including the line:
@@ -497,13 +652,18 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
                             // default values (8N1).
                             pUartData->config.baudrate = baudRate;
                             uart_configure(pUartData->pDevice, &(pUartData->config));
-#ifdef CONFIG_UART_INTERRUPT_DRIVEN
+#if defined(U_ZEPHYR_PORT_UART_ASYNC) && defined(CONFIG_UART_ASYNC_API)
+                            uart_callback_set(pUartData->pDevice, uartCb, (void *)pUartData);
+                            asyncStartRx(pUartData);
+#elif defined(CONFIG_UART_INTERRUPT_DRIVEN)
                             uart_irq_callback_user_data_set(pUartData->pDevice, uartCb, (void *)pUartData);
                             uart_irq_rx_enable(pUartData->pDevice);
 #else
                             k_timer_init(&(pUartData->pollTimer), pollTimer, NULL);
                             k_timer_user_data_set(&(pUartData->pollTimer), (void *)pUartData);
-                            k_timer_start(&(pUartData->pollTimer), K_MSEC(1), K_MSEC(1));
+                            k_timer_start(&(pUartData->pollTimer),
+                                          K_MSEC(U_ZEPHYR_UART_RX_ASYNC_TIMEOUT_US / 1000),
+                                          K_MSEC(U_ZEPHYR_UART_RX_ASYNC_TIMEOUT_US / 1000));
 #endif
                             U_ATOMIC_INCREMENT(&gResourceAllocCount);
                             handleOrErrorCode = uart;
@@ -547,6 +707,7 @@ int32_t uPortUartGetReceiveSize(int32_t handle)
 {
     uErrorCode_t sizeOrErrorCode = U_ERROR_COMMON_NOT_INITIALISED;
     uPortUartData_t *pUartData;
+    int32_t bufferWrite;
 
     if (gMutex != NULL) {
 
@@ -555,14 +716,15 @@ int32_t uPortUartGetReceiveSize(int32_t handle)
         sizeOrErrorCode = U_ERROR_COMMON_INVALID_PARAMETER;
         pUartData = pGetUartData(handle);
         if (pUartData != NULL) {
+            bufferWrite = pUartData->bufferWrite;
             if (pUartData->bufferFull) {
                 sizeOrErrorCode = pUartData->receiveBufferSizeBytes;
             } else {
-                sizeOrErrorCode = pUartData->bufferWrite - pUartData->bufferRead;
+                sizeOrErrorCode = bufferWrite - pUartData->bufferRead;
 
                 if (sizeOrErrorCode < 0) {
                     sizeOrErrorCode = (pUartData->receiveBufferSizeBytes - pUartData->bufferRead) +
-                                      pUartData->bufferWrite;
+                                      bufferWrite;
                 }
             }
         }
@@ -578,6 +740,7 @@ int32_t uPortUartRead(int32_t handle, void *pBuffer,
 {
     uErrorCode_t sizeOrErrorCode = U_ERROR_COMMON_NOT_INITIALISED;
     uPortUartData_t *pUartData;
+    int32_t bufferWrite;
 
     if (gMutex != NULL) {
 
@@ -586,7 +749,8 @@ int32_t uPortUartRead(int32_t handle, void *pBuffer,
         sizeOrErrorCode = U_ERROR_COMMON_INVALID_PARAMETER;
         pUartData = pGetUartData(handle);
         if ((pUartData != NULL) && (pBuffer != NULL) && (sizeBytes > 0)) {
-            if (pUartData->bufferWrite == pUartData->bufferRead &&
+            bufferWrite = pUartData->bufferWrite;
+            if (bufferWrite == pUartData->bufferRead &&
                 pUartData->bufferFull == false) {
                 sizeOrErrorCode = 0;
             } else {
@@ -594,13 +758,13 @@ int32_t uPortUartRead(int32_t handle, void *pBuffer,
                 if (pUartData->bufferFull) {
                     sizeOrErrorCode = pUartData->receiveBufferSizeBytes;
                 } else {
-                    sizeOrErrorCode = pUartData->bufferWrite - pUartData->bufferRead;
+                    sizeOrErrorCode = bufferWrite - pUartData->bufferRead;
 
                     if (sizeOrErrorCode == 0) {
                         sizeOrErrorCode = pUartData->receiveBufferSizeBytes;
                     } else if (sizeOrErrorCode < 0) {
                         sizeOrErrorCode = (pUartData->receiveBufferSizeBytes - pUartData->bufferRead) +
-                                          pUartData->bufferWrite;
+                                          bufferWrite;
                     }
                 }
 
@@ -622,6 +786,15 @@ int32_t uPortUartRead(int32_t handle, void *pBuffer,
                     pUartData->bufferRead += toRead;
                 }
 
+#if defined(U_ZEPHYR_PORT_UART_ASYNC) && defined(CONFIG_UART_ASYNC_API)
+                if (pUartData->bufferFull && (sizeOrErrorCode > 0)) {
+                    // For the async case, Rx will have stopped if the
+                    // buffer was full.  If we have made room in the
+                    // buffer set off reception again
+                    pUartData->bufferFull = false;
+                    asyncStartRx(pUartData);
+                }
+#endif
                 pUartData->bufferFull = false;
 #ifdef CONFIG_UART_INTERRUPT_DRIVEN
                 uart_irq_rx_enable(pUartData->pDevice);
@@ -658,7 +831,14 @@ int32_t uPortUartWrite(int32_t handle, const void *pBuffer,
             // it or the CTS pin when configuring this UART
             // was wrong and it's not connected to the right
             // thing.
-#ifdef CONFIG_UART_INTERRUPT_DRIVEN
+#if defined(U_ZEPHYR_PORT_UART_ASYNC) && defined(CONFIG_UART_ASYNC_API)
+            if (uart_tx(pUartData->pDevice, (uint8_t *)pBuffer, sizeBytes, SYS_FOREVER_US ) == 0) {
+                // Asynchronous write; wait here to make it synchronous
+                k_sem_take(&(pUartData->txSem), K_FOREVER);
+            } else {
+                errorCode = U_ERROR_COMMON_PLATFORM;
+            }
+#elif defined(CONFIG_UART_INTERRUPT_DRIVEN)
             struct uartData_t data;
             data.handle = handle;
             data.pData = (void *)pBuffer;
@@ -666,7 +846,7 @@ int32_t uPortUartWrite(int32_t handle, const void *pBuffer,
 
             k_fifo_put(&(pUartData->fifoTxData), &data);
             uart_irq_tx_enable(pUartData->pDevice);
-            // UART write is async to wait here to make this function synchronous
+            // UART write is async so wait here to make this function synchronous
             k_sem_take(&(pUartData->txSem), K_FOREVER);
 #else
             // When we have no interrupts we can block right here
