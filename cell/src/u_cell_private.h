@@ -233,10 +233,13 @@ extern "C" {
  * populate the 64-bit variable featuresBitmap in the
  * uCellPrivateModule_t of each module type, therefore there
  * is a limit of 64 values available; in other words, this is a
- * valuable resource.  Only add a new value to it for situations
- * where a few modules do (or don't) support a given feature; if
- * a _single_ module is the exception then just check the moduleType
- * field and take whatever action instead.
+ * scarce resource.  Only add a new value for situations where
+ * a few modules do (or don't) support a given feature; if
+ * a _single_ module, or a distinct family (e.g. SARA-R4), or
+ * something "internal" (e.g. a missed parameter inside an AT
+ * command), as opposed to a recognisable feature, is the exception
+ * then just check the moduleType field in your code and take
+ * whatever action instead.
  */
 //lint -esym(756, uCellPrivateFeature_t) Suppress not referenced,
 // Lint can't seem to find it inside macros.
