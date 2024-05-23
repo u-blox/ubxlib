@@ -595,7 +595,11 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssPrivateNmea")
                                                talkerSentenceBuffer, messageSize));
 
             // Then with a wrong message ID
-            strncpy(talkerSentenceBuffer, gNmeaTestMessage[x].pTalkerSentenceStr, sizeof(talkerSentenceBuffer));
+            // Note: using memcpy rather than strncpy here as GCC 8 emits a silly warning about
+            // sizeof(talkerSentenceBuffer) being the same size as the buffer otherwise.
+            z = strlen(gNmeaTestMessage[x].pTalkerSentenceStr) + 1;
+            U_PORT_TEST_ASSERT(z <= sizeof(talkerSentenceBuffer));
+            memcpy(talkerSentenceBuffer, gNmeaTestMessage[x].pTalkerSentenceStr, z);
             z = rand() % strlen(talkerSentenceBuffer);
             talkerSentenceBuffer[z] = '_';
             // Ensure terminator

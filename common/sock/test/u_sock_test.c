@@ -804,6 +804,7 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAddressStrings")
     uSockAddress_t address;
     char *pAddress;
     int32_t heapUsed;
+    size_t y;
 
     // Whatever called us likely initialised the
     // port so deinitialise it here to obtain the
@@ -842,8 +843,12 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAddressStrings")
 
             // Copy the address string into the buffer so that
             // uSockDomainGetPort can write to it
-            strncpy(buffer, gTestAddressList[x].pAddressString,
-                    sizeof(buffer));
+            // Note: using memcpy rather than strncpy here as GCC 8 emits a silly
+            // warning about sizeof(buffer) being the same size as the buffer
+            // otherwise.
+            y = strlen(gTestAddressList[x].pAddressString) + 1;
+            U_PORT_TEST_ASSERT(y <= sizeof(buffer));
+            memcpy(buffer, gTestAddressList[x].pAddressString, y);
             if (gTestAddressList[x].hasPort) {
                 U_PORT_TEST_ASSERT(uSockDomainGetPort(buffer) == address.port);
                 // Now convert back to a string again
@@ -887,8 +892,12 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAddressStrings")
     // Test removing port numbers from an address string
     for (size_t x = 0; x < sizeof(gTestAddressPortRemoval) /
          sizeof(gTestAddressPortRemoval[0]); x++) {
-        strncpy(buffer, gTestAddressPortRemoval[x].pAddressStringOriginal,
-                sizeof(buffer));
+        // Note: using memcpy rather than strncpy here as GCC 8 emits a silly
+        // warning about sizeof(buffer) being the same size as the buffer
+        // otherwise.
+        y = strlen(gTestAddressPortRemoval[x].pAddressStringOriginal) + 1;
+        U_PORT_TEST_ASSERT(y <= sizeof(buffer));
+        memcpy(buffer, gTestAddressPortRemoval[x].pAddressStringOriginal, y);
         U_TEST_PRINT_LINE("%d: original address string \"%s\""
                           " expected port number %d,"
                           " expected address string after port removal \"%s\".",
