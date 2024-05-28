@@ -562,8 +562,7 @@ int32_t uGnssTestPrivatePreamble(uGnssModuleType_t moduleType,
                                      U_CFG_APP_PIN_GNSS_ENABLE_POWER, false,
                                      &pParameters->gnssHandle);
                 if (errorCode == 0) {
-                    if ((pParameters->cellHandle != NULL) &&
-                        (transportType == U_GNSS_TRANSPORT_VIRTUAL_SERIAL)) {
+                    if (pParameters->cellHandle != NULL) {
                         errorCode = uGnssSetIntermediate(pParameters->gnssHandle,
                                                          pParameters->cellHandle);
                     }
