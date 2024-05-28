@@ -46,20 +46,20 @@
 /** A client certificate, generated for use with the uxblib echo
  * server.
  */
-const char *gpUEchoServerClientCertPem = "-----BEGIN CERTIFICATE-----"
-                                         "MIICSjCCAdACFD+js1Fht6STx4lF3zGisrnThT4iMAoGCCqGSM49BAMDMIGFMQsw"
-                                         "CQYDVQQGEwJVUzELMAkGA1UECAwCV0ExEDAOBgNVBAcMB1RoYWx3aWwxDzANBgNV"
-                                         "BAoMBnUtYmxveDELMAkGA1UECwwCY2ExFzAVBgNVBAMMDnd3dy51LWJsb3guY29t"
-                                         "MSAwHgYJKoZIhvcNAQkBFhF1YnhsaWJAdS1ibG94LmNvbTAgFw0yMzA3MDkwODI3"
-                                         "NDBaGA8yMTIzMDYxNTA4Mjc0MFowgYkxCzAJBgNVBAYTAlVTMQswCQYDVQQIDAJX"
-                                         "QTEQMA4GA1UEBwwHVGhhbHdpbDEPMA0GA1UECgwGdS1ibG94MQ8wDQYDVQQLDAZj"
-                                         "bGllbnQxFzAVBgNVBAMMDnd3dy51LWJsb3guY29tMSAwHgYJKoZIhvcNAQkBFhF1"
-                                         "YnhsaWJAdS1ibG94LmNvbTB2MBAGByqGSM49AgEGBSuBBAAiA2IABApmNYLlR8Cr"
-                                         "S9MAocQX+bUU4+1EkmT61bchs6pf9RVvvbgbLkw2gk/So8vPifo6imJcjWteiIBy"
-                                         "xYKKFSIyghz/o0hjmpDz1XoYPtGENrz/dyISP35ZFk9sRJZ4pSX1uDAKBggqhkjO"
-                                         "PQQDAwNoADBlAjEA3scFsQb9Aj+lzC34h+AS6RGHLHr81Txm713MHnXjrpe0jEk8"
-                                         "bTULtydY8Jyf9c+DAjBMEdAEODaOp5Vn02ZOkKtbm91R6rFS1IZTFJ2MQCALG50C"
-                                         "GHviROz1O6YfRcRFTks="
+const char *gpUEchoServerClientCertPem = "-----BEGIN CERTIFICATE-----\n"
+                                         "MIICSjCCAdACFD+js1Fht6STx4lF3zGisrnThT4iMAoGCCqGSM49BAMDMIGFMQsw\n"
+                                         "CQYDVQQGEwJVUzELMAkGA1UECAwCV0ExEDAOBgNVBAcMB1RoYWx3aWwxDzANBgNV\n"
+                                         "BAoMBnUtYmxveDELMAkGA1UECwwCY2ExFzAVBgNVBAMMDnd3dy51LWJsb3guY29t\n"
+                                         "MSAwHgYJKoZIhvcNAQkBFhF1YnhsaWJAdS1ibG94LmNvbTAgFw0yMzA3MDkwODI3\n"
+                                         "NDBaGA8yMTIzMDYxNTA4Mjc0MFowgYkxCzAJBgNVBAYTAlVTMQswCQYDVQQIDAJX\n"
+                                         "QTEQMA4GA1UEBwwHVGhhbHdpbDEPMA0GA1UECgwGdS1ibG94MQ8wDQYDVQQLDAZj\n"
+                                         "bGllbnQxFzAVBgNVBAMMDnd3dy51LWJsb3guY29tMSAwHgYJKoZIhvcNAQkBFhF1\n"
+                                         "YnhsaWJAdS1ibG94LmNvbTB2MBAGByqGSM49AgEGBSuBBAAiA2IABApmNYLlR8Cr\n"
+                                         "S9MAocQX+bUU4+1EkmT61bchs6pf9RVvvbgbLkw2gk/So8vPifo6imJcjWteiIBy\n"
+                                         "xYKKFSIyghz/o0hjmpDz1XoYPtGENrz/dyISP35ZFk9sRJZ4pSX1uDAKBggqhkjO\n"
+                                         "PQQDAwNoADBlAjEA3scFsQb9Aj+lzC34h+AS6RGHLHr81Txm713MHnXjrpe0jEk8\n"
+                                         "bTULtydY8Jyf9c+DAjBMEdAEODaOp5Vn02ZOkKtbm91R6rFS1IZTFJ2MQCALG50C\n"
+                                         "GHviROz1O6YfRcRFTks=\n"
                                          "-----END CERTIFICATE-----";
 
 /** The hash of gpUEchoServerClientCertPem once stored on the module.
@@ -70,11 +70,11 @@ const char gUEchoServerClientCertHash[] = {0x33, 0x5f, 0x89, 0x2f, 0x59, 0x84, 0
 
 /** The private key to go with uEchoServerClientCertPem.
  */
-const char *gpUEchoServerClientKeyPem = "-----BEGIN EC PRIVATE KEY-----"
-                                        "MIGkAgEBBDBxQnFRM8oo6gCjmfNNgTdfUQreohEDs1NFIOq84DO3120rKI4Ypf7h"
-                                        "xog10lSfhhOgBwYFK4EEACKhZANiAAQKZjWC5UfAq0vTAKHEF/m1FOPtRJJk+tW3"
-                                        "IbOqX/UVb724Gy5MNoJP0qPLz4n6OopiXI1rXoiAcsWCihUiMoIc/6NIY5qQ89V6"
-                                        "GD7RhDa8/3ciEj9+WRZPbESWeKUl9bg="
+const char *gpUEchoServerClientKeyPem = "-----BEGIN EC PRIVATE KEY-----\n"
+                                        "MIGkAgEBBDBxQnFRM8oo6gCjmfNNgTdfUQreohEDs1NFIOq84DO3120rKI4Ypf7h\n"
+                                        "xog10lSfhhOgBwYFK4EEACKhZANiAAQKZjWC5UfAq0vTAKHEF/m1FOPtRJJk+tW3\n"
+                                        "IbOqX/UVb724Gy5MNoJP0qPLz4n6OopiXI1rXoiAcsWCihUiMoIc/6NIY5qQ89V6\n"
+                                        "GD7RhDa8/3ciEj9+WRZPbESWeKUl9bg=\n"
                                         "-----END EC PRIVATE KEY-----";
 
 /** The hash of gpUEchoServerClientKeyPem once stored on the module.
@@ -85,22 +85,22 @@ const char gUEchoServerClientKeyHash[] = {0x8f, 0xe6, 0xdd, 0xdb, 0x64, 0xb8, 0x
 
 /** The CA certificate for the ubxlib echo server and the client.
  */
-const char *gpUEchoServerCaCertPem = "-----BEGIN CERTIFICATE-----"
-                                     "MIICoTCCAiagAwIBAgIUXW8iJeCsbA3ygmXIT3wqxqtZla4wCgYIKoZIzj0EAwIw"
-                                     "gYUxCzAJBgNVBAYTAlVTMQswCQYDVQQIDAJXQTEQMA4GA1UEBwwHVGhhbHdpbDEP"
-                                     "MA0GA1UECgwGdS1ibG94MQswCQYDVQQLDAJjYTEXMBUGA1UEAwwOd3d3LnUtYmxv"
-                                     "eC5jb20xIDAeBgkqhkiG9w0BCQEWEXVieGxpYkB1LWJsb3guY29tMCAXDTIzMDcw"
-                                     "OTA4MjY1NloYDzIxMjMwNjE1MDgyNjU2WjCBhTELMAkGA1UEBhMCVVMxCzAJBgNV"
-                                     "BAgMAldBMRAwDgYDVQQHDAdUaGFsd2lsMQ8wDQYDVQQKDAZ1LWJsb3gxCzAJBgNV"
-                                     "BAsMAmNhMRcwFQYDVQQDDA53d3cudS1ibG94LmNvbTEgMB4GCSqGSIb3DQEJARYR"
-                                     "dWJ4bGliQHUtYmxveC5jb20wdjAQBgcqhkjOPQIBBgUrgQQAIgNiAAS5br7n7+wi"
-                                     "Mwp5h3BojVn+cH4oZN7ngyfadR961TJZsu/g2arYE8SJTVI+qzQC4KiBb+rTXQIY"
-                                     "k9sxEo+mTyJ4BWaVxoWOXjvALNRtyrbls6q36ttXoYsU5UAgNWJiH/ejUzBRMB0G"
-                                     "A1UdDgQWBBRKetSAT3SQ45r2l64eXK1vf8sTzDAfBgNVHSMEGDAWgBRKetSAT3SQ"
-                                     "45r2l64eXK1vf8sTzDAPBgNVHRMBAf8EBTADAQH/MAoGCCqGSM49BAMCA2kAMGYC"
-                                     "MQD7WrRzaAxBikIHPuoDZo7tAdA5Zsbg9axBPS+wm3mdKLGwWjdep2IWLmn/uuFE"
-                                     "VlwCMQDXxDnOuuc6p1nzmtrn9JHVE0/+HdeDj6KdnDWWtZJQsagHDAEmld8oEDlg"
-                                     "iDO9Bnw="
+const char *gpUEchoServerCaCertPem = "-----BEGIN CERTIFICATE-----\n"
+                                     "MIICoTCCAiagAwIBAgIUXW8iJeCsbA3ygmXIT3wqxqtZla4wCgYIKoZIzj0EAwIw\n"
+                                     "gYUxCzAJBgNVBAYTAlVTMQswCQYDVQQIDAJXQTEQMA4GA1UEBwwHVGhhbHdpbDEP\n"
+                                     "MA0GA1UECgwGdS1ibG94MQswCQYDVQQLDAJjYTEXMBUGA1UEAwwOd3d3LnUtYmxv\n"
+                                     "eC5jb20xIDAeBgkqhkiG9w0BCQEWEXVieGxpYkB1LWJsb3guY29tMCAXDTIzMDcw\n"
+                                     "OTA4MjY1NloYDzIxMjMwNjE1MDgyNjU2WjCBhTELMAkGA1UEBhMCVVMxCzAJBgNV\n"
+                                     "BAgMAldBMRAwDgYDVQQHDAdUaGFsd2lsMQ8wDQYDVQQKDAZ1LWJsb3gxCzAJBgNV\n"
+                                     "BAsMAmNhMRcwFQYDVQQDDA53d3cudS1ibG94LmNvbTEgMB4GCSqGSIb3DQEJARYR\n"
+                                     "dWJ4bGliQHUtYmxveC5jb20wdjAQBgcqhkjOPQIBBgUrgQQAIgNiAAS5br7n7+wi\n"
+                                     "Mwp5h3BojVn+cH4oZN7ngyfadR961TJZsu/g2arYE8SJTVI+qzQC4KiBb+rTXQIY\n"
+                                     "k9sxEo+mTyJ4BWaVxoWOXjvALNRtyrbls6q36ttXoYsU5UAgNWJiH/ejUzBRMB0G\n"
+                                     "A1UdDgQWBBRKetSAT3SQ45r2l64eXK1vf8sTzDAfBgNVHSMEGDAWgBRKetSAT3SQ\n"
+                                     "45r2l64eXK1vf8sTzDAPBgNVHRMBAf8EBTADAQH/MAoGCCqGSM49BAMCA2kAMGYC\n"
+                                     "MQD7WrRzaAxBikIHPuoDZo7tAdA5Zsbg9axBPS+wm3mdKLGwWjdep2IWLmn/uuFE\n"
+                                     "VlwCMQDXxDnOuuc6p1nzmtrn9JHVE0/+HdeDj6KdnDWWtZJQsagHDAEmld8oEDlg\n"
+                                     "iDO9Bnw=\n"
                                      "-----END CERTIFICATE-----";
 
 /** The hash of gpUEchoServerCaCertPem once stored on the module.
