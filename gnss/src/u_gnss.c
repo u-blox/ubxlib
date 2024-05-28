@@ -527,7 +527,8 @@ int32_t uGnssSetIntermediate(uDeviceHandle_t gnssHandle,
         pInstance = pUGnssPrivateGetInstance(gnssHandle);
         if (pInstance != NULL) {
             errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
-            if (pInstance->transportType == U_GNSS_TRANSPORT_VIRTUAL_SERIAL) {
+            if ((pInstance->transportType == U_GNSS_TRANSPORT_VIRTUAL_SERIAL) ||
+                (pInstance->transportType == U_GNSS_TRANSPORT_AT)) {
                 pInstance->intermediateHandle = intermediateHandle;
                 errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
             }

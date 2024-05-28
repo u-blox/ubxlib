@@ -434,7 +434,7 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
         -1, /* Default CMUX channel for GNSS */
         16, /* AT+CFUN reboot command */
         U_CELL_PRIVATE_PPP_CONTEXT_ID_LENA_R8, /* PPP PDP context ID */
-        U_CELL_LOC_GNSS_SYSTEM_TYPES /* GNSS system types for an attached GNSS chip */
+        0x127 /* GNSS system types for an attached GNSS chip (GPS, SBAS, Galileo and QZSS) */
     },
     {
         U_CELL_MODULE_TYPE_SARA_R52, 150 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,

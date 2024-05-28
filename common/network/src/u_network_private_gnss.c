@@ -327,7 +327,8 @@ int32_t uNetworkPrivateChangeStateGnss(uDeviceHandle_t devHandle,
                         // only if the C library doesn't leak.
                         uGnssSetUbxMessagePrint(devHandle, true);
                         if ((deviceType == U_DEVICE_TYPE_CELL) &&
-                            (gnssTransportType == U_GNSS_TRANSPORT_VIRTUAL_SERIAL)) {
+                            ((gnssTransportType == U_GNSS_TRANSPORT_VIRTUAL_SERIAL) ||
+                             (gnssTransportType == U_GNSS_TRANSPORT_AT))) {
                             // Set the intermediate device in GNSS so that it knows
                             // what kind of power on/off to do etc.
                             //NOLINTNEXTLINE(readability-suspicious-call-argument)
