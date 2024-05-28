@@ -534,10 +534,11 @@ int32_t uGnssPwrOn(uDeviceHandle_t gnssHandle)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uGnssPrivateInstance_t *pInstance;
-    uAtClientHandle_t atHandle;
+    uAtClientHandle_t atHandle = NULL;
     uGnssModuleType_t readModuleType = U_GNSS_MODULE_TYPE_ANY;
     // Message buffer for the 120-byte UBX-MON-MSGPP message
     char message[120] = {0};
+    size_t x = 0;
 
     if (gUGnssPrivateMutex != NULL) {
 
@@ -636,13 +637,28 @@ int32_t uGnssPwrOn(uDeviceHandle_t gnssHandle)
             // Determining module type for the non-USB case
             if ((errorCode == 0) && (pInstance->pModule->moduleType == U_GNSS_MODULE_TYPE_ANY)) {
                 errorCode = (int32_t) U_ERROR_COMMON_UNKNOWN_MODULE_TYPE;
-                // Read and compare the name with available module types.
-                readModuleType = identifyGnssModuleType(gnssHandle);
-                if ((readModuleType >= 0) && (readModuleType < (U_GNSS_MODULE_TYPE_MAX_NUM - 1))) {
-                    pInstance->pModule = &(gUGnssPrivateModuleList[readModuleType]);
-                    uPortLog("U_GNSS_PWR: identified module type: %d\n", pInstance->pModule->moduleType);
-                    errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-                } else {
+                // If the GNSS device is inside a cellular module,
+                // there are some cases where the cellular module does
+                // not ensure that the GNSS device is actually powered
+                // up before it returns OK to AT+UPGS (e.g. LENA-R8
+                // does not), hence we retry in that case
+                do {
+                    if (x > 0) {
+                        // Only a short delay required as the GNSS device
+                        // powers up pretty quickly
+                        uPortTaskBlock(1000);
+                    }
+                    // Read and compare the name with available module types.
+                    readModuleType = identifyGnssModuleType(gnssHandle);
+                    if ((readModuleType >= 0) && (readModuleType < (U_GNSS_MODULE_TYPE_MAX_NUM - 1))) {
+                        pInstance->pModule = &(gUGnssPrivateModuleList[readModuleType]);
+                        uPortLog("U_GNSS_PWR: identified module type: %d\n", pInstance->pModule->moduleType);
+                        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                    }
+                    x++;
+                } while ((atHandle != NULL) && (errorCode < 0) &&
+                         (x < U_GNSS_AT_POWER_ON_RETRIES + 1));
+                if (errorCode < 0) {
                     uPortLog("U_GNSS_PWR: could not identify the module type.\n");
                 }
             }
