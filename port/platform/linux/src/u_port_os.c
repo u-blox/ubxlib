@@ -641,12 +641,11 @@ int32_t uPortQueueGetFree(const uPortQueueHandle_t queueHandle)
 {
     uPortQueue_t *pQueue = (uPortQueue_t *)queueHandle;
     if (pQueue != NULL) {
-        size_t maxFree = pQueue->queueLength * pQueue->itemSizeBytes;
-        size_t freeBytes = fcntl(pQueue->fd[1], F_GETPIPE_SZ) - pQueue->readCount;
-        if (freeBytes > maxFree) {
-            freeBytes = maxFree;
-        }
-        return (freeBytes / pQueue->itemSizeBytes);
+        int32_t freeSpaces;
+        MTX_FN(uPortMutexLock(pQueue->mutex));
+        freeSpaces = pQueue->queueLength - (pQueue->readCount / pQueue->itemSizeBytes);
+        MTX_FN(uPortMutexUnlock(pQueue->mutex));
+        return freeSpaces;
     } else {
         return (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
     }
