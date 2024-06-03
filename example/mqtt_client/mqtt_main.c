@@ -332,9 +332,13 @@ U_PORT_TEST_FUNCTION("[example]", "exampleMqttClient")
                     // uMqttClientSnPublish() a few lines below
                     // Note: >= in this case since the function
                     // returns the QOS of the subscription, which
-                    // can be 0, 1 or 2
+                    // can be 0, 1 or 2.
+                    // Note: we used to use U_MQTT_QOS_EXACTLY_ONCE
+                    // (2) here but AWS's MQTT broker does not support
+                    // a QoS of 2, hence we switched to
+                    // U_MQTT_QOS_AT_LEAST_ONCE (1).
                     if (uMqttClientSubscribe(pContext, topic,
-                                             U_MQTT_QOS_EXACTLY_ONCE) >= 0) {
+                                             U_MQTT_QOS_AT_LEAST_ONCE) >= 0) {
 
                         // Publish our message to our topic on the
                         // MQTT broker
@@ -347,7 +351,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleMqttClient")
                         // uMqttClientSnSubscribeNormalTopic()
                         if (uMqttClientPublish(pContext, topic, message,
                                                sizeof(message) - 1,
-                                               U_MQTT_QOS_EXACTLY_ONCE,
+                                               U_MQTT_QOS_AT_LEAST_ONCE,
                                                false) == 0) {
 
                             // Wait for us to be notified that our new
@@ -358,17 +362,19 @@ U_PORT_TEST_FUNCTION("[example]", "exampleMqttClient")
                             }
 
                             // Read the new message from the broker
-                            while (uMqttClientGetUnread(pContext) > 0) {
+                            while ((uMqttClientGetUnread(pContext) > 0) &&
+                                   (returnCode == 0)) {
                                 bufferSize = sizeof(buffer);
                                 // If you were using MQTT-SN, you would call
                                 // uMqttClientSnMessageRead() instead and, rather
                                 // than passing it the buffer "topic", you
                                 // would pass it a pointer to a variable of
                                 // type uMqttSnTopicName_t
-                                if (uMqttClientMessageRead(pContext, topic,
-                                                           sizeof(topic),
-                                                           buffer, &bufferSize,
-                                                           NULL) == 0) {
+                                returnCode = uMqttClientMessageRead(pContext, topic,
+                                                                    sizeof(topic),
+                                                                    buffer, &bufferSize,
+                                                                    NULL);
+                                if (returnCode == 0) {
                                     uPortLog("New message in topic \"%s\" is %d"
                                              " character(s): \"%.*s\".\n", topic,
                                              bufferSize, bufferSize, buffer);
