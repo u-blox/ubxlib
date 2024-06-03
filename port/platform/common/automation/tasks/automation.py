@@ -9,7 +9,7 @@ from scripts import u_run_check_ubxlib_h, u_run_check_malloc, u_run_build_pio_ex
 
 from scripts.packages import u_package
 from scripts.u_logging import ULog
-from . import nrf5, esp_idf, nrfconnect, stm32cubef4, arduino, platformio, linux, zephyr_native
+from . import nrf5, esp_idf, nrfconnect, stm32cubef4, platformio, linux, zephyr_native
 from enum import Enum
 import sys
 import json
@@ -220,25 +220,6 @@ def instance_command(ctx, instance_str, cmd):
         elif cmd == Command.STATIC_ANALYZE:
             stm32cubef4.analyze(ctx, output_name="", build_dir=ctx.build_dir, u_flags=defines,
                                 features=ubxlib_features)
-        else:
-            raise Exit(f"Unsupported command for platform: '{platform}'")
-
-    elif platform == "arduino":
-        arduino.check_installation(ctx)
-        if cmd == Command.BUILD:
-            arduino.build(ctx, libraries_dir=f"{ctx.build_dir}/libraries", board=board,
-                          output_name="", build_dir=ctx.build_dir, u_flags=defines,
-                          features=ubxlib_features)
-        elif cmd == Command.FLASH:
-            arduino.flash(ctx, serial_port=connection["serial_port"], board=board,
-                          output_name="app", build_dir=ctx.build_dir)
-        elif cmd == Command.LOG:
-            port = instance[0] + 40404
-            arduino.log(ctx, serial_port=connection["serial_port"],
-                        dtr_state=monitor_dtr_rts_on,
-                        rts_state=monitor_dtr_rts_on)
-        elif cmd == Command.TEST:
-            check_return_code(u_run_log.run(instance, ctx.build_dir, ctx.reporter, ctx.test_report))
         else:
             raise Exit(f"Unsupported command for platform: '{platform}'")
 

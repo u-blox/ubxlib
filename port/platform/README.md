@@ -14,9 +14,8 @@ The MCUs supported by the platforms are as follows:
 
 In addition to the above, support is included for building certain frameworks as a `ubxlib` library under [PlatformIO](platformio). 
 
-The following platforms are DEPRECATED and will be REMOVED at release 1.5, likely mid 2024:
+The following platform is DEPRECATED and will be REMOVED at release 1.5, likely mid 2024:
 
-- [Arduino-ESP32](arduino): please build for Arduino through [PlatformIO](platformio) instead.
 - Nordic [nRF5 SDK](nrf5sdk) on NRF52: please use [zephyr](zephyr) instead.
 
 # Structure

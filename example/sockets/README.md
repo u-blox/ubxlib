@@ -10,15 +10,12 @@ TLS security can be applied in at least three different ways, all of which can b
 
 There are many other configurable items to play with, depending on how tight your TLS security requirements are: [u_security_tls.h](/common/security/api/u_security_tls.h) is the place to find all the options.  Remember that, as with any security system, when it doesn't work you will get very little feedback as to why; be patient and explore all the variables when debugging.
 
-# Usage (C Examples)
+# Usage
 To build and run these examples on a supported platform you need to travel down into the [port/platform](/port/platform)`/<platform>/mcu/<mcu>` directory of your choice and find the `runner` build.  The instructions there will tell you how to set/override \#defines.  The following \#defines are relevant:
 
 `U_CFG_APP_FILTER`: set this to `exampleSockets` (noting that NO quotation marks should be included) to run *just* these example, as opposed to all the examples and unit tests.
 
 For the remainder of the \#defines (see "Using A xxx Module" below) you may either override their values in the same way or, if you are only running these examples, you may edit the values directly in [main.c](main.c), [main_tls.c](main_tls.c), [main_dtls.c](main_dtls.c), [main_ppp_espidf.c](main_ppp_espidf.c), [main_ppp_linux.c](main_ppp_linux.c) or [main_ppp_zephyr.c](main_ppp_zephyr.c) before compiling.
-
-# Usage (Arduino Example)
-Follow the instructions in the [port/platform/arduino](/port/platform/arduino) directory to create the Arduino library version of `ubxlib`, which will include the example here.
 
 # Using A Cellular Module
 `U_CFG_TEST_CELL_MODULE_TYPE`: consult [u_cell_module_type.h](/cell/api/u_cell_module_type.h) to determine the type name for the cellular module you intend to use.  For instance, to use SARA-R5 you would set `U_CFG_TEST_CELL_MODULE_TYPE` to `U_CELL_MODULE_TYPE_SARA_R5`.

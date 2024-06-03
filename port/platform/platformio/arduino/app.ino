@@ -17,10 +17,6 @@
 /** @file
  * @brief An Arduino sketch used ONLY to run the ubxlib examples/tests,
  * this NOT an example of how to write Arduino code.
- *
- * IMPORTANT: this platform is now DEPRECATED, it is no longer supported
- * and will be REMOVED in release 1.5, mid 2024: please build for
- * Arduino[ESP32] through [platformio](/port/platform/platformio) instead.
  */
 
 #ifdef U_CFG_OVERRIDE

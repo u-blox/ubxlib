@@ -172,7 +172,7 @@ def get_main_path(framework):
     elif framework == "zephyr":
         main_path = os.path.join(u_utils.PLATFORM_DIR, "zephyr", "app", "u_main.c")
     elif framework == "arduino":
-        main_path = os.path.join(u_utils.PLATFORM_DIR, "arduino", "app", "app.ino")
+        main_path = os.path.join(u_utils.PLATFORM_DIR, "platformio", "arduino", "app.ino")
 
     return main_path
 
