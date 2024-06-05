@@ -317,6 +317,78 @@ typedef struct {
  * FUNCTIONS
  * -------------------------------------------------------------- */
 
+/** Register with the cellular network in async mode and activate
+ * a PDP context when we are registered to the network.
+ * This is the asynchronous version of uCellNetConnect().
+ * If a connection is already active this function will simply
+ * return unless the requested APN is different from the APN of
+ * the current connection, in which case that PDP context will be
+ * deactivated (and potentially deregistration may occur) then
+ * [registration will occur and] the new context will be activated.
+ *
+ * Note: if you are required to set a user name and password then
+ * you MAY also need to set the authentication mode that will be
+ * used; see uCellNetSetAuthenticationMode() for this.
+ *
+ * Note: In async Mode, We cannot set MCC and MNC of the PLMN for
+ * manual PLMN selection. Hence the reason this function is missing
+ * that parameter. If you really need it then try the uCellNetConnect()
+ * function. But you will loose the ability of async registration.
+ *
+ * Note: Registration status callback could be delayed even if we
+ * are registered to the network.
+ *
+ * Note: This API is not supported for SARA-U201.
+ *
+ * @param cellHandle             the handle of the cellular instance.
+ * @param[in] pApn               pointer to a string giving the APN to
+ *                               use; set to NULL if no APN is specified
+ *                               by the service provider, in which
+ *                               case the APN database in u_cell_apn_db.h
+ *                               will be used to determine a default APN.
+ *                               To force an empty APN to be used, specify
+ *                               "" for pApn.  Note: if the APN is chosen
+ *                               from the APN database and that APN requires
+ *                               a username and password then, if the
+ *                               module does not aupport automatic choice
+ *                               of authentication mode (e.g. SARA-R4,
+ *                               LARA-R6 and LENA-R8 do not), the
+ *                               authentication mode set with the last
+ *                               call to uCellNetSetAuthenticationMode()
+ *                               will be used or, if that function has
+ *                               never been called,
+ *                               #U_CELL_NET_APN_DB_AUTHENTICATION_MODE
+ *                               will be used.
+ * @param[in] pUsername          pointer to a string giving the user name
+ *                               for PPP authentication; may be set to
+ *                               NULL if no user name or password is
+ *                               required.
+ * @param[in] pPassword          pointer to a string giving the password
+ *                               for PPP authentication; must be
+ *                               non-NULL if pUsername is non-NULL, ignored
+ *                               if pUsername is NULL.
+ * @return                       zero on success or negative error code on
+ *                               failure.
+ */
+int32_t uCellNetConnectStart(uDeviceHandle_t cellHandle,
+                             const char *pApn,
+                             const char *pUsername,
+                             const char *pPassword);
+
+/** Disconnect from the network. If there is an active PDP Context it
+ * will be deactivated. The state of the module will be that the
+ * radio is in airplane mode (AT+CFUN=4).
+ *
+ * This function is the counterpart of the uCellNetConnectStart()
+ *
+ * Note: This API is not supported for SARA-U201.
+ *
+ * @param cellHandle             the handle of the cellular instance.
+ * @return                       zero on success or negative error code on
+ *                               failure.
+ */
+int32_t uCellNetConnectStop(uDeviceHandle_t cellHandle);
+
 /** Register with the cellular network and activate a PDP context.
  * This function provides the registration and activation of the
  * PDP context in one call. To split these operations up use the

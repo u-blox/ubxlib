@@ -473,7 +473,7 @@ typedef struct uCellPrivateInstance_t {
     uAtClientHandle_t atHandle; /**< The AT client handle to use. */
     int32_t pinEnablePower; /**< The pin that switches on the
                                  power supply to the cellular module. */
-    int32_t pinPwrOn;       /**< The pin that is conneted to the
+    int32_t pinPwrOn;       /**< The pin that is connected to the
                                  PWR_ON pin of the cellular module. */
     int32_t pinVInt;        /**< The pin that is connected to the
                                  VINT pin of the cellular module. */
@@ -488,12 +488,13 @@ typedef struct uCellPrivateInstance_t {
                                                        been requested (set
                                                        to zeroes for automatic
                                                        mode). */
+    bool asyncConnectEnabled;        /**< To identify if async connect mode is enabled. */
     uTimeoutStart_t lastCfunFlipTime; /**< The last time a flip of state from
                                      "off" (AT+CFUN=0/4) to "on" (AT+CFUN=1)
                                      or back was performed. */
     uTimeoutStart_t lastDtrPinToggleTime; /**< The last time DTR was toggled for power-saving. */
     uCellNetStatus_t
-    networkStatus[U_CELL_PRIVATE_NET_REG_TYPE_MAX_NUM]; /**< Registation status for each type, separating CREG, CGREG and CEREG. */
+    networkStatus[U_CELL_PRIVATE_NET_REG_TYPE_MAX_NUM]; /**< Registration status for each type, separating CREG, CGREG and CEREG. */
     uCellNetRat_t
     rat[U_CELL_PRIVATE_NET_REG_TYPE_MAX_NUM];  /**< The active RAT for each registration type. */
     int32_t lastEmmRejectCause; /**< Used by uCellNetGetLastEmmRejectCause() only. */

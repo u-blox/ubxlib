@@ -27,7 +27,7 @@
  */
 
 /** @file
- * @brief This header file defines the APIs that initialse and
+ * @brief This header file defines the APIs that initialise and
  * control power to a cellular module and enable it to save power
  * through sleep.  These functions are thread-safe.
  *

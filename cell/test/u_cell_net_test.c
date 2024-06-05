@@ -231,7 +231,7 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetConnectDisconnectPlus")
     //lint -esym(613, pModule) Suppress possible use of NULL pointer
     // for pModule from now on
 
-    // Set a registration status calback
+    // Set a registration status callback
     U_PORT_TEST_ASSERT(uCellNetSetRegistrationStatusCallback(cellHandle,
                                                              registerCallback,
                                                              (void *) parameter1) == 0);
@@ -508,6 +508,93 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetConnectDisconnectPlus")
     // connection may not yet be closed.
     U_TEST_PRINT_LINE("gCallbackErrorCode is %d.", gCallbackErrorCode);
     U_PORT_TEST_ASSERT(gCallbackErrorCode == 0);
+
+    gTimeoutStop.timeoutStart = uTimeoutStart();
+    gTimeoutStop.durationMs = 300000;
+    U_TEST_PRINT_LINE("connecting again async ...");
+    x = uCellNetConnectStart(cellHandle,
+#ifdef U_CELL_TEST_CFG_APN
+                             U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_APN),
+#else
+                             NULL,
+#endif
+#ifdef U_CELL_TEST_CFG_USERNAME
+                             U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_USERNAME),
+#else
+                             NULL,
+#endif
+#ifdef U_CELL_TEST_CFG_PASSWORD
+                             U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_PASSWORD)
+#else
+                             NULL
+#endif
+                            );
+    if (x == U_ERROR_COMMON_NOT_SUPPORTED) {
+        U_TEST_PRINT_LINE("uCellNetConnectStart() is not supported for this module.");
+
+    } else {
+        U_PORT_TEST_ASSERT(x == 0);
+
+        // Explicit wait, since in async mode we don't use keepGoingCallback
+        while (!uTimeoutExpiredMs(gTimeoutStop.timeoutStart,
+                                  gTimeoutStop.durationMs)) {
+            if (uCellNetIsRegistered(cellHandle)) {
+                break;
+            }
+            uPortTaskBlock(1000);
+        }
+
+        // Check that we're registered
+        U_PORT_TEST_ASSERT(uCellNetIsRegistered(cellHandle));
+
+        // This delay is added to give it enough time to get the callbacks propagate
+        uPortTaskBlock(1000);
+
+        // Check that the status is registered
+        status = uCellNetGetNetworkStatus(cellHandle, U_CELL_NET_REG_DOMAIN_PS);
+        U_TEST_PRINT_LINE("uCellNetGetNetworkStatus() returned %d.", status);
+        U_PORT_TEST_ASSERT((status == U_CELL_NET_STATUS_REGISTERED_HOME) ||
+                           (status == U_CELL_NET_STATUS_REGISTERED_ROAMING) ||
+                           (status == U_CELL_NET_STATUS_REGISTERED_NO_CSFB_HOME) ||
+                           (status == U_CELL_NET_STATUS_REGISTERED_NO_CSFB_ROAMING));
+
+        // This delay is added to give it enough time to get the callbacks propagate
+        uTimeoutStop_t contextActivationTimeout;
+        contextActivationTimeout.timeoutStart = uTimeoutStart();
+        contextActivationTimeout.durationMs = 10000;
+        while (!uTimeoutExpiredMs(contextActivationTimeout.timeoutStart,
+                                  contextActivationTimeout.durationMs)) {
+            if (status == gLastNetStatus) {
+                break;
+            }
+            uPortTaskBlock(500);
+        }
+        U_TEST_PRINT_LINE("gLastNetStatus is %d.", gLastNetStatus);
+        U_PORT_TEST_ASSERT(gLastNetStatus == status);
+
+        // Get the IP address to check that we're still there
+        memset(buffer, '|', sizeof(buffer));
+        x = uCellNetGetIpAddressStr(cellHandle, buffer);
+        U_PORT_TEST_ASSERT(x > 0);
+        U_PORT_TEST_ASSERT(strlen(buffer) == x);
+
+        // Disconnect
+        U_PORT_TEST_ASSERT(uCellNetConnectStop(cellHandle) == 0);
+
+        // Make sure the registration status callback doesn't say we are
+        // registered
+        U_PORT_TEST_ASSERT((gLastNetStatus != U_CELL_NET_STATUS_REGISTERED_HOME) &&
+                           (gLastNetStatus != U_CELL_NET_STATUS_REGISTERED_ROAMING) &&
+                           (gLastNetStatus != U_CELL_NET_STATUS_REGISTERED_SMS_ONLY_HOME) &&
+                           (gLastNetStatus != U_CELL_NET_STATUS_REGISTERED_SMS_ONLY_ROAMING) &&
+                           (gLastNetStatus != U_CELL_NET_STATUS_REGISTERED_NO_CSFB_HOME) &&
+                           (gLastNetStatus != U_CELL_NET_STATUS_REGISTERED_NO_CSFB_ROAMING));
+
+        // Note: can't check that gHasBeenConnected is false here as the RRC
+        // connection may not yet be closed.
+        U_TEST_PRINT_LINE("gCallbackErrorCode is %d.", gCallbackErrorCode);
+        U_PORT_TEST_ASSERT(gCallbackErrorCode == 0);
+    }
 
     // Do the standard postamble, leaving the module on for the next
     // test to speed things up

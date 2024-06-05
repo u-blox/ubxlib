@@ -276,6 +276,7 @@ U_PORT_TEST_FUNCTION("[zephyrPortBoardCfg]", "zephyrPortBoardCfgBasic")
     U_PORT_TEST_ASSERT(networkCfgCell.pUartPpp->pinCts == -1);
     U_PORT_TEST_ASSERT(networkCfgCell.pUartPpp->pinRts == -1);
     U_PORT_TEST_ASSERT(networkCfgCell.pUartPpp->pPrefix == NULL);
+    U_PORT_TEST_ASSERT(networkCfgCell.asyncConnect);
     U_PORT_TEST_ASSERT(networkCfgGnss.version == 0);
     U_PORT_TEST_ASSERT(networkCfgGnss.type == U_NETWORK_TYPE_GNSS);
     U_PORT_TEST_ASSERT(networkCfgGnss.moduleType == U_GNSS_MODULE_TYPE_ANY);
@@ -327,6 +328,7 @@ U_PORT_TEST_FUNCTION("[zephyrPortBoardCfg]", "zephyrPortBoardCfgBasic")
     U_PORT_TEST_ASSERT(networkCfgCell.pUartPpp->pinCts == -1);
     U_PORT_TEST_ASSERT(networkCfgCell.pUartPpp->pinRts == -1);
     U_PORT_TEST_ASSERT(networkCfgCell.pUartPpp->pPrefix == NULL);
+    U_PORT_TEST_ASSERT(networkCfgCell.asyncConnect);
     U_PORT_TEST_ASSERT(networkCfgGnss.version == 0);
     U_PORT_TEST_ASSERT(networkCfgGnss.type == U_NETWORK_TYPE_GNSS);
     U_PORT_TEST_ASSERT(networkCfgGnss.moduleType == U_GNSS_MODULE_TYPE_M10);
@@ -370,6 +372,7 @@ U_PORT_TEST_FUNCTION("[zephyrPortBoardCfg]", "zephyrPortBoardCfgBasic")
     U_PORT_TEST_ASSERT(networkCfgCell.authenticationMode == U_CELL_NET_AUTHENTICATION_MODE_NOT_SET);
     U_PORT_TEST_ASSERT(networkCfgCell.pMccMnc == NULL);
     U_PORT_TEST_ASSERT(networkCfgCell.pUartPpp == NULL);
+    U_PORT_TEST_ASSERT(!networkCfgCell.asyncConnect);
     U_PORT_TEST_ASSERT(networkCfgGnss.version == 0);
     U_PORT_TEST_ASSERT(networkCfgGnss.type == U_NETWORK_TYPE_GNSS);
     U_PORT_TEST_ASSERT(networkCfgGnss.moduleType == U_GNSS_MODULE_TYPE_ANY);

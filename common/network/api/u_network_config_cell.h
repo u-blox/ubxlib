@@ -103,7 +103,8 @@ typedef struct {
                              MCC/MNC rather than to the best available network;
                              should point to the null-terminated string giving
                              the MCC and MNC of the PLMN to use (for example
-                             "23410"). */
+                             "23410").
+                             NOTE: Cannot be used if asyncConnect is set to true.*/
     const uDeviceCfgUart_t *pUartPpp; /** ONLY REQUIRED if U_CFG_PPP_ENABLE is defined AND
                                           you wish to run the PPP interface to the cellular
                                           module over a DIFFERENT serial port to that which
@@ -112,6 +113,9 @@ typedef struct {
                                           which does not support the CMUX protocol that
                                           is used to multiplex PPP with AT.  Otherwise,
                                           please let your compiler initialise this to zero. */
+    bool asyncConnect; /** ONLY SET THIS to true if you wish uNetworkInterfaceUp() to return IMMEDIATELY,
+    before the cellular network connection has been established, allowing the
+    application to continue with other operations rather than waiting. */
     /* IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT
      * See note above.
      */

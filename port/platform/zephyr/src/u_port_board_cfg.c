@@ -447,6 +447,21 @@ static const int32_t gpDeviceCfgCellUartPppListUartBaudRate[][2] = {
                                  uart_baud_rate)
 };
 
+/* Back to the non-phandle ubxlib-network-xxx compatible properties
+ * that the "network" property of a ubxlib-device-xxx might refer to.
+ */
+
+/** The "async-connect" properties pointed-to by the first two
+ * "network" phandles of each of the ubxlib-device-cellular
+ * compatible devices, or NULL where not present, in the order
+ * they appear in the device tree.
+ */
+static const bool gDeviceCfgCellNetworkListAsyncConnect[][2] = {
+    DT_FOREACH_STATUS_OKAY_VARGS(u_blox_ubxlib_device_cellular,
+                                 U_PORT_BOARD_CFG_GET_NETWORK_LIST_BOOLEAN,
+                                 async_connect)
+};
+
 # if DT_HAS_COMPAT_STATUS_OKAY(u_blox_ubxlib_network_gnss)
 
 /** The "module-type" properties pointed-to by the first two
@@ -1528,6 +1543,7 @@ static void cfgNetworkCellular(int32_t deviceIndex, int32_t networkIndex,
             pNetworkCfg->pUartPpp = pUartPpp;
         }
     }
+    pNetworkCfg->asyncConnect = gDeviceCfgCellNetworkListAsyncConnect[deviceIndex][networkIndex];
     uPortLog("U_PORT_BOARD_CFG: using CELLULAR network configuration"
              " associated with device \"%s\" from the device tree,"
              " timeout-seconds ", gpCfgCellDeviceName[deviceIndex]);
@@ -1544,11 +1560,12 @@ static void cfgNetworkCellular(int32_t deviceIndex, int32_t networkIndex,
         uPortLog(" APN NULL,");
     }
     uPortLog(" username \"%s\", password \"%s\","
-             " authentication-mode %d, MCC/MNC %s",
+             " authentication-mode %d, MCC/MNC %s, async-connect %s",
              pNetworkCfg->pUsername ? pNetworkCfg->pUsername : "",
              pNetworkCfg->pPassword ? U_PORT_BOARD_CFG_SECRET_STRING : "",
              pNetworkCfg->authenticationMode,
-             pNetworkCfg->pMccMnc ? pNetworkCfg->pMccMnc : "NULL");
+             pNetworkCfg->pMccMnc ? pNetworkCfg->pMccMnc : "NULL",
+             pNetworkCfg->asyncConnect ? "true" : "false");
     if (pNetworkCfg->pUartPpp) {
         uPortLog(", uart-ppp: uart %d, uart-baud-rate %d.\n",
                  pNetworkCfg->pUartPpp->uart,

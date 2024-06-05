@@ -91,6 +91,7 @@
         authentication-mode = <1>;
         mccmnc = "23410";
         uart-ppp = <&label_cfg_network_cellular_uart_ppp>;
+        async-connect;
     };
     label_cfg_network_cellular_uart_ppp: cfg-network-cellular-uart-ppp {
         compatible = "u-blox,ubxlib-network-cellular-uart-ppp";

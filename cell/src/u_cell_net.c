@@ -281,6 +281,8 @@ static void activateContextCallback(uAtClientHandle_t atHandle,
 
     (void) atHandle;
 
+    uPortLog("U_CELL_NET: Activating context\n");
+
     activateContext(pInstance, U_CELL_NET_CONTEXT_ID, U_CELL_NET_PROFILE_ID);
     if (pInstance->pModule->pppContextId >= 0) {
         // Activate the separate PDP context for PPP if there is one
@@ -338,7 +340,6 @@ static void setNetworkStatus(uCellPrivateInstance_t *pInstance,
             }
             break;
         case U_CELL_NET_STATUS_REGISTRATION_DENIED:
-            // Registeration denied (+CxREG: 3)
             if (printAllowed) {
                 uPortLog("%d: Deny\n", rat3gpp);
             }
@@ -1309,8 +1310,11 @@ static int32_t registerNetwork(uCellPrivateInstance_t *pInstance,
             uCellPrivateAbortAtCommand(pInstance);
         }
         // Let the registration outcome be decided
-        // by the code block below, driven by the URCs
-        keepGoing = true;
+        // by the code block below, driven by the URCs,
+        // only when async connect mode is not active.
+        if (!pInstance->asyncConnectEnabled) {
+            keepGoing = true;
+        }
     }
 
     if (errorCode == 0) {
@@ -2369,223 +2373,247 @@ static int32_t sendDataCounterReset(uAtClientHandle_t atHandle,
     return errorCode;
 }
 
-/* ----------------------------------------------------------------
- * PUBLIC FUNCTIONS
- * -------------------------------------------------------------- */
-
-// Register with the cellular network and activate a PDP context.
-int32_t uCellNetConnect(uDeviceHandle_t cellHandle,
-                        const char *pMccMnc,
-                        const char *pApn, const char *pUsername,
-                        const char *pPassword,
-                        bool (*pKeepGoingCallback) (uDeviceHandle_t cellHandle))
+static int32_t disconnect(uCellPrivateInstance_t *pInstance,
+                          bool (*pKeepGoingCallback) (uDeviceHandle_t cellHandle))
 {
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
-    uCellPrivateInstance_t *pInstance;
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    uAtClientHandle_t atHandle;
+    int32_t status3gpp;
+
+    atHandle = pInstance->atHandle;
+    // See if we are already disconnected
+    uAtClientLock(atHandle);
+    // Clear out the old RF readings
+    uCellPrivateClearRadioParameters(&(pInstance->radioParameters), false);
+    uAtClientCommandStart(atHandle, "AT+COPS?");
+    uAtClientCommandStop(atHandle);
+    uAtClientResponseStart(atHandle, "+COPS:");
+    status3gpp = uAtClientReadInt(atHandle);
+    uAtClientResponseStop(atHandle);
+    errorCode = uAtClientUnlock(atHandle);
+    if ((errorCode == 0) && (status3gpp != 2)) {
+        errorCode = disconnectNetwork(pInstance, pKeepGoingCallback);
+    }
+    if (!uCellPrivateIsRegistered(pInstance)) {
+        uAtClientRemoveUrcHandler(atHandle, "+CREG:");
+        uAtClientRemoveUrcHandler(atHandle, "+CGREG:");
+        uAtClientRemoveUrcHandler(atHandle, "+CEREG:");
+        uAtClientRemoveUrcHandler(atHandle, "+UUPSDD:");
+        uPortLog("U_CELL_NET: disconnected.\n");
+    } else {
+        uPortLog("U_CELL_NET: unable to disconnect.\n");
+    }
+    // Populate, or reset, the last EMM cause
+    pInstance->lastEmmRejectCause = getEmmRejectCause(pInstance);
+
+    return errorCode;
+}
+
+static int32_t connect(uCellPrivateInstance_t *pInstance,
+                       bool *pHasPpp,
+                       uCellNetAuthenticationMode_t *pAuthenticationModeUsed,
+                       const char *pMccMnc,
+                       const char *pApn, const char *pUsername,
+                       const char *pPassword,
+                       bool (*pKeepGoingCallback) (uDeviceHandle_t cellHandle))
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
     char buffer[15];  // At least 15 characters for the IMSI
     const char *pApnConfig = NULL;
     uCellNetAuthenticationMode_t overrideAuthenticationMode = U_CELL_NET_AUTHENTICATION_MODE_NOT_SET;
-    uCellNetAuthenticationMode_t authenticationModeUsed = overrideAuthenticationMode;
-    bool hasPpp = false;
+    *pAuthenticationModeUsed = overrideAuthenticationMode;
 
-    if (gUCellPrivateMutex != NULL) {
+    if ((pUsername == NULL) || (pPassword != NULL)) {
+        *pHasPpp = U_CELL_PRIVATE_HAS(pInstance->pModule, U_CELL_PRIVATE_FEATURE_PPP);
 
-        // It is possible that the user already has a PDP context
-        // up and wants to change it, in which case
-        // handleExistingContext() will close it.  However, the
-        // PPP connection _must_ be taken down before that happens
-        // and we can't do so while the cellular API mutex is
-        // locked, so we alays take the PPP connection down first
-        uPortPppDisconnect(cellHandle);
+        errorCode = (int32_t) U_CELL_ERROR_NOT_CONNECTED;
+        if (uCellPrivateIsRegistered(pInstance)) {
+            // First deal with any existing context,
+            // which might turn out to be good enough
+            errorCode = handleExistingContext(pInstance, pApn,
+                                              pKeepGoingCallback);
+        }
 
-        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
-
-        pInstance = pUCellPrivateGetInstance(cellHandle);
-        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-        if ((pInstance != NULL) &&
-            ((pUsername == NULL) || (pPassword != NULL))) {
-            hasPpp = U_CELL_PRIVATE_HAS(pInstance->pModule, U_CELL_PRIVATE_FEATURE_PPP);
-
-            errorCode = (int32_t) U_CELL_ERROR_NOT_CONNECTED;
-            if (uCellPrivateIsRegistered(pInstance)) {
-                // First deal with any existing context,
-                // which might turn out to be good enough
-                errorCode = handleExistingContext(pInstance, pApn,
-                                                  pKeepGoingCallback);
-            }
-
-            if (errorCode != 0) {
-                // Nope, no free ride, do some work
-                errorCode = prepareConnect(pInstance);
-                if (errorCode == 0) {
-                    if ((pApn == NULL) &&
-                        !uCellMnoDbProfileHas(pInstance,
-                                              U_CELL_MNO_DB_FEATURE_NO_CGDCONT) &&
-                        (uCellPrivateGetImsi(pInstance, buffer) == 0)) {
-                        // Set up the APN look-up since none is specified
-                        pApnConfig = pApnGetConfig(buffer);
-                    }
-                    pInstance->pKeepGoingCallback = pKeepGoingCallback;
-                    pInstance->timeoutStart = uTimeoutStart();
-                    // Now try to connect, potentially multiple times
-                    do {
-                        if (pApnConfig != NULL) {
-                            pApn = _APN_GET(pApnConfig);
-                            pUsername = _APN_GET(pApnConfig);
-                            pPassword = _APN_GET(pApnConfig);
-                            uPortLog("U_CELL_NET: APN from database is"
-                                     " \"%s\".\n", pApn);
-                            if ((pUsername != NULL) && (pPassword != NULL)) {
-                                // If we've picked a username and password from the database
-                                // then an authentication mode needs to be chosen also.  For
-                                // modules that support automatic choice that's easy, but for
-                                // ones that do not it is pop-quiz-punk time
-                                overrideAuthenticationMode = U_CELL_NET_APN_DB_AUTHENTICATION_MODE;
-                                if (U_CELL_PRIVATE_HAS(pInstance->pModule,
-                                                       U_CELL_PRIVATE_FEATURE_AUTHENTICATION_MODE_AUTOMATIC)) {
-                                    overrideAuthenticationMode = U_CELL_NET_AUTHENTICATION_MODE_AUTOMATIC;
-                                }
+        if (errorCode != 0) {
+            // Nope, no free ride, do some work
+            errorCode = prepareConnect(pInstance);
+            if (errorCode == 0) {
+                if ((pApn == NULL) &&
+                    !uCellMnoDbProfileHas(pInstance,
+                                          U_CELL_MNO_DB_FEATURE_NO_CGDCONT) &&
+                    (uCellPrivateGetImsi(pInstance, buffer) == 0)) {
+                    // Set up the APN look-up since none is specified
+                    pApnConfig = pApnGetConfig(buffer);
+                }
+                pInstance->pKeepGoingCallback = pKeepGoingCallback;
+                pInstance->timeoutStart = uTimeoutStart();
+                // Now try to connect, potentially multiple times
+                do {
+                    if (pApnConfig != NULL) {
+                        pApn = _APN_GET(pApnConfig);
+                        pUsername = _APN_GET(pApnConfig);
+                        pPassword = _APN_GET(pApnConfig);
+                        uPortLog("U_CELL_NET: APN from database is"
+                                 " \"%s\".\n", pApn);
+                        if ((pUsername != NULL) && (pPassword != NULL)) {
+                            // If we've picked a username and password from the database
+                            // then an authentication mode needs to be chosen also.  For
+                            // modules that support automatic choice that's easy, but for
+                            // ones that do not it is pop-quiz-punk time
+                            overrideAuthenticationMode = U_CELL_NET_APN_DB_AUTHENTICATION_MODE;
+                            if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                                   U_CELL_PRIVATE_FEATURE_AUTHENTICATION_MODE_AUTOMATIC)) {
+                                overrideAuthenticationMode = U_CELL_NET_AUTHENTICATION_MODE_AUTOMATIC;
+                            }
+                        }
+                    } else {
+                        if (pApn != NULL) {
+                            if (uCellMnoDbProfileHas(pInstance,
+                                                     U_CELL_MNO_DB_FEATURE_IGNORE_APN)) {
+                                uPortLog("U_CELL_NET: ** WARNING ** user-specified APN"
+                                         " \"%s\" will be IGNORED as the current MNO"
+                                         " profile (%d) does not permit user APNs.\n",
+                                         pApn, pInstance->mnoProfile);
+                                pApn = NULL;
+                            } else if (uCellMnoDbProfileHas(pInstance,
+                                                            U_CELL_MNO_DB_FEATURE_NO_CGDCONT)) {
+                                // An APN has been specified but the MNO profile doesn't
+                                // permit one to be set through AT+CGDCONT (or the AT+UPSD
+                                // equivalent) so flag an error
+                                uPortLog("U_CELL_NET: APN \"%s\" was specified but the"
+                                         " current MNO profile (%d) does not permit an"
+                                         " APN to be set.\n", pInstance->mnoProfile, pApn);
+                                errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+                            } else {
+                                uPortLog("U_CELL_NET: user-specified APN is"
+                                         " \"%s\".\n", pApn);
                             }
                         } else {
-                            if (pApn != NULL) {
-                                if (uCellMnoDbProfileHas(pInstance,
-                                                         U_CELL_MNO_DB_FEATURE_IGNORE_APN)) {
-                                    uPortLog("U_CELL_NET: ** WARNING ** user-specified APN"
-                                             " \"%s\" will be IGNORED as the current MNO"
-                                             " profile (%d) does not permit user APNs.\n",
-                                             pApn, pInstance->mnoProfile);
-                                    pApn = NULL;
-                                } else if (uCellMnoDbProfileHas(pInstance,
-                                                                U_CELL_MNO_DB_FEATURE_NO_CGDCONT)) {
-                                    // An APN has been specified but the MNO profile doesn't
-                                    // permit one to be set through AT+CGDCONT (or the AT+UPSD
-                                    // equivalent) so flag an error
-                                    uPortLog("U_CELL_NET: APN \"%s\" was specified but the"
-                                             " current MNO profile (%d) does not permit an"
-                                             " APN to be set.\n", pInstance->mnoProfile, pApn);
-                                    errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-                                } else {
-                                    uPortLog("U_CELL_NET: user-specified APN is"
-                                             " \"%s\".\n", pApn);
-                                }
-                            } else {
-                                uPortLog("U_CELL_NET: default APN will be"
-                                         " used by network.\n");
+                            uPortLog("U_CELL_NET: default APN will be"
+                                     " used by network.\n");
+                        }
+                    }
+                    if ((errorCode == 0) &&
+                        !U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                            U_CELL_PRIVATE_FEATURE_USE_UPSD_CONTEXT_ACTIVATION) &&
+                        !uCellMnoDbProfileHas(pInstance,
+                                              U_CELL_MNO_DB_FEATURE_NO_CGDCONT)) {
+                        // If we're not using AT+UPSD-based
+                        // context activation, set the context using
+                        // AT+CGDCONT and the authentication mode
+                        errorCode = defineContext(pInstance,
+                                                  U_CELL_NET_CONTEXT_ID,
+                                                  pApn);
+                        if (errorCode == 0) {
+                            // Set the authentication mode
+                            errorCode = setAuthenticationMode(pInstance,
+                                                              U_CELL_NET_CONTEXT_ID,
+                                                              pUsername,
+                                                              pPassword,
+                                                              overrideAuthenticationMode);
+                            if (errorCode >= 0) {
+                                *pAuthenticationModeUsed = errorCode;
+                                errorCode = 0;
                             }
                         }
-                        if ((errorCode == 0) &&
-                            !U_CELL_PRIVATE_HAS(pInstance->pModule,
-                                                U_CELL_PRIVATE_FEATURE_USE_UPSD_CONTEXT_ACTIVATION) &&
-                            !uCellMnoDbProfileHas(pInstance,
-                                                  U_CELL_MNO_DB_FEATURE_NO_CGDCONT)) {
-                            // If we're not using AT+UPSD-based
-                            // context activation, set the context using
-                            // AT+CGDCONT and the authentication mode
+                        if ((errorCode == 0) && (pInstance->pModule->pppContextId >= 0)) {
+                            // If a separate PDP context is required for,
+                            // PPP then define that one also.
+                            // Note: no need to do anything with authentication
+                            // since that will be carried out by the peer PPP
+                            // entity when it starts up
                             errorCode = defineContext(pInstance,
-                                                      U_CELL_NET_CONTEXT_ID,
+                                                      pInstance->pModule->pppContextId,
                                                       pApn);
-                            if (errorCode == 0) {
-                                // Set the authentication mode
-                                errorCode = setAuthenticationMode(pInstance,
-                                                                  U_CELL_NET_CONTEXT_ID,
-                                                                  pUsername,
-                                                                  pPassword,
-                                                                  overrideAuthenticationMode);
-                                if (errorCode >= 0) {
-                                    authenticationModeUsed = errorCode;
-                                    errorCode = 0;
-                                }
-                            }
-                            if ((errorCode == 0) && (pInstance->pModule->pppContextId >= 0)) {
-                                // If a separate PDP context is required for,
-                                // PPP then define that one also.
-                                // Note: no need to do anything with authentication
-                                // since that will be carried out by the peer PPP
-                                // entity when it starts up
-                                errorCode = defineContext(pInstance,
-                                                          pInstance->pModule->pppContextId,
-                                                          pApn);
-                            }
+                        }
+                    }
+                    if (errorCode == 0) {
+                        if (pMccMnc == NULL) {
+                            // If no MCC/MNC is given, make sure we are
+                            // in automatic network selection mode
+                            // Don't check error code here as some
+                            // modules can return an error as we still
+                            // have the radio off (but they still obey)
+                            setAutomaticMode(pInstance);
+                        }
+                        // Register
+                        errorCode = registerNetwork(pInstance, pMccMnc);
+                        if  (pInstance->asyncConnectEnabled) {
+                            // When in async mode we don't / can't do following things.
+                            // Because we need network connectivity first. We will
+                            // cricle back to these when we have network connectivity.
+                            break;
                         }
                         if (errorCode == 0) {
-                            if (pMccMnc == NULL) {
-                                // If no MCC/MNC is given, make sure we are
-                                // in automatic network selection mode
-                                // Don't check error code here as some
-                                // modules can return an error as we still
-                                // have the radio off (but they still obey)
-                                setAutomaticMode(pInstance);
+                            // Print the network name for debug purposes
+                            if (uCellPrivateGetOperatorStr(pInstance,
+                                                           buffer,
+                                                           sizeof(buffer)) == 0) {
+                                uPortLog("U_CELL_NET: registered on %s.\n", buffer);
+                                // This to prevent warnings if uPortLog is compiled-out
+                                (void) buffer;
                             }
-                            // Register
-                            errorCode = registerNetwork(pInstance, pMccMnc);
-                            if (errorCode == 0) {
-                                // Print the network name for debug purposes
-                                if (uCellPrivateGetOperatorStr(pInstance,
-                                                               buffer,
-                                                               sizeof(buffer)) == 0) {
-                                    uPortLog("U_CELL_NET: registered on %s.\n", buffer);
-                                    // This to prevent warnings if uPortLog is compiled-out
-                                    (void) buffer;
-                                }
+                        } else {
+                            uPortLog("U_CELL_NET: unable to register with"
+                                     " the network");
+                            if (pApn != NULL) {
+                                uPortLog(", is APN \"%s\" correct and is an"
+                                         " antenna connected?\n", pApn);
                             } else {
-                                uPortLog("U_CELL_NET: unable to register with"
-                                         " the network");
-                                if (pApn != NULL) {
-                                    uPortLog(", is APN \"%s\" correct and is an"
-                                             " antenna connected?\n", pApn);
-                                } else {
-                                    uPortLog(", does an APN need to be specified"
-                                             " and is an antenna connected?\n");
-                                }
+                                uPortLog(", does an APN need to be specified"
+                                         " and is an antenna connected?\n");
                             }
                         }
-                        if (errorCode == 0) {
-                            // This step _shouldn't_ be necessary.  However,
-                            // for reasons I don't understand, SARA-R4 can be
-                            // registered but not attached (i.e. AT+CGATT
-                            // returns 0) on both RATs (unh?).  Phil Ware, who
-                            // knows about these things, always goes through
-                            // (a) register, (b) wait for AT+CGATT to return 1
-                            // and then (c) check that a context is active
-                            // with AT+CGACT or using AT+UPSD (even for EUTRAN).
-                            // Since this sequence works for both RANs, it is
-                            // best to be consistent.
-                            errorCode = waitAttach(pInstance);
-                        }
-                        if (errorCode == 0) {
-                            // Activate the context
-                            if (U_CELL_PRIVATE_HAS(pInstance->pModule,
-                                                   U_CELL_PRIVATE_FEATURE_USE_UPSD_CONTEXT_ACTIVATION)) {
-                                errorCode = activateContextUpsd(pInstance,
-                                                                U_CELL_NET_PROFILE_ID,
-                                                                pApn, pUsername,
-                                                                pPassword);
-                            } else {
-                                errorCode = activateContext(pInstance,
-                                                            U_CELL_NET_CONTEXT_ID,
-                                                            U_CELL_NET_PROFILE_ID);
-                                if ((errorCode == 0) && (pInstance->pModule->pppContextId >= 0)) {
-                                    // Activate the separate PDP context for PPP if there is one
-                                    errorCode = activateContext(pInstance,
-                                                                pInstance->pModule->pppContextId, -1);
-                                }
-                            }
-                            if (errorCode != 0) {
-                                uPortLog("U_CELL_NET: unable to activate a PDP context");
-                                if (pApn != NULL) {
-                                    uPortLog(", is APN \"%s\" correct?\n", pApn);
-                                } else {
-                                    uPortLog(" (no APN specified/[or allowed]).\n");
-                                }
-                            }
-                        }
-                        // Exit if there are no errors or if the APN
-                        // was user-specified (pApnConfig == NULL) or
-                        // we're out of APN database options or the
-                        // user callback has returned false
-                    } while ((errorCode != 0) && (pApnConfig != NULL) &&
-                             (*pApnConfig != '\0') && keepGoingLocalCb(pInstance));
+                    }
 
+                    if (errorCode == 0) {
+                        // This step _shouldn't_ be necessary.  However,
+                        // for reasons I don't understand, SARA-R4 can be
+                        // registered but not attached (i.e. AT+CGATT
+                        // returns 0) on both RATs (unh?).  Phil Ware, who
+                        // knows about these things, always goes through
+                        // (a) register, (b) wait for AT+CGATT to return 1
+                        // and then (c) check that a context is active
+                        // with AT+CGACT or using AT+UPSD (even for EUTRAN).
+                        // Since this sequence works for both RANs, it is
+                        // best to be consistent.
+                        errorCode = waitAttach(pInstance);
+                    }
+                    if (errorCode == 0) {
+                        // Activate the context
+                        if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                               U_CELL_PRIVATE_FEATURE_USE_UPSD_CONTEXT_ACTIVATION)) {
+                            errorCode = activateContextUpsd(pInstance,
+                                                            U_CELL_NET_PROFILE_ID,
+                                                            pApn, pUsername,
+                                                            pPassword);
+                        } else {
+                            errorCode = activateContext(pInstance,
+                                                        U_CELL_NET_CONTEXT_ID,
+                                                        U_CELL_NET_PROFILE_ID);
+                            if ((errorCode == 0) && (pInstance->pModule->pppContextId >= 0)) {
+                                // Activate the separate PDP context for PPP if there is one
+                                errorCode = activateContext(pInstance,
+                                                            pInstance->pModule->pppContextId, -1);
+                            }
+                        }
+                        if (errorCode != 0) {
+                            uPortLog("U_CELL_NET: unable to activate a PDP context");
+                            if (pApn != NULL) {
+                                uPortLog(", is APN \"%s\" correct?\n", pApn);
+                            } else {
+                                uPortLog(" (no APN specified/[or allowed]).\n");
+                            }
+                        }
+                    }
+                    // Exit if there are no errors or if the APN
+                    // was user-specified (pApnConfig == NULL) or
+                    // we're out of APN database options or the
+                    // user callback has returned false
+                } while ((errorCode != 0) && (pApnConfig != NULL) &&
+                         (*pApnConfig != '\0') && keepGoingLocalCb(pInstance));
+
+                if (!pInstance->asyncConnectEnabled) {
                     // Populate, or reset, the last EMM cause
                     pInstance->lastEmmRejectCause = getEmmRejectCause(pInstance);
 
@@ -2608,13 +2636,122 @@ int32_t uCellNetConnect(uDeviceHandle_t cellHandle,
                                  " %u second(s).\n",
                                  uTimeoutElapsedSeconds(pInstance->timeoutStart));
                     }
-
-                    // Take away the callback again
-                    pInstance->pKeepGoingCallback = NULL;
                 }
-            } else {
-                uPortLog("U_CELL_NET: already connected.\n");
+                // Take away the callback again
+                pInstance->pKeepGoingCallback = NULL;
             }
+        } else {
+            uPortLog("U_CELL_NET: already connected.\n");
+        }
+    }
+
+    return errorCode;
+}
+
+/* ----------------------------------------------------------------
+ * PUBLIC FUNCTIONS
+ * -------------------------------------------------------------- */
+
+int32_t uCellNetConnectStart(uDeviceHandle_t cellHandle,
+                             const char *pApn,
+                             const char *pUsername,
+                             const char *pPassword)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance;
+    uCellNetAuthenticationMode_t authenticationModeUsed = U_CELL_NET_AUTHENTICATION_MODE_NOT_SET;
+    bool hasPpp = false;
+
+    if (gUCellPrivateMutex != NULL) {
+
+        // It is possible that the user already has a PDP context
+        // up and wants to change it, in which case
+        // handleExistingContext() will close it.  However, the
+        // PPP connection _must_ be taken down before that happens
+        // and we can't do so while the cellular API mutex is
+        // locked, so we alays take the PPP connection down first
+        uPortPppDisconnect(cellHandle);
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        pInstance = pUCellPrivateGetInstance(cellHandle);
+        if (pInstance != NULL) {
+            errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+            if (pInstance->pModule->moduleType != U_CELL_MODULE_TYPE_SARA_U201) {
+                // Set for automatic context activation when network is registered
+                pInstance->profileState = U_CELL_PRIVATE_PROFILE_STATE_REQUIRES_REACTIVATION;
+                pInstance->asyncConnectEnabled = true;
+                // 1. Manual PLMN selection can't be asynchronous, that's just life,
+                //    so we don't have the pMccMnc parameter in the asynchronous case.
+                // 2. pKeepGoingCallback is set to NULL to assist in asynchronous mode.
+                //    we don't want to wait for anything, just set the correct configuration
+                //    and return as soon as possible.
+                errorCode = connect(pInstance, &hasPpp, &authenticationModeUsed, NULL,
+                                    pApn, pUsername, pPassword, NULL);
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return errorCode;
+}
+
+int32_t uCellNetConnectStop(uDeviceHandle_t cellHandle)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance;
+
+    if (gUCellPrivateMutex != NULL) {
+
+        // Let the platform, know that the PPP connection,
+        // is going down
+        uPortPppDisconnect(cellHandle);
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        pInstance = pUCellPrivateGetInstance(cellHandle);
+        if (pInstance != NULL) {
+            // pKeepGoingCallback is set to NULL to assist in asynchronous mode.
+            // So, we don't have it set when we started.
+            errorCode = disconnect(pInstance, NULL);
+            pInstance->asyncConnectEnabled = false;
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return errorCode;
+}
+
+// Register with the cellular network and activate a PDP context.
+int32_t uCellNetConnect(uDeviceHandle_t cellHandle,
+                        const char *pMccMnc,
+                        const char *pApn, const char *pUsername,
+                        const char *pPassword,
+                        bool (*pKeepGoingCallback) (uDeviceHandle_t cellHandle))
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance;
+    uCellNetAuthenticationMode_t authenticationModeUsed = U_CELL_NET_AUTHENTICATION_MODE_NOT_SET;
+    bool hasPpp = false;
+
+    if (gUCellPrivateMutex != NULL) {
+
+        // It is possible that the user already has a PDP context
+        // up and wants to change it, in which case
+        // handleExistingContext() will close it.  However, the
+        // PPP connection _must_ be taken down before that happens
+        // and we can't do so while the cellular API mutex is
+        // locked, so we alays take the PPP connection down first
+        uPortPppDisconnect(cellHandle);
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        pInstance = pUCellPrivateGetInstance(cellHandle);
+        if (pInstance != NULL) {
+            errorCode = connect(pInstance, &hasPpp, &authenticationModeUsed, pMccMnc,
+                                pApn, pUsername, pPassword, pKeepGoingCallback);
         }
 
         U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
@@ -2949,8 +3086,6 @@ int32_t uCellNetDisconnect(uDeviceHandle_t cellHandle,
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
-    uAtClientHandle_t atHandle;
-    int32_t status3gpp;
 
     if (gUCellPrivateMutex != NULL) {
 
@@ -2961,33 +3096,8 @@ int32_t uCellNetDisconnect(uDeviceHandle_t cellHandle,
         U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
 
         pInstance = pUCellPrivateGetInstance(cellHandle);
-        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if (pInstance != NULL) {
-            atHandle = pInstance->atHandle;
-            // See if we are already disconnected
-            uAtClientLock(atHandle);
-            // Clear out the old RF readings
-            uCellPrivateClearRadioParameters(&(pInstance->radioParameters), false);
-            uAtClientCommandStart(atHandle, "AT+COPS?");
-            uAtClientCommandStop(atHandle);
-            uAtClientResponseStart(atHandle, "+COPS:");
-            status3gpp = uAtClientReadInt(atHandle);
-            uAtClientResponseStop(atHandle);
-            errorCode = uAtClientUnlock(atHandle);
-            if ((errorCode == 0) && (status3gpp != 2)) {
-                errorCode = disconnectNetwork(pInstance, pKeepGoingCallback);
-            }
-            if (!uCellPrivateIsRegistered(pInstance)) {
-                uAtClientRemoveUrcHandler(atHandle, "+CREG:");
-                uAtClientRemoveUrcHandler(atHandle, "+CGREG:");
-                uAtClientRemoveUrcHandler(atHandle, "+CEREG:");
-                uAtClientRemoveUrcHandler(atHandle, "+UUPSDD:");
-                uPortLog("U_CELL_NET: disconnected.\n");
-            } else {
-                uPortLog("U_CELL_NET: unable to disconnect.\n");
-            }
-            // Populate, or reset, the last EMM cause
-            pInstance->lastEmmRejectCause = getEmmRejectCause(pInstance);
+            errorCode = disconnect(pInstance, pKeepGoingCallback);
         }
 
         U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);

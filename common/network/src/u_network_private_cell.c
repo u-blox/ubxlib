@@ -212,12 +212,26 @@ int32_t uNetworkPrivateChangeStateCell(uDeviceHandle_t devHandle,
                     }
                 }
                 if (errorCode == 0) {
-                    errorCode = uCellNetConnect(devHandle,
-                                                pCfg->pMccMnc,
-                                                pCfg->pApn,
-                                                pCfg->pUsername,
-                                                pCfg->pPassword,
-                                                pKeepGoingCallback);
+                    if (pCfg->asyncConnect) {
+                        // Non-Blocking Connect
+                        // pMccMnc can't be used with asynchronous connect
+                        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+                        if (pCfg->pMccMnc == NULL) {
+                            // Non-Blocking Connect
+                            errorCode = uCellNetConnectStart(devHandle,
+                                                             pCfg->pApn,
+                                                             pCfg->pUsername,
+                                                             pCfg->pPassword);
+                        }
+                    } else {
+                        // Connect using automatic selection
+                        errorCode = uCellNetConnect(devHandle,
+                                                    pCfg->pMccMnc,
+                                                    pCfg->pApn,
+                                                    pCfg->pUsername,
+                                                    pCfg->pPassword,
+                                                    pKeepGoingCallback);
+                    }
                 }
             } else {
                 // Disconnect
