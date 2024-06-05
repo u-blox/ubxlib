@@ -163,7 +163,9 @@ typedef struct {
                                    if uart is negative then pPrefix alone will
                                    be used, maximum length (strlen(pPrefix)) is
                                    #U_PORT_UART_MAX_PREFIX_LENGTH. */
-    /* IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT
+    /* Add any new version 0 structure items to the end here.
+     *
+     * IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT:
      * See note above.
      */
     /* This is the end of version 0 of this
@@ -188,7 +190,9 @@ typedef struct {
                                    compiler to initialise this to zero
                                    unless otherwise specified below. */
     uDeviceSerial_t *pDevice; /**< The virtual serial interface. */
-    /* IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT
+    /* Add any new version 0 structure items to the end here.
+     *
+     * IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT:
      * See note above.
      */
     /* This is the end of version 0 of this
@@ -252,7 +256,9 @@ typedef struct {
                                     zero a transfer larger than this size
                                     will be split into several transfers no
                                     larger than this size. */
-    /* IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT
+    /* Add any new version 0 structure items to the end here.
+     *
+     * IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT:
      * See note above.
      */
     /* This is the end of version 0 of this
@@ -307,7 +313,9 @@ typedef struct {
                                               Where it is greater than zero a transfer
                                               larger than this size will be split into
                                               several transfers no larger than this size. */
-    /* IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT
+    /* Add any new version 0 structure items to the end here.
+     *
+     * IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT:
      * See note above.
      */
     /* This is the end of version 0 of this
@@ -355,7 +363,9 @@ typedef struct {
                                     pin to tell the module whether it can enter
                                     power-saving or not then put that pin number
                                     here, else set it to -1. */
-    /* IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT
+    /* Add any new version 0 structure items to the end here.
+     *
+     * IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT:
      * See note above.
      */
     /* This is the end of version 0 of this
@@ -417,7 +427,9 @@ typedef struct {
                                       the GNSS device is using is NOT the default
                                       #U_GNSS_I2C_ADDRESS; otherwise let the
                                       compiler initialise this to 0. */
-    /* IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT
+    /* Add any new version 0 structure items to the end here.
+     *
+     * IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT:
      * See note above.
      */
     /* This is the end of version 0 of this
@@ -450,7 +462,9 @@ typedef struct {
     int32_t moduleType;       /**< The module type that is connected,
                                    see #uShortRangeModuleType_t in
                                    u_short_range_module_type.h. */
-    /* IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT
+    /* Add any new version 0 structure items to the end here.
+     *
+     * IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT:
      * See note above.
      */
     /* This is the end of version 0 of this
@@ -523,7 +537,9 @@ typedef struct {
                                pCfgName wrong this will NOT throw an error,
                                since pCfgName may be used for other
                                purposes in future; you need to get it right. */
-    /* IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT
+    /* Add any new version 0 structure items to the end here.
+     *
+     * IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT:
      * See note above.
      */
     /* This is the end of version 0 of this

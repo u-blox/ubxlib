@@ -97,7 +97,9 @@ typedef struct {
     const char *pApPassPhrase;    /**< access point WPA/WPA2/WPA3 passphrase.
                                        Should be NULL for open. */
     const char *pApIpAddress;     /**< ip address of the access point. */
-    /* IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT
+    /* Add any new version 0 structure items to the end here.
+     *
+     * IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT:
      * See note above.
      */
     /* This is the end of version 0 of this

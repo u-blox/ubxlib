@@ -64,7 +64,9 @@ typedef struct {
     int32_t role;        /**< peripheral, central or, peripheral and central,
                               see uBleCfgRole_t in u_ble_cfg.h. */
     bool spsServer;      /**< true if sps server is to be enabled. */
-    /* IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT
+    /* Add any new version 0 structure items to the end here.
+     *
+     * IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT:
      * See note above.
      */
     /* This is the end of version 0 of this

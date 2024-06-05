@@ -116,7 +116,9 @@ typedef struct {
     bool asyncConnect; /** ONLY SET THIS to true if you wish uNetworkInterfaceUp() to return IMMEDIATELY,
     before the cellular network connection has been established, allowing the
     application to continue with other operations rather than waiting. */
-    /* IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT
+    /* Add any new version 0 structure items to the end here.
+     *
+     * IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT:
      * See note above.
      */
     /* This is the end of version 0 of this
