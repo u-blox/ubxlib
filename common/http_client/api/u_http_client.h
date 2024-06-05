@@ -49,6 +49,13 @@ extern "C" {
 # define U_HTTP_CLIENT_RESPONSE_WAIT_SECONDS 30
 #endif
 
+#ifndef U_HTTP_CLIENT_CHUNK_LENGTH_BYTES
+/** The default chunk-length of a HTTP PUT/POST/GET when a
+ * chunked API is used.
+ */
+# define U_HTTP_CLIENT_CHUNK_LENGTH_BYTES 256
+#endif
+
 /** The defaults for an HTTP connection, see #uHttpClientConnection_t.
  * Whenever an instance of #uHttpClientConnection_t is created it
  * should be assigned to this to ensure the correct default
@@ -56,7 +63,8 @@ extern "C" {
  */
 #define U_HTTP_CLIENT_CONNECTION_DEFAULT {NULL, NULL, NULL,                    \
                                           U_HTTP_CLIENT_RESPONSE_WAIT_SECONDS, \
-                                          NULL, NULL, false, NULL}
+                                          NULL, NULL, false, NULL,             \
+                                          U_HTTP_CLIENT_CHUNK_LENGTH_BYTES}
 
 #ifndef U_HTTP_CLIENT_CONTENT_TYPE_LENGTH_BYTES
 /** The maximum length of a content-type string, including room
@@ -72,6 +80,12 @@ extern "C" {
 /** Callback that will be called when a HTTP response has arrived if
  * the non-blocking form of an HTTP request is made.
  *
+ * When used with a chunked API (uHttpClientPutRequestChunked(),
+ * uHttpClientPostRequestChunked() or uHttpClientGetRequestChunked()),
+ * the callbacks of those APIs (#uHttpClientDataCallback_t or
+ * #uHttpClientResponseBodyCallback_t) will be called BEFORE this
+ * callback is called.
+ *
  * @param devHandle                       the device handle.
  * @param statusCodeOrError               the status code in the response as an
  *                                        integer (for example "200 OK" is 200),
@@ -84,13 +98,19 @@ extern "C" {
  *                                        to the pResponseBody or pResponseHead
  *                                        parameters to
  *                                        uHttpClientGetRequest() or
- *                                        uHttpClientHeadRequest().  For the
- *                                        uHttpClientGetRequest() case the content
- *                                        type, if present in the HTTP response
+ *                                        uHttpClientHeadRequest() or the amount
+ *                                        of data that has been offered to the
+ *                                        #uHttpClientResponseBodyCallback_t if
+ *                                        uHttpClientGetRequestChunked() was the
+ *                                        origin of the HTTP request.  For the
+ *                                        uHttpClientGetRequest() and
+ *                                        uHttpClientGetRequestChunked() cases the
+ *                                        content type, if present in the HTTP response
  *                                        header, will also be copied into a
  *                                        null-terminated string and stored at
  *                                        the pContentType storage
- *                                        passed to uHttpClientGetRequest().
+ *                                        passed to uHttpClientGetRequest() /
+ *                                        uHttpClientGetRequestChunked().
  * @param[in,out] pResponseCallbackParam  the pResponseCallbackParam pointer that
  *                                        was in the pConnection structure
  *                                        passed to pUHttpClientOpen().
@@ -99,6 +119,74 @@ typedef void (uHttpClientResponseCallback_t)(uDeviceHandle_t devHandle,
                                              int32_t statusCodeOrError,
                                              size_t responseSize,
                                              void *pResponseCallbackParam);
+
+/** Callback to deliver data into a PUT or POST request, used by
+ * uHttpClientPutRequestChunked() and uHttpClientPostRequestChunked().
+ *
+ * This callback will be called repeatedly until it returns 0,
+ * indicating the end of the HTTP request data.  Should something go
+ * wrong with the transfer this callback will be called with pData
+ * set to NULL to indicate that it will not be called again for the
+ * given HTTP request.
+ *
+ * @param devHandle          the device handle.
+ * @param[out] pData         a pointer to a place to put the data to be
+ *                           sent, NULL will be used to indicate that it
+ *                           is no longer possible to send any more data.
+ * @param size               the amount of storage at pData; will only be
+ *                           zero if pData is NULL, will not be more than
+ *                           the maxChunkLengthBytes parameter passed to
+ *                           pUHttpClientOpen() in #uHttpClientConnection_t.
+ * @param[in,out] pUserParam the user parameter that was passed to
+ *                           uHttpClientPutRequestChunked() /
+ *                           uHttpClientPostRequestChunked().
+ * @return                   the number of bytes that the callback has
+ *                           copied into pData, may be up to size bytes;
+ *                           if the data happens to be a string that is
+ *                           ending the null-terminator should NOT be
+ *                           copied or included in the count; the end of a
+ *                           string is indicated by this callback returning
+ *                           zero the next time it is called.
+ */
+typedef size_t (uHttpClientDataCallback_t)(uDeviceHandle_t devHandle,
+                                           char *pData, size_t size,
+                                           void *pUserParam);
+
+/** Callback to receive response data from a GET or a POST request, used
+ * by uHttpClientPostRequestChunked() and uHttpClientGetRequestChunked().
+ *
+ * This callback will be called repeatedly when a response arrives, while
+ * the callback returns true; if the callback returns false then it will
+ * not be called again for this HTTP response.  When the HTTP response is
+ * over the callback will be called once more with pResponseBody set to
+ * NULL to indicate that the response has ended.
+ *
+ * @param devHandle          the device handle.
+ * @param[in] pResponseBody  a pointer to the next chunk of HTTP response
+ *                           data; the data may be binary data.  This data
+ *                           should be copied out before returning, it will
+ *                           not be valid once the callback has returned.
+ *                           If this parameter is NULL, that indicates the
+ *                           end of the response body; should the response
+ *                           body be a string, no null terminator will be
+ *                           included in pResponseBody.
+ * @param size               the amount of data at pResponseBody; zero if
+ *                           pResponseBody is NULL, will not be more than
+ *                           the maxChunkLengthBytes parameter passed to
+ *                           pUHttpClientOpen() in #uHttpClientConnection_t.
+ * @param[in,out] pUserParam the user parameter that was passed to
+ *                           uHttpClientGetRequestChunked() /
+ *                           uHttpClientPostRequestChunked().
+ * @return                   true if the callback may be called again for
+ *                           this HTTP response; set this to false if, for
+ *                           some reason, no more data is wanted, and then
+ *                           the callback will not be called again for this
+ *                           HTTP response.
+ */
+typedef bool (uHttpClientResponseBodyCallback_t)(uDeviceHandle_t devHandle,
+                                                 const char *pResponseBody,
+                                                 size_t size,
+                                                 void *pUserParam);
 
 /** HTTP client connection information.  Note that the maximum length
  * of the string fields may differ between modules.
@@ -146,10 +234,12 @@ typedef struct {
                                                            called; the same goes for the data
                                                            buffer pointed-to by the
                                                            pResponseContentType of
-                                                           uHttpClientPostRequest() and the
-                                                           pContentType parameter of
-                                                           uHttpClientGetRequest().  Note
-                                                           that you can still only have
+                                                           uHttpClientPostRequest() /
+                                                           uHttpClientPostRequestChunked() and
+                                                           the pContentType parameter of
+                                                           uHttpClientGetRequest() /
+                                                           uHttpClientGetRequestChunked().
+                                                           Note that you can still only have
                                                            one HTTP request in progress at
                                                            a time; this is a limitation of
                                                            the module itself. */
@@ -179,6 +269,8 @@ typedef struct {
                                                            the HTTP request functions will continue
                                                            to wait until success or timeoutSeconds
                                                            have elapsed. */
+    size_t maxChunkLengthBytes;                       /**< the maximum chunk length in bytes, used
+                                                           by the chunked APIs. */
 } uHttpClientConnection_t;
 
 /** HTTP context data, used internally by this code and
@@ -205,7 +297,10 @@ typedef struct {
     bool (*pKeepGoingCallback) (void);                /* populated from uHttpClientConnection_t. */
     char *pResponse;       /* set when a HTTP POST, GET or HEAD is being carried out. */
     size_t *pResponseSize; /* set when a HTTP POST, GET or HEAD is being carried out. */
+    uHttpClientResponseBodyCallback_t *pResponseBodyCallback; /* set for a chunked POST or GET */
+    void *pUserParamResponseBody;  /* set for a chunked POST or GET */
     char *pContentType;    /* set when a HTTP POST or GET is being carried out. */
+    size_t chunkLengthBytes; /* holds maxChunkLengthBytes for this context. */
 } uHttpClientContext_t;
 
 /* ----------------------------------------------------------------
@@ -280,7 +375,8 @@ void uHttpClientClose(uHttpClientContext_t *pContext);
  * to the module or you might experience data loss.  If you do not have
  * flow control connected when using HTTP with a cellular module this code
  * will try to detect that data has been lost and, if so, return the error
- * #U_ERROR_COMMON_TRUNCATED.
+ * #U_ERROR_COMMON_TRUNCATED.  You might also take a look at
+ * uHttpClientPutRequestChunked() (only supported on cellular devices).
  *
  * @param[in] pContext               a pointer to the internal HTTP context
  *                                   structure that was originally returned by
@@ -308,6 +404,36 @@ int32_t uHttpClientPutRequest(uHttpClientContext_t *pContext,
                               const char *pData, size_t size,
                               const char *pContentType);
 
+/** As uHttpClientPutRequest() but with a callback for the data, permitting it
+ * to be sent in chunks.  Only supported on cellular devices.
+ *
+ * @param[in] pContext               a pointer to the internal HTTP context
+ *                                   structure that was originally returned by
+ *                                   pUHttpClientOpen().
+ * @param[in] pPath                  the null-terminated path on the HTTP server
+ *                                   to PUT the data to, for example
+ *                                   "/thing/upload.html"; cannot be NULL.
+ * @param[in] pDataCallback          the callback that delivers data into the
+ *                                   PUT request.
+ * @param[in,out] pUserParam         a parameter that will be passed to
+ *                                   pDataCallback when it is called; may be NULL.
+ * @param[in] pContentType           the null-terminated content type, for example
+ *                                   "application/text"; must be non-NULL if
+ *                                   pData is non-NULL.
+ * @return                           in the blocking case the HTTP status code or
+ *                                   negative error code; in the non-blocking case
+ *                                   zero or negative error code.  If
+ *                                   #U_ERROR_COMMON_UNKNOWN is reported then the
+ *                                   module has indicated that the HTTP request
+ *                                   has not worked; in this case it may be worth
+ *                                   re-trying.
+ */
+int32_t uHttpClientPutRequestChunked(uHttpClientContext_t *pContext,
+                                     const char *pPath,
+                                     uHttpClientDataCallback_t *pDataCallback,
+                                     void *pUserParam,
+                                     const char *pContentType);
+
 /** Make an HTTP POST request.  If this is a blocking call (i.e.
  * pResponseCallback in the pConnection structure passed to pUHttpClientOpen()
  * was NULL) and a pKeepGoingCallback() was provided in pConnection
@@ -325,6 +451,10 @@ int32_t uHttpClientPutRequest(uHttpClientContext_t *pContext,
  * will try to detect that data has been lost and, if so, return the error
  * #U_ERROR_COMMON_TRUNCATED.
  *
+ * If you have large amounts of data to POST, or you expect to get a large
+ * response body back from a POST request, you may prefer to use
+ * uHttpClientPostRequestChunked() (only supported on cellular devices).
+ *
  * @param[in] pContext               a pointer to the internal HTTP context
  *                                   structure that was originally returned by
  *                                   pUHttpClientOpen().
@@ -341,7 +471,7 @@ int32_t uHttpClientPutRequest(uHttpClientContext_t *pContext,
  * @param[out] pResponseBody         a pointer to a place to put the HTTP response
  *                                   body; in the non-blocking case this storage MUST
  *                                   REMAIN VALID until pResponseCallback is called,
- *                                   which will happen on a timeout, as well as in
+ *                                   which will happen on a timeout as well as in
  *                                   the success case; best not put the storage on
  *                                   the stack, just in case.  The same goes for
  *                                   pResponseContentType below.  This may point
@@ -356,7 +486,7 @@ int32_t uHttpClientPutRequest(uHttpClientContext_t *pContext,
  *                                   for example "application/text". In the non-blocking
  *                                   case this storage MUST REMAIN VALID until
  *                                   pResponseCallback is called, which will happen on
- *                                   a timeout, as well as in the success case.  Will
+ *                                   a timeout as well as in the success case.  Will
  *                                   always be null-terminated.  AT LEAST
  *                                   #U_HTTP_CLIENT_CONTENT_TYPE_LENGTH_BYTES of storage
  *                                   must be provided.
@@ -375,6 +505,58 @@ int32_t uHttpClientPostRequest(uHttpClientContext_t *pContext,
                                char *pResponseBody, size_t *pResponseSize,
                                char *pResponseContentType);
 
+/** As uHttpClientPostRequest() but with callbacks for the uplink data and
+ * downlink response, permitting them to be sent and received in chunks.
+ *
+ * IMPORTANT: see warning below about the validity of the
+ * pResponseContentType pointer.
+ *
+ * @param[in] pContext                    a pointer to the internal HTTP
+ *                                        context structure that was originally
+ *                                        returned by
+ *                                        pUHttpClientOpen().
+ * @param[in] pPath                       the null-terminated path on the HTTP
+ *                                        server to POST the data to, for example
+ *                                        "/thing/form.html"; cannot be NULL.
+ * @param[in] pDataCallback               the callback that delivers data into
+ *                                        the POST request.
+ * @param[in,out] pUserParamData          a parameter that will be passed to
+ *                                        pDataCallback when it is called; may be
+ *                                        NULL.
+ * @param[in] pContentType                null-terminated content type, for example
+ *                                        "application/text"; must be non-NULL if
+ *                                        pData is non-NULL.
+ * @param[out] pResponseBodyCallback      the callback that receives the body of the
+ *                                        POST response.
+ * @param[in,out] pUserParamResponseBody  a parameter that will be passed to
+ *                                        pResponseBodyCallback when it is called;
+ *                                        may be NULL.
+ * @param[out] pResponseContentType       a place to put the content type of the
+ *                                        response, for example "application/text".
+ *                                        In the non-blocking case this storage
+ *                                        MUST REMAIN VALID until pResponseCallback
+ *                                        is called, which will happen on a timeout
+ *                                        as well as in the success case.  Will
+ *                                        always be null-terminated.  AT LEAST
+ *                                        #U_HTTP_CLIENT_CONTENT_TYPE_LENGTH_BYTES
+ *                                        of storage must be provided.
+ * @return                                in the blocking case the HTTP status code
+ *                                        or negative error code; in the non-blocking
+ *                                        case zero or negative error code.  If
+ *                                        #U_ERROR_COMMON_UNKNOWN is reported then
+ *                                        the module has indicated that the HTTP
+ *                                        request has not worked; in this case it may
+ *                                        be worth re-trying.
+ */
+int32_t uHttpClientPostRequestChunked(uHttpClientContext_t *pContext,
+                                      const char *pPath,
+                                      uHttpClientDataCallback_t *pDataCallback,
+                                      void *pUserParamData,
+                                      const char *pContentType,
+                                      uHttpClientResponseBodyCallback_t *pResponseBodyCallback,
+                                      void *pUserParamResponseBody,
+                                      char *pResponseContentType);
+
 /** Make an HTTP GET request.  If this is a blocking call (i.e.
  * pResponseCallback in the pConnection structure passed to pUHttpClientOpen()
  * was NULL) and a pKeepGoingCallback() was provided in pConnection then
@@ -385,12 +567,13 @@ int32_t uHttpClientPostRequest(uHttpClientContext_t *pContext,
  * IMPORTANT: see warning below about the validity of the pResponseBody and
  * pContentType pointers.
  *
- * Chunked or multi-part content is not handled here: should you wish to
- * handle such content you will need to do the re-assembly yourself.
+ * Multi-part content is not handled here: should you wish to handle such
+ * content you will need to do the re-assembly yourself.
  *
  * If you are going to perform large GET requests (e.g. more than 1024
  * bytes) then you should ensure that you have flow control on the interface
- * to the module or you might experience data loss.
+ * to the module or you might experience data loss.  You might also take
+ * a look at uHttpClientGetRequestChunked() (only supported on cellular devices).
  *
  * @param[in] pContext               a pointer to the internal HTTP context
  *                                   structure that was originally returned by
@@ -401,7 +584,7 @@ int32_t uHttpClientPostRequest(uHttpClientContext_t *pContext,
  * @param[out] pResponseBody         a pointer to a place to put the HTTP response
  *                                   body; in the non-blocking case this storage MUST
  *                                   REMAIN VALID until pResponseCallback is called,
- *                                   which will happen on a timeout, as well as in
+ *                                   which will happen on a timeout as well as in
  *                                   the success case; best not put the storage on
  *                                   the stack, just in case.  The same goes for
  *                                   pContentType below.
@@ -414,7 +597,7 @@ int32_t uHttpClientPostRequest(uHttpClientContext_t *pContext,
  *                                   for example "application/text". In the non-blocking
  *                                   case this storage MUST REMAIN VALID until
  *                                   pResponseCallback is called, which will happen on
- *                                   a timeout, as well as in the success case.  Will
+ *                                   a timeout as well as in the success case.  Will
  *                                   always be null-terminated.  AT LEAST
  *                                   #U_HTTP_CLIENT_CONTENT_TYPE_LENGTH_BYTES of storage
  *                                   must be provided.
@@ -430,6 +613,44 @@ int32_t uHttpClientGetRequest(uHttpClientContext_t *pContext,
                               const char *pPath,
                               char *pResponseBody, size_t *pSize,
                               char *pContentType);
+
+/** As uHttpClientGetRequest() but with a callback that permits the response
+ * to be received in chunks.  Only supported on cellular devices.
+ *
+ * IMPORTANT: see warning below about the validity of the pContentType pointer.
+ *
+ * @param[in] pContext               a pointer to the internal HTTP context
+ *                                   structure that was originally returned by
+ *                                   pUHttpClientOpen().
+ * @param[in] pPath                  the null-terminated path on the HTTP server
+ *                                   to GET the data from, for example
+ *                                   "/thing/download/1.html"; cannot be NULL.
+ * @param[out] pResponseBodyCallback the callback that receives the body of the
+ *                                   response to the GET request.
+ * @param[in,out] pUserParam         a parameter that will be passed to
+ *                                   pResponseBodyCallback when it is called; may
+ *                                   be NULL.
+ * @param[out] pContentType          a place to put the content type of the response,
+ *                                   for example "application/text". In the non-blocking
+ *                                   case this storage MUST REMAIN VALID until
+ *                                   pResponseCallback is called, which will happen on
+ *                                   a timeout as well as in the success case.  Will
+ *                                   always be null-terminated.  AT LEAST
+ *                                   #U_HTTP_CLIENT_CONTENT_TYPE_LENGTH_BYTES of storage
+ *                                   must be provided.
+ * @return                           in the blocking case the HTTP status code or
+ *                                   negative error code; in the non-blocking case
+ *                                   zero or negative error code.  If
+ *                                   #U_ERROR_COMMON_UNKNOWN is reported then the
+ *                                   module has indicated that the HTTP request
+ *                                   has not worked; in this case it may be worth
+ *                                   re-trying.
+ */
+int32_t uHttpClientGetRequestChunked(uHttpClientContext_t *pContext,
+                                     const char *pPath,
+                                     uHttpClientResponseBodyCallback_t *pResponseBodyCallback,
+                                     void *pUserParam,
+                                     char *pContentType);
 
 /** Make a request for an HTTP header.  If this is a blocking call (i.e.
  * pResponseCallback in the pConnection structure passed to pUHttpClientOpen()
@@ -449,7 +670,7 @@ int32_t uHttpClientGetRequest(uHttpClientContext_t *pContext,
  * @param[out] pResponseHead         a pointer to a place to put the HTTP response
  *                                   header data; in the non-blocking case this
  *                                   storage MUST REMAIN VALID until pResponseCallback
- *                                   is called, which will happen on a timeout, as
+ *                                   is called, which will happen on a timeout as
  *                                   well as in the success case; best not put the
  *                                   storage on  the stack, just in case.
  * @param[in,out] pSize              on entry the amount of storage at pResponseHead;

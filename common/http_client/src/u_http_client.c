@@ -295,7 +295,8 @@ static void cellCallback(uDeviceHandle_t cellHandle, int32_t httpHandle,
     size_t offset = 0;
     int32_t responseSize = 0;
     int32_t thisSize = 0;
-    int32_t totalSize = 0;
+    char *pTmp = NULL;
+    bool continueReading = true;
 
     (void) httpHandle;
 
@@ -306,72 +307,103 @@ static void cellCallback(uDeviceHandle_t cellHandle, int32_t httpHandle,
                 atPrintOn = uAtClientPrintAtGet(atHandle);
                 uAtClientPrintAtSet(atHandle, false);
             }
-
             // Read the status code from the file
             statusCodeOrError = cellFileResponseReadStatusCode(cellHandle,
                                                                pFileNameResponse,
                                                                &offset);
             if (statusCodeOrError >= 0) {
-                // Read data from the response file, where required
-                if ((pContext->pResponse != NULL) &&
-                    (pContext->pResponseSize != NULL) &&
-                    (*pContext->pResponseSize > 0)) {
-                    switch (requestType) {
-                        case U_CELL_HTTP_REQUEST_HEAD:
+                // Read data from the response file
+                switch (requestType) {
+                    case U_CELL_HTTP_REQUEST_HEAD:
+                        if ((pContext->pResponse != NULL) &&
+                            (pContext->pResponseSize != NULL) &&
+                            (*pContext->pResponseSize > 0)) {
                             responseSize = cellFileResponseReadHead(cellHandle,
                                                                     pFileNameResponse,
                                                                     offset,
                                                                     pContext->pResponse,
                                                                     *pContext->pResponseSize,
                                                                     NULL);
-                            break;
-                        case U_CELL_HTTP_REQUEST_GET:
-                        //fall-through
-                        case U_CELL_HTTP_REQUEST_POST:
-                            // Read the headers to get the content type and allow
-                            // us to work out the offset to the start of the body
-                            responseSize = cellFileResponseReadHead(cellHandle,
-                                                                    pFileNameResponse,
-                                                                    offset, NULL, 0,
-                                                                    pContext->pContentType);
-                            if (responseSize >= 0) {
-                                // Read the body, starting from the end of the headers
+                        }
+                        break;
+                    case U_CELL_HTTP_REQUEST_GET:
+                    //fall-through
+                    case U_CELL_HTTP_REQUEST_POST:
+                        // Read the headers to get the content type and allow
+                        // us to work out the offset to the start of the body
+                        responseSize = cellFileResponseReadHead(cellHandle,
+                                                                pFileNameResponse,
+                                                                offset, NULL, 0,
+                                                                pContext->pContentType);
+                        if (responseSize >= 0) {
+                            offset += (size_t) responseSize + 4; // +4 for "\r\n\r\n"
+                            responseSize = 0;
+                            if ((pContext->pResponse != NULL) &&
+                                (pContext->pResponseSize != NULL) &&
+                                (*pContext->pResponseSize > 0)) {
+                                // NON-CHUNKED CASE: read the body, starting
+                                // from the end of the headers.
                                 // It _should_ be possible to read this all at once,
                                 // however it puts some stress on the AT interface
-                                // and so here we chunk it.
-                                offset += (size_t) responseSize + 4; // +4 for "\r\n\r\n"
+                                // and so here we chunk it in any case.
                                 do {
                                     thisSize = U_HTTP_CLIENT_CELL_FILE_CHUNK_LENGTH;
-                                    if (thisSize > ((int32_t) *pContext->pResponseSize) - totalSize) {
-                                        thisSize = ((int32_t) * pContext->pResponseSize) - totalSize;
+                                    if (thisSize > ((int32_t) *pContext->pResponseSize) - responseSize) {
+                                        thisSize = ((int32_t) *pContext->pResponseSize) - responseSize; // *NOPAD*
                                     }
                                     if (thisSize > 0) {
                                         thisSize = uCellFileBlockRead(cellHandle,
                                                                       pFileNameResponse,
-                                                                      pContext->pResponse + totalSize,
-                                                                      offset + totalSize,
+                                                                      pContext->pResponse + responseSize,
+                                                                      offset + responseSize,
                                                                       thisSize);
                                         if (thisSize > 0) {
-                                            totalSize += thisSize;
+                                            responseSize += thisSize;
                                         }
                                     }
                                 } while (thisSize > 0);
-                                responseSize = totalSize;
                             }
-                            break;
-                        default:
-                            break;
-                    }
-                    if (responseSize < 0) {
-                        // There's no way to pass back a file read error
-                        // (better to pass back the valid HTTP status code)
-                        // so just indicate zero length
-                        responseSize = 0;
-                    }
+                            if (pContext->pResponseBodyCallback != NULL) {
+                                // CHUNKED API case
+                                // Allocate memory to read the data into temporarily
+                                pTmp = (char *) pUPortMalloc(pContext->chunkLengthBytes);
+                                if (pTmp != NULL) {
+                                    do {
+                                        thisSize = uCellFileBlockRead(cellHandle,
+                                                                      pFileNameResponse,
+                                                                      pTmp, offset + responseSize,
+                                                                      pContext->chunkLengthBytes);
+                                        if (thisSize > 0) {
+                                            responseSize += thisSize;
+                                            continueReading = pContext->pResponseBodyCallback(cellHandle,
+                                                                                              pTmp, thisSize,
+                                                                                              pContext->pUserParamResponseBody);
+                                        }
+                                    } while ((thisSize > 0) && continueReading);
+
+                                    // Free memory
+                                    uPortFree(pTmp);
+                                }
+                                if (continueReading) {
+                                    // Call the callback once more to indicate we're done
+                                    pContext->pResponseBodyCallback(cellHandle, NULL, 0, pContext->pUserParamResponseBody);
+                                }
+                            }
+                        }
+                        break;
+                    default:
+                        break;
+                }
+                if (responseSize < 0) {
+                    // There's no way to pass back a file read error
+                    // (better to pass back the valid HTTP status code)
+                    // so just indicate zero length
+                    responseSize = 0;
+                }
+                if (pContext->pResponseSize != NULL) {
                     *pContext->pResponseSize = (size_t) responseSize;
                 }
             }
-
             if (atPrintOn) {
                 uAtClientPrintAtSet(atHandle, true);
             }
@@ -468,97 +500,148 @@ static void cellClose(uDeviceHandle_t cellHandle, int32_t httpHandle)
 }
 
 // Perform PUT or POST requests, cellular style.
+// If doing a chunked transfer then chunkLength must be non-zero,
+// pData must be NULL and size must be 0 (pDataCallback must point
+// to the data callback and pUserParamData should be populated).
+// If doing a non-chunked transfer then chunkLength must be zero,
+// pData must be non-NULL and size must be non-zero (pDataCallback
+// must be NULL).
 static int32_t cellPutPost(uDeviceHandle_t devHandle, int32_t httpHandle,
-                           uCellHttpRequest_t requestType,
-                           const char *pPath, const char *pData,
-                           size_t size, const char *pContentType)
+                           uCellHttpRequest_t requestType, const char *pPath,
+                           const char *pData, size_t size, size_t chunkLength,
+                           uHttpClientDataCallback_t *pDataCallback,
+                           void *pUserParamData,
+                           const char *pContentType)
 {
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
     char fileName[U_HTTP_CLIENT_CELL_FILE_NAME_BUFFER_LENGTH];
     uAtClientHandle_t atHandle = NULL;
     bool atPrintOn = false;
+    char *pTmp = NULL;
     int32_t thisSize = 0;
-    int32_t fileSize = (int32_t) size;
+    int32_t fileSize = (int32_t) size; // Note: not employed in the chunked case
     bool rtsFlowControlEnabled = false;
     int32_t writeDelayMs = U_HTTP_CLIENT_CELL_FILE_WRITE_DELAY_MS;
     uAtClientStreamHandle_t streamHandle = {0};
     uDeviceSerial_t *pDeviceSerial;
 
-    // Determine if flow control is enabled on the UART interface and,
-    // if it is, set the write delay to zero as we don't need it
-    uCellAtClientHandleGet(devHandle, &atHandle);
-    if (atHandle != NULL) {
-        uAtClientStreamGetExt(atHandle, &streamHandle);
-        switch (streamHandle.type) {
-            case U_AT_CLIENT_STREAM_TYPE_UART:
-                rtsFlowControlEnabled = uPortUartIsRtsFlowControlEnabled(streamHandle.handle.int32);
-                break;
-            case U_AT_CLIENT_STREAM_TYPE_VIRTUAL_SERIAL:
-                pDeviceSerial = streamHandle.handle.pDeviceSerial;
-                rtsFlowControlEnabled = pDeviceSerial->isRtsFlowControlEnabled(pDeviceSerial);
-                break;
-            default:
-                break;
-        }
+    // If we have a pDataCallback, allocate memory to copy
+    // the data into temporarily
+    if (pDataCallback != NULL) {
+        pTmp = (char *) pUPortMalloc(chunkLength);
     }
-    if (rtsFlowControlEnabled) {
-        writeDelayMs = 0;
-    }
-    // If you change the string here, you may need to change the one
-    // in cellClose() to match
-    snprintf(fileName, sizeof(fileName),
-             "%s%d_%s", U_CELL_HTTP_FILE_NAME_RESPONSE_AUTO_PREFIX,
-             (int) httpHandle,  "putpost");
-    if (atHandle != NULL) {
-        // Switch AT printing off for this as it is quite a load
-        atPrintOn = uAtClientPrintAtGet(atHandle);
-        uAtClientPrintAtSet(atHandle, false);
-    }
-    // Always delete first as uCellFileWrite() appends
-    uCellFileDelete(devHandle, fileName);
-    // Write in chunks so as not to stress the capabilities
-    // of the UART or the flash-write speed of the module
-    while ((fileSize > 0) && (thisSize >= 0)) {
-        thisSize = U_HTTP_CLIENT_CELL_FILE_CHUNK_LENGTH;
-        if (thisSize > fileSize) {
-            thisSize = fileSize;
+
+    if ((pTmp != NULL) || (pDataCallback == NULL)) {
+        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+        // If chunkLength is zero then we aren't doing "user" chunks
+        // but we will still write in chunks, to reduce the chances
+        // of overloading the flash-write process
+        if (chunkLength == 0) {
+            chunkLength = U_HTTP_CLIENT_CELL_FILE_CHUNK_LENGTH;
         }
-        thisSize = uCellFileWrite(devHandle, fileName, pData, thisSize);
-        if (thisSize > 0) {
-            pData += thisSize;
-            fileSize -= thisSize;
+
+        // Determine if flow control is enabled on the UART interface and,
+        // if it is, set the write delay to zero as we don't need it
+        uCellAtClientHandleGet(devHandle, &atHandle);
+        if (atHandle != NULL) {
+            uAtClientStreamGetExt(atHandle, &streamHandle);
+            switch (streamHandle.type) {
+                case U_AT_CLIENT_STREAM_TYPE_UART:
+                    rtsFlowControlEnabled = uPortUartIsRtsFlowControlEnabled(streamHandle.handle.int32);
+                    break;
+                case U_AT_CLIENT_STREAM_TYPE_VIRTUAL_SERIAL:
+                    pDeviceSerial = streamHandle.handle.pDeviceSerial;
+                    rtsFlowControlEnabled = pDeviceSerial->isRtsFlowControlEnabled(pDeviceSerial);
+                    break;
+                default:
+                    break;
+            }
         }
-        if ((fileSize > 0) && (writeDelayMs > 0)) {
-            uPortTaskBlock(writeDelayMs);
+        if (rtsFlowControlEnabled) {
+            writeDelayMs = 0;
         }
-    }
-    if (thisSize < 0) {
-        errorCode = thisSize;
-    } else {
-        if (!rtsFlowControlEnabled) {
-            // If there was no error and RTS flow control is NOT enabled
-            // there is still _potential_ for there to have been an issue
-            // in writing the file, so check that it is of the expected
-            // length to be quite sure
-            thisSize = uCellFileSize(devHandle, fileName);
-            if (thisSize < 0) {
-                errorCode = thisSize;
+        // If you change the string here, you may need to change the one
+        // in cellClose() to match
+        snprintf(fileName, sizeof(fileName),
+                 "%s%d_%s", U_CELL_HTTP_FILE_NAME_RESPONSE_AUTO_PREFIX,
+                 (int) httpHandle,  "putpost");
+        if (atHandle != NULL) {
+            // Switch AT printing off for this as it is quite a load
+            atPrintOn = uAtClientPrintAtGet(atHandle);
+            uAtClientPrintAtSet(atHandle, false);
+        }
+        // Always delete first as uCellFileWrite() appends
+        uCellFileDelete(devHandle, fileName);
+        // Write in chunks
+        while (((fileSize > 0) || (pDataCallback != NULL)) && (thisSize >= 0)) {
+            if (pDataCallback != NULL) {
+                // Get a chunk of data from the application into pTmp
+                thisSize = (int32_t) pDataCallback(devHandle, pTmp, chunkLength, pUserParamData);
+                if (thisSize > (int32_t) chunkLength) {
+                    thisSize = (int32_t) chunkLength;
+                }
+                if (thisSize > 0) {
+                    // Point pData at the data and count it up in size
+                    pData = (const char *) pTmp;
+                    size += thisSize;
+                } else {
+                    // The user doesn't have any more data, set
+                    // pDataCallback to NULL to force an exit
+                    pDataCallback = NULL;
+                }
             } else {
-                if (thisSize != (int32_t) size) {
-                    errorCode = (int32_t) U_ERROR_COMMON_TRUNCATED;
+                thisSize = chunkLength;
+                if (thisSize > fileSize) {
+                    thisSize = fileSize;
+                }
+            }
+            if (thisSize > 0) {
+                thisSize = uCellFileWrite(devHandle, fileName, pData, thisSize);
+                if (thisSize > 0) {
+                    pData += thisSize;
+                    fileSize -= thisSize;
+                }
+                if (((fileSize > 0) || (pTmp != NULL)) && (writeDelayMs > 0)) {
+                    uPortTaskBlock(writeDelayMs);
                 }
             }
         }
+        if (thisSize < 0) {
+            errorCode = thisSize;
+            if (pDataCallback != NULL) {
+                // Let the chunked user data callback know there
+                // was a problem
+                pDataCallback(devHandle, NULL, 0, pUserParamData);
+            }
+        } else {
+            if (!rtsFlowControlEnabled) {
+                // If there was no error and RTS flow control is NOT enabled
+                // there is still _potential_ for there to have been an issue
+                // in writing the file, so check that it is of the expected
+                // length to be quite sure
+                thisSize = uCellFileSize(devHandle, fileName);
+                if (thisSize < 0) {
+                    errorCode = thisSize;
+                } else {
+                    if (thisSize != (int32_t) size) {
+                        errorCode = (int32_t) U_ERROR_COMMON_TRUNCATED;
+                    }
+                }
+            }
+        }
+        if (atPrintOn) {
+            uAtClientPrintAtSet(atHandle, true);
+        }
+        if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
+            errorCode = uCellHttpRequestFile(devHandle, httpHandle,
+                                             requestType, pPath,
+                                             NULL, fileName,
+                                             pContentType);
+        }
     }
-    if (atPrintOn) {
-        uAtClientPrintAtSet(atHandle, true);
-    }
-    if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
-        errorCode = uCellHttpRequestFile(devHandle, httpHandle,
-                                         requestType, pPath,
-                                         NULL, fileName,
-                                         pContentType);
-    }
+
+    // Free memory
+    uPortFree(pTmp);
 
     return errorCode;
 }
@@ -604,6 +687,8 @@ static void clearLastRequest(uHttpClientContext_t *pContext)
 {
     pContext->pResponse = NULL;
     pContext->pResponseSize = NULL;
+    pContext->pResponseBodyCallback = NULL;
+    pContext->pUserParamResponseBody = NULL;
     pContext->pContentType = NULL;
     pContext->lastRequestTimeMs = -1;
     pContext->statusCodeOrError = 0;
@@ -733,6 +818,7 @@ uHttpClientContext_t *pUHttpClientOpen(uDeviceHandle_t devHandle,
             pContext->pResponseCallback = pConnection->pResponseCallback;
             pContext->pResponseCallbackParam = pConnection->pResponseCallbackParam;
             pContext->pKeepGoingCallback = pConnection->pKeepGoingCallback;
+            pContext->chunkLengthBytes = pConnection->maxChunkLengthBytes;
             if (uPortSemaphoreCreate((uPortSemaphoreHandle_t *) & (pContext->semaphoreHandle), 1,
                                      1) == 0) { // *NOPAD*
                 gLastOpenError = U_ERROR_COMMON_SUCCESS;
@@ -833,13 +919,51 @@ int32_t uHttpClientPutRequest(uHttpClientContext_t *pContext,
             if (U_DEVICE_IS_TYPE(pContext->devHandle, U_DEVICE_TYPE_CELL)) {
                 errorCode = cellPutPost(pContext->devHandle,
                                         ((uHttpClientContextCell_t *) pContext->pPriv)->httpHandle,
-                                        U_CELL_HTTP_REQUEST_PUT,
-                                        pPath, pData, size, pContentType);
+                                        U_CELL_HTTP_REQUEST_PUT, pPath,
+                                        pData, size,
+                                        0, NULL, NULL,
+                                        pContentType);
             } else if (U_DEVICE_IS_TYPE(pContext->devHandle, U_DEVICE_TYPE_SHORT_RANGE)) {
                 errorCode = uWifiHttpRequestEx(pContext->devHandle,
                                                ((uHttpClientContextWifi_t *) pContext->pPriv)->httpHandle,
                                                U_WIFI_HTTP_REQUEST_PUT,
                                                pPath, pData, size, pContentType);
+            }
+            if (errorCode == 0) {
+                // Handle blocking
+                errorCode = block((volatile uHttpClientContext_t *) pContext);
+            }
+        }
+    }
+
+    U_HTTP_CLIENT_REQUEST_EXIT_FUNCTION(pContext, errorCode);
+
+    return errorCode;
+}
+
+// Make an HTTP PUT request, chunked version.
+int32_t uHttpClientPutRequestChunked(uHttpClientContext_t *pContext,
+                                     const char *pPath,
+                                     uHttpClientDataCallback_t *pDataCallback,
+                                     void *pUserParam,
+                                     const char *pContentType)
+{
+    int32_t errorCode;
+
+    U_HTTP_CLIENT_REQUEST_ENTRY_FUNCTION(pContext, &errorCode, false);
+
+    if (errorCode == 0) {
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        if ((pPath != NULL) &&
+            ((pContentType != NULL) || (pDataCallback == NULL))) {
+            errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+            if (U_DEVICE_IS_TYPE(pContext->devHandle, U_DEVICE_TYPE_CELL)) {
+                errorCode = cellPutPost(pContext->devHandle,
+                                        ((uHttpClientContextCell_t *) pContext->pPriv)->httpHandle,
+                                        U_CELL_HTTP_REQUEST_PUT, pPath,
+                                        NULL, 0,
+                                        pContext->chunkLengthBytes, pDataCallback, pUserParam,
+                                        pContentType);
             }
             if (errorCode == 0) {
                 // Handle blocking
@@ -877,8 +1001,10 @@ int32_t uHttpClientPostRequest(uHttpClientContext_t *pContext,
                 pContext->pContentType = pResponseContentType;
                 errorCode = cellPutPost(pContext->devHandle,
                                         ((uHttpClientContextCell_t *) pContext->pPriv)->httpHandle,
-                                        U_CELL_HTTP_REQUEST_POST,
-                                        pPath, pData, size, pContentType);
+                                        U_CELL_HTTP_REQUEST_POST, pPath,
+                                        pData, size,
+                                        pContext->chunkLengthBytes, NULL, NULL,
+                                        pContentType);
                 if (errorCode != 0) {
                     // Make sure to forget the user's pointers on error
                     pContext->pResponse = NULL;
@@ -897,6 +1023,54 @@ int32_t uHttpClientPostRequest(uHttpClientContext_t *pContext,
                     // Make sure to forget the user's pointers on error
                     pContext->pResponse = NULL;
                     pContext->pResponseSize = NULL;
+                    pContext->pContentType = NULL;
+                }
+            }
+            if (errorCode == 0) {
+                // Handle blocking
+                errorCode = block((volatile uHttpClientContext_t *) pContext);
+            }
+        }
+    }
+
+    U_HTTP_CLIENT_REQUEST_EXIT_FUNCTION(pContext, errorCode);
+
+    return errorCode;
+}
+
+// Make an HTTP POST request, chunked version.
+int32_t uHttpClientPostRequestChunked(uHttpClientContext_t *pContext,
+                                      const char *pPath,
+                                      uHttpClientDataCallback_t *pDataCallback,
+                                      void *pUserParamData,
+                                      const char *pContentType,
+                                      uHttpClientResponseBodyCallback_t *pResponseBodyCallback,
+                                      void *pUserParamResponseBody,
+                                      char *pResponseContentType)
+{
+    int32_t errorCode;
+
+    U_HTTP_CLIENT_REQUEST_ENTRY_FUNCTION(pContext, &errorCode, false);
+
+    if (errorCode == 0) {
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        if ((pPath != NULL) &&
+            ((pContentType != NULL) || (pResponseBodyCallback == NULL))) {
+            errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+            if (U_DEVICE_IS_TYPE(pContext->devHandle, U_DEVICE_TYPE_CELL)) {
+                pContext->pResponseBodyCallback = pResponseBodyCallback;
+                pContext->pUserParamResponseBody = pUserParamResponseBody;
+                pContext->pContentType = pResponseContentType;
+                errorCode = cellPutPost(pContext->devHandle,
+                                        ((uHttpClientContextCell_t *) pContext->pPriv)->httpHandle,
+                                        U_CELL_HTTP_REQUEST_POST, pPath,
+                                        NULL, 0,
+                                        pContext->chunkLengthBytes, pDataCallback, pUserParamData,
+                                        pContentType);
+                if (errorCode != 0) {
+                    // Make sure to forget the user's pointers on error
+                    pContext->pResponseBodyCallback = NULL;
+                    pContext->pUserParamResponseBody = NULL;
                     pContext->pContentType = NULL;
                 }
             }
@@ -952,6 +1126,48 @@ int32_t uHttpClientGetRequest(uHttpClientContext_t *pContext,
                     // Make sure to forget the user's pointers on error
                     pContext->pResponse = NULL;
                     pContext->pResponseSize = NULL;
+                    pContext->pContentType = NULL;
+                }
+            }
+            if (errorCode == 0) {
+                // Handle blocking
+                errorCode = block((volatile uHttpClientContext_t *) pContext);
+            }
+        }
+    }
+
+    U_HTTP_CLIENT_REQUEST_EXIT_FUNCTION(pContext, errorCode);
+
+    return errorCode;
+}
+
+// Make an HTTP GET request, chunked version.
+int32_t uHttpClientGetRequestChunked(uHttpClientContext_t *pContext,
+                                     const char *pPath,
+                                     uHttpClientResponseBodyCallback_t *pResponseBodyCallback,
+                                     void *pUserParam,
+                                     char *pContentType)
+{
+    int32_t errorCode;
+
+    U_HTTP_CLIENT_REQUEST_ENTRY_FUNCTION(pContext, &errorCode, false);
+
+    if (errorCode == 0) {
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        if (pPath != NULL) {
+            errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+            if (U_DEVICE_IS_TYPE(pContext->devHandle, U_DEVICE_TYPE_CELL)) {
+                pContext->pResponseBodyCallback = pResponseBodyCallback;
+                pContext->pUserParamResponseBody = pUserParam;
+                pContext->pContentType = pContentType;
+                errorCode = uCellHttpRequest(pContext->devHandle,
+                                             ((uHttpClientContextCell_t *) pContext->pPriv)->httpHandle,
+                                             U_CELL_HTTP_REQUEST_GET, pPath,
+                                             NULL, NULL, NULL);
+                if (errorCode != 0) {
+                    // Make sure to forget the user's pointers on error
+                    pContext->pResponseBodyCallback = NULL;
+                    pContext->pUserParamResponseBody = NULL;
                     pContext->pContentType = NULL;
                 }
             }
