@@ -19,6 +19,23 @@
  * a location fix, i.e. this example ONLY applies if your GNSS module is
  * attached to the cellular module and NOT to this MCU.
  *
+ * Note: if you would like to use the M10 device inside a LENA-R8xxxM10
+ * module, LENA-R8 does NOT support communication with that device via
+ * CMUX, which the location API will use by default.  You _may_ still
+ * use this example if you define U_NETWORK_GNSS_CFG_CELL_USE_AT_ONLY
+ * when you build ubxlib, forcing the ubxlib code to use the more clunky,
+ * polling, AT+UGUBX mechanism to exchange messages with the GNSS chip,
+ * however communication attempts may occasionally fail, particularly soon
+ * after power-on of the GNSS chip, as responses from the GNSS chip to
+ * messages sent by the UPOS software entity of the LENA-R8 cellular chip,
+ * which cannot be stopped, may end up replacing the wanted reply.  Hence,
+ * for LENA-R8, it is advisable to power the internal GNSS chip from VCC_GNSS
+ * and connect a seperate UART from your MCU to the TXD_GNSS/RXD_GNSS pins
+ * offered by the LENA-R8 module; then, from a ubxlib perspective, you can
+ * treat the GNSS chip inside LENA-R8 as a standalone GNSS device and
+ * follow the main_loc_gnss.c and main_loc_gnss_continuous.c examples
+ * instead.
+ *
  * The choice of module and the choice of platform on which this
  * code runs is made at build time, see the README.md for
  * instructions.

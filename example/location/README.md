@@ -7,8 +7,6 @@ These examples demonstrate how to establish location in three different configur
 - as above but continuously to a callback ([main_loc_gnss_cell_continuous.c](main_loc_gnss_cell_continuous.c)),
 - using cloud services such as Cell Locate via a cellular \[and in future Wi-Fi\] module ([main_loc_cell_locate.c](main_loc_cell_locate.c) and [main_loc_gnss_cloud_locate.c](main_loc_gnss_cloud_locate.c)); the latter Cloud Locate service is focussed on applications where the cloud needs to know the position of the device but the device itself does not.
 
-IMPORTANT: there will likely be modifications to this API as we introduce more location-type services, beware!
-
 # Usage
 To build and run these examples on a supported platform you need to travel down into the [port/platform](/port/platform)`/<platform>/mcu/<mcu>` directory of your choice and find the `runner` build.  The instructions there will tell you how to set/override \#defines.  The following \#defines are relevant:
 

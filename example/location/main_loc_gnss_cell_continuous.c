@@ -19,6 +19,10 @@
  * a location fix continuously, i.e. this example ONLY applies if your
  * GNSS module is attached to the cellular module and NOT to this MCU.
  *
+ * Note that this example will NOT work for LENA-R8xxxM10 since LENA-R8
+ * does not support CMUX access to the built-in GNSS chip and that is
+ * required for continuous location.
+ *
  * The choice of module and the choice of platform on which this
  * code runs is made at build time, see the README.md for
  * instructions.

@@ -340,6 +340,23 @@ typedef enum {
  * force use of AT commands, rather than the GNSS multiplexer channel, to
  * obtain position.
  *
+ * Note: if you would like to use the M10 device inside a LENA-R8xxxM10
+ * module, LENA-R8 does NOT support communication with that device via
+ * CMUX, which all of the APIs here will use by default.  You _may_ still
+ * use the APIs here if you define U_NETWORK_GNSS_CFG_CELL_USE_AT_ONLY when
+ * you build ubxlib, forcing the ubxlib code to use the more clunky, polling,
+ * AT+UGUBX mechanism to exchange messages with the GNSS chip, however
+ * continuous location (i.e. any API with "Continuous" in the name) is not
+ * possible via that polling mechanism and communication attempts may also
+ * occasionally fail, particularly soon after power-on of the GNSS chip,
+ * as responses from the GNSS chip to messages sent by the UPOS software
+ * entity of the LENA-R8 cellular chip, which cannot be stopped, may end
+ * up replacing the wanted reply.  Hence, for LENA-R8, it is advisable to
+ * power the internal GNSS chip from VCC_GNSS and connect a seperate UART from
+ * your MCU to the TXD_GNSS/RXD_GNSS pins offered by the LENA-R8 module;
+ * then, from a ubxlib perspective, you can treat the GNSS chip inside
+ * LENA-R8 as a standalone GNSS device.
+ *
  * @param devHandle               the device handle to use.
  * @param type                    the type of location fix to perform;
  *                                how this can be used depends upon the
@@ -444,6 +461,23 @@ int32_t uLocationGet(uDeviceHandle_t devHandle, uLocationType_t type,
  * force use of AT commands, rather than the GNSS multiplexer channel, to
  * obtain position.
  *
+ * Note: if you would like to use the M10 device inside a LENA-R8xxxM10
+ * module, LENA-R8 does NOT support communication with that device via
+ * CMUX, which all of the APIs here will use by default.  You _may_ still
+ * use the APIs here if you define U_NETWORK_GNSS_CFG_CELL_USE_AT_ONLY when
+ * you build ubxlib, forcing the ubxlib code to use the more clunky, polling,
+ * AT+UGUBX mechanism to exchange messages with the GNSS chip, however
+ * continuous location (i.e. any API with "Continuous" in the name) is not
+ * possible via that polling mechanism and communication attempts may also
+ * occasionally fail, particularly soon after power-on of the GNSS chip,
+ * as responses from the GNSS chip to messages sent by the UPOS software
+ * entity of the LENA-R8 cellular chip, which cannot be stopped, may end
+ * up replacing the wanted reply.  Hence, for LENA-R8, it is advisable to
+ * power the internal GNSS chip from VCC_GNSS and connect a seperate UART from
+ * your MCU to the TXD_GNSS/RXD_GNSS pins offered by the LENA-R8 module;
+ * then, from a ubxlib perspective, you can treat the GNSS chip inside
+ * LENA-R8 as a standalone GNSS device.
+ *
  * #U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE is not currently supported by
  * this function.
  *
@@ -512,6 +546,9 @@ int32_t uLocationGetStart(uDeviceHandle_t devHandle, uLocationType_t type,
  * streamed position) is opened, closed, and then re-opened the GNSS chip will
  * be unresponsive.  For that case, please call this function once at
  * startup, only calling uLocationGetStop() when you are shutting down.
+ *
+ * Note: this API is NOT supported for the M10 GNSS device inside a
+ * LENA-R8xxxM10 module.
  *
  * If you are requesting #U_LOCATION_TYPE_GNSS at a high rate (e.g. faster than
  * once per second) then, since this code only uses UBX messages, it will
