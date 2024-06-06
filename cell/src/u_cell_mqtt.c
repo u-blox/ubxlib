@@ -2036,6 +2036,8 @@ static int32_t readMessage(const uCellPrivateInstance_t *pInstance,
                     }
                     errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
                 } else {
+                    // Set the number of unread messages to zero
+                    pContext->numUnreadMessages = 0;
                     printErrorCodes(pInstance);
                 }
             }
@@ -2142,6 +2144,12 @@ static int32_t readMessage(const uCellPrivateInstance_t *pInstance,
                     }
                 }
             } else {
+                // Some modules (e.g. LENA-R8) return an error
+                // if an attempt is made to read a message when
+                // there is nothing to read, so as a safety
+                // measure, set the number of unread messages
+                // to zero at this point
+                pContext->numUnreadMessages = 0;
                 printErrorCodes(pInstance);
             }
         }
