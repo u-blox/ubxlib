@@ -441,7 +441,7 @@ static const char *const gpDeviceCfgCellUartPppListTransportType[][2] = {
  * compatible devices, or NULL where not present, in the order
  * they appear in the device tree.
  */
-static const int32_t gpDeviceCfgCellUartPppListUartBaudRate[][2] = {
+static const int32_t gDeviceCfgCellUartPppListUartBaudRate[][2] = {
     DT_FOREACH_STATUS_OKAY_VARGS(u_blox_ubxlib_device_cellular,
                                  U_PORT_BOARD_CFG_GET_NETWORK_LIST_UART_PPP_INT,
                                  uart_baud_rate)
@@ -577,7 +577,7 @@ static const int32_t gDeviceCfgGnssI2cClockHertz[] = {
  * ubxlib-device-gnss compatible device, in the order they
  * appear in the device tree.
  */
-static const int32_t gDeviceCfgGnssI2cAlreadyOpen[] = {
+static const bool gDeviceCfgGnssI2cAlreadyOpen[] = {
     DT_FOREACH_STATUS_OKAY_VARGS(u_blox_ubxlib_device_gnss,
                                  U_PORT_BOARD_CFG_GET_BOOLEAN,
                                  i2c_already_open)
@@ -1534,7 +1534,7 @@ static void cfgNetworkCellular(int32_t deviceIndex, int32_t networkIndex,
             x = getUart(gpDeviceCfgCellUartPppListTransportType[deviceIndex][networkIndex]);
             if (x >= 0) {
                 pUartPpp->uart = x;
-                pUartPpp->baudRate = gpDeviceCfgCellUartPppListUartBaudRate[deviceIndex][networkIndex];
+                pUartPpp->baudRate = gDeviceCfgCellUartPppListUartBaudRate[deviceIndex][networkIndex];
                 pUartPpp->pinTxd = -1;
                 pUartPpp->pinRxd = -1;
                 pUartPpp->pinCts = -1;
