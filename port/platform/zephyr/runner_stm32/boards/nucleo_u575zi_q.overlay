@@ -5,9 +5,10 @@
     // and LPUARTs, hence we need to use aliases in order
     // for ubxlib to be able to find them as UARTs
     aliases {
-        ubxlib-uart2 = &usart2; // For cellular module
-        // Don't need an alias for USART3 as that's the console
+        // Don't need an alias for USART1 as that's the console
         // and ubxlib doesn't need to open it
+        ubxlib-uart2 = &usart2; // For cellular module
+        ubxlib-uart3 = &usart3; // For short-range module
     };
 
     cfg-device-cellular {
@@ -18,6 +19,11 @@
         pin-pwr-on = <0x5e>;  // Arduino header pin D4, or pin F14 in STM32 port numbering
         network = <&label_cfg_network_cellular>;
     };
+
+    // Note: we allow the short-range configuration to come in from the
+    // C code definitions, i.e. outside Zephyr, since otherwise we would
+    // end up having to write the password of our Wifi test network into
+    // this public file
 
     label_cfg_network_cellular: cfg-network-cellular {
         compatible = "u-blox,ubxlib-network-cellular";
@@ -39,8 +45,8 @@
     };
 
     chosen {
-            // Only required if U_CFG_PPP_ENABLE is enabled
-            zephyr,ppp-uart = &uart99;
+        // Only required if U_CFG_PPP_ENABLE is enabled
+        zephyr,ppp-uart = &uart99;
     };
 
     // Only required if U_CFG_PPP_ENABLE is enabled
@@ -52,15 +58,11 @@
     };
 };
 
-// Enable DMA (a) because STM32 serial ports
-// have only a one-byte buffer, so will lose
-// characters without it, and, (b) because we
-// need an asynchronous UART for PPP and the
-// device tree configuration on STM32 won't
-// allow that unless at least one thing has
-// DMA enabled
-// Guidance from table 136 of reference manual
-// RM0456 and
+// Enable DMA because we need an asynchronous
+// UART for PPP and the device tree configuration
+// on STM32 won't allow that unless at least one
+// thing has DMA enabled.  Guidance from table 136
+// of reference manual RM0456 and
 // https://github.com/zephyrproject-rtos/zephyr/blob/main/dts/bindings/dma/st%2Cstm32u5-dma.yaml
 &usart2 {
     dmas = <&gpdma1 0 27 STM32_DMA_PERIPH_TX
@@ -71,9 +73,13 @@
     status = "okay";
 };
 
-// Also make console logging use DMA for speed
 &usart3 {
-    dmas = <&gpdma1 0 29 STM32_DMA_PERIPH_TX
-            &gpdma1 1 28 STM32_DMA_PERIPH_RX>;
-    dma-names = "tx", "rx";
+    pinctrl-0 = <&usart3_tx_pd8
+                 &usart3_rx_pd9
+                 &usart3_rts_pd12
+                 &usart3_cts_pd11>;
+    pinctrl-names = "default";
+    current-speed = <115200>;
+    hw-flow-control;
+    status = "okay";
 };

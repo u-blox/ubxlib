@@ -28,7 +28,8 @@
 
 /** @file
  * @brief This header file defines the HTTP client API for Wi-Fi
- * modules.  This functions are thread-safe with the exception of
+ * modules.  HTTP is not supported on all module types (e.g. ODIN-W2
+ * does not).  This functions are thread-safe with the exception of
  * uWifiHttpClose(), which should not be called while any of the other
  * uWifiHttp functions may be running.  However, note that the
  * HTTP request/response behaviour of the underlying Wi-FI module
@@ -126,7 +127,8 @@ typedef struct {
  * FUNCTIONS
  * -------------------------------------------------------------- */
 
-/** Open a wifi HTTP client instance.
+/** Open a wifi HTTP client instance; not supported on all module
+ * types (e.g. ODIN-W2 does not).
  *
  * @param wifiHandle         the handle of the Wi-Fi instance to
  *                           be used.

@@ -165,31 +165,15 @@ U_PORT_TEST_FUNCTION("[wifiCaptivePortal]", "wifiCaptivePortal")
     U_PORT_TEST_ASSERT(uDeviceOpen(&gDeviceCfg, &gDeviceHandle) == 0);
     U_TEST_PRINT_LINE("start");
 
-    // uWifiCaptivePortal() makes calls into the sockets API and
-    // the first call to a sockets API initialises the underlying
-    // sockets layer, occupying heap which is not recovered for
-    // thread-safety reasons; to take account of that, make a
-    // sockets call here.
-    uNetworkCfgWifi_t networkCfg = {
-        .type = U_NETWORK_TYPE_WIFI,
-        .pSsid = U_PORT_STRINGIFY_QUOTED(U_WIFI_TEST_CFG_SSID),
-        .authentication = U_WIFI_TEST_CFG_AUTHENTICATION,
-        .pPassPhrase = U_PORT_STRINGIFY_QUOTED(U_WIFI_TEST_CFG_WPA2_PASSPHRASE)
-    };
-    U_PORT_TEST_ASSERT(uNetworkInterfaceUp(gDeviceHandle, U_NETWORK_TYPE_WIFI, &networkCfg) == 0);
-    uSockAddress_t remoteAddress;
-    U_PORT_TEST_ASSERT(uSockGetHostByName(gDeviceHandle,
-                                          "8.8.8.8",
-                                          &(remoteAddress.ipAddress)) == 0);
-    uNetworkInterfaceDown(gDeviceHandle, U_NETWORK_TYPE_WIFI);
-
-    // Now do the actual test
     gTimeoutStop.timeoutStart = uTimeoutStart();
     gTimeoutStop.durationMs = U_WIFI_CAPTIVE_PORTAL_TEST_TIMEOUT_SECONDS * 1000;
     int32_t returnCode = uWifiCaptivePortal(gDeviceHandle, "UBXLIB_TEST_PORTAL", NULL,
                                             keepGoingCallback);
     U_TEST_PRINT_LINE("uWifiCaptivePortal() returned %d.", returnCode);
-    U_PORT_TEST_ASSERT(returnCode == 0);
+    if (returnCode == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
+        U_TEST_PRINT_LINE("*** WARNING *** Wifi captive portal not supported, not testing it.");
+    }
+    U_PORT_TEST_ASSERT((returnCode == 0) || (returnCode == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED));
 
     // The network interface will have been brought up by
     // uWifiCaptivePortal(), we need to take it down again

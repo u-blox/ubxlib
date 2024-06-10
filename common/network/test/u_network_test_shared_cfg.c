@@ -290,7 +290,11 @@ static const uNetworkCfgBle_t gNetworkCfgBle = {
 #if U_SHORT_RANGE_TEST_BLE()
     .type = U_NETWORK_TYPE_BLE,
     .role = U_CFG_APP_SHORT_RANGE_ROLE,
+# ifndef U_CFG_TEST_BLE_DISABLE_SPS
     .spsServer = true
+# else
+    .spsServer = false
+# endif
 #else
     .type = U_NETWORK_TYPE_NONE
 #endif

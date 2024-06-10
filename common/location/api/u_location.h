@@ -387,8 +387,10 @@ typedef enum {
  *                                - Wi-Fi:    #U_LOCATION_TYPE_CLOUD_GOOGLE,
  *                                            #U_LOCATION_TYPE_CLOUD_SKYHOOK and
  *                                            #U_LOCATION_TYPE_CLOUD_HERE are
- *                                            supported. pAuthenticationTokenStr should
- *                                            point to the API key for the service; the
+ *                                            supported, though not on all module
+ *                                            types (e.g. ODIN-W2 does not).
+ *                                            pAuthenticationTokenStr should point to
+ *                                            the API key for the service; the
  *                                            accessPointsFilter and rssiDbmFilter fields
  *                                            in pLocationAssist are obeyed.
  *                                - BLE:      no form of BLE location is currently

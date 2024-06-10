@@ -83,7 +83,9 @@ typedef enum {
 // Lint can't seem to find it inside macros.
 typedef enum {
     U_SHORT_RANGE_PRIVATE_FEATURE_GATT_SERVER,
-    U_SHORT_RANGE_PRIVATE_FEATURE_HTTP_CLIENT
+    U_SHORT_RANGE_PRIVATE_FEATURE_HTTP_CLIENT,
+    U_SHORT_RANGE_PRIVATE_FEATURE_LOCATION_WIFI,
+    U_SHORT_RANGE_PRIVATE_FEATURE_WIFI_CAPTIVE_PORTAL
 } uShortRangePrivateFeature_t;
 
 /** The characteristics that may differ between short range modules.

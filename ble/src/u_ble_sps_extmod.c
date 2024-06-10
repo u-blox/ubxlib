@@ -443,9 +443,27 @@ static void removeCallbacks(uDeviceHandle_t devHandle,
     pInstance->pSpsConnectionCallbackParameter = NULL;
 }
 
+static int32_t setBleConfig(const uAtClientHandle_t atHandle, int32_t parameter, uint32_t value)
+{
+    int32_t error;
+    uAtClientLock(atHandle);
+    uAtClientCommandStart(atHandle, "AT+UBTLECFG=");
+    uAtClientWriteInt(atHandle, parameter);
+    uAtClientWriteInt(atHandle, (int32_t)value);
+    uAtClientCommandStopReadResponse(atHandle);
+    error = uAtClientUnlock(atHandle);
+
+    if (error != (int32_t) U_ERROR_COMMON_SUCCESS) {
+        uPortLog("U_BLE_SPS: Could not set BLE config param %d with value %d\n", parameter, value);
+    }
+
+    return error;
+}
+
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
+
 int32_t uBleSpsSetCallbackConnectionStatus(uDeviceHandle_t devHandle,
                                            uBleSpsConnectionStatusCallback_t pCallback,
                                            void *pCallbackParameter)
@@ -496,23 +514,6 @@ int32_t uBleSpsSetCallbackConnectionStatus(uDeviceHandle_t devHandle,
     }
 
     return errorCode;
-}
-
-static int32_t setBleConfig(const uAtClientHandle_t atHandle, int32_t parameter, uint32_t value)
-{
-    int32_t error;
-    uAtClientLock(atHandle);
-    uAtClientCommandStart(atHandle, "AT+UBTLECFG=");
-    uAtClientWriteInt(atHandle, parameter);
-    uAtClientWriteInt(atHandle, (int32_t)value);
-    uAtClientCommandStopReadResponse(atHandle);
-    error = uAtClientUnlock(atHandle);
-
-    if (error != (int32_t) U_ERROR_COMMON_SUCCESS) {
-        uPortLog("U_BLE_SPS: Could not set BLE config param %d with value %d\n", parameter, value);
-    }
-
-    return error;
 }
 
 int32_t uBleSpsConnectSps(uDeviceHandle_t devHandle,

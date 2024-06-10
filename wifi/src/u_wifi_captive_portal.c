@@ -37,6 +37,8 @@
 
 #include "u_error_common.h"
 
+#include "u_timeout.h"
+
 #include "u_assert.h"
 
 #include "u_port_os.h"
@@ -46,7 +48,7 @@
 
 #include "u_short_range_module_type.h"
 #include "u_short_range.h"
-#include "u_short_range_cfg.h"
+#include "u_short_range_private.h"
 
 #include "u_network.h"
 #include "u_sock_errno.h"
@@ -339,115 +341,125 @@ int32_t uWifiCaptivePortal(uDeviceHandle_t deviceHandle,
                            uWifiCaptivePortalKeepGoingCallback_t cb)
 {
 
-    int32_t errorCode = 0;
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    uShortRangePrivateInstance_t *pInstance;
     // *** UCX MISSING FUNCTION ***
     // Currently no support for access point ip-address in ucx, hence disabled
 #ifdef U_UCONNECT_GEN2
     return U_ERROR_COMMON_NOT_IMPLEMENTED;
 #endif
 
-    // Wifi access point configuration
-    gNetworkCfg.type = U_NETWORK_TYPE_WIFI;
-    gNetworkCfg.mode = U_WIFI_MODE_AP;
-    gNetworkCfg.apAuthentication = (pPassword == NULL) ? U_WIFI_AUTH_OPEN : U_WIFI_AUTH_WPA_PSK;
-    gNetworkCfg.pApSssid = pSsid;
-    gNetworkCfg.pApPassPhrase = pPassword;
-    gNetworkCfg.pApIpAddress = "8.8.8.8";  // Required for Android
+    pInstance = pUShortRangePrivateGetInstance(deviceHandle);
+    if (pInstance != NULL) {
+        errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+        if (U_SHORT_RANGE_PRIVATE_HAS(pInstance->pModule,
+                                      U_SHORT_RANGE_PRIVATE_FEATURE_WIFI_CAPTIVE_PORTAL)) {
+            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+            // Wifi access point configuration
+            gNetworkCfg.type = U_NETWORK_TYPE_WIFI;
+            gNetworkCfg.mode = U_WIFI_MODE_AP;
+            gNetworkCfg.apAuthentication = (pPassword == NULL) ? U_WIFI_AUTH_OPEN : U_WIFI_AUTH_WPA_PSK;
+            gNetworkCfg.pApSssid = pSsid;
+            gNetworkCfg.pApPassPhrase = pPassword;
+            gNetworkCfg.pApIpAddress = "8.8.8.8";  // Required for Android
 
-    gDevHandle = deviceHandle;
-    gKeepGoing = true;
-    gSsid[0] = 0;
-    gPw[0] = 0;
-    if (pSsid != NULL) {
-        // Make sure that possible auto connected station mode is disconnected
-        uWifiStationDisconnect(gDevHandle);
-        // Start the access point
-        errorCode = uNetworkInterfaceUp(gDevHandle, U_NETWORK_TYPE_WIFI, &gNetworkCfg);
-    }
-    if (errorCode == 0) {
-        // Start a dns server which redirects all requests to this portal
-        uPortTaskHandle_t dnsServer;
-        uPortTaskCreate(dnsServerTask,
-                        "dns",
-                        U_WIFI_CAPTIVE_PORTAL_DNS_TASK_STACK_SIZE_BYTES,
-                        (void *)gNetworkCfg.pApIpAddress,
-                        U_WIFI_CAPTIVE_PORTAL_DNS_TASK_PRIORITY,
-                        &dnsServer);
-
-        // Start the web server
-        int32_t sock = uSockCreate(gDevHandle,
-                                   U_SOCK_TYPE_STREAM,
-                                   U_SOCK_PROTOCOL_TCP);
-        if (sock >= 0) {
-            uSockAddress_t remoteAddr;
-            char addrStr[15];
-            remoteAddr.ipAddress.address.ipv4 = 0;
-            remoteAddr.port = 80;
-            uSockBind(sock, &remoteAddr);
-            uSockListen(sock, 1);
-            gUWifiSocketAcceptTimeoutS = 2;
-            uPortLog(LOG_PREFIX "\"%s\" started\n", pSsid ? pSsid : "Servers only");
-            while (gKeepGoing) {
-                static char request[1024];
-                // Wait for connection
-                int32_t clientSock = uSockAccept(sock, &remoteAddr);
-                if (clientSock >= 0) {
-                    uSockIpAddressToString(&(remoteAddr.ipAddress), addrStr, sizeof(addrStr));
-                    uPortLog(LOG_PREFIX "Connected to: %s\n", addrStr);
-                    // Set non-blocking: we'll do our own
-                    uSockBlockingSet(clientSock, false);
-                    int32_t cnt;
-                    size_t requestLength = 0;
-                    do {
-                        // Wait for a short while to make sure we don't miss anything
-                        uPortTaskBlock(U_WIFI_CAPTIVE_PORTAL_CLIENT_SOCKET_READ_DELAY_MS);
-                        cnt = uSockRead(clientSock, request + requestLength,
-                                        sizeof(request) - requestLength - 1);
-                        if (cnt > 0) {
-                            requestLength += cnt;
-                        }
-                    } while ((cnt > 0) && (requestLength < (sizeof(request) - 1)));
-                    if (requestLength > 0) {
-                        request[requestLength] = 0;
-                        handleRequest(request, clientSock);
-                    } else {
-                        uPortLog(LOG_PREFIX "ERROR No request\n");
-                    }
-                    uSockClose(clientSock);
-                } else if (clientSock != U_ERROR_COMMON_TIMEOUT) {
-                    uPortLog(LOG_PREFIX "ERROR Accept failed: %d\n", clientSock);
-                    gKeepGoing = false;
-                } else if (cb) {
-                    gKeepGoing = cb(gDevHandle);
-                }
-            }
-            uSockClose(sock);
-            // Close down the access point and try to connect and save the entered credentials
-            uPortTaskBlock(1000);
-            if (pSsid != NULL || strlen(gSsid) > 0) {
-                uNetworkInterfaceDown(gDevHandle, U_NETWORK_TYPE_WIFI);
-            }
-            if (strlen(gSsid)) {
-                uPortLog(LOG_PREFIX "Connecting to SSID \"%s\"...\n", gSsid);
-                uPortTaskBlock(1000);
-                gNetworkCfg.authentication = (strlen(gPw) == 0) ? U_WIFI_AUTH_OPEN : U_WIFI_AUTH_WPA_PSK;
-                gNetworkCfg.pSsid = gSsid;
-                gNetworkCfg.pPassPhrase = gPw;
-                gNetworkCfg.mode = U_WIFI_MODE_STA;
+            gDevHandle = deviceHandle;
+            gKeepGoing = true;
+            gSsid[0] = 0;
+            gPw[0] = 0;
+            if (pSsid != NULL) {
+                // Make sure that possible auto connected station mode is disconnected
+                uWifiStationDisconnect(gDevHandle);
+                // Start the access point
                 errorCode = uNetworkInterfaceUp(gDevHandle, U_NETWORK_TYPE_WIFI, &gNetworkCfg);
-                if (errorCode == 0) {
-                    errorCode = uWifiStationStoreConfig(gDevHandle, false);
+            }
+            if (errorCode == 0) {
+                // Start a dns server which redirects all requests to this portal
+                uPortTaskHandle_t dnsServer;
+                uPortTaskCreate(dnsServerTask,
+                                "dns",
+                                U_WIFI_CAPTIVE_PORTAL_DNS_TASK_STACK_SIZE_BYTES,
+                                (void *)gNetworkCfg.pApIpAddress,
+                                U_WIFI_CAPTIVE_PORTAL_DNS_TASK_PRIORITY,
+                                &dnsServer);
+
+                // Start the web server
+                int32_t sock = uSockCreate(gDevHandle,
+                                           U_SOCK_TYPE_STREAM,
+                                           U_SOCK_PROTOCOL_TCP);
+                if (sock >= 0) {
+                    uSockAddress_t remoteAddr;
+                    char addrStr[15];
+                    remoteAddr.ipAddress.address.ipv4 = 0;
+                    remoteAddr.port = 80;
+                    uSockBind(sock, &remoteAddr);
+                    uSockListen(sock, 1);
+                    gUWifiSocketAcceptTimeoutS = 2;
+                    uPortLog(LOG_PREFIX "\"%s\" started\n", pSsid ? pSsid : "Servers only");
+                    while (gKeepGoing) {
+                        static char request[1024];
+                        // Wait for connection
+                        int32_t clientSock = uSockAccept(sock, &remoteAddr);
+                        if (clientSock >= 0) {
+                            uSockIpAddressToString(&(remoteAddr.ipAddress), addrStr, sizeof(addrStr));
+                            uPortLog(LOG_PREFIX "Connected to: %s\n", addrStr);
+                            // Set non-blocking: we'll do our own
+                            uSockBlockingSet(clientSock, false);
+                            int32_t cnt;
+                            size_t requestLength = 0;
+                            do {
+                                // Wait for a short while to make sure we don't miss anything
+                                uPortTaskBlock(U_WIFI_CAPTIVE_PORTAL_CLIENT_SOCKET_READ_DELAY_MS);
+                                cnt = uSockRead(clientSock, request + requestLength,
+                                                sizeof(request) - requestLength - 1);
+                                if (cnt > 0) {
+                                    requestLength += cnt;
+                                }
+                            } while ((cnt > 0) && (requestLength < (sizeof(request) - 1)));
+                            if (requestLength > 0) {
+                                request[requestLength] = 0;
+                                handleRequest(request, clientSock);
+                            } else {
+                                uPortLog(LOG_PREFIX "ERROR No request\n");
+                            }
+                            uSockClose(clientSock);
+                        } else if (clientSock != U_ERROR_COMMON_TIMEOUT) {
+                            uPortLog(LOG_PREFIX "ERROR Accept failed: %d\n", clientSock);
+                            gKeepGoing = false;
+                        } else if (cb) {
+                            gKeepGoing = cb(gDevHandle);
+                        }
+                    }
+                    uSockClose(sock);
+                    // Close down the access point and try to connect and save the entered credentials
+                    uPortTaskBlock(1000);
+                    if (pSsid != NULL || strlen(gSsid) > 0) {
+                        uNetworkInterfaceDown(gDevHandle, U_NETWORK_TYPE_WIFI);
+                    }
+                    if (strlen(gSsid)) {
+                        uPortLog(LOG_PREFIX "Connecting to SSID \"%s\"...\n", gSsid);
+                        uPortTaskBlock(1000);
+                        gNetworkCfg.authentication = (strlen(gPw) == 0) ? U_WIFI_AUTH_OPEN : U_WIFI_AUTH_WPA_PSK;
+                        gNetworkCfg.pSsid = gSsid;
+                        gNetworkCfg.pPassPhrase = gPw;
+                        gNetworkCfg.mode = U_WIFI_MODE_STA;
+                        errorCode = uNetworkInterfaceUp(gDevHandle, U_NETWORK_TYPE_WIFI, &gNetworkCfg);
+                        if (errorCode == 0) {
+                            errorCode = uWifiStationStoreConfig(gDevHandle, false);
+                        }
+                    } else {
+                        errorCode = U_ERROR_COMMON_NOT_INITIALISED;
+                    }
+                } else {
+                    uPortLog(LOG_PREFIX "ERROR Failed to create server socket: %d\n", sock);
+                    uNetworkInterfaceDown(gDevHandle, U_NETWORK_TYPE_WIFI);
+                    errorCode = sock;
                 }
             } else {
-                errorCode = U_ERROR_COMMON_NOT_INITIALISED;
+                uPortLog(LOG_PREFIX "ERROR Failed to start the access point: %d\n", errorCode);
             }
-        } else {
-            uPortLog(LOG_PREFIX "ERROR Failed to create server socket: %d\n", sock);
-            uNetworkInterfaceDown(gDevHandle, U_NETWORK_TYPE_WIFI);
-            errorCode = sock;
         }
-    } else {
-        uPortLog(LOG_PREFIX "ERROR Failed to start the access point: %d\n", errorCode);
     }
+
     return errorCode;
 }

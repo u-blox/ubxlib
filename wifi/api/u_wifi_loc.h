@@ -31,7 +31,7 @@
 /** @file
  * @brief This header file defines the location APIs for Wi-Fi;
  * these APIs require that the module is running u-connectExpress
- * version 5 or higher.
+ * version 5 or higher and is NOT supported on ODIN-W2.
  */
 
 #ifdef __cplusplus
@@ -91,9 +91,9 @@ typedef void (uWifiLocCallback_t) (uDeviceHandle_t wifiHandle,
  * -------------------------------------------------------------- */
 
 /** Get location (blocking) from the likes of Google, Skyhook and
- * Here; requires u-connectExpress version 5 and up.  The module must
- * have already been connected to an access point for this function
- * to work.
+ * Here; requires u-connectExpress version 5 and up and is NOT
+ * supported on ODIN-W2.  The module must have already been connected
+ * to an access point for this function to work.
  *
  * When this function is first called it will allocate some memory
  * for thread-safety which is never free'd; should you need that
@@ -154,16 +154,16 @@ int32_t uWifiLocGet(uDeviceHandle_t wifiHandle,
                     bool (*pKeepGoingCallback) (uDeviceHandle_t));
 
 /** Get the current location, non-blocking version.  Requires
- * u-connectExpress version 5 and up.  The module must have already
- * been connected to an access point for this function to work.
- * Call uWifiLocGetStop() to stop the location request and free
- * memory.  You MUST complete a Wi-Fi location request that has
- * started, either by the callback being called or by calling
- * uWifiLocGetStop(), before calling this function again or
- * before the device is deinitialised.  This is a one-shot location:
- * once the callback has been called it will not be called again
- * unless you call this function again.  For a "continuous" position
- * fix, see the uLocation API.
+ * u-connectExpress version 5 and up and is NOT supported on ODIN-W2.
+ * The module must have already been connected to an access point
+ * for this function to work.  Call uWifiLocGetStop() to stop the
+ * location request and free memory.  You MUST complete a Wi-Fi
+ * location request that has started, either by the callback being
+ * called or by calling uWifiLocGetStop(), before calling this function
+ * again or before the device is deinitialised.  This is a one-shot
+ * location: once the callback has been called it will not be called
+ * again unless you call this function again.  For a "continuous"
+ * position fix, see the uLocation API.
  *
  * When this function is first called it will allocate some memory
  * for thread-safety which is never free'd; should you need that

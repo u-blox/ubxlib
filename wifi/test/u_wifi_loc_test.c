@@ -22,8 +22,7 @@
 
 /** @file
  * @brief Tests for the Wifi location API: these should pass on all
- * platforms where one UART is available. No short range module is
- * actually used in this set of tests.
+ * platforms where one UART is available.
  */
 
 #ifdef U_CFG_OVERRIDE
@@ -296,6 +295,7 @@ U_PORT_TEST_FUNCTION("[wifiLoc]", "wifiLocBasic")
     int32_t z;
     int32_t resourceCount;
     uLocation_t location;
+    bool locationSupported = true;
 
     resourceCount = uTestUtilGetDynamicResourceCount();
 
@@ -320,22 +320,30 @@ U_PORT_TEST_FUNCTION("[wifiLoc]", "wifiLocBasic")
                               gLocType[gIteration].pName, z,
                               uTimeoutElapsedMs(gTimeoutStop.timeoutStart));
         }
-        // Success or allow error code 206 on HERE since it often isn't able to establish position in our lab
-        U_PORT_TEST_ASSERT((z == 0) || ((z == 206) &&
-                                        (gLocType[gIteration].type == U_LOCATION_TYPE_CLOUD_HERE)));
-        if (z == 0) {
-            printLocation(&location);
-            U_PORT_TEST_ASSERT(location.type == gLocType[gIteration].type);
-            U_PORT_TEST_ASSERT(location.latitudeX1e7 > INT_MIN);
-            U_PORT_TEST_ASSERT(location.longitudeX1e7 > INT_MIN);
-            // Can't check altitude; only get 2D position from these services
-            U_PORT_TEST_ASSERT(location.radiusMillimetres >= 0);
-            U_PORT_TEST_ASSERT(location.timeUtc == -1);
-            U_PORT_TEST_ASSERT(location.speedMillimetresPerSecond == INT_MIN);
-            U_PORT_TEST_ASSERT(location.svs == -1);
+        // Success or not supported (ODIN-W2) or allow error code 206 on HERE since it
+        // often isn't able to establish position in our lab
+        U_PORT_TEST_ASSERT((z == 0) || (z == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) ||
+                           ((z == 206) && (gLocType[gIteration].type == U_LOCATION_TYPE_CLOUD_HERE)));
+        if (z == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
+            locationSupported = false;
+        }
+        if (locationSupported) {
+            if (z == 0) {
+                printLocation(&location);
+                U_PORT_TEST_ASSERT(location.type == gLocType[gIteration].type);
+                U_PORT_TEST_ASSERT(location.latitudeX1e7 > INT_MIN);
+                U_PORT_TEST_ASSERT(location.longitudeX1e7 > INT_MIN);
+                // Can't check altitude; only get 2D position from these services
+                U_PORT_TEST_ASSERT(location.radiusMillimetres >= 0);
+                U_PORT_TEST_ASSERT(location.timeUtc == -1);
+                U_PORT_TEST_ASSERT(location.speedMillimetresPerSecond == INT_MIN);
+                U_PORT_TEST_ASSERT(location.svs == -1);
+            } else {
+                U_TEST_PRINT_LINE("*** WARNING *** %s cloud service was unable to determine position,"
+                                  " HTTP status code %d.", gLocType[gIteration].pName, z);
+            }
         } else {
-            U_TEST_PRINT_LINE("*** WARNING *** %s cloud service was unable to determine position,"
-                              " HTTP status code %d.", gLocType[gIteration].pName, z);
+            U_TEST_PRINT_LINE("*** WARNING *** Wi-Fi location not supported, not testing it.");
         }
 
         // Should do any harm to call this here
@@ -355,16 +363,22 @@ U_PORT_TEST_FUNCTION("[wifiLoc]", "wifiLocBasic")
                                  U_WIFI_LOC_TEST_RSSI_FILTER_DBM,
                                  callback);
             U_TEST_PRINT_LINE("uWifiLocGetStart() for %s returned %d.", gLocType[gIteration].pName, z);
-            U_PORT_TEST_ASSERT(z == 0);
-            U_TEST_PRINT_LINE("waiting %u second(s) for result...", gTimeoutStop.durationMs / 1000);
-            while ((gCallback == INT_MIN) &&
-                   !uTimeoutExpiredMs(gTimeoutStop.timeoutStart,
-                                      gTimeoutStop.durationMs)) {
-                uPortTaskBlock(250);
-            }
-            if (gCallback != 0) {
-                U_TEST_PRINT_LINE("stopping async location on failure...");
-                uWifiLocGetStop(gHandles.devHandle);
+            U_PORT_TEST_ASSERT((z == 0) || (!locationSupported &&
+                                            (z == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED)));
+            if (z == 0) {
+                U_TEST_PRINT_LINE("waiting %u second(s) for result...", gTimeoutStop.durationMs / 1000);
+                while ((gCallback == INT_MIN) &&
+                       !uTimeoutExpiredMs(gTimeoutStop.timeoutStart,
+                                          gTimeoutStop.durationMs)) {
+                    uPortTaskBlock(250);
+                }
+                if (gCallback != 0) {
+                    U_TEST_PRINT_LINE("stopping async location on failure...");
+                    uWifiLocGetStop(gHandles.devHandle);
+                }
+            } else {
+                // So that we exit
+                gCallback = 0;
             }
         }
         uWifiLocGetStop(gHandles.devHandle);

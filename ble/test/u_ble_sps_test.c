@@ -106,7 +106,8 @@ static uBleTestPrivate_t gHandles = { -1, -1, NULL, NULL };
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-#if defined(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE) || defined(U_CFG_BLE_MODULE_INTERNAL)
+#if (defined(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE) || defined(U_CFG_BLE_MODULE_INTERNAL)) && \
+    !defined(U_CFG_TEST_BLE_DISABLE_SPS)
 
 static void dataAvailableCallback(int32_t channel, void *pParameters)
 {

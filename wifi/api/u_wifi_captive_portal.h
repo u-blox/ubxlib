@@ -76,7 +76,9 @@ typedef bool (*uWifiCaptivePortalKeepGoingCallback_t)(uDeviceHandle_t deviceHand
  * restarted to connect to the selected network. The process involves
  * starting a DNS server and a web server to handle the captive portal.
  *
- * This function is NOT threadsafe: there can be only one.
+ * This function is NOT thread-safe: there can be only one.
+ *
+ * Note: not all modules support this feature (e.g. ODIN-W2 does not).
  *
  * Note: this function, internally, calls uNetworkInterfaceUp() and so,
  * if it returns successfully, it is up to you to call

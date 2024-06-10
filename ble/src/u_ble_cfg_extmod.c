@@ -174,7 +174,7 @@ static int32_t setServer(const uAtClientHandle_t atHandle, uShortRangeServerType
     }
     error = uAtClientUnlock(atHandle);
 
-    if (found) {
+    if (found && (error == 0)) {
         uAtClientLock(atHandle);
         uAtClientCommandStart(atHandle, "AT+UDSC=");
         uAtClientWriteInt(atHandle, id);
@@ -300,16 +300,22 @@ int32_t uBleCfgConfigure(uDeviceHandle_t devHandle,
                     }
                 }
 
-                int32_t secOpt = getSecurityOption(atHandle);
-                if (secOpt != 1) {
-                    errorCode = setSecurityOption(atHandle, 1);
-                    if (errorCode == (int32_t)U_ERROR_COMMON_SUCCESS) {
-                        restartNeeded = true;
+                // ODIN-W2 only supports simple pairing security and
+                // therefore cannot be configured
+                if ((errorCode >= 0) &&
+                    pInstance->pModule->moduleType != U_SHORT_RANGE_MODULE_TYPE_ODIN_W2) {
+                    int32_t secOpt = getSecurityOption(atHandle);
+                    if (secOpt != 1) {
+                        errorCode = setSecurityOption(atHandle, 1);
+                        if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
+                            restartNeeded = true;
+                        }
                     }
                 }
 
                 int32_t mode = getStartupMode(atHandle);
-                if (mode != U_BLE_CFG_STARTUP_MODE_EDM) {
+                if ((errorCode >= 0) &&
+                    (mode != U_BLE_CFG_STARTUP_MODE_EDM)) {
                     errorCode = setStartupMode(atHandle, U_BLE_CFG_STARTUP_MODE_EDM);
                     if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
                         restartNeeded = true;
