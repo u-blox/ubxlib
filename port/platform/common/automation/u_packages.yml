@@ -82,13 +82,13 @@ stm32cubef4:
 esp_idf:
     type: esp_idf
     windows:
-        version: v5.0.3
+        version: v5.2.2
         url: https://github.com/espressif/esp-idf
     linux:
-        version: v5.0.3
+        version: v5.2.2
         url: https://github.com/espressif/esp-idf
     linux_arm:
-        version: v5.0.3
+        version: v5.2.2
         url: https://github.com/espressif/esp-idf
 
 make:

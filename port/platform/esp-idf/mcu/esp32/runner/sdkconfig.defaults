@@ -40,4 +40,3 @@ CONFIG_HEAP_TRACING=y
 # Uncomment these as required when debugging
 #CONFIG_LWIP_PPP_DEBUG_ON=y
 #CONFIG_LWIP_DEBUG=y
-

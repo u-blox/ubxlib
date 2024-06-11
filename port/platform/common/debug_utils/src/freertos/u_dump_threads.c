@@ -31,9 +31,12 @@
 # include "esp_idf_version.h"
 # if (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(4, 4, 0))
 #  include "freertos/additions/task_snapshot.h"
+# elif (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 2, 0))
+#  include "freertos/task_snapshot.h"
 # else
-#  include "task_snapshot.h"
-#endif
+#  include "esp_private/freertos_debug.h"
+#  include "esp_private/freertos_idf_additions_priv.h"
+# endif
 #else
 # include "FreeRTOS.h"
 # include "task.h"
@@ -52,6 +55,12 @@
 # include "../arch/xtensa/u_stack_frame.c"
 #else
 # error "Unsupported architecture"
+#endif
+
+#ifndef ESP_PLATFORM
+// This purely so that the conditional compilation below works
+# define ESP_IDF_VERSION       -1
+# define ESP_IDF_VERSION_VAL(x, y, z) 0
 #endif
 
 /* ----------------------------------------------------------------
@@ -91,21 +100,44 @@ static const char *stateName(eTaskState state)
 
 void uDebugUtilsDumpThreads(void)
 {
-    TaskHandle_t iter = pxTaskGetNext(NULL);
+#if !defined(ESP_PLATFORM) || (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 2, 0))
+    TaskHandle_t pxTaskHandle = pxTaskGetNext(NULL);
+#else
+    // From ESP-IDF 5.2.0 the xTaskGetNext() has been enhanced
+    // to be re-entrant, a pointer to a TaskIterator_t structure
+    // being passed in by the caller and an index, rather than
+    // the next task handle, being returned
+    TaskIterator_t iter = {0};
+    int32_t index = xTaskGetNext(&iter);
+#endif
     uPortLogF("### Dumping threads ###\n");
-    while (iter != NULL) {
+#if !defined(ESP_PLATFORM) || (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 2, 0))
+    while (pxTaskHandle != NULL) {
+#else
+    while (index >= 0) {
+#endif
         TaskSnapshot_t snapshot;
         eTaskState state;
         char *pName;
-        vTaskGetSnapshot(iter, &snapshot);
-        pName = pcTaskGetName(iter);
-        state = eTaskGetState(iter);
+#if !defined(ESP_PLATFORM) || (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 2, 0))
+        vTaskGetSnapshot(pxTaskHandle, &snapshot);
+        pName = pcTaskGetName(pxTaskHandle);
+        state = eTaskGetState(pxTaskHandle);
+#else
+        vTaskGetSnapshot(iter.pxTaskHandle, &snapshot);
+        pName = pcTaskGetName(iter.pxTaskHandle);
+        state = eTaskGetState(iter.pxTaskHandle);
+#endif
         uPortLogF("  %s (%s): ", pName, stateName(state));
         uPortLogF("top: %08x, sp: %08x\n",
                   (unsigned int)snapshot.pxEndOfStack, (unsigned int)snapshot.pxTopOfStack);
         uPortLogF("    ");
         uDebugUtilsPrintCallStack((uint32_t)snapshot.pxTopOfStack, (uint32_t)snapshot.pxEndOfStack, 8);
 
-        iter = pxTaskGetNext(iter);
+#if !defined(ESP_PLATFORM) || (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 2, 0))
+        pxTaskHandle = pxTaskGetNext(pxTaskHandle);
+#else
+        index = xTaskGetNext(&iter);
+#endif
     }
 }

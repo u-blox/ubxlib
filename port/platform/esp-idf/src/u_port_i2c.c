@@ -203,7 +203,7 @@ static int32_t send(int32_t handle, uint16_t address,
             // Now add the data, with optional stop marker, and execute it
             if (((pData == NULL) || (i2c_master_write(cmd, (const uint8_t *) pData, size, true) == ESP_OK)) &&
                 (noStop || (i2c_master_stop(cmd) == ESP_OK)) &&
-                (i2c_master_cmd_begin(handle, cmd, 0) == ESP_OK)) {
+                (i2c_master_cmd_begin(handle, cmd, (TickType_t) portMAX_DELAY) == ESP_OK)) {
                 errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
             }
         }
@@ -250,7 +250,7 @@ static int32_t receive(int32_t handle, uint16_t address, char *pData, size_t siz
             }
             if ((errorCodeOrLength == (int32_t) U_ERROR_COMMON_SUCCESS) &&
                 (i2c_master_stop(cmd) == ESP_OK) &&
-                (i2c_master_cmd_begin(handle, cmd, 0) == ESP_OK)) {
+                (i2c_master_cmd_begin(handle, cmd, (TickType_t) portMAX_DELAY) == ESP_OK)) {
                 errorCodeOrLength = (int32_t) size;
             }
         }
