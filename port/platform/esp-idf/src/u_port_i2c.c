@@ -531,6 +531,41 @@ int32_t uPortI2cGetTimeout(int32_t handle)
 }
 
 // Send and/or receive over the I2C interface as a controller.
+int32_t uPortI2cControllerExchange(int32_t handle, uint16_t address,
+                                   const char *pSend, size_t bytesToSend,
+                                   char *pReceive, size_t bytesToReceive,
+                                   bool noInterveningStop)
+{
+    int32_t errorCodeOrLength = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+
+    if (gMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gMutex);
+
+        errorCodeOrLength = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        if ((handle >= 0) && (handle < sizeof(gI2cData) / sizeof(gI2cData[0])) &&
+            (gI2cData[handle].clockHertz > 0) &&
+            ((pSend != NULL) || (bytesToSend == 0)) &&
+            ((pReceive != NULL) || (bytesToReceive == 0))) {
+            errorCodeOrLength = (int32_t) U_ERROR_COMMON_SUCCESS;
+            if (pSend != NULL) {
+                errorCodeOrLength = send(handle, address, pSend, bytesToSend,
+                                         noInterveningStop);
+            }
+            if ((errorCodeOrLength == (int32_t) U_ERROR_COMMON_SUCCESS) &&
+                (pReceive != NULL)) {
+                errorCodeOrLength = receive(handle, address, pReceive, bytesToReceive);
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gMutex);
+    }
+
+    return errorCodeOrLength;
+}
+
+/** \deprecated please use uPortI2cControllerExchange() instead. */
+// Send and/or receive over the I2C interface as a controller.
 int32_t uPortI2cControllerSendReceive(int32_t handle, uint16_t address,
                                       const char *pSend, size_t bytesToSend,
                                       char *pReceive, size_t bytesToReceive)
@@ -562,6 +597,7 @@ int32_t uPortI2cControllerSendReceive(int32_t handle, uint16_t address,
     return errorCodeOrLength;
 }
 
+/** \deprecated please use uPortI2cControllerExchange() instead. */
 // Perform a send over the I2C interface as a controller.
 int32_t uPortI2cControllerSend(int32_t handle, uint16_t address,
                                const char *pSend, size_t bytesToSend,
