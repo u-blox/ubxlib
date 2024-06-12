@@ -56,6 +56,8 @@
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
+/** \deprecated no longer required since all platforms now implement
+ * uPortI2cControllerExchange(). */
 //  Default implementation of the I2C data exchange function.
 U_WEAK int32_t uPortI2cControllerExchange(int32_t handle, uint16_t address,
                                           const char *pSend, size_t bytesToSend,
