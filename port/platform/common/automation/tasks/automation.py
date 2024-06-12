@@ -9,7 +9,7 @@ from scripts import u_run_check_ubxlib_h, u_run_check_malloc, u_run_build_pio_ex
 
 from scripts.packages import u_package
 from scripts.u_logging import ULog
-from . import nrf5, esp_idf, nrfconnect, stm32cubef4, platformio, linux, zephyr_native
+from . import esp_idf, nrfconnect, stm32cubef4, platformio, linux, zephyr_native
 from enum import Enum
 import sys
 import json
@@ -115,20 +115,7 @@ def instance_command(ctx, instance_str, cmd):
         serial = connection["debugger"]
 
     platform = platform.lower()
-    if platform == "nrf5sdk":
-        nrf5.check_installation(ctx)
-        if cmd == Command.BUILD:
-            nrf5.build(ctx, output_name="", build_dir=ctx.build_dir, u_flags=defines, features=ubxlib_features)
-        elif cmd == Command.FLASH:
-            nrf5.flash(ctx, output_name="", build_dir=ctx.build_dir, debugger_serial=serial)
-        elif cmd == Command.LOG:
-            nrf5.log(ctx, output_name="", build_dir=ctx.build_dir, debugger_serial=serial)
-        elif cmd == Command.TEST:
-            check_return_code(u_run_log.run(instance, ctx.build_dir, ctx.reporter, ctx.test_report))
-        else:
-            raise Exit(f"Unsupported command for platform: '{platform}'")
-
-    elif platform == "zephyr":
+    if platform == "zephyr":
         if mcu.lower().startswith("nrf"):
             # Nordic nRF embedded target stuff, done with the Nordic nRF Connect SDK, which includes Zephyr
             nrfconnect.check_installation(ctx)

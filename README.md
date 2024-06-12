@@ -2,9 +2,7 @@
 
 [![important message](/readme_images/important_msg.svg)](/UPCOMING.md)
 
-<i>Note: if you are reading this from a package-file created by a third-party \[e.g. PlatformIO\] and the links do not work, please try reading it at the original [ubxlib Github site](https://github.com/u-blox/ubxlib) instead.</i><br /><br />
-<b>IMPORTANT: [port/platform/nrf5sdk](/port/platform/nrf5sdk) is NOW DEPRECATED and will be REMOVED at release 1.5, likely mid 2024; we will continue to support nRF52/nRF53 through what is now the Nordic standard [nRF Connect SDK (i.e. Zephyr 3)](/port/platform/zephyr).</b>
-
+<i>Note: if you are reading this from a package-file created by a third-party \[e.g. PlatformIO\] and the links do not work, please try reading it at the original [ubxlib Github site](https://github.com/u-blox/ubxlib) instead.</i>
 # Introduction to `ubxlib`
 This repository contains an add-on to microcontroller and RTOS SDKs for building embedded applications with u-blox products and services. It provides portable C libraries which expose APIs with examples. `ubxlib` supports [u-blox](https://www.u-blox.com) modules with [cellular](https://www.u-blox.com/en/cellular-modules) (2G/3G/4G), [short-range](https://www.u-blox.com/en/short-range-radio-chips-and-modules) (Bluetooth and Wi-Fi) and [positioning](https://www.u-blox.com/en/positioning-chips-and-modules) (GNSS) functionality. The `ubxlib` libraries present high level C APIs for use in customer applications (e.g. connect to a network, open a TCP socket, establish location, etc.) and implements these APIs on selected popular MCUs, also available inside u-blox modules.
 
@@ -221,8 +219,7 @@ New features can be requested and up-voted [here](https://github.com/u-blox/ubxl
 # License
 The software in this repository is Apache 2.0 licensed and copyright u-blox with the following exceptions:
 
-- The heap management code (`heap_useNewlib.c`), required because the [nRF5 SDK](/port/platform/nrf5sdk) and [STM32Cube](/port/platform/stm32cube) platforms don't provide the necessary memory management for [newlib](https://sourceware.org/newlib/libc.html) and [FreeRTOS](https://www.freertos.org) to play together, is copyright Dave Nadler.
-- The SEGGER RTT logging files in [port/platform/nrf5sdk/src/segger_rtt](/port/platform/nrf5sdk/src/segger_rtt) are copyright SEGGER MICROCONTROLLER GmbH & Co. KG.
+- The heap management code (`heap_useNewlib.c`), required because the [STM32Cube](/port/platform/stm32cube) platform doesn't provide the necessary memory management for [newlib](https://sourceware.org/newlib/libc.html) and [FreeRTOS](https://www.freertos.org) to play together, is copyright Dave Nadler.
 - The AT client code in [common/at_client](/common/at_client) is derived from the Apache 2.0 licensed AT parser of [mbed-os](https://github.com/ARMmbed/mbed-os).
 - The [stm32cube platform directory](/port/platform/stm32cube/src) necessarily includes porting files from the STM32F4 SDK that are copyright ST Microelectronics.
 - The `go` echo servers in [common/sock/test/echo_server](/common/sock/test/echo_server) are based on those used in testing of [AWS FreeRTOS](https://github.com/aws/amazon-freertos).
