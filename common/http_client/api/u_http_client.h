@@ -318,6 +318,9 @@ typedef struct {
  * you will lose all settings and must call uHttpClientClose() followed
  * by pUHttpClientOpen() to put them back again.
  *
+ * Note that HTTP operation is NOT supported on the LENA-R8 cellular
+ * module.
+ *
  * When this function is first called it will allocate a mutex which
  * is never subsequently free()ed in order to ensure thread safety.
  *
@@ -369,6 +372,9 @@ void uHttpClientClose(uHttpClientContext_t *pContext);
  * then it will be called while this function is waiting for a response.
  *
  * Only one HTTP request, of any kind, may be outstanding at a time.
+ *
+ * Note that HTTP operation is NOT supported on the LENA-R8 cellular
+ * module.
  *
  * If you are going to perform large PUT requests (e.g. more than 1024
  * bytes) then you should ensure that you have flow control on the interface
@@ -443,6 +449,9 @@ int32_t uHttpClientPutRequestChunked(uHttpClientContext_t *pContext,
  *
  * IMPORTANT: see warning below about the validity of the pResponseBody and
  * pResponseContentType pointers.
+ *
+ * Note that HTTP operation is NOT supported on the LENA-R8 cellular
+ * module.
  *
  * If you are going to perform large POST requests (e.g. more than 1024
  * bytes) then you should ensure that you have flow control on the interface
@@ -567,6 +576,9 @@ int32_t uHttpClientPostRequestChunked(uHttpClientContext_t *pContext,
  * IMPORTANT: see warning below about the validity of the pResponseBody and
  * pContentType pointers.
  *
+ * Note that HTTP operation is NOT supported on the LENA-R8 cellular
+ * module.
+ *
  * Multi-part content is not handled here: should you wish to handle such
  * content you will need to do the re-assembly yourself.
  *
@@ -660,6 +672,9 @@ int32_t uHttpClientGetRequestChunked(uHttpClientContext_t *pContext,
  * Only one HTTP request, of any kind, may be outstanding at a time.
  *
  * IMPORTANT: see warning below about the validity of the pResponseHead pointer.
+ *
+ * Note that HTTP operation is NOT supported on the LENA-R8 cellular
+ * module.
  *
  * @param[in] pContext               a pointer to the internal HTTP context
  *                                   structure that was originally returned by

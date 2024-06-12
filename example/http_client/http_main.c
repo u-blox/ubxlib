@@ -77,7 +77,9 @@ const char *gpMyData = "Hello world!";
 
 // Below is the module configuration
 // When U_CFG_TEST_CELL_MODULE_TYPE is set this example will setup a
-// cellular link using uNetworkCfgCell_t.
+// cellular link using uNetworkCfgCell_t.  Note that HTTP operation
+// is NOT supported on the LENA-R8 cellular module.
+
 // When U_CFG_TEST_SHORT_RANGE_MODULE_TYPE is set this example will
 // instead use uNetworkCfgWifi_t config to setup a Wifi connection.
 
@@ -138,7 +140,7 @@ static const uDeviceCfg_t gDeviceCfg = {
     .deviceType = U_DEVICE_TYPE_CELL,
     .deviceCfg = {
         .cfgCell = {
-            .moduleType = U_CFG_TEST_CELL_MODULE_TYPE,
+            .moduleType = U_CFG_TEST_CELL_MODULE_TYPE,  // Note: LENA-R8 not supported
             .pSimPinCode = NULL, /* SIM pin */
             .pinEnablePower = U_CFG_APP_PIN_CELL_ENABLE_POWER,
             .pinPwrOn = U_CFG_APP_PIN_CELL_PWR_ON,

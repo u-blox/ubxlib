@@ -145,6 +145,8 @@ void uCellHttpPrivateLink(void);
 
 /** Open a cellular HTTP client instance.
  *
+ * Note that HTTP operation is NOT supported on LENA-R8.
+ *
  * @param cellHandle         the handle of the cellular instance to
  *                           be used.
  * @param[in] pServerName    the null-terminated name of the HTTP
@@ -240,6 +242,8 @@ bool uCellHttpIsSecured(uDeviceHandle_t cellHandle, int32_t httpHandle,
  * IMPORTANT: you MUST wait for pCallback to be called before issuing your next
  * HTTP request.
  *
+ * Note that HTTP operation is NOT supported on LENA-R8.
+ *
  * This function is thread-safe provided the caller choses a response file name
  * that does not clash with calls made from other threads (or uses the automatic
  * option).
@@ -290,6 +294,8 @@ int32_t uCellHttpRequest(uDeviceHandle_t cellHandle, int32_t httpHandle,
  *
  * IMPORTANT: you MUST wait for pCallback to be called before issuing your next
  * HTTP request.
+ *
+ * Note that HTTP operation is NOT supported on LENA-R8.
  *
  * This function is thread-safe provided the caller choses file names
  * that do not clash with calls made from other threads (or uses the

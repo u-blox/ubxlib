@@ -1,5 +1,5 @@
 # Introduction
-This example shows how to use the [common/http_client](/common/http_client) API.
+This example shows how to use the [common/http_client](/common/http_client) API.  Note that HTTP operation is NOT supported on the LENA-R8 cellular module.
 
 # Usage
 To build and run this example on a supported platform you need to travel down into the [port/platform](/port/platform)`/<platform>/mcu/<mcu>` directory of your choice and find the `runner` build.  The instructions there will tell you how to set/override \#defines.  The following \#defines are relevant:

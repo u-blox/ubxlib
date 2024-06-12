@@ -30,6 +30,18 @@ This API relies upon the [common/at_client](/common/at_client) component to send
 
 The operation of `ubxlib` does not rely on a particular FW version of the cellular module; the module FW versions that we test with are listed in the [test](test) directory.
 
+# LENA-R8 Limitations
+Note that support for LENA-R8 has the following limitations: 
+
+- LENA-R8001M10 does not support access to the internal GNSS chip via CMUX; the older `AT+UGUBX` message interface must be used and streamed position cannot be supported this way.  If you require streamed position, please either:
+  - access the internal GNSS chip over either the USB interface instead (i.e. call `uCellCfgSetGnssProfile()` with the bit `U_CELL_CFG_GNSS_PROFILE_USB_AUX_UART` set, connect your MCU also to the USB interface of LENA-R8 and open the `ubxlib` GNSS device, separately, on that USB port), or
+  - connected a separate UART from your MCU to the dedicated `TXD_GNSS`/`RXD_GNSS` pins provided by the LENA-R8001M10 module (baud rate 38400) and open the built-in GNSS chip as an entirely separate GNSS device, not under the control of the cellular part of the LENA-R8001M10 module.
+- LENA-R8 does not support HTTP properly, hence HTTP support is disabled for LENA-R8.
+- LENA-R8 does not support security on an MQTTSN connection.
+- LENA-R8 does not support reading any of the LTE-related RF parameters (RSRP, RSRQ, EARFCN or physical cell ID), just the 2G-related RF parameters (RSSI, CSQ and logical cell ID, though not ARFCN).
+- LENA-R8 does not support reading the DNS address set by the network or the APN currently in use.
+- LENA-R8 does not support use of a PPP connection on the same PDP context as the on-board IP/MQTT/HTTP clients; this _should_ not be an issue, see the PPP section below for more details.
+
 # Usage
 The [api](api) directory contains the files that define the cellular APIs, each API function documented in its header file.  In the [src](src) directory you will find the implementation of the APIs and in the [test](test) directory the tests for the APIs that can be run on any platform.
 
