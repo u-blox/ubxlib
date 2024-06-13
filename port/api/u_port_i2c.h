@@ -259,22 +259,8 @@ int32_t uPortI2cGetMaxSegmentSize(int32_t handle);
  * Note that the NRF52 and NRF53 chips require all buffers to
  * be in RAM.
  *
- * Note: where this function is not implemented a weakly-linked
- * version will currently do the following:
- *
- * (a) call uPortI2cControllerSend() if pReceive is NULL or
- *     noInterveningStop is true,
- * (b) call uPortI2cControllerSend() followed by
- *     uPortI2cControllerSendReceive() if pReceive is non-NULL
- *     and noInterveningStop is true,
- * (c) otherwise call uPortI2cControllerSendReceive().
- *
- * This weakly-linked function will be removed when the deprecated
- * uPortI2cControllerSend()/uPortI2cControllerSendReceive() functions
- * are removed.
- *
- * Note also that the uPortI2cSetTimeout() (or the equivalent set
- * by a platform at compile-time) applies for the whole of this
+ * Note that the uPortI2cSetTimeout() (or the equivalent set by
+ * a platform at compile-time) applies for the whole of this
  * transaction, i.e. the peripheral must begin responding within
  * that time; if you wish to allow the peripheral longer to respond
  * you should take control of the time allowed yourself by calling
