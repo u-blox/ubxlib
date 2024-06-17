@@ -200,10 +200,8 @@ static void callback(uDeviceHandle_t devHandle, const uGnssMessageId_t *pMessage
     char *pBuffer = (char *) pCallbackParam;
     int32_t length;
     uGnssDec_t *pDec;
-#ifndef U_CFG_TEST_USING_NRF5SDK
     uGnssDecUbxNavPvt_t *pUbxNavPvt;
     int64_t utcTimeNanoseconds;
-#endif
 
     (void) pMessageId;
 
@@ -217,7 +215,6 @@ static void callback(uDeviceHandle_t devHandle, const uGnssMessageId_t *pMessage
                 gDecCount++;
                 // No need to check pDec->id (or pMessageId) here since we have
                 // only asked for UBX-NAV-PVT messages.
-#ifndef U_CFG_TEST_USING_NRF5SDK // NRF52 goes a bit crazy if you print here
                 pUbxNavPvt = &(pDec->pBody->ubxNavPvt);
                 // Do stuff with the contents
                 utcTimeNanoseconds = uGnssDecUbxNavPvtGetTimeUtc(pUbxNavPvt);
@@ -228,15 +225,12 @@ static void callback(uDeviceHandle_t devHandle, const uGnssMessageId_t *pMessage
                 } else {
                     uPortLog("UTC time not available.\n");
                 }
-#endif
             }
             // Must *always* free the memory that pUGnssDecAlloc() allocated
             uGnssDecFree(pDec);
         }
-#ifndef U_CFG_TEST_USING_NRF5SDK // NRF52 goes a bit crazy if you print here
     } else {
         uPortLog("Empty or bad message received.\n");
-#endif
     }
 }
 

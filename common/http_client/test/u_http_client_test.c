@@ -110,13 +110,8 @@
 /** The amount of data to HTTP PUT/POST/GET; must be able to allocate
  * this much.
  */
-# ifndef U_CFG_TEST_USING_NRF5SDK
-#  define U_HTTP_CLIENT_TEST_DATA_SIZE_BYTES (1024 * 5)
+# define U_HTTP_CLIENT_TEST_DATA_SIZE_BYTES (1024 * 5)
 # define U_HTTP_CLIENT_TEST_DATA_SHORT_RANGE_SIZE_BYTES 2000
-# else
-#  define U_HTTP_CLIENT_TEST_DATA_SIZE_BYTES 512 // NRF52, which we use NRF5SDK on, doesn't have enough heap
-#  define U_HTTP_CLIENT_TEST_DATA_SHORT_RANGE_SIZE_BYTES 512
-# endif
 #endif
 
 #ifndef U_HTTP_CLIENT_TEST_CONTENT_TYPE

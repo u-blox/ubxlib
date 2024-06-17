@@ -645,7 +645,6 @@ U_PORT_TEST_FUNCTION("[gnssCfg]", "gnssCfgValBasic")
             // So that we can see what we're doing
             uGnssSetUbxMessagePrint(gnssHandle, true);
 
-#ifndef U_CFG_TEST_USING_NRF5SDK // NRF5 SDK's heap doesn't seem to be able to cope with such a huge malloc
             y = uPortGetHeapFree();
             // y < 0 below because reading the amount of heap free is not
             // supported on all platforms
@@ -674,7 +673,6 @@ U_PORT_TEST_FUNCTION("[gnssCfg]", "gnssCfgValBasic")
             } else {
                 U_TEST_PRINT_LINE("not enough heap left to VALGET everything");
             }
-#endif
 
             if (U_GNSS_PRIVATE_HAS(pModule, U_GNSS_PRIVATE_FEATURE_GEOFENCE)) {
                 // Enough showing off: do the rest of the testing on the GeoFence

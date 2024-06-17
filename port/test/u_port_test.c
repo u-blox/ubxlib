@@ -2745,7 +2745,7 @@ U_PORT_TEST_FUNCTION("[port]", "portI2cRequiresSpecificWiring")
                                                           gpI2cBuffer, 1, NULL, 0, false) < 0);
 
             U_TEST_PRINT_LINE("now using the valid address (0x%02x).", U_PORT_TEST_I2C_ADDRESS);
-# if !defined(U_CFG_TEST_USING_NRF5SDK) && !defined(__ZEPHYR__)
+# ifndef __ZEPHYR__
             // Now do a NULL send which will succeed only if the GNSS device is there;
             // note that the NRFX drivers used on NRF52 and NRF53 don't support sending
             // only the address, data must follow

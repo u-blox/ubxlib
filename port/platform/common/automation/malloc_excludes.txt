@@ -10,7 +10,6 @@ port/u_port_heap.c
 
 # Platform files that map malloc()/free(), left this way so that customer code can use malloc()/free()
 port/platform/cell_ucpu/r5/src/u_port_clib.c
-port/platform/nrf5sdk/src/heap_useNewlib.c
 port/platform/stm32cube/src/heap_useNewlib.c
 port/platform/zephyr/src/u_port_clib.c
 

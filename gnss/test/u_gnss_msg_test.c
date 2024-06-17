@@ -179,13 +179,9 @@ static uGnssTestPrivate_t gHandles = U_GNSS_TEST_PRIVATE_DEFAULTS;
  */
 static int32_t gCallbackErrorCode = 0;
 
-#ifndef U_CFG_TEST_USING_NRF5SDK
-
 /** Array of message receivers.
  */
 static uGnssMsgTestReceive_t *gpMessageReceive[U_GNSS_MSG_RECEIVER_MAX_NUM] = {0};
-
-#endif // #ifndef U_CFG_TEST_USING_NRF5SDK 
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -253,9 +249,6 @@ static void checkMessageReceive(uGnssMessageId_t *pMessageId,
                                   size - U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES) == 0);
     }
 }
-
-// NRF52, which we use NRF5SDK on, doesn't have enough heap for this test
-#ifndef U_CFG_TEST_USING_NRF5SDK
 
 // Callback for the non-blocking message receives.
 static void messageReceiveCallback(uDeviceHandle_t gnssHandle,
@@ -336,8 +329,6 @@ static void messageReceiveCallback(uDeviceHandle_t gnssHandle,
         }
     }
 }
-
-#endif // #ifndef U_CFG_TEST_USING_NRF5SDK 
 
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
@@ -472,9 +463,6 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveBlocking")
     U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
     U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
-
-// NRF52, which we use NRF5SDK on, doesn't have enough heap for this test
-#ifndef U_CFG_TEST_USING_NRF5SDK
 
 /** Read transparent messages with the GNSS chip, non-blocking form.
  */
@@ -696,7 +684,7 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveNonBlocking")
                         bad = true;
                     }
                     // Such a burst of logging can overwhelm some platforms
-                    // (e.g. NRF5SDK) so pause between prints so as not to lose stuff.
+                    // so pause between prints so as not to lose stuff.
                     uPortTaskBlock(10);
                 }
                 U_TEST_PRINT_LINE("%d byte(s) lost at the input to the ring-buffer during that test.", c);
@@ -779,8 +767,6 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgReceiveNonBlocking")
     U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
-#endif // U_CFG_TEST_USING_NRF5SDK 
-
 /** Clean-up to be run at the end of this round of tests, just
  * in case there were test failures which would have resulted
  * in the deinitialisation being skipped.
@@ -789,14 +775,12 @@ U_PORT_TEST_FUNCTION("[gnssMsg]", "gnssMsgCleanUp")
 {
     uGnssTestPrivateCleanup(&gHandles);
 
-#ifndef U_CFG_TEST_USING_NRF5SDK
     for (size_t x = 0; x < sizeof(gpMessageReceive) / sizeof(gpMessageReceive[0]); x++) {
         if (gpMessageReceive[x] != NULL) {
             uPortFree(gpMessageReceive[x]->pBuffer);
             uPortFree(gpMessageReceive[x]);
         }
     }
-#endif // U_CFG_TEST_USING_NRF5SDK 
 
     // Printed for information: asserting happens in the postamble
     uTestUtilResourceCheck(U_TEST_PREFIX, NULL, true);
