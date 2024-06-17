@@ -143,7 +143,9 @@ void uPortI2cClose(int32_t handle);
  * you know works.  Ultimately the only reliable I2C bus recovery
  * method is out-of-band, i.e. wire the reset pins of your I2C
  * devices together and hang them off a GPIO pin of this MCU that
- * you can reset them all with.
+ * you can reset them all with.  If that is not possible you
+ * might also consider the advice here:
+ * https://www.analog.com/media/en/technical-documentation/application-notes/54305147357414an686_0.pdf.
  *
  * Note that if the I2C interface was adopted rather than
  * opened this will return #U_ERROR_COMMON_NOT_SUPPORTED.
