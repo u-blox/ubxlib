@@ -597,6 +597,14 @@ int32_t uDeviceGetDefaults(uDeviceType_t deviceType,
 /** Open a device instance; if this function returns successfully
  * the device is powered-up and ready to be configured.
  *
+ * IMPORTANT: you would normally define the #uDeviceCfg_t structure
+ * pointed-to by the pDeviceCfg parameter of this function as a
+ * const struct, usually in flash, in which case the compiler will
+ * zero any non-populated members for you.  Should you instead
+ * define what pDeviceCfg points to as a RAM variable BE SURE TO
+ * ZERO IT before populating it.  This will ensure compatibility
+ * with future extensions to the structure.
+ *
  * @param[in] pDeviceCfg      device configuration, should not be
  *                            NULL unless you are using Zephyr and
  *                            have provided a device configuration
