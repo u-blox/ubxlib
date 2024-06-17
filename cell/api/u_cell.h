@@ -278,7 +278,7 @@ int32_t uCellAtCommandDelayGet(uDeviceHandle_t cellHandle);
  *
  * This function is deprecated and may be removed at some
  * point in the future; please use uCellAtCommandTimingSet()
- * or  uCellAtCommandTimingSetDefault() instead.
+ * or uCellAtCommandTimingSetDefault() instead.
  *
  * A safe default value is set on a per-module basis but you may
  * wish to optimise the speed of exchange of AT command in your
@@ -315,7 +315,7 @@ int32_t uCellAtCommandDelaySet(uDeviceHandle_t cellHandle,
  *                                           of the next AT command; may
  *                                           be NULL.
  * @param[out] pDefaultCommandTimeoutSeconds a place to put the default
-      *                                      timeout, in SECONDS,
+ *                                           timeout, in SECONDS,
  *                                           when waiting for a response
  *                                           to an AT command; note that
  *                                           this may be modified, on a

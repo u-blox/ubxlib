@@ -687,7 +687,7 @@ int32_t uHttpClientGetRequestChunked(uHttpClientContext_t *pContext,
  *                                   storage MUST REMAIN VALID until pResponseCallback
  *                                   is called, which will happen on a timeout as
  *                                   well as in the success case; best not put the
- *                                   storage on  the stack, just in case.
+ *                                   storage on the stack, just in case.
  * @param[in,out] pSize              on entry the amount of storage at pResponseHead;
  *                                   on return, in the blocking case, the amount of
  *                                   data copied to pResponseHead (in the non-blocking
