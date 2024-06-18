@@ -91,7 +91,8 @@ const uGnssTransportType_t gDeviceToGnssTransportType[] = {
 // Populate the GNSS device context
 static void populateContext(uDeviceGnssInstance_t *pContext,
                             uGnssTransportHandle_t gnssTransportHandle,
-                            uDeviceTransportType_t deviceTransportType)
+                            uDeviceTransportType_t deviceTransportType,
+                            bool powerOffToBackup)
 {
     switch (deviceTransportType) {
         case U_DEVICE_TRANSPORT_TYPE_UART:
@@ -114,6 +115,7 @@ static void populateContext(uDeviceGnssInstance_t *pContext,
             break;
     }
     pContext->deviceTransportType = deviceTransportType;
+    pContext->powerOffToBackup = powerOffToBackup;
 }
 
 // Do all the leg-work to remove a GNSS device.
@@ -125,7 +127,11 @@ static int32_t removeDevice(uDeviceHandle_t devHandle, bool powerOff)
     if (pContext != NULL) {
         errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
         if (powerOff) {
-            errorCode = uGnssPwrOff(devHandle);
+            if (pContext->powerOffToBackup) {
+                errorCode = uGnssPwrOffBackup(devHandle);
+            } else {
+                errorCode = uGnssPwrOff(devHandle);
+            }
             if (errorCode == 0) {
                 // This will destroy the instance
                 uGnssRemove(devHandle);
@@ -160,7 +166,8 @@ static int32_t addDevice(uGnssTransportHandle_t gnssTransportHandle,
     pContext = (uDeviceGnssInstance_t *) pUPortMalloc(sizeof(uDeviceGnssInstance_t));
     if (pContext != NULL) {
         memset(pContext, 0, sizeof(*pContext));
-        populateContext(pContext, gnssTransportHandle, deviceTransportType);
+        populateContext(pContext, gnssTransportHandle, deviceTransportType,
+                        pCfgGnss->powerOffToBackup);
         // Add the GNSS instance, which actually creates pDeviceHandle
         errorCode = uGnssAdd((uGnssModuleType_t) pCfgGnss->moduleType,
                              gnssTransportType, gnssTransportHandle,

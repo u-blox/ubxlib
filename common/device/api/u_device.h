@@ -427,6 +427,27 @@ typedef struct {
                                       the GNSS device is using is NOT the default
                                       #U_GNSS_I2C_ADDRESS; otherwise let the
                                       compiler initialise this to 0. */
+    bool powerOffToBackup;       /**< Normally the GNSS device will be powered
+                                      off by the device layer with a call to
+                                      uGnssPwrOff(), however this only stops
+                                      GNSS; for least power consumption the
+                                      device should be powered off to back-up
+                                      mode with a call to uGnssPwrOffBackup();
+                                      setting this item to true will cause
+                                      uGnssPwrOffBackup() to be called instead
+                                      of uGnssPwrOff().  HOWEVER note that the
+                                      mechanism through which the GNSS device
+                                      is restored from back-up mode may require
+                                      additional pins to be connected; e.g.
+                                      toggling the I2C pins of the GNSS device
+                                      will NOT cause it to return to normal
+                                      operation (toggling the SPI and UART
+                                      lines will).  Instead, for this case
+                                      the application must toggle the RESET_N
+                                      line or a chosen GPIO line.  For more
+                                      details refer to the section of the
+                                      integration manual for your GNSS device
+                                      that covers backup modes. */
     /* Add any new version 0 structure items to the end here.
      *
      * IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT:

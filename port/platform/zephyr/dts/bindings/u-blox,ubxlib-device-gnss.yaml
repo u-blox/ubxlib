@@ -103,4 +103,8 @@ properties:
     gnss-uart2:
         type: boolean
         description: "Specify this flag if your UART connection is to the _second_ serial port of a GNSS device."
+# request that the device layer powers the GNSS device off to back-up state
+    power-off-to-backup:
+        type: boolean
+        description: "Specify this flag if you want uDeviceClose(), when called with powerOff true, to call uGnssPwrOffBackup() instead of just uGnssPwrOff(); refer to the integration manual for your GNSS device, the backup or power section, for what the application must do to restore the GNSS device to normal operation afterwards."
 # Note: there is no associated network configuration for the GNSS case

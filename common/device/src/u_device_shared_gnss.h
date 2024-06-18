@@ -53,6 +53,7 @@ typedef union {
 typedef struct {
     uDeviceGnssTransportHandle_t transportHandle;
     uDeviceTransportType_t deviceTransportType;
+    bool powerOffToBackup;
 } uDeviceGnssInstance_t;
 
 #ifdef __cplusplus
