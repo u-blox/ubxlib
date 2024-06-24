@@ -408,11 +408,18 @@ typedef struct {
                                       configuration structure for GNSS,
                                       #uNetworkCfgGnss_t, should be
                                       populated instead). */
-    int32_t pinDataReady;        /**< The input pin that is used to receive
-                                      the Data Ready state of the GNSS module;
-                                      this field is present for
-                                      forwards-compatibility only; it is
-                                      currently ignored. */
+    int32_t pinDataReady;        /**< The input pin of this MCU that is used
+                                      to receive the Data Ready, AKA TX-Ready,
+                                      status of the GNSS module; use -1 if
+                                      there is no such connection.  Note
+                                      that use of such a pin is ONLY supported
+                                      on M9 modules and later, and GNSS devices
+                                      only support this on I2C and SPI.  If this
+                                      field is not -1 then devicePioDataReady
+                                      (see below) MUST ALSO BE POPULATED.
+                                      Only works if interrupts are accessible
+                                      on your platform (so not on Windows or
+                                      Linux). */
     bool includeNmea;            /**< \deprecated This field used to
                                       permit NMEA messages to be included
                                       when they were normally excluded by
@@ -448,6 +455,15 @@ typedef struct {
                                       details refer to the section of the
                                       integration manual for your GNSS device
                                       that covers backup modes. */
+    int32_t devicePioDataReady;  /**< The PIO of the GNSS device that is to
+                                      be used for Data Ready, AKA TX-Ready;
+                                      must be populated if pinDataReady is
+                                      not -1, ignored if pinDataReady is -1.
+                                      IMPORTANT: this PIO must not already be
+                                      in use for some other peripheral function
+                                      within the GNSS device; should that be the
+                                      case the error #U_GNSS_PIO_IN_USE will be
+                                      returned. */
     /* Add any new version 0 structure items to the end here.
      *
      * IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT:

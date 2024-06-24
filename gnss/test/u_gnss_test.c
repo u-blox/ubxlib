@@ -93,7 +93,7 @@
  * VARIABLES
  * -------------------------------------------------------------- */
 
-/** Streaming handle for one GNSS module (could be UART or I2C).
+/** Streaming handle for one GNSS module (could be UART or I2C or SPI).
  */
 static int32_t gStreamAHandle = -1;
 
@@ -212,6 +212,7 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssAddStream")
     U_PORT_TEST_ASSERT_EQUAL((int32_t) U_ERROR_COMMON_SUCCESS, errorCode);
     transportHandle.uart = -1;
     transportHandle.i2c = -1;
+    transportHandle.spi = -1;
     U_PORT_TEST_ASSERT(uGnssGetTransportHandle(gnssHandleA,
                                                &transportType,
                                                &transportHandle) == 0);
@@ -292,6 +293,7 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssAddStream")
     U_PORT_TEST_ASSERT_EQUAL((int32_t) U_ERROR_COMMON_SUCCESS, errorCode);
     transportHandle.uart = -1;
     transportHandle.i2c = -1;
+    transportHandle.spi = -1;
     U_PORT_TEST_ASSERT(uGnssGetTransportHandle(gnssHandleA,
                                                &transportType,
                                                &transportHandle) == 0);
@@ -355,6 +357,7 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssAddStream")
     transportType = U_GNSS_TRANSPORT_NONE;
     transportHandle.uart = -1;
     transportHandle.i2c = -1;
+    transportHandle.spi = -1;
     U_PORT_TEST_ASSERT(uGnssGetTransportHandle(gnssHandleA,
                                                &transportType,
                                                &transportHandle) == 0);

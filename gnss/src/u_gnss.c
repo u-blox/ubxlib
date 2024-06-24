@@ -160,6 +160,8 @@ static void deleteGnssInstance(uGnssPrivateInstance_t *pInstance)
     pCurrent = gpUGnssPrivateInstanceList;
     while (pCurrent != NULL) {
         if (pInstance == pCurrent) {
+            // Free any Data Ready structure
+            uGnssPrivateCleanUpDataReady(pInstance);
             // Stop any asynchronous position establishment task
             uGnssPrivateCleanUpPosTask(pInstance);
             // Stop and clean up streamed position

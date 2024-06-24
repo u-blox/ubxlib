@@ -154,6 +154,29 @@ typedef enum {
     U_GNSS_PRIVATE_STREAM_TYPE_MAX_NUM
 } uGnssPrivateStreamType_t;
 
+/** Enum that maps to the Virtual Pin manager types reported by
+ * the UBX-MON-HW3 message.
+ *
+ * Note: these values are not complete and may not be completely
+ * accurate, however they are sufficient to permit the TX-Ready
+ * pin to be managed, see the gVirtualPin* arrays in u_gnss_private.c.
+ *
+ * TODO: would be good to add USB and maybe UART2 to this list.
+ */
+typedef enum {
+    U_GNSS_PRIVATE_VIRTUAL_PIN_NONE = -1,
+    U_GNSS_PRIVATE_VIRTUAL_PIN_UART_RXD = 0,
+    U_GNSS_PRIVATE_VIRTUAL_PIN_UART_TXD = 1,
+    U_GNSS_PRIVATE_VIRTUAL_PIN_I2C_SCL = 2,
+    U_GNSS_PRIVATE_VIRTUAL_PIN_I2C_SDA = 3,
+    U_GNSS_PRIVATE_VIRTUAL_PIN_SPI_MOSI = 6,
+    U_GNSS_PRIVATE_VIRTUAL_PIN_SPI_MISO = 7,
+    U_GNSS_PRIVATE_VIRTUAL_PIN_SPI_CLK = 8,
+    U_GNSS_PRIVATE_VIRTUAL_PIN_SPI_CS = 9,
+    U_GNSS_PRIVATE_VIRTUAL_PIN_TIMEPULSE = 16,
+    U_GNSS_PRIVATE_VIRTUAL_PIN_EXTINT = 18
+} uGnssPrivateVirtualPinType_t;
+
 /** Structure to hold a message ID where the NMEA field is a buffer rather
  * than a pointer to a string.
  */
@@ -232,6 +255,29 @@ typedef struct {
     int32_t errorCode;
 } uGnssPrivateMga_t;
 
+/** Parameters that need to be stored for the MCU-side of
+ * Data Ready pin operation.
+ */
+typedef struct {
+    int32_t pinMcu; /**< the pin of the MCU that is connected to the Data Ready (AKA TX-Ready) pin of the GNSS device. */
+    bool activeLow; /**< true if a low level on pin indicates that data is ready. */
+    int32_t timeoutMs; /**< the time to wait for Data Ready in milliseconds. */
+    uPortSemaphoreHandle_t semaphoreHandle;
+    void (*pCallback) (uDeviceHandle_t,
+                       void *); /**< user callback, called in INTERRUPT CONTEXT when pinDataReady goes active. */
+    void *pCallbackParam; /**< optional user parameter passed to pCallback. */
+} uGnssPrivateDataReadyMcu_t;
+
+/** Parameters for the device-side of Data Ready pin operation; these
+ * don't need to be stored locally, they are configured in the GNSS
+ * device and can be read back from the GNSS device.
+ */
+typedef struct {
+    int32_t pio; /**< the PIO of the GNSS device. */
+    bool activeLow; /**< true if the PIO should be low when data is ready. */
+    size_t thresholdBytes; /**< the threshold at which the data ready indication should be given. */
+} uGnssPrivateDataReadyDevice_t;
+
 /** Definition of a GNSS instance.
  * Note: a pointer to this structure is passed to the asynchronous
  * "get position" function (posGetTask()) which does NOT lock the
@@ -275,9 +321,10 @@ typedef struct uGnssPrivateInstance_t {
                                                 message receive utility functions. */
     uGnssPrivateStreamedPosition_t *pStreamedPosition; /**< context data for streamed position, hooked
                                                             here so that we can free it */
-    uGnssRrlpMode_t rrlpMode; /**< The type of MEASX to use with RRLP capture. */
-    uGnssPrivateMga_t *pMga; /**< Storage for AssistNow. */
-    void *pFenceContext; /**< Storage for a uGeofenceContext_t. */
+    uGnssRrlpMode_t rrlpMode; /**< the type of MEASX to use with RRLP capture. */
+    uGnssPrivateMga_t *pMga; /**< storage for AssistNow. */
+    void *pFenceContext; /**< storage for a uGeofenceContext_t. */
+    uGnssPrivateDataReadyMcu_t *pDataReadyMcu; /**< storage for MCU-side Data Ready functionality. */
     struct uGnssPrivateInstance_t *pNext;
 } uGnssPrivateInstance_t;
 // *INDENT-ON*
@@ -471,9 +518,9 @@ int32_t uGnssPrivateSetMsgRate(uGnssPrivateInstance_t *pInstance,
  *
  * Note: gUGnssPrivateMutex should be locked before this is called.
  *
- * @param[in] pInstance  a pointer to the GNSS instance, cannot be NULL.
- * @return               a bit-map of the protocol types that are
- *                       being output else negative error code.
+ * @param[in] pInstance   a pointer to the GNSS instance, cannot be NULL.
+ * @return                a bit-map of the protocol types that are
+ *                        being output else negative error code.
  */
 int32_t uGnssPrivateGetProtocolOut(uGnssPrivateInstance_t *pInstance);
 
@@ -497,11 +544,85 @@ int32_t uGnssPrivateSetProtocolOut(uGnssPrivateInstance_t *pInstance,
                                    uGnssProtocol_t protocol,
                                    bool onNotOff);
 
+/** Allocate an interrupt function for use with Data Ready.  If
+ * an interrupt function had previously been allocated for the
+ * instance then it is re-used with the new pCallback.
+ *
+ * Note: gUGnssPrivateMutex should be locked before this is called.
+ *
+ * @param[in] pInstance  a pointer to the GNSS instance, cannot be NULL.
+ * @param[in] pCallback  the callback that the interrupt function should
+ *                       call, cannot be NULL.
+ * @return               the interrupt function, else NULL on error.
+ */
+void (*pUGnssPrivateDataReadyInterruptAlloc(uGnssPrivateInstance_t *pInstance,
+                                            void (*pCallback)(uGnssPrivateInstance_t *)))(void);
+
+/** Free an interrupt function that was allocated by
+ * pUGnssPrivateDataReadyInterruptAlloc().
+ *
+ * Note: gUGnssPrivateMutex should be locked before this is called.
+ *
+ * @param[in] pInstance   a pointer to the GNSS instance, cannot be NULL.
+ */
+void uGnssPrivateDataReadyInterruptFree(uGnssPrivateInstance_t *pInstance);
+
+/** Get the data ready configuration for the port of the GNSS device
+ * we are using.
+ *
+ * Note: gUGnssPrivateMutex should be locked before this is called.
+ *
+ * @param[in] pInstance         a pointer to the GNSS instance, cannot
+ *                              be NULL.
+ * @param[out] pDataReadyDevice a pointer to a place to put the Data Ready
+ *                              (AKA TX-Ready) configuration, cannot be
+ *                              NULL.  If no data ready is set then the
+ *                              pio field in the data ready structure
+ *                              will be set to -1.
+ * @return                      zero on success else negative error code.
+ */
+int32_t uGnssPrivateGetDataReady(uGnssPrivateInstance_t *pInstance,
+                                 uGnssPrivateDataReadyDevice_t *pDataReadyDevice);
+
+/** Set the data ready configuration for the port of the GNSS device
+ * we are using.
+ *
+ * Note: gUGnssPrivateMutex should be locked before this is called.
+ *
+ * @param[in] pInstance        a pointer to the GNSS instance, cannot be
+ *                             NULL.
+ * @param[in] pDataReadyDevice a pointer to the Data Ready (AKA TX-Ready)
+ *                             configuration required, use NULL to switch
+ *                             data ready off.
+ * @return                     zero on success else negative error code.
+ */
+int32_t uGnssPrivateSetDataReady(uGnssPrivateInstance_t *pInstance,
+                                 uGnssPrivateDataReadyDevice_t *pDataReadyDevice);
+
+/** Wait for the data ready pin to become active.
+ *
+ * Note: gUGnssPrivateMutex should be locked before this is called.
+ *
+ * @param[in] pInstance  a pointer to the GNSS instance, cannot be NULL.
+ * @param timeoutMs      the time to wait in milliseconds.
+ * @return               true if the data ready pin is active, else false.
+ */
+bool uGnssPrivateIsDataReady(uGnssPrivateInstance_t *pInstance,
+                             int32_t timeoutMs);
+
+/** Shut-down any Data Ready pin used with a GNSS device.
+ *
+ * Note: gUGnssPrivateMutex should be locked before this is called.
+ *
+ * @param[in] pInstance  a pointer to the GNSS instance, cannot be NULL.
+ */
+void uGnssPrivateCleanUpDataReady(uGnssPrivateInstance_t *pInstance);
+
 /** Shut down and free memory from a [potentially] running pos task.
  *
  * Note: gUGnssPrivateMutex should be locked before this is called.
  *
- * @param[in] pInstance  a pointer to the GNSS instance, cannot  be NULL.
+ * @param[in] pInstance  a pointer to the GNSS instance, cannot be NULL.
  */
 void uGnssPrivateCleanUpPosTask(uGnssPrivateInstance_t *pInstance);
 
@@ -510,7 +631,7 @@ void uGnssPrivateCleanUpPosTask(uGnssPrivateInstance_t *pInstance);
  *
  * Note: gUGnssPrivateMutex should be locked before this is called.
  *
- * @param[in] pInstance  a pointer to the GNSS instance, cannot  be NULL.
+ * @param[in] pInstance  a pointer to the GNSS instance, cannot be NULL.
  */
 void uGnssPrivateCleanUpStreamedPos(uGnssPrivateInstance_t *pInstance);
 
@@ -520,7 +641,7 @@ void uGnssPrivateCleanUpStreamedPos(uGnssPrivateInstance_t *pInstance);
  *
  * Note: gUGnssPrivateMutex should be locked before this is called.
  *
- * @param[in] pInstance  a pointer to the GNSS instance, cannot  be NULL.
+ * @param[in] pInstance  a pointer to the GNSS instance, cannot be NULL.
  * @return               true if there is a GNSS chip inside the cellular
  *                       module, else false.
 */
@@ -531,7 +652,7 @@ bool uGnssPrivateIsInsideCell(const uGnssPrivateInstance_t *pInstance);
  *
  * Note: gUGnssPrivateMutex should be locked before this is called.
  *
- * @param[in] pInstance  a pointer to the GNSS instance, cannot  be NULL.
+ * @param[in] pInstance  a pointer to the GNSS instance, cannot be NULL.
  */
 void uGnssPrivateStopMsgReceive(uGnssPrivateInstance_t *pInstance);
 
@@ -600,7 +721,7 @@ int32_t uGnssPrivateInfoGetVersions(uGnssPrivateInstance_t *pInstance,
 /** Get the private stream type from a given GNSS transport type.
  *
  * @param transportType the GNSS transport type.
- * @return              the prviate stream type or negative error
+ * @return              the private stream type or negative error
  *                      code if transportType is not a streaming
  *                      transport type.
  */

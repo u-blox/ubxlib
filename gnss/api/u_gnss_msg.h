@@ -95,6 +95,22 @@ extern "C" {
 # define U_GNSS_MSG_RECEIVE_TASK_QUEUE_ITEM_SIZE_BYTES 1
 #endif
 
+#ifndef U_GNSS_MSG_DATA_READY_THRESHOLD_BYTES
+/** The default threshold at which a GNSS device should signal
+ * Data Ready if uGnssMsgSetDataReady() is to be used.  Best to
+ * make this a multiple of 8 as some module types store it
+ * that way.
+ */
+# define U_GNSS_MSG_DATA_READY_THRESHOLD_BYTES 8
+#endif
+
+#ifndef U_GNSS_MSG_DATA_READY_FILL_TIMEOUT_MS
+/** The time to wait to pull data into the ring buffer if
+ * a Data Ready pin is connected.
+  */
+# define U_GNSS_MSG_DATA_READY_FILL_TIMEOUT_MS 10000
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -452,6 +468,126 @@ int32_t uGnssMsgReceiveStop(uDeviceHandle_t gnssHandle,
  * @return             zero on success else negative error code.
  */
 int32_t uGnssMsgReceiveStopAll(uDeviceHandle_t gnssHandle);
+
+/** Set the pin of this MCU that is connected to a GPIO pin of the
+ * GNSS device that is to act as a Data Ready (AKA TX-Ready) indication.
+ * This may allow your MCU to save power by sleeping while waiting for
+ * a response from the GNSS device.  Only works if interrupts are
+ * accessible on your platform (so not supported on Windows or Linux) and
+ * is only supported by GNSS devices over I2C and SPI interfaces.  If
+ * you have your own porting layer, for this to work the "interrupt"
+ * portion of the GPIO porting layer must be implemented and note that
+ * some platforms may require additional compile-time configuration for
+ * interrupts to work, e.g. for STM32Cube the correct HW interrupts
+ * must be made available to this code.
+ *
+ * The GNSS device must have already been powered-on for this to work since
+ * communication with the GNSS device is required during the setup.
+ *
+ * Note: if you are using uDeviceOpen() to bring up the GNSS device and
+ * have set the pinDataReady and devicePioDataReady fields then uDeviceOpen()
+ * will call this function to configure Data Ready, you do not need to do so;
+ * you _may_ still do call if if you wish to also have your own callback, or
+ * you wish to change the timeout from the default, but if you do that it is
+ * best to leave thresholdBytes at -1, i.e. the default, since that is what
+ * uDeviceOpen() did and is how the ubxlib code is tested.
+ *
+ * @param gnssHandle         the handle of the GNSS instance.
+ * @param pinMcu             the pin of this MCU that is connected to the
+ *                           GPIO pin of the GNSS device that is to be used
+ *                           as Data Ready (AKA TX-Ready); if there is an
+ *                           inverter between the two pins, so that 0
+ *                           indicates "data ready" rather than 1, the
+ *                           value should be ORed with #U_GNSS_PIN_INVERTED
+ *                           (defined in u_gnss_type.h).
+ * @param devicePio          the PIO of the GNSS device that is to be
+ *                           used for Data Ready (AKA TX-Ready).
+ *                           IMPORTANT: this PIO must not already be in use
+ *                           for some other peripheral function within the
+ *                           GNSS device; should that be the case the error
+ *                           #U_GNSS_PIO_IN_USE will be returned.
+ * @param thresholdBytes     the threshold, in bytes of data queued to be
+ *                           sent, at which the GNSS device should assert
+ *                           Data Ready.  Usually you should set -1 in which
+ *                           case the [tested] ubxlib default value of
+ *                           #U_GNSS_MSG_DATA_READY_THRESHOLD_BYTES will be used.
+ * @param timeoutMs          the time to wait in milliseconds; if you use
+ *                           -1 here then the default value of
+ *                           #U_GNSS_MSG_DATA_READY_FILL_TIMEOUT_MS will apply.
+ * @param[in] pCallback      an OPTIONAL function, that the application may
+ *                           provide, which will be called when Data Ready
+ *                           is detected.  THIS WILL BE CALLED IN INTERRUPT
+ *                           CONTEXT so be _very_ careful what you do in the
+ *                           function.  Whether the callback is called after
+ *                           or before ubxlib performs any of its own
+ *                           operations (e.g. to receive and process any data)
+ *                           is OS timing dependent and should not be relied
+ *                           upon.  Note that no callback is required for the
+ *                           beneficial effect of waiting for Data Ready to be
+ *                           realised; that is all done internally within this
+ *                           code, the callback is _purely_ for the application
+ *                           should it find a need.
+ * @param[in] pCallbackParam optional parameter that will be passed to
+ *                           pCallback as its last parameter; ignored
+ *                           if pCallback is NULL
+ * @return                   zero on success, else negative error code.
+ */
+int32_t uGnssMsgSetDataReady(uDeviceHandle_t gnssHandle, int32_t pinMcu,
+                             int32_t devicePio, int32_t thresholdBytes,
+                             int32_t timeoutMs,
+                             void (*pCallback) (uDeviceHandle_t, void *),
+                             void *pCallbackParam);
+
+/** Get the pin of this MCU that is connected to a GPIO pin of the
+ * GNSS device that is to act as a Data Ready (AKA TX-Ready) indication.
+ * If pDevicePio or pThresholdBytes are non-NULL the GNSS device must
+ * be powered on for this to work, since the values are read from
+ * the GNSS device.
+ *
+ * @param gnssHandle           the handle of the GNSS instance.
+ * @param[out] pDevicePio      a pointer to a place to put the PIO of the
+ *                             GNSS device that is being used for Data Ready
+ *                             (AKA TX-Ready); may be NULL.
+ * @param[out] pThresholdBytes a pointer to a place to put the threshold,
+ *                             in bytes, at which the GNSS device should
+ *                             assert Data Ready; may be NULL.
+ * @param[out] pTimeoutMs      a pointer to a place to put the timeout,
+ *                             to wait for Data Reay in milliseconds; may
+ *                             be NULL.
+ * @return                     on success the pin of this MCU that is
+ *                             expected to be connected to the PIO of the
+ *                             GNSS device that is used for Data Ready
+ *                             (AKA TX-Ready), else negative error code.
+ *                             If the pin is marked as inverted then
+ *                             the returned value will have been ORed
+ *                             with #U_GNSS_PIN_INVERTED, so to get just
+ *                             the pin you must AND it with NOT
+ *                             #U_GNSS_PIN_INVERTED.
+ */
+int32_t uGnssMsgGetDataReady(uDeviceHandle_t gnssHandle, int32_t *pDevicePio,
+                             int32_t *pThresholdBytes, int32_t *pTimeoutMs);
+
+/** Wait for the Data Ready (AKA TX-Ready) pin to indicate that data is
+ * present.  If the pin already indicates that data is present this will
+ * return true immediately, otherwise it will wait (on a semaphore) until
+ * Data Ready becomes active and, should that happen within the timeout,
+ * (set by uGnssMsgSetDataReady()) true will be returned and any callback
+ * set in the call to uGnssMsgSetDataReady() will be called.  Returns false
+ * if uGnssMsgSetDataReady() has not been called.
+ *
+ * @param gnssHandle     the handle of the GNSS instance.
+ * @return               true if the data ready pin is active, else false.
+ */
+bool uGnssMsgIsDataReady(uDeviceHandle_t gnssHandle);
+
+/** Remove a Data Ready (AKA TX-Ready) indication that was previously
+ * set.  Note that there is normally no reason to call this function;
+ * any Data Ready pin will be removed by uGnssRemove().
+ *
+ * @param gnssHandle         the handle of the GNSS instance.
+ * @return                   zero on success, else negative error code.
+ */
+int32_t uGnssMsgRemoveDataReady(uDeviceHandle_t gnssHandle);
 
 /** Return the minimum number of bytes of stack free in the task
  * that is running the message receive.  Will return a valid

@@ -71,6 +71,7 @@
 #include "u_gnss.h"
 #include "u_gnss_pwr.h"
 #include "u_gnss_cfg.h"
+#include "u_gnss_msg.h"
 #include "u_gnss_util.h"
 
 #include "u_gnss_test_private.h"
@@ -571,6 +572,18 @@ int32_t uGnssTestPrivatePreamble(uGnssModuleType_t moduleType,
                                                   atModulePinPwr, atModulePinDataReady,
                                                   powerOn, false);
                     }
+#if defined(U_CFG_APP_PIN_GNSS_DATA_READY) && defined(U_CFG_APP_GNSS_DEVICE_PIO_DATA_READY)
+                    if ((errorCode == 0) && powerOn &&
+                        ((transportType == U_GNSS_TRANSPORT_I2C) ||
+                         (transportType == U_GNSS_TRANSPORT_SPI))) {
+
+                        // A data ready pin has been specified; set it up
+                        errorCode = uGnssMsgSetDataReady(pParameters->gnssHandle,
+                                                         U_CFG_APP_PIN_GNSS_DATA_READY,
+                                                         U_CFG_APP_GNSS_DEVICE_PIO_DATA_READY,
+                                                         -1, -1, NULL, NULL);
+                    }
+#endif
                 }
             }
         }

@@ -39,6 +39,7 @@
         module-type = "U_GNSS_MODULE_TYPE_M9";
         pin-enable-power = <1>;
         pin-data-ready = <36>;
+        device-pio-data-ready = <1>;
         power-off-to-backup;
     };
     cfg-device-gnss-1 {
@@ -56,6 +57,7 @@
         module-type = "U_GNSS_MODULE_TYPE_M8";
         pin-enable-power = <2>;
         pin-data-ready = <37>;
+        device-pio-data-ready = <1>;
     };
     cfg-device-gnss-2 {
         compatible = "u-blox,ubxlib-device-gnss";

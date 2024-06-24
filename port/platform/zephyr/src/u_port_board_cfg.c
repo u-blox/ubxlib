@@ -713,6 +713,16 @@ static const int32_t gDeviceCfgGnssPinDataReady[] = {
                                  pin_data_ready)
 };
 
+/** The "device-pio-data-ready" of each of the ubxlib-device-gnss
+ * compatible devices, or -1 where not present, in the order they
+ * appear in the device tree.
+ */
+static const int32_t gDeviceCfgGnssDevicePioDataReady[] = {
+    DT_FOREACH_STATUS_OKAY_VARGS(u_blox_ubxlib_device_gnss,
+                                 U_PORT_BOARD_CFG_GET_INT,
+                                 device_pio_data_ready)
+};
+
 /** Get whether the "power-off-to-backup" property is set
  * for each ubxlib-device-gnss compatible device, in the
  * order they appear in the device tree.
@@ -1175,14 +1185,16 @@ static void cfgGnss(uDeviceCfg_t *pCfg, int32_t index)
     pCfgGnss->moduleType = gDeviceCfgGnssModuleType[index];
     pCfgGnss->pinEnablePower = gDeviceCfgGnssPinEnablePower[index];
     pCfgGnss->pinDataReady = gDeviceCfgGnssPinDataReady[index];
+    pCfgGnss->devicePioDataReady = gDeviceCfgGnssDevicePioDataReady[index];
     pCfgGnss->i2cAddress = -1;
     pCfgGnss->powerOffToBackup = gDeviceCfgGnssPowerOffToBackup[index];
     uPortLog("U_PORT_BOARD_CFG: using GNSS device \"%s\" from the device tree,"
              " module-type %d with pin-enable-power %d (0x%02x),"
-             " pin-data-ready %d (0x%02x)%s...\n",
+             " pin-data-ready %d (0x%02x), device-pio-data-ready %d%s...\n",
              gpCfgGnssDeviceName[index], pCfgGnss->moduleType,
              pCfgGnss->pinEnablePower, pCfgGnss->pinEnablePower,
              pCfgGnss->pinDataReady, pCfgGnss->pinDataReady,
+             pCfgGnss->devicePioDataReady,
              pCfgGnss->powerOffToBackup ? ", power-off-to-backup" : "");
     // Don't need to check for NULL here as transport is a required field for GNSS
     x = getPort(gpDeviceCfgGnssTransportType[index], &(pCfg->transportType));

@@ -67,6 +67,7 @@ typedef enum {
     U_GNSS_ERROR_TRANSPORT = U_ERROR_GNSS_MAX, /**< -1024 if #U_ERROR_BASE is 0. */
     U_GNSS_ERROR_NACK = U_ERROR_GNSS_MAX - 1,  /**< -1025 if #U_ERROR_BASE is 0. */
     U_GNSS_ERROR_CRC = U_ERROR_GNSS_MAX - 2,   /**< -1026 if #U_ERROR_BASE is 0. */
+    U_GNSS_PIO_IN_USE =  U_ERROR_GNSS_MAX - 3, /**< -1027 if #U_ERROR_BASE is 0. */
 } uGnssErrorCode_t;
 
 /* ----------------------------------------------------------------

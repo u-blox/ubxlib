@@ -76,6 +76,7 @@
 #include "u_port_uart.h"
 #include "u_port_i2c.h"
 #include "u_port_spi.h"
+#include "u_port_gpio.h"
 
 #include "u_at_client.h"
 
@@ -136,6 +137,25 @@
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
+// Callback for Data Ready, CALLED FROM INTERRUPT CONTEXT,
+// so can't lock mutexes or the like.
+static void dataReadyCallback(uGnssPrivateInstance_t *pInstance)
+{
+    uGnssPrivateDataReadyMcu_t *pDataReadyMcu;
+
+    if ((pInstance != NULL) && (pInstance->pDataReadyMcu != NULL)) {
+        pDataReadyMcu = pInstance->pDataReadyMcu;
+        // Give the semaphore to indicate to the message
+        // receive functions that there is data
+        uPortSemaphoreGiveIrq(pDataReadyMcu->semaphoreHandle);
+        if (pDataReadyMcu->pCallback != NULL) {
+            // Call the optional user callback
+            pDataReadyMcu->pCallback(pInstance->gnssHandle,
+                                     pDataReadyMcu->pCallbackParam);
+        }
+    }
+}
+
 // Task that runs the non-blocking message receive.
 static void msgReceiveTask(void *pParam)
 {
@@ -147,6 +167,7 @@ static void msgReceiveTask(void *pParam)
     int32_t receiveSize;
     int32_t yieldTimeMs;
     size_t discardSize = 0;
+    int32_t timeoutMs = 0;
     uGnssMessageId_t messageId;
     uGnssPrivateMessageId_t privateMessageId;
     char nmeaId[U_GNSS_NMEA_MESSAGE_MATCH_LENGTH_CHARACTERS + 1];
@@ -157,6 +178,10 @@ static void msgReceiveTask(void *pParam)
     uRingBufferLockReadHandle(&(pInstance->ringBuffer),
                               pMsgReceive->ringBufferReadHandle);
 
+    if (pInstance->pDataReadyMcu != NULL) {
+        timeoutMs = pInstance->pDataReadyMcu->timeoutMs;
+    }
+
     // Continue until we receive something on the queue, which
     // will cause us to exit
     while (uPortQueueTryReceive(pMsgReceive->taskExitQueueHandle, 0, queueItem) < 0) {
@@ -164,8 +189,6 @@ static void msgReceiveTask(void *pParam)
         // Note that this does NOT lock gUGnssPrivateMutex: it doesn't need to,
         // provided this task is brought up and torn down in an organised way
 
-        // Pull stuff into the ring buffer
-        receiveSize = uGnssPrivateStreamFillRingBuffer(pInstance, 0, 0);
         // Deal with any discard from a previous run around this loop
         discardSize -= uRingBufferReadHandle(&(pInstance->ringBuffer),
                                              pMsgReceive->ringBufferReadHandle,
@@ -219,6 +242,9 @@ static void msgReceiveTask(void *pParam)
                 }
             }
         }
+
+        // Pull stuff into the ring buffer
+        receiveSize = uGnssPrivateStreamFillRingBuffer(pInstance, timeoutMs, 0);
 
         // Relax to let others in; relax for twice as long if we last
         // received nothing and aren't desperately seeking more data,
@@ -718,6 +744,191 @@ int32_t uGnssMsgReceiveStopAll(uDeviceHandle_t gnssHandle)
             errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
             // We can just call the shut down function to lose the lot
             uGnssPrivateStopMsgReceive(pInstance);
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
+    }
+
+    return errorCode;
+}
+
+// Set the pin that is connected to the TX-Ready pin of the GNSS device.
+int32_t uGnssMsgSetDataReady(uDeviceHandle_t gnssHandle, int32_t pinMcu,
+                             int32_t devicePio, int32_t thresholdBytes,
+                             int32_t timeoutMs,
+                             void (*pCallback) (uDeviceHandle_t, void *),
+                             void *pCallbackParam)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uGnssPrivateInstance_t *pInstance;
+    uGnssPrivateDataReadyMcu_t *pDataReadyMcu;
+    uGnssPrivateDataReadyDevice_t dataReadyDevice = {0};
+    uPortGpioConfig_t gpioConfig = U_PORT_GPIO_CONFIG_DEFAULT;
+    bool activeLow = ((pinMcu & U_GNSS_PIN_INVERTED) == U_GNSS_PIN_INVERTED);
+    void (*pInterrupt)(void);
+
+    pinMcu &= ~U_GNSS_PIN_INVERTED;
+    if (thresholdBytes < 0) {
+        thresholdBytes = U_GNSS_MSG_DATA_READY_THRESHOLD_BYTES;
+    }
+    if (timeoutMs < 0) {
+        timeoutMs = U_GNSS_MSG_DATA_READY_FILL_TIMEOUT_MS;
+    }
+
+    if (gUGnssPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
+
+        // Need interrupts for this to work
+        errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
+        if (uPortGpioInterruptSupported()) {
+            errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+            pInstance = pUGnssPrivateGetInstance(gnssHandle);
+            if ((pInstance != NULL) && (pinMcu >= 0) && (devicePio >= 0) &
+                (thresholdBytes > 0)) {
+                errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+                if (pInstance->pModule->moduleType >= U_GNSS_MODULE_TYPE_M9) {
+                    errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
+                    // Make sure we can allocate an interrupt function
+                    pInterrupt = pUGnssPrivateDataReadyInterruptAlloc(pInstance, dataReadyCallback);
+                    if (pInterrupt != NULL) {
+                        pDataReadyMcu = pInstance->pDataReadyMcu;
+                        if (pDataReadyMcu == NULL) {
+                            pDataReadyMcu = (uGnssPrivateDataReadyMcu_t *) pUPortMalloc(sizeof(*pDataReadyMcu));
+                            if (pDataReadyMcu != NULL) {
+                                memset(pDataReadyMcu, 0, sizeof(*pDataReadyMcu));
+                                // Also need a semaphore
+                                if (uPortSemaphoreCreate(&(pDataReadyMcu->semaphoreHandle), 0, 1) != 0) {
+                                    // Clean up on error
+                                    uPortFree(pDataReadyMcu);
+                                    pDataReadyMcu = NULL;
+                                }
+                            }
+                        }
+                        if (pDataReadyMcu != NULL) {
+                            pDataReadyMcu->pinMcu = pinMcu;
+                            pDataReadyMcu->timeoutMs = timeoutMs;
+                            pDataReadyMcu->pCallback = pCallback;
+                            pDataReadyMcu->pCallbackParam = pCallbackParam;
+                            dataReadyDevice.pio = devicePio;
+                            dataReadyDevice.activeLow = activeLow;
+                            dataReadyDevice.thresholdBytes = thresholdBytes;
+                            // Configure the Data Ready pin on the GNSS device
+                            errorCode = uGnssPrivateSetDataReady(pInstance, &dataReadyDevice);
+                            if (errorCode == 0) {
+                                // Configure the interrupt
+                                gpioConfig.pin = pinMcu;
+                                gpioConfig.direction = U_PORT_GPIO_DIRECTION_INPUT;
+                                gpioConfig.interruptActiveLow = activeLow;
+                                gpioConfig.pInterrupt = pInterrupt;
+                                errorCode = uPortGpioConfig(&gpioConfig);
+                            }
+                            if (errorCode == 0) {
+                                // Done
+                                pInstance->pDataReadyMcu = pDataReadyMcu;
+                            }
+                        }
+                        if (errorCode != 0) {
+                            // Clean up on error
+                            uGnssPrivateCleanUpDataReady(pInstance);
+                        }
+                    }
+                }
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
+    }
+
+    return errorCode;
+}
+
+// Get the pin that is connected to the TX-Ready pin of the GNSS device.
+int32_t uGnssMsgGetDataReady(uDeviceHandle_t gnssHandle, int32_t *pDevicePio,
+                             int32_t *pThresholdBytes, int32_t *pTimeoutMs)
+{
+    int32_t errorCodeOrPin = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uGnssPrivateInstance_t *pInstance;
+    uGnssPrivateDataReadyDevice_t dataReadyDevice = {0};
+
+    dataReadyDevice.pio = -1;
+    if (gUGnssPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
+
+        errorCodeOrPin = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        pInstance = pUGnssPrivateGetInstance(gnssHandle);
+        if (pInstance != NULL) {
+            errorCodeOrPin = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+            if (pInstance->pModule->moduleType >= U_GNSS_MODULE_TYPE_M9) {
+                errorCodeOrPin = (int32_t) U_ERROR_COMMON_NOT_FOUND;
+                if (pInstance->pDataReadyMcu != NULL) {
+                    // Read the configuration from the GNSS device
+                    errorCodeOrPin = uGnssPrivateGetDataReady(pInstance, &dataReadyDevice);
+                    if (errorCodeOrPin == 0) {
+                        errorCodeOrPin = (int32_t) U_ERROR_COMMON_NOT_FOUND;
+                        if (dataReadyDevice.pio >= 0) {
+                            if (pDevicePio != NULL) {
+                                *pDevicePio = dataReadyDevice.pio;
+                            }
+                            if (pThresholdBytes != NULL) {
+                                *pThresholdBytes = dataReadyDevice.thresholdBytes;
+                            }
+                            if (pTimeoutMs != NULL) {
+                                *pTimeoutMs = pInstance->pDataReadyMcu->timeoutMs;
+                            }
+                            errorCodeOrPin = pInstance->pDataReadyMcu->pinMcu;
+                            if (dataReadyDevice.activeLow) {
+                                errorCodeOrPin |= U_GNSS_PIN_INVERTED;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
+    }
+
+    return errorCodeOrPin;
+}
+
+// Wait for the Data Ready (AKA TX-Ready) pin to be active.
+bool uGnssMsgIsDataReady(uDeviceHandle_t gnssHandle)
+{
+    bool isActive = false;
+    uGnssPrivateInstance_t *pInstance;
+
+    if (gUGnssPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
+
+        pInstance = pUGnssPrivateGetInstance(gnssHandle);
+        if ((pInstance != NULL) && (pInstance->pDataReadyMcu != NULL)) {
+            isActive = uGnssPrivateIsDataReady(pInstance,
+                                               pInstance->pDataReadyMcu->timeoutMs);
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
+    }
+
+    return isActive;
+}
+
+// Remove a Data Ready (AKA TX-Ready) indication.
+int32_t uGnssMsgRemoveDataReady(uDeviceHandle_t gnssHandle)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uGnssPrivateInstance_t *pInstance;
+
+    if (gUGnssPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
+
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        pInstance = pUGnssPrivateGetInstance(gnssHandle);
+        if (pInstance != NULL) {
+            uGnssPrivateCleanUpDataReady(pInstance);
+            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
         }
 
         U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);

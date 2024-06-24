@@ -205,6 +205,12 @@ static const uint32_t gFlagAllKeyId[] = {U_GNSS_CFG_VAL_KEY_ID_PM_EXTINTWAKE_L,
 
 #endif
 
+#if defined(U_CFG_APP_PIN_GNSS_DATA_READY) && defined(U_CFG_APP_GNSS_DEVICE_PIO_DATA_READY)
+/** Variable to hold the parameter passed to dataReadyCallback().
+ */
+static int32_t gDataReadyParam;
+#endif
+
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -252,6 +258,18 @@ static int32_t setOrClearPwrSavingFlag(uDeviceHandle_t gnssHandle,
 
 #endif
 
+#if defined(U_CFG_APP_PIN_GNSS_DATA_READY) && defined(U_CFG_APP_GNSS_DEVICE_PIO_DATA_READY)
+// Callback that should be called once we have set it for Data Ready.
+// Note: this will be called from interrupt context.
+static void dataReadyCallback(uDeviceHandle_t gnssHandle, void *pParam)
+{
+    gDataReadyParam = -2;
+    if (gnssHandle == gHandles.gnssHandle) {
+        gDataReadyParam = *((int32_t *) pParam);
+    }
+}
+#endif
+
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -265,6 +283,13 @@ U_PORT_TEST_FUNCTION("[gnssPwr]", "gnssPwrBasic")
     size_t iterations;
     uGnssTransportType_t transportTypes[U_GNSS_TRANSPORT_MAX_NUM];
     int32_t y;
+#if defined(U_CFG_APP_PIN_GNSS_DATA_READY) && defined(U_CFG_APP_GNSS_DEVICE_PIO_DATA_READY)
+    uGnssVersionType_t version;
+    int32_t devicePio;
+    int32_t thresholdBytes;
+    int32_t timeoutMs;
+    int32_t dataReadyParam = 1;
+#endif
 
     // Whatever called us likely initialised the
     // port so deinitialise it here to obtain the
@@ -290,6 +315,98 @@ U_PORT_TEST_FUNCTION("[gnssPwr]", "gnssPwrBasic")
 
         U_TEST_PRINT_LINE("checking that GNSS is alive...");
         U_PORT_TEST_ASSERT(uGnssPwrIsAlive(gnssHandle));
+
+#if defined(U_CFG_APP_PIN_GNSS_DATA_READY) && defined(U_CFG_APP_GNSS_DEVICE_PIO_DATA_READY)
+        // Can't use Data Ready from this MCU on AT or virtual serial transport,
+        // the intermediate module is responsible for that, and the new GNSS
+        // configuration interface also does not allow it to be set for UART
+        if ((transportTypes[x] == U_GNSS_TRANSPORT_I2C)  ||
+            (transportTypes[x] == U_GNSS_TRANSPORT_SPI))  {
+            U_TEST_PRINT_LINE("checking Data Ready...");
+
+            // So that we can see what we're doing for this bit
+            uGnssSetUbxMessagePrint(gnssHandle, true);
+
+            // Get the Data Ready before it is set
+            devicePio = -1;
+            thresholdBytes = -1;
+            timeoutMs = -1;
+            U_PORT_TEST_ASSERT(uGnssMsgGetDataReady(gnssHandle, &devicePio, &thresholdBytes, &timeoutMs) < 0);
+            U_PORT_TEST_ASSERT(devicePio == -1);
+            U_PORT_TEST_ASSERT(thresholdBytes == -1);
+            U_PORT_TEST_ASSERT(timeoutMs == -1);
+
+            // Now set a new Data Ready callback with our local callback
+            // and a specific threshold
+            gDataReadyParam = -1;
+            U_PORT_TEST_ASSERT(uGnssMsgSetDataReady(gnssHandle,
+                                                    U_CFG_APP_PIN_GNSS_DATA_READY,
+                                                    U_CFG_APP_GNSS_DEVICE_PIO_DATA_READY,
+                                                    U_GNSS_MSG_DATA_READY_THRESHOLD_BYTES + 8, // +8 as some modules round it up
+                                                    U_GNSS_MSG_DATA_READY_FILL_TIMEOUT_MS + 1,
+                                                    dataReadyCallback, &dataReadyParam) == 0);
+            // Do something that should cause data to flow and check that the calback has been called
+            U_PORT_TEST_ASSERT(uGnssInfoGetVersions(gnssHandle, &version) == 0);
+            U_PORT_TEST_ASSERT(gDataReadyParam == dataReadyParam);
+
+            U_PORT_TEST_ASSERT(uGnssMsgGetDataReady(gnssHandle, NULL, NULL,
+                                                    NULL) == U_CFG_APP_PIN_GNSS_DATA_READY);
+            U_PORT_TEST_ASSERT(uGnssMsgGetDataReady(gnssHandle, &devicePio,
+                                                    NULL, NULL) == U_CFG_APP_PIN_GNSS_DATA_READY);
+            U_PORT_TEST_ASSERT(devicePio == U_CFG_APP_GNSS_DEVICE_PIO_DATA_READY);
+            devicePio = -1;
+            U_PORT_TEST_ASSERT(uGnssMsgGetDataReady(gnssHandle, &devicePio,
+                                                    &thresholdBytes, NULL) == U_CFG_APP_PIN_GNSS_DATA_READY);
+            U_PORT_TEST_ASSERT(devicePio == U_CFG_APP_GNSS_DEVICE_PIO_DATA_READY);
+            U_PORT_TEST_ASSERT(thresholdBytes == U_GNSS_MSG_DATA_READY_THRESHOLD_BYTES + 8);
+            devicePio = -1;
+            thresholdBytes = -1;
+            timeoutMs = -1;
+            U_PORT_TEST_ASSERT(uGnssMsgGetDataReady(gnssHandle, &devicePio,
+                                                    &thresholdBytes, &timeoutMs) == U_CFG_APP_PIN_GNSS_DATA_READY);
+            U_PORT_TEST_ASSERT(devicePio == U_CFG_APP_GNSS_DEVICE_PIO_DATA_READY);
+            U_PORT_TEST_ASSERT(thresholdBytes == U_GNSS_MSG_DATA_READY_THRESHOLD_BYTES + 8);
+            U_PORT_TEST_ASSERT(timeoutMs == U_GNSS_MSG_DATA_READY_FILL_TIMEOUT_MS + 1);
+
+            // Now set a new Data Ready without the callback
+            gDataReadyParam = -1;
+            U_PORT_TEST_ASSERT(uGnssMsgSetDataReady(gnssHandle,
+                                                    U_CFG_APP_PIN_GNSS_DATA_READY,
+                                                    U_CFG_APP_GNSS_DEVICE_PIO_DATA_READY,
+                                                    -1, -1, NULL, NULL) == 0);
+            // Do something that should cause data to flow and check that the calback is not called
+            U_PORT_TEST_ASSERT(uGnssInfoGetVersions(gnssHandle, &version) == 0);
+            U_PORT_TEST_ASSERT(gDataReadyParam == -1);
+
+            // Check that the new threshold and timout values have taken
+            thresholdBytes = -1;
+            timeoutMs = -1;
+            U_PORT_TEST_ASSERT(uGnssMsgGetDataReady(gnssHandle, NULL,
+                                                    &thresholdBytes, &timeoutMs) == U_CFG_APP_PIN_GNSS_DATA_READY);
+            U_PORT_TEST_ASSERT(thresholdBytes == U_GNSS_MSG_DATA_READY_THRESHOLD_BYTES);
+            U_PORT_TEST_ASSERT(timeoutMs == U_GNSS_MSG_DATA_READY_FILL_TIMEOUT_MS);
+
+            // Remove the Data Ready callback
+            U_PORT_TEST_ASSERT(uGnssMsgRemoveDataReady(gnssHandle) == 0);
+
+            // Check that we think it has gone
+            devicePio = -1;
+            thresholdBytes = -1;
+            timeoutMs = -1;
+            U_PORT_TEST_ASSERT(uGnssMsgGetDataReady(gnssHandle, &devicePio, &thresholdBytes, &timeoutMs) < 0);
+            U_PORT_TEST_ASSERT(devicePio == -1);
+            U_PORT_TEST_ASSERT(thresholdBytes == -1);
+            U_PORT_TEST_ASSERT(timeoutMs == -1);
+
+            // Check that we can still talk to the device without it
+            // and that the callback is not called
+            gDataReadyParam = -1;
+            U_PORT_TEST_ASSERT(uGnssInfoGetVersions(gnssHandle, &version) == 0);
+            U_PORT_TEST_ASSERT(gDataReadyParam == -1);
+
+            uGnssSetUbxMessagePrint(gnssHandle, false);
+        }
+#endif
 
         U_TEST_PRINT_LINE("powering off GNSS...");
         U_PORT_TEST_ASSERT(uGnssPwrOff(gnssHandle) == 0);

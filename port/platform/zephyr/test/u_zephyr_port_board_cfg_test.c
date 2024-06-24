@@ -419,6 +419,7 @@ U_PORT_TEST_FUNCTION("[zephyrPortBoardCfg]", "zephyrPortBoardCfgBasic")
     U_PORT_TEST_ASSERT(pCfgGnss->i2cAddress == 0x43);
     U_PORT_TEST_ASSERT(pCfgGnss->pinEnablePower == 1);
     U_PORT_TEST_ASSERT(pCfgGnss->pinDataReady == 36);
+    U_PORT_TEST_ASSERT(pCfgGnss->devicePioDataReady == 1);
     U_PORT_TEST_ASSERT(pCfgGnss->powerOffToBackup);
     // Set the second valid configuration
     setDeviceCfg(&deviceCfg, &instance, U_DEVICE_TYPE_GNSS, "cfg-device-gnss-1");
@@ -449,6 +450,7 @@ U_PORT_TEST_FUNCTION("[zephyrPortBoardCfg]", "zephyrPortBoardCfgBasic")
     U_PORT_TEST_ASSERT(pCfgGnss->moduleType == U_GNSS_MODULE_TYPE_M8);
     U_PORT_TEST_ASSERT(pCfgGnss->pinEnablePower == 2);
     U_PORT_TEST_ASSERT(pCfgGnss->pinDataReady == 37);
+    U_PORT_TEST_ASSERT(pCfgGnss->devicePioDataReady == 1);
     U_PORT_TEST_ASSERT(!pCfgGnss->powerOffToBackup);
     // Set the final valid configuration
     setDeviceCfg(&deviceCfg, &instance, U_DEVICE_TYPE_GNSS, "cfg-device-gnss-2");
@@ -470,6 +472,7 @@ U_PORT_TEST_FUNCTION("[zephyrPortBoardCfg]", "zephyrPortBoardCfgBasic")
     U_PORT_TEST_ASSERT(pCfgGnss->moduleType == U_GNSS_MODULE_TYPE_ANY);
     U_PORT_TEST_ASSERT(pCfgGnss->pinEnablePower == -1);
     U_PORT_TEST_ASSERT(pCfgGnss->pinDataReady == -1);
+    U_PORT_TEST_ASSERT(pCfgGnss->devicePioDataReady == -1);
     U_PORT_TEST_ASSERT(!pCfgGnss->powerOffToBackup);
 
     // Let debug printing catch up

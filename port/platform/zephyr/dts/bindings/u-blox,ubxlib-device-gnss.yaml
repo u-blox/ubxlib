@@ -93,7 +93,11 @@ properties:
 # pinDataReady
     pin-data-ready:
         type: int
-        description: "The GPIO output pin (an integer,counting from zero up through the GPIO banks) that is connected to the Data Ready pin of the GNSS device; provided for future compatibility only, currently ignored."
+        description: "The GPIO output pin (an integer,counting from zero up through the GPIO banks) that is connected to the Data Ready pin of the GNSS device; such a connection may improve your MCU's ability to save power by sleeping, if defined then pio-device-data-ready MUST also be defined."
+# devicePioDataReady
+    device-pio-data-ready:
+        type: int
+        description: "The PIO of the GNSS device that is to be used for the Data Ready (AKA TX-Ready) feature (i.e. that is connected to pin-data-ready of this MCU); ignored if pin-data-ready is not specified."
 # i2cAddress
     i2c-address:
         type: int
