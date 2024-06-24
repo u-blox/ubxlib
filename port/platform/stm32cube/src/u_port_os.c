@@ -90,6 +90,8 @@
 
 #include "u_port_private.h"  // Down here 'cos it needs GPIO_TypeDef
 
+#include "newlib.h" // For __NEWLIB__
+
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
@@ -180,8 +182,19 @@ int32_t uPortTaskDelete(const uPortTaskHandle_t taskHandle)
     // when deallocating the task, resulting in memory leaks if the deleted task have been using
     // these io streams.
     // Note: The workaround below only works when a task deletes itself.
-#if defined(__NEWLIB__) && defined(_LITE_EXIT) && defined(_REENT_SMALL) && \
-    !defined(_REENT_GLOBAL_STDIO_STREAMS) && !defined(_UNBUF_STREAM_OPT)
+    // Note: we used to switch this code in and out based on the following conditional:
+    //
+    // #if defined(__NEWLIB__) && defined(_LITE_EXIT) && defined(_REENT_SMALL) &&
+    //    !defined(_REENT_GLOBAL_STDIO_STREAMS) && !defined(_UNBUF_STREAM_OPT)
+    //
+    // However, this doesn't work for GCC ARM version 11 and later, ALL printf()'s just stop here.
+    // config.h, newlib.h and reent.h are not changed between the versions, so we can only
+    // surmise that newlib library is being built with a different set of WANT_ switches.
+    // It would be best to switch the code in or out based on the GCC version but that doesn't
+    // seem to be available in a header file.  Instead, the point at which the behaviour
+    // changed was also the point at which the newlib major version changed to 4, so we
+    // use that instead.
+#if defined(__NEWLIB__) && (__NEWLIB__ < 4)
     if (taskHandle == NULL) {
         if (stdout) {
             fclose(stdout);
@@ -194,6 +207,7 @@ int32_t uPortTaskDelete(const uPortTaskHandle_t taskHandle)
         }
     }
 #endif
+
     U_ATOMIC_DECREMENT(&gResourceAllocCount);
     if (osThreadTerminate(threadId) == osOK) {
         errorCode = U_ERROR_COMMON_SUCCESS;
