@@ -66,8 +66,9 @@
 #include <stddef.h>
 
 #include "newlib.h"
-#if (__NEWLIB__ != 3) || (__NEWLIB_MINOR__ != 3)
-#warning "This wrapper was verified for newlib version 3.3.0; please ensure newlib's external requirements for malloc-family are unchanged!"
+#if ((__NEWLIB__ != 3) || ((__NEWLIB_MINOR__ != 0) && (__NEWLIB_MINOR__ != 1) && (__NEWLIB_MINOR__ != 3))) && \
+    ((__NEWLIB__ != 4) || (__NEWLIB_MINOR__ != 3))
+#warning "This wrapper was verified for newlib versions 3.0.0, 3.1.0, 3.3.0 and 4.3.0; please ensure newlib's external requirements for malloc-family are unchanged!"
 #endif
 
 #include "FreeRTOS.h" // defines public interface we're implementing here

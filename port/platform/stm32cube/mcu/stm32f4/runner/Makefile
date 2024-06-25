@@ -76,12 +76,15 @@ override CFLAGS += \
 	$(DEFINES) -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -std=gnu11 -g3 -O0 -Wall \
 	-ffunction-sections -fdata-sections -fstack-usage --specs=nano.specs -MMD -MP $(U_FLAGS)
 
+# Note: the --no-warn-rwx-segments suppression was added in moving from
+# GCC ARM "10-2020-q4-major" to "13.2.rel1" as the behaviour of the linker
+# file is outside our control
 override LDFLAGS += \
 	-mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -static -T"$(PLATFORM_PATH)/app/STM32F437VGTX_FLASH.ld" \
 	-Wl,-Map="$(OUTPUT_DIRECTORY)/runner.map" -Wl,--gc-sections -Wl,--wrap=malloc -Wl,--wrap=_malloc_r -Wl,--wrap=calloc \
 	-Wl,--wrap=_calloc_r -Wl,--wrap=realloc -Wl,--wrap=_realloc_r --specs=nano.specs -Wl,--start-group -lc -lm -Wl,--end-group \
-	-Wl,--undefined=uxTopUsedPriority
-
+	-Wl,--undefined=uxTopUsedPriority \
+	-Wl,--no-warn-rwx-segments
 
 # STM32 HAL
 STM32CUBE_FW_SRC += \
