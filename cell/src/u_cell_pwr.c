@@ -899,11 +899,15 @@ static void UUPSMR_urc(uAtClientHandle_t atHandle, void *pParameter)
 // Configure one item in the cellular module.
 static bool moduleConfigureOne(uAtClientHandle_t atHandle,
                                const char *pAtString,
-                               int32_t configurationTries)
+                               int32_t configurationTries,
+                               int32_t atTimeoutMs)
 {
     bool success = false;
     for (size_t x = configurationTries; (x > 0) && !success; x--) {
         uAtClientLock(atHandle);
+        if (atTimeoutMs >= 0) {
+            uAtClientTimeoutSet(atHandle, atTimeoutMs);
+        }
         uAtClientCommandStart(atHandle, pAtString);
         uAtClientCommandStopReadResponse(atHandle);
         success = (uAtClientUnlock(atHandle) == 0);
@@ -922,6 +926,8 @@ static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance,
     uAtClientStreamHandle_t stream = U_AT_CLIENT_STREAM_HANDLE_DEFAULTS;
     uCellPwrPsvMode_t uartPowerSavingMode = U_CELL_PWR_PSV_MODE_DISABLED; // Assume no UART power saving
     char buffer[20]; // Enough room for AT+UPSV=2,1300
+    bool saraU201SetUartPowerSaving = false;
+    int32_t atTimeoutMs = -1;
 #if U_CELL_PWR_GNSS_PROFILE_BITS_EXTRA >= 0
     char *pServerNameGnss;
     int32_t y;
@@ -932,7 +938,7 @@ static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance,
          (x < sizeof(gpConfigCommand) / sizeof(gpConfigCommand[0])) &&
          success; x++) {
         success = moduleConfigureOne(atHandle, gpConfigCommand[x],
-                                     U_CELL_PWR_CONFIGURATION_COMMAND_TRIES);
+                                     U_CELL_PWR_CONFIGURATION_COMMAND_TRIES, -1);
     }
 
     if (success &&
@@ -943,10 +949,10 @@ static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance,
         // (SARA-R5 and SARA-U201 have a single mode and require no setting)
         if (U_CELL_PRIVATE_HAS(pInstance->pModule, U_CELL_PRIVATE_FEATURE_UCGED5)) {
             success = moduleConfigureOne(atHandle, "AT+UCGED=5",
-                                         U_CELL_PWR_CONFIGURATION_COMMAND_TRIES);
+                                         U_CELL_PWR_CONFIGURATION_COMMAND_TRIES, -1);
         } else {
             success = moduleConfigureOne(atHandle, "AT+UCGED=2",
-                                         U_CELL_PWR_CONFIGURATION_COMMAND_TRIES);
+                                         U_CELL_PWR_CONFIGURATION_COMMAND_TRIES, -1);
         }
     }
 
@@ -961,7 +967,7 @@ static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance,
         // of a cellular module
         if (uPortUartIsRtsFlowControlEnabled(stream.handle.int32) &&
             uPortUartIsCtsFlowControlEnabled(stream.handle.int32)) {
-            moduleConfigureOne(atHandle, "AT&K3", 1);
+            moduleConfigureOne(atHandle, "AT&K3", 1, -1);
             if (uAtClientWakeUpHandlerIsSet(atHandle)) {
                 // The RTS/CTS handshaking lines are being used
                 // for flow control by the UART HW.  This complicates
@@ -984,7 +990,7 @@ static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance,
                 }
             }
         } else {
-            moduleConfigureOne(atHandle, "AT&K0", 1);
+            moduleConfigureOne(atHandle, "AT&K0", 1, -1);
             // RTS/CTS handshaking is not used by the UART HW, we
             // can use the wake-up on TX line feature without any
             // complications
@@ -1048,8 +1054,18 @@ static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance,
         }
         // Use the UART power saving mode AT command to set the mode
         // in the module
-        if (!moduleConfigureOne(atHandle, buffer, 1) &&
-            uAtClientWakeUpHandlerIsSet(atHandle) &&
+        // Note: SARA-U201 does not always respond to the AT+UPSV=1 command,
+        // it disables the UART immediately, hence here we set a short
+        // AT timeoutand ignore a failure to configure power saving if
+        // the module type is SARA-U201 and the power saving state is enabled
+        if ((pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_U201) &&
+            (uartPowerSavingMode != U_CELL_PWR_PSV_MODE_DISABLED)) {
+            saraU201SetUartPowerSaving = true;
+            atTimeoutMs = U_CELL_PRIVATE_SARA_U201_SET_UPSV_AT_TIMEOUT_MS;
+        }
+
+        if (!moduleConfigureOne(atHandle, buffer, 1, atTimeoutMs) &&
+            !saraU201SetUartPowerSaving && uAtClientWakeUpHandlerIsSet(atHandle) &&
             !returningFromSleep) {
             // If AT+UPSV returns error and we're not already returning
             // from sleep then power saving cannot be supported; this is
@@ -1059,6 +1075,13 @@ static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance,
             uAtClientSetWakeUpHandler(atHandle, NULL, NULL, 0);
             uPortLog("U_CELL_PWR: power saving not supported.\n");
         }
+        // If we have successfully enabled UART power saving on SARA-U201
+        // it is _immediately_ in UART power-saving mode, it doesn't wait
+        // for 6 seconds, so we have to tell the AT client that
+        if (saraU201SetUartPowerSaving) {
+            uAtClientWakeUpHandlerForce(atHandle);
+        }
+
         // Now tell the AT Client that it should control the
         // DTR pin, if relevant
         if (!returningFromSleep && (uartPowerSavingMode == U_CELL_PWR_PSV_MODE_DTR)) {
@@ -1074,7 +1097,7 @@ static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance,
         if (U_CELL_PRIVATE_HAS(pInstance->pModule,
                                U_CELL_PRIVATE_FEATURE_DEEP_SLEEP_URC)) {
             success = moduleConfigureOne(atHandle, "AT+UPSMR=1",
-                                         U_CELL_PWR_CONFIGURATION_COMMAND_TRIES);
+                                         U_CELL_PWR_CONFIGURATION_COMMAND_TRIES, -1);
             if (success && !returningFromSleep) {
                 // Add the URC handler if it wasn't there before
                 uAtClientSetUrcHandler(pInstance->atHandle, "+UUPSMR:",
@@ -1991,15 +2014,9 @@ int32_t uCellPwrPrivateEnableUartSleep(uCellPrivateInstance_t *pInstance)
             if (pUartSleepCache->mode > 0) {
                 // There is a cached mode, put it back again
 #ifndef U_CFG_CELL_DISABLE_UART_POWER_SAVING
-                uAtClientLock(atHandle);
-                uAtClientCommandStart(atHandle, "AT+UPSV=");
-                uAtClientWriteInt(atHandle, pUartSleepCache->mode);
-                if (pUartSleepCache->mode == 1) {
-                    // Mode 1 has a time
-                    uAtClientWriteInt(atHandle, pUartSleepCache->sleepTime);
-                }
-                uAtClientCommandStopReadResponse(atHandle);
-                errorCode = uAtClientUnlock(atHandle);
+                errorCode = uCellPrivateResumeUartPowerSaving(pInstance,
+                                                              pUartSleepCache->mode,
+                                                              pUartSleepCache->sleepTime);
                 if (errorCode == 0) {
                     // Empty the cache so that we know sleep
                     // has been re-enabled

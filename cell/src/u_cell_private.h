@@ -222,6 +222,15 @@ extern "C" {
 #  define U_CELL_PRIVATE_PPP_CONTEXT_ID_LENA_R8 -1
 #endif
 
+#ifndef U_CELL_PRIVATE_SARA_U201_SET_UPSV_AT_TIMEOUT_MS
+/** SARA-U201 sometimes switches off the UART to power save mode
+ * before it has sent the "OK" response, so use a short-timeout
+ * for that case to avoid hanging about when we're meant to be
+ * saving power.
+ */
+# define U_CELL_PRIVATE_SARA_U201_SET_UPSV_AT_TIMEOUT_MS 2000
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */

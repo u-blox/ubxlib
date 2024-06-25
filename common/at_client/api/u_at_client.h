@@ -1759,6 +1759,14 @@ int32_t uAtClientSetWakeUpHandler(uAtClientHandle_t atHandle,
  */
 bool uAtClientWakeUpHandlerIsSet(const uAtClientHandle_t atHandle);
 
+/** Force the timeout of an AT wake-up handler set using
+ * uAtClientSetWakeUpHandler().
+ *
+ * @param atHandle  the handle of the AT client.
+ * @return          zero on success else negative error code.
+ */
+int32_t uAtClientWakeUpHandlerForce(const uAtClientHandle_t atHandle);
+
 /** Get the current wake-up handler function and parameters.
  *
  * @param atHandle                   the handle of the AT client.

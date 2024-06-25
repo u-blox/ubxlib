@@ -1338,17 +1338,39 @@ int32_t uCellPrivateSuspendUartPowerSaving(const uCellPrivateInstance_t *pInstan
 int32_t uCellPrivateResumeUartPowerSaving(const uCellPrivateInstance_t *pInstance,
                                           int32_t mode, int32_t timeout)
 {
+    int32_t errorCode;
     uAtClientHandle_t atHandle = pInstance->atHandle;
+    // Re-enabling UART power saving on SARA-U201 requires special handling
+    bool saraU201SetUartPowerSaving = false;
+
+    if ((pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_U201) &&
+        (mode > 0)) {
+        saraU201SetUartPowerSaving = true;
+    }
 
     uAtClientLock(atHandle);
+    if (saraU201SetUartPowerSaving) {
+        uAtClientTimeoutSet(atHandle,
+                            U_CELL_PRIVATE_SARA_U201_SET_UPSV_AT_TIMEOUT_MS);
+    }
     uAtClientCommandStart(atHandle, "AT+UPSV=");
     uAtClientWriteInt(atHandle, mode);
     if (timeout >= 0) {
         uAtClientWriteInt(atHandle, timeout);
     }
     uAtClientCommandStopReadResponse(atHandle);
+    errorCode = uAtClientUnlock(atHandle);
 
-    return uAtClientUnlock(atHandle);
+    if (saraU201SetUartPowerSaving) {
+        // Always success in the SARA-U201 case since it sometimes
+        // does not respond to an AT+UPSV=1,x command
+        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+        // And tell the AT client that the wake-up handler is immediately
+        // in force as SARA-U201 is like that
+        uAtClientWakeUpHandlerForce(atHandle);
+    }
+
+    return errorCode;
 }
 
 // Delete file on file system.

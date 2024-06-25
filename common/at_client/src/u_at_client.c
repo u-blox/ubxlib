@@ -448,6 +448,7 @@ typedef struct uAtClientInstance_t {
     uTimeoutStart_t lastResponseStop; /** The time the last response ended in milliseconds. */
     int32_t lockTimeMs; /** The time when the stream was locked. */
     uTimeoutStart_t lastTxTime; /** The time when the last transmit activity was carried out. */
+    bool forceNextWakeUp; /** True if the application requires the AT client to force a module wake-up next time. */
     size_t urcMaxStringLength; /** The longest URC string to monitor for. */
     size_t maxRespLength; /** The max length of OK, (CME) (CMS) ERROR and URCs. */
     bool delimiterRequired; /** Is a delimiter to be inserted before the next parameter or not. */
@@ -2264,9 +2265,12 @@ static size_t write(uAtClientInstance_t *pClient,
            (pClient->error == U_ERROR_COMMON_SUCCESS)) {
         lengthToWrite = length - (pData - pDataStart);
         if ((pClient->pWakeUp != NULL) &&
-            uTimeoutExpiredMs(pClient->lastTxTime,
-                              pClient->pWakeUp->inactivityTimeoutMs) &&
+            (uTimeoutExpiredMs(pClient->lastTxTime,
+                               pClient->pWakeUp->inactivityTimeoutMs) ||
+             (pClient->forceNextWakeUp)) &&
             (uPortMutexTryLock(pClient->pWakeUp->inWakeUpHandlerMutex, 0) == 0)) {
+            // Reset the force next flag
+            pClient->forceNextWakeUp = false;
             // We have a wake-up handler, the inactivity timeout
             // has expired and we've managed to lock the wake-up
             // handler mutex (if we aren't able to lock the wake-up
@@ -4514,6 +4518,23 @@ int32_t uAtClientSetWakeUpHandler(uAtClientHandle_t atHandle,
 bool uAtClientWakeUpHandlerIsSet(const uAtClientHandle_t atHandle)
 {
     return ((const uAtClientInstance_t *) atHandle)->pWakeUp != NULL;
+}
+
+// Force the next timeout of the AT wake-up handler.
+int32_t uAtClientWakeUpHandlerForce(const uAtClientHandle_t atHandle)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+    uAtClientInstance_t *pClient = (uAtClientInstance_t *) atHandle;
+
+    U_AT_CLIENT_LOCK_CLIENT_MUTEX(pClient);
+
+    if (pClient->pWakeUp != NULL) {
+        pClient->forceNextWakeUp = true;
+    }
+
+    U_AT_CLIENT_UNLOCK_CLIENT_MUTEX(pClient);
+
+    return errorCode;
 }
 
 // Get the current wake-up handler function and parameters.
