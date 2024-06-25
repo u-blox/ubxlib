@@ -90,10 +90,14 @@ override CFLAGS += \
 	$(DEFINES) -mcpu=cortex-m33 -mfpu=fpv5-sp-d16 -mfloat-abi=hard -mthumb -std=gnu11 -g3 -O0 -Wall \
 	-ffunction-sections -fdata-sections -fstack-usage --specs=nano.specs -MMD -MP $(U_FLAGS)
 
+# Note: the --no-warn-rwx-segments suppression was added in moving from
+# GCC ARM "10-2020-q4-major" to "13.2.rel1" as the behaviour of the linker
+# file is outside our control
 override LDFLAGS += \
 	-debug -mcpu=cortex-m33 -mfpu=fpv5-sp-d16 -mfloat-abi=hard -mthumb -static -T"$(PLATFORM_PATH)/app/STM32U575ZITX_FLASH.ld" \
 	-Wl,-Map="$(OUTPUT_DIRECTORY)/runner.map" -Wl,--gc-sections --specs=nano.specs -Wl,--start-group -lc -lm -Wl,--end-group \
-	-Wl,--defsym=RTOS2_BYTE_POOL_SIZE=753664
+	-Wl,--defsym=RTOS2_BYTE_POOL_SIZE=753664 \
+	-Wl,--no-warn-rwx-segments
 
 # Include STM32 common files; this requires STM32CUBE_HAL_PATH and will give us the
 # common parts of STM32CUBE_FW_SRC and STM32CUBE_FW_INC (i.e. the HAL etc.)
