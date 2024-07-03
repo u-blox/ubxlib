@@ -51,6 +51,7 @@
 #include "u_cell_module_type.h"
 #include "u_cell.h"
 #include "u_short_range.h"
+#include "u_gnss_module_type.h"
 #include "u_gnss_type.h"
 
 /* ----------------------------------------------------------------
