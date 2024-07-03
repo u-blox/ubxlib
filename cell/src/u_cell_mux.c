@@ -1097,7 +1097,7 @@ static int32_t openChannel(uCellMuxPrivateContext_t *pContext,
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
     uCellMuxPrivateChannelContext_t *pChannelContext = NULL;
-    uDeviceSerial_t *pDeviceSerial;
+    uDeviceSerial_t *pDeviceSerial = NULL;
     int32_t index = -1;
 
     if ((pContext != NULL) && (channel <= U_CELL_MUX_PRIVATE_CHANNEL_ID_MAX)) {
@@ -1728,6 +1728,7 @@ int32_t uCellMuxPrivateEnable(uCellPrivateInstance_t *pInstance)
                             // Channel 0 is up, now we need channel 1, on which
                             // we will need a data buffer for the information field carrying the
                             // user data (i.e. AT commands)
+
                             errorCode = openChannel(pContext, U_CELL_MUX_PRIVATE_CHANNEL_ID_AT,
                                                     U_CELL_MUX_PRIVATE_VIRTUAL_SERIAL_BUFFER_LENGTH_BYTES);
                             if (errorCode == 0) {

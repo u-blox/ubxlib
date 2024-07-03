@@ -286,7 +286,8 @@ typedef enum {
     U_CELL_PRIVATE_FEATURE_LWM2M,
     U_CELL_PRIVATE_FEATURE_UCGED,
     U_CELL_PRIVATE_FEATURE_HTTP,
-    U_CELL_PRIVATE_FEATURE_PPP
+    U_CELL_PRIVATE_FEATURE_PPP,
+    U_CELL_PRIVATE_FEATURE_GNSS_PROFILE
     // Read note above before adding a new value here
 } uCellPrivateFeature_t;
 
@@ -349,6 +350,7 @@ typedef struct {
     int32_t atCFunRebootCommand; /** Normally 15, but in some cases 16. */
     int32_t pppContextId; /** The PDP context ID to use for PPP, -1 to use the same as for everything else. */
     uint32_t gnssSystemTypesBitMap; /** The default set of GNSS system types to use with an attached/included GNSS chip. */
+    size_t cellFileNameMaxLength; /** The maximum length of the file name supported by the cellular module.*/
 } uCellPrivateModule_t;
 
 /** The radio parameters.

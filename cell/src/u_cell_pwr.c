@@ -231,7 +231,8 @@ static const char *gpModuleNames[] = {"SARA-U2",
                                       "SARA-R422",
                                       "LARA-R6",
                                       "LENA-R8",
-                                      "SARA-R52"
+                                      "SARA-R52",
+                                      "LEXI-R10"
                                      };
 
 /** The PWR_ON pin pulse durations, in milliseconds, to be
@@ -938,8 +939,9 @@ static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance,
     if (success &&
         U_CELL_PRIVATE_HAS(pInstance->pModule, U_CELL_PRIVATE_FEATURE_UCGED) &&
         (U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType) ||
-         (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_LARA_R6))) {
-        // SARA-R4 and LARA-R6 only: switch on the right UCGED mode
+         (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_LARA_R6) ||
+         (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_LEXI_R10))) {
+        // SARA-R4, LARA-R6, and LEXI-R10 only: switch on the right UCGED mode
         // (SARA-R5 and SARA-U201 have a single mode and require no setting)
         if (U_CELL_PRIVATE_HAS(pInstance->pModule, U_CELL_PRIVATE_FEATURE_UCGED5)) {
             success = moduleConfigureOne(atHandle, "AT+UCGED=5",
@@ -2914,7 +2916,8 @@ int32_t uCellPwrSetRequestedEDrx(uDeviceHandle_t cellHandle,
                         uAtClientCommandStopReadResponse(atHandle);
                         errorCode = uAtClientUnlock(atHandle);
                         if ((errorCode == 0) &&
-                            U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType)) {
+                            (U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType) ||
+                             pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_LEXI_R10)) {
                             pInstance->rebootIsRequired = true;
                         }
                     }

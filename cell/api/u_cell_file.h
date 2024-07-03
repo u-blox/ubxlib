@@ -130,7 +130,8 @@ int32_t uCellFileWrite(uDeviceHandle_t cellHandle,
  *                       file system. File name cannot contain these characters:
  *                       / * : % | " < > ?.
  * @param[out] pData     a pointer to a place to store the stream of bytes.
- * @param dataSize       number of data bytes to read.
+ * @param dataSize       number of data bytes to read. If it is greater than
+ *                       the file size then whole file will be read.
  * @return               on success return number of bytes read from file
  *                       or negative error code on failure.
  */

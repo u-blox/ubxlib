@@ -1057,8 +1057,8 @@ int32_t uAtClientReadUint64(uAtClientHandle_t atHandle,
  *                       in which case the received
  *                       characters are thrown away.
  * @param lengthBytes    the maximum number of chars to write
- *                       including the null terminator. If
- *                       pString is NULL this should be
+ *                       into pString including the null terminator.
+ *                       If pString is NULL this should be
  *                       set to the maximum number of bytes
  *                       to be read and thrown away. If
  *                       the string is longer than lengthBytes

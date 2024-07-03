@@ -158,6 +158,28 @@ static const int8_t gCellRatToModuleRatR8[] = {
 };
 
 /** Table to convert uCellNetRat_t to the value used in
+ * CONFIGURING the module, LEXI-R10 form.
+ */
+static const int8_t gCellRatToModuleRatR10[] = {
+    -1, // Dummy value for U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED
+    -1,  // U_CELL_NET_RAT_GSM_GPRS_EGPRS: 2G
+    -1, // U_CELL_NET_RAT_GSM_COMPACT
+    -1,  // U_CELL_NET_RAT_UTRAN: 3G
+    -1, // U_CELL_NET_RAT_EGPRS
+    -1, // U_CELL_NET_RAT_HSDPA
+    -1, // U_CELL_NET_RAT_HSUPA
+    -1, // U_CELL_NET_RAT_HSDPA_HSUPA
+    3,  // U_CELL_NET_RAT_LTE
+    -1, // U_CELL_NET_RAT_EC_GSM
+    -1, // U_CELL_NET_RAT_CATM1
+    -1, // U_CELL_NET_RAT_NB1
+    -1,  // U_CELL_NET_RAT_GSM_UMTS
+    -1,  // U_CELL_NET_RAT_GSM_UMTS_LTE
+    -1,  // U_CELL_NET_RAT_GSM_LTE
+    -1   // U_CELL_NET_RAT_UMTS_LTE
+};
+
+/** Table to convert uCellNetRat_t to the value used in
  * setting the bandmask, SARA-R4/R5 form.
  */
 static const int8_t gCellRatToModuleRatBandMaskR4R5[] = {
@@ -223,6 +245,28 @@ static const int8_t gCellRatToModuleRatBandMaskR8[] = {
     -1  // U_CELL_NET_RAT_UMTS_LTE
 };
 
+/** Table to convert uCellNetRat_t to the value used in
+ * setting the bandmask, LEXI-R10 form.
+ */
+static const int8_t gCellRatToModuleRatBandMaskR10[] = {
+    -1, // Dummy value for U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED
+    -1,  // U_CELL_NET_RAT_GSM_GPRS_EGPRS: 2G
+    -1, // U_CELL_NET_RAT_GSM_COMPACT
+    -1,  // U_CELL_NET_RAT_UTRAN: 3G
+    -1, // U_CELL_NET_RAT_EGPRS
+    -1, // U_CELL_NET_RAT_HSDPA
+    -1, // U_CELL_NET_RAT_HSUPA
+    -1, // U_CELL_NET_RAT_HSDPA_HSUPA
+    3,  // U_CELL_NET_RAT_LTE
+    -1, // U_CELL_NET_RAT_EC_GSM
+    -1, // U_CELL_NET_RAT_CATM1
+    -1, // U_CELL_NET_RAT_NB1
+    -1, // U_CELL_NET_RAT_GSM_UMTS
+    -1, // U_CELL_NET_RAT_GSM_UMTS_LTE
+    -1, // U_CELL_NET_RAT_GSM_LTE
+    -1  // U_CELL_NET_RAT_UMTS_LTE
+};
+
 /** Table to convert the RAT values used in the
  * module while reading the bandmask to uCellNetRat_t,
  * R4/R5 version.
@@ -256,7 +300,7 @@ typedef struct {
  * -------------------------------------------------------------- */
 
 // Convert our RAT to module RAT, usual case.
-int8_t cellRatToModuleRat(uCellModuleType_t moduleType, uCellNetRat_t rat)
+static int8_t cellRatToModuleRat(uCellModuleType_t moduleType, uCellNetRat_t rat)
 {
     int8_t moduleRat = -1;
 
@@ -270,6 +314,9 @@ int8_t cellRatToModuleRat(uCellModuleType_t moduleType, uCellNetRat_t rat)
         case U_CELL_MODULE_TYPE_LENA_R8:
             moduleRat = gCellRatToModuleRatR8[(int32_t) rat];
             break;
+        case U_CELL_MODULE_TYPE_LEXI_R10:
+            moduleRat = gCellRatToModuleRatR10[(int32_t) rat];
+            break;
         default:
             moduleRat = gCellRatToModuleRatR4R5[(int32_t) rat];
             break;
@@ -279,7 +326,7 @@ int8_t cellRatToModuleRat(uCellModuleType_t moduleType, uCellNetRat_t rat)
 }
 
 // Convert our RAT to module RAT, bandmask case.
-int8_t cellRatToModuleRatBandMask(uCellModuleType_t moduleType, uCellNetRat_t rat)
+static int8_t cellRatToModuleRatBandMask(uCellModuleType_t moduleType, uCellNetRat_t rat)
 {
     int8_t moduleRat = -1;
 
@@ -290,6 +337,9 @@ int8_t cellRatToModuleRatBandMask(uCellModuleType_t moduleType, uCellNetRat_t ra
         case U_CELL_MODULE_TYPE_LENA_R8:
             moduleRat = gCellRatToModuleRatBandMaskR8[(int32_t) rat];
             break;
+        case U_CELL_MODULE_TYPE_LEXI_R10:
+            moduleRat = gCellRatToModuleRatBandMaskR10[(int32_t) rat];
+            break;
         default:
             moduleRat = gCellRatToModuleRatBandMaskR4R5[(int32_t) rat];
             break;
@@ -299,7 +349,7 @@ int8_t cellRatToModuleRatBandMask(uCellModuleType_t moduleType, uCellNetRat_t ra
 }
 
 // Convert the module RAT for the bandmask case to our RAT.
-uCellNetRat_t moduleRatBandMaskToCellRat(uCellModuleType_t moduleType, int32_t rat)
+static uCellNetRat_t moduleRatBandMaskToCellRat(uCellModuleType_t moduleType, int32_t rat)
 {
     uCellNetRat_t cellRat = U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED;
 
@@ -728,11 +778,71 @@ static int32_t setRatRankSaraU2(uCellPrivateInstance_t *pInstance,
 }
 
 /* ----------------------------------------------------------------
+ * STATIC FUNCTIONS: LEXI-R10 RAT SETTING/GETTING BEHAVIOUR
+ * -------------------------------------------------------------- */
+
+// Get the radio access technology that is being used by
+// the cellular module at the given rank, LEXI-R10 style.
+static uCellNetRat_t getRatLexiR10(const uCellPrivateInstance_t *pInstance,
+                                   int32_t rank)
+{
+    uCellNetRat_t cellRat = U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED;
+
+    if (rank == 0) {
+        if ((pInstance->pModule->supportedRatsBitmap & (1U << (int32_t) U_CELL_NET_RAT_LTE))) {
+            cellRat = U_CELL_NET_RAT_LTE;
+        }
+    }
+    return cellRat;
+}
+
+// Get the rank at which the given RAT is being used, LEXI-R10 style.
+static int32_t getRatRankLexiR10(const uCellPrivateInstance_t *pInstance,
+                                 uCellNetRat_t rat)
+{
+    int32_t errorCodeOrRank = (int32_t) U_CELL_ERROR_AT;
+
+    if (pInstance->pModule->supportedRatsBitmap & (1UL << (int32_t) rat)) {
+        errorCodeOrRank = 0;
+    }
+
+    return errorCodeOrRank;
+}
+
+// Set RAT LEXI-R10 stylee.
+static int32_t setRatLexiR10(uCellPrivateInstance_t *pInstance,
+                             uCellNetRat_t rat)
+{
+    int32_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+
+    if (pInstance->pModule->supportedRatsBitmap & (1UL << (int32_t) rat)) {
+        errorCode = U_ERROR_COMMON_SUCCESS;
+    }
+
+    return errorCode;
+}
+
+// Set RAT rank LEXI-R10 stylee.
+static int32_t setRatRankLexiR10(uCellPrivateInstance_t *pInstance,
+                                 uCellNetRat_t rat, int32_t rank)
+{
+    int32_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+
+    if (rank == 0) {
+        if ((pInstance->pModule->supportedRatsBitmap & (1U << (int32_t) rat))) {
+            errorCode = U_ERROR_COMMON_SUCCESS;
+        }
+    }
+
+    return errorCode;
+}
+
+/* ----------------------------------------------------------------
  * STATIC FUNCTIONS: SARA-R4/R5/R6 RAT SETTING/GETTING BEHAVIOUR
  * -------------------------------------------------------------- */
 
 // Get the radio access technology that is being used by
-// the cellular module at the given rank, SARA-R4/R5/R6 style.
+// the cellular module at the given rank, SARA-R4/R5/R6/LENA-R8 style.
 // Note: gUCellPrivateMutex should be locked before this is called.
 static uCellNetRat_t getRatSaraRx(const uCellPrivateInstance_t *pInstance,
                                   int32_t rank)
@@ -1213,6 +1323,31 @@ int32_t uCellCfgSetBandMask(uDeviceHandle_t cellHandle,
                             errorCode = uAtClientUnlock(atHandle);
                         }
                     }
+                } else if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_LEXI_R10) {
+                    errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+                    if (rat == U_CELL_NET_RAT_LTE) {
+                        uAtClientLock(atHandle);
+                        uAtClientCommandStart(atHandle, "AT+UBANDCONF=");
+                        for (size_t x = 0; x < (sizeof(uint64_t) * 2 * 8); x++) {
+                            bandNumber = -1;
+                            if (x < (sizeof(uint64_t) * 8)) {
+                                if ((1ULL << x) & bandMask1) {
+                                    bandNumber = x + 1; // +1 because bit position 0 is band 1
+                                }
+                            } else {
+                                if ((1ULL << (x - (sizeof(uint64_t) * 8))) & bandMask2) {
+                                    bandNumber = x + 1;
+                                }
+                            }
+                            if (bandNumber >= 0) {
+                                uAtClientWriteInt(atHandle, bandNumber);
+                            }
+                        }
+                        uAtClientCommandStopReadResponse(atHandle);
+                        errorCode = uAtClientUnlock(atHandle);
+                    } else {
+                        uPortLog("U_CELL_CFG: LEXI-R10 only supports LTE.");
+                    }
                 } else {
                     // Everything else uses the AT+UBANDMASK command
                     uAtClientLock(atHandle);
@@ -1247,7 +1382,7 @@ int32_t uCellCfgGetBandMask(uDeviceHandle_t cellHandle,
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
     uAtClientHandle_t atHandle;
-    uint64_t i[6];
+    uint64_t bandNumbers[7];
     uint64_t masks[2][2];
     int32_t rats[2];
     bool success = true;
@@ -1268,8 +1403,8 @@ int32_t uCellCfgGetBandMask(uDeviceHandle_t cellHandle,
             (pInstance->pModule->supportedRatsBitmap & (1UL << (int32_t) rat))) {
             errorCode = (int32_t) U_CELL_ERROR_AT;
             // Initialise locals
-            for (size_t x = 0; x < sizeof(i) / sizeof(i[0]); x++) {
-                i[x] = (uint64_t) -1;
+            for (size_t x = 0; x < sizeof(bandNumbers) / sizeof(bandNumbers[0]); x++) {
+                bandNumbers[x] = (uint64_t) -1;
             }
             memset(masks, 0, sizeof(masks));
             for (size_t x = 0; x < sizeof(rats) / sizeof(rats[0]); x++) {
@@ -1293,12 +1428,12 @@ int32_t uCellCfgGetBandMask(uDeviceHandle_t cellHandle,
                     // The first parameter is the number of parameters to follow,
                     // where 0 means "all of the bands are enabled"
                     count = uAtClientReadInt(atHandle);
-                    if (count > sizeof(i) / sizeof(i[0])) {
-                        count = sizeof(i) / sizeof(i[0]);
+                    if (count > sizeof(bandNumbers) / sizeof(bandNumbers[0])) {
+                        count = sizeof(bandNumbers) / sizeof(bandNumbers[0]);
                     }
                     for (int32_t x = 0; x < count; x++) {
                         bandNumber = uAtClientReadInt(atHandle);
-                        i[x] = bandNumber;
+                        bandNumbers[x] = bandNumber;
                     }
                     uAtClientResponseStop(atHandle);
                     errorCode = uAtClientUnlock(atHandle);
@@ -1307,10 +1442,10 @@ int32_t uCellCfgGetBandMask(uDeviceHandle_t cellHandle,
                         masks[0][1] = 0;
                         if (count > 0) {
                             for (int32_t x = 0; x < count; x++) {
-                                if (i[x] <= sizeof(uint64_t) * 8) {
-                                    masks[0][0] |= 1ULL << (i[x] - 1); // -1 'cos bit position 0 is band 1
+                                if (bandNumbers[x] <= sizeof(uint64_t) * 8) {
+                                    masks[0][0] |= 1ULL << (bandNumbers[x] - 1); // -1 'cos bit position 0 is band 1
                                 } else {
-                                    masks[0][1] |= 1ULL << (i[x] - 1 - ( sizeof(uint64_t) * 8));
+                                    masks[0][1] |= 1ULL << (bandNumbers[x] - 1 - ( sizeof(uint64_t) * 8));
                                 }
                             }
                         }
@@ -1347,6 +1482,41 @@ int32_t uCellCfgGetBandMask(uDeviceHandle_t cellHandle,
                         }
                     }
                 }
+            } else if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_LEXI_R10) {
+                if (rat == U_CELL_NET_RAT_LTE) {
+                    rats[0] = rat;
+                    uAtClientLock(atHandle);
+                    uAtClientCommandStart(atHandle, "AT+UBANDCONF?");
+                    uAtClientCommandStop(atHandle);
+                    uAtClientResponseStart(atHandle, "+UBANDCONF:");
+                    bandNumber = -1;
+                    count = 0;
+                    for (size_t x = 0; (x < 7) && (bandNumber < 0); x++) {
+                        bandNumber = uAtClientReadInt(atHandle);
+                        if (bandNumber > 0) {
+                            bandNumbers[x] = bandNumber;
+                            count++;
+                            bandNumber = -1;
+                        }
+                    }
+                    uAtClientResponseStop(atHandle);
+                    errorCode = uAtClientUnlock(atHandle);
+                    if ((errorCode == 0) && (count >= 0)) {
+                        masks[0][0] = 0;
+                        masks[0][1] = 0;
+                        if (count > 0) {
+                            for (int32_t x = 0; x < count; x++) {
+                                if (bandNumbers[x] <= sizeof(uint64_t) * 8) {
+                                    masks[0][0] |= 1ULL << (bandNumbers[x] - 1); // -1 'cos bit position 0 is band 1
+                                } else {
+                                    masks[0][1] |= 1ULL << (bandNumbers[x] - 1 - ( sizeof(uint64_t) * 8));
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    uPortLog("U_CELL_CFG: LEXI-R10 only supports LTE.");
+                }
             } else {
                 // Everything else uses the AT+UBANDMASK command
                 uAtClientLock(atHandle);
@@ -1380,8 +1550,8 @@ int32_t uCellCfgGetBandMask(uDeviceHandle_t cellHandle,
                 //      <bandmask_b1>.
 
                 // Read all the numbers in
-                for (size_t x = 0; (x < sizeof(i) / sizeof(i[0])) && success; x++) {
-                    success = (uAtClientReadUint64(atHandle, &(i[x])) == 0);
+                for (size_t x = 0; (x < sizeof(bandNumbers) / sizeof(bandNumbers[0])) && success; x++) {
+                    success = (uAtClientReadUint64(atHandle, &(bandNumbers[x])) == 0);
                     if (success) {
                         count++;
                     }
@@ -1391,8 +1561,8 @@ int32_t uCellCfgGetBandMask(uDeviceHandle_t cellHandle,
 
                 // Point i, nice and simple, <rat_a> and <bandmask_a0>.
                 if (count >= 2) {
-                    rats[0] = (int32_t) i[0];
-                    masks[0][0] = i[1];
+                    rats[0] = (int32_t) bandNumbers[0];
+                    masks[0][0] = bandNumbers[1];
                 }
                 if (count >= 3) {
                     // Point ii, the "present" part.
@@ -1401,22 +1571,22 @@ int32_t uCellCfgGetBandMask(uDeviceHandle_t cellHandle,
                         if (count >= 5) {
                             // Point iv, the "present" part, <bandmask_a1>,
                             // <rat_b> and <bandmask_b1>.
-                            masks[0][1] = i[2];
-                            rats[1] = (int32_t) i[3];
-                            masks[1][0] = i[4];
+                            masks[0][1] = bandNumbers[2];
+                            rats[1] = (int32_t) bandNumbers[3];
+                            masks[1][0] = bandNumbers[4];
                             if (count >= 6) {
                                 // Point v, <bandmask_b1>.
-                                masks[1][1] = i[5];
+                                masks[1][1] = bandNumbers[5];
                             }
                         } else {
                             // Point iv, the "not present" part, <rat_b>
                             // and <bandmask_b0>.
-                            rats[1] = (int32_t) i[2];
-                            masks[1][0] = i[3];
+                            rats[1] = (int32_t) bandNumbers[2];
+                            masks[1][0] = bandNumbers[3];
                         }
                     } else {
                         // Point iii, the "not present" part, <bandmask_a1>.
-                        masks[0][1] = i[2];
+                        masks[0][1] = bandNumbers[2];
                     }
                 } else {
                     // Point ii, the "not present" part, FINISH.
@@ -1484,6 +1654,8 @@ int32_t uCellCfgSetRat(uDeviceHandle_t cellHandle,
                 // functions
                 if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_U201) {
                     errorCode = setRatSaraU2(pInstance, rat);
+                } else if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_LEXI_R10) {
+                    errorCode = setRatLexiR10(pInstance, rat);
                 } else {
                     // Do the mode change
                     errorCode = setRatSaraRx(pInstance, rat);
@@ -1531,6 +1703,8 @@ int32_t uCellCfgSetRatRank(uDeviceHandle_t cellHandle,
                 // functions
                 if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_U201) {
                     errorCode = setRatRankSaraU2(pInstance, rat, rank);
+                } else if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_LEXI_R10) {
+                    errorCode = setRatRankLexiR10(pInstance, rat, rank);
                 } else {
                     errorCode = setRatRankSaraRx(pInstance, rat, rank);
                 }
@@ -1571,6 +1745,8 @@ uCellNetRat_t uCellCfgGetRat(uDeviceHandle_t cellHandle,
             // functions
             if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_U201) {
                 errorCodeOrRat = (int32_t) getRatSaraU2(pInstance, rank);
+            } else if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_LEXI_R10) {
+                errorCodeOrRat = (int32_t) getRatLexiR10(pInstance, rank);
             } else {
                 errorCodeOrRat = (int32_t) getRatSaraRx(pInstance, rank);
             }
@@ -1605,6 +1781,8 @@ int32_t uCellCfgGetRatRank(uDeviceHandle_t cellHandle,
             // functions
             if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_U201) {
                 errorCodeOrRank = (int32_t) getRatRankSaraU2(pInstance, rat);
+            } else if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_LEXI_R10) {
+                errorCodeOrRank = (int32_t) getRatRankLexiR10(pInstance, rat);
             } else {
                 errorCodeOrRank = (int32_t) getRatRankSaraRx(pInstance, rat);
             }

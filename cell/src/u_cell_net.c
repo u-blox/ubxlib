@@ -1538,7 +1538,11 @@ static int32_t setAuthenticationMode(const uCellPrivateInstance_t *pInstance,
                      gpAuthenticationModeStr[authenticationMode]);
         }
         uAtClientLock(atHandle);
-        uAtClientCommandStart(atHandle, "AT+UAUTHREQ=");
+        if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_LEXI_R10) {
+            uAtClientCommandStart(atHandle, "AT+CGAUTH=");
+        } else {
+            uAtClientCommandStart(atHandle, "AT+UAUTHREQ=");
+        }
         uAtClientWriteInt(atHandle, contextId);
         uAtClientWriteInt(atHandle, authenticationMode);
         if ((pUsername != NULL) && (pPassword != NULL)) {
@@ -2348,11 +2352,9 @@ static int32_t connectPpp(uDeviceHandle_t cellHandle,
     errorCode = uPortPppConnect(cellHandle, pIpAddress, pDnsIpAddressPrimary,
                                 pDnsIpAddressSecondary, pUsername, pPassword,
                                 (uPortPppAuthenticationMode_t) authenticationMode);
-
     if (errorCode == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
         errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
     }
-
     return errorCode;
 }
 
@@ -3023,7 +3025,6 @@ int32_t uCellNetActivate(uDeviceHandle_t cellHandle,
             errorCode = connectPpp(cellHandle, pUsername, pPassword, authenticationModeUsed);
         }
     }
-
     return errorCode;
 }
 

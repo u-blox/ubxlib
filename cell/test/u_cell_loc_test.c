@@ -562,6 +562,7 @@ U_PORT_TEST_FUNCTION("[cellLoc]", "cellLocCfg")
     // Check system types: since this is done with AT+UGPS=0
     // it's not much of a test (the code just has to remember stuff):
     // for a better test see cellLocAssistNow()
+    // LEXI-R10 does not support AT+UGPS
     cellLocSystemConfigTest(cellHandle);
 #endif
 

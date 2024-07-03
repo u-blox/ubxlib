@@ -158,7 +158,7 @@ U_PORT_TEST_FUNCTION("[cellFota]", "cellFotaVeryBasicIndeed")
         // The SARA-R410M and SARA-R412M modules we have under regression
         // test are the 02B-02 varieties, not the 02B-03 varieties, which
         // are the ones that support FOTA
-        U_TEST_PRINT_LINE("note testing FOTA on SARA-R410M-02B-02 or"
+        U_TEST_PRINT_LINE("not testing FOTA on SARA-R410M-02B-02 or"
                           " SARA-R412M-02B-02.");
     }
 

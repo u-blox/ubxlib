@@ -330,6 +330,68 @@ static int32_t getRadioParamsUcged2SaraR422(uAtClientHandle_t atHandle,
     return uAtClientUnlock(atHandle);
 }
 
+// Fill in the radio parameters the AT+UCGED=2 way, LEXI-R10 flavour
+static int32_t getRadioParamsUcged2LexiR10(uAtClientHandle_t atHandle,
+                                           uCellPrivateRadioParameters_t *pRadioParameters)
+{
+    int32_t x;
+    char buffer[U_CELL_PRIVATE_CELL_ID_LOGICAL_SIZE + 1]; // +1 for terminator
+
+    uAtClientLock(atHandle);
+    uAtClientCommandStart(atHandle, "AT+UCGED?");
+    uAtClientCommandStop(atHandle);
+    // The line with just "+UCGED: 2" on it
+    uAtClientResponseStart(atHandle, "+UCGED:");
+    uAtClientSkipParameters(atHandle, 1);
+
+    // Read the next line to get the RAT, which is always the first parameter
+    uAtClientResponseStart(atHandle, NULL);
+    x = uAtClientReadInt(atHandle);
+    if (x == 4) {
+        // 4,<svc>,<MCC>,<MNC>
+        // <EARFCN>,<Lband>,<ul_BW>,<dl_BW>,<TAC>,<LcellId>,<P-CID>,<mTmsi>,<mmeGrId>,<mmeCode>,<RSRP>,<RSRQ>,<Lsinr>,<LTE_rrc>,<RI>,<CQI>,<avg_rsrp>,
+        // <totalPuschPwr>,<avgPucchPwr>,<drx>, <l2w>,<volte_mode>[,<ul_BLER>,<dl_BLER>][N1: <MCC>,<MNC>,<EARFCN>,<PCID>,<RSRP>,<RSRQ>[N2: <MCC>,<MNC>,<EARFCN>,<PCID>,
+        // <RSRP>,<RSRQ>[...]]]
+
+        // Don't want anything from the rest of the first line
+        uAtClientSkipParameters(atHandle, 3);
+        // Now the line of interest
+        uAtClientResponseStart(atHandle, NULL);
+        // EARFCN is the first integer
+        pRadioParameters->earfcn = uAtClientReadInt(atHandle);
+        // Skip <Lband>, <ul_BW>, <dl_BW>, and <TAC>
+        uAtClientSkipParameters(atHandle, 4);
+        // Read <LcellId>
+        if (uAtClientReadString(atHandle, buffer, sizeof(buffer), false) > 0) {
+            pRadioParameters->cellIdLogical = strtol(buffer, NULL, 16);
+        }
+        // Read <P-CID>
+        pRadioParameters->cellIdPhysical = uAtClientReadInt(atHandle);
+        // skip <mTmsi>,<mmeGrId>,<mmeCode>
+        uAtClientSkipParameters(atHandle, 3);
+        // RSRP is coded as specified in TS 36.133
+        x = uAtClientReadInt(atHandle);
+        pRadioParameters->rsrpDbm = uCellPrivateRsrpToDbm(x);
+        // RSRQ is coded as specified in TS 36.133
+        x = uAtClientReadInt(atHandle);
+        if (uAtClientErrorGet(atHandle) == 0) {
+            // Note that this can be a negative integer, hence
+            // we check for errors here so as not to mix up
+            // what might be a negative error code with a
+            // negative return value.
+            pRadioParameters->rsrqDb = uCellPrivateRsrqToDb(x);
+        }
+        // SINR is element 13, directly in dB, a decimal number
+        // with a mantissa, 255 if unknown.
+        x = uAtClientReadString(atHandle, buffer, sizeof(buffer), false);
+        if (x > 0) {
+            pRadioParameters->snrDb = getSinr(buffer, 1);
+        }
+    }
+    uAtClientResponseStop(atHandle);
+    return uAtClientUnlock(atHandle);
+}
+
 // Fill in the radio parameters the AT+UCGED=2 way, LARA-R6 flavour
 static int32_t getRadioParamsUcged2LaraR6(uAtClientHandle_t atHandle,
                                           uCellPrivateRadioParameters_t *pRadioParameters)
@@ -707,6 +769,8 @@ int32_t uCellInfoRefreshRadioParameters(uDeviceHandle_t cellHandle)
                             case U_CELL_MODULE_TYPE_LARA_R6:
                                 errorCode = getRadioParamsUcged2LaraR6(atHandle, pRadioParameters);
                                 break;
+                            case U_CELL_MODULE_TYPE_LEXI_R10:
+                                errorCode = getRadioParamsUcged2LexiR10(atHandle, pRadioParameters);
                             default:
                                 break;
                         }

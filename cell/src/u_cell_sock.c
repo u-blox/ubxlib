@@ -377,6 +377,18 @@ static void UUSOCL_urc(const uAtClientHandle_t atHandle,
     }
 }
 
+// URC handler for asynchronous DNS response, required by LEXI-R10.
+static void UUDNSRN_urc(uAtClientHandle_t atHandle, void *pParam)
+{
+    // pParam must point to a buffer of length U_SOCK_ADDRESS_STRING_MAX_LENGTH_BYTES
+    char *pBuffer = (char *) pParam;
+
+    if (uAtClientReadInt(atHandle) == 0) {
+        uAtClientReadString(atHandle, pBuffer,
+                            U_SOCK_ADDRESS_STRING_MAX_LENGTH_BYTES, false);
+    }
+}
+
 /* ----------------------------------------------------------------
  * MORE VARIABLES
  * -------------------------------------------------------------- */
@@ -1976,6 +1988,7 @@ int32_t uCellSockGetHostByName(uDeviceHandle_t cellHandle,
     int32_t tries = 0;
 
     memset(&address, 0, sizeof(address));
+    // Set pBuffer to an empty string to indicate no response
     buffer[0] = 0;
     pInstance = pUCellPrivateGetInstance(cellHandle);
     if ((pInstance != NULL) && (pHostName != NULL)) {
@@ -2013,31 +2026,48 @@ int32_t uCellSockGetHostByName(uDeviceHandle_t cellHandle,
             uAtClientCommandStart(atHandle, "AT+CGDCONT?");
             uAtClientCommandStopReadResponse(atHandle);
             uAtClientUnlock(atHandle);
-
-            uAtClientLock(atHandle);
-            // Needs more time
-            uAtClientTimeoutSet(atHandle,
-                                U_CELL_SOCK_DNS_LOOKUP_TIME_SECONDS * 1000);
-            uAtClientCommandStart(atHandle, "AT+UDNSRN=");
-            uAtClientWriteInt(atHandle, 0);
-            uAtClientWriteString(atHandle, pHostName, true);
-            uAtClientCommandStop(atHandle);
-            if ((tries > 0) && (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_LENA_R8)) {
-                // Try with an extra "U" if this is the second run for LENA-R8
-                uAtClientResponseStart(atHandle, "+UUDNSRN:");
+            if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_LEXI_R10) {
+                uAtClientLock(atHandle);
+                // Needs more time
+                uAtClientTimeoutSet(atHandle,
+                                    U_CELL_SOCK_DNS_LOOKUP_TIME_SECONDS * 1000);
+                uAtClientCommandStart(atHandle, "AT+UDNSRN=");
+                uAtClientWriteInt(atHandle, 0);
+                uAtClientWriteString(atHandle, pHostName, true);
+                uAtClientCommandStopReadResponse(atHandle);
+                uAtClientUrcDirect(atHandle, "+UUDNSRN:", UUDNSRN_urc,
+                                   (void *) buffer);
+                bytesRead = strlen(buffer);
+                atError = uAtClientUnlock(atHandle);
             } else {
-                uAtClientResponseStart(atHandle, "+UDNSRN:");
-            }
-            bytesRead = uAtClientReadString(atHandle, buffer,
-                                            sizeof(buffer), false);
-            uAtClientResponseStop(atHandle);
-            atError = uAtClientUnlock(atHandle);
-            if (atError < 0) {
-                // Got an AT interface error, see
-                // what the module's socket error
-                // number has to say for debug purposes
-                doUsoer(atHandle);
-                uPortTaskBlock(U_CELL_SOCK_DNS_SHOULD_RETRY_MS / 2);
+                uAtClientLock(atHandle);
+                // Needs more time
+                uAtClientTimeoutSet(atHandle,
+                                    U_CELL_SOCK_DNS_LOOKUP_TIME_SECONDS * 1000);
+                uAtClientCommandStart(atHandle, "AT+UDNSRN=");
+                uAtClientWriteInt(atHandle, 0);
+                uAtClientWriteString(atHandle, pHostName, true);
+                uAtClientCommandStop(atHandle);
+                if ((tries > 0) && (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_LENA_R8)) {
+                    // Try with an extra "U" if this is the second run for LENA-R8
+                    uAtClientResponseStart(atHandle, "+UUDNSRN:");
+                } else {
+                    uAtClientResponseStart(atHandle, "+UDNSRN:");
+                }
+                bytesRead = uAtClientReadString(atHandle, buffer,
+                                                sizeof(buffer), false);
+                uAtClientResponseStop(atHandle);
+                atError = uAtClientUnlock(atHandle);
+                if (atError < 0) {
+                    // Got an AT interface error, see
+                    // what the module's socket error
+                    // number has to say for debug purposes
+                    if (pInstance->pModule->moduleType != U_CELL_MODULE_TYPE_LEXI_R10) {
+                        // +USOER error codes are not supported.
+                        doUsoer(atHandle);
+                    }
+                    uPortTaskBlock(U_CELL_SOCK_DNS_SHOULD_RETRY_MS / 2);
+                }
             }
             tries++;
         }

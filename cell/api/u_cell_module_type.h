@@ -43,16 +43,16 @@
  *
  * NOTE TO MAINTAINERS: if you change this enum you will need to
  * change u-blox,ubxlib-device-cellular.yaml over in
- * /port/platform/zephyr/dts/bindings to match.
- */
-/** The possible types of cellular module.
- *
- * Note: if you add a new module type here, check the
+ * /port/platform/zephyr/dts/bindings to match. Check also the
  * U_CELL_PRIVATE_MODULE_xxx macros in u_cell_private.h
  * to see if they need updating and also update the
  * tables in u_cell_private.c, u_cell_sock_test.c and
  * u_cell_pwr.c.
  */
+
+/** The possible types of cellular module.
+ */
+
 //lint -estring(788, uCellModuleType_t::U_CELL_MODULE_TYPE_MAX_NUM)
 // Suppress not used within defaulted switch
 typedef enum {
@@ -91,6 +91,7 @@ typedef enum {
     U_CELL_MODULE_TYPE_LARA_R6 = 7,
     U_CELL_MODULE_TYPE_LENA_R8 = 8,
     U_CELL_MODULE_TYPE_SARA_R52 = 9,
+    U_CELL_MODULE_TYPE_LEXI_R10 = 10,
     // Add any new module types here, before U_CELL_MODULE_TYPE_ANY, assigning
     // them to specific values.
     // IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT: see note above.

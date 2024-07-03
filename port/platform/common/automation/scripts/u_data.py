@@ -34,7 +34,7 @@ from scripts import u_settings
 PROMPT = "u_data: "
 
 # The prefix(es) that identify a cellular module
-CELLULAR_MODULE_STARTS_WITH = ["SARA", "LARA", "LENA"]
+CELLULAR_MODULE_STARTS_WITH = ["SARA", "LARA", "LENA", "LEXI"]
 
 # The prefix(es) that identify a short-range module
 SHORT_RANGE_MODULE_STARTS_WITH = ["NINA", "NORA", "ANNA", "ODIN"]

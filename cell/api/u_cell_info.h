@@ -387,6 +387,8 @@ int32_t uCellInfoGetTimeUtcStr(uDeviceHandle_t cellHandle,
  * this function to guard against assuming the wrong time when operating
  * on such networks.
  *
+ * Note: LEXI-R10 gives the UTC time.
+ *
  * @param cellHandle             the handle of the cellular
  *                               instance.
  * @param[in] pTimeZoneSeconds   a place to put the time-zone

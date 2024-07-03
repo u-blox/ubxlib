@@ -46,14 +46,30 @@ extern "C" {
  * in the u-blox AT command manual, which is NOT the number on the
  * end of the GPIO name, so "GPIO1" is NOT GPIO ID 1, it is
  * GPIO ID 16, and hence the APIs use the #uCellGpioName_t enum
- * below to make this clearer.  However,  if in your code you wish
+ * below to make this clearer.  However, if in your code you wish
  * to use the integer x on the end of "GPIOx" as your identifier
  * then you may use the macro below to map your integer to the
  * GPIO ID required in this API.
  */
 #define U_CELL_GPIO_NUMBER_TO_GPIO_ID(num)  ((num) == 1 ? U_CELL_GPIO_1 : (num) == 2 ? U_CELL_GPIO_2 : \
                                              (num) == 3 ? U_CELL_GPIO_3 : (num) == 4 ? U_CELL_GPIO_4 : \
-                                             (num) == 5 ? U_CELL_GPIO_5 : (num) == 6 ? U_CELL_GPIO_6 : U_CELL_GPIO_UNKNOWN)
+                                             (num) == 5 ? U_CELL_GPIO_5 : (num) == 6 ? U_CELL_GPIO_6 : \
+                                             (num) == 7 ? U_CELL_GPIO_7 : (num) == 8 ? U_CELL_GPIO_8 : U_CELL_GPIO_UNKNOWN)
+
+/** Macro helper for LEXI variants: the APIs here use the GPIO ID,
+ * exactly as defined in the u-blox AT command manual, which is NOT
+ * the number on the end of the GPIO name, so "GPIO_LEXI_1" is NOT
+ * GPIO ID 1, it is GPIO ID 14, and hence the APIs use the
+ * #uCellGpioName_t enum below to make this clearer.  However, if in
+ * your code you wish to use the integer x on the end of "GPIO_LEXI_x"
+ * as your identifier then you may use the macro below to map your
+ * integer to the GPIO ID required in this API.
+ */
+#define U_CELL_GPIO_NUMBER_TO_GPIO_ID_LEXI(num)  ((num) == 1 ? U_CELL_GPIO_LEXI_1 : (num) == 2 ? U_CELL_GPIO_LEXI_2 : \
+                                                  (num) == 3 ? U_CELL_GPIO_LEXI_3 : (num) == 4 ? U_CELL_GPIO_LEXI_4 : \
+                                                  (num) == 5 ? U_CELL_GPIO_LEXI_5 : (num) == 6 ? U_CELL_GPIO_LEXI_6 : \
+                                                  (num) == 7 ? U_CELL_GPIO_LEXI_7 : (num) == 8 ? U_CELL_GPIO_LEXI_8 : \
+                                                  (num) == 9 ? U_CELL_GPIO_LEXI_9 : (num) == 10 ? U_CELL_GPIO_LEXI_10 : U_CELL_GPIO_UNKNOWN)
 
 /* ----------------------------------------------------------------
  * TYPES
@@ -61,6 +77,7 @@ extern "C" {
 
 /** The GPIO names, which map to GPIO IDs.  Note that not all
  * modules support all GPIOs.
+ * For LEXI variants the GPIO mapping is a bit different.
  */
 typedef enum {
     U_CELL_GPIO_UNKNOWN = -1,
@@ -69,7 +86,19 @@ typedef enum {
     U_CELL_GPIO_3 = 24,
     U_CELL_GPIO_4 = 25,
     U_CELL_GPIO_5 = 42,
-    U_CELL_GPIO_6 = 19
+    U_CELL_GPIO_6 = 19,
+    U_CELL_GPIO_7 = 36,
+    U_CELL_GPIO_8 = 37,
+    U_CELL_GPIO_LEXI_1 = 14,
+    U_CELL_GPIO_LEXI_2 = 15,
+    U_CELL_GPIO_LEXI_3 = 16,
+    U_CELL_GPIO_LEXI_4 = 17,
+    U_CELL_GPIO_LEXI_5 = 18,
+    U_CELL_GPIO_LEXI_6 = 29,
+    U_CELL_GPIO_LEXI_7 = 23,
+    U_CELL_GPIO_LEXI_8 = 24,
+    U_CELL_GPIO_LEXI_9 = 25,
+    U_CELL_GPIO_LEXI_10 = 26
 } uCellGpioName_t;
 
 /* ----------------------------------------------------------------

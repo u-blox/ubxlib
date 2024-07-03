@@ -199,10 +199,11 @@ U_PORT_TEST_FUNCTION("[cellSecTls]", "cellSecTlsSettings")
     // SARA-R5 and SARA-R422 have the default of 1.2
     U_PORT_TEST_ASSERT((uCellSecTlsVersionGet(pContext) == 0) ||
                        (uCellSecTlsVersionGet(pContext) == 12));
-    // SARA-R5, SARA-R422 and LARA-R6 have the default of root CA checking
+    // SARA-R5, SARA-R422, LARA-R6 and LEXI-R10 have the default of root CA checking
     if ((U_CELL_PRIVATE_MODULE_IS_SARA_R5(pModule->moduleType)) ||
         (pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R422) ||
-        (pModule->moduleType == U_CELL_MODULE_TYPE_LARA_R6)) {
+        (pModule->moduleType == U_CELL_MODULE_TYPE_LARA_R6) ||
+        (pModule->moduleType == U_CELL_MODULE_TYPE_LEXI_R10)) {
         U_PORT_TEST_ASSERT(uCellSecTlsCertificateCheckGet(pContext, NULL, 0) ==
                            (int32_t) U_CELL_SEC_TLS_CERTIFICATE_CHECK_ROOT_CA);
     } else {
@@ -453,10 +454,11 @@ U_PORT_TEST_FUNCTION("[cellSecTls]", "cellSecTlsSettings")
     // SARA-R5 and SARA-R422 have the default of 1.2
     U_PORT_TEST_ASSERT((uCellSecTlsVersionGet(pContext) == 0) ||
                        (uCellSecTlsVersionGet(pContext) == 12));
-    // SARA-R5, SARA-R422 and LARA-R6 have the default of root CA checking
+    // SARA-R5, SARA-R422, LARA-R6 and LEXI-R10 have the default of root CA checking
     if ((U_CELL_PRIVATE_MODULE_IS_SARA_R5(pModule->moduleType)) ||
         (pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R422) ||
-        (pModule->moduleType == U_CELL_MODULE_TYPE_LARA_R6)) {
+        (pModule->moduleType == U_CELL_MODULE_TYPE_LARA_R6) ||
+        (pModule->moduleType == U_CELL_MODULE_TYPE_LEXI_R10)) {
         U_PORT_TEST_ASSERT(uCellSecTlsCertificateCheckGet(pContext, NULL, 0) ==
                            (int32_t) U_CELL_SEC_TLS_CERTIFICATE_CHECK_ROOT_CA);
     } else {

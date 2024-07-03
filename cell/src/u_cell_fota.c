@@ -348,42 +348,57 @@ int32_t uCellFotaSetStatusCallback(uDeviceHandle_t cellHandle,
                     pContext->pCallbackParameter = pCallbackParameter;
                     if (pCallback != NULL) {
                         state = 1;
-                        errorCode = uAtClientSetUrcHandler(atHandle, "+UFOTASTAT:",
-                                                           UFOTASTAT_urc, pInstance);
+                        if (pInstance->pModule->moduleType != U_CELL_MODULE_TYPE_LEXI_R10) {
+                            errorCode = uAtClientSetUrcHandler(atHandle, "+UFOTASTAT:",
+                                                               UFOTASTAT_urc, pInstance);
+                        }
                     }
                     if (errorCode == 0) {
-                        uAtClientLock(atHandle);
-                        uAtClientCommandStart(atHandle, "AT+UFOTASTAT=");
-                        uAtClientWriteInt(atHandle, state);
-                        uAtClientCommandStopReadResponse(atHandle);
-                        errorCode = uAtClientUnlock(atHandle);
+                        if (pInstance->pModule->moduleType != U_CELL_MODULE_TYPE_LEXI_R10) {
+                            uAtClientLock(atHandle);
+                            uAtClientCommandStart(atHandle, "AT+UFOTASTAT=");
+                            uAtClientWriteInt(atHandle, state);
+                            uAtClientCommandStopReadResponse(atHandle);
+                            errorCode = uAtClientUnlock(atHandle);
+                        }
                         if (errorCode == 0) {
                             if ((state == 1) &&
-                                (uAtClientSetUrcHandler(atHandle, "+UFWPREVAL:",
-                                                        UFWPREVAL_urc, pInstance) == 0) &&
                                 (uAtClientSetUrcHandler(atHandle, "+UUFWINSTALL:",
                                                         UUFWINSTALL_urc, pInstance) == 0)) {
-                                // Not all modules support the AT+UFWINSTALL
-                                // command which is required to get the validation
-                                // and installation progress (and it can only be
-                                // switched on, not off); don't fail on this
-                                uAtClientLock(atHandle);
-                                uAtClientCommandStart(atHandle, "AT+UFWINSTALL=");
-                                // Specify the port number if given
-                                if (modulePortNumber >= 0) {
-                                    uAtClientWriteInt(atHandle, modulePortNumber);
+                                if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_LEXI_R10) {
+                                    uAtClientLock(atHandle);
+                                    uAtClientCommandStart(atHandle, "AT+UFWINSTALL");
+                                    uAtClientCommandStopReadResponse(atHandle);
+                                    if (uAtClientUnlock(atHandle) != 0) {
+                                        // Clean up on error
+                                        uAtClientRemoveUrcHandler(atHandle, "+UUFWINSTALL:");
+                                    }
                                 } else {
-                                    uAtClientWriteString(atHandle, "", false);
-                                }
-                                // Skip the second and third parameters
-                                uAtClientWriteString(atHandle, "", false);
-                                uAtClientWriteString(atHandle, "", false);
-                                uAtClientWriteInt(atHandle, state);
-                                uAtClientCommandStopReadResponse(atHandle);
-                                if (uAtClientUnlock(atHandle) != 0) {
-                                    // Clean up on error
-                                    uAtClientRemoveUrcHandler(atHandle, "+UUFWINSTALL:");
-                                    uAtClientRemoveUrcHandler(atHandle, "+UFWPREVAL:");
+                                    if (uAtClientSetUrcHandler(atHandle, "+UFWPREVAL:",
+                                                               UFWPREVAL_urc, pInstance) == 0) {
+                                        // Not all modules support the AT+UFWINSTALL
+                                        // command which is required to get the validation
+                                        // and installation progress (and it can only be
+                                        // switched on, not off); don't fail on this
+                                        uAtClientLock(atHandle);
+                                        uAtClientCommandStart(atHandle, "AT+UFWINSTALL=");
+                                        // Specify the port number if given
+                                        if (modulePortNumber >= 0) {
+                                            uAtClientWriteInt(atHandle, modulePortNumber);
+                                        } else {
+                                            uAtClientWriteString(atHandle, "", false);
+                                        }
+                                        // Skip the second and third parameters
+                                        uAtClientWriteString(atHandle, "", false);
+                                        uAtClientWriteString(atHandle, "", false);
+                                        uAtClientWriteInt(atHandle, state);
+                                        uAtClientCommandStopReadResponse(atHandle);
+                                        if (uAtClientUnlock(atHandle) != 0) {
+                                            // Clean up on error
+                                            uAtClientRemoveUrcHandler(atHandle, "+UUFWINSTALL:");
+                                            uAtClientRemoveUrcHandler(atHandle, "+UFWPREVAL:");
+                                        }
+                                    }
                                 }
                             }
                         } else {

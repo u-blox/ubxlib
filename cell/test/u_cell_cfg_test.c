@@ -176,6 +176,7 @@ static void testBandMask(uDeviceHandle_t cellHandle,
                          uint64_t *pBandmask1,
                          uint64_t *pBandmask2)
 {
+    const uCellPrivateModule_t *pModule;
     int32_t errorCode;
     uint64_t originalBandMask1 = 0;
     uint64_t originalBandMask2 = 0;
@@ -236,8 +237,28 @@ static void testBandMask(uDeviceHandle_t cellHandle,
             U_PORT_TEST_ASSERT(bandMask2 == *pBandmask2);
 
             //Test case 1: The all fine condition, with pre-defined bandmask for testing
-            U_PORT_TEST_ASSERT(uCellCfgSetBands(cellHandle, rat, sizeof(desiredBands) / sizeof(desiredBands[0]),
-                                                desiredBands) == 0);
+
+            // Get the private module data as we need it for identifying R10
+            pModule = pUCellPrivateGetModule(gHandles.cellHandle);
+            if (pModule->moduleType == U_CELL_MODULE_TYPE_LEXI_R10) {
+                memset(desiredBands, 0, sizeof(desiredBands));
+                desiredBands[0] = 5;
+                // Testing with one band because R104 and R108 supports different bands
+                // LEXI-R10401D - 2, 4, 5, 12, 13, 66, 71
+                // LEXI-R10801D - 1, 3, 5, 7, 8, 20, 28
+                // Here tested for LEXI-R10801D
+                desiredBands[1] = 1;
+                desiredBands[2] = 3;
+                desiredBands[3] = 7;
+                desiredBands[4] = 20;
+                desiredBands[5] = 28;
+
+                U_PORT_TEST_ASSERT(uCellCfgSetBands(cellHandle, rat, sizeof(desiredBands) / sizeof(desiredBands[0]),
+                                                    desiredBands) == 0);
+            } else {
+                U_PORT_TEST_ASSERT(uCellCfgSetBands(cellHandle, rat, sizeof(desiredBands) / sizeof(desiredBands[0]),
+                                                    desiredBands) == 0);
+            }
 
             //Test case 2: The all fine condition, added the band 66 for bandmask2
             if (rat == U_CELL_NET_RAT_CATM1) {
@@ -743,6 +764,10 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgGetSetMnoProfile")
             // LARA-R6 doesn't support 100 (Europe) so use
             // 201 (GCF-PTCRB) instead
             mnoProfile = 201;
+        } else if (pModule->moduleType == U_CELL_MODULE_TYPE_LEXI_R10) {
+            // LEXI-R10 doesn't support 100 (Europe) so use
+            // 4 (Telstra) instead
+            mnoProfile = 4;
         } else {
             mnoProfile = 100;
         }
@@ -758,7 +783,7 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgGetSetMnoProfile")
 
     if (U_CELL_PRIVATE_HAS(pModule,
                            U_CELL_PRIVATE_FEATURE_MNO_PROFILE)) {
-        U_TEST_PRINT_LINE("trying to set MNO profile while  connected...");
+        U_TEST_PRINT_LINE("trying to set MNO profile while connected...");
         gTimeoutStop.timeoutStart = uTimeoutStart();
         gTimeoutStop.durationMs = U_CELL_TEST_CFG_CONNECT_TIMEOUT_SECONDS * 1000;
         U_PORT_TEST_ASSERT(uCellNetRegister(cellHandle, NULL,
@@ -1109,29 +1134,34 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgGnssProfile")
     U_TEST_PRINT_LINE("getting GNSS profile...");
     gGnssProfileBitMapOriginal = uCellCfgGetGnssProfile(cellHandle, pServerNameOriginal,
                                                         U_CELL_CFG_GNSS_SERVER_NAME_MAX_LEN_BYTES);
+
     U_TEST_PRINT_LINE("GNSS profile is 0x%02x, \"%s\".", gGnssProfileBitMapOriginal,
                       pServerNameOriginal);
+    if (gGnssProfileBitMapOriginal != U_ERROR_COMMON_NOT_SUPPORTED) {
 
-    U_TEST_PRINT_LINE("setting GNSS profile to MUX plus IP at \"%s\"...", U_CELL_CFG_TEST_GNSS_IP_STR);
-    // We only check U_CELL_CFG_GNSS_PROFILE_IP plus one other (MUX)
-    // since all modules support those
-    U_PORT_TEST_ASSERT(uCellCfgSetGnssProfile(cellHandle,
-                                              U_CELL_CFG_GNSS_PROFILE_IP | U_CELL_CFG_GNSS_PROFILE_MUX,
-                                              U_CELL_CFG_TEST_GNSS_IP_STR) == 0);
+        U_TEST_PRINT_LINE("setting GNSS profile to MUX plus IP at \"%s\"...", U_CELL_CFG_TEST_GNSS_IP_STR);
+        // We only check U_CELL_CFG_GNSS_PROFILE_IP plus one other (MUX)
+        // since all modules support those
+        U_PORT_TEST_ASSERT(uCellCfgSetGnssProfile(cellHandle,
+                                                  U_CELL_CFG_GNSS_PROFILE_IP | U_CELL_CFG_GNSS_PROFILE_MUX,
+                                                  U_CELL_CFG_TEST_GNSS_IP_STR) == 0);
 
-    U_TEST_PRINT_LINE("checking GNSS profile...");
-    x = uCellCfgGetGnssProfile(cellHandle, pServerName, U_CELL_CFG_GNSS_SERVER_NAME_MAX_LEN_BYTES);
-    U_TEST_PRINT_LINE("GNSS profile is now 0x%02x, \"%s\".", x, pServerName);
-    U_PORT_TEST_ASSERT(x == (U_CELL_CFG_GNSS_PROFILE_IP | U_CELL_CFG_GNSS_PROFILE_MUX));
-    U_PORT_TEST_ASSERT(strncmp(pServerName, U_CELL_CFG_TEST_GNSS_IP_STR,
-                               sizeof(U_CELL_CFG_TEST_GNSS_IP_STR) - 1) == 0);
+        U_TEST_PRINT_LINE("checking GNSS profile...");
+        x = uCellCfgGetGnssProfile(cellHandle, pServerName, U_CELL_CFG_GNSS_SERVER_NAME_MAX_LEN_BYTES);
+        U_TEST_PRINT_LINE("GNSS profile is now 0x%02x, \"%s\".", x, pServerName);
+        U_PORT_TEST_ASSERT(x == (U_CELL_CFG_GNSS_PROFILE_IP | U_CELL_CFG_GNSS_PROFILE_MUX));
+        U_PORT_TEST_ASSERT(strncmp(pServerName, U_CELL_CFG_TEST_GNSS_IP_STR,
+                                   sizeof(U_CELL_CFG_TEST_GNSS_IP_STR) - 1) == 0);
 
-    // Make sure that the value that ends up in the profile does NOT include a server
-    // name as that causes confusion inside the module
-    U_TEST_PRINT_LINE("putting GNSS profile back to what it was without server...");
-    U_PORT_TEST_ASSERT(uCellCfgSetGnssProfile(cellHandle,
-                                              gGnssProfileBitMapOriginal & ~U_CELL_CFG_GNSS_PROFILE_IP,
-                                              NULL) == 0);
+        // Make sure that the value that ends up in the profile does NOT include a server
+        // name as that causes confusion inside the module
+        U_TEST_PRINT_LINE("putting GNSS profile back to what it was without server...");
+        U_PORT_TEST_ASSERT(uCellCfgSetGnssProfile(cellHandle,
+                                                  gGnssProfileBitMapOriginal & ~U_CELL_CFG_GNSS_PROFILE_IP,
+                                                  NULL) == 0);
+    } else {
+        U_TEST_PRINT_LINE("*** WARNING *** GNSS profile not supported, not testing it.");
+    }
 
     // Free memory
     uPortFree(pServerNameOriginal);
@@ -1146,6 +1176,7 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgGnssProfile")
     resourceCount = uTestUtilGetDynamicResourceCount() - resourceCount;
     U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
     U_PORT_TEST_ASSERT(resourceCount <= 0);
+
 }
 
 /** Test setting time.
@@ -1158,6 +1189,7 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgTime")
     int32_t timeZoneOffsetSeconds;
     int64_t x;
     int32_t resourceCount;
+    const uCellPrivateModule_t *pModule;
 
     // In case a previous test failed
     uCellTestPrivateCleanup(&gHandles);
@@ -1169,6 +1201,7 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgTime")
     U_PORT_TEST_ASSERT(uCellTestPrivatePreamble(U_CFG_TEST_CELL_MODULE_TYPE,
                                                 &gHandles, true) == 0);
     cellHandle = gHandles.cellHandle;
+    pModule = pUCellPrivateGetModule(cellHandle);
 
 #ifndef U_CELL_CFG_TEST_USE_FIXED_TIME_SECONDS
     // Get the time
@@ -1192,9 +1225,13 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgTime")
     U_PORT_TEST_ASSERT((x - timeLocal) - U_CELL_CFG_TEST_TIME_OFFSET_SECONDS <
                        U_CELL_CFG_TEST_TIME_MARGIN_SECONDS);
     // Set the timezone forward
-    U_TEST_PRINT_LINE("setting timezone forward a quarter of an hour...");
     U_PORT_TEST_ASSERT(uCellCfgSetTime(cellHandle, x, timeZoneOffsetOriginalSeconds + (15 * 60)) == 0);
     x = uCellInfoGetTime(cellHandle, &timeZoneOffsetSeconds);
+    if (pModule->moduleType == U_CELL_MODULE_TYPE_LEXI_R10) {
+        // LEXI-R10 gives us the UTC time...
+        U_TEST_PRINT_LINE("LEXI-R10 gives us the UTC time...\n");
+        x -= timeZoneOffsetSeconds;
+    }
     U_TEST_PRINT_LINE("local time is now %d, timezone offset is now %d seconds.",
                       (int32_t) x, timeZoneOffsetSeconds);
     U_PORT_TEST_ASSERT(timeZoneOffsetSeconds - timeZoneOffsetOriginalSeconds == 15 * 60);
@@ -1243,7 +1280,6 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgCleanUp")
                                gGnssProfileBitMapOriginal & ~U_CELL_CFG_GNSS_PROFILE_IP,
                                NULL);
     }
-
     uCellTestPrivateCleanup(&gHandles);
     uPortDeinit();
     // Printed for information: asserting happens in the postamble

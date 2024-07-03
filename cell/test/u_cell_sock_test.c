@@ -304,7 +304,8 @@ static uCellSockTestOption_t gSupportedOptions[] = {
         (1UL << U_CELL_MODULE_TYPE_SARA_R412M_03B) |
         (1UL << U_CELL_MODULE_TYPE_SARA_R410M_03B) |
         (1UL << U_CELL_MODULE_TYPE_SARA_R422)      |
-        (1UL << U_CELL_MODULE_TYPE_LENA_R8),
+        (1UL << U_CELL_MODULE_TYPE_LENA_R8)        |
+        (1UL << U_CELL_MODULE_TYPE_LEXI_R10),
         U_SOCK_OPT_LEVEL_SOCK, U_SOCK_OPT_REUSEPORT, sizeof(int32_t), compareInt32, changeMod2
     },
     // This next one removed for SARA-R4, SARA-R5, SARA-U201 and LENA-R8 as none
@@ -321,7 +322,8 @@ static uCellSockTestOption_t gSupportedOptions[] = {
         (1UL << U_CELL_MODULE_TYPE_SARA_R5)        |
         (1UL << U_CELL_MODULE_TYPE_SARA_R52)       |
         (1UL << U_CELL_MODULE_TYPE_LARA_R6)        |
-        (1UL << U_CELL_MODULE_TYPE_LENA_R8),
+        (1UL << U_CELL_MODULE_TYPE_LENA_R8)        |
+        (1UL << U_CELL_MODULE_TYPE_LEXI_R10),
         U_SOCK_OPT_LEVEL_SOCK, U_SOCK_OPT_LINGER, sizeof(uSockLinger_t), compareLinger, changeLinger
     },
     {

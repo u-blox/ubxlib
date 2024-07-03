@@ -104,11 +104,21 @@
 
 /** The first line of an HTTP response indicating success.
  */
-#define U_CELL_HTTP_TEST_FIRST_LINE_200 "HTTP/1.0 200 OK"
+#define U_CELL_HTTP_TEST_FIRST_LINE_200_V1_0 "HTTP/1.0 200 OK"
+
+/** The first line of an HTTP response indicating
+ * success for version 1.1 used in some modules e.g. LEXI-R10
+ */
+#define U_CELL_HTTP_TEST_FIRST_LINE_200_V1_1 "HTTP/1.1 200 OK"
 
 /** The first line of an HTTP response indicating delete failure.
  */
-#define U_CELL_HTTP_TEST_FIRST_LINE_404 "HTTP/1.0 404 Not Found"
+#define U_CELL_HTTP_TEST_FIRST_LINE_404_V1_0 "HTTP/1.0 404 Not Found"
+
+/** The first line of an HTTP response indicating delete
+ * failure for version 1.1 used in some modules e.g. LEXI-R10.
+ */
+#define U_CELL_HTTP_TEST_FIRST_LINE_404_V1_1 "HTTP/1.1 404 Not Found"
 
 /* ----------------------------------------------------------------
  * TYPES
@@ -217,6 +227,7 @@ static bool checkFile(uDeviceHandle_t cellHandle, const char *pFileName,
 
     // For a GET request we check the contents
     fileSize = uCellFileSize(cellHandle, pFileName);
+
     if (fileSize >= 0) {
         pFileContents = (char *) pUPortMalloc(fileSize);
         if (pFileContents != NULL) {
@@ -456,7 +467,11 @@ U_PORT_TEST_FUNCTION("[cellHttp]", "cellHttp")
         // code is tested from the common HTTP Client level.
 
         // POST something
-        gCallbackData.pExpectedFirstLine = U_CELL_HTTP_TEST_FIRST_LINE_200;
+        if (pModule->moduleType == U_CELL_MODULE_TYPE_LEXI_R10) {
+            gCallbackData.pExpectedFirstLine = U_CELL_HTTP_TEST_FIRST_LINE_200_V1_1;
+        } else {
+            gCallbackData.pExpectedFirstLine = U_CELL_HTTP_TEST_FIRST_LINE_200_V1_0;
+        }
         snprintf(pathBuffer, sizeof(pathBuffer), "/%s.html", imeiBuffer);
         U_TEST_PRINT_LINE("HTTP POST file %s containing string \"%s\"...",
                           pathBuffer, gSendData);
@@ -513,7 +528,11 @@ U_PORT_TEST_FUNCTION("[cellHttp]", "cellHttp")
                                                  U_CELL_HTTP_REQUEST_DELETE, NULL));
 
         // Try to GET it again
-        gCallbackData.pExpectedFirstLine = U_CELL_HTTP_TEST_FIRST_LINE_404;
+        if (pModule->moduleType == U_CELL_MODULE_TYPE_LEXI_R10) {
+            gCallbackData.pExpectedFirstLine = U_CELL_HTTP_TEST_FIRST_LINE_404_V1_1;
+        } else {
+            gCallbackData.pExpectedFirstLine = U_CELL_HTTP_TEST_FIRST_LINE_404_V1_0;
+        }
         U_TEST_PRINT_LINE("HTTP GET deleted file %s...", pathBuffer);
         U_PORT_TEST_ASSERT(uCellHttpRequest(cellHandle, httpHandle,
                                             U_CELL_HTTP_REQUEST_GET,
@@ -530,9 +549,12 @@ U_PORT_TEST_FUNCTION("[cellHttp]", "cellHttp")
         uCellFileDelete(cellHandle, U_CELL_HTTP_TEST_DATA_FILE_NAME);
         U_PORT_TEST_ASSERT(uCellFileWrite(cellHandle, U_CELL_HTTP_TEST_DATA_FILE_NAME,
                                           gSendDataFile, sizeof(gSendDataFile)) == sizeof(gSendDataFile));
-
         // PUT something
-        gCallbackData.pExpectedFirstLine = U_CELL_HTTP_TEST_FIRST_LINE_200;
+        if (pModule->moduleType == U_CELL_MODULE_TYPE_LEXI_R10) {
+            gCallbackData.pExpectedFirstLine = U_CELL_HTTP_TEST_FIRST_LINE_200_V1_1;
+        } else {
+            gCallbackData.pExpectedFirstLine = U_CELL_HTTP_TEST_FIRST_LINE_200_V1_0;
+        }
         U_TEST_PRINT_LINE("HTTP PUT file %s from file %s in the module file system...",
                           pathBuffer, U_CELL_HTTP_TEST_DATA_FILE_NAME);
         U_PORT_TEST_ASSERT(uCellHttpRequestFile(cellHandle, httpHandle,
@@ -607,7 +629,11 @@ U_PORT_TEST_FUNCTION("[cellHttp]", "cellHttp")
                                                  U_CELL_HTTP_TEST_RESPONSE_FILE_NAME));
 
         // Try to GET it again
-        gCallbackData.pExpectedFirstLine = U_CELL_HTTP_TEST_FIRST_LINE_404;
+        if (pModule->moduleType == U_CELL_MODULE_TYPE_LEXI_R10) {
+            gCallbackData.pExpectedFirstLine = U_CELL_HTTP_TEST_FIRST_LINE_404_V1_1;
+        } else {
+            gCallbackData.pExpectedFirstLine = U_CELL_HTTP_TEST_FIRST_LINE_404_V1_0;
+        }
         U_TEST_PRINT_LINE("HTTP GET deleted file %s...", pathBuffer);
         U_PORT_TEST_ASSERT(uCellHttpRequestFile(cellHandle, httpHandle,
                                                 U_CELL_HTTP_REQUEST_GET,

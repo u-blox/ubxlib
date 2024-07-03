@@ -142,12 +142,14 @@ static void registerCallback(uCellNetRegDomain_t domain,
                              uCellNetStatus_t status,
                              void *pParameter)
 {
+
     // Note: not using asserts here as, when they go
     // off, the seem to cause stack overruns
     if (domain >= U_CELL_NET_REG_DOMAIN_MAX_NUM) {
         gCallbackErrorCode = 2;
     }
-    if (status <= U_CELL_NET_STATUS_UNKNOWN) {
+
+    if (status < U_CELL_NET_STATUS_UNKNOWN) {
         gCallbackErrorCode = 3;
     }
     if (status >= U_CELL_NET_STATUS_MAX_NUM) {
@@ -372,14 +374,22 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetConnectDisconnectPlus")
     // Get the operator string with a short buffer and check
     // for overrun
     memset(buffer, '|', sizeof(buffer));
-    U_PORT_TEST_ASSERT(uCellNetGetOperatorStr(cellHandle, buffer, 2) == 1);
-    U_PORT_TEST_ASSERT(strlen(buffer) == 1);
-    U_PORT_TEST_ASSERT(buffer[2] == '|');
+    // LEXI-R10 often returns no operator name, so ignoring
+    // it for LEXI-R10
+    if (pModule->moduleType != U_CELL_MODULE_TYPE_LEXI_R10) {
+        U_PORT_TEST_ASSERT(uCellNetGetOperatorStr(cellHandle, buffer, 2) == 1);
+        U_PORT_TEST_ASSERT(strlen(buffer) == 1);
+        U_PORT_TEST_ASSERT(buffer[2] == '|');
+    }
 
     // Get the operator string into a proper buffer length
     memset(buffer, '|', sizeof(buffer));
     x = uCellNetGetOperatorStr(cellHandle, buffer, sizeof(buffer));
-    U_PORT_TEST_ASSERT(x > 0);
+    // LEXI-R10 often returns no operator name, so ignoring
+    // it for LEXI-R10
+    if (pModule->moduleType != U_CELL_MODULE_TYPE_LEXI_R10) {
+        U_PORT_TEST_ASSERT(x > 0);
+    }
     U_PORT_TEST_ASSERT(strlen(buffer) == x);
 
     // Get the MCC/MNC

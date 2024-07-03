@@ -11,3 +11,4 @@ The module FW versions that these tests are run on are as follows:
 - SARA-R422: 00.12,A00.00.
 - LARA-R6: 00.13,A00.01 and 04.19,A00.01.
 - LENA-R8: 02.00,A01.40.
+- LEXI-R10: 01.04,A00.01.

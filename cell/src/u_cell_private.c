@@ -121,13 +121,15 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UCGED)                         |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_AUTHENTICATION_MODE_AUTOMATIC) |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_HTTP)                          |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_GNSS_PROFILE)                  |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_PPP) /* features */
         ),
         6, /* Default CMUX channel for GNSS */
         15, /* AT+CFUN reboot command */
         -1, /* PPP PDP context ID; we don't support anything other than -1 for
              * the solely UPSD-type context activation used on SARA-U201 */
-        U_CELL_LOC_GNSS_SYSTEM_TYPES /* GNSS system types for an attached GNSS chip */
+        U_CELL_LOC_GNSS_SYSTEM_TYPES, /* GNSS system types for an attached GNSS chip */
+        U_CELL_FILE_NAME_MAX_LENGTH /* Maximum file name length*/
     },
     {
         U_CELL_MODULE_TYPE_SARA_R410M_02B, 300 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
@@ -154,6 +156,7 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CMUX_CHANNEL_CLOSE)      |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_LWM2M)                   |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UCGED)                   |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_GNSS_PROFILE)            |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_HTTP) /* features */
          // PPP is supported by the module but we do not test its integration with
          // ubxlib and hence it is not marked as supported
@@ -161,7 +164,8 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
         3, /* Default CMUX channel for GNSS */
         15, /* AT+CFUN reboot command */
         -1, /* PPP PDP context ID */
-        U_CELL_LOC_GNSS_SYSTEM_TYPES /* GNSS system types for an attached GNSS chip */
+        U_CELL_LOC_GNSS_SYSTEM_TYPES, /* GNSS system types for an attached GNSS chip */
+        U_CELL_FILE_NAME_MAX_LENGTH /* Maximum file name length*/
     },
     {
         U_CELL_MODULE_TYPE_SARA_R412M_02B, 300 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
@@ -193,6 +197,7 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CMUX_CHANNEL_CLOSE)                  |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_LWM2M)                               |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UCGED)                               |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_GNSS_PROFILE)                        |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_HTTP) /* features */
          // PPP is supported by the module but we do not test its integration with
          // ubxlib and hence it is not marked as supported
@@ -200,7 +205,8 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
         3, /* Default CMUX channel for GNSS */
         15, /* AT+CFUN reboot command */
         -1, /* PPP PDP context ID */
-        U_CELL_LOC_GNSS_SYSTEM_TYPES /* GNSS system types for an attached GNSS chip */
+        U_CELL_LOC_GNSS_SYSTEM_TYPES, /* GNSS system types for an attached GNSS chip */
+        U_CELL_FILE_NAME_MAX_LENGTH /* Maximum file name length*/
     },
     {
         U_CELL_MODULE_TYPE_SARA_R412M_03B, 300 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
@@ -222,6 +228,7 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CMUX)                                |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CMUX_CHANNEL_CLOSE)                  |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UCGED)                               |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_GNSS_PROFILE)                        |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_HTTP) /* features */
          // PPP is supported by the module but we do not test its integration with
          // ubxlib and hence it is not marked as supported
@@ -229,7 +236,8 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
         3, /* Default CMUX channel for GNSS */
         15, /* AT+CFUN reboot command */
         -1, /* PPP PDP context ID */
-        U_CELL_LOC_GNSS_SYSTEM_TYPES /* GNSS system types for an attached GNSS chip */
+        U_CELL_LOC_GNSS_SYSTEM_TYPES, /* GNSS system types for an attached GNSS chip */
+        U_CELL_FILE_NAME_MAX_LENGTH /* Maximum file name length*/
     },
     {
         U_CELL_MODULE_TYPE_SARA_R5, 1500 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
@@ -277,12 +285,14 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_LWM2M)                               |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UCGED)                               |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_HTTP)                                |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_GNSS_PROFILE)                        |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_PPP) /* features */
         ),
         4, /* Default CMUX channel for GNSS */
         16, /* AT+CFUN reboot command */
         -1, /* PPP PDP context ID */
-        U_CELL_LOC_GNSS_SYSTEM_TYPES /* GNSS system types for an attached GNSS chip */
+        U_CELL_LOC_GNSS_SYSTEM_TYPES, /* GNSS system types for an attached GNSS chip */
+        U_CELL_FILE_NAME_MAX_LENGTH /* Maximum file name length*/
     },
     {
         U_CELL_MODULE_TYPE_SARA_R410M_03B, 300 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
@@ -307,6 +317,7 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CMUX_CHANNEL_CLOSE)                  |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_LWM2M)                               |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UCGED)                               |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_GNSS_PROFILE)                        |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_HTTP) /* features */
          // PPP is supported by the module but we do not test its integration with
          // ubxlib and hence it is not marked as supported
@@ -314,7 +325,8 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
         3, /* Default CMUX channel for GNSS */
         15, /* AT+CFUN reboot command */
         -1, /* PPP PDP context ID */
-        U_CELL_LOC_GNSS_SYSTEM_TYPES /* GNSS system types for an attached GNSS chip */
+        U_CELL_LOC_GNSS_SYSTEM_TYPES, /* GNSS system types for an attached GNSS chip */
+        U_CELL_FILE_NAME_MAX_LENGTH /* Maximum file name length*/
     },
     {
         U_CELL_MODULE_TYPE_SARA_R422, 300 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
@@ -357,12 +369,14 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_LWM2M)                                 |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UCGED)                                 |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_HTTP)                                  |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_GNSS_PROFILE)                          |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_PPP) /* features */
         ),
         3, /* Default CMUX channel for GNSS */
         15, /* AT+CFUN reboot command */
         -1, /* PPP PDP context ID */
-        U_CELL_LOC_GNSS_SYSTEM_TYPES /* GNSS system types for an attached GNSS chip */
+        U_CELL_LOC_GNSS_SYSTEM_TYPES, /* GNSS system types for an attached GNSS chip */
+        U_CELL_FILE_NAME_MAX_LENGTH /* Maximum file name length*/
     },
     {
         U_CELL_MODULE_TYPE_LARA_R6, 300 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
@@ -394,12 +408,14 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_LWM2M)                               |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UCGED)                               |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_HTTP)                                |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_GNSS_PROFILE)                        |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_PPP) /* features */
         ),
         3, /* Default CMUX channel for GNSS */
         15, /* AT+CFUN reboot command */
         -1, /* PPP PDP context ID */
-        U_CELL_LOC_GNSS_SYSTEM_TYPES /* GNSS system types for an attached GNSS chip */
+        U_CELL_LOC_GNSS_SYSTEM_TYPES, /* GNSS system types for an attached GNSS chip */
+        U_CELL_FILE_NAME_MAX_LENGTH /* Maximum file name length*/
     },
     {
         U_CELL_MODULE_TYPE_LENA_R8, 2000 /* Pwr On pull ms */, 3100 /* Pwr off pull ms */,
@@ -429,12 +445,14 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          // save the response to file (in fact it leaves any previous response file there,
          // unchanged) and returns error rather than success.  This makes it impossible to
          // support proper HTTP operation.
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_GNSS_PROFILE)                        |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_PPP) /* features */
         ),
         -1, /* Default CMUX channel for GNSS */
         16, /* AT+CFUN reboot command */
         U_CELL_PRIVATE_PPP_CONTEXT_ID_LENA_R8, /* PPP PDP context ID */
-        0x127 /* GNSS system types for an attached GNSS chip (GPS, SBAS, Galileo and QZSS) */
+        0x127, /* GNSS system types for an attached GNSS chip (GPS, SBAS, Galileo and QZSS) */
+        63
     },
     {
         U_CELL_MODULE_TYPE_SARA_R52, 150 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
@@ -477,12 +495,48 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_LWM2M)                               |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UCGED)                               |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_HTTP)                                |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_GNSS_PROFILE)                        |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_PPP) /* features */
         ),
         4, /* Default CMUX channel for GNSS */
         16, /* AT+CFUN reboot command */
         -1, /* PPP PDP context ID */
-        0x127 /* GNSS system types for an attached GNSS chip (GPS, SBAS, Galileo and QZSS) */
+        0x127, /* GNSS system types for an attached GNSS chip (GPS, SBAS, Galileo and QZSS) */
+        U_CELL_FILE_NAME_MAX_LENGTH /* Maximum file name length*/
+    },
+    {
+        U_CELL_MODULE_TYPE_LEXI_R10, 300 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
+        6 /* Boot wait */, 10 /* Min awake */, 20 /* Pwr down wait */, 15 /* Reboot wait */, 10 /* AT timeout */,
+        20 /* Cmd wait ms */, 3000 /* Resp max wait ms */, 4 /* radioOffCfun */, 150 /* resetHoldMilliseconds */,
+        1 /* Simultaneous RATs */,
+        (1ULL << (int32_t) U_CELL_NET_RAT_LTE) /* RATs */,
+        ((1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE)                         |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_CSCON)                               |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_IANA_NUMBERING)         |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_SERVER_NAME_INDICATION) |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT)                                |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_BINARY_PUBLISH)                 |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_WILL)                           |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_KEEP_ALIVE)                     |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SECURITY)                       |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_ZTP)                        |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_DTR_POWER_SAVING)                    |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_DEEP_SLEEP_URC)                      |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING)                   |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING_PAGING_WINDOW_SET) |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTTSN_SECURITY)                     |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SOCK_SET_LOCAL_PORT)                 |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_FOTA)                                |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SNR_REPORTED)                        |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_AUTHENTICATION_MODE_AUTOMATIC)       |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UCGED)                               |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_HTTP)  /* features */
+        ),
+        -1, /* Default CMUX channel for GNSS */
+        16, /* AT+CFUN reboot command */
+        -1, /* PPP PDP context ID */
+        U_CELL_LOC_GNSS_SYSTEM_TYPES /* GNSS system types for an attached GNSS chip (GPS, SBAS, Galileo and QZSS) */,
+        63 /* Maximum file name length*/
     },
     // Add new module types here, before the U_CELL_MODULE_TYPE_ANY entry (since
     // the uCellModuleType_t value is used as an index into this array).
@@ -500,7 +554,8 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
         3, /* Default CMUX channel for GNSS */
         15, /* AT+CFUN reboot command */
         -1, /* PPP PDP context ID */
-        U_CELL_LOC_GNSS_SYSTEM_TYPES /* GNSS system types for an attached GNSS chip */
+        U_CELL_LOC_GNSS_SYSTEM_TYPES, /* GNSS system types for an attached GNSS chip */
+        63 /* Maximum file name length*/
     }
 };
 
@@ -1357,20 +1412,38 @@ int32_t uCellPrivateFileDelete(const uCellPrivateInstance_t *pInstance,
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
     uAtClientHandle_t atHandle;
+    int32_t fileHandle;
 
     // Check parameters
     if ((pInstance != NULL) && (pFileName != NULL) &&
-        (strlen(pFileName) <= U_CELL_FILE_NAME_MAX_LENGTH)) {
+        (strlen(pFileName) <= pInstance->pModule->cellFileNameMaxLength)) {
         errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
         atHandle = pInstance->atHandle;
-        // Do the UDELFILE thang with the AT interface
+
         uAtClientLock(atHandle);
-        uAtClientCommandStart(atHandle, "AT+UDELFILE=");
-        // Write file name
-        uAtClientWriteString(atHandle, pFileName, true);
-        if (pInstance->pFileSystemTag != NULL) {
-            // Write tag
-            uAtClientWriteString(atHandle, pInstance->pFileSystemTag, true);
+
+        if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_LEXI_R10) {
+            uAtClientCommandStart(atHandle, "AT+FOPEN=");
+            // Write file name
+            uAtClientWriteString(atHandle, pFileName, true);
+            // Mode to open the file
+            uAtClientWriteInt(atHandle, (int32_t) 0);
+            uAtClientCommandStop(atHandle);
+            // Wait for the file handle to be received in response.
+            uAtClientResponseStart(atHandle, "+FOPEN: ");
+            fileHandle = uAtClientReadInt(atHandle);
+            // Use the file handle to delete the file
+            uAtClientCommandStart(atHandle, "AT+FDELETE=");
+            uAtClientWriteInt(atHandle, fileHandle);
+        } else {
+            // Do the UDELFILE thang with the AT interface
+            uAtClientCommandStart(atHandle, "AT+UDELFILE=");
+            // Write file name
+            uAtClientWriteString(atHandle, pFileName, true);
+            if (pInstance->pFileSystemTag != NULL) {
+                // Write tag
+                uAtClientWriteString(atHandle, pInstance->pFileSystemTag, true);
+            }
         }
         uAtClientCommandStop(atHandle);
         // Grab the response
@@ -1583,38 +1656,42 @@ int32_t uCellPrivateSetGnssProfile(const uCellPrivateInstance_t *pInstance,
 
     if ((pInstance != NULL) &&
         (((profileBitMap & U_CELL_CFG_GNSS_PROFILE_IP) == 0) || (pServerName != NULL))) {
-        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-        if (((profileBitMap & U_CELL_CFG_GNSS_PROFILE_IP) > 0) && (pServerName != NULL)) {
-            errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
-            // Grab some temporary memory to manipulate the server name
-            // +1 for terminator
-            pServerNameTmp = (char *) pUPortMalloc(U_CELL_CFG_GNSS_SERVER_NAME_MAX_LEN_BYTES);
-            if (pServerNameTmp != NULL) {
-                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-                strncpy(pServerNameTmp, pServerName, U_CELL_CFG_GNSS_SERVER_NAME_MAX_LEN_BYTES);
-                // Ensure terminator
-                *(pServerNameTmp + U_CELL_CFG_GNSS_SERVER_NAME_MAX_LEN_BYTES - 1) = 0;
-                // Grab any port number off the end
-                // and then remove it from the string
-                port = uSockDomainGetPort(pServerNameTmp);
-                pTmp = pUSockDomainRemovePort(pServerNameTmp);
+        errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+        if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                               U_CELL_PRIVATE_FEATURE_GNSS_PROFILE)) {
+            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+            if (((profileBitMap & U_CELL_CFG_GNSS_PROFILE_IP) > 0) && (pServerName != NULL)) {
+                errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
+                // Grab some temporary memory to manipulate the server name
+                // +1 for terminator
+                pServerNameTmp = (char *) pUPortMalloc(U_CELL_CFG_GNSS_SERVER_NAME_MAX_LEN_BYTES);
+                if (pServerNameTmp != NULL) {
+                    errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                    strncpy(pServerNameTmp, pServerName, U_CELL_CFG_GNSS_SERVER_NAME_MAX_LEN_BYTES);
+                    // Ensure terminator
+                    *(pServerNameTmp + U_CELL_CFG_GNSS_SERVER_NAME_MAX_LEN_BYTES - 1) = 0;
+                    // Grab any port number off the end
+                    // and then remove it from the string
+                    port = uSockDomainGetPort(pServerNameTmp);
+                    pTmp = pUSockDomainRemovePort(pServerNameTmp);
+                }
             }
-        }
-        if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
-            atHandle = pInstance->atHandle;
-            uAtClientLock(atHandle);
-            uAtClientCommandStart(atHandle, "AT+UGPRF=");
-            uAtClientWriteInt(atHandle, profileBitMap);
-            if (pTmp != NULL) {
-                uAtClientWriteInt(atHandle, port);
-                uAtClientWriteString(atHandle, pTmp, true);
+            if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
+                atHandle = pInstance->atHandle;
+                uAtClientLock(atHandle);
+                uAtClientCommandStart(atHandle, "AT+UGPRF=");
+                uAtClientWriteInt(atHandle, profileBitMap);
+                if (pTmp != NULL) {
+                    uAtClientWriteInt(atHandle, port);
+                    uAtClientWriteString(atHandle, pTmp, true);
+                }
+                uAtClientCommandStopReadResponse(atHandle);
+                errorCode = uAtClientUnlock(atHandle);
             }
-            uAtClientCommandStopReadResponse(atHandle);
-            errorCode = uAtClientUnlock(atHandle);
-        }
 
-        // Free memory
-        uPortFree(pServerNameTmp);
+            // Free memory
+            uPortFree(pServerNameTmp);
+        }
     }
 
     return errorCode;
@@ -1632,23 +1709,27 @@ int32_t uCellPrivateGetGnssProfile(const uCellPrivateInstance_t *pInstance,
     int32_t x;
 
     if (pInstance != NULL) {
-        atHandle = pInstance->atHandle;
-        uAtClientLock(atHandle);
-        uAtClientCommandStart(atHandle, "AT+UGPRF?");
-        uAtClientCommandStop(atHandle);
-        uAtClientResponseStart(atHandle, "+UGPRF:");
-        bitMap = uAtClientReadInt(atHandle);
-        if ((bitMap >= 0) && ((bitMap & U_CELL_CFG_GNSS_PROFILE_IP) > 0)) {
-            port = uAtClientReadInt(atHandle);
-            bytesRead = uAtClientReadString(atHandle, pServerName, sizeBytes, false);
-        }
-        uAtClientResponseStop(atHandle);
-        errorCodeOrBitMap = uAtClientUnlock(atHandle);
-        if (errorCodeOrBitMap == 0) {
-            errorCodeOrBitMap = bitMap;
-            if ((bytesRead > 0) && (pServerName != NULL)) {
-                x = strlen(pServerName);
-                snprintf(pServerName + x, sizeBytes - x, ":%d", (int) port);
+        errorCodeOrBitMap = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+        if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                               U_CELL_PRIVATE_FEATURE_GNSS_PROFILE)) {
+            atHandle = pInstance->atHandle;
+            uAtClientLock(atHandle);
+            uAtClientCommandStart(atHandle, "AT+UGPRF?");
+            uAtClientCommandStop(atHandle);
+            uAtClientResponseStart(atHandle, "+UGPRF:");
+            bitMap = uAtClientReadInt(atHandle);
+            if ((bitMap >= 0) && ((bitMap & U_CELL_CFG_GNSS_PROFILE_IP) > 0)) {
+                port = uAtClientReadInt(atHandle);
+                bytesRead = uAtClientReadString(atHandle, pServerName, sizeBytes, false);
+            }
+            uAtClientResponseStop(atHandle);
+            errorCodeOrBitMap = uAtClientUnlock(atHandle);
+            if (errorCodeOrBitMap == 0) {
+                errorCodeOrBitMap = bitMap;
+                if ((bytesRead > 0) && (pServerName != NULL)) {
+                    x = strlen(pServerName);
+                    snprintf(pServerName + x, sizeBytes - x, ":%d", (int) port);
+                }
             }
         }
     }
