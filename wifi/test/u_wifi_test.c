@@ -233,7 +233,7 @@ static uWifiTestError_t runWifiTest(const char *pSsid, const char *pPassPhrase)
                 if (waitCtr >= 5) {
                     disconnectError = U_WIFI_TEST_ERROR_DISCONNECT;
                     if (!gWifiDisconnected) {
-                        U_TEST_PRINT_LINE("unable to diconnect from wifi network.");
+                        U_TEST_PRINT_LINE("unable to disconnect from wifi network.");
                     } else {
                         U_TEST_PRINT_LINE("network status is still up.");
                     }
