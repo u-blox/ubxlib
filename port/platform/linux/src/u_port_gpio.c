@@ -146,7 +146,9 @@ U_WEAK int32_t uPortGpioConfig(uPortGpioConfig_t *pConfig)
     if ((pConfig != NULL) &&
         (pConfig->pin >= 0) && (pConfig->pin < sizeof(gPinIndex) / sizeof(gPinIndex[0])) &&
         // Needs to be a signed compare or an index of -1 fails the test below
-        (pConfig->index < (int32_t) (sizeof(gpGpioChip) / sizeof(gpGpioChip[0])))) {
+        (pConfig->index < (int32_t) (sizeof(gpGpioChip) / sizeof(gpGpioChip[0]))) &&
+        // Interrupts not supported
+        (pConfig->pInterrupt == NULL)) {
         index = pConfig->index;
         if (index < 0) {
             index = U_PORT_GPIO_CHIP_INDEX_DEFAULT;

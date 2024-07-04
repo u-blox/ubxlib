@@ -172,7 +172,8 @@ list(APPEND UBXLIB_SRC ${UBXLIB_BASE}/port/u_port_timezone.c)
 # Default uPortXxxResource implementation
 list(APPEND UBXLIB_SRC ${UBXLIB_BASE}/port/u_port_resource.c)
 
-# Default implementation for certain uPortI2cXxx() and uPortSpiXxx() functions
+# Default implementation for certain uPortGpioXxx(), uPortI2cXxx() and uPortSpiXxx() functions
+list(APPEND UBXLIB_SRC ${UBXLIB_BASE}/port/u_port_gpio_default.c)
 list(APPEND UBXLIB_SRC ${UBXLIB_BASE}/port/u_port_i2c_default.c)
 list(APPEND UBXLIB_SRC ${UBXLIB_BASE}/port/u_port_spi_default.c)
 

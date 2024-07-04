@@ -36,6 +36,12 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+#ifndef U_PORT_GPIO_ESPIDF_INTERRUPT_FLAGS
+/** The type of interrupt handler to use: low or medium should be fine.
+ */
+# define U_PORT_GPIO_ESPIDF_INTERRUPT_FLAGS ESP_INTR_FLAG_LOWMED
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -44,9 +50,21 @@
  * VARIABLES
  * -------------------------------------------------------------- */
 
+/** Keep track of whether we installed the ISR service (otherwise
+ * ESP-IDF prints error messages when we blindly call
+ * gpio_isr_handler_remove().
+ */
+static bool gIsrServiceInstalled = false;
+
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
+
+// ISR handler function; just calls pArg.
+static void isrHandler(void *pArg)
+{
+    ((void (*)()) pArg)();
+}
 
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
@@ -58,10 +76,24 @@ int32_t uPortGpioConfig(uPortGpioConfig_t *pConfig)
     uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
     bool badConfig = false;
     gpio_config_t config;
+    esp_err_t espErr;
 
     if (pConfig != NULL) {
-        // Set the things that won't change
+        // Set interrupt type
         config.intr_type = GPIO_INTR_DISABLE;
+        if (pConfig->pInterrupt != NULL) {
+            if (pConfig->interruptLevel) {
+                config.intr_type = GPIO_INTR_HIGH_LEVEL;
+                if (pConfig->interruptActiveLow) {
+                    config.intr_type = GPIO_INTR_LOW_LEVEL;
+                }
+            } else {
+                config.intr_type = GPIO_INTR_POSEDGE;
+                if (pConfig->interruptActiveLow) {
+                    config.intr_type = GPIO_INTR_NEGEDGE;
+                }
+            }
+        }
 
         // Set the direction and drive mode
         switch (pConfig->direction) {
@@ -124,6 +156,32 @@ int32_t uPortGpioConfig(uPortGpioConfig_t *pConfig)
                     // It's not an output pin so we're done
                     errorCode = U_ERROR_COMMON_SUCCESS;
                 }
+                if (errorCode == U_ERROR_COMMON_SUCCESS) {
+                    if (pConfig->pInterrupt != NULL) {
+                        // Set up the interrupt
+                        errorCode = U_ERROR_COMMON_PLATFORM;
+                        espErr = ESP_OK;
+                        if (!gIsrServiceInstalled) {
+                            espErr = gpio_install_isr_service(U_PORT_GPIO_ESPIDF_INTERRUPT_FLAGS);
+                        }
+                        // Note: ESP_ERR_INVALID_STATE means that the service is already
+                        // installed (might have been done by the application for other reasons)
+                        if ((espErr == ESP_OK) || (espErr == ESP_ERR_INVALID_STATE)) {
+                            gIsrServiceInstalled = true;
+                            if (gpio_isr_handler_add((gpio_num_t) pConfig->pin,
+                                                     isrHandler,
+                                                     pConfig->pInterrupt) == ESP_OK) {
+                                errorCode = U_ERROR_COMMON_SUCCESS;
+                            }
+                        }
+                    } else {
+                        if (gIsrServiceInstalled) {
+                            // If an interrupt is NOT requested then, in case it had been
+                            // previously, blindly call the "remove" function
+                            gpio_isr_handler_remove((gpio_num_t) pConfig->pin);
+                        }
+                    }
+                }
             }
         }
     }
@@ -154,6 +212,12 @@ int32_t uPortGpioSet(int32_t pin, int32_t level)
 int32_t uPortGpioGet(int32_t pin)
 {
     return gpio_get_level((gpio_num_t) pin);
+}
+
+// Interrupt support.
+bool uPortGpioInterruptSupported()
+{
+    return true;
 }
 
 // End of file

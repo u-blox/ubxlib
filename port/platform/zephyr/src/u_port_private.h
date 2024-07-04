@@ -59,6 +59,10 @@ int32_t uPortPrivateInit(void);
  */
 void uPortPrivateDeinit(void);
 
+/* ----------------------------------------------------------------
+ * FUNCTIONS: GPIO
+ * -------------------------------------------------------------- */
+
 /** Get a GPIO device.
  *
  * @param pin  the pin number
@@ -85,6 +89,22 @@ int32_t uPortPrivateGetGpioPort(const struct device *pGpioDevice,
  * @return  the maximum number of pins on a GPIO port.
  */
 int32_t uPortPrivateGetGpioPortMaxPins();
+
+/** Add a GPIO callback for a pin.  Note: it does not check if
+ * the callback already exists, if you wish to avoid duplication
+ * you should call uPortPrivateGpioCallbackRemove() first.
+ *
+ * @param pin                the pin number.
+ * @param[in] pUserCallback  the callback to add.
+ * @return                   zero on success else negative error code.
+ */
+int32_t uPortPrivateGpioCallbackAdd(int32_t pin, void (*pCallback)(void));
+
+/** Remove any GPIO callback for a pin.
+ *
+ * @param pin   the pin number.
+ */
+void uPortPrivateGpioCallbackRemove(int32_t pin);
 
 /* ----------------------------------------------------------------
  * FUNCTIONS: TIMERS

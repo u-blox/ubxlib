@@ -79,6 +79,13 @@ int32_t uPortGpioConfig(uPortGpioConfig_t *pConfig)
         return errorCode;
     }
 
+#if defined(CONFIG_ARCH_POSIX)
+    // Set up interrupt flags
+    if (pConfig->pInterrupt != NULL) {
+        return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+    }
+#endif
+
     switch (pConfig->direction) {
         case U_PORT_GPIO_DIRECTION_NONE:
             flags = GPIO_DISCONNECTED;
@@ -153,9 +160,64 @@ int32_t uPortGpioConfig(uPortGpioConfig_t *pConfig)
         zerr = gpio_pin_configure(pPort,
                                   (gpio_pin_t) (pConfig->pin % uPortPrivateGetGpioPortMaxPins()),
                                   flags);
-        if (!zerr) {
+        if (zerr == 0) {
             errorCode = U_ERROR_COMMON_SUCCESS;
         }
+    }
+
+    if (errorCode == U_ERROR_COMMON_SUCCESS) {
+#if !defined(CONFIG_ARCH_POSIX)
+        // In case there is already an interrupt handler for this pin,
+        // remove it before we continue either (a) setting up a
+        // new one or (b) leaving the pin as a non-interrupt pin
+        uPortPrivateGpioCallbackRemove(pConfig->pin);
+        if (pConfig->pInterrupt != NULL) {
+            errorCode = U_ERROR_COMMON_PLATFORM;
+            // Set up the flags
+            flags = 0;
+            if (pConfig->interruptLevel) {
+                if (pConfig->interruptActiveLow) {
+                    flags |= GPIO_INT_LEVEL_LOW;
+                } else {
+                    flags |= GPIO_INT_LEVEL_HIGH;
+                }
+            } else {
+                if (pConfig->interruptActiveLow) {
+                    flags |= GPIO_INT_EDGE_FALLING;
+                } else {
+                    flags |= GPIO_INT_EDGE_RISING;
+                }
+            }
+            zerr = gpio_pin_interrupt_configure(pPort,
+                                                (gpio_pin_t) (pConfig->pin % uPortPrivateGetGpioPortMaxPins()),
+                                                flags);
+            if ((zerr == 0) || (zerr = -EWOULDBLOCK)) {
+                // Set the callback
+                errorCode = uPortPrivateGpioCallbackAdd(pConfig->pin,
+                                                        pConfig->pInterrupt);
+            } else {
+                // Since all kinds of platform-dependent things could
+                // go wrong here, try to give the user a useful error code
+                switch (zerr) {
+                    case -ENOSYS:
+                        errorCode = U_ERROR_COMMON_NOT_SUPPORTED;
+                        break;
+                    case -ENOTSUP:
+                    case -EINVAL:
+                        errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+                        break;
+                    case -EBUSY:
+                        errorCode = U_ERROR_COMMON_BUSY;
+                        break;
+                    case -EIO:
+                        errorCode = U_ERROR_COMMON_NOT_RESPONDING;
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
+#endif
     }
 
     return (int32_t) errorCode;
@@ -200,6 +262,16 @@ int32_t uPortGpioGet(int32_t pin)
     }
 
     return (val & (1 << (pin % uPortPrivateGetGpioPortMaxPins()))) ? 1 : 0;
+}
+
+// Interrupt support.
+bool uPortGpioInterruptSupported()
+{
+#if !defined(CONFIG_ARCH_POSIX)
+    return true;
+#else
+    return false;
+#endif
 }
 
 // End of file

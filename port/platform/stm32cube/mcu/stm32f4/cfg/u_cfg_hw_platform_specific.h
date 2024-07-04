@@ -28,6 +28,7 @@
  * Some of the values may be configured for your hardware,
  * others are fixed inside the STM32F4 chip; each section describes
  * which is the case.
+ *
  * Note that "UART" is used throughout this code, rather than
  * switching between "UART" and "USART" and having to
  * remember which number UART/USART is which.
@@ -270,6 +271,123 @@
  * STM32F4 chip.
  */
 #define U_CFG_HW_UART8_DMA_CHANNEL             5
+
+/* ----------------------------------------------------------------
+ * COMPILE-TIME MACROS FOR STM32F4: EXTI (INTERRUPTS NEED FOR GPIO)
+ * -------------------------------------------------------------- */
+
+/** In order to support use of a GPIO line as an interrupt, the
+ * relevant interrupt function needs to be made available to ubxlib.
+ * For STM32F4 there are 16 interrupts available where EXTI 0 serves
+ * pin 0 on any of the GPIO ports (A to I), EXTI 1 serves pin 1 on
+ * any of the GPIO ports, etc, up to EXTI 15 serving pins 15.
+ *
+ * The only usage of GPIO interrupts by ubxlib is if a Data Ready
+ * pin is to be used with a GNSS device; one EXTI interrupt is
+ * required for each GNSS device where this is the case.
+ *
+ * So if, for instance, you want to use pin B5 as your Data Ready
+ * pin, you would need to make sure that U_CFG_HW_EXTI_5_AVAILABLE,
+ * the EXTI for GPIO pin 5, was set to 1; the uPortGpio driver
+ * here will then set the relevant SYSCFG_EXTI register to indicate
+ * that EXTI5 is to monitor port B: hence pin B5, et voila.
+ */
+
+#ifndef U_CFG_HW_EXTI_0_AVAILABLE
+/** Whether EXTI 0 is available to ubxlib.
+ */
+# define U_CFG_HW_EXTI_0_AVAILABLE  0
+#endif
+
+#ifndef U_CFG_HW_EXTI_1_AVAILABLE
+/** Whether EXTI 1 is available to ubxlib.
+ */
+# define U_CFG_HW_EXTI_1_AVAILABLE  0
+#endif
+
+#ifndef U_CFG_HW_EXTI_2_AVAILABLE
+/** Whether EXTI 2 is available to ubxlib.
+ */
+# define U_CFG_HW_EXTI_2_AVAILABLE  0
+#endif
+
+#ifndef U_CFG_HW_EXTI_3_AVAILABLE
+/** Whether EXTI 3 is available to ubxlib.
+ */
+# define U_CFG_HW_EXTI_3_AVAILABLE  0
+#endif
+
+#ifndef U_CFG_HW_EXTI_4_AVAILABLE
+/** Whether EXTI 4 is available to ubxlib.
+ */
+# define U_CFG_HW_EXTI_4_AVAILABLE  0
+#endif
+
+#ifndef U_CFG_HW_EXTI_5_AVAILABLE
+/** Whether EXTI 5 is available to ubxlib.
+ */
+# define U_CFG_HW_EXTI_5_AVAILABLE  0
+#endif
+
+#ifndef U_CFG_HW_EXTI_6_AVAILABLE
+/** Whether EXTI 6 is available to ubxlib.
+ */
+# define U_CFG_HW_EXTI_6_AVAILABLE  0
+#endif
+
+#ifndef U_CFG_HW_EXTI_7_AVAILABLE
+/** Whether EXTI 7 is available to ubxlib.
+ */
+# define U_CFG_HW_EXTI_7_AVAILABLE  0
+#endif
+
+#ifndef U_CFG_HW_EXTI_8_AVAILABLE
+/** Whether EXTI 8 is available to ubxlib.
+ */
+# define U_CFG_HW_EXTI_8_AVAILABLE  0
+#endif
+
+#ifndef U_CFG_HW_EXTI_9_AVAILABLE
+/** Whether EXTI 9 is available to ubxlib.
+ */
+# define U_CFG_HW_EXTI_9_AVAILABLE  0
+#endif
+
+#ifndef U_CFG_HW_EXTI_10_AVAILABLE
+/** Whether EXTI 10 is available to ubxlib.
+ */
+# define U_CFG_HW_EXTI_10_AVAILABLE  0
+#endif
+
+#ifndef U_CFG_HW_EXTI_11_AVAILABLE
+/** Whether EXTI 11 is available to ubxlib.
+ */
+# define U_CFG_HW_EXTI_11_AVAILABLE  0
+#endif
+
+#ifndef U_CFG_HW_EXTI_12_AVAILABLE
+/** Whether EXTI 12 is available to ubxlib.
+ */
+# define U_CFG_HW_EXTI_12_AVAILABLE  0
+#endif
+
+#ifndef U_CFG_HW_EXTI_13_AVAILABLE
+/** Whether EXTI 13 is available to ubxlib.
+ */
+# define U_CFG_HW_EXTI_13_AVAILABLE  0
+#endif
+
+#ifndef U_CFG_HW_EXTI_14_AVAILABLE
+/** Whether EXTI 14 is available to ubxlib.
+ */
+# define U_CFG_HW_EXTI_14_AVAILABLE  0
+#endif
+
+#ifndef U_CFG_HW_EXTI_15_AVAILABLE
+/** Whether EXTI 15 is available to ubxlib.
+ */
+# define U_CFG_HW_EXTI_15_AVAILABLE  0
+#endif
 
 #endif // _U_CFG_HW_PLATFORM_SPECIFIC_H_
 

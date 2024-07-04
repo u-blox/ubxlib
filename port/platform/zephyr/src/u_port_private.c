@@ -28,6 +28,7 @@
 
 #include "u_cfg_os_platform_specific.h"
 #include "u_error_common.h"
+#include "u_linked_list.h"
 #include "u_port.h"
 #include "u_port_os.h"
 #include "u_port_heap.h"
@@ -66,6 +67,15 @@ typedef struct uPortPrivateTimer_t {
     struct uPortPrivateTimer_t *pNext;
 } uPortPrivateTimer_t;
 
+/** Type to hold a Zephyr GPIO callback with the user's callback
+ * in a linked list.
+ */
+typedef struct {
+    int32_t pin;
+    struct gpio_callback callback;
+    void (*pUserCallback)(void);
+} uPortPrivateGpioCallback_t;
+
 /* ----------------------------------------------------------------
  * VARIABLES
  * -------------------------------------------------------------- */
@@ -76,7 +86,7 @@ static uPortPrivateTimer_t *gpTimerList = NULL;
 
 /** Mutex to protect the linked list of timers.
  */
-static uPortMutexHandle_t gMutex = NULL;
+static uPortMutexHandle_t gMutexTimers = NULL;
 
 /** Array of timer structures; we do this as a fixed
  * array since, in the Zephyr API, the callback gets a pointer
@@ -108,12 +118,39 @@ static int32_t gTimerEventQueueHandle = -1;
  */
 static int32_t gGpioNumPinsPerPort = -1;
 
+/** Root of the linked list of interrupt callbacks.
+ */
+static uLinkedList_t *gpGpioCallbackList = NULL; // List of uPortPrivateGpioCallback_t
+
+/** Mutex to protect GPIO data.
+ */
+static uPortMutexHandle_t gMutexGpio = NULL;
+
 /* ----------------------------------------------------------------
- * STATIC FUNCTIONS
+ * STATIC FUNCTIONS: GPIO RELATED
+ * -------------------------------------------------------------- */
+
+// GPIO interrupt handler callback.
+static void gpioCallbackHandler(const struct device *pPort,
+                                struct gpio_callback *pCb,
+                                gpio_port_pins_t pins)
+{
+    uPortPrivateGpioCallback_t *pGpioCallback = CONTAINER_OF(pCb, uPortPrivateGpioCallback_t, callback);
+
+    (void) pPort;
+    (void) pins;
+
+    if (pGpioCallback->pUserCallback != NULL) {
+        pGpioCallback->pUserCallback();
+    }
+}
+
+/* ----------------------------------------------------------------
+ * STATIC FUNCTIONS: TIMER RELATED
  * -------------------------------------------------------------- */
 
 // Find a free kernal timer structure
-// gMutex should be locked before this is called.
+// gMutexTimers should be locked before this is called.
 static struct k_timer *pKTimerFindFree()
 {
     struct k_timer *pKTimer = NULL;
@@ -147,7 +184,7 @@ static struct k_timer *pKTimerFindFree()
 }
 
 // Find a timer entry in the list.
-// gMutex should be locked before this is called.
+// gMutexTimers should be locked before this is called.
 static uPortPrivateTimer_t *pTimerFind(struct k_timer *pKTimer)
 {
     uPortPrivateTimer_t *pTimer = gpTimerList;
@@ -160,7 +197,7 @@ static uPortPrivateTimer_t *pTimerFind(struct k_timer *pKTimer)
 }
 
 // Remove an entry from the list.
-// gMutex should be locked before this is called.
+// gMutexTimers should be locked before this is called.
 static void timerRemove(struct k_timer *pKTimer)
 {
     uPortPrivateTimer_t *pTimer = gpTimerList;
@@ -195,9 +232,9 @@ static void timerEventHandler(void *pParam, size_t paramLength)
 
     (void) paramLength;
 
-    if (gMutex != NULL) {
+    if (gMutexTimers != NULL) {
 
-        U_PORT_MUTEX_LOCK(gMutex);
+        U_PORT_MUTEX_LOCK(gMutexTimers);
 
         pTimer = pTimerFind(pKTimer);
         if (pTimer != NULL) {
@@ -205,7 +242,7 @@ static void timerEventHandler(void *pParam, size_t paramLength)
             pCallbackParam = pTimer->pCallbackParam;
         }
 
-        U_PORT_MUTEX_UNLOCK(gMutex);
+        U_PORT_MUTEX_UNLOCK(gMutexTimers);
 
         // Call the callback outside the locks so that the
         // callback itself may call the timer API
@@ -235,19 +272,35 @@ int32_t uPortPrivateInit()
 {
     int32_t errorCodeOrEventQueueHandle = (int32_t) U_ERROR_COMMON_SUCCESS;
 
-    if (gMutex == NULL) {
-        errorCodeOrEventQueueHandle = uPortMutexCreate(&gMutex);
-        if (errorCodeOrEventQueueHandle == 0) {
-            // We need an event queue as Zephyr's timer callback is called
-            // in interrupt context and we need to get it into task context
-            errorCodeOrEventQueueHandle = uPortEventQueueOpen(timerEventHandler, "timerEvent",
-                                                              sizeof(struct k_timer *),
-                                                              U_CFG_OS_TIMER_EVENT_TASK_STACK_SIZE_BYTES,
-                                                              U_CFG_OS_TIMER_EVENT_TASK_PRIORITY,
-                                                              U_CFG_OS_TIMER_EVENT_QUEUE_SIZE);
-            if (errorCodeOrEventQueueHandle >= 0) {
-                gTimerEventQueueHandle = errorCodeOrEventQueueHandle;
-                errorCodeOrEventQueueHandle = (int32_t) U_ERROR_COMMON_SUCCESS;
+    if (gMutexGpio == NULL) {
+        errorCodeOrEventQueueHandle = uPortMutexCreate(&gMutexGpio);
+    }
+
+    if (errorCodeOrEventQueueHandle == 0) {
+        if (gMutexTimers == NULL) {
+            errorCodeOrEventQueueHandle = uPortMutexCreate(&gMutexTimers);
+            if (errorCodeOrEventQueueHandle == 0) {
+                // We need an event queue as Zephyr's timer callback is called
+                // in interrupt context and we need to get it into task context
+                errorCodeOrEventQueueHandle = uPortEventQueueOpen(timerEventHandler, "timerEvent",
+                                                                  sizeof(struct k_timer *),
+                                                                  U_CFG_OS_TIMER_EVENT_TASK_STACK_SIZE_BYTES,
+                                                                  U_CFG_OS_TIMER_EVENT_TASK_PRIORITY,
+                                                                  U_CFG_OS_TIMER_EVENT_QUEUE_SIZE);
+                if (errorCodeOrEventQueueHandle >= 0) {
+                    gTimerEventQueueHandle = errorCodeOrEventQueueHandle;
+                    errorCodeOrEventQueueHandle = (int32_t) U_ERROR_COMMON_SUCCESS;
+                } else {
+                    // Clean up on error
+                    uPortMutexDelete(gMutexGpio);
+                    gMutexGpio = NULL;
+                    uPortMutexDelete(gMutexTimers);
+                    gMutexTimers = NULL;
+                }
+            } else {
+                // Clean up on error
+                uPortMutexDelete(gMutexGpio);
+                gMutexGpio = NULL;
             }
         }
     }
@@ -258,9 +311,12 @@ int32_t uPortPrivateInit()
 // Deinitialise the private stuff.
 void uPortPrivateDeinit()
 {
-    if (gMutex != NULL) {
+    uPortPrivateGpioCallback_t *pGpioCallback;
+    const struct device *pPort;
 
-        U_PORT_MUTEX_LOCK(gMutex);
+    if (gMutexTimers != NULL) {
+
+        U_PORT_MUTEX_LOCK(gMutexTimers);
 
         // Tidy away the timers
         while (gpTimerList != NULL) {
@@ -268,7 +324,7 @@ void uPortPrivateDeinit()
             timerRemove(gpTimerList->pKTimer);
         }
 
-        U_PORT_MUTEX_UNLOCK(gMutex);
+        U_PORT_MUTEX_UNLOCK(gMutexTimers);
 
         // Close the event queue outside the mutex as it could be calling
         // back into this API
@@ -277,10 +333,35 @@ void uPortPrivateDeinit()
             gTimerEventQueueHandle = -1;
         }
 
-        uPortMutexDelete(gMutex);
-        gMutex = NULL;
+        uPortMutexDelete(gMutexTimers);
+        gMutexTimers = NULL;
+    }
+
+    if (gMutexGpio != NULL) {
+
+        U_PORT_MUTEX_LOCK(gMutexGpio);
+
+        // Tidy away any GPIO callbacks
+        while (gpGpioCallbackList != NULL) {
+            pGpioCallback = (uPortPrivateGpioCallback_t *) gpGpioCallbackList->p;
+            pPort = pUPortPrivateGetGpioDevice(pGpioCallback->pin);
+            if (pPort != NULL) {
+                gpio_remove_callback(pPort, &(pGpioCallback->callback));
+            }
+            uPortFree(pGpioCallback);
+            uLinkedListRemove(&gpGpioCallbackList, pGpioCallback);
+        }
+
+        U_PORT_MUTEX_UNLOCK(gMutexGpio);
+
+        uPortMutexDelete(gMutexGpio);
+        gMutexGpio = NULL;
     }
 }
+
+/* ----------------------------------------------------------------
+ * PUBLIC FUNCTIONS SPECIFIC TO THIS PORT: GPIO
+ * -------------------------------------------------------------- */
 
 // Get the ubxlib pin number for a GPIO device.
 int32_t uPortPrivateGetGpioPort(const struct device *pGpioDevice,
@@ -641,6 +722,81 @@ int32_t uPortPrivateGetGpioPortMaxPins()
     return gGpioNumPinsPerPort;
 }
 
+// Add a GPIO callback for a pin.
+int32_t uPortPrivateGpioCallbackAdd(int32_t pin, void (*pCallback)(void))
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uPortPrivateGpioCallback_t *pGpioCallback = NULL;
+    const struct device *pPort = pUPortPrivateGetGpioDevice(pin);
+
+    if (gMutexGpio != NULL) {
+
+        U_PORT_MUTEX_LOCK(gMutexGpio);
+
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        if ((pPort != NULL) && (pin >= 0) && (pCallback != NULL)) {
+            // Allocate memory for the interrupt callback
+            pGpioCallback = (uPortPrivateGpioCallback_t *) pUPortMalloc(sizeof(*pGpioCallback));
+            if (pGpioCallback != NULL) {
+                // Populate the GPIO callback structure
+                errorCode = U_ERROR_COMMON_PLATFORM;
+                memset(pGpioCallback, 0, sizeof(*pGpioCallback));
+                pGpioCallback->pin = pin;
+                pGpioCallback->pUserCallback = pCallback;
+                gpio_init_callback(&(pGpioCallback->callback), gpioCallbackHandler,
+                                   1 << (pin % uPortPrivateGetGpioPortMaxPins()));
+                if (gpio_add_callback(pPort, &(pGpioCallback->callback)) == 0) {
+                    errorCode = U_ERROR_COMMON_NO_MEMORY;
+                    if (uLinkedListAdd(&gpGpioCallbackList, pGpioCallback)) {
+                        // Add the interrupt handler to the list
+                        errorCode = U_ERROR_COMMON_SUCCESS;
+                    } else {
+                        // Clean up on error
+                        gpio_remove_callback(pPort, &(pGpioCallback->callback));
+                        uPortFree(pGpioCallback);
+                    }
+                } else {
+                    // Clean up on error
+                    uPortFree(pGpioCallback);
+                }
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gMutexGpio);
+    }
+
+    return errorCode;
+}
+
+// Remove any GPIO callback for a pin.
+void uPortPrivateGpioCallbackRemove(int32_t pin)
+{
+    uLinkedList_t *p = gpGpioCallbackList;
+    uPortPrivateGpioCallback_t *pGpioCallback = NULL;
+    const struct device *pPort = pUPortPrivateGetGpioDevice(pin);
+
+    if (gMutexGpio != NULL) {
+
+        U_PORT_MUTEX_LOCK(gMutexGpio);
+
+        // Find the entry in the list
+        while ((p != NULL) && (pGpioCallback == NULL)) {
+            if (((uPortPrivateGpioCallback_t *) (p->p))->pin == pin) {
+                pGpioCallback = (uPortPrivateGpioCallback_t *) (p->p);
+            }
+            p = p->pNext;
+        }
+
+        if ((pPort != NULL) && (pGpioCallback != NULL)) {
+            gpio_remove_callback(pPort, &(pGpioCallback->callback));
+            uPortFree(pGpioCallback);
+            uLinkedListRemove(&gpGpioCallbackList, pGpioCallback);
+        }
+
+        U_PORT_MUTEX_UNLOCK(gMutexGpio);
+    }
+}
+
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS SPECIFIC TO THIS PORT: TIMERS
  * -------------------------------------------------------------- */
@@ -655,9 +811,9 @@ int32_t uPortPrivateTimerCreate(uPortTimerHandle_t *pHandle,
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uPortPrivateTimer_t *pTimer;
 
-    if (gMutex != NULL) {
+    if (gMutexTimers != NULL) {
 
-        U_PORT_MUTEX_LOCK(gMutex);
+        U_PORT_MUTEX_LOCK(gMutexTimers);
 
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if (pHandle != NULL) {
@@ -686,7 +842,7 @@ int32_t uPortPrivateTimerCreate(uPortTimerHandle_t *pHandle,
             }
         }
 
-        U_PORT_MUTEX_UNLOCK(gMutex);
+        U_PORT_MUTEX_UNLOCK(gMutexTimers);
     }
 
     return errorCode;
@@ -697,18 +853,18 @@ int32_t uPortPrivateTimerDelete(uPortTimerHandle_t handle)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
 
-    if (gMutex != NULL) {
+    if (gMutexTimers != NULL) {
 
         // Stop the timer in the kernel, outside the mutex in case
         // the call blocks
         k_timer_stop((struct k_timer *) handle);
 
-        U_PORT_MUTEX_LOCK(gMutex);
+        U_PORT_MUTEX_LOCK(gMutexTimers);
 
         timerRemove((struct k_timer *) handle);
         errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
 
-        U_PORT_MUTEX_UNLOCK(gMutex);
+        U_PORT_MUTEX_UNLOCK(gMutexTimers);
     }
 
     return errorCode;
@@ -722,9 +878,9 @@ int32_t uPortPrivateTimerStart(const uPortTimerHandle_t handle)
     k_timeout_t duration;
     k_timeout_t period = {0};
 
-    if (gMutex != NULL) {
+    if (gMutexTimers != NULL) {
 
-        U_PORT_MUTEX_LOCK(gMutex);
+        U_PORT_MUTEX_LOCK(gMutexTimers);
 
         pTimer = pTimerFind((struct k_timer *) handle);
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
@@ -735,7 +891,7 @@ int32_t uPortPrivateTimerStart(const uPortTimerHandle_t handle)
             }
         }
 
-        U_PORT_MUTEX_UNLOCK(gMutex);
+        U_PORT_MUTEX_UNLOCK(gMutexTimers);
 
         // Release the mutex before starting the timer
         // in case the OS call blocks
@@ -755,9 +911,9 @@ int32_t uPortPrivateTimerChange(const uPortTimerHandle_t handle,
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uPortPrivateTimer_t *pTimer;
 
-    if (gMutex != NULL) {
+    if (gMutexTimers != NULL) {
 
-        U_PORT_MUTEX_LOCK(gMutex);
+        U_PORT_MUTEX_LOCK(gMutexTimers);
 
         pTimer = pTimerFind(handle);
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
@@ -766,7 +922,7 @@ int32_t uPortPrivateTimerChange(const uPortTimerHandle_t handle,
             errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
         }
 
-        U_PORT_MUTEX_UNLOCK(gMutex);
+        U_PORT_MUTEX_UNLOCK(gMutexTimers);
     }
 
     return errorCode;

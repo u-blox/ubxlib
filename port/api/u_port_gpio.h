@@ -108,6 +108,41 @@ typedef struct {
                         last pin on GPIO chip 0 were pin 15 then the
                         first pin on GPIO chip 1 would likely be pin 16,
                         it could not be pin 0 again. */
+    void (*pInterrupt)(void); /**< if non-NULL and interrupts are supported
+                                   by the platform then the pin will be
+                                   configured as an interrupt; NULL is the
+                                   default. If you have your own port you
+                                   only need to implement interrupt functionality
+                                   if you wish to use the "data ready" feature
+                                   of the GNSS interface, enabling this MCU to
+                                   sleep while waiting for a response from
+                                   a GNSS device; GPIO interrupts are otherwise
+                                   not used within ubxlib.  Note also that
+                                   some platforms may require additional
+                                   compile-time configuration for this to work,
+                                   e.g. for STM32Cube it is necessary to make
+                                   the correct HW interrupts available to
+                                   this code, search for
+                                   U_CFG_HW_EXTI_ to find out more; also,
+                                   platforms may apply additional restrictions,
+                                   e.g. an interrupt pin may not be able to
+                                   be set as input/output (this is the case
+                                   with ESP32), perhaps only certain pins
+                                   can be set as interrupts, etc. */
+    bool interruptActiveLow; /**< if true then the pin is assumed
+                                  to be an active-low interrupt, else
+                                  (the default) if is assumed to be an
+                                  active-high interrupt; ignored if
+                                  pInterrupt is NULL or interrupts are
+                                  not supported by the platform. */
+    bool interruptLevel;  /**< if true then the pin will be configured
+                               as a level-triggered interrupt, else
+                               it will be configured as an edge-triggered
+                               interrupt (the default); ignored if
+                               pInterrupt is NULL or interrupts are not
+                               supported by the platform, not all platforms
+                               support level-triggered interrupts (e.g.
+                               STM32F4 does not). */
 } uPortGpioConfig_t;
 
 /** Default values for the above.
@@ -117,7 +152,8 @@ typedef struct {
                                    U_PORT_GPIO_PULL_MODE_NONE,          \
                                    U_PORT_GPIO_DRIVE_MODE_NORMAL,       \
                                    U_PORT_GPIO_DRIVE_CAPABILITY_STRONG, \
-                                   -1}
+                                   -1,                                  \
+                                   NULL, false, false}
 
 /** Compilers won't generally allow myConfig = #U_PORT_GPIO_CONFIG_DEFAULT;
  * to be done anywhere other than where myConfig is declared.  This macro
@@ -128,7 +164,10 @@ typedef struct {
                                          (pConfig)->pullMode = U_PORT_GPIO_PULL_MODE_NONE;                 \
                                          (pConfig)->driveMode = U_PORT_GPIO_DRIVE_MODE_NORMAL;             \
                                          (pConfig)->driveCapability = U_PORT_GPIO_DRIVE_CAPABILITY_STRONG; \
-                                         (pConfig)->index = -1
+                                         (pConfig)->index = -1;                                            \
+                                         (pConfig)->pInterrupt = NULL;                                     \
+                                         (pConfig)->interruptActiveLow = false;                            \
+                                         (pConfig)->interruptLevel = false;
 
 /* ----------------------------------------------------------------
  * FUNCTIONS
@@ -167,6 +206,13 @@ int32_t uPortGpioSet(int32_t pin, int32_t level);
  *              code.
  */
 int32_t uPortGpioGet(int32_t pin);
+
+/** Should return true if interrupts are supported; where not
+ * supported a weak implementation will return false.
+ *
+ * @return true if interrupts are supported, else false.
+ */
+bool uPortGpioInterruptSupported();
 
 #ifdef __cplusplus
 }

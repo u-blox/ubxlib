@@ -469,7 +469,8 @@ static size_t gTimerParameterIndex = 0;
  */
 static uPortTimerHandle_t gTimerHandle[4] = {0};
 
-/** A variable to use during critical section and heap testing.
+/** A variable to use during critical section, heap
+ * and GPIO interrupt testing.
  */
 static uint32_t gVariable = 0;
 
@@ -1272,6 +1273,14 @@ static void assertFunction(const char *pFileStr, int32_t line)
 
     gVariable = 1;
 }
+
+#if (U_CFG_TEST_PIN_A >= 0) && (U_CFG_TEST_PIN_B >= 0) && \
+    (U_CFG_TEST_PIN_C >= 0)
+static void gpioInterruptHandler(void)
+{
+    gVariable++;
+}
+#endif
 
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS: TESTS
@@ -2517,6 +2526,88 @@ U_PORT_TEST_FUNCTION("[port]", "portGpioRequiresSpecificWiring")
     U_PORT_TEST_ASSERT(uPortGpioGet(U_CFG_TEST_PIN_B) == 0);
     U_PORT_TEST_ASSERT(uPortGpioGet(U_CFG_TEST_PIN_C) == 0);
 
+    // Test interrupts
+    gVariable = 0;
+    gpioConfig.pin = U_CFG_TEST_PIN_B;
+    gpioConfig.direction = U_PORT_GPIO_DIRECTION_INPUT;
+    gpioConfig.pInterrupt = gpioInterruptHandler;
+    if (uPortGpioInterruptSupported()) {
+        U_TEST_PRINT_LINE("using pin A to test pins B and C as edge-triggered interrupt pins.");
+        // Test with configuration default of active high, edge triggered
+        U_PORT_TEST_ASSERT(uPortGpioConfig(&gpioConfig) == 0);
+        gpioConfig.pin = U_CFG_TEST_PIN_C;
+        U_PORT_TEST_ASSERT(uPortGpioConfig(&gpioConfig) == 0);
+        uPortTaskBlock(10);
+        U_PORT_TEST_ASSERT(gVariable == 0);
+
+        // Set pin A high: should cause two interrupts to go off,
+        // once for pin B and once for pin C
+        U_PORT_TEST_ASSERT(uPortGpioSet(U_CFG_TEST_PIN_A, 1) == 0);
+        uPortTaskBlock(10);
+        U_PORT_TEST_ASSERT(gVariable == 2);
+
+        // Set pin A low: nothing should happen
+        U_PORT_TEST_ASSERT(uPortGpioSet(U_CFG_TEST_PIN_A, 0) == 0);
+        uPortTaskBlock(10);
+        U_PORT_TEST_ASSERT(gVariable == 2);
+
+        // Set pin A high: the interrupt should go off twice again
+        U_PORT_TEST_ASSERT(uPortGpioSet(U_CFG_TEST_PIN_A, 1) == 0);
+        uPortTaskBlock(10);
+        U_PORT_TEST_ASSERT(gVariable == 4);
+
+        // Test with pin C active low
+        gpioConfig.interruptActiveLow = true;
+        U_PORT_TEST_ASSERT(uPortGpioConfig(&gpioConfig) == 0);
+
+        // Set pin A low: interrupt should go off once
+        // because of pin C
+        U_PORT_TEST_ASSERT(uPortGpioSet(U_CFG_TEST_PIN_A, 0) == 0);
+        uPortTaskBlock(10);
+        U_PORT_TEST_ASSERT(gVariable == 5);
+
+        // Set pin A high: interrupt should go off once
+        // because of pin B, which is still active high
+        U_PORT_TEST_ASSERT(uPortGpioSet(U_CFG_TEST_PIN_A, 1) == 0);
+        uPortTaskBlock(10);
+        U_PORT_TEST_ASSERT(gVariable == 6);
+
+        // Set pin A low: interrupt should go off once again
+        // because of pin C
+        U_PORT_TEST_ASSERT(uPortGpioSet(U_CFG_TEST_PIN_A, 0) == 0);
+        uPortTaskBlock(10);
+        U_PORT_TEST_ASSERT(gVariable == 7);
+
+        // Set pin B to be a non-interrupt pin
+        gpioConfig.pin = U_CFG_TEST_PIN_B;
+        gpioConfig.pInterrupt = NULL;
+        U_PORT_TEST_ASSERT(uPortGpioConfig(&gpioConfig) == 0);
+        uPortTaskBlock(10);
+        // Nothing should have happened 'cos nothing has changed
+        U_PORT_TEST_ASSERT(gVariable == 7);
+
+        // Set pin A high: nothing should happen now since
+        // only pin C is an [active low] interrupt pin
+        U_PORT_TEST_ASSERT(uPortGpioSet(U_CFG_TEST_PIN_A, 1) == 0);
+        uPortTaskBlock(10);
+        U_PORT_TEST_ASSERT(gVariable == 7);
+
+        // Set pin A low: interrupt should go off once again
+        // because of pin C
+        U_PORT_TEST_ASSERT(uPortGpioSet(U_CFG_TEST_PIN_A, 0) == 0);
+        uPortTaskBlock(10);
+        U_PORT_TEST_ASSERT(gVariable == 8);
+
+        // Leave pin C as an interrupt pin to check that no
+        // resources are left hanging if it is left like that
+
+        // Note: not testing level-triggered interrupts as not
+        // all platforms support them (e.g. STM32F4 does not)
+    } else {
+        U_TEST_PRINT_LINE("*** WARNING *** interrupts not supported, not testing them.");
+        U_PORT_TEST_ASSERT(uPortGpioConfig(&gpioConfig) < 0);
+    }
+
     // Note: it is impossible to check pull up/down
     // of input pins reliably as boards have level shifters
     // and protection resistors between the board pins and the
@@ -3285,6 +3376,24 @@ U_PORT_TEST_FUNCTION("[port]", "portCriticalSection")
  */
 U_PORT_TEST_FUNCTION("[port]", "portCleanUp")
 {
+
+#if (U_CFG_TEST_PIN_A >= 0) || (U_CFG_TEST_PIN_B >= 0) || \
+    (U_CFG_TEST_PIN_C >= 0)
+    uPortGpioConfig_t gpioConfig = U_PORT_GPIO_CONFIG_DEFAULT;
+    // This mainly to stop any interrupts going off
+# if (U_CFG_TEST_PIN_A >= 0)
+    gpioConfig.pin = U_CFG_TEST_PIN_A;
+    uPortGpioConfig(&gpioConfig);
+# endif
+# if (U_CFG_TEST_PIN_B >= 0)
+    gpioConfig.pin = U_CFG_TEST_PIN_B;
+    uPortGpioConfig(&gpioConfig);
+# endif
+# if (U_CFG_TEST_PIN_C >= 0)
+    gpioConfig.pin = U_CFG_TEST_PIN_C;
+    uPortGpioConfig(&gpioConfig);
+# endif
+#endif
 
 #if (U_CFG_APP_GNSS_I2C >= 0)
     if (gI2cHandle >= 0) {
