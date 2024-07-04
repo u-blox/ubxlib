@@ -1085,7 +1085,7 @@ static int32_t getEmmRejectCause(const uCellPrivateInstance_t *pInstance)
     bool gotAnEmmCause = false;
     char buffer[32]; // Enough room for "EMM cause"
 
-    if (!U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType)) {
+    if (!U_CELL_PRIVATE_MODULE_IS_R4(pInstance->pModule->moduleType)) {
         // Return 0 if there's nothing to get
         errorCodeOrEmmCause = 0;
         deviceError.type = U_AT_CLIENT_DEVICE_ERROR_TYPE_NO_ERROR;
@@ -1524,7 +1524,7 @@ static int32_t setAuthenticationMode(const uCellPrivateInstance_t *pInstance,
         if ((pUsername == NULL) && (pPassword == NULL)) {
             // No authentication is required
             authenticationMode = U_CELL_NET_AUTHENTICATION_MODE_NOT_SET;
-            if ((U_CELL_PRIVATE_MODULE_IS_SARA_R5(pInstance->pModule->moduleType)) ||
+            if ((U_CELL_PRIVATE_MODULE_IS_R5(pInstance->pModule->moduleType)) ||
                 (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_U201) ||
                 (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_LENA_R8)) {
                 // For SARA-R5, SARA-U201 and LENA-R8 the user name
@@ -1546,7 +1546,7 @@ static int32_t setAuthenticationMode(const uCellPrivateInstance_t *pInstance,
         uAtClientWriteInt(atHandle, contextId);
         uAtClientWriteInt(atHandle, authenticationMode);
         if ((pUsername != NULL) && (pPassword != NULL)) {
-            if (!U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType) &&
+            if (!U_CELL_PRIVATE_MODULE_IS_R4(pInstance->pModule->moduleType) &&
                 (pInstance->pModule->moduleType != U_CELL_MODULE_TYPE_LARA_R6)) {
                 uAtClientWriteString(atHandle, pUsername, true);
                 uAtClientWriteString(atHandle, pPassword, true);
@@ -1678,10 +1678,10 @@ static int32_t activateContext(const uCellPrivateInstance_t *pInstance,
          ((deviceError.type == U_AT_CLIENT_DEVICE_ERROR_TYPE_NO_ERROR) ||
           (deviceError.type == U_AT_CLIENT_DEVICE_ERROR_TYPE_ERROR)); x--) {
         cgActCalled = false;
-        if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R422) {
+        if (U_CELL_PRIVATE_MODULE_IS_R422(pInstance->pModule->moduleType)) {
             // Note: it seems a bit strange to do this first,
             // rather than just querying the +CGACT status,
-            // but a specific case has been found where SARA-R422
+            // but a specific case has been found where SARA/LEXI-R422
             // indicated that it was activated whereas in fact,
             // at least for the internal clients (so sockets, HTTP
             // and MQTT), it was not.  Forcing with AT+CGACT=1,x has
@@ -2025,7 +2025,7 @@ static int32_t handleExistingContext(uCellPrivateInstance_t *pInstance,
             // need to do something about it
             rat = uCellPrivateGetActiveRat(pInstance);
             if (U_CELL_PRIVATE_RAT_IS_EUTRAN(rat) ||
-                U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType)) {
+                U_CELL_PRIVATE_MODULE_IS_R4(pInstance->pModule->moduleType)) {
                 // If we're on EUTRAN or we're on SARA-R4,
                 // can't/don't go to the "no PDP context" state.
                 // Deregistration will sort it
@@ -3050,7 +3050,7 @@ int32_t uCellNetDeactivate(uDeviceHandle_t cellHandle,
             if (uCellPrivateIsRegistered(pInstance)) {
                 rat = uCellPrivateGetActiveRat(pInstance);
                 if (U_CELL_PRIVATE_RAT_IS_EUTRAN(rat) ||
-                    U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType)) {
+                    U_CELL_PRIVATE_MODULE_IS_R4(pInstance->pModule->moduleType)) {
                     // Can't not have a PDP context, deregister entirely
                     errorCode = disconnectNetwork(pInstance, pKeepGoingCallback);
                 } else {
@@ -3324,7 +3324,7 @@ int32_t uCellNetDeepScan(uDeviceHandle_t cellHandle,
         pInstance = pUCellPrivateGetInstance(cellHandle);
         if (pInstance != NULL) {
             errorCodeOrNumber = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
-            if (U_CELL_PRIVATE_MODULE_IS_SARA_R5(pInstance->pModule->moduleType)) {
+            if (U_CELL_PRIVATE_MODULE_IS_R5(pInstance->pModule->moduleType)) {
                 // Make sure the radio is on for this
                 cFunMode = uCellPrivateCFunOne(pInstance);
                 atHandle = pInstance->atHandle;

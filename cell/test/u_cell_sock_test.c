@@ -280,8 +280,9 @@ void changeLinger(void *p)
 static uCellSockTestOption_t gSupportedOptions[] = {
     {
         (1UL << U_CELL_MODULE_TYPE_SARA_R422) | /* Not SARA-R422 or LARA-R6 and on */
-        (1UL << U_CELL_MODULE_TYPE_LARA_R6) |   /* LENA-R8 the read response is empty */
-        (1UL << U_CELL_MODULE_TYPE_LENA_R8),
+        (1UL << U_CELL_MODULE_TYPE_LEXI_R422) |
+        (1UL << U_CELL_MODULE_TYPE_LARA_R6)   |
+        (1UL << U_CELL_MODULE_TYPE_LENA_R8),    /* LENA-R8 the read response is empty */
         U_SOCK_OPT_LEVEL_SOCK, U_SOCK_OPT_REUSEADDR, sizeof(int32_t), compareInt32, changeMod2
     },
     {
@@ -294,6 +295,7 @@ static uCellSockTestOption_t gSupportedOptions[] = {
         (1UL << U_CELL_MODULE_TYPE_SARA_R412M_03B) |
         (1UL << U_CELL_MODULE_TYPE_SARA_R410M_03B) |
         (1UL << U_CELL_MODULE_TYPE_SARA_R422)      |
+        (1UL << U_CELL_MODULE_TYPE_LEXI_R422)      |
         (1UL << U_CELL_MODULE_TYPE_LARA_R6)        |
         (1UL << U_CELL_MODULE_TYPE_LENA_R8),
         U_SOCK_OPT_LEVEL_SOCK, U_SOCK_OPT_BROADCAST, sizeof(int32_t), compareInt32, changeMod2
@@ -304,6 +306,7 @@ static uCellSockTestOption_t gSupportedOptions[] = {
         (1UL << U_CELL_MODULE_TYPE_SARA_R412M_03B) |
         (1UL << U_CELL_MODULE_TYPE_SARA_R410M_03B) |
         (1UL << U_CELL_MODULE_TYPE_SARA_R422)      |
+        (1UL << U_CELL_MODULE_TYPE_LEXI_R422)      |
         (1UL << U_CELL_MODULE_TYPE_LENA_R8)        |
         (1UL << U_CELL_MODULE_TYPE_LEXI_R10),
         U_SOCK_OPT_LEVEL_SOCK, U_SOCK_OPT_REUSEPORT, sizeof(int32_t), compareInt32, changeMod2
@@ -319,8 +322,10 @@ static uCellSockTestOption_t gSupportedOptions[] = {
         (1UL << U_CELL_MODULE_TYPE_SARA_R412M_03B) |
         (1UL << U_CELL_MODULE_TYPE_SARA_R410M_03B) |
         (1UL << U_CELL_MODULE_TYPE_SARA_R422)      |
+        (1UL << U_CELL_MODULE_TYPE_LEXI_R422)      |
         (1UL << U_CELL_MODULE_TYPE_SARA_R5)        |
         (1UL << U_CELL_MODULE_TYPE_SARA_R52)       |
+        (1UL << U_CELL_MODULE_TYPE_LEXI_R52)       |
         (1UL << U_CELL_MODULE_TYPE_LARA_R6)        |
         (1UL << U_CELL_MODULE_TYPE_LENA_R8)        |
         (1UL << U_CELL_MODULE_TYPE_LEXI_R10),
@@ -345,7 +350,8 @@ static uCellSockTestOption_t gSupportedOptions[] = {
         (1UL << U_CELL_MODULE_TYPE_SARA_R412M_02B) |
         (1UL << U_CELL_MODULE_TYPE_SARA_R412M_03B) |
         (1UL << U_CELL_MODULE_TYPE_SARA_R410M_03B) |
-        (1UL << U_CELL_MODULE_TYPE_SARA_R422),
+        (1UL << U_CELL_MODULE_TYPE_SARA_R422)      |
+        (1UL << U_CELL_MODULE_TYPE_LEXI_R422),
         U_SOCK_OPT_LEVEL_TCP, U_SOCK_OPT_TCP_KEEPIDLE, sizeof(int32_t), compareInt32, changeInt32Positive
     },
 };

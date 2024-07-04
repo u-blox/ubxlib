@@ -1079,7 +1079,7 @@ static uint8_t getChannelGnss(const uCellPrivateInstance_t *pInstance)
 {
     uint8_t channel = (uint8_t) pInstance->pModule->defaultMuxChannelGnss;
 
-    if (U_CELL_PRIVATE_MODULE_IS_SARA_R5(pInstance->pModule->moduleType)) {
+    if (U_CELL_PRIVATE_MODULE_IS_R5(pInstance->pModule->moduleType)) {
         // For the SARA-R5 case the CMUX channel for GNSS is different
         // if we are exchanging AT commands on the AUX UART, which is
         // USIO variant 2.

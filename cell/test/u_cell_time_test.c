@@ -409,7 +409,8 @@ U_PORT_TEST_FUNCTION("[cellTime]", "cellTimeBasic")
     U_PORT_TEST_ASSERT(uCellTimeEnable(cellHandle, U_CELL_TIME_MODE_BEST_EFFORT, true,
                                        0, NULL, NULL) < 0);
 
-    // Now pulse mode, where "GPIO4" of the module should be toggled
+    // Now pulse mode, where "GPIO4" (pin 19) of a SARA module should be toggled,
+    // for a LEXI module we choose "GPIO5" (pin 18) since pin 19 doesn't exist there
     U_TEST_PRINT_LINE("testing CellTime pulse mode...");
     gEventCallback = INT_MIN;
     memset(&gEvent, 0xFF, sizeof(gEvent));
@@ -421,7 +422,7 @@ U_PORT_TEST_FUNCTION("[cellTime]", "cellTimeBasic")
     for (size_t x = 0; (y == 0) && !gEvent.synchronised && (x < U_CELL_TIME_TEST_RETRIES + 1); x++) {
         y = uCellTimeEnable(cellHandle, U_CELL_TIME_MODE_PULSE, true, 0,
                             eventCallback, &gEventCallback);
-        if (U_CELL_PRIVATE_MODULE_IS_SARA_R5(pModule->moduleType)) {
+        if (U_CELL_PRIVATE_MODULE_IS_R5(pModule->moduleType)) {
             U_PORT_TEST_ASSERT(y == 0);
             while (!gEvent.synchronised &&
                    !uTimeoutExpiredMs(gTimeoutStop.timeoutStart,
@@ -433,8 +434,12 @@ U_PORT_TEST_FUNCTION("[cellTime]", "cellTimeBasic")
                 U_PORT_TEST_ASSERT(gEventCallback == 0);
                 printAndCheckEvent(&gEvent, true);
 #if defined (U_CFG_TEST_PIN_CELL_GPIO4) && (U_CFG_TEST_PIN_CELL_GPIO4 >= 0)
-                U_TEST_PRINT_LINE("pin %d of this MCU must be connected to the \"GPIO4\" pin of SARA-R5.",
+                U_TEST_PRINT_LINE("pin %d of this MCU must be connected to the time pulse output pin of the module.",
                                   U_CFG_TEST_PIN_CELL_GPIO4);
+                // TODO test that toggling occurred
+#elif defined (U_CFG_TEST_PIN_CELL_TIME_PULSE) && (U_CFG_TEST_PIN_CELL_TIME_PULSE >= 0)
+                U_TEST_PRINT_LINE("pin %d of this MCU must be connected to the time pulse output pin of the module.",
+                                  U_CFG_TEST_PIN_CELL_TIME_PULSE);
                 // TODO test that toggling occurred
 #endif
             }
@@ -460,7 +465,7 @@ U_PORT_TEST_FUNCTION("[cellTime]", "cellTimeBasic")
     for (size_t x = 0; (y == 0) && !gEvent.synchronised && (x < U_CELL_TIME_TEST_RETRIES + 1); x++) {
         y = uCellTimeEnable(cellHandle, U_CELL_TIME_MODE_ONE_SHOT, true, 0,
                             eventCallback, &gEventCallback);
-        if (U_CELL_PRIVATE_MODULE_IS_SARA_R5(pModule->moduleType)) {
+        if (U_CELL_PRIVATE_MODULE_IS_R5(pModule->moduleType)) {
             U_PORT_TEST_ASSERT(y == 0);
             while (!gEvent.synchronised &&
                    !uTimeoutExpiredMs(gTimeoutStop.timeoutStart,
@@ -472,8 +477,12 @@ U_PORT_TEST_FUNCTION("[cellTime]", "cellTimeBasic")
                 U_PORT_TEST_ASSERT(gEventCallback == 0);
                 printAndCheckEvent(&gEvent, true);
 #if defined (U_CFG_TEST_PIN_CELL_GPIO4) && (U_CFG_TEST_PIN_CELL_GPIO4 >= 0)
-                U_TEST_PRINT_LINE("pin %d of this MCU must be connected to the \"GPIO4\" pin of SARA-R5.",
+                U_TEST_PRINT_LINE("pin %d of this MCU must be connected to the time pulse output pin of the module.",
                                   U_CFG_TEST_PIN_CELL_GPIO4);
+                // TODO test that toggling occurred
+#elif defined (U_CFG_TEST_PIN_CELL_TIME_PULSE) && (U_CFG_TEST_PIN_CELL_TIME_PULSE >= 0)
+                U_TEST_PRINT_LINE("pin %d of this MCU must be connected to the time pulse output pin of the module.",
+                                  U_CFG_TEST_PIN_CELL_TIME_PULSE);
                 // TODO test that toggling occurred
 #endif
             }
@@ -493,7 +502,7 @@ U_PORT_TEST_FUNCTION("[cellTime]", "cellTimeBasic")
     // Give this a few goes as sync can fail randomly
     for (size_t x = 0; (y == 0) && !gEvent.synchronised && (x < U_CELL_TIME_TEST_RETRIES + 1); x++) {
         y = uCellTimeSetCallback(cellHandle, timeCallback, &gTimeCallback);
-        if (U_CELL_PRIVATE_MODULE_IS_SARA_R5(pModule->moduleType)) {
+        if (U_CELL_PRIVATE_MODULE_IS_R5(pModule->moduleType)) {
             U_PORT_TEST_ASSERT(y == 0);
             gEventCallback = INT_MIN;
             memset(&gEvent, 0xFF, sizeof(gEvent));
@@ -523,8 +532,12 @@ U_PORT_TEST_FUNCTION("[cellTime]", "cellTimeBasic")
                 U_PORT_TEST_ASSERT(gTimeCallback == 0);
                 printAndCheckTime(&gTime);
 #if defined (U_CFG_TEST_PIN_CELL_GPIO4) && (U_CFG_TEST_PIN_CELL_GPIO4 >= 0)
-                U_TEST_PRINT_LINE("pin %d of this MCU must be connected to the \"GPIO4\" pin of SARA-R5.",
+                U_TEST_PRINT_LINE("pin %d of this MCU must be connected to the  time pulse output pin of the module.",
                                   U_CFG_TEST_PIN_CELL_GPIO4);
+                // TODO test that toggling occurred
+#elif defined (U_CFG_TEST_PIN_CELL_TIME_PULSE) && (U_CFG_TEST_PIN_CELL_TIME_PULSE >= 0)
+                U_TEST_PRINT_LINE("pin %d of this MCU must be connected to the time pulse output pin of the module.",
+                                  U_CFG_TEST_PIN_CELL_TIME_PULSE);
                 // TODO test that toggling occurred
 #endif
             }
@@ -535,18 +548,18 @@ U_PORT_TEST_FUNCTION("[cellTime]", "cellTimeBasic")
     }
     U_PORT_TEST_ASSERT((y < 0) || (gEvent.synchronised));
 
-    // Remove the time callback: should always work, even for non-SARA-R5 modules
+    // Remove the time callback: should always work, even for non-R5 modules
     U_PORT_TEST_ASSERT(uCellTimeSetCallback(cellHandle, NULL, NULL) == 0);
 
 #if defined(U_CFG_TEST_PIN_CELL_EXT_INT) && (U_CFG_TEST_PIN_CELL_EXT_INT >= 0)
     // Add the callback again and test the external-timestamping mode
     U_TEST_PRINT_LINE("testing CellTime external time-stamp mode...");
-    U_TEST_PRINT_LINE("pin %d of this MCU must be connected to the EXT_INT pin of SARA-R5.",
+    U_TEST_PRINT_LINE("pin %d of this MCU must be connected to the EXT_INT pin of the module.",
                       U_CFG_TEST_PIN_CELL_EXT_INT);
     gTimeCallback = INT_MIN;
     memset(&gTime, 0xFF, sizeof(gTime));
     y = uCellTimeSetCallback(cellHandle, timeCallback, &gTimeCallback);
-    if (U_CELL_PRIVATE_MODULE_IS_SARA_R5(pModule->moduleType)) {
+    if (U_CELL_PRIVATE_MODULE_IS_R5(pModule->moduleType)) {
         U_PORT_TEST_ASSERT(y == 0);
         gEventCallback = INT_MIN;
         memset(&gEvent, 0xFF, sizeof(gEvent));
@@ -591,7 +604,7 @@ U_PORT_TEST_FUNCTION("[cellTime]", "cellTimeBasic")
     // Do a deep scan, first with no callback
     U_TEST_PRINT_LINE("performing a deep scan, no callback provided.");
     y = uCellNetDeepScan(cellHandle, NULL, NULL);
-    if (U_CELL_PRIVATE_MODULE_IS_SARA_R5(pModule->moduleType)) {
+    if (U_CELL_PRIVATE_MODULE_IS_R5(pModule->moduleType)) {
         U_TEST_PRINT_LINE("%d cell(s) found.", y);
         U_PORT_TEST_ASSERT(y >= 0);
     } else {
@@ -599,7 +612,7 @@ U_PORT_TEST_FUNCTION("[cellTime]", "cellTimeBasic")
         U_PORT_TEST_ASSERT(y < 0);
     }
 
-    if (U_CELL_PRIVATE_MODULE_IS_SARA_R5(pModule->moduleType)) {
+    if (U_CELL_PRIVATE_MODULE_IS_R5(pModule->moduleType)) {
         // ...and again with a callback, but abort immediately
         U_TEST_PRINT_LINE("adding a callback but aborting the deep scan.");
         gCellInfoCallback = INT_MIN;
@@ -611,7 +624,7 @@ U_PORT_TEST_FUNCTION("[cellTime]", "cellTimeBasic")
         clearCellInfoList(&gpCellInfoList);
     }
 
-    if (U_CELL_PRIVATE_MODULE_IS_SARA_R5(pModule->moduleType)) {
+    if (U_CELL_PRIVATE_MODULE_IS_R5(pModule->moduleType)) {
         // Now do it properly
         U_TEST_PRINT_LINE("performing a deep scan, with a callback and no abort this time with a "
                           "timeout of %d seconds and finding at least one cell.", U_CELL_TIME_TEST_DEEP_SCAN_TIMEOUT_SECONDS);

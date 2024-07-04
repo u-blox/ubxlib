@@ -244,8 +244,8 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqtt")
         U_PORT_TEST_ASSERT(x == 0);
 
         if (U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_MQTT_SECURITY) &&
-            U_CELL_PRIVATE_MODULE_IS_SARA_R4(pModule->moduleType) &&
-            (pModule->moduleType != U_CELL_MODULE_TYPE_SARA_R422) &&
+            U_CELL_PRIVATE_MODULE_IS_R4(pModule->moduleType) &&
+            !U_CELL_PRIVATE_MODULE_IS_R422(pModule->moduleType) &&
             (pModule->moduleType != U_CELL_MODULE_TYPE_SARA_R412M_02B)) {
             // If the module does not permit us to switch off TLS security once it
             // has been switched on (which is the case for SARA-R10M-02B and
@@ -328,8 +328,8 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqtt")
         // Set/get security
         U_TEST_PRINT_LINE("testing getting/setting security...");
         if (uCellMqttIsSecured(cellHandle, NULL)) {
-            if (!U_CELL_PRIVATE_MODULE_IS_SARA_R4(pModule->moduleType) ||
-                (pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R422)) {
+            if (!U_CELL_PRIVATE_MODULE_IS_R4(pModule->moduleType) ||
+                U_CELL_PRIVATE_MODULE_IS_R422(pModule->moduleType)) {
                 // On SARA-R4 modules (excepting SARA-R422) TLS security cannot
                 // be disabled once it is enabled without power-cycling the module.
                 U_PORT_TEST_ASSERT(uCellMqttSetSecurityOff(cellHandle) == 0);
@@ -356,8 +356,8 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqtt")
             }
         }
 
-        if (!U_CELL_PRIVATE_MODULE_IS_SARA_R4(pModule->moduleType) ||
-            (pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R422)) {
+        if (!U_CELL_PRIVATE_MODULE_IS_R4(pModule->moduleType) ||
+            U_CELL_PRIVATE_MODULE_IS_R422(pModule->moduleType)) {
             // Switch security off again before we continue
             U_PORT_TEST_ASSERT(uCellMqttSetSecurityOff(cellHandle) == 0);
             y = uCellMqttIsSecured(cellHandle, &x);
@@ -460,7 +460,7 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqtt")
 
         U_PORT_TEST_ASSERT(uCellNetDisconnect(cellHandle, NULL) == 0);
 
-        if (!U_CELL_PRIVATE_MODULE_IS_SARA_R4(pModule->moduleType)) {
+        if (!U_CELL_PRIVATE_MODULE_IS_R4(pModule->moduleType)) {
             // Initialise the MQTT client again: this should return
             // success but do nothing, so the client ID should be
             // unchanged, even though we have given one.

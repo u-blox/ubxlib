@@ -76,14 +76,15 @@ extern "C" {
 # define U_CELL_PRIVATE_COPS_WAIT_TIME_SECONDS 30
 #endif
 
-/** Return true if the given module type is SARA-R4-xx.
+/** Return true if the given module type is SARA/LEXI-R4-xx.
  */
-#define U_CELL_PRIVATE_MODULE_IS_SARA_R4(moduleType)      \
+#define U_CELL_PRIVATE_MODULE_IS_R4(moduleType)      \
     (((moduleType) == U_CELL_MODULE_TYPE_SARA_R410M_02B) || \
      ((moduleType) == U_CELL_MODULE_TYPE_SARA_R412M_02B) || \
      ((moduleType) == U_CELL_MODULE_TYPE_SARA_R412M_03B) || \
      ((moduleType) == U_CELL_MODULE_TYPE_SARA_R410M_03B) || \
-     ((moduleType) == U_CELL_MODULE_TYPE_SARA_R422))
+     ((moduleType) == U_CELL_MODULE_TYPE_SARA_R422)      || \
+     ((moduleType) == U_CELL_MODULE_TYPE_LEXI_R422))
 
 /** Return true if the given module type is SARA-R41x-xx.
  */
@@ -93,11 +94,25 @@ extern "C" {
      ((moduleType) == U_CELL_MODULE_TYPE_SARA_R412M_03B) || \
      ((moduleType) == U_CELL_MODULE_TYPE_SARA_R410M_03B))
 
-/** Return true if the given module type is SARA-R5xx.
+/** Return true if the given module type is SARA/LEXI-R5xx.
  */
-#define U_CELL_PRIVATE_MODULE_IS_SARA_R5(moduleType)      \
-    (((moduleType) == U_CELL_MODULE_TYPE_SARA_R5) || \
-     ((moduleType) == U_CELL_MODULE_TYPE_SARA_R52))
+#define U_CELL_PRIVATE_MODULE_IS_R5(moduleType)      \
+    (((moduleType) == U_CELL_MODULE_TYPE_SARA_R5)  || \
+     ((moduleType) == U_CELL_MODULE_TYPE_SARA_R52) || \
+     ((moduleType) == U_CELL_MODULE_TYPE_LEXI_R52))
+
+/** Return true if the given module type is SARA/LEXI-R422.
+ */
+#define U_CELL_PRIVATE_MODULE_IS_R422(moduleType)      \
+    (((moduleType) == U_CELL_MODULE_TYPE_SARA_R422) || \
+     ((moduleType) == U_CELL_MODULE_TYPE_LEXI_R422))
+
+/** Return true if the module is LEXI.
+ */
+#define U_CELL_PRIVATE_MODULE_IS_LEXI(moduleType)      \
+    (((moduleType) == U_CELL_MODULE_TYPE_LEXI_R10)  || \
+     ((moduleType) == U_CELL_MODULE_TYPE_LEXI_R422) || \
+     ((moduleType) == U_CELL_MODULE_TYPE_LEXI_R52))
 
 /** Return true if the supported RATS bitmap includes LTE.
  */

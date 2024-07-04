@@ -42,7 +42,7 @@
  * high accuracy.  In other words, the functions are about
  * timING, using an arbitrary time-base, and NOT about absolute
  * clock/calender time.  This API is only currently supported by
- * SARA-R5 modules.
+ * LEXI-R5/SARA-R5 modules.
  *
  * These functions are thread-safe with the proviso that a cellular
  * instance should not be accessed before it has been added or after
@@ -212,10 +212,22 @@ typedef struct {
  * FUNCTIONS: CELLTIME
  * -------------------------------------------------------------- */
 
-/** Enable CellTime, only supported on SARA-R5.  CellTime is about
+/** Enable CellTime, only supported on SARA-R5/LEXI-R5.  CellTime is about
  * using the highly accurate cellular network for timing of hardware,
  * using an arbitrary time-base, it is NOT about absolute clock/calender
  * time (UTC or local).
+ *
+ * IMPORTANT: in the case of SARA-R5 the pins of the cellular module
+ * used to signal time pulse output (in #U_CELL_TIME_MODE_PULSE or
+ * #U_CELL_TIME_MODE_ONE_SHOT mode), receive an EXT_INT input
+ * (in #U_CELL_TIME_MODE_EXT_INT_TIMESTAMP mode) or provide an external
+ * GNSS device connected to the cellular module with a time pulse
+ * input are fixed at pin number/GPIO ID 19 ("GPIO6"),
+ * pin number/GPIO ID 33 ("EXT_INT") and pin number.GPIO ID 46
+ * ("SDIO_CMD") respectively.  HOWEVER in the case of LEXI-R5 there
+ * is no fixed pin for these functions and hence it is up to the
+ * application to configure those pins, as required with calls to
+ * uCellGpioConfigSpecialFunction().
  *
  * If this function returns success it doesn't necessarily mean that
  * the requested CellTime operation has succeeded, since the operation
@@ -228,23 +240,29 @@ typedef struct {
  * first.
  *
  * Any time pulse will appear on pin number/GPIO ID 19, pin name
- * "GPIO6" of the cellular module.  If the mode is
- * #U_CELL_TIME_MODE_PULSE then for SARA-R5xx-00B the pulse width
- * is fixed at 3 ms and the period 1 second while for SARA-R5xx-01B and
- * later the pulse will be of duration #U_CELL_TIME_PULSE_WIDTH_MILLISECONDS
- * and period #U_CELL_TIME_PULSE_PERIOD_SECONDS.  If the mode is
+ * "GPIO6" of SARA-R5, or in the case of LEXI-R5 pin on a pin that
+ * the application selects using uCellGpioConfigSpecialFunction().
+ * If the mode is #U_CELL_TIME_MODE_PULSE then for SARA-R5xx-00B the
+ * pulse width is fixed at 3 ms and the period 1 second while for
+ * SARA-R5xx-01B and later the pulse will be of duration
+ * #U_CELL_TIME_PULSE_WIDTH_MILLISECONDS and period
+ * #U_CELL_TIME_PULSE_PERIOD_SECONDS.  If the mode is
  * #U_CELL_TIME_MODE_EXT_INT_TIMESTAMP then the input pin is
- * the "EXT_INT" pin of the cellular module, pin number/GPIO ID 33.
+ * the "EXT_INT" pin of the cellular module, pin number/GPIO ID 33, or
+ * in the case of LEXI-R5 a pin that the application selects through
+ * calling uCellGpioConfigSpecialFunction().
  *
  * If the GNSS device is external to the cellular module, two additional
- * pins must be connected: pin number/GPIO ID 46, pin name "SDIO_CMD",
- * must be connected to the GNSS device TIMEPULSE output and pin
- * number/GPIO ID 25, pin name "GPIO4", must be conncted to the
- * GNSS device EXTINT output.
+ * pins must be connected: pin number/GPIO ID 46, pin name "SDIO_CMD"
+ * (or if LEXI-R5 then a pin that the application selects through
+ * calling uCellGpioConfigSpecialFunction()), must be connected to the
+ * GNSS device TIMEPULSE output and pin number/GPIO ID 25, pin name "GPIO4",
+ * (or if LEXI-R5 then pin number/GPIO ID 17, still pin name "GPIO4" but
+ * for LEXI), must be conncted to the GNSS device EXTINT output.
  *
- * If uCellGpioConfig() had previously been called to use the pins
- * in question as user-controllable pins, this will override that
- * setting.
+ * Where the pins are fixed, if uCellGpioConfigSpecialFunction() had previously been
+ * called to use the pins in question as user-controllable pins, this
+ * will override that setting.
  *
  * If the GNSS device available to the cellular module is already in
  * use for something else (e.g. used by the GNSS API or by Cell Locate)

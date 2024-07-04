@@ -2012,8 +2012,8 @@ int32_t uCellSockGetHostByName(uDeviceHandle_t cellHandle,
                                    U_CELL_SOCK_DNS_SHOULD_RETRY_MS) ||
                 ((pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_LENA_R8) &&
                  (tries < 2)))) {
-            if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R422) {
-                // SARA-R422 can get upset if UDNSRN is sent very quickly
+            if (U_CELL_PRIVATE_MODULE_IS_R422(pInstance->pModule->moduleType)) {
+                // LEXI/SARA-R422 can get upset if UDNSRN is sent very quickly
                 // after a connection is made so we add a short delay here
                 while (!uTimeoutExpiredMs(pInstance->connectedAt,
                                           U_CELL_SOCK_SARA_R422_DNS_DELAY_MILLISECONDS)) {

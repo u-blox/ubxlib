@@ -66,6 +66,7 @@
 #include "u_cell_cfg.h"
 #include "u_cell_time.h"
 #include "u_cell_time_private.h"
+#include "u_cell_gpio.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -461,7 +462,7 @@ int32_t uCellTimeEnable(uDeviceHandle_t cellHandle,
             ((mode == U_CELL_TIME_MODE_PULSE) || (mode == U_CELL_TIME_MODE_ONE_SHOT) ||
              (mode == U_CELL_TIME_MODE_EXT_INT_TIMESTAMP))) {
             errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
-            if (U_CELL_PRIVATE_MODULE_IS_SARA_R5(pInstance->pModule->moduleType)) {
+            if (U_CELL_PRIVATE_MODULE_IS_R5(pInstance->pModule->moduleType)) {
                 errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
                 pContext = (uCellTimePrivateContext_t *) pInstance->pCellTimeContext;
                 if (pContext == NULL) {
@@ -486,26 +487,35 @@ int32_t uCellTimeEnable(uDeviceHandle_t cellHandle,
                     errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
                     // If required by the mode, configure the module's GPIOs
                     atHandle = pInstance->atHandle;
-                    if ((mode == U_CELL_TIME_MODE_PULSE) || (mode == U_CELL_TIME_MODE_ONE_SHOT)) {
-                        // GPIO ID 19 ("GPIO6") needs to have special function
-                        // "Time pulse output" (22)
-                        errorCode = gpioConfig(atHandle, 19, 22);
-                    } else if (mode == U_CELL_TIME_MODE_EXT_INT_TIMESTAMP) {
-                        // GPIO ID 33 ("EXT_INT") needs to have special function
-                        // "Time stamp of external interrupt" (23)
-                        errorCode = gpioConfig(atHandle, 33, 23);
+                    if (pInstance->pModule->moduleType != U_CELL_MODULE_TYPE_LEXI_R52) {
+                        if ((mode == U_CELL_TIME_MODE_PULSE) || (mode == U_CELL_TIME_MODE_ONE_SHOT)) {
+                            // For SARA-R5 GPIO ID 19 ("GPIO6") needs to have special function
+                            // "Time pulse output" (22)
+                            errorCode = gpioConfig(atHandle, U_CELL_GPIO_NUMBER_TO_GPIO_ID(6), 22);
+                        } else if (mode == U_CELL_TIME_MODE_EXT_INT_TIMESTAMP) {
+                            // For SARA-R5 GPIO ID 33 ("EXT_INT"), needs to have special function
+                            // "Time stamp of external interrupt" (23)
+                            errorCode = gpioConfig(atHandle, 33, 23);
+                        }
                     }
                     if ((errorCode == 0) && !cellTimeOnly && !uCellPrivateGnssInsideCell(pInstance)) {
                         // If we may use GNSS and the GNSS chip is external
                         // to the cellular module then the pins that provide
                         // timing need to be configured
-                        // GPIO ID 46 ("SDIO_CMD"), special function
-                        // "External GNSS time pulse input" (28)
-                        errorCode = gpioConfig(atHandle, 46, 28);
+                        if (pInstance->pModule->moduleType != U_CELL_MODULE_TYPE_LEXI_R52) {
+                            // For SARA-R5 GPIO ID 46 ("SDIO_CMD"), special function "External
+                            // GNSS time pulse input" (28)
+                            errorCode = gpioConfig(atHandle, 46, 28);
+                        }
                         if (errorCode == 0) {
-                            // GPIO ID 25 ("GPIO4"), special function
-                            // "External GNSS time stamp of external interrupt" (29)
-                            errorCode = gpioConfig(atHandle, 25, 29);
+                            // For SARA-R5 GPIO ID 25 ("GPIO4"), for LEXI-R5 GPIO ID 17
+                            // (still "GPIO4"), special function "External GNSS time stamp
+                            // of external interrupt" (29)
+                            if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_LEXI_R52) {
+                                errorCode = gpioConfig(atHandle, U_CELL_GPIO_NUMBER_TO_GPIO_ID_LEXI(4), 29);
+                            } else {
+                                errorCode = gpioConfig(atHandle, U_CELL_GPIO_NUMBER_TO_GPIO_ID(4), 29);
+                            }
                         }
                     }
                     if (errorCode == 0) {
@@ -580,7 +590,7 @@ int32_t uCellTimeDisable(uDeviceHandle_t cellHandle)
         pInstance = pUCellPrivateGetInstance(cellHandle);
         if (pInstance != NULL) {
             errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-            if (U_CELL_PRIVATE_MODULE_IS_SARA_R5(pInstance->pModule->moduleType)) {
+            if (U_CELL_PRIVATE_MODULE_IS_R5(pInstance->pModule->moduleType)) {
                 atHandle = pInstance->atHandle;
                 pContext = (uCellTimePrivateContext_t *) pInstance->pCellTimeContext;
                 if (pContext != NULL) {
@@ -642,7 +652,7 @@ int32_t uCellTimeSetCallback(uDeviceHandle_t cellHandle,
                 errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
             } else {
                 errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
-                if (U_CELL_PRIVATE_MODULE_IS_SARA_R5(pInstance->pModule->moduleType)) {
+                if (U_CELL_PRIVATE_MODULE_IS_R5(pInstance->pModule->moduleType)) {
                     errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
                     if (pContext == NULL) {
                         // This may be called before uCellTimeEnable() so need
@@ -699,7 +709,7 @@ int32_t uCellTimeSyncCellEnable(uDeviceHandle_t cellHandle,
         pInstance = pUCellPrivateGetInstance(cellHandle);
         if ((pInstance != NULL) && (pCell != NULL)) {
             errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
-            if (U_CELL_PRIVATE_MODULE_IS_SARA_R5(pInstance->pModule->moduleType)) {
+            if (U_CELL_PRIVATE_MODULE_IS_R5(pInstance->pModule->moduleType)) {
                 errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
                 pContext = (uCellTimeCellSyncPrivateContext_t *) pInstance->pCellTimeCellSyncContext;
                 if (pContext == NULL) {
@@ -783,7 +793,7 @@ int32_t uCellTimeSyncCellDisable(uDeviceHandle_t cellHandle)
         pInstance = pUCellPrivateGetInstance(cellHandle);
         if (pInstance != NULL) {
             errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-            if (U_CELL_PRIVATE_MODULE_IS_SARA_R5(pInstance->pModule->moduleType)) {
+            if (U_CELL_PRIVATE_MODULE_IS_R5(pInstance->pModule->moduleType)) {
                 pContext = (uCellTimeCellSyncPrivateContext_t *) pInstance->pCellTimeCellSyncContext;
                 if (pContext != NULL) {
                     atHandle = pInstance->atHandle;

@@ -92,6 +92,8 @@ typedef enum {
     U_CELL_MODULE_TYPE_LENA_R8 = 8,
     U_CELL_MODULE_TYPE_SARA_R52 = 9,
     U_CELL_MODULE_TYPE_LEXI_R10 = 10,
+    U_CELL_MODULE_TYPE_LEXI_R422 = 11,
+    U_CELL_MODULE_TYPE_LEXI_R52 = 12,
     // Add any new module types here, before U_CELL_MODULE_TYPE_ANY, assigning
     // them to specific values.
     // IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT: see note above.

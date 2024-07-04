@@ -82,9 +82,15 @@
 #define U_TEST_PRINT_LINE(format, ...) uPortLog(U_TEST_PREFIX format "\n", ##__VA_ARGS__)
 
 #ifndef U_CFG_TEST_GPIO_NAME
-/** The GPIO ID to use when testing.
+/** The GPIO ID to use when testing, SARA version.
  */
 # define U_CFG_TEST_GPIO_NAME U_CELL_GPIO_NUMBER_TO_GPIO_ID(1)
+#endif
+
+#ifndef U_CFG_TEST_GPIO_NAME_LEXI
+/** The GPIO ID to use when testing, LEXI version.
+ */
+# define U_CFG_TEST_GPIO_NAME_LEXI U_CELL_GPIO_NUMBER_TO_GPIO_ID_LEXI(1)
 #endif
 
 /* ----------------------------------------------------------------
@@ -120,6 +126,7 @@ U_PORT_TEST_FUNCTION("[cellGpio]", "cellGpioBasic")
     int32_t resourceCount;
     int32_t x;
     int32_t y;
+    int32_t gpioName = U_CFG_TEST_GPIO_NAME;
 
     // In case a previous test failed
     uCellTestPrivateCleanup(&gHandles);
@@ -138,24 +145,28 @@ U_PORT_TEST_FUNCTION("[cellGpio]", "cellGpioBasic")
     //lint -esym(613, pInstance) Suppress possible use of NULL pointer
     // for pInstance from now on
 
+    if (U_CELL_PRIVATE_MODULE_IS_LEXI(pInstance->pModule->moduleType)) {
+        gpioName = U_CFG_TEST_GPIO_NAME_LEXI;
+    }
+
     U_TEST_PRINT_LINE("setting GPIO ID %d to an output and 1.",
-                      U_CFG_TEST_GPIO_NAME);
-    U_PORT_TEST_ASSERT(uCellGpioConfig(cellHandle, U_CFG_TEST_GPIO_NAME,
+                      gpioName);
+    U_PORT_TEST_ASSERT(uCellGpioConfig(cellHandle, (uCellGpioName_t) gpioName,
                                        true, 1) == 0);
     // Allow GPIO reads to be disabled as they don't work on LENA-R8
-    x = uCellGpioGet(cellHandle, U_CFG_TEST_GPIO_NAME);
-    U_TEST_PRINT_LINE("GPIO ID %d is %d.", U_CFG_TEST_GPIO_NAME, x);
+    x = uCellGpioGet(cellHandle, (uCellGpioName_t) gpioName);
+    U_TEST_PRINT_LINE("GPIO ID %d is %d.", gpioName, x);
     U_PORT_TEST_ASSERT(x == 1);
-    U_TEST_PRINT_LINE("setting GPIO ID %d to 0.", U_CFG_TEST_GPIO_NAME);
-    U_PORT_TEST_ASSERT(uCellGpioSet(cellHandle, U_CFG_TEST_GPIO_NAME, 0) == 0);
-    x = uCellGpioGet(cellHandle, U_CFG_TEST_GPIO_NAME);
-    U_TEST_PRINT_LINE("GPIO ID %d is %d.", U_CFG_TEST_GPIO_NAME, x);
+    U_TEST_PRINT_LINE("setting GPIO ID %d to 0.", gpioName);
+    U_PORT_TEST_ASSERT(uCellGpioSet(cellHandle, (uCellGpioName_t) gpioName, 0) == 0);
+    x = uCellGpioGet(cellHandle, (uCellGpioName_t) gpioName);
+    U_TEST_PRINT_LINE("GPIO ID %d is %d.", gpioName, x);
     U_PORT_TEST_ASSERT(x == 0);
 
     // For toggling the CTS pin we need to know that it is not
     // already in use for flow control and this command is also not
     // supported on SARA-R4, LARA-R6 or LEXI-R10
-    if (!U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType) &&
+    if (!U_CELL_PRIVATE_MODULE_IS_R4(pInstance->pModule->moduleType) &&
         (pInstance->pModule->moduleType != U_CELL_MODULE_TYPE_LARA_R6) &&
         (pInstance->pModule->moduleType != U_CELL_MODULE_TYPE_LEXI_R10) &&
         !uCellInfoIsCtsFlowControlEnabled(cellHandle)) {

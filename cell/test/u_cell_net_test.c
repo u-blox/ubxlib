@@ -765,7 +765,7 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetScanRegActDeact")
     U_TEST_PRINT_LINE("deactivating context...");
     U_PORT_TEST_ASSERT(uCellNetDeactivate(cellHandle, NULL) == 0);
     if (U_CELL_PRIVATE_RAT_IS_EUTRAN(rat) ||
-        U_CELL_PRIVATE_MODULE_IS_SARA_R4(pModule->moduleType)) {
+        U_CELL_PRIVATE_MODULE_IS_R4(pModule->moduleType)) {
         // If we were originally on LTE, or if this is a SARA-R4
         // we will now be deregistered, so register again
         gTimeoutStop.timeoutStart = uTimeoutStart();

@@ -396,7 +396,7 @@ int32_t uCellFileRead(uDeviceHandle_t cellHandle,
                 }
                 uAtClientCommandStop(atHandle);
                 // Grab the response
-                if (U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType)) {
+                if (U_CELL_PRIVATE_MODULE_IS_R4(pInstance->pModule->moduleType)) {
                     // SARA-R4 only puts \n before the
                     // response, not \r\n as it should
                     uAtClientResponseStart(atHandle, "\n+URDFILE:");
@@ -553,7 +553,7 @@ int32_t uCellFileBlockRead(uDeviceHandle_t cellHandle,
                     uAtClientWriteInt(atHandle, (int32_t) dataSize);
                     uAtClientCommandStop(atHandle);
                     // Grab the response
-                    if (U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType)) {
+                    if (U_CELL_PRIVATE_MODULE_IS_R4(pInstance->pModule->moduleType)) {
                         // SARA-R4 only puts \n before the
                         // response, not \r\n as it should
                         uAtClientResponseStart(atHandle, "\n+URDBLOCK:");

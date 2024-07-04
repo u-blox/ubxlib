@@ -916,7 +916,7 @@ static int32_t setRatSaraRx(uCellPrivateInstance_t *pInstance,
     uAtClientHandle_t atHandle = pInstance->atHandle;
     int32_t cFunMode = -1;
 
-    if (U_CELL_PRIVATE_MODULE_IS_SARA_R5(pInstance->pModule->moduleType)) {
+    if (U_CELL_PRIVATE_MODULE_IS_R5(pInstance->pModule->moduleType)) {
         // For SARA-R5 the module has to be in state AT+CFUN=0
         cFunMode = uCellPrivateCFunGet(pInstance);
         if (cFunMode != 0) {
@@ -979,7 +979,7 @@ static int32_t setRatRankSaraRx(uCellPrivateInstance_t *pInstance,
         }
     }
 
-    if (U_CELL_PRIVATE_MODULE_IS_SARA_R5(pInstance->pModule->moduleType)) {
+    if (U_CELL_PRIVATE_MODULE_IS_R5(pInstance->pModule->moduleType)) {
         // For SARA-R5 the module has to be in state AT+CFUN=0
         cFunMode = uCellPrivateCFunGet(pInstance);
         if (cFunMode != 0) {

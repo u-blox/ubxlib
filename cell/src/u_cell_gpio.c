@@ -68,6 +68,24 @@
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
+// Configure a GPIO.
+static int32_t config(uAtClientHandle_t atHandle, uCellGpioName_t gpioId,
+                      int32_t function, int32_t level)
+{
+    uAtClientLock(atHandle);
+    uAtClientCommandStart(atHandle, "AT+UGPIOC=");
+    // Write GPIO ID
+    uAtClientWriteInt(atHandle, (int32_t) gpioId);
+    // Write function
+    uAtClientWriteInt(atHandle, function);
+    if (level >= 0) {
+        // Write initial output value
+        uAtClientWriteInt(atHandle, level);
+    }
+    uAtClientCommandStopReadResponse(atHandle);
+    return uAtClientUnlock(atHandle);
+}
+
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -78,7 +96,6 @@ int32_t uCellGpioConfig(uDeviceHandle_t cellHandle, uCellGpioName_t gpioId,
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
     uCellPrivateInstance_t *pInstance;
-    uAtClientHandle_t atHandle;
 
     if (gUCellPrivateMutex != NULL) {
 
@@ -86,20 +103,32 @@ int32_t uCellGpioConfig(uDeviceHandle_t cellHandle, uCellGpioName_t gpioId,
 
         pInstance = pUCellPrivateGetInstance(cellHandle);
         if ((pInstance != NULL) && ((int32_t) gpioId >= 0)) {
-            atHandle = pInstance->atHandle;
+            errorCode = config(pInstance->atHandle, gpioId,
+                               isOutput ? 0 : 1,
+                               isOutput ? level : -1);
+        }
 
-            uAtClientLock(atHandle);
-            uAtClientCommandStart(atHandle, "AT+UGPIOC=");
-            // Write GPIO ID.
-            uAtClientWriteInt(atHandle, (int32_t) gpioId);
-            // Write GPIO direction.
-            uAtClientWriteInt(atHandle, isOutput ? 0 : 1);
-            if (isOutput) {
-                // Write initial output value
-                uAtClientWriteInt(atHandle, level);
-            }
-            uAtClientCommandStopReadResponse(atHandle);
-            errorCode = uAtClientUnlock(atHandle);
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return errorCode;
+}
+
+// Configure a pin of a cellular module to have a special function.
+int32_t uCellGpioConfigSpecialFunction(uDeviceHandle_t cellHandle,
+                                       uCellGpioName_t gpioId,
+                                       uCellGpioSpecialFunction_t specialFunction)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    uCellPrivateInstance_t *pInstance;
+
+    if (gUCellPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        pInstance = pUCellPrivateGetInstance(cellHandle);
+        if ((pInstance != NULL) && ((int32_t) gpioId >= 0)) {
+            errorCode = config(pInstance->atHandle, gpioId, specialFunction, -1);
         }
 
         U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);

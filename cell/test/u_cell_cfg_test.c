@@ -136,9 +136,13 @@
  * VARIABLES
  * -------------------------------------------------------------- */
 
+#ifndef U_CELL_CFG_TEST_CELL_DISABLE_MNO_PROFILE
+
 /** Used for keepGoingCallback() timeout.
  */
 static uTimeoutStop_t gTimeoutStop;
+
+#endif
 
 /** The GNSS profile bit map.
  */
@@ -151,6 +155,8 @@ static uCellTestPrivate_t gHandles = U_CELL_TEST_PRIVATE_DEFAULTS;
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
+
+#ifndef U_CELL_CFG_TEST_CELL_DISABLE_MNO_PROFILE
 
 // Callback function for the cellular connection process
 static bool keepGoingCallback(uDeviceHandle_t unused)
@@ -166,6 +172,8 @@ static bool keepGoingCallback(uDeviceHandle_t unused)
 
     return keepGoing;
 }
+
+#endif
 
 // Read, change and check band mask for the given RAT
 static void testBandMask(uDeviceHandle_t cellHandle,
@@ -224,7 +232,7 @@ static void testBandMask(uDeviceHandle_t cellHandle,
 #endif
         U_PORT_TEST_ASSERT(!uCellPwrRebootIsRequired(cellHandle));
         // For SARA-R5 we can only read it back if it is the current RAT
-        if ((!U_CELL_PRIVATE_MODULE_IS_SARA_R5(moduleType)) ||
+        if ((!U_CELL_PRIVATE_MODULE_IS_R5(moduleType)) ||
             (uCellCfgGetRatRank(cellHandle, rat) == 0)) {
             U_TEST_PRINT_LINE("reading new band mask for %s...",
                               pRatString);
@@ -718,6 +726,8 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgSetGetRatRank")
     U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
 
+#ifndef U_CELL_CFG_TEST_CELL_DISABLE_MNO_PROFILE
+
 /** Test getting/setting MNO profile.
  */
 U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgGetSetMnoProfile")
@@ -772,8 +782,8 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgGetSetMnoProfile")
             mnoProfile = 100;
         }
     } else {
-        if (pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R422) {
-            // SARA-R422 doesn't support setting MNO profile 0
+        if (U_CELL_PRIVATE_MODULE_IS_R422(pModule->moduleType)) {
+            // LEXI/SARA-R422 doesn't support setting MNO profile 0
             // so in this case use 90 (global)
             mnoProfile = 90;
         } else {
@@ -822,6 +832,8 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgGetSetMnoProfile")
     U_TEST_PRINT_LINE("we have leaked %d resources(s).", resourceCount);
     U_PORT_TEST_ASSERT(resourceCount <= 0);
 }
+
+#endif // #ifndef U_CELL_CFG_TEST_CELL_DISABLE_MNO_PROFILE
 
 /** Test UDCONF.
  */

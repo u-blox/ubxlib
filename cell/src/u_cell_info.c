@@ -761,9 +761,11 @@ int32_t uCellInfoRefreshRadioParameters(uDeviceHandle_t cellHandle)
                         switch (pInstance->pModule->moduleType) {
                             case U_CELL_MODULE_TYPE_SARA_R5:
                             case U_CELL_MODULE_TYPE_SARA_R52:
+                            case U_CELL_MODULE_TYPE_LEXI_R52:
                                 errorCode = getRadioParamsUcged2SaraR5(atHandle, pRadioParameters);
                                 break;
                             case U_CELL_MODULE_TYPE_SARA_R422:
+                            case U_CELL_MODULE_TYPE_LEXI_R422:
                                 errorCode = getRadioParamsUcged2SaraR422(atHandle, pRadioParameters);
                                 break;
                             case U_CELL_MODULE_TYPE_LARA_R6:

@@ -1280,8 +1280,8 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSaving3gpp")
         U_PORT_TEST_ASSERT((rat == U_CELL_NET_RAT_LTE) || (rat == U_CELL_NET_RAT_CATM1) ||
                            (rat == U_CELL_NET_RAT_NB1));
 
-        if (pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R422) {
-            // SARA-R422 does not re-enter 3GPP power saving unless there has been
+        if (U_CELL_PRIVATE_MODULE_IS_R422(pModule->moduleType)) {
+            // LEXI/SARA-R422 does not re-enter 3GPP power saving unless there has been
             // an RRC connection/disconnection, so do a DNS lookup to stimulate that
             U_PORT_TEST_ASSERT(uCellSockGetHostByName(cellHandle,
                                                       U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME,
@@ -1322,8 +1322,8 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSaving3gpp")
         U_PORT_TEST_ASSERT((rat == U_CELL_NET_RAT_LTE) || (rat == U_CELL_NET_RAT_CATM1) ||
                            (rat == U_CELL_NET_RAT_NB1));
 
-        if (pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R422) {
-            // SARA-R422 does not re-enter 3GPP power saving unless there has been
+        if (U_CELL_PRIVATE_MODULE_IS_R422(pModule->moduleType)) {
+            // LEXI/SARA-R422 does not re-enter 3GPP power saving unless there has been
             // an RRC connection/disconnection, so do a DNS lookup to stimulate that
             U_PORT_TEST_ASSERT(uCellSockGetHostByName(cellHandle,
                                                       U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME,

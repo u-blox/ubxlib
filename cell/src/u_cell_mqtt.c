@@ -496,7 +496,7 @@ static void UUMQTTC_UUMQTTSNC_urc(uAtClientHandle_t atHandle,
             uAtClientReadString(atHandle, (char *) pUrcStatus->topicNameShort,
                                 sizeof(pUrcStatus->topicNameShort), false);
         }
-        if (U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType)) {
+        if (U_CELL_PRIVATE_MODULE_IS_R4(pInstance->pModule->moduleType)) {
             // On SARA-R4, 0 to 2 mean success
             if ((urcParam1 >= 0) && (urcParam1 <= 2) &&
                 (urcParam2 >= 0)) {
@@ -803,7 +803,7 @@ static void UUMQTT_urc(uAtClientHandle_t atHandle,
         // Sort out if this is "+UUMQTTC:"/"+UUMQTTSNC:"
         // or "+UUMQTTx:" or [SARA-R4 only] "+UUMQTTCM:"
         if (uAtClientReadBytes(atHandle, bytes, sizeof(bytes), true) == sizeof(bytes)) {
-            if (U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType)) {
+            if (U_CELL_PRIVATE_MODULE_IS_R4(pInstance->pModule->moduleType)) {
                 if (bytes[0] == 'C') {
                     // Either "+UUMQTTC" or "+UUMQTTCM"
                     if (bytes[1] == 'M') {
@@ -1983,7 +1983,7 @@ static int32_t readMessage(const uCellPrivateInstance_t *pInstance,
                                U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
             U_ASSERT(pUrcMessage != NULL);
             // For the old-style SARA-R4 interface we need a URC capture
-            U_ASSERT(U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType));
+            U_ASSERT(U_CELL_PRIVATE_MODULE_IS_R4(pInstance->pModule->moduleType));
             pUrcMessage->messageRead = false;
             pUrcMessage->pTopicNameStr = pTopicNameStr;
             pUrcMessage->topicNameSizeBytes = (int32_t) topicNameSizeBytes;
@@ -2220,12 +2220,12 @@ int32_t uCellMqttInit(uDeviceHandle_t cellHandle, const char *pBrokerNameStr,
                     pContext->numTries = U_CELL_MQTT_RETRIES_DEFAULT + 1;
                     pContext->mqttSn = mqttSn;
                     pInstance->pMqttContext = pContext;
-                    if (U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType)) {
+                    if (U_CELL_PRIVATE_MODULE_IS_R4(pInstance->pModule->moduleType)) {
                         // SARA-R4 requires a pUrcMessage as well
                         pContext->pUrcMessage = (uCellMqttUrcMessage_t *) pUPortMalloc(sizeof(*(pContext->pUrcMessage)));
                     }
                     if ((pContext->pUrcMessage != NULL) ||
-                        !U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType)) {
+                        !U_CELL_PRIVATE_MODULE_IS_R4(pInstance->pModule->moduleType)) {
                         atHandle = pInstance->atHandle;
                         // Deal with the broker name string
                         // Allocate space to fiddle with the
@@ -2525,7 +2525,7 @@ int32_t uCellMqttGetLocalPort(uDeviceHandle_t cellHandle)
                 }
             }
             if ((errorCodeOrPort < 0) &&
-                U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType)) {
+                U_CELL_PRIVATE_MODULE_IS_R4(pInstance->pModule->moduleType)) {
                 // SARA-R4 doesn't respond with a port number if the
                 // port number is just the default one.
                 errorCodeOrPort = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;

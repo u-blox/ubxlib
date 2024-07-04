@@ -34,6 +34,8 @@ properties:
             - "U_CELL_MODULE_TYPE_LENA_R8"
             - "U_CELL_MODULE_TYPE_SARA_R52"
             - "U_CELL_MODULE_TYPE_LEXI_R10"
+            - "U_CELL_MODULE_TYPE_LEXI_R422"
+            - "U_CELL_MODULE_TYPE_LEXI_R52"
             # Add any new module types here, before U_CELL_MODULE_TYPE_ANY
             - "U_CELL_MODULE_TYPE_ANY"
 # pinEnablePower

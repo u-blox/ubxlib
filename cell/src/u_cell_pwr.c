@@ -232,7 +232,9 @@ static const char *gpModuleNames[] = {"SARA-U2",
                                       "LARA-R6",
                                       "LENA-R8",
                                       "SARA-R52",
-                                      "LEXI-R10"
+                                      "LEXI-R10",
+                                      "LEXI-R422",
+                                      "LEXI-R52"
                                      };
 
 /** The PWR_ON pin pulse durations, in milliseconds, to be
@@ -938,7 +940,7 @@ static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance,
 
     if (success &&
         U_CELL_PRIVATE_HAS(pInstance->pModule, U_CELL_PRIVATE_FEATURE_UCGED) &&
-        (U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType) ||
+        (U_CELL_PRIVATE_MODULE_IS_R4(pInstance->pModule->moduleType) ||
          (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_LARA_R6) ||
          (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_LEXI_R10))) {
         // SARA-R4, LARA-R6, and LEXI-R10 only: switch on the right UCGED mode
@@ -1011,7 +1013,7 @@ static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance,
     }
 
     if (uAtClientWakeUpHandlerIsSet(atHandle) &&
-        (U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType) ||
+        (U_CELL_PRIVATE_MODULE_IS_R4(pInstance->pModule->moduleType) ||
          pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_LENA_R8)) {
         // SARA-R4 doesn't support modes 1, 2 or 3 but
         // does support the functionality of mode 1
@@ -1093,7 +1095,7 @@ static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance,
             uCellPrivateSetDeepSleepState(pInstance);
         }
         if (success &&
-            U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType)) {
+            U_CELL_PRIVATE_MODULE_IS_R4(pInstance->pModule->moduleType)) {
             // For SARA-R4, whether the E-DRX URC is on or not does not
             // survive a restart, so need to set it up again here
             success = (setEDrxUrc(pInstance) == 0);
@@ -2566,7 +2568,7 @@ int32_t  uCellPwrSetRequested3gppPowerSaving(uDeviceHandle_t cellHandle,
                 errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
                 // Before we start...
                 if (onNotOff &&
-                    U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType)) {
+                    U_CELL_PRIVATE_MODULE_IS_R4(pInstance->pModule->moduleType)) {
                     // For SARA-R4, the default value of psm_ver will
                     // cause the module to enter 3GPP sleep even
                     // without the network's agreement.  This is not
@@ -2604,7 +2606,7 @@ int32_t  uCellPwrSetRequested3gppPowerSaving(uDeviceHandle_t cellHandle,
                                                    activeTimeSeconds,
                                                    periodicWakeupSeconds);
                     if (errorCode == 0) {
-                        if (U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType) &&
+                        if (U_CELL_PRIVATE_MODULE_IS_R4(pInstance->pModule->moduleType) &&
                             ((onNotOff != onNotOffPrevious) ||
                              (activeTimeSeconds != activeTimeSecondsPrevious) ||
                              (periodicWakeupSeconds != periodicWakeupSecondsPrevious))) {
@@ -2847,7 +2849,7 @@ int32_t uCellPwrSetRequestedEDrx(uDeviceHandle_t cellHandle,
                 (!onNotOff || uAtClientWakeUpHandlerIsSet(atHandle))) {
                 // SARA-R4 won't let E-DRX be configured when it is connected
                 errorCode = (int32_t) U_CELL_ERROR_CONNECTED;
-                if (!U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType) ||
+                if (!U_CELL_PRIVATE_MODULE_IS_R4(pInstance->pModule->moduleType) ||
                     !uCellPrivateIsRegistered(pInstance)) {
                     errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
                     // Before we start...
@@ -2916,7 +2918,7 @@ int32_t uCellPwrSetRequestedEDrx(uDeviceHandle_t cellHandle,
                         uAtClientCommandStopReadResponse(atHandle);
                         errorCode = uAtClientUnlock(atHandle);
                         if ((errorCode == 0) &&
-                            (U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType) ||
+                            (U_CELL_PRIVATE_MODULE_IS_R4(pInstance->pModule->moduleType) ||
                              pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_LEXI_R10)) {
                             pInstance->rebootIsRequired = true;
                         }

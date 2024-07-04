@@ -44,11 +44,12 @@
  * -------------------------------------------------------------- */
 
 // For u-blox internal testing only
-// Note: SARA-R422 sometimes returns "+CME ERROR: SEC busy" to security
+// Note: LEXI/SARA-R422 sometimes returns "+CME ERROR: SEC busy" to security
 // operations when it has just powered-on, which is the case when we're
 // running this example during regression testing, hence don't check
-// the outcome for SARA-R422.
-#if defined(U_PORT_TEST_ASSERT) && (U_CFG_TEST_CELL_MODULE_TYPE != U_CELL_MODULE_TYPE_SARA_R422)
+// the outcome for LEXI/SARA-R422.
+#if defined(U_PORT_TEST_ASSERT) && (U_CFG_TEST_CELL_MODULE_TYPE != U_CELL_MODULE_TYPE_SARA_R422) && \
+    (U_CFG_TEST_CELL_MODULE_TYPE != U_CELL_MODULE_TYPE_LEXI_R422)
 # define EXAMPLE_FINAL_STATE(x) U_PORT_TEST_ASSERT(x);
 #else
 # define EXAMPLE_FINAL_STATE(x)
