@@ -1,5 +1,11 @@
-# Upcoming Changes In Release 1.5, End July 2024
+# Upcoming Changes In Release 1.5, End July 2024 (Updated)
 In the 1.5 release of `ubxlib`, due end July 2024, we would like to inform you of the removal of two platforms and we will also make a number of improvements; these changes are described below.
+
+Note that the following items were _originally_ planned to form part of release 1.5 but have now been moved to a later release:
+
+- New platform: IRIS-W1 (NXP MCUXpresso): the NXP MCU in question, MCXN947, will be supported by Zephyr release 3.7.0 and hence we will provide support for this MCU through Zephyr once Zephyr have released 3.7.0 (expected end July) and we have successfully been able to test our integration with that Zephyr release.
+- Wi-Fi calibration data: support will be provided for downloading Wi-Fi calibration data to short-range modules in `ubxlib` release 1.6.
+- Firmware update for NORA-W36, u-connectExpress 2nd generation: support will be provided for downloading u-connectExpress FW to the NORA-W36 module in a later release of `ubxlib`.
 
 As always, we welcome your feedback on the road-map of features/improvements to `ubxlib`: simply post something in the issues list of this repo and we will respond.
 
@@ -15,23 +21,14 @@ We continue to support Arduino through [port/platform/platformio](/port/platform
 
 We continue to support nRF52/nRF53 through what is now the Nordic standard nRF Connect SDK (i.e. Zephyr 3). If you use `ubxlib` with nRF52/nRF53 please move to nRF Connect.
 
-# Firmware Update For NORA-W36, u-connectExpress 2nd Generation
-Support will be provided for downloading u-connextExpress FW to the NORA-W36 module.
-
 # Chunked HTTP Client API
 The HTTP Client API will be extended to permit the MCU to receive an HTTP file in chunks rather than all at once.
 
 # BLE Pairing And Bonding
 Support will be provided for pairing and bonding BLE-capable short-range modules.
 
-# New Platform: IRIS-W1 (NXP MCUXpresso)
-Support will be provided for running `ubxlib` inside the new IRIS-W1 short-range module.
-
 # Testing Non-Nordic Zephyr Platforms
 Zephyr platforms other than Nordic nRF52/nRF53 will be added inside the `ubxlib` test system, e.g. STM32.
-
-# Wi-Fi Calibration Data
-Support will be provided for downloading Wi-Fi calibration data to short-range modules.
 
 # New Cellular Modules LEXI-R10, LEXI-R422, LEXI-R520, SARA-R520
 Support will be included for the new cellular LEXI-R series modules and SARA-R520 module.
