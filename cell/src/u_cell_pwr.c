@@ -1331,12 +1331,13 @@ static uCellModuleType_t identifyCellModuleType(uDeviceHandle_t cellHandle)
 static int32_t modulePwrOnPinControl(uCellPrivateInstance_t *pInstance,
                                      bool (*pKeepGoingCallback) (uDeviceHandle_t))
 {
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
     int32_t platformError = 0;
     uDeviceHandle_t cellHandle = pInstance->cellHandle;
 
     // Check if the PWR_ON pin is available.
     if (pInstance->pinPwrOn >= 0) {
+        errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
         // if the powerOnPullMs is non-negative, it means
         // that we are not going to have retries in the power-
         // cycle of the module.
