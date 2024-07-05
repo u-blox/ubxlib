@@ -838,14 +838,15 @@ static int32_t setRatRankLexiR10(uCellPrivateInstance_t *pInstance,
 }
 
 /* ----------------------------------------------------------------
- * STATIC FUNCTIONS: SARA-R4/R5/R6 RAT SETTING/GETTING BEHAVIOUR
+ * STATIC FUNCTIONS: LEXI, SARA-R4/R5/R6 OR LENA-R8 RAT SETTING/GETTING
  * -------------------------------------------------------------- */
 
 // Get the radio access technology that is being used by
-// the cellular module at the given rank, SARA-R4/R5/R6/LENA-R8 style.
+// the cellular module at the given rank, SARA or LEXI R4/R5/R6
+// or LENA-R8 style.
 // Note: gUCellPrivateMutex should be locked before this is called.
-static uCellNetRat_t getRatSaraRx(const uCellPrivateInstance_t *pInstance,
-                                  int32_t rank)
+static uCellNetRat_t getRatRx(const uCellPrivateInstance_t *pInstance,
+                              int32_t rank)
 {
     int32_t errorOrRat = (int32_t) U_CELL_ERROR_AT;
     uAtClientHandle_t atHandle = pInstance->atHandle;
@@ -879,10 +880,11 @@ static uCellNetRat_t getRatSaraRx(const uCellPrivateInstance_t *pInstance,
     return (uCellNetRat_t) errorOrRat;
 }
 
-// Get the rank at which the given RAT is being used, SARA-R4/R5/R6 style.
+// Get the rank at which the given RAT is being used, LEXI or SARA R4/R5/R6
+// or LENA-R8 style.
 // Note: gUCellPrivateMutex should be locked before this is called.
-static int32_t getRatRankSaraRx(const uCellPrivateInstance_t *pInstance,
-                                uCellNetRat_t rat)
+static int32_t getRatRankRx(const uCellPrivateInstance_t *pInstance,
+                            uCellNetRat_t rat)
 {
     int32_t errorCodeOrRank = (int32_t) U_CELL_ERROR_AT;
     uAtClientHandle_t atHandle = pInstance->atHandle;
@@ -907,10 +909,10 @@ static int32_t getRatRankSaraRx(const uCellPrivateInstance_t *pInstance,
     return errorCodeOrRank;
 }
 
-// Set RAT SARA-R4/R5/R6 stylee.
+// Set RAT, LEXI or SARA-R4/R5/R6 or LENA-R8 style.
 // Note: gUCellPrivateMutex should be locked before this is called.
-static int32_t setRatSaraRx(uCellPrivateInstance_t *pInstance,
-                            uCellNetRat_t rat)
+static int32_t setRatRx(uCellPrivateInstance_t *pInstance,
+                        uCellNetRat_t rat)
 {
     int32_t errorCode;
     uAtClientHandle_t atHandle = pInstance->atHandle;
@@ -941,10 +943,10 @@ static int32_t setRatSaraRx(uCellPrivateInstance_t *pInstance,
     return errorCode;
 }
 
-// Set RAT rank SARA-R4/R5/R6 stylee.
+// Set RAT, rank LEXI or SARA R4/R5/R6 or LENA-R8 style.
 // Note: gUCellPrivateMutex should be locked before this is called.
-static int32_t setRatRankSaraRx(uCellPrivateInstance_t *pInstance,
-                                uCellNetRat_t rat, int32_t rank)
+static int32_t setRatRankRx(uCellPrivateInstance_t *pInstance,
+                            uCellNetRat_t rat, int32_t rank)
 {
     int32_t errorCode;
     uAtClientHandle_t atHandle = pInstance->atHandle;
@@ -958,7 +960,7 @@ static int32_t setRatRankSaraRx(uCellPrivateInstance_t *pInstance,
 
     // Get the existing RATs
     for (size_t x = 0; x < sizeof(rats) / sizeof(rats[0]); x++) {
-        rats[x] = (int32_t) getRatSaraRx(pInstance, (int32_t) x);
+        rats[x] = (int32_t) getRatRx(pInstance, (int32_t) x);
         if (rats[x] == (int32_t) U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED) {
             break;
         }
@@ -1658,7 +1660,7 @@ int32_t uCellCfgSetRat(uDeviceHandle_t cellHandle,
                     errorCode = setRatLexiR10(pInstance, rat);
                 } else {
                     // Do the mode change
-                    errorCode = setRatSaraRx(pInstance, rat);
+                    errorCode = setRatRx(pInstance, rat);
                 }
                 if (errorCode == 0) {
                     pInstance->rebootIsRequired = true;
@@ -1706,7 +1708,7 @@ int32_t uCellCfgSetRatRank(uDeviceHandle_t cellHandle,
                 } else if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_LEXI_R10) {
                     errorCode = setRatRankLexiR10(pInstance, rat, rank);
                 } else {
-                    errorCode = setRatRankSaraRx(pInstance, rat, rank);
+                    errorCode = setRatRankRx(pInstance, rat, rank);
                 }
                 if (errorCode == 0) {
                     pInstance->rebootIsRequired = true;
@@ -1748,7 +1750,7 @@ uCellNetRat_t uCellCfgGetRat(uDeviceHandle_t cellHandle,
             } else if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_LEXI_R10) {
                 errorCodeOrRat = (int32_t) getRatLexiR10(pInstance, rank);
             } else {
-                errorCodeOrRat = (int32_t) getRatSaraRx(pInstance, rank);
+                errorCodeOrRat = (int32_t) getRatRx(pInstance, rank);
             }
         }
 
@@ -1784,7 +1786,7 @@ int32_t uCellCfgGetRatRank(uDeviceHandle_t cellHandle,
             } else if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_LEXI_R10) {
                 errorCodeOrRank = (int32_t) getRatRankLexiR10(pInstance, rat);
             } else {
-                errorCodeOrRank = (int32_t) getRatRankSaraRx(pInstance, rat);
+                errorCodeOrRank = (int32_t) getRatRankRx(pInstance, rat);
             }
 
             if (errorCodeOrRank >= 0) {
