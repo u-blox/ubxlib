@@ -106,7 +106,6 @@ K_MEM_PARTITION_DEFINE(chunk0_reloc, exe_chunk_0, sizeof(exe_chunk_0),
 typedef struct {
     struct k_thread *pThread;
     k_thread_stack_t *pStack;
-    void *pStackAllocation;
     size_t stackSize;
     bool isAllocated;
 } uPortOsThreadInstance_t;
@@ -126,7 +125,7 @@ static volatile int32_t gResourceAllocCount = 0;
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-static uPortOsThreadInstance_t *getNewThreadInstance(size_t stackSizeBytes)
+static uPortOsThreadInstance_t *pGetNewThreadInstance(size_t stackSizeBytes)
 {
     uPortOsThreadInstance_t *threadPtr = NULL;
     int32_t i = 0;
@@ -136,7 +135,7 @@ static uPortOsThreadInstance_t *getNewThreadInstance(size_t stackSizeBytes)
             //Free if previously used instance
             if (threadPtr->stackSize > 0) {
                 k_free(threadPtr->pThread);
-                k_free(threadPtr->pStackAllocation);
+                k_free(threadPtr->pStack);
             }
 
             threadPtr->pThread = (struct k_thread *)k_malloc(sizeof(struct k_thread));
@@ -156,23 +155,25 @@ static uPortOsThreadInstance_t *getNewThreadInstance(size_t stackSizeBytes)
             // since then only a small MPU guard region is added at the top of the stack.
             // This decreases the stack alignment requirement to 32 bytes.
             //
-            // For the above reason the code below will use the Z_KERNEL_STACK_xx defines
-            // instead of Z_THREAD_STACK_xx.
+            // For the above reason the code below will use K_KERNEL_STACK_LEN()
 
             size_t stackAllocSize;
             // Other architectures may have other alignment requirements so just add
             // a simple check that we don't waste a huge amount dynamic memory due to
             // aligment.
             U_ASSERT(Z_KERNEL_STACK_OBJ_ALIGN <= 512);
-            // Z_KERNEL_STACK_SIZE_ADJUST() will add extra space that Zephyr may require and
-            // to make sure correct allignment we allocate Z_KERNEL_STACK_OBJ_ALIGN extra.
-            stackAllocSize = Z_KERNEL_STACK_OBJ_ALIGN + Z_KERNEL_STACK_SIZE_ADJUST(stackSizeBytes);
-            threadPtr->pStackAllocation = k_malloc(stackAllocSize);
-            // Do the stack alignment
-            threadPtr->pStack = (k_thread_stack_t *)ROUND_UP(threadPtr->pStackAllocation,
-                                                             Z_KERNEL_STACK_OBJ_ALIGN);
 
-            if (threadPtr->pThread && threadPtr->pStackAllocation) {
+            // K_KERNEL_STACK_LEN() will add extra space that Zephyr may require.
+            // TODO: in the future we could use k_thread_stack_alloc() here and drop
+            // the need for K_KERNEL_STACK_LEN()
+#if KERNEL_VERSION_NUMBER >= ZEPHYR_VERSION(3,7,0)
+            stackAllocSize = K_KERNEL_STACK_LEN(stackSizeBytes);
+#else
+            stackAllocSize = Z_KERNEL_STACK_LEN(stackSizeBytes);
+#endif
+            threadPtr->pStack = k_aligned_alloc(Z_KERNEL_STACK_OBJ_ALIGN, stackAllocSize);
+
+            if (threadPtr->pThread && threadPtr->pStack) {
                 memset(threadPtr->pThread, 0, sizeof(struct k_thread));
                 threadPtr->stackSize = stackSizeBytes;
                 threadPtr->isAllocated = true;
@@ -185,9 +186,9 @@ static uPortOsThreadInstance_t *getNewThreadInstance(size_t stackSizeBytes)
     } else if (threadPtr->pThread == NULL || threadPtr->pStack == NULL) {
         uPortLogF("Unable to allocate memory for thread with stack size %d\n", stackSizeBytes);
         k_free(threadPtr->pThread);
-        k_free(threadPtr->pStackAllocation);
+        k_free(threadPtr->pStack);
         threadPtr->pThread = NULL;
-        threadPtr->pStackAllocation = NULL;
+        threadPtr->pStack = NULL;
         threadPtr = NULL;
     }
     return threadPtr;
@@ -218,7 +219,6 @@ void uPortOsPrivateInit()
     for (int32_t i = 0; i < U_CFG_OS_MAX_THREADS; i++) {
         gThreadInstances[i].pThread = NULL;
         gThreadInstances[i].pStack = NULL;
-        gThreadInstances[i].pStackAllocation = NULL;
         gThreadInstances[i].stackSize = 0;
         gThreadInstances[i].isAllocated = false;
     }
@@ -230,8 +230,7 @@ void uPortOsPrivateDeinit()
         if (gThreadInstances[i].stackSize > 0) {
             k_free(gThreadInstances[i].pThread);
             gThreadInstances[i].pThread = NULL;
-            k_free(gThreadInstances[i].pStackAllocation);
-            gThreadInstances[i].pStackAllocation = NULL;
+            k_free(gThreadInstances[i].pStack);
             gThreadInstances[i].pStack = NULL;
             gThreadInstances[i].stackSize = 0;
             gThreadInstances[i].isAllocated = false;
@@ -257,7 +256,7 @@ int32_t uPortTaskCreate(void (*pFunction)(void *),
         (priority >= U_CFG_OS_PRIORITY_MIN) &&
         (priority <= U_CFG_OS_PRIORITY_MAX)) {
 
-        newThread =  getNewThreadInstance(stackSizeBytes);
+        newThread =  pGetNewThreadInstance(stackSizeBytes);
         errorCode = U_ERROR_COMMON_NO_MEMORY;
         if (newThread != NULL) {
             *pTaskHandle = (uPortTaskHandle_t) k_thread_create(

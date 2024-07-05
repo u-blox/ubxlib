@@ -29,7 +29,7 @@ Follow the instructions to install the development tools:
 # SDK Installation For Other MCUs (Native Zephyr)
 Please follow the [Zephyr](https://docs.zephyrproject.org/latest/develop/getting_started/index.html) instructions to install Zephyr and the `west` tool that configures and builds Zephyr.
 
-`ubxlib` is tested with native Zephyr version 3.6.0.
+`ubxlib` is tested with native Zephyr version 3.7.0-rc1.
 
 If you intend to use Zephyr on Linux/posix then you must also follow the instructions here: https://docs.zephyrproject.org/latest/boards/posix/native_posix/doc/index.html.
 

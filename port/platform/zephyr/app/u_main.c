@@ -184,7 +184,11 @@ int main(void)
 }
 
 #ifdef U_DEBUG_UTILS_DUMP_THREADS
+# if KERNEL_VERSION_NUMBER >= ZEPHYR_VERSION(3,7,0)
+void k_sys_fatal_error_handler(unsigned int reason, const struct arch_esf *esf)
+# else
 void k_sys_fatal_error_handler(unsigned int reason, const z_arch_esf_t *esf)
+# endif
 {
     (void)reason;
 # ifdef __arm__
