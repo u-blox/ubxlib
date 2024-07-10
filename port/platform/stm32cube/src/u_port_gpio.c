@@ -15,7 +15,7 @@
  */
 
 /** @file
- * @brief Implementation of the port GPIO API for the STM32F4 platform.
+ * @brief Implementation of the port GPIO API for the STM32 platform.
  */
 
 #ifdef U_CFG_OVERRIDE
@@ -25,18 +25,22 @@
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 
-#include "u_cfg_sw.h"
 #include "u_error_common.h"
 
 #include "u_cfg_hw_platform_specific.h"
 
 #include "u_port.h"
 #include "u_port_gpio.h"
-#include "u_port_debug.h"
 
-#include "stm32f4xx_ll_bus.h"
-#include "stm32f4xx_hal.h"
-#include "stm32f4xx_hal_gpio.h"
+#ifdef STM32U575xx
+# include "stm32u5xx_ll_bus.h"
+# include "stm32u5xx_hal.h"
+# include "stm32u5xx_hal_gpio.h"
+#else
+# include "stm32f4xx_ll_bus.h"
+# include "stm32f4xx_hal.h"
+# include "stm32f4xx_hal_gpio.h"
+#endif
 
 #include "u_port_os.h"
 #include "u_port_private.h" // Down here 'cos it needs GPIO_TypeDef
@@ -47,6 +51,18 @@
 
 // The maximum number of EXTI HW blocks on an STM32F4.
 #define U_PORT_MAX_NUM_EXTI 16
+
+#ifndef STM32U575xx
+// For STM32F4 the falling and rising edge configuration registers,
+// nice and simple.
+# define U_PORT_STM32_GPIO_REGISTER_FTSR FTSR
+# define U_PORT_STM32_GPIO_REGISTER_RTSR RTSR
+#else
+// For some reason, in the STM32U5 case, a "1" has been tacked on
+// the end of the falling and rising edge register names.
+# define U_PORT_STM32_GPIO_REGISTER_FTSR FTSR1
+# define U_PORT_STM32_GPIO_REGISTER_RTSR RTSR1
+#endif
 
 /* ----------------------------------------------------------------
  * TYPES
@@ -64,6 +80,7 @@ static const IRQn_Type gIrqNType[] = {
     EXTI2_IRQn,     // EXTI 2
     EXTI3_IRQn,     // EXTI 3
     EXTI4_IRQn,     // EXTI 4
+#ifndef STM32U575xx
     EXTI9_5_IRQn,   // EXTI 5
     EXTI9_5_IRQn,   // EXTI 6
     EXTI9_5_IRQn,   // EXTI 7
@@ -75,6 +92,20 @@ static const IRQn_Type gIrqNType[] = {
     EXTI15_10_IRQn, // EXTI 13
     EXTI15_10_IRQn, // EXTI 14
     EXTI15_10_IRQn  // EXTI 15
+#else
+    // For STM32U5 there are individual handlers for each EXTI
+    EXTI5_IRQn,      // EXTI 5
+    EXTI6_IRQn,      // EXTI 6
+    EXTI7_IRQn,      // EXTI 7
+    EXTI8_IRQn,      // EXTI 8
+    EXTI9_IRQn,      // EXTI 9
+    EXTI10_IRQn,     // EXTI 10
+    EXTI11_IRQn,     // EXTI 11
+    EXTI12_IRQn,     // EXTI 12
+    EXTI13_IRQn,     // EXTI 13
+    EXTI14_IRQn,     // EXTI 14
+    EXTI15_IRQn      // EXTI 15
+#endif
 };
 
 /** Array of EXTIs, so that the code can determine which ones
@@ -130,15 +161,26 @@ static void setNvic(int32_t pinOrExti, bool enableNotDisable)
 static void extiIrq(size_t exti)
 {
     uint16_t pin = exti;
-    // EXTI->PR is the EXTI(s) (plural) that
+#ifndef STM32U575xx
+    // For STM32F4 EXTI->PR is the EXTI(s) (plural) that
     // have been triggered
     uint16_t pr = (uint16_t) EXTI->PR;
+#else
+    // On STM32U5 there is a separate PR register for falling
+    // and rising edges, though since we only ever configure
+    // one or t'other there should be no conflict
+    uint16_t prr = (uint16_t) EXTI->RPR1;
+    uint16_t prf = (uint16_t) EXTI->FPR1;
+#endif
 
     // Need to check if a bit is set as interrupts can have
-    // been queued and get triggered when SYSCFG is changed.
-    // even when there isn't one (or at least, any there
-    // were should have been cancelled)
+    // been queued and get triggered when
+    // SYSCFG_EXTICR/EXTI_EXTICR is changed, even when there
+    // isn't one (or at least, any there were should have been
+    // cancelled)
+#ifndef STM32U575xx
     if (pr) {
+        // For STM32F4 we need to determine the pin
         if (exti < 5) {
             // For exti 0 to 4 things are simple as there
             // is a separate interrupt for each EXTI, so
@@ -178,6 +220,20 @@ static void extiIrq(size_t exti)
         // Now that we have a unique pin, clear that
         // pending bit and call the callback
         EXTI->PR = 1 << pin;
+#else
+    if (prr || prf) {
+        // For STM32U5 there is always a separate interrupt
+        // for each EXTI, so the EXTI is the pin, there
+        // is nothing to do aside from resetting the pending
+        // bit
+        if (prr) {
+            EXTI->RPR1 = 1 << pin;
+        }
+        if (prf) {
+            EXTI->FPR1 = 1 << pin;
+        }
+#endif // #ifndef STM32U575xx
+
         if (gpCallback[pin] != NULL) {
             gpCallback[pin]();
         }
@@ -186,19 +242,21 @@ static void extiIrq(size_t exti)
 
 #endif
 
-// Set the port number in the given EXTI control register of SYSCFG.
-static void setSyscfgExtiCr(size_t exti, uint16_t port)
+// For STM32F4, set the port number in the given EXTI control
+// register of SYSCFG, or for STM32U5, the EXTI_EXTICRm registers.
+static void configureExtiCr(size_t exti, uint16_t port)
 {
     uint16_t extiBitMap = (uint16_t) (1 << exti);
-    // The 16 EXTIs are split over the lower 16 bits of four
-    // SYSCFG->EXTICR registers
+    // The 16 EXTIs are split over four
+    // SYSCFG_EXTICR/EXTI_EXTICR registers
     size_t extiCrRegIndex = exti >> 2;
+#ifndef STM32U575xx
     // The bit-offset to the correct 4-bit region within the
-    // EXTICR register for the given EXTI
+    // SYSCFG EXTICR register for the given EXTI
     size_t extiCrRegOffset = (exti % 4) << 2;
 
-    // Zero the 4-bit region of the EXTICR
-    SYSCFG->EXTICR[extiCrRegIndex] &= (~0x0F) << extiCrRegOffset;
+    // Zero the 4-bit region of SYSCFG_EXTICR
+    SYSCFG->EXTICR[extiCrRegIndex] &= ~(0x0F << extiCrRegOffset);
     // Now set the register bit; I have seen the corresponding
     // EXTI->PR register bit be set here, even when the external
     // input has not done anything yet, so mask the corresponding
@@ -208,6 +266,20 @@ static void setSyscfgExtiCr(size_t exti, uint16_t port)
     SYSCFG->EXTICR[extiCrRegIndex] |= (port & 0x0F) << extiCrRegOffset;
     EXTI->PR = 1 << exti;
     EXTI->IMR |= extiBitMap;
+#else
+    // The bit-offset to the correct 8-bit region within the
+    // EXTICR register for the given EXTI
+    size_t extiCrRegOffset = (exti % 4) << 3;
+
+    // Zero the 8-bit region of EXTI_EXTICRm
+    EXTI->EXTICR[extiCrRegIndex] &= ~(0xFF << extiCrRegOffset);
+    // Now set the register bit
+    EXTI->IMR1 &= ~extiBitMap;
+    EXTI->EXTICR[extiCrRegIndex] |= (port & 0xFF) << extiCrRegOffset;
+    EXTI->RPR1 = 1 << exti;
+    EXTI->FPR1 = 1 << exti;
+    EXTI->IMR1 |= extiBitMap;
+#endif // #ifndef STM32U575xx
 }
 
 // The inner part of setInterruptHandler().
@@ -219,7 +291,9 @@ static int32_t setInterruptHandlerInner(int32_t pin,
     // Set the callback first in case it goes off immediately
     // as a result of the configuration
     gpCallback[exti] = pCallback;
-    setSyscfgExtiCr(exti, U_PORT_STM32F4_GPIO_PORT(pin));
+    if (pCallback != NULL) {
+        configureExtiCr(exti, U_PORT_STM32F4_GPIO_PORT(pin));
+    }
     return (int32_t) U_ERROR_COMMON_SUCCESS;
 }
 
@@ -249,8 +323,8 @@ static int32_t setInterruptHandler(int32_t pin,
 // EXTI 0 interrupt handler.
 void EXTI0_IRQHandler()
 {
-    // Pin 0 on the port configured in the relevant SYSCFG_EXTICR
-    // has changed state
+    // Pin 0 on the port configured in the relevant
+    // SYSCFG_EXTICR/EXTI_EXTICRm register has changed state
     extiIrq(0);
 }
 #endif
@@ -259,8 +333,8 @@ void EXTI0_IRQHandler()
 // EXTI 1 interrupt handler.
 void EXTI1_IRQHandler()
 {
-    // Pin 1 on the port configured in the relevant SYSCFG_EXTICR
-    // has changed state
+    // Pin 1 on the port configured in the relevant
+    // SYSCFG_EXTICR/EXTI_EXTICRm register has changed state
     extiIrq(1);
 }
 #endif
@@ -269,8 +343,8 @@ void EXTI1_IRQHandler()
 // EXTI 2 interrupt handler.
 void EXTI2_IRQHandler()
 {
-    // Pin 2 on the port configured in the relevant SYSCFG_EXTICR
-    // has changed state
+    // Pin 2 on the port configured in the relevant
+    // SYSCFG_EXTICR/EXTI_EXTICRm register has changed state
     extiIrq(2);
 }
 #endif
@@ -279,8 +353,8 @@ void EXTI2_IRQHandler()
 // EXTI 3 interrupt handler.
 void EXTI3_IRQHandler()
 {
-    // Pin 3 on the port configured in the relevant SYSCFG_EXTICR
-    // has changed state
+    // Pin 3 on the port configured in the relevant
+    // SYSCFG_EXTICR/EXTI_EXTICRm register has changed state
     extiIrq(3);
 }
 #endif
@@ -289,13 +363,16 @@ void EXTI3_IRQHandler()
 // EXTI 4 interrupt handler.
 void EXTI4_IRQHandler()
 {
-    // Pin 4 on the port configured in the relevant SYSCFG_EXTICR
-    // has changed state
+    // Pin 4 on the port configured in the relevant
+    // SYSCFG_EXTICR/EXTI_EXTICRm register has changed state
     extiIrq(4);
 }
 #endif
 
-#if U_CFG_HW_EXTI_5_AVAILABLE || U_CFG_HW_EXTI_6_AVAILABLE || U_CFG_HW_EXTI_7_AVAILABLE || \
+#ifndef STM32U575xx
+// For STM32F4 we have a common single interrupt handler for EXTIs 5 to 9
+// and 10 to 15
+# if U_CFG_HW_EXTI_5_AVAILABLE || U_CFG_HW_EXTI_6_AVAILABLE || U_CFG_HW_EXTI_7_AVAILABLE || \
     U_CFG_HW_EXTI_8_AVAILABLE || U_CFG_HW_EXTI_9_AVAILABLE
 // EXTI 5 to 9 interrupt handler.
 void EXTI9_5_IRQHandler()
@@ -304,10 +381,10 @@ void EXTI9_5_IRQHandler()
     // SYSCFG_EXTICR has changed state
     extiIrq(5);
 }
-#endif
+# endif
 
-#if U_CFG_HW_EXTI_10_AVAILABLE || U_CFG_HW_EXTI_11_AVAILABLE || U_CFG_HW_EXTI_12_AVAILABLE || \
-    U_CFG_HW_EXTI_13_AVAILABLE || U_CFG_HW_EXTI_14_AVAILABLE || U_CFG_HW_EXTI_15_AVAILABLE
+# if U_CFG_HW_EXTI_10_AVAILABLE || U_CFG_HW_EXTI_11_AVAILABLE || U_CFG_HW_EXTI_12_AVAILABLE || \
+     U_CFG_HW_EXTI_13_AVAILABLE || U_CFG_HW_EXTI_14_AVAILABLE || U_CFG_HW_EXTI_15_AVAILABLE
 // EXTI 10 to 15 interrupt handler.
 void EXTI15_10_IRQHandler()
 {
@@ -315,7 +392,122 @@ void EXTI15_10_IRQHandler()
     // SYSCFG_EXTICR has changed state
     extiIrq(10);
 }
-#endif
+# endif
+
+#else
+
+// For STM32U5 there are individual handlers for each EXTI
+# if U_CFG_HW_EXTI_5_AVAILABLE
+// EXTI 5 interrupt handler.
+void EXTI5_IRQHandler()
+{
+    // Pin 5 on the port configured in the relevant EXTI_EXTICRm
+    // has changed state
+    extiIrq(5);
+}
+# endif
+
+# if U_CFG_HW_EXTI_6_AVAILABLE
+// EXTI 6 interrupt handler.
+void EXTI6_IRQHandler()
+{
+    // Pin 6 on the port configured in the relevant EXTI_EXTICRm
+    // has changed state
+    extiIrq(6);
+}
+# endif
+
+# if U_CFG_HW_EXTI_7_AVAILABLE
+// EXTI 7 interrupt handler.
+void EXTI7_IRQHandler()
+{
+    // Pin 7 on the port configured in the relevant EXTI_EXTICRm
+    // has changed state
+    extiIrq(7);
+}
+# endif
+
+# if U_CFG_HW_EXTI_8_AVAILABLE
+// EXTI 8 interrupt handler.
+void EXTI8_IRQHandler()
+{
+    // Pin 8 on the port configured in the relevant EXTI_EXTICRm
+    // has changed state
+    extiIrq(8);
+}
+# endif
+
+# if U_CFG_HW_EXTI_9_AVAILABLE
+// EXTI 9 interrupt handler.
+void EXTI9_IRQHandler()
+{
+    // Pin 9 on the port configured in the relevant EXTI_EXTICRm
+    // has changed state
+    extiIrq(9);
+}
+# endif
+
+# if U_CFG_HW_EXTI_10_AVAILABLE
+// EXTI 10 interrupt handler.
+void EXTI10_IRQHandler()
+{
+    // Pin 10 on the port configured in the relevant EXTI_EXTICRm
+    // has changed state
+    extiIrq(10);
+}
+# endif
+
+# if U_CFG_HW_EXTI_11_AVAILABLE
+// EXTI 11 interrupt handler.
+void EXTI11_IRQHandler()
+{
+    // Pin 11 on the port configured in the relevant EXTI_EXTICRm
+    // has changed state
+    extiIrq(11);
+}
+# endif
+
+# if U_CFG_HW_EXTI_12_AVAILABLE
+// EXTI 12 interrupt handler.
+void EXTI12_IRQHandler()
+{
+    // Pin 12 on the port configured in the relevant EXTI_EXTICRm
+    // has changed state
+    extiIrq(12);
+}
+# endif
+
+# if U_CFG_HW_EXTI_13_AVAILABLE
+// EXTI 13 interrupt handler.
+void EXTI13_IRQHandler()
+{
+    // Pin 13 on the port configured in the relevant EXTI_EXTICRm
+    // has changed state
+    extiIrq(13);
+}
+# endif
+
+# if U_CFG_HW_EXTI_14_AVAILABLE
+// EXTI 14 interrupt handler.
+void EXTI14_IRQHandler()
+{
+    // Pin 14 on the port configured in the relevant EXTI_EXTICRm
+    // has changed state
+    extiIrq(14);
+}
+# endif
+
+# if U_CFG_HW_EXTI_15_AVAILABLE
+// EXTI 15 interrupt handler.
+void EXTI15_IRQHandler()
+{
+    // Pin 15 on the port configured in the relevant EXTI_EXTICRm
+    // has changed state
+    extiIrq(15);
+}
+# endif
+
+#endif // #ifndef STM32U575xx
 
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
@@ -329,7 +521,7 @@ int32_t uPortGpioConfig(uPortGpioConfig_t *pConfig)
     GPIO_InitTypeDef gpioConfig = {0};
 
     // Note that Pin is a bitmap
-    gpioConfig.Pin = 1U << U_PORT_STM32F4_GPIO_PIN(pConfig->pin);
+    gpioConfig.Pin = 1U << U_PORT_STM32_GPIO_PIN(pConfig->pin);
     gpioConfig.Mode = GPIO_MODE_INPUT;
     gpioConfig.Pull = GPIO_NOPULL;
     gpioConfig.Speed = GPIO_SPEED_FREQ_LOW;
@@ -384,7 +576,7 @@ int32_t uPortGpioConfig(uPortGpioConfig_t *pConfig)
         if (!badConfig) {
             // Enable the clocks to the port for this pin
             uPortPrivateGpioEnableClock(pConfig->pin);
-            // The GPIO init function for STM32F4 takes a pointer
+            // The GPIO init function for STM32 takes a pointer
             // to the port register, the index for which is the upper
             // nibble of pin (they are in banks of 16), and then
             // the configuration structure which has the pin number
@@ -396,10 +588,13 @@ int32_t uPortGpioConfig(uPortGpioConfig_t *pConfig)
 
         if (errorCode == U_ERROR_COMMON_SUCCESS) {
             if (pConfig->pInterrupt != NULL) {
-                // Make sure the SYSCFG block that configures
-                // the EXTI block has a clock, and that EXTI
-                // has a clock
+#ifndef STM32U575xx
+                // For STM32F4, make sure the SYSCFG block that
+                // configures the EXTI block has a clock;
+                // For STM32U5 the configuration is in the
+                // EXTI_EXTICRm registers instead
                 LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_SYSCFG);
+#endif
 #ifdef LL_APB2_GRP1_PERIPH_EXTI
                 LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_EXTI);
 #endif
@@ -409,11 +604,11 @@ int32_t uPortGpioConfig(uPortGpioConfig_t *pConfig)
                 if (errorCode == 0) {
                     // Set rising or falling edge (using the bit-map version, Pin)
                     if (pConfig->interruptActiveLow) {
-                        EXTI->FTSR |= gpioConfig.Pin;
-                        EXTI->RTSR &= ~gpioConfig.Pin;
+                        EXTI->U_PORT_STM32_GPIO_REGISTER_FTSR |= gpioConfig.Pin;
+                        EXTI->U_PORT_STM32_GPIO_REGISTER_RTSR &= ~gpioConfig.Pin;
                     } else {
-                        EXTI->RTSR |= gpioConfig.Pin;
-                        EXTI->FTSR &= ~gpioConfig.Pin;
+                        EXTI->U_PORT_STM32_GPIO_REGISTER_RTSR |= gpioConfig.Pin;
+                        EXTI->U_PORT_STM32_GPIO_REGISTER_FTSR &= ~gpioConfig.Pin;
                     }
                     // Do the NVIC part and we're off
                     setNvic(pConfig->pin, true);
@@ -438,7 +633,7 @@ int32_t uPortGpioSet(int32_t pin, int32_t level)
     uPortPrivateGpioEnableClock(pin);
 
     HAL_GPIO_WritePin(pUPortPrivateGpioGetReg(pin),
-                      (uint16_t) (1U << U_PORT_STM32F4_GPIO_PIN(pin)),
+                      (uint16_t) (1U << U_PORT_STM32_GPIO_PIN(pin)),
                       level);
 
     return (int32_t) U_ERROR_COMMON_SUCCESS;
@@ -451,7 +646,7 @@ int32_t uPortGpioGet(int32_t pin)
     uPortPrivateGpioEnableClock(pin);
 
     return HAL_GPIO_ReadPin(pUPortPrivateGpioGetReg(pin),
-                            (uint16_t) (1U << U_PORT_STM32F4_GPIO_PIN(pin)));
+                            (uint16_t) (1U << U_PORT_STM32_GPIO_PIN(pin)));
 }
 
 // Interrupt support.

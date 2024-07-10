@@ -103,16 +103,20 @@ extern "C" {
 # define U_PORT_EVENT_QUEUE_MAX_NUM 20
 #endif
 
-#ifndef U_PORT_EVENT_QUEUE_MAX_PARAM_LENGTH_BYTES
-/** The maximum length of parameter block that can be sent on an
- * event queue.
- */
-# define U_PORT_EVENT_QUEUE_MAX_PARAM_LENGTH_BYTES 128
-#endif
-
 /** The length of uEventQueueControlOrSize_t (see implementation).
  */
 #define U_PORT_EVENT_QUEUE_CONTROL_OR_SIZE_LENGTH_BYTES 4
+
+#ifndef U_PORT_EVENT_QUEUE_MAX_PARAM_LENGTH_BYTES
+# if defined(U_PORT_STM32_PURE_CMSIS) && !defined(U_PORT_STM32_CMSIS_ON_FREERTOS)
+/** When using ThreadX under CMSIS the maximum length of a queue item is just
+ * 64 bytes, hence the event queue maximum item length is similarly limited.
+ */
+#  define U_PORT_EVENT_QUEUE_MAX_PARAM_LENGTH_BYTES ((16 * sizeof(uint32_t)) - U_PORT_EVENT_QUEUE_CONTROL_OR_SIZE_LENGTH_BYTES)
+# else
+#  define U_PORT_EVENT_QUEUE_MAX_PARAM_LENGTH_BYTES 128
+# endif
+#endif
 
 #ifndef U_PORT_EVENT_QUEUE_MIN_TASK_STACK_SIZE_BYTES
 /** The minimum stack size for an event queue task; the governing
@@ -133,6 +137,14 @@ extern "C" {
  * -------------------------------------------------------------- */
 
 /** Open an event queue.
+ *
+ * Note: some platforms place further restrictions on the maximum
+ * size of message that can be sent by the underlying uPortQueue API,
+ * and that has an impact here.  For instance, ThreadX, used on
+ * the later STM32Cube platforms, has a limit of 64 bytes, meaning
+ * that paramMaxLengthBytes here, by the time
+ * #U_PORT_EVENT_QUEUE_CONTROL_OR_SIZE_LENGTH_BYTES is accounted
+ * for, is just 60 bytes.
  *
  * Note: in some operating systems (e.g. Zephyr) we use a
  * conditional compilation flag, U_CFG_OS_MAX_THREADS, to

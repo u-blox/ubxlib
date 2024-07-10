@@ -9,7 +9,7 @@ from scripts import u_run_check_ubxlib_h, u_run_check_malloc, u_run_build_pio_ex
 
 from scripts.packages import u_package
 from scripts.u_logging import ULog
-from . import esp_idf, nrfconnect, stm32cubef4, platformio, linux, zephyr_native
+from . import esp_idf, nrfconnect, stm32cube, platformio, linux, zephyr_native
 from enum import Enum
 import sys
 import json
@@ -137,8 +137,8 @@ def instance_command(ctx, instance_str, cmd):
             elif cmd == Command.TEST:
                 check_return_code(u_run_log.run(instance, ctx.build_dir, ctx.reporter, ctx.test_report))
             elif cmd == Command.STATIC_ANALYZE:
-                nrfconnect.analyze(ctx, board_name=board, output_name="", build_dir=ctx.build_dir, u_flags=defines,
-                                   features=ubxlib_features)
+                nrfconnect.analyze(ctx, toolchain=toolchain, board_name=board, output_name="", build_dir=ctx.build_dir,
+                                   u_flags=defines, features=ubxlib_features)
             else:
                 raise Exit(f"Unsupported command for MCU '{mcu}' on platform: '{platform}'")
         elif mcu.lower() != "linux32":
@@ -155,7 +155,8 @@ def instance_command(ctx, instance_str, cmd):
             elif cmd == Command.TEST:
                 check_return_code(u_run_log.run(instance, ctx.build_dir, ctx.reporter, ctx.test_report))
             elif cmd == Command.STATIC_ANALYZE:
-                zephyr_native.analyze(ctx, board_name=board, output_name="", build_dir=ctx.build_dir, u_flags=defines,
+                zephyr_native.analyze(ctx, toolchain=toolchain, board_name=board, output_name="",
+                                      build_dir=ctx.build_dir, u_flags=defines,
                                       features=ubxlib_features)
             else:
                 raise Exit(f"Unsupported command for MCU '{mcu}' on platform: '{platform}'")
@@ -194,19 +195,24 @@ def instance_command(ctx, instance_str, cmd):
             raise Exit(f"Unsupported command for platform: '{platform}'")
 
     elif platform == "stm32cube":
-        stm32cubef4.check_installation(ctx)
+        # In order to support the STM32U5 as well as the STM32F4 series, which has
+        # a different [large!] set of STM32/ThreadX driver files, we pass the lower-cased
+        # MCU in as part of the context
+        ctx.mcu = mcu.lower()
+        stm32cube.check_installation(ctx)
         if cmd == Command.BUILD:
-            stm32cubef4.build(ctx, output_name="", build_dir=ctx.build_dir, u_flags=defines, features=ubxlib_features)
+            stm32cube.build(ctx, output_name="", toolchain=toolchain, build_dir=ctx.build_dir,
+                            u_flags=defines, features=ubxlib_features)
         elif cmd == Command.FLASH:
-            stm32cubef4.flash(ctx, output_name="", build_dir=ctx.build_dir, debugger_serial=serial)
+            stm32cube.flash(ctx, output_name="", build_dir=ctx.build_dir, debugger_serial=serial)
         elif cmd == Command.LOG:
             port = instance[0] + 40404
-            stm32cubef4.log(ctx, output_name="", build_dir=ctx.build_dir, debugger_serial=serial, port=port)
+            stm32cube.log(ctx, output_name="", build_dir=ctx.build_dir, debugger_serial=serial, port=port)
         elif cmd == Command.TEST:
             check_return_code(u_run_log.run(instance, ctx.build_dir, ctx.reporter, ctx.test_report))
         elif cmd == Command.STATIC_ANALYZE:
-            stm32cubef4.analyze(ctx, output_name="", build_dir=ctx.build_dir, u_flags=defines,
-                                features=ubxlib_features)
+            stm32cube.analyze(ctx, output_name="", toolchain=toolchain, build_dir=ctx.build_dir,
+                              u_flags=defines, features=ubxlib_features)
         else:
             raise Exit(f"Unsupported command for platform: '{platform}'")
 

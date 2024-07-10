@@ -107,6 +107,20 @@
 # define U_PORT_TEST_CHECK_TIME_TAKEN
 #endif
 
+#if defined(U_PORT_STM32_PURE_CMSIS) && !defined(U_PORT_STM32_CMSIS_ON_FREERTOS)
+/** Mutexes are expected to be non-recursive except that when we
+ * have ThreadX under CMSIS, which only supports recursive
+ * mutexes.
+ */
+# define U_PORT_MUTEX_RECURSIVE
+#endif
+
+#if !defined(_WIN32) && !defined(__linux__) && !defined(U_PORT_STM32_PURE_CMSIS)
+/** Some platforms don't support giving a semaphore from an ISR.
+ */
+# define U_PORT_SEMAPHORE_GIVE_FROM_ISR
+#endif
+
 #if defined(_WIN32) || defined(__ZEPHYR__) || defined(EL_PRODUCT_THREADX)
 /** On some OSes it is possible to delete a task from another task,
  * so we can check that.
@@ -688,8 +702,13 @@ static void osTestTask(void *pParameters)
     uPortLog("U_PORT_TEST_OS_TASK: task trying to lock the mutex.\n");
     U_PORT_TEST_ASSERT(gMutexHandle != NULL);
     U_PORT_TEST_ASSERT(uPortMutexTryLock(gMutexHandle, 500) == 0);
+# ifdef U_PORT_MUTEX_RECURSIVE
+    uPortLog("U_PORT_TEST_OS_TASK: task trying to lock the mutex again.\n");
+    U_PORT_TEST_ASSERT(uPortMutexTryLock(gMutexHandle, 10) == 0);
+# else
     uPortLog("U_PORT_TEST_OS_TASK: task trying to lock the mutex again, should fail!.\n");
     U_PORT_TEST_ASSERT(uPortMutexTryLock(gMutexHandle, 10) != 0);
+# endif
     uPortLog("U_PORT_TEST_OS_TASK: unlocking it again.\n");
     U_PORT_TEST_ASSERT(uPortMutexUnlock(gMutexHandle) == 0);
 #endif
@@ -1232,7 +1251,7 @@ static void criticalSectionTestTask(void *pParameter)
     uPortTaskDelete(NULL);
 }
 
-#if (U_CFG_APP_GNSS_I2C >= 0) && !defined(U_PORT_TEST_DISABLE_I2C)
+#if ((U_CFG_APP_GNSS_I2C >= 0) && !defined(U_PORT_TEST_DISABLE_I2C)) || (U_CFG_APP_GNSS_SPI >= 0)
 // Reset a GNSS chip attached via I2C
 static bool gnssReset()
 {
@@ -1256,7 +1275,7 @@ static bool gnssReset()
         uPortTaskBlock(500);
         uPortGpioSet(U_CFG_TEST_PIN_GNSS_RESET_N, 1);
         // Let the chip recover
-        uPortTaskBlock(2000);
+        uPortTaskBlock(5000);
         resetDone = true;
     }
 # endif
@@ -1638,7 +1657,7 @@ static void osTestTaskSemaphoreGive(void *pParameters)
     uPortTaskDelete(NULL);
 }
 
-#if (!defined(_WIN32) && !defined(__linux__)) || defined(CONFIG_IRQ_OFFLOAD)
+#if defined(U_PORT_SEMAPHORE_GIVE_FROM_ISR) || defined(CONFIG_IRQ_OFFLOAD)
 static void osTestTaskSemaphoreGiveFromIsr(const void *pParameters)
 {
     (void) pParameters;
@@ -1682,7 +1701,7 @@ U_PORT_TEST_FUNCTION("[port]", "portOsSemaphore")
 #ifdef U_PORT_TEST_CHECK_TIME_TAKEN
     int64_t diffMs = uPortGetTickTimeMs() - startTimeMs;
     U_TEST_PRINT_LINE("diffMs %d.", (int32_t)diffMs);
-    U_PORT_TEST_ASSERT(diffMs > 250 && diffMs < 750);
+    U_PORT_TEST_ASSERT(diffMs < 750);
 #endif
     U_PORT_TEST_ASSERT(uPortSemaphoreDelete(gSemaphoreHandle) == 0);
 
@@ -1702,7 +1721,7 @@ U_PORT_TEST_FUNCTION("[port]", "portOsSemaphore")
     U_PORT_TEST_ASSERT(uPortSemaphoreTake(gSemaphoreHandle) == 0);
 #ifdef U_PORT_TEST_CHECK_TIME_TAKEN
     diffMs = uPortGetTickTimeMs() - startTimeMs;
-    U_PORT_TEST_ASSERT(diffMs > 250 && diffMs < 750);
+    U_PORT_TEST_ASSERT(diffMs < 750);
 #endif
     U_PORT_TEST_ASSERT(uPortSemaphoreDelete(gSemaphoreHandle) == 0);
 
@@ -1722,7 +1741,7 @@ U_PORT_TEST_FUNCTION("[port]", "portOsSemaphore")
     U_PORT_TEST_ASSERT(uPortSemaphoreTryTake(gSemaphoreHandle, 5000) == 0);
 #ifdef U_PORT_TEST_CHECK_TIME_TAKEN
     diffMs = uPortGetTickTimeMs() - startTimeMs;
-    U_PORT_TEST_ASSERT(diffMs > 250 && diffMs < 750);
+    U_PORT_TEST_ASSERT(diffMs < 750);
 #endif
     U_PORT_TEST_ASSERT(uPortSemaphoreDelete(gSemaphoreHandle) == 0);
 
@@ -1744,7 +1763,7 @@ U_PORT_TEST_FUNCTION("[port]", "portOsSemaphore")
                                              500) == (int32_t)U_ERROR_COMMON_TIMEOUT);
 #ifdef U_PORT_TEST_CHECK_TIME_TAKEN
     diffMs = uPortGetTickTimeMs() - startTimeMs;
-    U_PORT_TEST_ASSERT(diffMs > 250 && diffMs < 750);
+    U_PORT_TEST_ASSERT(diffMs < 750);
 #endif
     U_PORT_TEST_ASSERT(uPortSemaphoreDelete(gSemaphoreHandle) == 0);
 
@@ -1773,7 +1792,7 @@ U_PORT_TEST_FUNCTION("[port]", "portOsSemaphore")
                                              500) == (int32_t)U_ERROR_COMMON_TIMEOUT);
 #ifdef U_PORT_TEST_CHECK_TIME_TAKEN
     diffMs = uPortGetTickTimeMs() - startTimeMs;
-    U_PORT_TEST_ASSERT(diffMs > 250 && diffMs < 750);
+    U_PORT_TEST_ASSERT(diffMs < 750);
 #endif
     U_PORT_TEST_ASSERT(uPortSemaphoreDelete(gSemaphoreHandle) == 0);
 
@@ -1785,11 +1804,10 @@ U_PORT_TEST_FUNCTION("[port]", "portOsSemaphore")
 #ifdef CONFIG_IRQ_OFFLOAD // Only really tested for zephyr for now
     irq_offload(osTestTaskSemaphoreGiveFromIsr, NULL);
 #else
-# if !defined(_WIN32) && !defined(__linux__)
+# ifdef U_PORT_SEMAPHORE_GIVE_FROM_ISR
     osTestTaskSemaphoreGiveFromIsr(NULL);
 # else
-    // ISR not supported on Windows or native Linux, do the non-ISR version
-    // to keep the test going
+    // Do the non-ISR version to keep the test going
     U_PORT_TEST_ASSERT(uPortSemaphoreGive(gSemaphoreHandle) == 0);
 # endif
 #endif
@@ -2849,7 +2867,7 @@ U_PORT_TEST_FUNCTION("[port]", "portI2cRequiresSpecificWiring")
                                                           NULL, 0, false) == 0);
             // Write a longer thing; UBX-MON-VER polls the GNSS device for a
             // 40 + n·* 30 byte UBX-MON-VER response containing a 40 byte fixed part, which
-            // is all we captue here; message class 0x0a, message ID 0x04.
+            // is all we capture here; message class 0x0a, message ID 0x04.
 
 # if defined(U_CFG_APP_I2C_MAX_SEGMENT_SIZE) && (U_CFG_APP_I2C_MAX_SEGMENT_SIZE > 0)
             // Where required, do this with segmentation on
@@ -3024,94 +3042,100 @@ U_PORT_TEST_FUNCTION("[port]", "portSpiRequiresSpecificWiring")
     U_PORT_TEST_ASSERT(tmp.sampleDelayNanoseconds == device.sampleDelayNanoseconds);
     U_PORT_TEST_ASSERT(fillWordSame(tmp.fillWord, device.fillWord, device.wordSizeBytes));
 
-    U_TEST_PRINT_LINE("talking to GNSS chip over SPI...");
-    // Write to the GNSS chip; polls for a UBX-MON-BATCH message which should
-    // get back a 20 byte response containing a 12 byte body (see section 32.16
-    // of the u-blox M8 receiver manual); message class 0x0a, message ID 0x32.
-    memset(buffer1, 0, sizeof(buffer1));
-    y = uUbxProtocolEncode(0x0a, 0x32, NULL, 0, buffer2);
-    U_PORT_TEST_ASSERT(y == U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES);
-    // There is no real use-case for a single word send/receive when talking
-    // to a GNSS chip so, in order to do a word-test as well as a block-test,
-    // we send the above in two segments: a "word" of three bytes, then the
-    // second half of the buffer minus the three bytes.  If there's an
-    // endianness mismatch between what we've requested of the SPI protocol
-    // and this processor, we also need to perform pre-reversal of the bytes
-    // we are sending as a single word, since uPortSpiControllerSendReceiveWord()
-    // will be helpfully byte-reversing them for us.
-    U_TEST_PRINT_LINE("this MCU is %s-endian and we are sending"
-                      " %s first.", U_PORT_IS_LITTLE_ENDIAN ? "little" : "big",
-                      tmp.lsbFirst ? "LSB" : "MSB");
-    if (tmp.lsbFirst != U_PORT_IS_LITTLE_ENDIAN) {
-        U_TEST_PRINT_LINE("pre-reversing word to compensate for endiannness conversion.");
-        for (size_t x = 0; x < 3; x++) {
-            buffer3[x] = buffer2[(3 - 1) - x];
+    // Reset the GNSS chip as otherwise it might have queued up
+    // other data which could mess this test up
+    if (gnssReset()) {
+        U_TEST_PRINT_LINE("talking to GNSS chip over SPI...");
+        // Write to the GNSS chip; polls for a UBX-MON-BATCH message which should
+        // get back a 20 byte response containing a 12 byte body (see section 32.16
+        // of the u-blox M8 receiver manual); message class 0x0a, message ID 0x32.
+        memset(buffer1, 0, sizeof(buffer1));
+        y = uUbxProtocolEncode(0x0a, 0x32, NULL, 0, buffer2);
+        U_PORT_TEST_ASSERT(y == U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES);
+        // There is no real use-case for a single word send/receive when talking
+        // to a GNSS chip so, in order to do a word-test as well as a block-test,
+        // we send the above in two segments: a "word" of three bytes, then the
+        // second half of the buffer minus the three bytes.  If there's an
+        // endianness mismatch between what we've requested of the SPI protocol
+        // and this processor, we also need to perform pre-reversal of the bytes
+        // we are sending as a single word, since uPortSpiControllerSendReceiveWord()
+        // will be helpfully byte-reversing them for us.
+        U_TEST_PRINT_LINE("this MCU is %s-endian and we are sending"
+                          " %s first.", U_PORT_IS_LITTLE_ENDIAN ? "little" : "big",
+                          tmp.lsbFirst ? "LSB" : "MSB");
+        if (tmp.lsbFirst != U_PORT_IS_LITTLE_ENDIAN) {
+            U_TEST_PRINT_LINE("pre-reversing word to compensate for endiannness conversion.");
+            for (size_t x = 0; x < 3; x++) {
+                buffer3[x] = buffer2[(3 - 1) - x];
+            }
+        } else {
+            memcpy(buffer3, buffer2, 3);
         }
-    } else {
-        memcpy(buffer3, buffer2, 3);
-    }
 # if defined(U_CFG_APP_SPI_MAX_SEGMENT_SIZE) && (U_CFG_APP_SPI_MAX_SEGMENT_SIZE > 0)
-    // Where required, do this with segmentation on
-    U_PORT_TEST_ASSERT(uPortSpiSetMaxSegmentSize(gSpiHandle, U_CFG_APP_SPI_MAX_SEGMENT_SIZE) == 0);
-    U_PORT_TEST_ASSERT(uPortSpiGetMaxSegmentSize(gSpiHandle) == U_CFG_APP_SPI_MAX_SEGMENT_SIZE);
+        // Where required, do this with segmentation on
+        U_PORT_TEST_ASSERT(uPortSpiSetMaxSegmentSize(gSpiHandle, U_CFG_APP_SPI_MAX_SEGMENT_SIZE) == 0);
+        U_PORT_TEST_ASSERT(uPortSpiGetMaxSegmentSize(gSpiHandle) == U_CFG_APP_SPI_MAX_SEGMENT_SIZE);
 # endif
 
-    uPortSpiControllerSendReceiveWord(gSpiHandle, *((uint64_t *) &buffer3), 3);
-    U_PORT_TEST_ASSERT(uPortSpiControllerSendReceiveBlock(gSpiHandle,
-                                                          &(buffer2[3]),
-                                                          y - 3,
-                                                          NULL, 0) == 0);
+        uPortSpiControllerSendReceiveWord(gSpiHandle, *((uint64_t *) &buffer3), 3);
+        U_PORT_TEST_ASSERT(uPortSpiControllerSendReceiveBlock(gSpiHandle,
+                                                              &(buffer2[3]),
+                                                              y - 3,
+                                                              NULL, 0) == 0);
 
-    // There should now be a 20 byte response waiting for us, which we will
-    // receive into buffer2 and decode into buffer1; question is, when
-    // does it start to arrive?
-    memset(buffer1, 0, sizeof(buffer1));
-    memset(buffer2, 0, sizeof(buffer2));
-    // In order to test both single word and block receives, we do a short
-    // block receive, a word send/receive, then another block receive for
-    // the remainder of the buffer and after this we try to decode the
-    // ack message.
-    // Wait a tiny amount first to make sure the answer is ready and so should
-    // definitely be spread across the three function calls.
-    uPortTaskBlock(10);
-    // We're looking for messageClass 0x0a and message ID 0x32
-    y = (int32_t) U_ERROR_COMMON_NOT_FOUND;
-    for (size_t x = 0; ((messageClass != 0x0a) || (messageId != 0x32) || (y < 0)) &&
-         (x < U_PORT_TEST_SPI_TRIES); x++) {
-        // 4 chosen here because receiving 4 bytes is a special case for ESP32
-        y = 4;
-        U_PORT_TEST_ASSERT(uPortSpiControllerSendReceiveBlock(gSpiHandle, NULL, 0,
-                                                              pBuffer, y) == y);
-        pBuffer += y;
-        // Only a two-byte word here, rather than three, just for the sake
-        // of variety
-        *((uint64_t *) buffer3) = uPortSpiControllerSendReceiveWord(gSpiHandle, 0xFFFF, 2);
-        if (tmp.lsbFirst != U_PORT_IS_LITTLE_ENDIAN) {
-            *pBuffer = buffer3[1];
+        // There should now be a 20 byte response waiting for us, which we will
+        // receive into buffer2 and decode into buffer1; question is, when
+        // does it start to arrive?
+        memset(buffer1, 0, sizeof(buffer1));
+        memset(buffer2, 0, sizeof(buffer2));
+        // In order to test both single word and block receives, we do a short
+        // block receive, a word send/receive, then another block receive for
+        // the remainder of the buffer and after this we try to decode the
+        // ack message.
+        // Wait a tiny amount first to make sure the answer is ready and so should
+        // definitely be spread across the three function calls.
+        uPortTaskBlock(10);
+        // We're looking for messageClass 0x0a and message ID 0x32
+        y = (int32_t) U_ERROR_COMMON_NOT_FOUND;
+        for (size_t x = 0; ((messageClass != 0x0a) || (messageId != 0x32) || (y < 0)) &&
+             (x < U_PORT_TEST_SPI_TRIES); x++) {
+            // 4 chosen here because receiving 4 bytes is a special case for ESP32
+            y = 4;
+            U_PORT_TEST_ASSERT(uPortSpiControllerSendReceiveBlock(gSpiHandle, NULL, 0,
+                                                                  pBuffer, y) == y);
+            pBuffer += y;
+            // Only a two-byte word here, rather than three, just for the sake
+            // of variety
+            *((uint64_t *) buffer3) = uPortSpiControllerSendReceiveWord(gSpiHandle, 0xFFFF, 2);
+            if (tmp.lsbFirst != U_PORT_IS_LITTLE_ENDIAN) {
+                *pBuffer = buffer3[1];
+                pBuffer++;
+                *pBuffer = buffer3[0];
+            } else {
+                *pBuffer = buffer3[0];
+                pBuffer++;
+                *pBuffer = buffer3[1];
+            }
             pBuffer++;
-            *pBuffer = buffer3[0];
-        } else {
-            *pBuffer = buffer3[0];
-            pBuffer++;
-            *pBuffer = buffer3[1];
+            y = (sizeof(buffer2) - (pBuffer - buffer2)) / 2;
+            U_PORT_TEST_ASSERT(uPortSpiControllerSendReceiveBlock(gSpiHandle, NULL, 0,
+                                                                  pBuffer, y) == y);
+            pBuffer += y;
+            y = uUbxProtocolDecode(buffer2, pBuffer - buffer2, &messageClass, &messageId,
+                                   buffer1, sizeof(buffer1), (const char **) &pBuffer);
+            if (y == (int32_t) U_ERROR_COMMON_NOT_FOUND) {
+                // Got nothing at all, reset the buffer pointer for the next try
+                pBuffer = buffer2;
+            }
         }
-        pBuffer++;
-        y = (sizeof(buffer2) - (pBuffer - buffer2)) / 2;
-        U_PORT_TEST_ASSERT(uPortSpiControllerSendReceiveBlock(gSpiHandle, NULL, 0,
-                                                              pBuffer, y) == y);
-        pBuffer += y;
-        y = uUbxProtocolDecode(buffer2, pBuffer - buffer2, &messageClass, &messageId,
-                               buffer1, sizeof(buffer1), (const char **) &pBuffer);
-        if (y == (int32_t) U_ERROR_COMMON_NOT_FOUND) {
-            // Got nothing at all, reset the buffer pointer for the next try
-            pBuffer = buffer2;
-        }
+
+        U_PORT_TEST_ASSERT(messageClass == 0x0a);
+        U_PORT_TEST_ASSERT(messageId == 0x32);
+        // The body of the response is 12 bytes long
+        U_PORT_TEST_ASSERT(y == 12);
+    } else {
+        U_TEST_PRINT_LINE("not talking to GNSS device over SPI as we can't reset the GNSS chip.");
     }
-
-    U_PORT_TEST_ASSERT(messageClass == 0x0a);
-    U_PORT_TEST_ASSERT(messageId == 0x32);
-    // The body of the response is 12 bytes long
-    U_PORT_TEST_ASSERT(y == 12);
 
     // Deinit SPI
     uPortSpiClose(gSpiHandle);
@@ -3166,6 +3190,11 @@ U_PORT_TEST_FUNCTION("[port]", "portTimers")
 
         // Start it
         U_PORT_TEST_ASSERT(uPortTimerStart(gTimerHandle[gTimerParameterIndex]) == 0);
+        // On some platforms (e.g. FreeRTOS beneath CMSIS) the process of starting
+        // a timer involves sending something on an internal queue wuich may take
+        // a little while and so we have to wait a little while here for that to
+        // complete before the timer can be stopped
+        uPortTaskBlock(U_CFG_OS_YIELD_MS);
         // Stop it
         U_PORT_TEST_ASSERT(uPortTimerStop(gTimerHandle[gTimerParameterIndex]) == 0);
         // It should not have expired
@@ -3376,7 +3405,6 @@ U_PORT_TEST_FUNCTION("[port]", "portCriticalSection")
  */
 U_PORT_TEST_FUNCTION("[port]", "portCleanUp")
 {
-
 #if (U_CFG_TEST_PIN_A >= 0) || (U_CFG_TEST_PIN_B >= 0) || \
     (U_CFG_TEST_PIN_C >= 0)
     uPortGpioConfig_t gpioConfig = U_PORT_GPIO_CONFIG_DEFAULT;

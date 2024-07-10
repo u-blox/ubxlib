@@ -44,8 +44,11 @@
 #include "u_debug_utils.h"
 
 #include "cmsis_os.h"
-#include "stm32f4xx.h"
-#include "core_cm4.h"
+
+#ifndef STM32U575xx
+# include "stm32f4xx.h"
+# include "core_cm4.h"
+#endif
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -59,8 +62,10 @@
  * VARIABLES
  * -------------------------------------------------------------- */
 
+#ifndef U_PORT_STM32_PURE_CMSIS
 // This is needed for OpenOCD FreeRTOS thread awareness
 const int __attribute__((used)) uxTopUsedPriority = configMAX_PRIORITIES - 1;
+#endif
 
 // This is intentionally a bit hidden and comes from u_port_debug.c
 extern volatile int32_t gStdoutCounter;
@@ -88,12 +93,14 @@ static void appTask(void *pParam)
                         U_MUTEX_DEBUG_WATCHDOG_TIMEOUT_SECONDS);
 #endif
 
-    // Enable usage- and bus fault exceptions
+#ifndef STM32U575xx
+    // Enable usage and bus fault exceptions
     SCB->SHCSR |= SCB_SHCSR_USGFAULTENA_Msk | SCB_SHCSR_BUSFAULTENA_Msk;
+#endif
 
     uPortInit();
 
-#if U_CFG_APP_PIN_C030_ENABLE_3V3 >= 0
+#if defined(U_CFG_APP_PIN_C030_ENABLE_3V3) && (U_CFG_APP_PIN_C030_ENABLE_3V3 >= 0)
     // Enable power to 3V3 rail for the C030 board
     gpioConfig.pin = U_CFG_APP_PIN_C030_ENABLE_3V3;
     gpioConfig.driveMode = U_PORT_GPIO_DRIVE_MODE_OPEN_DRAIN;

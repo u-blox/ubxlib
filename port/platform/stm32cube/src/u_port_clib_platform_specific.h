@@ -25,7 +25,7 @@
 /** Floating point is not required by ubxlib so switch to
  * the integer versions of the stdio library functions.
  * Note: ubxlib code will not log floating point values
- * (i.e. %f or %d types) and will not use maths functions
+ * (i.e. %f types) and will not use maths functions
  * (e.g. pow(), log10()) or, of course, double or float types.
  */
 #define snprintf sniprintf

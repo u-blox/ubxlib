@@ -64,6 +64,7 @@
 #include <errno.h>  // ENOMEM
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h> // int32_t etc.
 
 #include "newlib.h"
 #if ((__NEWLIB__ != 3) || ((__NEWLIB_MINOR__ != 0) && (__NEWLIB_MINOR__ != 1) && (__NEWLIB_MINOR__ != 3))) && \
@@ -71,12 +72,23 @@
 #warning "This wrapper was verified for newlib versions 3.0.0, 3.1.0, 3.3.0 and 4.3.0; please ensure newlib's external requirements for malloc-family are unchanged!"
 #endif
 
-#include "FreeRTOS.h" // defines public interface we're implementing here
-#if !defined(configUSE_NEWLIB_REENTRANT) ||  (configUSE_NEWLIB_REENTRANT!=1)
-#warning "#define configUSE_NEWLIB_REENTRANT 1 // Required for thread-safety of newlib sprintf, strtok, etc..."
+#if !defined(U_PORT_STM32_PURE_CMSIS) || defined(U_PORT_STM32_CMSIS_ON_FREERTOS)
+// Either FreeRTOS or FreeRTOS under CMSIS
+# include "FreeRTOS.h" // defines public interface we're implementing here
+# include "task.h"
+# if !defined(configUSE_NEWLIB_REENTRANT) ||  (configUSE_NEWLIB_REENTRANT!=1)
+#  warning "#define configUSE_NEWLIB_REENTRANT 1 // Required for thread-safety of newlib sprintf, strtok, etc..."
 // If you're *REALLY* sure you don't need FreeRTOS's newlib reentrancy support, remove this warning...
+# endif
+#else
+// Must be ThreadX under CMSIS
+# include "tx_api.h"
+# include "tx_thread.h"
+# include "cmsis_os2.h"
+# include "u_port_os.h"
+# include "stm32u5xx_hal.h"   // For GPIO_TypeDef, needed
+# include "u_port_private.h"  // by u_port_private.h
 #endif
-#include "task.h"
 
 // ================================================================================================
 // External routines required by newlib's malloc (sbrk/_sbrk, __malloc_lock/unlock)
@@ -129,6 +141,12 @@ extern char HEAP_SIZE;  // make sure to define this symbol in linker LD command 
 static int heapBytesRemaining = (int) &HEAP_SIZE; // that's (&__HeapLimit)-(&__HeapBase)
 #endif
 
+// IMPORTANT NOTE: this file was upated to support use of newlib's malloc()/free()
+// with Threadx as well as with FreeRTOS.  However, this was not used in the end;
+// instead, to improve memory efficiency, malloc()/free() were mapped to the same
+// ThreadX memory pool as the ST-provided CMSIS adapter layer for ThreadX sets up,
+// see u_port_clib.c.  The modifications are retained in case we change our minds.
+
 #ifdef MALLOCS_INSIDE_ISRs // STM code to avoid malloc within ISR (USB CDC stack)
 // We can't use vTaskSuspendAll() within an ISR.
 // STM's stunningly bad coding malpractice calls malloc within ISRs (for example, on USB connect function USBD_CDC_Init)
@@ -136,14 +154,34 @@ static int heapBytesRemaining = (int) &HEAP_SIZE; // that's (&__HeapLimit)-(&__H
 #define DRN_ENTER_CRITICAL_SECTION(_usis) { _usis = taskENTER_CRITICAL_FROM_ISR(); } // Disables interrupts (after saving prior state)
 #define DRN_EXIT_CRITICAL_SECTION(_usis)  { taskEXIT_CRITICAL_FROM_ISR(_usis);     } // Re-enables interrupts (unless already disabled prior taskENTER_CRITICAL)
 #else
-#define DRN_ENTER_CRITICAL_SECTION(_usis) vTaskSuspendAll(); // Note: safe to use before FreeRTOS scheduler started, but not in ISR
-#define DRN_EXIT_CRITICAL_SECTION(_usis)  xTaskResumeAll();  // Note: safe to use before FreeRTOS scheduler started, but not in ISR
+# if !defined(U_PORT_STM32_PURE_CMSIS) || defined(U_PORT_STM32_CMSIS_ON_FREERTOS)
+// Either FreeRTOS or FreeRTOS under CMSIS
+#  define DRN_ENTER_CRITICAL_SECTION(_usis) vTaskSuspendAll(); // Note: safe to use before FreeRTOS scheduler started, but not in ISR
+#  define DRN_EXIT_CRITICAL_SECTION(_usis)  xTaskResumeAll();  // Note: safe to use before FreeRTOS scheduler started, but not in ISR
+# else
+// Must be ThreadX under CMSIS
+#  define DRN_ENTER_CRITICAL_SECTION(_usis) uPortPrivateEnterCriticalCmsis();
+#  define DRN_EXIT_CRITICAL_SECTION(_usis)  uPortPrivateExitCriticalCmsis();
+# endif
 #endif
 
 #ifndef NDEBUG
 static int totalBytesProvidedBySBRK = 0;
 #endif
 extern char __HeapBase, __HeapLimit;  // make sure to define these symbols in linker LD command file
+
+static bool schedulerStarted()
+{
+    bool started;
+#if !defined(U_PORT_STM32_PURE_CMSIS) || defined(U_PORT_STM32_CMSIS_ON_FREERTOS)
+    // Either FreeRTOS or FreeRTOS under CMSIS
+    started = (xTaskGetSchedulerState() != taskSCHEDULER_NOT_STARTED);
+#else
+    // Must be ThreadX under CMSIS
+    started = (osKernelGetState() >= osKernelRunning);
+#endif
+    return started;
+}
 
 // Return the value of "heap bytes remaining", which
 // is the size not yet passed to newlib by malloc().
@@ -169,10 +207,10 @@ void *_sbrk_r(struct _reent *pReent, int incr)
         TotalHeapSize = heapBytesRemaining = (int)((&__HeapLimit) - (&__HeapBase)) - ISR_STACK_LENGTH_BYTES;
     };
 #endif
-    char *limit = (xTaskGetSchedulerState() == taskSCHEDULER_NOT_STARTED) ?
-                  stack_ptr   :  // Before scheduler is started, limit is stack pointer (risky!)
+    char *limit = schedulerStarted() ?
                   &__HeapLimit -
-                  ISR_STACK_LENGTH_BYTES; // Once running, OK to reuse all remaining RAM except ISR stack (MSP) stack
+                  ISR_STACK_LENGTH_BYTES : // Once running, OK to reuse all remaining RAM except ISR stack (MSP) stack
+                  stack_ptr;  // Before scheduler is started, limit is stack pointer (risky!)
     DRN_ENTER_CRITICAL_SECTION(usis);
     char *previousHeapEnd = currentHeapEnd;
     if (currentHeapEnd + incr > limit) {
@@ -222,23 +260,45 @@ static UBaseType_t malLock_uxSavedInterruptStatus;
 #endif
 void __malloc_lock(struct _reent *r)
 {
-#if defined(MALLOCS_INSIDE_ISRs)
-    DRN_ENTER_CRITICAL_SECTION(malLock_uxSavedInterruptStatus);
-#else
-    bool insideAnISR = xPortIsInsideInterrupt();
     (void)r;
-    configASSERT( !insideAnISR ); // Make damn sure no more mallocs inside ISRs!!
-    vTaskSuspendAll();
+    // Note: only do this "scheduler started" thing because, should
+    // a hard-fault occur before the scheduler has started it might
+    // call printf() with useful stuff in it, which might work at
+    // that point, but definitely won't if it happens to try to
+    // allocate memory and we think we're in an interrupt; no point
+    // in locking anything at that point...
+    if (schedulerStarted()) {
+#if defined(MALLOCS_INSIDE_ISRs)
+        DRN_ENTER_CRITICAL_SECTION(malLock_uxSavedInterruptStatus);
+#else
+# if !defined(U_PORT_STM32_PURE_CMSIS) || defined(U_PORT_STM32_CMSIS_ON_FREERTOS)
+        // Either FreeRTOS or FreeRTOS under CMSIS
+        bool insideAnISR = schedulerStarted() && xPortIsInsideInterrupt();
+        configASSERT( !insideAnISR ); // Make damn sure no more mallocs inside ISRs!!
+        vTaskSuspendAll();
+# else
+        // Must be ThreadX under CMSIS
+        uPortPrivateEnterCriticalCmsis();
+# endif
 #endif
+    }
 };
 void __malloc_unlock(struct _reent *r)
 {
     (void)r;
+    if (schedulerStarted()) {
 #if defined(MALLOCS_INSIDE_ISRs)
-    DRN_EXIT_CRITICAL_SECTION(malLock_uxSavedInterruptStatus);
+        DRN_EXIT_CRITICAL_SECTION(malLock_uxSavedInterruptStatus);
 #else
-    (void)xTaskResumeAll();
+# if !defined(U_PORT_STM32_PURE_CMSIS) || defined(U_PORT_STM32_CMSIS_ON_FREERTOS)
+        // Either FreeRTOS or FreeRTOS under CMSIS
+        (void)xTaskResumeAll();
+# else
+        // Must be ThreadX under CMSIS
+        uPortPrivateExitCriticalCmsis();
+# endif
 #endif
+    }
 };
 
 // newlib also requires implementing locks for the application's environment memory space,
@@ -247,12 +307,26 @@ void __malloc_unlock(struct _reent *r)
 // ToDo: Move __env_lock/unlock to a separate newlib helper file.
 void __env_lock()
 {
+#if !defined(U_PORT_STM32_PURE_CMSIS) || defined(U_PORT_STM32_CMSIS_ON_FREERTOS)
+    // Either FreeRTOS or FreeRTOS under CMSIS
     vTaskSuspendAll();
+#else
+    // Must be ThreadX under CMSIS
+    uPortPrivateEnterCriticalCmsis();
+#endif
 };
 void __env_unlock()
 {
+#if !defined(U_PORT_STM32_PURE_CMSIS) || defined(U_PORT_STM32_CMSIS_ON_FREERTOS)
+    // Either FreeRTOS or FreeRTOS under CMSIS
     (void)xTaskResumeAll();
+#else
+    // Must be ThreadX under CMSIS
+    uPortPrivateExitCriticalCmsis();
+#endif
 };
+
+#if !defined(U_PORT_STM32_PURE_CMSIS) || defined(U_PORT_STM32_CMSIS_ON_FREERTOS)
 
 // ================================================================================================
 // Implement FreeRTOS's memory API using newlib-provided malloc family.
@@ -266,13 +340,21 @@ void vPortFree( void *pv ) PRIVILEGED_FUNCTION {
     free(pv);
 };
 
-size_t xPortGetFreeHeapSize( void ) PRIVILEGED_FUNCTION {
-    struct mallinfo mi = mallinfo(); // available space now managed by newlib
-    return mi.fordblks + heapBytesRemaining; // plus space not yet handed to newlib by sbrk
-}
-
 // GetMinimumEverFree is not available in newlib's malloc implementation.
 // So, no implementation is provided: size_t xPortGetMinimumEverFreeHeapSize( void ) PRIVILEGED_FUNCTION;
 
 //! No implementation needed, but stub provided in case application already calls vPortInitialiseBlocks
 void vPortInitialiseBlocks( void ) PRIVILEGED_FUNCTION {};
+
+#endif
+
+#ifndef PRIVILEGED_FUNCTION
+// Give a definition of PRIVILEGED_FUNCTION so that the line below works even
+// if we don't happen to be including FreeRTOS headers.
+# define PRIVILEGED_FUNCTION
+#endif
+
+size_t xPortGetFreeHeapSize( void ) PRIVILEGED_FUNCTION {
+    struct mallinfo mi = mallinfo(); // available space now managed by newlib
+    return mi.fordblks + heapBytesRemaining; // plus space not yet handed to newlib by sbrk
+}

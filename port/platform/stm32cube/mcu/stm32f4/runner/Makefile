@@ -43,7 +43,7 @@ define USAGE_MESSAGE
 You must set the following variables in order to build:
 	STM32CUBE_FW_PATH: Set this to the path of STM32CubeF4 (https://github.com/STMicroelectronics/STM32CubeF4.git)
 	UNITY_PATH:        Set this to the path of Unity (https://github.com/ThrowTheSwitch/Unity)
-You my also need to set this to point to your ARM GCC bin directory if arm-none-eabi-gcc is not on the path
+You may also need to set this to point to your ARM GCC bin directory if arm-none-eabi-gcc is not on the path
 	ARM_GCC_TOOLCHAIN_PATH
 endef
 

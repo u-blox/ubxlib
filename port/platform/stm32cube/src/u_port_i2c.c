@@ -15,9 +15,13 @@
  */
 
 /** @file
- * @brief Implementation of the port I2C API for the STM32F4 platform.
+ * @brief Implementation of the port I2C API for the STM32 platform.
+ *
+ * Note: the I2C HW block implementation between the STM32F4 and STM32U5
+ * series processors is utterly different.
  */
 
+#include "limits.h" // UINT32_MAX
 #include "stddef.h"
 #include "stdint.h"
 #include "stdbool.h"
@@ -33,10 +37,18 @@
 #include "u_port_gpio.h" // For unblocking
 #include "u_port_i2c.h"
 
-#include "stm32f4xx_ll_bus.h"
-#include "stm32f4xx_ll_gpio.h"
-#include "stm32f4xx_ll_i2c.h"
-#include "stm32f4xx_hal_i2c.h"
+#ifdef STM32U575xx
+# include "stm32u5xx_ll_bus.h"
+# include "stm32u5xx_ll_gpio.h"
+# include "stm32u5xx_ll_i2c.h"
+# include "stm32u5xx_hal_i2c.h"
+# include "i2c_timing_utility.h"
+#else
+# include "stm32f4xx_ll_bus.h"
+# include "stm32f4xx_ll_gpio.h"
+# include "stm32f4xx_ll_i2c.h"
+# include "stm32f4xx_hal_i2c.h"
+#endif
 
 #include "cmsis_os.h"
 
@@ -54,7 +66,7 @@
 #ifndef U_PORT_I2C_MAX_NUM
 /** The number of I2C HW blocks that are available.
  */
-# define U_PORT_I2C_MAX_NUM 3
+# define U_PORT_I2C_MAX_NUM 4
 #endif
 
 #ifdef U_PORT_I2C_FAST_MODE_DUTY_CYCLE_OFFSET
@@ -69,28 +81,74 @@
 # define U_PORT_I2C_DUTY_CYCLE LL_I2C_DUTYCYCLE_2
 #endif
 
+#ifdef STM32U575xx
+/** The transfer size limit: only used for STM32U5.
+ */
+# define U_PORT_I2C_TRANSFER_LIMIT 255
+#else
+# define U_PORT_I2C_TRANSFER_LIMIT UINT32_MAX
+#endif
+
 /** Version of __HAL_I2C_GET_FLAG that doesn't require us
  * to carry around an entire I2C_HandleTypeDef.
  */
-#define U_PORT_HAL_I2C_GET_FLAG(__PREG__, __FLAG__) ((((uint8_t)((__FLAG__) >> 16U)) == 0x01U) ? \
-                                                     (((((__PREG__)->SR1) & ((__FLAG__) & I2C_FLAG_MASK)) == ((__FLAG__) & I2C_FLAG_MASK)) ? SET : RESET) : \
-                                                     (((((__PREG__)->SR2) & ((__FLAG__) & I2C_FLAG_MASK)) == ((__FLAG__) & I2C_FLAG_MASK)) ? SET : RESET))
+#ifndef STM32U575xx
+# define U_PORT_HAL_I2C_GET_FLAG(__PREG__, __FLAG__) ((((uint8_t)((__FLAG__) >> 16U)) == 0x01U) ? \
+                                                      (((((__PREG__)->SR1) & ((__FLAG__) & I2C_FLAG_MASK)) == ((__FLAG__) & I2C_FLAG_MASK)) ? SET : RESET) : \
+                                                      (((((__PREG__)->SR2) & ((__FLAG__) & I2C_FLAG_MASK)) == ((__FLAG__) & I2C_FLAG_MASK)) ? SET : RESET))
+#else
+# define U_PORT_HAL_I2C_GET_FLAG(__PREG__, __FLAG__) (((((__PREG__)->ISR) & (__FLAG__)) == (__FLAG__)) ? SET : RESET)
+#endif
 
 /** Version of __HAL_I2C_CLEAR_FLAG that doesn't require us
  * to carry around an entire I2C_HandleTypeDef.
  */
-#define U_PORT_HAL_I2C_CLEAR_FLAG(__PREG__, __FLAG__) ((__PREG__)->SR1 = ~((__FLAG__) & I2C_FLAG_MASK))
+#ifndef STM32U575xx
+# define U_PORT_HAL_I2C_CLEAR_FLAG(__PREG__, __FLAG__) ((__PREG__)->SR1 = ~((__FLAG__) & I2C_FLAG_MASK))
+#else
+# define U_PORT_HAL_I2C_CLEAR_FLAG(__PREG__, __FLAG__) (((__PREG__)->ICR = (__FLAG__)))
+#endif
 
 /** Version of __HAL_I2C_CLEAR_ADDRFLAG that doesn't require us
  * to carry around an entire I2C_HandleTypeDef.
  */
-#define U_PORT_HAL_I2C_CLEAR_ADDRFLAG(__PREG__)  \
-  do{                                            \
-    __IO uint32_t tmpreg = 0x00U;                \
-    tmpreg = (__PREG__)->SR1;                    \
-    tmpreg = (__PREG__)->SR2;                    \
-    UNUSED(tmpreg);                              \
-  } while(0)
+#ifndef STM32U575xx
+# define U_PORT_HAL_I2C_CLEAR_ADDRFLAG(__PREG__)  \
+   do{                                            \
+     __IO uint32_t tmpreg = 0x00U;                \
+     tmpreg = (__PREG__)->SR1;                    \
+     tmpreg = (__PREG__)->SR2;                    \
+     UNUSED(tmpreg);                              \
+   } while(0)
+#else
+# define U_PORT_HAL_I2C_CLEAR_ADDRFLAG(__PREG__) // Not used for STM32U575
+#endif
+
+/** Flag which indicates that a new TX byte can be written:
+ * TXE for STM32F4 but TXIS for STM32U5 (which is NOT set
+ * if there has been a NACK).
+ */
+#ifdef STM32U575xx
+# define U_PORT_I2C_TX_FLAG I2C_FLAG_TXIS
+#else
+# define U_PORT_I2C_TX_FLAG I2C_FLAG_TXE
+#endif
+
+/** Write data.
+ */
+#ifdef STM32U575xx
+# define U_PORT_I2C_WRITE_DATA(__PREG__, data) (__PREG__)->TXDR = (char) (data)
+#else
+# define U_PORT_I2C_WRITE_DATA(__PREG__, data) (__PREG__)->DR = (char) (data)
+#endif
+
+/** Read data.
+ */
+#ifdef STM32U575xx
+# define U_PORT_I2C_READ_DATA(__PREG__) (char) (__PREG__)->RXDR
+#else
+# define U_PORT_I2C_READ_DATA(__PREG__) (char) (__PREG__)->DR
+#endif
 
 /* ----------------------------------------------------------------
  * TYPES
@@ -121,7 +179,10 @@ static uPortMutexHandle_t gMutex = NULL;
 static I2C_TypeDef *const gpI2cReg[] = {NULL,  // This to avoid having to -1
                                         I2C1,
                                         I2C2,
-                                        I2C3
+                                        I2C3,
+#ifdef I2C4
+                                        I2C4
+#endif
                                        };
 
 /** I2C device data.
@@ -171,6 +232,12 @@ static int32_t clockEnable(I2C_TypeDef *pReg)
             __HAL_RCC_I2C3_CLK_ENABLE();
             errorCodeOrI2c = (int32_t) U_ERROR_COMMON_SUCCESS;
             break;
+#ifdef I2C4
+        case 4:
+            __HAL_RCC_I2C4_CLK_ENABLE();
+            errorCodeOrI2c = (int32_t) U_ERROR_COMMON_SUCCESS;
+            break;
+#endif
         default:
             break;
     }
@@ -197,6 +264,12 @@ static int32_t clockDisable(I2C_TypeDef *pReg)
             __HAL_RCC_I2C3_CLK_DISABLE();
             errorCodeOrI2c = (int32_t) U_ERROR_COMMON_SUCCESS;
             break;
+#ifdef I2C4
+        case 4:
+            __HAL_RCC_I2C4_CLK_DISABLE();
+            errorCodeOrI2c = (int32_t) U_ERROR_COMMON_SUCCESS;
+            break;
+#endif
         default:
             break;
     }
@@ -210,8 +283,12 @@ static int32_t configureHw(I2C_TypeDef *pReg, int32_t clockHertz)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
     uint32_t pclk1 = HAL_RCC_GetPCLK1Freq();
-    uint32_t frequencyRange =  I2C_FREQRANGE(pclk1);
-
+#ifndef STM32U575xx
+    uint32_t x = I2C_FREQRANGE(pclk1);
+#else
+    // I2C_GetTiming() can be found in the ST-provided i2c_timing_utility.c
+    uint32_t x = I2C_GetTiming(pclk1, clockHertz);
+#endif
     // Disable the I2C block
     CLEAR_BIT(pReg->CR1, I2C_CR1_PE);
 
@@ -220,14 +297,20 @@ static int32_t configureHw(I2C_TypeDef *pReg, int32_t clockHertz)
     pReg->CR1 &= ~I2C_CR1_SWRST;
 
     // Check the minimum allowed PCLK1 frequency
+#ifndef STM32U575xx
     if (I2C_MIN_PCLK_FREQ(pclk1, clockHertz) == 0) {
         // Configure the frequency range
-        MODIFY_REG(pReg->CR2, I2C_CR2_FREQ, frequencyRange);
+        MODIFY_REG(pReg->CR2, I2C_CR2_FREQ, x);
         // Configure rise time
-        MODIFY_REG(pReg->TRISE, I2C_TRISE_TRISE, I2C_RISE_TIME(frequencyRange, clockHertz));
+        MODIFY_REG(pReg->TRISE, I2C_TRISE_TRISE, I2C_RISE_TIME(x, clockHertz));
         // Configure the speed and timing
         MODIFY_REG(pReg->CCR, (I2C_CCR_FS | I2C_CCR_DUTY | I2C_CCR_CCR), I2C_SPEED(pclk1, clockHertz,
                                                                                    U_PORT_I2C_DUTY_CYCLE));
+#else
+    if (x > 0) {
+        // Configure the single timing register
+        pReg->TIMINGR = x;
+#endif
         // Enable the I2C block again
         SET_BIT(pReg->CR1, I2C_CR1_PE);
         errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
@@ -251,6 +334,27 @@ static bool waitFlagOk(I2C_TypeDef *pReg, uint32_t flag,
     return !wait;
 }
 
+// Check for an ACK being sent back to us, handling the
+// case that it happens to be a NACK.
+static bool checkForAck(I2C_TypeDef *pReg)
+{
+    bool ackReceived = true;
+
+    if (U_PORT_HAL_I2C_GET_FLAG(pReg, I2C_FLAG_AF) == SET) {
+        // If there's been an acknowledgement failure,
+        // give up in an organised way
+#ifndef STM32U575xx
+        SET_BIT(pReg->CR1, I2C_CR1_STOP);
+#else
+        // STM32U5 sends STOP after a NACK automagically
+#endif
+        U_PORT_HAL_I2C_CLEAR_FLAG(pReg, I2C_FLAG_AF);
+        ackReceived = false;
+    }
+
+    return ackReceived;
+}
+
 // Wait for an address or address header or a transmit
 // (depending on the flag) to be acknowledged with a timeout.
 // A STOP is generated if a nack is received, true is returned
@@ -265,13 +369,7 @@ static bool waitTransmitOk(I2C_TypeDef *pReg, uint32_t flag,
     while ((wait = (U_PORT_HAL_I2C_GET_FLAG(pReg, flag) == RESET)) &&
            !uTimeoutExpiredMs(timeoutStart, timeoutMs) &&
            !ackFailed) {
-        if (U_PORT_HAL_I2C_GET_FLAG(pReg, I2C_FLAG_AF) == SET) {
-            // If there's been an acknowledgement failure,
-            // give up in an organised way
-            SET_BIT(pReg->CR1, I2C_CR1_STOP);
-            U_PORT_HAL_I2C_CLEAR_FLAG(pReg, I2C_FLAG_AF);
-            ackFailed = true;
-        }
+        ackFailed = !checkForAck(pReg);
     }
 
     return !ackFailed && !wait;
@@ -280,18 +378,24 @@ static bool waitTransmitOk(I2C_TypeDef *pReg, uint32_t flag,
 // Send an address, which starts any message transaction from the
 // controller, returning zero on success else negative error code.
 // Note: this is essentially what I2C_MasterRequestWrite()/
-// I2C_MasterRequestRead() do in the original ST code.
+// I2C_MasterRequestRead() do in the original STM32F4 code or
+// what I2C_TransferConfig() does in the original STM32U5 code.
 static int32_t sendAddress(I2C_TypeDef *pReg, uint16_t address,
                            int32_t timeoutMs, bool readNotWrite,
-                           bool *pIgnoreBusy)
+                           bool *pIgnoreBusy, size_t size,
+                           bool noStop)
 {
-
     int32_t errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
-    bool keepGoing = true;
 
     // Wait until the BUSY flag is reset, if required
     if (*pIgnoreBusy || waitFlagOk(pReg, I2C_FLAG_BUSY, RESET, timeoutMs)) {
         *pIgnoreBusy = false;
+#ifndef STM32U575xx
+        // The STM32F4 version is quite complex because each element
+        // of the address has to be transmitted separately
+        bool keepGoing = true;
+        (void) size; // Not required in the STM32F4 case
+        (void) noStop; // Not required in the STM32F4 case
         // Disable Pos
         CLEAR_BIT(pReg->CR1, I2C_CR1_POS);
         if (readNotWrite) {
@@ -344,6 +448,55 @@ static int32_t sendAddress(I2C_TypeDef *pReg, uint16_t address,
                 }
             }
         }
+#else // #ifndef STM32U575xx
+        // The STM32U5 version involves setting up CR2 and that's
+        // pretty much it, a transfer is left to fly after that
+        uTimeoutStart_t timeoutStart = uTimeoutStart();
+        uint32_t cr2 = I2C_CR2_START;
+        // Deal with address length
+        if (address > 127) {
+            cr2 |= I2C_CR2_ADD10;
+        } else {
+            address <<= 1;
+        }
+        // TODO: I _think_ this handles 10 bit addresses correctly,
+        // at least it does no less than the ST LL code does, but
+        // there is a HEAD10R bit in CR2 which it _might_ be
+        // necessary to do something with for correct 10-bit address
+        // mode read-direction operation; we have nothing to test
+        // 10-bit address mode operation against so it is not
+        // possible to tell.
+        cr2 |= address & I2C_CR2_SADD;
+        if (readNotWrite) {
+            cr2 |= I2C_CR2_RD_WRN;
+        }
+        // Indicate the length
+        cr2 |= (size << I2C_CR2_NBYTES_Pos) & I2C_CR2_NBYTES;
+        if (!noStop) {
+            cr2 |= I2C_CR2_AUTOEND;
+        }
+        // Clear any stop condition that might have
+        // been flagged previously
+        U_PORT_HAL_I2C_CLEAR_FLAG(pReg, I2C_FLAG_STOPF);
+        // Set CR2 to the value we've assembled
+        pReg->CR2 = cr2;
+        // For STM32U5 the TXE (and TXIS) flags are not involved in
+        // the transmission of the address, they are only associated
+        // with the activity of the TXDR register, so instead we
+        // wait for the START flag in CR2 to be cleared, which the
+        // HW does when the address has been sent, and then check
+        // whether we've got an ACK for that.
+        while ((pReg->CR2 & I2C_CR2_START) &&
+               !uTimeoutExpiredMs(timeoutStart, timeoutMs)) {
+        }
+        if ((pReg->CR2 & I2C_CR2_START) == 0) {
+            // Address was sent: check for ACK
+            errorCode = (int32_t) U_ERROR_COMMON_INVALID_ADDRESS;
+            if (checkForAck(pReg)) {
+                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+            }
+        }
+#endif // #ifndef STM32U575xx
     }
 
     return errorCode;
@@ -357,37 +510,58 @@ static int32_t send(I2C_TypeDef *pReg, uint16_t address,
                     bool *pIgnoreBusy)
 {
     int32_t errorCode;
+    size_t bytesToSend = size;
 
-    errorCode = sendAddress(pReg, address, timeoutMs, false, pIgnoreBusy);
+    errorCode = sendAddress(pReg, address, timeoutMs, false, pIgnoreBusy, size, noStop);
     if (errorCode == 0) {
-        // Clear the ADDR flag
+        // Clear the ADDR flag (only amounts to anything for STM32F4)
         U_PORT_HAL_I2C_CLEAR_ADDRFLAG(pReg);
         // Now send the data
-        while ((size > 0) && (errorCode == 0)) {
-            if (waitTransmitOk(pReg, I2C_FLAG_TXE, timeoutMs)) {
+        while ((bytesToSend > 0) && (errorCode == 0)) {
+            if (waitTransmitOk(pReg, U_PORT_I2C_TX_FLAG, timeoutMs)) {
                 // Write a byte
-                pReg->DR = *pData;
+                U_PORT_I2C_WRITE_DATA(pReg, *pData);
                 pData++;
-                size--;
-                if ((U_PORT_HAL_I2C_GET_FLAG(pReg, I2C_FLAG_BTF) == SET) && (size > 0)) {
+                bytesToSend--;
+#ifndef STM32U575xx
+                // The weirdo BTF stuff, only relevant to STM32F4
+                if ((U_PORT_HAL_I2C_GET_FLAG(pReg, I2C_FLAG_BTF) == SET) && (bytesToSend > 0)) {
                     // Write another byte
                     pReg->DR = *pData;
                     pData++;
-                    size--;
+                    bytesToSend--;
                 }
                 // Wait for BTF flag to be set
                 if (!waitTransmitOk(pReg, I2C_FLAG_BTF, timeoutMs)) {
                     errorCode = (int32_t) U_ERROR_COMMON_NOT_RESPONDING;
                 }
+#endif
             } else {
                 errorCode = (int32_t) U_ERROR_COMMON_NOT_RESPONDING;
             }
         }
-        if (errorCode == 0) {
-            if (!noStop) {
-                // Generate stop
-                SET_BIT(pReg->CR1, I2C_CR1_STOP);
+#ifdef STM32U575xx
+        // On STM32U5, if we have set "no stop", we need to wait for
+        // transmission to complete
+        if (noStop && (size > 0) && (errorCode == 0) &&
+            !waitTransmitOk(pReg, I2C_FLAG_TC, timeoutMs)) {
+            errorCode = (int32_t) U_ERROR_COMMON_NOT_RESPONDING;
+        }
+#endif
+
+        if ((errorCode == 0) && !noStop) {
+#ifndef STM32U575xx
+            // Generate stop
+            SET_BIT(pReg->CR1, I2C_CR1_STOP);
+#else
+            // For STM32U5 stop is automatically generated, set up when
+            // when we called sendAddress(), we just need to wait for
+            // it to finish.
+            if (!waitTransmitOk(pReg, I2C_FLAG_STOPF, timeoutMs)) {
+                errorCode = (int32_t) U_ERROR_COMMON_NOT_RESPONDING;
             }
+            U_PORT_HAL_I2C_CLEAR_FLAG(pReg, I2C_FLAG_STOPF);
+#endif
         }
     }
 
@@ -404,10 +578,12 @@ static int32_t receive(I2C_TypeDef *pReg, uint16_t address,
     size_t bytesToReceive = size;
     bool keepGoing = true;
 
-    errorCodeOrLength = sendAddress(pReg, address, timeoutMs, true, pIgnoreBusy);
+    errorCodeOrLength = sendAddress(pReg, address, timeoutMs, true, pIgnoreBusy, size, false);
     if (errorCodeOrLength == 0) {
         // The only thing that can go wrong from here on is a timeout
         errorCodeOrLength = (int32_t) U_ERROR_COMMON_TIMEOUT;
+#ifndef STM32U575xx
+        // All this complexity is only required for STM32F4
         if (bytesToReceive == 0) {
             // Clear the ADDR flag
             U_PORT_HAL_I2C_CLEAR_ADDRFLAG(pReg);
@@ -433,7 +609,10 @@ static int32_t receive(I2C_TypeDef *pReg, uint16_t address,
             // Clear the ADDR flag
             U_PORT_HAL_I2C_CLEAR_ADDRFLAG(pReg);
         }
+#endif // #ifndef STM32U575xx
         while ((bytesToReceive > 0) && keepGoing) {
+#ifndef STM32U575xx
+            // This rather mad BTF stuff only applies for STM32F4
             if (bytesToReceive <= 3) {
                 if (bytesToReceive == 1) { // One byte
                     // Wait until the RXNE flag is set
@@ -491,22 +670,39 @@ static int32_t receive(I2C_TypeDef *pReg, uint16_t address,
                     }
                 }
             } else {
-                // Wait until the RXNE flag is set
+#endif // #ifndef STM32U575xx
+                // For both STM32F4 and STM32U5, wait until the
+                // RXNE flag is set
                 keepGoing = waitFlagOk(pReg, I2C_FLAG_RXNE, SET, timeoutMs);
                 if (keepGoing) {
-                    // Read the data from DR
-                    *pData = (char) pReg->DR;
+                    // Read the data
+                    *pData = U_PORT_I2C_READ_DATA(pReg);
                     pData++;
                     bytesToReceive--;
                 }
+#ifndef STM32U575xx
+                // More BTF stuff, STM32F4 only
                 if (U_PORT_HAL_I2C_GET_FLAG(pReg, I2C_FLAG_BTF) == SET) {
                     // Read the data from DR
                     *pData = (char) pReg->DR;
                     pData++;
                     bytesToReceive--;
                 }
-            }
+            } // YES, this _IS_ meant to be within the #ifndef
+#endif
         }
+
+#ifdef STM32U575xx
+        // For STM32U5, send STOPF if we finished early, and then
+        // wait for it (in the normal course of things it is set
+        // automatically)
+        if (!keepGoing) {
+            pReg->CR2 = I2C_FLAG_STOPF;
+        }
+        waitFlagOk(pReg, I2C_FLAG_STOPF, SET, timeoutMs);
+        U_PORT_HAL_I2C_CLEAR_FLAG(pReg, I2C_FLAG_STOPF);
+#endif
+
         if (keepGoing) {
             errorCodeOrLength = (int32_t) (size - bytesToReceive);
         }
@@ -534,7 +730,7 @@ static void closeI2c(uPortI2cData_t *pInstance)
 // Our bus recovery function needs a short delay, of the order of
 // 10 microseconds, which the STM32 HAL doesn't have a function for,
 // so here we just do 125 increments which, with a core clock of
-// 168 MHz, should be somewhere around that
+// 168 MHz, should be somewhere around that.
 static void shortDelay()
 {
     volatile int32_t x = 0;
@@ -865,6 +1061,8 @@ int32_t uPortI2cControllerExchange(int32_t handle, uint16_t address,
 {
     int32_t errorCodeOrLength = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     I2C_TypeDef *pReg;
+    size_t size;
+    int32_t x;
 
     if (gMutex != NULL) {
 
@@ -876,18 +1074,45 @@ int32_t uPortI2cControllerExchange(int32_t handle, uint16_t address,
             (gI2cData[handle].pReg != NULL) &&
             ((pSend != NULL) || (bytesToSend == 0)) &&
             ((pReceive != NULL) || (bytesToReceive == 0))) {
+
             pReg = gI2cData[handle].pReg;
-            errorCodeOrLength = send(gI2cData[handle].pReg, address, pSend, bytesToSend,
-                                     gI2cData[handle].timeoutMs, noInterveningStop,
-                                     &(gI2cData[handle].ignoreBusy));
+
+            // A do()/while() loop so that we can send zero bytes
+            do {
+                size = bytesToSend;
+                if (size > U_PORT_I2C_TRANSFER_LIMIT) {
+                    size = U_PORT_I2C_TRANSFER_LIMIT;
+                }
+                errorCodeOrLength = send(gI2cData[handle].pReg, address, pSend, size,
+                                         gI2cData[handle].timeoutMs, noInterveningStop,
+                                         &(gI2cData[handle].ignoreBusy));
+                if (errorCodeOrLength == (int32_t) U_ERROR_COMMON_SUCCESS) {
+                    bytesToSend -= size;
+                    pSend += size;
+                }
+            } while ((bytesToSend > 0) &&
+                     (errorCodeOrLength == (int32_t) U_ERROR_COMMON_SUCCESS));
+
             if ((errorCodeOrLength == 0) && noInterveningStop) {
                 // Ignore the busy flag next since we haven't sent a stop
                 gI2cData[handle].ignoreBusy = true;
             }
-            if ((errorCodeOrLength == 0) && (pReceive != NULL)) {
-                errorCodeOrLength = receive(pReg, address, pReceive, bytesToReceive,
-                                            gI2cData[handle].timeoutMs,
-                                            &(gI2cData[handle].ignoreBusy));
+
+            while ((bytesToReceive > 0) && (errorCodeOrLength >= 0)) {
+                size = bytesToReceive;
+                if (size > U_PORT_I2C_TRANSFER_LIMIT) {
+                    size = U_PORT_I2C_TRANSFER_LIMIT;
+                }
+                x = receive(pReg, address, pReceive, size,
+                            gI2cData[handle].timeoutMs,
+                            &(gI2cData[handle].ignoreBusy));
+                if (x >= 0) {
+                    bytesToReceive -= x;
+                    pReceive += x;
+                    errorCodeOrLength += x;
+                } else {
+                    errorCodeOrLength = x;
+                }
             }
         }
 
@@ -897,7 +1122,8 @@ int32_t uPortI2cControllerExchange(int32_t handle, uint16_t address,
     return errorCodeOrLength;
 }
 
-/** \deprecated please use uPortI2cControllerExchange() instead. */
+/** \deprecated, and not supported for STM32U5, please use
+ * uPortI2cControllerExchange() instead. */
 // Send and/or receive over the I2C interface as a controller.
 int32_t uPortI2cControllerSendReceive(int32_t handle, uint16_t address,
                                       const char *pSend, size_t bytesToSend,
@@ -905,6 +1131,8 @@ int32_t uPortI2cControllerSendReceive(int32_t handle, uint16_t address,
 {
     int32_t errorCodeOrLength = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     I2C_TypeDef *pReg;
+    size_t size;
+    int32_t x;
 
     if (gMutex != NULL) {
 
@@ -918,15 +1146,33 @@ int32_t uPortI2cControllerSendReceive(int32_t handle, uint16_t address,
             ((pReceive != NULL) || (bytesToReceive == 0))) {
             pReg = gI2cData[handle].pReg;
             errorCodeOrLength = (int32_t) U_ERROR_COMMON_SUCCESS;
-            if (pSend != NULL) {
-                errorCodeOrLength = send(pReg, address, pSend, bytesToSend,
+            while ((bytesToSend > 0) &&
+                   (errorCodeOrLength == (int32_t) U_ERROR_COMMON_SUCCESS)) {
+                size = bytesToSend;
+                if (size > U_PORT_I2C_TRANSFER_LIMIT) {
+                    size = U_PORT_I2C_TRANSFER_LIMIT;
+                }
+                errorCodeOrLength = send(pReg, address, pSend, size,
                                          gI2cData[handle].timeoutMs, false,
                                          &(gI2cData[handle].ignoreBusy));
+                if (errorCodeOrLength == (int32_t) U_ERROR_COMMON_SUCCESS) {
+                    bytesToSend -= size;
+                }
             }
-            if ((errorCodeOrLength == 0) && (pReceive != NULL)) {
-                errorCodeOrLength = receive(pReg, address, pReceive, bytesToReceive,
-                                            gI2cData[handle].timeoutMs,
-                                            &(gI2cData[handle].ignoreBusy));
+            while ((bytesToReceive > 0) && (errorCodeOrLength >= 0)) {
+                size = bytesToReceive;
+                if (size > U_PORT_I2C_TRANSFER_LIMIT) {
+                    size = U_PORT_I2C_TRANSFER_LIMIT;
+                }
+                x = receive(pReg, address, pReceive, size,
+                            gI2cData[handle].timeoutMs,
+                            &(gI2cData[handle].ignoreBusy));
+                if (x >= 0) {
+                    bytesToReceive -= x;
+                    errorCodeOrLength += x;
+                } else {
+                    errorCodeOrLength = x;
+                }
             }
         }
 
@@ -936,13 +1182,15 @@ int32_t uPortI2cControllerSendReceive(int32_t handle, uint16_t address,
     return errorCodeOrLength;
 }
 
-/** \deprecated please use uPortI2cControllerExchange() instead. */
+/** \deprecated, and not supported for STM32U5, please use
+ * uPortI2cControllerExchange() instead. */
 // Perform a send over the I2C interface as a controller.
 int32_t uPortI2cControllerSend(int32_t handle, uint16_t address,
                                const char *pSend, size_t bytesToSend,
                                bool noStop)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    size_t size;
 
     if (gMutex != NULL) {
 
@@ -953,9 +1201,20 @@ int32_t uPortI2cControllerSend(int32_t handle, uint16_t address,
         if ((handle > 0) && (handle < sizeof(gI2cData) / sizeof(gI2cData[0])) &&
             (gI2cData[handle].pReg != NULL) &&
             ((pSend != NULL) || (bytesToSend == 0))) {
-            errorCode = send(gI2cData[handle].pReg, address, pSend, bytesToSend,
-                             gI2cData[handle].timeoutMs, noStop,
-                             &(gI2cData[handle].ignoreBusy));
+            // A do()/while() loop so that we can send zero bytes
+            do {
+                size = bytesToSend;
+                if (size > U_PORT_I2C_TRANSFER_LIMIT) {
+                    size = U_PORT_I2C_TRANSFER_LIMIT;
+                }
+                errorCode = send(gI2cData[handle].pReg, address, pSend, size,
+                                 gI2cData[handle].timeoutMs, noStop,
+                                 &(gI2cData[handle].ignoreBusy));
+                if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
+                    bytesToSend -= size;
+                }
+            } while ((bytesToSend > 0) &&
+                     (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS));
             if ((errorCode == 0) && noStop) {
                 // Ignore the busy flag next time since we haven't sent a stop
                 gI2cData[handle].ignoreBusy = true;

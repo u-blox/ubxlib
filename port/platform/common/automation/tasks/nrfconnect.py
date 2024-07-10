@@ -216,6 +216,7 @@ def parse_backtrace(ctx, elf_file, line):
 @task(
     pre=[check_installation],
     help={
+        "toolchain": "Included only for compatibility with other analyzers, ignored in this case",
         "cmake_dir": f"CMake project directory to build (default: {DEFAULT_CMAKE_DIR})",
         "board_name": f"Zephyr board name (default: {DEFAULT_BOARD_NAME})",
         "output_name": f"An output name (build sub folder, default: {DEFAULT_OUTPUT_NAME})",
@@ -224,7 +225,7 @@ def parse_backtrace(ctx, elf_file, line):
         "features": "Feature list, e.g. \"cell short_range\" to leave out gnss; overrides the environment variable UBXLIB_FEATURES"
     }
 )
-def analyze(ctx, cmake_dir=DEFAULT_CMAKE_DIR, board_name=DEFAULT_BOARD_NAME,
+def analyze(ctx, toolchain="", cmake_dir=DEFAULT_CMAKE_DIR, board_name=DEFAULT_BOARD_NAME,
             output_name=DEFAULT_OUTPUT_NAME, build_dir=DEFAULT_BUILD_DIR,
             u_flags=None, features=None):
     """Run CodeChecker static code analyzer (clang-analyze + clang-tidy)"""

@@ -11,14 +11,14 @@ You will need to specify the directory where you extracted this `.zip` file when
 # Tickless Mode
 In the porting layer for this platform the `SysTick_Handler()` of the STM32F4 (see the bottom of [u_exception_handler.c](/port/platform/stm32cube/src/u_exception_handler.c)) is assumed to provide a 1 ms RTOS tick which is used as a source of time for `uPortGetTickTimeMs()`.  This means that **if you want to use FreeRTOS in tickless mode** you will need to modify the port either to find another source of tick for `uPortGetTickTimeMs()`, or to put in a call that updates `gTickTimerRtosCount` when FreeRTOS resumes after a tickless period, otherwise time will go wrong and things like wake-up from power-saving mode in a cellular module may not work correctly.
 
-# Trace Output
-In order to conserve HW resources the trace output from this platform is sent over SWD using an ITM channel. There are many ways to read out the ITM trace output:
-
 # CMSIS Version
 By default CMSIS V1 is used: if you wish to use CMSIS V2 then pass the build flag `CMSIS_V2` into your build and, from the STM32F4 SDK, build `Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os2.c` instead of `Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS/cmsis_os.c` and include in your header search paths `Middlewares/Third_Party/FreeRTOS/Include/CMSIS_RTOS_V2` instead of `Middlewares/Third_Party/FreeRTOS/Include/CMSIS_RTOS`.
 
+# Trace Output
+In order to conserve HW resources the trace output from this platform is sent over SWD using an ITM channel. There are many ways to read out the ITM trace output:
+
 ## STM32Cube IDE
-If you want to use the STM3Cube IDE you can import our [runner](runner) build as a Makefile project and debug it with [OpenOCD](https://github.com/xpack-dev-tools/openocd-xpack), configuring the STM32Cube IDE as below:
+If you want to use the STM3Cube IDE you can import our [runner](runner) build as a ``Makefile`` project and debug it with [OpenOCD](https://github.com/xpack-dev-tools/openocd-xpack), configuring the STM32Cube IDE as below:
 
 ![STM32CUBE IDE OpenOCD debug setup](stm32cube_ide_openocd_setup.jpg)
 
@@ -34,12 +34,12 @@ The simplest fix is to run a telnet application which will ignore nulls (since o
 Alternatively, if you just want to run the target without the debugger and simply view the SWO output, the [ST-Link utility](https://www.st.com/en/development-tools/stsw-link004.html) includes a "Printf via SWO Viewer" option under its "ST-LINK" menu.  Set the core clock to 168 MHz, press "Start" and your debug `printf()`s will appear in that window.  HOWEVER, in this tool ST have fixed the expected SWO clock at 2 MHz whereas in normal operation we run it at 125 kHz to improve reliability; to use the ST-Link viewer you must unfortunately set the conditional complation flag `U_CFG_HW_SWO_CLOCK_HZ` to 2000000 before you build the code and then hope that trace output is sufficiently reliable (for adhoc use it is usually fine, it is under constant automated test that the cracks start to appear).
 
 # stm32f4.mk
-This Makefile can be used to include ubxlib in your STM32F4 application. Before including `stm32f4.mk` you must set `UBXLIB_BASE` variable to the root directory of `ubxlib`.
-The Makefile will then create a number of variables that you can use for retrieving `ubxlib` source files and include directories:
-* `UBXLIB_SRC`: A list of all the .c files
-* `UBXLIB_INC`: A list of the include directories
-* `UBXLIB_TEST_SRC`: A list of all the test .c files
-* `UBXLIB_TEST_INC`: A list of test include directories
+This `Makefile` can be used to include ubxlib in your STM32F4 application. Before including `stm32f4.mk` you must set the `UBXLIB_BASE` variable to the root directory of `ubxlib`.
+The `Makefile` will then create a number of variables that you can use for retrieving `ubxlib` source files and include directories:
+- `UBXLIB_SRC`: a list of all the `.c` files,
+- `UBXLIB_INC`: a list of the include directories,
+- `UBXLIB_TEST_SRC`: a list of all the test `.c` files,
+- `UBXLIB_TEST_INC`: a list of test include directories.
 
 # Maintenance
-- When updating this build to a new version of `STM32Cube_FW_F4` change the release version stated in the introduction above.
+- When updating this build to a new version of STM32CubeF4 FW change the release version stated in the introduction above.

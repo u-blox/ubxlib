@@ -315,6 +315,10 @@ int32_t uPortTaskGetHandle(uPortTaskHandle_t *pTaskHandle);
 
 /** Create a queue.
  *
+ * Note: some platforms place restrictions on itemSizeBytes; for
+ * instance, ThreadX, used on the later STM32Cube platforms, has a
+ * limit of 64 bytes.
+ *
  * @param queueLength       the maximum length of the queue in units
  *                          of itemSizeBytes.
  * @param itemSizeBytes     the size of each item on the queue.
@@ -516,7 +520,8 @@ int32_t uPortSemaphoreGive(const uPortSemaphoreHandle_t semaphoreHandle);
 
 /** Give a semaphore from interrupt, unless the semaphore is already at its
  * maximum permitted count.  Note that not all platforms support this
- * function (e.g. Windows doesn't).
+ * function (e.g. Windows, Linux and later STM32Cube platforms where ThreadX
+ * is the default RTOS do not).
  *
  * @param semaphoreHandle  the handle of the semaphore.
  * @return                 zero on success else negative error code.
