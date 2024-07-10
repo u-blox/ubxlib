@@ -1,7 +1,5 @@
 <img src="/readme_images/ubxlib-logo.svg" width="400">
 
-[![important message](/readme_images/important_msg.svg)](/UPCOMING.md)
-
 <i>Note: if you are reading this from a package-file created by a third-party \[e.g. PlatformIO\] and the links do not work, please try reading it at the original [ubxlib Github site](https://github.com/u-blox/ubxlib) instead.</i>
 # Introduction to `ubxlib`
 This repository contains an add-on to microcontroller and RTOS SDKs for building embedded applications with u-blox products and services. It provides portable C libraries which expose APIs with examples. `ubxlib` supports [u-blox](https://www.u-blox.com) modules with [cellular](https://www.u-blox.com/en/cellular-modules) (2G/3G/4G), [short-range](https://www.u-blox.com/en/short-range-radio-chips-and-modules) (Bluetooth and Wi-Fi) and [positioning](https://www.u-blox.com/en/positioning-chips-and-modules) (GNSS) functionality. The `ubxlib` libraries present high level C APIs for use in customer applications (e.g. connect to a network, open a TCP socket, establish location, etc.) and implements these APIs on selected popular MCUs, also available inside u-blox modules.
