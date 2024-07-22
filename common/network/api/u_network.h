@@ -56,6 +56,14 @@
  *                          powered-up and may be reconfigured etc.: you
  *                          must call uNetworkInterfaceUp() to talk with
  *                          it again.
+ *                          IMPORTANT: under some circumstances, e.g. when
+ *                          using a GNSS device inside a cellular module
+ *                          or when using PPP with cellular,
+ *                          uNetworkInterfaceUp() may leave a mutex locked
+ *                          that will be released by uNetworkInterfaceDown(),
+ *                          hence it is important that uNetworkInterfaceDown()
+ *                          is called from the same task that called
+ *                          uNetworkInterfaceUp().
  * uDeviceClose():          call this to power the device down and clear
  *                          up any resources belonging to it; uDeviceOpen()
  *                          must be called to re-instantiate the device.
@@ -229,18 +237,19 @@ int32_t uNetworkInterfaceUp(uDeviceHandle_t devHandle, uNetworkType_t netType,
  * uWifiSetConnectionStatusCallback() callback.
  *
  * Note: if you call uNetworkInterfaceDown() on a GNSS network that
- * is inside a cellular device, it is possible your RTOS will assert
- * that a mutex is being released by a task that does not own it; for
- * example FreeRTOS may do this.  The reason for this is that, when
- * uNetworkInterfaceUp() was called, the cellular module will have
- * been told to create a CMUX channel (to carry AT and GNSS traffic
- * simultaneously) and the original AT client will have been left
- * locked.  If uNetworkInterfaceDown() is called from a _different_
- * _task_ to the one that called uNetworkInterfaceUp(), the
- * assert will be triggered when the original AT client is unlocked.
- * A fix for this is to call uNetworkInterfaceDown() from the same
- * task that called uNetworkInterfaceUp().  We're investigating
- * whether there is a way to remove this restriction.
+ * is inside a cellular device, or if you have been using PPP with
+ * a cellular module (i.e. U_CFG_PPP_ENABLE is defined), it is possible
+ * your RTOS will assert that a mutex is being released by a task that
+ * does not own it; for example FreeRTOS may do this.  The reason for
+ * this is that, when uNetworkInterfaceUp() was called, the cellular
+ * module will have been told to create a CMUX channel (to carry AT
+ * and either PPP or GNSS traffic simultaneously) and the original AT
+ * client will have been left locked.  If uNetworkInterfaceDown() is
+ * called from a _different_ _task_ to the one that called
+ * uNetworkInterfaceUp(), the assert will be triggered when the original
+ * AT client is unlocked.  A fix for this is to call uNetworkInterfaceDown()
+ * from the same task that called uNetworkInterfaceUp().  We are
+ * investigating whether there is a way to remove this restriction.
  *
  * @param devHandle the handle of the device that is carrying the
  *                  network.
