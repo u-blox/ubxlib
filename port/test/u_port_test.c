@@ -2069,8 +2069,9 @@ U_PORT_TEST_FUNCTION("[port]", "portEventQueue")
             }
             U_PORT_TEST_ASSERT(y == 0);
         }
-#if defined(CONFIG_ARCH_POSIX) || defined(__linux__)
+#if defined(CONFIG_ARCH_POSIX) || defined(__linux__) || defined(__XTENSA__)
         // Delay needed here since Zephyr 3. Reason unknown.
+        // Delay also needed on ESP-IDF (Xtensa) with correction to yield function in uPortQueueSendIrq()
         uPortTaskBlock(1);
 #endif
     }

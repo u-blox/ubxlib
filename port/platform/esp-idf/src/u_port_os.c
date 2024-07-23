@@ -279,7 +279,7 @@ int32_t uPortQueueSendIrq(const uPortQueueHandle_t queueHandle,
 
     // Required for correct FreeRTOS operation
     if (yield) {
-        taskYIELD();
+        portYIELD_FROM_ISR();
     }
 
     return (int32_t) errorCode;
@@ -554,7 +554,7 @@ int32_t uPortSemaphoreGiveIrq(const uPortSemaphoreHandle_t semaphoreHandle)
 
     // Required for correct FreeRTOS operation
     if (yield) {
-        taskYIELD();
+        portYIELD_FROM_ISR();
     }
 
     return (int32_t) errorCode;
