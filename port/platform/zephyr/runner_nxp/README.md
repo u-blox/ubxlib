@@ -1,12 +1,12 @@
 # Introduction
-This directory contains a build configuration for building the test runner application for STM32F7 with native Zephyr.  
+This directory contains a build configuration for building the test runner application for NXP MCXN947 (their FRDM board) with native Zephyr.
 
 # Build And Flash With `west`
-While in the `port/platform/zephyr/runner_stm32` directory, for example:
+While in the `port/platform/zephyr/runner_nxp` directory, for example:
 
   ```
-  west build -p auto -b nucleo_f767zi . --build-dir build_nucleo_f767zi
-  west flash --build-dir build_nucleo_f767zi
+  west build -p auto -b frdm_mcxn947/mcxn947/cpu0 . --build-dir build_frdm_mcxn947
+  west flash --build-dir build_frdm_mcxn947
   ```
 
 # Usage
@@ -21,4 +21,4 @@ If you need to change the pin assignment of a peripheral you can do this using a
 Please see the existing overlay files in the [boards](boards) directory. You will find more details on how to use `.overlay` files in [Zephyr device tree documention](https://docs.zephyrproject.org/latest/guides/dts/howtos.html#set-devicetree-overlays).
 
 # Hardware Requirements
-Since STM32 MCUs have many UARTs and `west` doesn't currently support reading traces over SWDIO, logging is through the Zephyr console UART.
+Since NXP MCUs have many UARTs and `west` doesn't currently support reading traces over SWDIO, logging is through the Zephyr console UART.

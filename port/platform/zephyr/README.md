@@ -1,9 +1,10 @@
 # Introduction
-These directories provide the implementation of the porting layer on the Zephyr platform.  Instructions on how to install the necessary tools and perform the build can be found in the [runner](runner) directory for Nordic platforms, the [runner_stm32](runner_stm32) directory for STM32 platforms and the [runner_linux](runner_linux) directory for Linux/Posix.  While this should, generically, work with any Zephyr board, you should note that we only test with the following HW:
+These directories provide the implementation of the porting layer on the Zephyr platform.  Instructions on how to install the necessary tools and perform the build can be found in the [runner](runner) directory for Nordic platforms, the [runner_stm32](runner_stm32) directory for STM32 platforms, the [runner_nxp](runner_nxp) directory for NXP platforms  and the [runner_linux](runner_linux) directory for Linux/Posix.  While this should, generically, work with any Zephyr board, you should note that we only test with the following HW:
 
 - Nordic MCUs, which require a **specific** version/configuration of Zephyr,
 - STM32 MCUs,
-- Linux/posix, for debugging/development only, just like [windows](../windows).
+- Linux/posix, for debugging/development only, just like [windows](../windows),
+- NXP MCUs.
 
 Note: the directory structure here differs from that in the other platform directories in order to follow more closely the approach adopted by Zephyr, which is hopefully familiar to Zephyr users.
 
@@ -14,6 +15,7 @@ Note: the directory structure here differs from that in the other platform direc
 - [runner](runner): contains the test application configuration and build files for the Nordic MCUs supported on the Zephyr platform.
 - [runner_linux](runner_linux): contains the test application configuration and build files for Linux/Posix on the Zephyr platform.
 - [runner_stm32](runner_stm32): contains the test application configuration and build files for STM32 MCUs supported on the Zephyr platform.
+- [runner_nxp](runner_nxp): contains the test application configuration and build files for NXP MCUs supported on the Zephyr platform.
 - [boards](boards): contains custom u-blox boards that are not \[yet\] in the Zephyr repo.
 - [test](test): contains tests that use Zephyr application APIs to check out the integration of `ubxlib` into Zephyr, e.g. at PPP level.
 

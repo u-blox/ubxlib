@@ -38,9 +38,16 @@ manifest:
       import:
         # By using name-allowlist we can clone only the modules that are
         # strictly needed by ubxlib
+        # IMPORTANT: if you add anything here you will need to delete
+        # the Zephyr installation in the .ubxlibpkg directory of any
+        # machine that builds Zephyr as the test system can't tell
+        # that a package has been added
         name-allowlist:
           - cmsis
           - hal_stm32
           - mbedtls
           # Zephyr BLE GATT needs this on STM32
           - tinycrypt
+          - hal_nxp
+          # NXP MCXN947 FRDM board requires this
+          - segger

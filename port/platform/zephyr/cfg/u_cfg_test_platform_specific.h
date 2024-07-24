@@ -149,6 +149,10 @@
 #include "u_cfg_test_platform_specific_nucleo_u575zi_q.h"
 #endif
 
+#ifdef CONFIG_BOARD_FRDM_MCXN947
+#include "u_cfg_test_platform_specific_frdm_mcxn947.h"
+#endif
+
 #ifdef CONFIG_BOARD_NATIVE_POSIX
 #include "u_cfg_test_platform_specific_native_posix.h"
 #endif

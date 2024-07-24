@@ -55,17 +55,17 @@ nrf_cli:
 segger_jlink:
     type: segger_jlink
     windows:
-        url: https://www.segger.com/downloads/jlink/JLink_Windows_V794m_x86_64.exe
-        package_name: JLink_Windows_V794m_x86_64.exe
+        url: https://www.segger.com/downloads/jlink/JLink_Windows_V796s_x86_64.exe
+        package_name: JLink_Windows_V796s_x86_64.exe
         add_to_path: "%homedrive%\\Program Files\\SEGGER\\JLink"
         check_command: cmd /c "if exist %homedrive%\\Program Files\\SEGGER\\JLink\\JLink.exe else where jlink /Q"
     linux:
-        url: https://www.segger.com/downloads/jlink/JLink_Linux_V794m_x86_64.deb
-        package_name: JLink_Linux_V794m_x86_64.deb
+        url: https://www.segger.com/downloads/jlink/JLink_Linux_V796s_x86_64.deb
+        package_name: JLink_Linux_V796s_x86_64.deb
         check_command: which JLinkExe
     linux_arm:
-        url: https://www.segger.com/downloads/jlink/JLink_Linux_V794m_arm64.deb
-        package_name: JLink_Linux_V794m_arm64.deb
+        url: https://www.segger.com/downloads/jlink/JLink_Linux_V796s_arm64.deb
+        package_name: JLink_Linux_V796s_arm64.deb
         check_command: which JLinkExe
 
 stm32cubef4:
