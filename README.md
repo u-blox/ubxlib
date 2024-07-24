@@ -45,10 +45,11 @@ Hosts run `ubxlib` and interact with an attached periperal. A host platform cont
 - [u-blox NINA-W1 EVK](https://www.u-blox.com/en/product/evk-nina-w10)
 - [Nordic nRF52840 DK board](https://www.nordicsemi.com/Products/Development-hardware/nrf52840-dk)
 - [Nordic nRF5340 DK board](https://www.nordicsemi.com/Products/Development-hardware/nRF5340-DK)
-- [STM32F4 Discovery board](https://www.st.com/en/evaluation-tools/stm32f4discovery.html)
 - [ESP32-DevKitC](https://www.espressif.com/en/products/devkits/esp32-devkitc/overview)
-
-
+- [STM32F4 Discovery board](https://www.st.com/en/evaluation-tools/stm32f4discovery.html)
+- [STM32F7 Nucleo board](https://www.st.com/en/evaluation-tools/nucleo-f767zi.html)
+- [STM32U5 Nucleo board](https://www.st.com/en/evaluation-tools/nucleo-u575zi-q.html)
+- [NXP FRDM-MCXN947 board](https://www.nxp.com/design/design-center/development-boards-and-designs/general-purpose-mcus/frdm-development-board-for-mcx-n94-n54-mcus:FRDM-MCXN947)
 
 If your MCU is on the list but your board is not:
 - just set the HW pins in the source file of the example to match how your MCU is wired to the u-blox peripheral.
