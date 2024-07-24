@@ -141,7 +141,7 @@ sudo docker run --rm --name certbot --env AWS_CONFIG_FILE=/etc/aws/config -v /et
 - Set this up to [auto-renew](https://eff-certbot.readthedocs.io/en/stable/using.html#setting-up-automated-renewal) (checked twice daily) with:
 
 ```
-SLEEPTIME=$(awk 'BEGIN{srand(); print int(rand()*(3600+1))}'); echo "0 0,12 * * * root sleep $SLEEPTIME && docker run --rm --name certbot --env AWS_CONFIG_FILE=/etc/aws/config -v /etc/aws:/etc/aws -v /etc/letsencrypt:/etc/letsencrypt -v /var/lib/letsencrypt:/var/lib/letsencrypt certbot/dns-route53 renew -q" | sudo tee -a /etc/crontab > /dev/null
+SLEEPTIME=$(awk 'BEGIN{srand(); print int(rand()*(3600+1))}'); echo "0 0,12 * * * root sleep $SLEEPTIME && docker run --rm --name certbot --env AWS_CONFIG_FILE=/etc/aws/config -v /etc/aws:/etc/aws -v /etc/letsencrypt:/etc/letsencrypt -v /var/lib/letsencrypt:/var/lib/letsencrypt certbot/dns-route53 renew -q && docker stop certbot" | sudo tee -a /etc/crontab > /dev/null
 ```
 
 - To have `NGINX` restarted when auto-renewal has occurred, you'll need to create a named pipe on the host machine to which the `certbot/dns-route53` Docker container can send a reload command; it goes like this:

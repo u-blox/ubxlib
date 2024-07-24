@@ -180,7 +180,7 @@ __DEFAULT_SETTINGS["ASTYLE_DIRS"] = ["."]
 __DEFAULT_SETTINGS["DOXYGEN_DOXYFILE"] = "Doxyfile"
 #u_run_static_size.py
 __DEFAULT_SETTINGS["STATIC_SIZE_ARM_GNU_INSTALL_ROOT" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = \
-    "/home/ubxlib/.ubxlibpkg/arm_embedded_gcc-10-2020-q4-major/bin/"
+    "/home/ubxlib/.ubxlibpkg/arm_embedded_gcc-13.2.rel1/bin/"
 # u_run_windows.py
 __DEFAULT_SETTINGS["WINDOWS_MSVC_BUILD_TOOLS_PATH" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] =         \
     "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools"
