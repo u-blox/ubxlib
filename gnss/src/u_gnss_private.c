@@ -44,6 +44,7 @@
 #include "u_port.h"
 #include "u_port_os.h"
 #include "u_port_heap.h"
+#include "u_port_gpio.h"
 #include "u_port_uart.h"
 #include "u_port_i2c.h"
 #include "u_port_spi.h"
@@ -162,6 +163,15 @@ typedef struct {
                           CRC calculation will fail. */
 } uGnssPrivateUbxReceiveMessage_t;
 
+/** A structure to control the allocated state of the data ready interrupt
+ * functions.
+ */
+typedef struct {
+    uGnssPrivateInstance_t *pInstance;
+    void (*pInterrupt)(void);
+    void (*pCallback)(uGnssPrivateInstance_t *);
+} uGnssPrivateDataReadyInterrupt_t;
+
 /* ----------------------------------------------------------------
  * VARIABLES THAT ARE SHARED THROUGHOUT THE GNSS IMPLEMENTATION
  * -------------------------------------------------------------- */
@@ -257,6 +267,168 @@ static const uint32_t gCfgValKeyIdCfgRate[] = {
     U_GNSS_CFG_VAL_KEY_ID_RATE_NAV_U2,     // Navigation count
     U_GNSS_CFG_VAL_KEY_ID_RATE_TIMEREF_E1  // Time system
 };
+
+/** Table of virtual pin types (from UBX-MON-HW3) known to
+ * be associated with the UART.
+ */
+static const uGnssPrivateVirtualPinType_t gVirtualPinUart[] = {
+    U_GNSS_PRIVATE_VIRTUAL_PIN_UART_RXD,
+    U_GNSS_PRIVATE_VIRTUAL_PIN_UART_TXD
+};
+
+/** Table of virtual pin types (from UBX-MON-HW3) known to
+ * be associated with I2C.
+ */
+static const uGnssPrivateVirtualPinType_t gVirtualPinI2c[] = {
+    U_GNSS_PRIVATE_VIRTUAL_PIN_I2C_SCL,
+    U_GNSS_PRIVATE_VIRTUAL_PIN_I2C_SDA
+};
+
+/** Table of virtual pin types (from UBX-MON-HW3) known to
+ * be associated with SPI.
+ */
+static const uGnssPrivateVirtualPinType_t gVirtualPinSpi[] = {
+    U_GNSS_PRIVATE_VIRTUAL_PIN_SPI_MOSI,
+    U_GNSS_PRIVATE_VIRTUAL_PIN_SPI_MISO,
+    U_GNSS_PRIVATE_VIRTUAL_PIN_SPI_CLK,
+    U_GNSS_PRIVATE_VIRTUAL_PIN_SPI_CS
+};
+
+/* ----------------------------------------------------------------
+ * INTERRUPT FUNCTIONS FOR USE WITH DATA READY
+ * -------------------------------------------------------------- */
+
+// Forward declaration.
+// Note: MSVC requires this to have a size.
+static uGnssPrivateDataReadyInterrupt_t gDataReadyInterruptList[3];
+
+// Interrupt function 0 (allocated by gDataReadyInterruptList).
+static void dataReadyInterrupt0(void)
+{
+    if (gDataReadyInterruptList[0].pCallback != NULL) {
+        gDataReadyInterruptList[0].pCallback(gDataReadyInterruptList[0].pInstance);
+    }
+}
+
+// Interrupt function 1 (allocated by gDataReadyInterruptList).
+static void dataReadyInterrupt1(void)
+{
+    if (gDataReadyInterruptList[1].pCallback != NULL) {
+        gDataReadyInterruptList[1].pCallback(gDataReadyInterruptList[1].pInstance);
+    }
+}
+
+// Interrupt function 2 (allocated by gDataReadyInterruptList).
+static void dataReadyInterrupt2(void)
+{
+    if (gDataReadyInterruptList[2].pCallback != NULL) {
+        gDataReadyInterruptList[2].pCallback(gDataReadyInterruptList[2].pInstance);
+    }
+}
+
+// Table of interrupt functions.
+static uGnssPrivateDataReadyInterrupt_t gDataReadyInterruptList[] = {
+    {NULL, dataReadyInterrupt0, NULL},
+    {NULL, dataReadyInterrupt1, NULL},
+    {NULL, dataReadyInterrupt2, NULL}
+};
+
+// Return true if the given pin type is in the given set.
+static bool pinInSet(uGnssPrivateVirtualPinType_t pinType,
+                     const uGnssPrivateVirtualPinType_t *pSet,
+                     size_t setSize)
+{
+    bool inSet = false;
+
+    for (size_t x = 0; (x < setSize) && !inSet; x++) {
+        inSet = (*pSet == pinType);
+        pSet++;
+    }
+
+    return inSet;
+}
+
+// Free up the given PIO.
+static bool freePio(uGnssPrivateInstance_t *pInstance, int32_t pio)
+{
+    bool isFree = false;
+    size_t numPins;
+    char *pResponseBody = NULL;
+    char *pTmp;
+    uint16_t pinMask;
+    uGnssPrivateVirtualPinType_t virtualPin = U_GNSS_PRIVATE_VIRTUAL_PIN_NONE;
+    uGnssCfgVal_t val = {0};
+
+    // Poll for UBX-MON-HW3 message to get the pin configuration
+    if (uGnssPrivateSendReceiveUbxMessageAlloc(pInstance,
+                                               0x0a, 0x37,
+                                               NULL, 0,
+                                               &pResponseBody) > 0) {
+        // The number of pins returned is at offset 1
+        numPins = *(pResponseBody + 1);
+        // The pins start at offset 22, 6 byte blocks, bytes as follows:
+        // 0: reserved
+        // 1: pin ID (== PIO)
+        // 2 & 3: pin mask, where:
+        //    bit 0: 0 = peripheral, 1 = PIO
+        //    bits 1 to 3: pin bank
+        //    bit 4: 0 = input, 1 = output
+        //    bit 5: 0 = low, 1 = high
+        //    bit 6: used by virtual pin manager
+        //    ...
+        // 4: virtual pin mapping (see uGnssPrivateVirtualPinType_t)
+
+        // Step through the array looking for the given PIO
+        // and see if it is already a PIO
+        pTmp = pResponseBody + 22;
+        for (size_t x = 0; (x < numPins) && (virtualPin < 0); x++) {
+            if (pio == *(pTmp + 1)) {
+                pinMask = uUbxProtocolUint16Decode((const char *) (pTmp + 2));
+                virtualPin = (uGnssPrivateVirtualPinType_t) * (pTmp + 4);
+                if ((pinMask & 0x0001) == 0x0001) {
+                    isFree = true;
+                }
+            }
+            pTmp += 6;
+        }
+
+        // Free memory
+        uPortFree(pResponseBody);
+    }
+
+    // If we found the PIO in the list and it is not free,
+    // see if we can free it up
+    if (!isFree && (virtualPin != U_GNSS_PRIVATE_VIRTUAL_PIN_NONE)) {
+        if (virtualPin == U_GNSS_PRIVATE_VIRTUAL_PIN_TIMEPULSE) {
+            // The PIO is currently set as the timepulse pin so disable timepulse
+            val.keyId = U_GNSS_CFG_VAL_KEY_ID_TP_TP1_ENA_L;
+        } else if ((pInstance->transportType != U_GNSS_TRANSPORT_UART) &&
+                   pinInSet(virtualPin, gVirtualPinUart, sizeof(gVirtualPinUart) / sizeof(gVirtualPinUart[0]))) {
+            // The PIO is a UART pin and we aren't using UART transport so disable it
+            val.keyId = U_GNSS_CFG_VAL_KEY_ID_UART1_ENABLED_L;
+        } else if ((pInstance->transportType != U_GNSS_TRANSPORT_I2C) &&
+                   pinInSet(virtualPin, gVirtualPinI2c, sizeof(gVirtualPinI2c) / sizeof(gVirtualPinI2c[0]))) {
+            // The PIO is an I2C pin and we aren't using I2C transport so disable it
+            val.keyId = U_GNSS_CFG_VAL_KEY_ID_I2C_ENABLED_L;
+        } else if ((pInstance->transportType != U_GNSS_TRANSPORT_SPI) &&
+                   pinInSet(virtualPin, gVirtualPinSpi, sizeof(gVirtualPinSpi) / sizeof(gVirtualPinSpi[0]))) {
+            // The PIO is an I2C pin and we aren't using SPI transport so disable it
+            val.keyId = U_GNSS_CFG_VAL_KEY_ID_SPI_ENABLED_L;
+        }
+        // Note: when the virtual pin is EXTINT it always seems to be
+        // available as a PIO at the same time so no need to take
+        // any action for that case
+
+        if ((val.keyId != 0) &&
+            (uGnssCfgPrivateValSetList(pInstance, &val, 1,
+                                       U_GNSS_CFG_VAL_TRANSACTION_NONE,
+                                       U_GNSS_CFG_LAYERS_SET) == 0)) {
+            isFree = true;
+        }
+    }
+
+    return isFree;
+}
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS: MESSAGE RELATED
@@ -1204,11 +1376,12 @@ int32_t setRateUbxCfgVal(uGnssPrivateInstance_t *pInstance,
 // setProtocolOutUbxCfgPrt().
 static int32_t setProtocolOutUbxCfgPrtInner(uGnssPrivateInstance_t *pInstance,
                                             uGnssProtocol_t protocol,
+                                            uGnssPrivateDataReadyDevice_t *pDataReadyDevice,
                                             bool onNotOff)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
     char message[20] = {0};
-    uint16_t mask = 0;
+    uint16_t x = 0;
 
     // Poll the GNSS chip for UBX-CFG-PRT to get the
     // existing configuration for the port we are connected on
@@ -1218,21 +1391,40 @@ static int32_t setProtocolOutUbxCfgPrtInner(uGnssPrivateInstance_t *pInstance,
                                           message, 1,
                                           message, sizeof(message)) == sizeof(message)) {
         // Offsets 14 and 15 contain the output protocol bit-map
-        mask = uUbxProtocolUint16Decode((const char *) &(message[14])); // *NOPAD*
+        x = uUbxProtocolUint16Decode((const char *) &(message[14])); // *NOPAD*
         if (protocol == U_GNSS_PROTOCOL_ALL) {
-            mask = 0xFFFF; // Everything out
+            x = 0xFFFF; // Everything out
         } else {
             if (protocol == U_GNSS_PROTOCOL_RTCM) {
                 // RTCM is the odd one out
                 protocol = 5;
             }
             if (onNotOff) {
-                mask |= 1 << protocol;
+                x |= 1 << protocol;
             } else {
-                mask &= ~(1 << protocol);
+                x &= ~(1 << protocol);
             }
         }
-        *((uint16_t *) &(message[14])) = uUbxProtocolUint16Encode(mask); // *NOPAD*
+        *((uint16_t *) &(message[14])) = uUbxProtocolUint16Encode(x); // *NOPAD*
+        if (pDataReadyDevice != NULL) {
+            // The TX Ready stuff is at offset 2 and looks like this:
+            //
+            //  15 14 13 12 11 10  9  8  7   6  5  4  3  2   1   0
+            //  ---------------------------------------------------
+            // |     Threshold  x  8       |      pio      |pol|en |
+            //  ---------------------------------------------------
+            //
+            x = 0;
+            if (pDataReadyDevice->pio >= 0) {
+                x = 1;
+                x |= pDataReadyDevice->pio << 2;
+                if (pDataReadyDevice->activeLow) {
+                    x |= 0x02;
+                }
+                x |= (pDataReadyDevice->thresholdBytes / 8) << 7;
+            }
+            *((uint16_t *) &(message[2])) = uUbxProtocolUint16Encode(x); // *NOPAD*
+        }
         // Send the message and don't wait for response or ack
         errorCode = uGnssPrivateSendReceiveUbxMessage(pInstance,
                                                       0x06, 0x00,
@@ -1248,6 +1440,7 @@ static int32_t setProtocolOutUbxCfgPrtInner(uGnssPrivateInstance_t *pInstance,
 // Set protocol out old-style, with UBX-CFG-PRT.
 static int32_t setProtocolOutUbxCfgPrt(uGnssPrivateInstance_t *pInstance,
                                        uGnssProtocol_t protocol,
+                                       uGnssPrivateDataReadyDevice_t *pDataReadyDevice,
                                        bool onNotOff)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
@@ -1275,7 +1468,7 @@ static int32_t setProtocolOutUbxCfgPrt(uGnssPrivateInstance_t *pInstance,
     // be talking to the GNSS chip
     if (pInstance->transportType == U_GNSS_TRANSPORT_VIRTUAL_SERIAL) {
         // Send the message and trust to the intermediate module to deliver it
-        errorCode = setProtocolOutUbxCfgPrtInner(pInstance, protocol, onNotOff);
+        errorCode = setProtocolOutUbxCfgPrtInner(pInstance, protocol, pDataReadyDevice, onNotOff);
     } else {
         if (uGnssPrivateSendReceiveUbxMessage(pInstance,
                                               0x0a, 0x06,
@@ -1288,7 +1481,7 @@ static int32_t setProtocolOutUbxCfgPrt(uGnssPrivateInstance_t *pInstance,
                 // Get the number of messages received on the port
                 x = uUbxProtocolUint64Decode(message + ((size_t) (unsigned) pInstance->portNumber * 16));
                 // Send the message and don't wait for response or ack
-                setProtocolOutUbxCfgPrtInner(pInstance, protocol, onNotOff);
+                setProtocolOutUbxCfgPrtInner(pInstance, protocol, pDataReadyDevice, onNotOff);
                 // Get the number of received messages again
                 if (uGnssPrivateSendReceiveUbxMessage(pInstance,
                                                       0x0a, 0x06,
@@ -1310,11 +1503,13 @@ static int32_t setProtocolOutUbxCfgPrt(uGnssPrivateInstance_t *pInstance,
 }
 
 // Get protocol out old-style, with UBX-CFG-PRT.
-static int32_t getProtocolOutUbxCfgPrt(uGnssPrivateInstance_t *pInstance)
+static int32_t getProtocolOutUbxCfgPrt(uGnssPrivateInstance_t *pInstance,
+                                       uGnssPrivateDataReadyDevice_t *pDataReadyDevice)
 {
     int32_t errorCodeOrBitMap = (int32_t) U_ERROR_COMMON_PLATFORM;
     // Message buffer for the 20-byte UBX-CFG-PRT message
     char message[20] = {0};
+    uint16_t x;
 
     // Poll the GNSS chip with UBX-CFG-PRT
     message[0] = (char) pInstance->portNumber;
@@ -1330,6 +1525,19 @@ static int32_t getProtocolOutUbxCfgPrt(uGnssPrivateInstance_t *pInstance)
             if (errorCodeOrBitMap & (1 << 5)) {
                 errorCodeOrBitMap &= ~(1 << 5);
                 errorCodeOrBitMap |= 1 << U_GNSS_PROTOCOL_RTCM;
+            }
+            if (pDataReadyDevice != NULL) {
+                // The TX Ready stuff is at offset 2 (see above for
+                // the format)
+                pDataReadyDevice->pio = -1;
+                x = uUbxProtocolUint16Decode((const char *) &(message[2])); // *NOPAD*
+                if (x & 0x01) {
+                    if (x & 0x02) {
+                        pDataReadyDevice->activeLow = true;
+                    }
+                    pDataReadyDevice->pio = (x >> 2) & 0x1F;
+                    pDataReadyDevice->thresholdBytes = ((x >> 7) & 0x1FF) * 8;
+                }
             }
         } else {
             // Don't expect to have the top-bit set so flag an error
@@ -1432,6 +1640,128 @@ static int32_t getProtocolOutUbxCfgVal(uGnssPrivateInstance_t *pInstance)
     }
 
     return errorCodeOrBitMap;
+}
+
+// Set data ready with UBX-CFG-VALSET.
+static int32_t setDataReady(uGnssPrivateInstance_t *pInstance,
+                            uGnssPrivateDataReadyDevice_t *pDataReadyDevice)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    // Storage for all the elements of TXREADY (AKA Data Ready) configuration
+    uGnssCfgVal_t val[5] = {0};
+    size_t numEntries = 0;
+
+    // In the new configuration API a TX-Ready configuration can
+    // only be set for I2C or SPI
+    if ((pInstance->portNumber == U_GNSS_PORT_I2C) ||
+        (pInstance->portNumber == U_GNSS_PORT_SPI)) {
+        val[numEntries].keyId = U_GNSS_CFG_VAL_KEY_ID_TXREADY_ENABLED_L;
+        if (pDataReadyDevice != NULL) {
+            // Enabled
+            val[numEntries].value = true;
+            numEntries++;
+            // Polarity
+            val[numEntries].keyId = U_GNSS_CFG_VAL_KEY_ID_TXREADY_POLARITY_L;
+            if (pDataReadyDevice->activeLow) {
+                val[numEntries].value = true;
+            }
+            numEntries++;
+            // PIO
+            val[numEntries].keyId = U_GNSS_CFG_VAL_KEY_ID_TXREADY_PIN_U1;
+            val[numEntries].value = pDataReadyDevice->pio;
+            numEntries++;
+            // Threshold
+            val[numEntries].keyId = U_GNSS_CFG_VAL_KEY_ID_TXREADY_THRESHOLD_U2;
+            // It doesn't say so in the interface manual but, by experiment,
+            // the threshold here is still in multiples of 8 bytes
+            val[numEntries].value = pDataReadyDevice->thresholdBytes / 8;
+            numEntries++;
+            // Which interface (I2C or SPI)
+            val[numEntries].keyId = U_GNSS_CFG_VAL_KEY_ID_TXREADY_INTERFACE_E1;
+            val[numEntries].value = U_GNSS_CFG_VAL_KEY_ITEM_VALUE_TXREADY_INTERFACE_I2C;
+            if (pInstance->portNumber == U_GNSS_PORT_SPI) {
+                val[numEntries].value = U_GNSS_CFG_VAL_KEY_ITEM_VALUE_TXREADY_INTERFACE_SPI;
+            }
+            numEntries++;
+        } else {
+            // Value left at false to disable
+            numEntries++;
+        }
+        // Have something worth sending, do UBX-CFG-VALSET
+        errorCode = uGnssCfgPrivateValSetList(pInstance,
+                                              val, numEntries,
+                                              U_GNSS_CFG_VAL_TRANSACTION_NONE,
+                                              U_GNSS_CFG_LAYERS_SET);
+    }
+
+    return errorCode;
+}
+
+// Get the value (up to uint16_t in size) of a key from
+// a list, used by getDataReady().
+static uint16_t getValueU2(uint32_t keyId, uGnssCfgVal_t *pCfgValList, size_t numEntries)
+{
+    int32_t value = (int32_t) U_ERROR_COMMON_NOT_FOUND;
+
+    for (size_t x = 0; (x < numEntries) && (value < 0); x++) {
+        if (pCfgValList->keyId == keyId) {
+            value = (int32_t) pCfgValList->value;
+        }
+        pCfgValList++;
+    }
+
+    return (uint16_t) value;
+}
+
+// Get the TX-Ready values with UBX-CFG-VALGET.
+static int32_t getDataReady(uGnssPrivateInstance_t *pInstance,
+                            uGnssPrivateDataReadyDevice_t *pDataReadyDevice)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
+    uint32_t keyId;
+    uGnssCfgVal_t *pCfgValList = NULL;
+    int32_t numValues;
+    uint16_t z;
+
+    // The caller wants the TX-Ready configuration as well
+    pDataReadyDevice->pio = -1;
+    // In the new configuration interface interface it is
+    // only possible to set up a TX-Ready configuration for
+    // I2C or SPI
+    if ((pInstance->portNumber == U_GNSS_PORT_I2C) ||
+        (pInstance->portNumber == U_GNSS_PORT_SPI)) {
+        // Fetch the entire TXREADY group
+        keyId =  U_GNSS_CFG_VAL_KEY(U_GNSS_CFG_VAL_KEY_GROUP_ID_TXREADY,
+                                    U_GNSS_CFG_VAL_KEY_ITEM_ID_ALL, 0);
+        numValues = uGnssCfgPrivateValGetListAlloc(pInstance, &keyId, 1,
+                                                   &pCfgValList,
+                                                   U_GNSS_CFG_VAL_LAYER_RAM);
+        if ((numValues > 0) && (pCfgValList != NULL)) {
+            // Must be both enabled and of the same type as our port (I2C
+            // to match I2C or SPI to match SPI)
+            z = getValueU2(U_GNSS_CFG_VAL_KEY_ID_TXREADY_INTERFACE_E1, pCfgValList, numValues);
+            if (getValueU2(U_GNSS_CFG_VAL_KEY_ID_TXREADY_ENABLED_L, pCfgValList, numValues) &&
+                (((pInstance->portNumber == U_GNSS_PORT_I2C) &&
+                  (z == U_GNSS_CFG_VAL_KEY_ITEM_VALUE_TXREADY_INTERFACE_I2C)) ||
+                 ((pInstance->portNumber == U_GNSS_PORT_SPI) &&
+                  (z == U_GNSS_CFG_VAL_KEY_ITEM_VALUE_TXREADY_INTERFACE_SPI)))) {
+                // Go through the returned key IDs to populate our structure
+                pDataReadyDevice->activeLow = (bool) getValueU2(U_GNSS_CFG_VAL_KEY_ID_TXREADY_POLARITY_L,
+                                                                pCfgValList, numValues);
+                pDataReadyDevice->pio = (int32_t) getValueU2(U_GNSS_CFG_VAL_KEY_ID_TXREADY_PIN_U1,
+                                                             pCfgValList, numValues);
+                pDataReadyDevice->thresholdBytes = (size_t) getValueU2(U_GNSS_CFG_VAL_KEY_ID_TXREADY_THRESHOLD_U2,
+                                                                       pCfgValList, numValues) * 8;
+                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+            }
+        } else {
+            errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
+        }
+        // Free memory
+        uPortFree(pCfgValList);
+    }
+
+    return errorCode;
 }
 
 /* ----------------------------------------------------------------
@@ -1646,7 +1976,7 @@ int32_t uGnssPrivateSetProtocolOut(uGnssPrivateInstance_t *pInstance,
         (onNotOff || ((protocol != U_GNSS_PROTOCOL_ALL) &&
                       (protocol != U_GNSS_PROTOCOL_UBX)))) {
         if (U_GNSS_PRIVATE_HAS(pInstance->pModule, U_GNSS_PRIVATE_FEATURE_OLD_CFG_API)) {
-            errorCode = setProtocolOutUbxCfgPrt(pInstance, protocol, onNotOff);
+            errorCode = setProtocolOutUbxCfgPrt(pInstance, protocol, NULL, onNotOff);
         } else {
             errorCode = setProtocolOutUbxCfgVal(pInstance, protocol, onNotOff);
         }
@@ -1664,7 +1994,7 @@ int32_t uGnssPrivateGetProtocolOut(uGnssPrivateInstance_t *pInstance)
         errorCodeOrBitMap = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
         if (pInstance->transportType != U_GNSS_TRANSPORT_AT) {
             if (U_GNSS_PRIVATE_HAS(pInstance->pModule, U_GNSS_PRIVATE_FEATURE_OLD_CFG_API)) {
-                errorCodeOrBitMap = getProtocolOutUbxCfgPrt(pInstance);
+                errorCodeOrBitMap = getProtocolOutUbxCfgPrt(pInstance, NULL);
             } else {
                 errorCodeOrBitMap = getProtocolOutUbxCfgVal(pInstance);
             }
@@ -1672,6 +2002,168 @@ int32_t uGnssPrivateGetProtocolOut(uGnssPrivateInstance_t *pInstance)
     }
 
     return errorCodeOrBitMap;
+}
+
+// Allocate an interrupt function.
+void (*pUGnssPrivateDataReadyInterruptAlloc(uGnssPrivateInstance_t *pInstance,
+                                            void (*pCallback)(uGnssPrivateInstance_t *)))(void)
+{
+    void (*pInterrupt)(void) = NULL;
+
+    // First see if there is already an interrupt function for this instance
+    for (size_t x = 0; (x < sizeof(gDataReadyInterruptList) / sizeof(gDataReadyInterruptList[0])) &&
+         (pInterrupt == NULL); x++) {
+        if (gDataReadyInterruptList[x].pInstance == pInstance) {
+            gDataReadyInterruptList[x].pCallback = pCallback;
+            pInterrupt = gDataReadyInterruptList[x].pInterrupt;
+        }
+    }
+
+    // Grab one if not
+    for (size_t x = 0; (x < sizeof(gDataReadyInterruptList) / sizeof(gDataReadyInterruptList[0])) &&
+         (pInterrupt == NULL); x++) {
+        if (gDataReadyInterruptList[x].pInstance == NULL) {
+            gDataReadyInterruptList[x].pInstance = pInstance;
+            gDataReadyInterruptList[x].pCallback = pCallback;
+            pInterrupt = gDataReadyInterruptList[x].pInterrupt;
+        }
+    }
+
+    return pInterrupt;
+}
+
+// Free an interrupt function.
+void uGnssPrivateDataReadyInterruptFree(uGnssPrivateInstance_t *pInstance)
+{
+    bool found = false;;
+
+    for (size_t x = 0; (x < sizeof(gDataReadyInterruptList) / sizeof(gDataReadyInterruptList[0])) &&
+         !found; x++) {
+        if (gDataReadyInterruptList[x].pInstance == pInstance) {
+            gDataReadyInterruptList[x].pCallback = NULL;
+            gDataReadyInterruptList[x].pInstance = NULL;
+            found = true;
+        }
+    }
+}
+
+// Set the data ready configuration of the port we are using on the GNSS device.
+int32_t uGnssPrivateSetDataReady(uGnssPrivateInstance_t *pInstance,
+                                 uGnssPrivateDataReadyDevice_t *pDataReadyDevice)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    uGnssPrivateDataReadyDevice_t dataReadyDevice;
+
+    if ((pInstance != NULL) &&
+        (pInstance->transportType != U_GNSS_TRANSPORT_AT)) {
+        // The PIO on the device will only work as TX-Ready if it is
+        // configured to be a PIO: should it already be assigned to
+        // a peripheral function (e.g. TIMEPULSE or a UART/I2C/SPI
+        // comms line etc.) then it has to be unassigned from that
+        // function first (e.g. the UART has to be disabled to use
+        // a UART line as a PIO).
+        errorCode = (int32_t) U_GNSS_ERROR_PIO_IN_USE;
+        if ((pDataReadyDevice == NULL) || freePio(pInstance, pDataReadyDevice->pio)) {
+            if (U_GNSS_PRIVATE_HAS(pInstance->pModule, U_GNSS_PRIVATE_FEATURE_OLD_CFG_API)) {
+                // With the old configuration API the TX-Ready stuff is mixed
+                // with the protocol configuration in UBX-CFG-PRT so we have
+                // to do a read-modify-write
+                dataReadyDevice.pio = -1;
+                if (pDataReadyDevice != NULL) {
+                    dataReadyDevice = *pDataReadyDevice;
+                }
+                errorCode = getProtocolOutUbxCfgPrt(pInstance, NULL);
+                if (errorCode >= 0) {
+                    errorCode = setProtocolOutUbxCfgPrt(pInstance, errorCode, &dataReadyDevice, true);
+                }
+            } else {
+                // For the new configuration API we can just set the TX-Ready stuff
+                errorCode = setDataReady(pInstance, pDataReadyDevice);
+            }
+        }
+    }
+
+    return errorCode;
+}
+
+// Get the data ready configuration on the port of the GNSS chip we are using.
+int32_t uGnssPrivateGetDataReady(uGnssPrivateInstance_t *pInstance,
+                                 uGnssPrivateDataReadyDevice_t *pDataReadyDevice)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+
+    if ((pInstance != NULL) && (pDataReadyDevice != NULL)) {
+        errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+        if (pInstance->transportType != U_GNSS_TRANSPORT_AT) {
+            if (U_GNSS_PRIVATE_HAS(pInstance->pModule, U_GNSS_PRIVATE_FEATURE_OLD_CFG_API)) {
+                // In the old configuration API the TX-Ready field is
+                // entangled with the protocol configuration message
+                // so we have to call that function to get it
+                errorCode = getProtocolOutUbxCfgPrt(pInstance, pDataReadyDevice);
+                if (errorCode >= 0) {
+                    // getProtocolOutUbxCfgPrt() returns a bit-map of
+                    // output protocols so we need to set success instead
+                    errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                }
+            } else {
+                // In the new configuration API we have a dedicated
+                // function
+                errorCode = getDataReady(pInstance, pDataReadyDevice);
+            }
+        }
+    }
+
+    return errorCode;
+}
+
+// Wait for the data ready pin to become active.
+bool uGnssPrivateIsDataReady(uGnssPrivateInstance_t *pInstance,
+                             int32_t timeoutMs)
+{
+    bool isActive = false;
+    uGnssPrivateDataReadyMcu_t *pDataReadyMcu;
+
+    if ((pInstance != NULL) && (pInstance->pDataReadyMcu != NULL)) {
+        // First check if the Data Ready/TX-Ready pin is already set
+        pDataReadyMcu = pInstance->pDataReadyMcu;
+        isActive = (uPortGpioGet(pDataReadyMcu->pinMcu) == 1);
+        if (pDataReadyMcu->activeLow) {
+            isActive = !isActive;
+        }
+        if (!isActive) {
+            // Not already set, wait for it...
+            if (uPortSemaphoreTryTake(pDataReadyMcu->semaphoreHandle,
+                                      timeoutMs) == 0) {
+                isActive = true;
+            }
+        }
+    }
+
+    return isActive;
+}
+
+// Shut-down any Data Ready pin used with a GNSS device.
+void uGnssPrivateCleanUpDataReady(uGnssPrivateInstance_t *pInstance)
+{
+    uPortGpioConfig_t config = U_PORT_GPIO_CONFIG_DEFAULT;
+    uGnssPrivateDataReadyMcu_t *pDataReadyMcu;
+
+    if (pInstance != NULL) {
+        if (pInstance->pDataReadyMcu != NULL) {
+            // Remove any interrupt callback from the pin
+            pDataReadyMcu = pInstance->pDataReadyMcu;
+            config.pin = pDataReadyMcu->pinMcu;
+            uPortGpioConfig(&config);
+            // Wait a moment for any potential executing
+            // interrupt to end
+            uPortTaskBlock(10);
+            uPortSemaphoreDelete(pDataReadyMcu->semaphoreHandle);
+            pInstance->pDataReadyMcu = NULL;
+            // Free the storage
+            uPortFree(pDataReadyMcu);
+        }
+        uGnssPrivateDataReadyInterruptFree(pInstance);
+    }
 }
 
 // Shut down and free memory from a running pos task.
@@ -2248,6 +2740,8 @@ int32_t uGnssPrivateStreamFillRingBuffer(uGnssPrivateInstance_t *pInstance,
                 } else if ((ringBufferAvailableSize > 0) && (timeoutMs > 0)) {
                     // Relax while we're waiting for more data to arrive
                     uPortTaskBlock(10);
+                    // Apply the data ready barrier while waiting for new stuff
+                    uGnssPrivateIsDataReady(pInstance, timeoutMs);
                 }
                 // Exit if we get an error (that is not a timeout), or if we were given zero time,
                 // or if there is no room in the ring-buffer for more data, or if we've

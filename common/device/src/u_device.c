@@ -229,6 +229,12 @@ int32_t uDeviceGetDefaults(uDeviceType_t deviceType,
 #else
                     -1;
 #endif
+                pDeviceCfg->deviceCfg.cfgGnss.devicePioDataReady =
+#ifdef U_CFG_APP_GNSS_DEVICE_PIO_DATA_READY
+                    U_CFG_APP_GNSS_DEVICE_PIO_DATA_READY;
+#else
+                    -1;
+#endif
                 pDeviceCfg->deviceCfg.cfgGnss.pinEnablePower =
 #ifdef U_CFG_APP_PIN_GNSS_ENABLE_POWER
                     U_CFG_APP_PIN_GNSS_ENABLE_POWER;
