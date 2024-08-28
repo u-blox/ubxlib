@@ -83,17 +83,29 @@ stm32_cmsis_freertos:
     url: https://github.com/STMicroelectronics/x-cube-freertos.git
     version: v1.1.0
 
+# Note: normally the entry below would point at 
+# https://github.com/espressif/esp-idf and one
+# of their tags, but we need a commit (992d8bc committed
+# on 24th June 2024) that Espressif have added for us,
+# to do with I2C, which, for some reason, they have not
+# yet included in a release (not v5.3, released end August 2024,
+# or even v5.4_dev), and it turns out we need a fix applied
+# in commit 8aee667 to do with clock stretching, hence we
+# have forked their master branch at commit 6e5414b (master
+# branch on 30th August 2024) and created a tag there
+# (v_6e5414b) that we can test with until these things are
+# available in an ESP-IDF release
 esp_idf:
     type: esp_idf
     windows:
-        version: v5.2.2
-        url: https://github.com/espressif/esp-idf
+        version: v_6e5414b
+        url: https://github.com/u-blox/esp-idf
     linux:
-        version: v5.2.2
-        url: https://github.com/espressif/esp-idf
+        version: v_6e5414b
+        url: https://github.com/u-blox/esp-idf
     linux_arm:
-        version: v5.2.2
-        url: https://github.com/espressif/esp-idf
+        version: v_6e5414b
+        url: https://github.com/u-blox/esp-idf
 
 make:
     windows:

@@ -6,7 +6,7 @@ Follow the instructions to build for the ESP-IDF platform:
 
 https://docs.espressif.com/projects/esp-idf/en/latest/get-started/index.html#get-started-step-by-step
 
-The builds here are tested with the v5.2.2 release of ESP-IDF from [Github](https://github.com/espressif/esp-idf/releases/tag/v5.2.2) though, since `ubxlib` uses very little of ESP-IDF, versions 4.3 and 4.4 likely continue to work.
+The builds here are tested with ESP-IDF at commit [6e5414b6c4f265a0adfb56a15fbfbe6beb1f8373](https://github.com/espressif/esp-idf/commit/6e5414b6c4f265a0adfb56a15fbfbe6beb1f8373) (`master` on 30th August 2024).  This is after ESP-IDF v5.3: the reason for this peculiar arrangement is that, in order to support the new ESP-IDF I2C interface (introduced in ESP-IDF v5.2), we need commit [992d8bc5f20556adb62571d55a1517a9848d4b51](https://github.com/espressif/esp-idf/commit/992d8bc5f20556adb62571d55a1517a9848d4b51) (commited on 24th June 2024) and that commit was not included in v5.3; it will likely form part of v5.4.  Also it turns out we need a fix applied in commit [8aee667873143a4f2c029d21a4bfff358d287db4](https://github.com/espressif/esp-idf/commit/8aee667873143a4f2c029d21a4bfff358d287db4) to do with clock stretching so, until these commits are available in an ESP-IDF release, we need to test with this intermediate commit.  Since `ubxlib` uses very little of ESP-IDF, versions 4.3 and 4.4 likely continue to work.
 
 # SDK Usage
 You may override or provide conditional compilation flags to ESP-IDF without modifying the build file.  Do this by setting an environment variable `U_FLAGS`, e.g.:
