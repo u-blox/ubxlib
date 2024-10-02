@@ -474,7 +474,7 @@ cat ~/ubxlib_test_system_client_key.pub >> /home/ubxlib/.ssh/authorized_keys
 systemctl restart sshd_external.service
 ```
 
-- The client should now be able to SSH into the Jenkins machine with something like `ssh -i path/to/ubxlib_test_system_client_key -p <ssh_port> ubxlib@jenkinsurl`, or you may use [PuTTY](https://www.putty.org/), for which you need [to convert your private key to a `.ppk` file](https://sites.google.com/site/xiangyangsite/home/technical-tips/linux-unix/common-tips/how-to-convert-ssh-id_rsa-keys-to-putty-ppk).
+- The client should now be able to SSH into the Jenkins machine with something like `ssh -i path/to/ubxlib_test_system_client_key -p <ssh_port> ubxlib@jenkinsurl`, or you may use [PuTTY](https://www.putty.org/), for which you need [to convert your private key to a `.ppk` file](https://www.simplified.guide/putty/convert-ssh-key-to-ppk).
 
 If this doesn't work, try looking at `systemctl status sshd_external.service`, maybe set `LogLevel DEBUG` in the server's `sshd_external_config` or try taking Wireshark logs on the client and server machines to see what SSH might be objecting to.
 
