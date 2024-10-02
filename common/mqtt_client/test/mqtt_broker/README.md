@@ -93,7 +93,7 @@ In another terminal on that computer, run:
 ./mqtt-sn-pub -h <address of your server> -t test_topic -i client2 -m hello!
 ```
 
-The text `hello!` should appear in the first window.  If it does not, try the debugging pattern as for the MQTT case.  Note that there seems to be a considerable (i.e. up 15 minute) lag in the Paho MQTT-SN Gateway logs reaching the Linux system log so, for that case, don't look at the Linux system log timestamps, look at the timestamps in the Paho MQTT-SN Gateway log messages themselves.
+The text `hello!` should appear in the first window.  If it does not, try the same debugging pattern as for the MQTT case.  Note that there seems to be a considerable (i.e. up 15 minute) lag in the Paho MQTT-SN Gateway logs reaching the Linux system log so, for that case, don't look at the Linux system log timestamps, look at the timestamps in the Paho MQTT-SN Gateway log messages themselves.
 
 ## Start at Boot
 With the testing done, enable the MQTT-SN gateway service to run at boot by copying the file [mqttsn_gateway.service](mqttsn_gateway.service) to the `/etc/systemd/system` directory on your \[Linux\] server, editing the absolute paths in those files as appropriate for the location of the binary and the `.conf` files as above (`clients.conf` and `predefinedTopic.conf` don't do anything but have to be present for the application to execute), and then running:
