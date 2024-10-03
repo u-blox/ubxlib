@@ -166,7 +166,7 @@ static uPortOsThreadInstance_t *pGetNewThreadInstance(size_t stackSizeBytes)
             // K_KERNEL_STACK_LEN() will add extra space that Zephyr may require.
             // TODO: in the future we could use k_thread_stack_alloc() here and drop
             // the need for K_KERNEL_STACK_LEN()
-#if KERNEL_VERSION_NUMBER >= ZEPHYR_VERSION(3,7,0)
+#if KERNEL_VERSION_NUMBER >= ZEPHYR_VERSION(3,6,99)
             stackAllocSize = K_KERNEL_STACK_LEN(stackSizeBytes);
 #else
             stackAllocSize = Z_KERNEL_STACK_LEN(stackSizeBytes);
