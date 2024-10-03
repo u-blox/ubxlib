@@ -520,7 +520,6 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_KEEP_ALIVE)                     |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SECURITY)                       |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_ZTP)                        |
-         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_DTR_POWER_SAVING)                    |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_DEEP_SLEEP_URC)                      |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING)                   |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING_PAGING_WINDOW_SET) |
@@ -529,6 +528,7 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_FOTA)                                |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_SNR_REPORTED)                        |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_AUTHENTICATION_MODE_AUTOMATIC)       |
+         (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UART_POWER_SAVING)                   |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_UCGED)                               |
          (1ULL << (int32_t) U_CELL_PRIVATE_FEATURE_HTTP)  /* features */
         ),
@@ -919,6 +919,21 @@ int32_t privateActivateProfile(const uCellPrivateInstance_t *pInstance,
     }
 
     return errorCode;
+}
+
+// Check whether the module is LEXI-R10 and
+// we have the mode 1 for UPSV sleep.
+static bool uCellPrivateIsR10SleepMode1(uCellPrivateInstance_t *pInstance)
+{
+    bool success = false;
+
+    if (pInstance != NULL) {
+        if ((pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_LEXI_R10) &&
+            (pInstance->uartSleepCache.mode == 1)) {
+            success = true;
+        }
+    }
+    return success;
 }
 
 /* ----------------------------------------------------------------
@@ -1374,7 +1389,7 @@ int32_t uCellPrivateWakeUpCallback(uAtClientHandle_t atHandle, void *pInstance)
         uPortUartCtsSuspend(stream.handle.int32);
     }
 
-    if (uCellPrivateIsDeepSleepActive(_pInstance)) {
+    if (uCellPrivateIsDeepSleepActive(_pInstance) || uCellPrivateIsR10SleepMode1(_pInstance)) {
         // We know that the module has gone into 3GPP sleep, wake it up.
         errorCode = deepSleepWakeUp(_pInstance);
     } else {
@@ -1447,60 +1462,6 @@ void uCellPrivateSetDeepSleepState(uCellPrivateInstance_t *pInstance)
             }
         }
     }
-}
-
-// Suspend "32 kHz" or UART/AT+UPSV sleep.
-int32_t uCellPrivateSuspendUartPowerSaving(const uCellPrivateInstance_t *pInstance,
-                                           int32_t *pMode, int32_t *pTimeout)
-{
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-    uAtClientHandle_t atHandle = pInstance->atHandle;
-
-    if ((pMode != NULL) && (pTimeout != NULL)) {
-        // First, read the current AT+UPSV mode
-        uAtClientLock(atHandle);
-        uAtClientCommandStart(atHandle, "AT+UPSV?");
-        uAtClientCommandStop(atHandle);
-        uAtClientResponseStart(atHandle, "+UPSV:");
-        *pMode = uAtClientReadInt(atHandle);
-        *pTimeout = -1;
-        if (!U_CELL_PRIVATE_MODULE_IS_R4(pInstance->pModule->moduleType) &&
-            ((*pMode == 1) || (*pMode == 4))) {
-            // Only non-SARA-R4 modules have a timeout value and
-            // only for AT+UPSV modes 1 and 4
-            *pTimeout = uAtClientReadInt(atHandle);
-        }
-        uAtClientResponseStop(atHandle);
-        errorCode = uAtClientUnlock(atHandle);
-        if ((errorCode == 0) && (*pMode > 0)) {
-            // If that was successful and the current mode was
-            // not already zero then we now disable AT+UPSV
-            uAtClientLock(atHandle);
-            uAtClientCommandStart(atHandle, "AT+UPSV=");
-            uAtClientWriteInt(atHandle, 0);
-            uAtClientCommandStopReadResponse(atHandle);
-            errorCode = uAtClientUnlock(atHandle);
-        }
-    }
-
-    return errorCode;
-}
-
-// Resume "32 kHz" or UART/AT+UPSV sleep.
-int32_t uCellPrivateResumeUartPowerSaving(const uCellPrivateInstance_t *pInstance,
-                                          int32_t mode, int32_t timeout)
-{
-    uAtClientHandle_t atHandle = pInstance->atHandle;
-
-    uAtClientLock(atHandle);
-    uAtClientCommandStart(atHandle, "AT+UPSV=");
-    uAtClientWriteInt(atHandle, mode);
-    if (timeout >= 0) {
-        uAtClientWriteInt(atHandle, timeout);
-    }
-    uAtClientCommandStopReadResponse(atHandle);
-
-    return uAtClientUnlock(atHandle);
 }
 
 // Delete file on file system.

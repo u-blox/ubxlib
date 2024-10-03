@@ -49,19 +49,20 @@
  *
  * The sleep states are as follows:
  *
- * "UART sleep"/"32 kHz sleep": in this sleep state the speed of the
- * module's clocks are reduced to save a lot of power.  Because of
+ * "UART sleep"/"32 kHz sleep"/"sleep-1": in this sleep state the speed
+ * of the module's clocks are reduced to save a lot of power.  Because of
  * these reduced clock rates the module is not able to drive the
  * UART HW, hence this is often termed "UART sleep".  However, all
  * of the module's RAM is still on, state is fully retained, the module
  * is still actually running, is still connected to the network, and
- * it can be woken-up quickly by toggling lines of the UART AT interface.
+ * it can be woken-up quickly by toggling lines of the UART AT interface,
+ * except for LEXI-R10 where a configured GPIO line or PWR_ON must be toggled.
  *
- * "deep sleep": in this sleep state the module is basically off,
- * almost all state is lost, what is retained is only a basic notion
- * of time and whether the module was attached to the cellular
- * network when deep sleep began.  The IP stack on the module, the
- * MQTT client on the module, etc, are all reset by deep sleep.
+ * "deep sleep"/"sleep-2"/"hibernate": in this sleep state the module
+ * is basically off, almost all state is lost, what is retained is
+ * only a basic notion of time and whether the module was attached to
+ * the cellular network when deep sleep began.  The IP stack on the
+ * module, the MQTT client on the module, etc, are all reset by deep sleep.
  *
  * The ways of entering these sleep states are as follows:
  *
@@ -85,7 +86,7 @@
  * go into 32 kHz sleep during the E-DRX sleep periods the application
  * never has to worry about state being lost.
  *
- * "3GPP power saving made (PSM)": also a 3GPP-defined mechanism, this
+ * "3GPP power saving mode (PSM)": also a 3GPP-defined mechanism, this
  * forms an agreement with the network that the module will be out of
  * contact for long periods (think hours or days).  The functions below
  * with "3gppPowerSaving" in the name allow you to initiate and manage
@@ -177,6 +178,13 @@ extern "C" {
  * value in milliseconds.
  */
 # define U_CELL_PWR_UART_POWER_SAVING_DTR_HYSTERESIS_MS 20
+#endif
+
+#ifndef U_CELL_PWR_UART_POWER_SAVING_DEEP_SLEEP_MODE_R10
+/** The deep sleep limit of UART power saving that can be achieved for
+ * LEXI-R10 (see uCellPwrSleepModeR10_t).
+ */
+# define U_CELL_PWR_UART_POWER_SAVING_DEEP_SLEEP_MODE_R10 U_CELL_PWR_SLEEP_MODE_R10_1
 #endif
 
 /* ----------------------------------------------------------------

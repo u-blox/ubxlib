@@ -453,6 +453,7 @@ typedef struct {
 typedef struct {
     int32_t mode;
     int32_t sleepTime;
+    int32_t maxSleepMode;
 } uCellPrivateUartSleepCache_t;
 
 /** Track the state of the profile that is mapped to the
@@ -894,44 +895,6 @@ int32_t uCellPrivateWakeUpCallback(uAtClientHandle_t atHandle,
  * @param[in] pInstance a pointer to the cellular instance.
  */
 void uCellPrivateSetDeepSleepState(uCellPrivateInstance_t *pInstance);
-
-/** Suspend "32 kHz" or UART/AT+UPSV sleep.  This function reads the
- * current AT+UPSV state, which it returns in pMode and pTimeout, then
- * sets AT+UPSV=0. uCellPrivateResumeUartPowerSaving() should be used,
- * with the values placed in pMode and pTimeout, to resume UART power
- * saving.
- *
- * Note: gUCellPrivateMutex should be locked before this is called.
- *
- * @param[in] pInstance a pointer to the cellular instance.
- * @param[out] pMode    a pointer to a place to put the current AT+UPSV
- *                      mode; cannot be NULL.
- * @param[out] pTimeout a pointer to a place to put the current AT+UPSV
- *                      timesout; cannot be NULL, if the AT+UPSV mode in
- *                      pMode does not have a timeout then -1 will be
- *                      returned.
- * @return              zero on successful wake-up, else negative error.
- */
-int32_t uCellPrivateSuspendUartPowerSaving(const uCellPrivateInstance_t *pInstance,
-                                           int32_t *pMode, int32_t *pTimeout);
-
-/** Resume "32 kHz" or UART/AT+UPSV sleep, the counterpart to
- * uCellPrivateSuspendUartPowerSaving().
- *
- * Note: gUCellPrivateMutex should be locked before this is called.
- *
- * @param[in] pInstance a pointer to the cellular instance.
- * @param mode          the AT+UPSV mode to apply.
- * @param timeout       the timeout for the AT+UPSV mode; if the mode in
- *                      question does not have a timeout value then
- *                      a negative value should be used, in other words
- *                      the value returned by
- *                      uCellPrivateSuspendUartPowerSaving() can be used
- *                      directly.
- * @return              zero on successful wake-up, else negative error.
- */
-int32_t uCellPrivateResumeUartPowerSaving(const uCellPrivateInstance_t *pInstance,
-                                          int32_t mode, int32_t timeout);
 
 /** Delete a file from the file system. If the file does not exist an
  * error will be returned.

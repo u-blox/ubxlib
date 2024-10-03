@@ -107,15 +107,34 @@
 /** The UART power-saving modes: note that these numbers are defined
  * by the AT interface and should NOT be changed.
  */
-//lint -esym(749, uCellPwrPsvMode_t::U_CELL_PWR_PSV_MODE_RTS) Suppress not referenced
-//lint -esym(749, uCellPwrPsvMode_t::U_CELL_PWR_PSV_MODE_DTR) Suppress not referenced
+//lint -esym(749, uCellPwrUpsvMode_t::U_CELL_PWR_UPSV_MODE_RTS) Suppress not referenced
+//lint -esym(749, uCellPwrUpsvMode_t::U_CELL_PWR_UPSV_MODE_DTR) Suppress not referenced
 typedef enum {
-    U_CELL_PWR_PSV_MODE_DISABLED = 0,    /**< No UART power saving. */
-    U_CELL_PWR_PSV_MODE_DATA = 1,        /**< Module wakes up on TXD line activity, SARA-U201/SARA-R5 version. */
-    U_CELL_PWR_PSV_MODE_RTS = 2,         /**< Module wakes up on RTS line being asserted (not used in this code). */
-    U_CELL_PWR_PSV_MODE_DTR = 3,         /**< Module wakes up on DTR line being asserted. */
-    U_CELL_PWR_PSV_MODE_DATA_SARA_R4_LENA_R8 = 4 /**< Module wakes up on TXD line activity, SARA-R4/LENA-R8 version. */
-} uCellPwrPsvMode_t;
+    U_CELL_PWR_UPSV_MODE_DISABLED = 0,    /**< No UART power saving. */
+    U_CELL_PWR_UPSV_MODE_DATA = 1,        /**< Module wakes up on TXD line activity,
+                                              SARA-U201/SARA-R5 version. */
+    U_CELL_PWR_UPSV_MODE_RTS = 2,         /**< Module wakes up on RTS line being
+                                              asserted (not used in this code). */
+    U_CELL_PWR_UPSV_MODE_DTR = 3,         /**< Module wakes up on DTR line being asserted. */
+    U_CELL_PWR_UPSV_MODE_DATA_SARA_R4_LENA_R8 = 4, /**< Module wakes up on TXD line
+                                                       activity, SARA-R4/LENA-R8 version. */
+    U_CELL_PWR_UPSV_MODE_GPIO_LEXI_R10 = 5 /**< Module waking up is controlled by
+                                               the GPIO pin configured with GPIO
+                                               mode 34, LEXI-R10 version. */
+} uCellPwrUpsvMode_t;
+
+/** The UART power-saving max sleep modes for LEXI-R10.
+ * Note: these numbers are defined by the AT interface
+ * and should NOT be changed.
+ */
+typedef enum {
+    U_CELL_PWR_SLEEP_MODE_R10_1 = 2, /**< UART/32 kHz sleep, on-board
+                                          applications (IP/MQTT/HTTP) retained. */
+    U_CELL_PWR_SLEEP_MODE_R10_2 = 3, /**< Deep sleep, all on-board applications
+                                          (IP/MQTT/HTTP) lost. */
+    U_CELL_PWR_SLEEP_MODE_R10_HIBERNATE = 4 /**< Deepest sleep, all on-board
+                                          applications (IP/MQTT/HTTP) lost.*/
+} uCellPwrSleepModeR10_t;
 
 /** All the parameters for a wake-up-from-deep sleep callback.
  */
@@ -924,7 +943,10 @@ static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance,
     bool success = true;
     uAtClientHandle_t atHandle = pInstance->atHandle;
     uAtClientStreamHandle_t stream = U_AT_CLIENT_STREAM_HANDLE_DEFAULTS;
-    uCellPwrPsvMode_t uartPowerSavingMode = U_CELL_PWR_PSV_MODE_DISABLED; // Assume no UART power saving
+    uCellPwrUpsvMode_t uartPowerSavingMode =
+        U_CELL_PWR_UPSV_MODE_DISABLED; // Assume no UART power saving
+    uCellPrivateUartSleepCache_t *pUartSleepCache = &(pInstance->uartSleepCache);
+    int32_t uartPowerSavingTimeout = U_CELL_PWR_UART_POWER_SAVING_GSM_FRAMES;
     char buffer[20]; // Enough room for AT+UPSV=2,1300
 #if U_CELL_PWR_GNSS_PROFILE_BITS_EXTRA >= 0
     char *pServerNameGnss;
@@ -985,7 +1007,7 @@ static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance,
                     // It does: resume CTS and we can use the wake-up on
                     // TX line feature for power saving
                     uPortUartCtsResume(stream.handle.int32);
-                    uartPowerSavingMode = U_CELL_PWR_PSV_MODE_DATA;
+                    uartPowerSavingMode = U_CELL_PWR_UPSV_MODE_DATA;
                 }
             }
         } else {
@@ -996,7 +1018,7 @@ static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance,
             if (uAtClientWakeUpHandlerIsSet(atHandle) &&
                 U_CELL_PRIVATE_HAS(pInstance->pModule,
                                    U_CELL_PRIVATE_FEATURE_UART_POWER_SAVING)) {
-                uartPowerSavingMode = U_CELL_PWR_PSV_MODE_DATA;
+                uartPowerSavingMode = U_CELL_PWR_UPSV_MODE_DATA;
             }
         }
     }
@@ -1010,7 +1032,7 @@ static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance,
         // on SARA-R5 and SARA-U201, can be used to get out of sleep.
         // This will already have been set by the user calling
         // uCellPwrSetDtrPowerSavingPin().
-        uartPowerSavingMode = U_CELL_PWR_PSV_MODE_DTR;
+        uartPowerSavingMode = U_CELL_PWR_UPSV_MODE_DTR;
     }
 
     if (uAtClientWakeUpHandlerIsSet(atHandle) &&
@@ -1028,21 +1050,39 @@ static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance,
         // Meanwhile, LENA-R8 supports all of the modes, including
         // the timing parameter, but renumbers 1 as 4, just to
         // be different
-        uartPowerSavingMode = U_CELL_PWR_PSV_MODE_DATA_SARA_R4_LENA_R8;
+        uartPowerSavingMode = U_CELL_PWR_UPSV_MODE_DATA_SARA_R4_LENA_R8;
+    }
+
+    if (uAtClientWakeUpHandlerIsSet(atHandle) &&
+        (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_LEXI_R10)) {
+        // The mode 1 behaves differently for LEXI-R10, that requires a
+        // pulse on PWR_ON pin to wake the module up from sleep mode.
+        if (pInstance->pinPwrOn >= 0) {
+            uartPowerSavingMode = U_CELL_PWR_UPSV_MODE_DATA;
+            // In case of LEXI-R10 the timeout is in milliseconds
+            // rather than in GSM frames as in SARA-U201 and SARA-R5 cases.
+            uartPowerSavingTimeout = (int32_t) U_CELL_POWER_SAVING_UART_INACTIVITY_TIMEOUT_SECONDS * 1000;
+        } else {
+            uartPowerSavingMode = U_CELL_PWR_UPSV_MODE_DISABLED;
+        }
     }
 
     if (success) {
         // Assemble the UART power saving mode AT command
-        if ((uartPowerSavingMode == U_CELL_PWR_PSV_MODE_DATA) ||
-            ((uartPowerSavingMode == U_CELL_PWR_PSV_MODE_DATA_SARA_R4_LENA_R8) &&
+        if ((uartPowerSavingMode == U_CELL_PWR_UPSV_MODE_DATA) ||
+            ((uartPowerSavingMode == U_CELL_PWR_UPSV_MODE_DATA_SARA_R4_LENA_R8) &&
              (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_LENA_R8))) {
             snprintf(buffer, sizeof(buffer), "AT+UPSV=%d,%d",
                      (int) uartPowerSavingMode,
-                     U_CELL_PWR_UART_POWER_SAVING_GSM_FRAMES);
+                     (int) uartPowerSavingTimeout);
+            if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_LEXI_R10) {
+                snprintf(&buffer[strlen(buffer)], sizeof(buffer), ",%d",
+                         (int) U_CELL_PWR_UART_POWER_SAVING_DEEP_SLEEP_MODE_R10);
+            }
         } else {
             snprintf(buffer, sizeof(buffer), "AT+UPSV=%d", (int) uartPowerSavingMode);
             if (!returningFromSleep &&
-                (uartPowerSavingMode == U_CELL_PWR_PSV_MODE_DISABLED) &&
+                (uartPowerSavingMode == U_CELL_PWR_UPSV_MODE_DISABLED) &&
                 uAtClientWakeUpHandlerIsSet(atHandle)) {
                 // Remove the wake-up handler if it turns out that power
                 // saving cannot be supported but leave well alone if
@@ -1064,9 +1104,13 @@ static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance,
             uAtClientSetWakeUpHandler(atHandle, NULL, NULL, 0);
             uPortLog("U_CELL_PWR: power saving not supported.\n");
         }
+        // Update the UART sleep cache.
+        pUartSleepCache->mode = uartPowerSavingMode;
+        pUartSleepCache->sleepTime = uartPowerSavingTimeout;
+        pUartSleepCache->maxSleepMode = U_CELL_PWR_UART_POWER_SAVING_DEEP_SLEEP_MODE_R10;
         // Now tell the AT Client that it should control the
         // DTR pin, if relevant
-        if (!returningFromSleep && (uartPowerSavingMode == U_CELL_PWR_PSV_MODE_DTR)) {
+        if (!returningFromSleep && (uartPowerSavingMode == U_CELL_PWR_UPSV_MODE_DTR)) {
             uAtClientSetActivityPin(atHandle, pInstance->pinDtrPowerSaving,
                                     U_CELL_PWR_UART_POWER_SAVING_DTR_READY_MS,
                                     U_CELL_PWR_UART_POWER_SAVING_DTR_HYSTERESIS_MS,
@@ -1223,6 +1267,8 @@ static int32_t powerOff(uCellPrivateInstance_t *pInstance,
         uAtClientCommandStart(atHandle, "AT+UPSV=0");
         uAtClientCommandStopReadResponse(atHandle);
         uAtClientUnlock(atHandle);
+        // Updating the uart sleep cache.
+        pInstance->uartSleepCache.mode = U_CELL_PWR_UPSV_MODE_DISABLED;
     }
     // Send the power off command and then pull the power
     uAtClientLock(atHandle);
@@ -1947,26 +1993,38 @@ int32_t uCellPwrPrivateDisableUartSleep(uCellPrivateInstance_t *pInstance)
             uAtClientCommandStop(atHandle);
             uAtClientResponseStart(atHandle, "+UPSV:");
             pUartSleepCache->mode = uAtClientReadInt(atHandle);
-            if ((pUartSleepCache->mode == 1) ||
+            if ((pUartSleepCache->mode == U_CELL_PWR_UPSV_MODE_DATA) ||
                 ((pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_LENA_R8) &&
-                 (pUartSleepCache->mode == 4))) {
+                 (pUartSleepCache->mode == U_CELL_PWR_UPSV_MODE_DATA_SARA_R4_LENA_R8))) {
                 // Mode 1 has a time attached, as does mode 4 but only if this
                 // is LENA-R8
                 pUartSleepCache->sleepTime = uAtClientReadInt(atHandle);
             }
+            if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_LEXI_R10) {
+                pUartSleepCache->maxSleepMode = uAtClientReadInt(atHandle);
+            }
             uAtClientResponseStop(atHandle);
             errorCode = uAtClientUnlock(atHandle);
-            if (errorCode == 0) {
+            if (errorCode == U_ERROR_COMMON_SUCCESS) {
                 // Now switch off sleep and remove the handler,
                 // so that everyone knows sleep is gone
                 uAtClientLock(atHandle);
                 uAtClientCommandStart(atHandle, "AT+UPSV=");
-                uAtClientWriteInt(atHandle, 0);
+                uAtClientWriteInt(atHandle, U_CELL_PWR_UPSV_MODE_DISABLED);
                 uAtClientCommandStopReadResponse(atHandle);
                 errorCode = uAtClientUnlock(atHandle);
-                if (errorCode == 0) {
+                if (errorCode == U_ERROR_COMMON_SUCCESS) {
                     uAtClientSetWakeUpHandler(atHandle, NULL, NULL, 0);
                 }
+            }
+            // In case of LEXI-R10 we need to enable the USB
+            // stack back if we have sleep 2 or hibernate mode.
+            if ((errorCode == 0) && (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_LEXI_R10) &&
+                (pUartSleepCache->maxSleepMode >= U_CELL_PWR_SLEEP_MODE_R10_2)) {
+                uAtClientLock(atHandle);
+                uAtClientCommandStart(atHandle, "AT+UUSBCONF=0");
+                uAtClientCommandStopReadResponse(atHandle);
+                errorCode = uAtClientUnlock(atHandle);
             }
         }
     }
@@ -1993,16 +2051,27 @@ int32_t uCellPwrPrivateEnableUartSleep(uCellPrivateInstance_t *pInstance)
             // If no sleep handler is set then either sleep
             // is not supported or it has been disabled:
             // if it has been disabled then the cache
-            // will contain the previous mode so check it
+            // will contain the previous mode so check it.
             if (pUartSleepCache->mode > 0) {
                 // There is a cached mode, put it back again
 #ifndef U_CFG_CELL_DISABLE_UART_POWER_SAVING
+                // In case of LEXI-R10 we need to disable the USB
+                // stack if we need to have sleep 2 or hibernate mode.
+                if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_LEXI_R10) {
+                    if (pUartSleepCache->maxSleepMode >= U_CELL_PWR_SLEEP_MODE_R10_2) {
+                        moduleConfigureOne(atHandle, "AT+UUSBCONF=99", 1);
+                    }
+                }
                 uAtClientLock(atHandle);
                 uAtClientCommandStart(atHandle, "AT+UPSV=");
                 uAtClientWriteInt(atHandle, pUartSleepCache->mode);
-                if (pUartSleepCache->mode == 1) {
+                if (pUartSleepCache->mode == U_CELL_PWR_UPSV_MODE_DATA) {
                     // Mode 1 has a time
                     uAtClientWriteInt(atHandle, pUartSleepCache->sleepTime);
+                }
+                if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_LEXI_R10) {
+                    // In case of LEXI-R10, specify the UART deep sleep mode.
+                    uAtClientWriteInt(atHandle, pUartSleepCache->maxSleepMode);
                 }
                 uAtClientCommandStopReadResponse(atHandle);
                 errorCode = uAtClientUnlock(atHandle);
@@ -2011,6 +2080,7 @@ int32_t uCellPwrPrivateEnableUartSleep(uCellPrivateInstance_t *pInstance)
                     // has been re-enabled
                     pUartSleepCache->mode = 0;
                     pUartSleepCache->sleepTime = 0;
+                    pUartSleepCache->maxSleepMode = 0;
                     uAtClientSetWakeUpHandler(atHandle, uCellPrivateWakeUpCallback, pInstance,
                                               (U_CELL_POWER_SAVING_UART_INACTIVITY_TIMEOUT_SECONDS * 1000) -
                                               U_CELL_POWER_SAVING_UART_WAKEUP_MARGIN_MILLISECONDS);
@@ -2186,6 +2256,11 @@ int32_t uCellPwrOffHard(uDeviceHandle_t cellHandle, bool trulyHard,
                         uAtClientCommandStart(atHandle, "AT+UPSV=0");
                         uAtClientCommandStopReadResponse(atHandle);
                         uAtClientUnlock(atHandle);
+                        // Update the uart sleep cache
+                        pInstance->uartSleepCache.mode = U_CELL_PWR_UPSV_MODE_DISABLED;
+                        // Some modules (e.g. LEXI-R10 in U_CELL_PWR_SLEEP_MODE_R10_1 mode)
+                        // require a breather to let the AT+UPSV=0 effective.
+                        uPortTaskBlock(500);
                     }
                     uPortLog("U_CELL_PWR: powering off using the PWR_ON pin.\n");
                     uPortGpioSet(pInstance->pinPwrOn,

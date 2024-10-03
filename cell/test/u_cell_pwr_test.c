@@ -789,7 +789,7 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwr")
 
 /** Power on process testing for any module type.
   */
-U_PORT_TEST_FUNCTION("[cellPwr]", "uCellPwrAnyModule")
+U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrAnyModule")
 {
     uAtClientStreamHandle_t stream;
     int32_t resourceCount;
