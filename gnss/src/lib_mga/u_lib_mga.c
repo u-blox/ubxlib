@@ -26,6 +26,7 @@
 // malloc -> pUPortMalloc,
 // free -> uPortFree,
 // time() -> uPortGetTickTimeMs() / 1000
+// fixed the NULL pointer checking after pUPortMalloc
 
 // MODIFIED: headers added
 #include "stddef.h"    // NULL, size_t etc.
@@ -300,8 +301,8 @@ static void sendFlashMainSeqBlock(void);
 static UBX_I4 sendNextMgaMessage(void);
 static void sendAllMessages(void);
 static void resendMessage(MgaMsgInfo* pResendMsg);
-static void addMgaIniTime(const UBX_U1* pMgaData, UBX_I4* iSize, UBX_U1** pMgaDataOut, const MgaTimeAdjust* pTime);
-static void addMgaIniPos(const UBX_U1* pMgaData, UBX_I4* iSize, UBX_U1** pMgaDataOut, const MgaPosAdjust* pPos);
+static MGA_API_RESULT addMgaIniTime(const UBX_U1* pMgaData, UBX_I4* iSize, UBX_U1** pMgaDataOut, const MgaTimeAdjust* pTime);
+static MGA_API_RESULT addMgaIniPos(const UBX_U1* pMgaData, UBX_I4* iSize, UBX_U1** pMgaDataOut, const MgaPosAdjust* pPos);
 static void sendCfgMgaAidAcks(bool enable, bool bV3);
 static void sendInitialMsgBatch(void);
 static void sendFlashStop(void);
@@ -553,14 +554,20 @@ MGA_API_RESULT mgaSessionSendOfflineData(const UBX_U1* pMgaData, UBX_I4 iSize, c
 
         if (pPos != NULL)
         {
-            addMgaIniPos(pMgaData, &iSize, &pMgaDataTemp, pPos);
-            addMgaIniTime(pMgaDataTemp, &iSize, &s_pMgaDataSession, pTime);
+            res = addMgaIniPos(pMgaData, &iSize, &pMgaDataTemp, pPos);
+            if (res == MGA_API_OK) 
+            {
+                res = addMgaIniTime(pMgaDataTemp, &iSize, &s_pMgaDataSession, pTime);
+            }
             uPortFree(pMgaDataTemp);
         }
         else
-            addMgaIniTime(pMgaData, &iSize, &s_pMgaDataSession, pTime);
+            res = addMgaIniTime(pMgaData, &iSize, &s_pMgaDataSession, pTime);
 
-        res = countMgaMsg(s_pMgaDataSession, iSize, &s_mgaBlockCount);
+        if (res == MGA_API_OK) 
+        {
+            res = countMgaMsg(s_pMgaDataSession, iSize, &s_mgaBlockCount);
+        }
 
         if (s_mgaBlockCount > 0)
         {
@@ -2585,8 +2592,9 @@ static void sendAidingFlashStop(void)
     s_aidingTimeout.durationMs = s_pFlowConfig->msgTimeOut;
 }
 
-static void addMgaIniTime(const UBX_U1* pMgaData, UBX_I4* iSize, UBX_U1** pMgaDataOut, const MgaTimeAdjust* pTime)
+static MGA_API_RESULT addMgaIniTime(const UBX_U1* pMgaData, UBX_I4* iSize, UBX_U1** pMgaDataOut, const MgaTimeAdjust* pTime)
 {
+    MGA_API_RESULT res = MGA_API_OK;
     UBX_I4 nSizeTemp = *iSize;
     enum { nMsgSize = 24 + UBX_MSG_FRAME_SIZE };
     UBX_U1 mgaIniTimeMsg[nMsgSize] = {
@@ -2635,12 +2643,18 @@ static void addMgaIniTime(const UBX_U1* pMgaData, UBX_I4* iSize, UBX_U1** pMgaDa
     *iSize = *iSize + (UBX_I4)nMsgSize;
 
     *pMgaDataOut = (UBX_U1*)pUPortMalloc(*iSize);
-    memcpy(*pMgaDataOut, mgaIniTimeMsg, nMsgSize);
-    memcpy(*pMgaDataOut + nMsgSize, pMgaData, nSizeTemp);
+    if(*pMgaDataOut != NULL){
+        memcpy(*pMgaDataOut, mgaIniTimeMsg, nMsgSize);
+        memcpy(*pMgaDataOut + nMsgSize, pMgaData, nSizeTemp);
+    } else {
+        res = MGA_API_OUT_OF_MEMORY;
+    }
+    return res;
 }
 
-static void addMgaIniPos(const UBX_U1* pMgaData, UBX_I4* iSize, UBX_U1** pMgaDataOut, const MgaPosAdjust* pPos)
+static MGA_API_RESULT addMgaIniPos(const UBX_U1* pMgaData, UBX_I4* iSize, UBX_U1** pMgaDataOut, const MgaPosAdjust* pPos)
 {
+    MGA_API_RESULT res = MGA_API_OK;
     UBX_I4 nSizeTemp = *iSize;
     enum { nMsgSize = 20 + UBX_MSG_FRAME_SIZE };
     UBX_U1 mgaIniPosMsg[nMsgSize] = {
@@ -2682,8 +2696,13 @@ static void addMgaIniPos(const UBX_U1* pMgaData, UBX_I4* iSize, UBX_U1** pMgaDat
     *iSize = *iSize + (UBX_I4)nMsgSize;
 
     *pMgaDataOut = (UBX_U1*)pUPortMalloc(*iSize);
-    memcpy(*pMgaDataOut, mgaIniPosMsg, nMsgSize);
-    memcpy(*pMgaDataOut + nMsgSize, pMgaData, nSizeTemp);
+    if (*pMgaDataOut != NULL){
+        memcpy(*pMgaDataOut, mgaIniPosMsg, nMsgSize);
+        memcpy(*pMgaDataOut + nMsgSize, pMgaData, nSizeTemp);
+    } else {
+        res = MGA_API_OUT_OF_MEMORY;
+    }
+    return res;
 }
 
 // MODIFIED to support the UBX-CFG-VAL interface (M10 and beyond) as well as UBX-CFG-NAVX5
