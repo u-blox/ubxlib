@@ -923,6 +923,7 @@ int32_t uPortPppReconnect(void *pDevHandle,
         pPppInterface = pFindPppInterface(pDevHandle);
         if ((pPppInterface != NULL) && (pPppInterface->pppRunning)) {
             errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+            pppDisconnect(pPppInterface);
             if (pPppInterface->pConnectCallback != NULL) {
                 errorCode = pPppInterface->pConnectCallback(pDevHandle,
                                                             moduleDataCallback,

@@ -158,6 +158,26 @@ bool uCellPppIsOpen(uDeviceHandle_t cellHandle);
 int32_t uCellPppClose(uDeviceHandle_t cellHandle,
                       bool pppTerminateRequired);
 
+/** Normally, closure of PPP would also cause CMUX to be
+ * deactivated if this code knows that CMUX was only
+ * activated in order to run PPP.  This is unnecesary if the
+ * closure of PPP is only temporary, e.g. to recover from a
+ * service outage, and it is going to be brought back up again
+ * immediately.  Call this function with doNotDisableCmux set
+ * to true before calling uCellPppClose() where this is the
+ * case (though don't forget to call it again with
+ * doNotDisableCmux set to false before you call uCellPppClose()
+ * with no intention of calling uCellPppOpen() again afterwards).
+ *
+ * @param cellHandle         the handle of the cellular instance.
+ * @param doNotDisableCmux   if true then uCellPppClose() will
+ *                           leave CMUX up, else it will close
+ *                           CMUX if CMUX was only brought up
+ *                           to run PPP.
+ */
+void uCellPppSetDoNotDisableCmuxOnClose(uDeviceHandle_t cellHandle,
+                                        bool doNotDisableCmux);
+
 /** Transmit data over the PPP interface of the cellular module.
  * This may be integrated into a higher layer, e.g. the PPP
  * interface at the bottom of an IP stack, to permit it to send

@@ -1761,6 +1761,11 @@ int32_t uCellMuxPrivateEnable(uCellPrivateInstance_t *pInstance)
                                         // of our instance to the new AT handle, leaving the
                                         // old AT handle locked
                                         pInstance->atHandle = atHandle;
+                                        // Unlock the now inactive AT client handle from this task,
+                                        // just in case we want to switch CMUX off from some
+                                        // other task (FreeRTOS doesn't like mutexes being unlocked
+                                        // by a task that didn't lock them).
+                                        uAtClientUnlock(pContext->savedAtHandle);
                                         // The setting of echo-off and AT+CMEE is port-specific,
                                         // so we need to set those here for the new port
 #ifdef U_CFG_CELL_ENABLE_NUMERIC_ERROR
@@ -1892,6 +1897,7 @@ int32_t uCellMuxPrivateDisable(uCellPrivateInstance_t *pInstance)
             if (pContext->savedAtHandle != NULL) {
                 // Copy the settings of the AT handler on channel 1
                 // back into the original one, in case they have changed
+                uAtClientLock(pContext->savedAtHandle);
                 errorCode = uCellMuxPrivateCopyAtClient(atHandle, pContext->savedAtHandle);
                 // While we set the error code above, there's not a whole lot
                 // we can do if this fails, so continue anyway; close the

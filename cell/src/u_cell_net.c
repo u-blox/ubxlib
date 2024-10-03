@@ -67,6 +67,7 @@
 #include "u_cell_mno_db.h"
 #include "u_cell_ppp_shared.h"
 
+#include "u_cell_ppp_private.h"
 #include "u_cell_pwr_private.h"
 
 /* ----------------------------------------------------------------
@@ -202,6 +203,7 @@ static const uCellNetRegDomain_t gRegTypeToDomain[] = {
     U_CELL_NET_REG_DOMAIN_PS, // U_CELL_PRIVATE_NET_REG_TYPE_CGREG
     U_CELL_NET_REG_DOMAIN_PS // U_CELL_PRIVATE_NET_REG_TYPE_CEREG
 };
+
 #if U_CFG_ENABLE_LOGGING
 /** Strings that describe the possible authentication modes;
  * used in a debug print only, MUST have the same number of
@@ -214,6 +216,13 @@ static const char *gpAuthenticationModeStr[] = {
     "automatic"     // U_CELL_NET_AUTHENTICATION_MODE_AUTOMATIC
 };
 #endif
+
+/** The [start of] strings returned by +CGEV which mean that
+ * the PDP context has been removed unexpectedly by the network.
+ */
+static const char *gpCgevPdpContextFailure[] = {
+    "NW PDN DEACT", "NW DETACH"
+};
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS: FORWARD DECLARATIONS
@@ -291,10 +300,16 @@ static void activateContextCallback(uAtClientHandle_t atHandle,
 
     if (U_CELL_PRIVATE_HAS(pInstance->pModule, U_CELL_PRIVATE_FEATURE_PPP)) {
         if ((uCellNetGetIpAddressStr(cellHandle, buffer) > 0) &&
-            (uSockStringToAddress(buffer, &address) > 0)) {
+            (uSockStringToAddress(buffer, &address) == 0)) {
             pIpAddress = &address.ipAddress;
         }
+        // Reconnect PPP, making sure not to disable CMUX while doing
+        // so since it is pointless taking it down and up again when
+        // that would also result in the removal of the AT client
+        // that it is actually using at the time
+        uCellPppSetDoNotDisableCmuxOnClose(cellHandle, true);
         uPortPppReconnect(cellHandle, pIpAddress);
+        uCellPppSetDoNotDisableCmuxOnClose(cellHandle, false);
     }
 }
 
@@ -308,6 +323,7 @@ static void setNetworkStatus(uCellPrivateInstance_t *pInstance,
 {
     uCellNetRegistationStatus_t *pStatus;
     bool printAllowed = true;
+    uCellNetRat_t previousRat = pInstance->rat[regType];
 #if U_CFG_OS_CLIB_LEAKS
     // If we're in a URC and the C library leaks memory
     // when printf() is called from a dynamically
@@ -421,12 +437,18 @@ static void setNetworkStatus(uCellPrivateInstance_t *pInstance,
             // support LTE but does support Cat-M1, switch it
             pInstance->rat[regType] = U_CELL_NET_RAT_CATM1;
         }
-        if (pInstance->profileState == U_CELL_PRIVATE_PROFILE_STATE_REQUIRES_REACTIVATION) {
-            // This flag will be set if we had been knocked out
-            // of our PDP context by a network outage and need
-            // to get it back again; make sure to get this in the
-            // queue before any user registratioon status callback
-            // so that everything is sorted for them
+        if ((pInstance->profileState == U_CELL_PRIVATE_PROFILE_STATE_REQUIRES_REACTIVATION) ||
+            ((previousRat != U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED) &&
+             (pInstance->rat[regType] != previousRat) && (uCellPppPrivateIsOpen(pInstance)))) {
+            // profileState will have been set to "reactivation required"
+            // if we had been knocked out of our PDP context by a network
+            // outage and need to get it back again.  We also need to do
+            // this if the module has changed RAT underneath us, potentially
+            // between 2G and LTE, and we have a PPP connection up; the PPP
+            // connection could have become inactive, without notification,
+            // on such a RAT change, activateContextCallback() will reconnect it.
+            // Make sure this is in the queue before any user registration
+            // status callback so that everything is sorted for the user.
             if (!U_CELL_PRIVATE_HAS(pInstance->pModule,
                                     U_CELL_PRIVATE_FEATURE_USE_UPSD_CONTEXT_ACTIVATION)) {
                 // Use the AT client's callback mechanism to do the operation
@@ -725,10 +747,50 @@ static void CSCON_urc(uAtClientHandle_t atHandle, void *pParameter)
     }
 }
 
+// Take action on a PDP context being deactivated by the network/module,
+// which will be signalled by a +UUPSDD or +CGEV URC.
+static void contextDeactivated(uCellPrivateInstance_t *pInstance)
+{
+    if (pInstance->profileState == U_CELL_PRIVATE_PROFILE_STATE_SHOULD_BE_UP) {
+        // Set the state so that, should we re-register with the network,
+        // we will reactivate the internal profile
+        pInstance->profileState = U_CELL_PRIVATE_PROFILE_STATE_REQUIRES_REACTIVATION;
+    }
+}
+
+// Detect a change in the state of context activation
+static void CGEV_urc(uAtClientHandle_t atHandle, void *pParameter)
+{
+    uCellPrivateInstance_t *pInstance = (uCellPrivateInstance_t *) pParameter;
+    char buffer[32];
+    int32_t x;
+    bool pdpContextFailure = false;
+    int32_t failureStringLength;
+
+    x = uAtClientReadString(atHandle, buffer, sizeof(buffer), false);
+
+    // The +CGEV URCs of interest are the ones that indicate a context
+    // has been deactivated, which are:
+    //
+    // NW PDN DEACT <cid>
+    // NW DETACH
+
+    for (size_t y = 0; !pdpContextFailure && (x > 0) &&
+         (y < sizeof(gpCgevPdpContextFailure) /
+          sizeof(gpCgevPdpContextFailure[0])); y++) {
+        failureStringLength = strlen(gpCgevPdpContextFailure[y]);
+        pdpContextFailure = (x >= failureStringLength) &&
+                            (memcmp(buffer, gpCgevPdpContextFailure[y], failureStringLength) == 0);
+    }
+
+    if (pdpContextFailure) {
+        contextDeactivated(pInstance);
+    }
+}
+
 // Detect deactivation of an internal profile, which will occur if we
 // fall out of service.
-static void UUPSDD_urc(uAtClientHandle_t atHandle,
-                       void *pParameter)
+static void UUPSDD_urc(uAtClientHandle_t atHandle, void *pParameter)
 {
     uCellPrivateInstance_t *pInstance = (uCellPrivateInstance_t *) pParameter;
 
@@ -736,11 +798,7 @@ static void UUPSDD_urc(uAtClientHandle_t atHandle,
     // activate a single internal profile
     uAtClientSkipParameters(atHandle, 1);
 
-    if (pInstance->profileState == U_CELL_PRIVATE_PROFILE_STATE_SHOULD_BE_UP) {
-        // Set the state so that, should we re-register with the network,
-        // we will reactivate the internal profile
-        pInstance->profileState = U_CELL_PRIVATE_PROFILE_STATE_REQUIRES_REACTIVATION;
-    }
+    contextDeactivated(pInstance);
 }
 
 /* ----------------------------------------------------------------
@@ -827,6 +885,7 @@ static int32_t prepareConnect(uCellPrivateInstance_t *pInstance)
     uAtClientSetUrcHandler(atHandle, "+CGREG:", CGREG_urc, pInstance);
     uAtClientSetUrcHandler(atHandle, "+CEREG:", CEREG_urc, pInstance);
     uAtClientSetUrcHandler(atHandle, "+UUPSDD:", UUPSDD_urc, pInstance);
+    uAtClientSetUrcHandler(atHandle, "+CGEV:", CGEV_urc, pInstance);
 
     // Switch on the unsolicited result codes for registration
     // and also ask for the additional parameters <lac>, <ci> and
@@ -2401,6 +2460,7 @@ static int32_t disconnect(uCellPrivateInstance_t *pInstance,
         uAtClientRemoveUrcHandler(atHandle, "+CGREG:");
         uAtClientRemoveUrcHandler(atHandle, "+CEREG:");
         uAtClientRemoveUrcHandler(atHandle, "+UUPSDD:");
+        uAtClientRemoveUrcHandler(atHandle, "+CGEV:");
         uPortLog("U_CELL_NET: disconnected.\n");
     } else {
         uPortLog("U_CELL_NET: unable to disconnect.\n");

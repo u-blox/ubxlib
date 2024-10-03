@@ -646,6 +646,68 @@ static void netIfEventCallback(struct net_mgmt_event_callback *pCb,
 
 #if defined(CONFIG_NET_PPP) && defined(U_CFG_PPP_ENABLE)
 
+// Connect a PPP interface.
+static int32_t pppConnect(void *pDevHandle, uPortPppInterface_t *pPppInterface)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_FOUND;
+    struct net_if *pNetIf;
+    uTimeoutStart_t timeoutStart;
+
+    if ((pPppInterface != NULL) && !(pPppInterface->pppRunning)) {
+        errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
+        // Get hold of the PPP network interface
+        pNetIf = net_if_get_first_by_type(&NET_L2_GET_NAME(PPP));
+        if (pNetIf != NULL) {
+            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+            if (pPppInterface->pConnectCallback != NULL) {
+                errorCode = pPppInterface->pConnectCallback(pDevHandle, rxCallback,
+                                                            NULL, NULL,
+                                                            U_PORT_PPP_RECEIVE_BUFFER_BYTES,
+                                                            NULL);
+            }
+            if (errorCode == 0) {
+                pPppInterface->pppRunning = true;
+                // Use a nice specific error message here, most likely to point
+                // people at a PPP kinda problem
+                errorCode = (int32_t) U_ERROR_COMMON_PROTOCOL_ERROR;
+                // Zephyr event callbacks for different layers are required to be
+                // in different structs as they may overlap otherwise
+                net_mgmt_init_event_callback(&pPppInterface->netIfEventCallbackPpp,
+                                             netIfEventCallback, NET_EVENT_IF_DOWN);
+                net_mgmt_add_event_callback(&pPppInterface->netIfEventCallbackPpp);
+                net_mgmt_init_event_callback(&pPppInterface->netIfEventCallbackIp,
+                                             netIfEventCallback, NET_EVENT_IPV4_ADDR_ADD);
+                net_mgmt_add_event_callback(&pPppInterface->netIfEventCallbackIp);
+                net_if_carrier_on(pNetIf);
+                if (net_if_up(pNetIf) == 0) {
+                    // Wait for netIfEventCallback to be called back
+                    // with the event NET_EVENT_IPV4_ADDR_ADD; it
+                    // will set pPppInterface->ipConnected
+                    timeoutStart = uTimeoutStart();
+                    while ((!pPppInterface->ipConnected) &&
+                           !uTimeoutExpiredSeconds(timeoutStart,
+                                                   U_PORT_PPP_CONNECT_TIMEOUT_SECONDS)) {
+                        uPortTaskBlock(250);
+                    }
+                    if (pPppInterface->ipConnected) {
+                        pPppInterface->pNetIf = pNetIf;
+                        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                        uPortLog("U_PORT_PPP: connected.\n");
+                    }
+                }
+            }
+            if ((errorCode != 0) && (pPppInterface->pppRunning) &&
+                (pPppInterface->pDisconnectCallback != NULL)) {
+                // Clean up on error
+                pPppInterface->pDisconnectCallback(pPppInterface->pDevHandle, false);
+                pPppInterface->pppRunning = false;
+            }
+        }
+    }
+
+    return errorCode;
+}
+
 // Detach the Zephyr PPP interface.
 static void pppDetach(uPortPppInterface_t *pPppInterface)
 {
@@ -836,8 +898,6 @@ int32_t uPortPppConnect(void *pDevHandle,
                         uPortPppAuthenticationMode_t authenticationMode)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
-    struct net_if *pNetIf;
-    uTimeoutStart_t timeoutStart;
 
     // Note: Zephyr does not (as of version 3.5 at least) support
     // entering a user name and password, and probably doesn't
@@ -860,58 +920,7 @@ int32_t uPortPppConnect(void *pDevHandle,
 
         U_PORT_MUTEX_LOCK(gMutex);
 
-        errorCode = (int32_t) U_ERROR_COMMON_NOT_FOUND;
-        if (gpPppInterface != NULL) {
-            errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
-            // Get hold of the PPP network interface
-            pNetIf = net_if_get_first_by_type(&NET_L2_GET_NAME(PPP));
-            if (pNetIf != NULL) {
-                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-                if (gpPppInterface->pConnectCallback != NULL) {
-                    errorCode = gpPppInterface->pConnectCallback(pDevHandle, rxCallback,
-                                                                 NULL, NULL,
-                                                                 U_PORT_PPP_RECEIVE_BUFFER_BYTES,
-                                                                 NULL);
-                }
-                if (errorCode == 0) {
-                    gpPppInterface->pppRunning = true;
-                    // Use a nice specific error message here, most likely to point
-                    // people at a PPP kinda problem
-                    errorCode = (int32_t) U_ERROR_COMMON_PROTOCOL_ERROR;
-                    // Zephyr event callbacks for different layers are required to be
-                    // in different structs as they may overlap otherwise
-                    net_mgmt_init_event_callback(&gpPppInterface->netIfEventCallbackPpp,
-                                                 netIfEventCallback, NET_EVENT_IF_DOWN);
-                    net_mgmt_add_event_callback(&gpPppInterface->netIfEventCallbackPpp);
-                    net_mgmt_init_event_callback(&gpPppInterface->netIfEventCallbackIp,
-                                                 netIfEventCallback, NET_EVENT_IPV4_ADDR_ADD);
-                    net_mgmt_add_event_callback(&gpPppInterface->netIfEventCallbackIp);
-                    net_if_carrier_on(pNetIf);
-                    if (net_if_up(pNetIf) == 0) {
-                        // Wait for netIfEventCallback to be called back
-                        // with the event NET_EVENT_IPV4_ADDR_ADD; it
-                        // will set gpPppInterface->ipConnected
-                        timeoutStart = uTimeoutStart();
-                        while ((!gpPppInterface->ipConnected) &&
-                               !uTimeoutExpiredSeconds(timeoutStart,
-                                                       U_PORT_PPP_CONNECT_TIMEOUT_SECONDS)) {
-                            uPortTaskBlock(250);
-                        }
-                        if (gpPppInterface->ipConnected) {
-                            gpPppInterface->pNetIf = pNetIf;
-                            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-                            uPortLog("U_PORT_PPP: connected.\n");
-                        }
-                    }
-                }
-                if ((errorCode != 0) && (gpPppInterface->pppRunning) &&
-                    (gpPppInterface->pDisconnectCallback != NULL)) {
-                    // Clean up on error
-                    gpPppInterface->pDisconnectCallback(gpPppInterface->pDevHandle, false);
-                    gpPppInterface->pppRunning = false;
-                }
-            }
-        }
+        errorCode = pppConnect(pDevHandle, gpPppInterface);
 
         U_PORT_MUTEX_UNLOCK(gMutex);
     }
@@ -925,20 +934,17 @@ int32_t uPortPppReconnect(void *pDevHandle,
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
 
+    // PPP negotiation will set this
+    (void) pIpAddress;
+
     if (gMutex != NULL) {
 
         U_PORT_MUTEX_LOCK(gMutex);
 
         errorCode = (int32_t) U_ERROR_COMMON_NOT_FOUND;
-        if ((gpPppInterface != NULL) && (gpPppInterface->ipConnected)) {
-            (void) pIpAddress;
-            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-            if (gpPppInterface->pConnectCallback != NULL) {
-                errorCode = gpPppInterface->pConnectCallback(pDevHandle, rxCallback,
-                                                             NULL, NULL,
-                                                             U_PORT_PPP_RECEIVE_BUFFER_BYTES,
-                                                             NULL);
-            }
+        if (gpPppInterface != NULL) {
+            pppDetach(gpPppInterface);
+            errorCode = pppConnect(pDevHandle, gpPppInterface);
         }
 
         U_PORT_MUTEX_UNLOCK(gMutex);

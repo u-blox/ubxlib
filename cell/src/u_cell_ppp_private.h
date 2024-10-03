@@ -57,6 +57,15 @@ extern "C" {
  */
 void uCellPppPrivateRemoveContext(uCellPrivateInstance_t *pInstance);
 
+/** Determine if a PPP connection is currently up.
+ *
+ * Note: gUCellPrivateMutex should be locked before this is called.
+ *
+ * @param[in] pInstance a pointer to the cellular instance.
+ * @return    true if a PPP connection is up, else false.
+ */
+bool uCellPppPrivateIsOpen(uCellPrivateInstance_t *pInstance);
+
 #ifdef __cplusplus
 }
 #endif

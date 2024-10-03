@@ -150,6 +150,7 @@ typedef struct {
     bool receiveBufferIsMalloced;
     bool muxAlreadyEnabled;
     bool uartSleepWakeOnDataWasEnabled;
+    bool doNotDisableCmux;
 } uCellPppContext_t;
 
 /* ----------------------------------------------------------------
@@ -347,7 +348,7 @@ static void closePpp(uCellPrivateInstance_t *pInstance,
                     pContext->pDeviceSerial = NULL;
                 }
             }
-            if (!pContext->muxAlreadyEnabled) {
+            if (!pContext->muxAlreadyEnabled && !pContext->doNotDisableCmux) {
                 // Disable the multiplexer if one was in use
                 // and it was us who started it
                 uCellMuxPrivateDisable(pInstance);
@@ -404,6 +405,20 @@ void uCellPppPrivateRemoveContext(uCellPrivateInstance_t *pInstance)
         uPortFree(pContext);
         pInstance->pPppContext = NULL;
     }
+}
+
+// Determine if PPP is up and running.
+bool uCellPppPrivateIsOpen(uCellPrivateInstance_t *pInstance)
+{
+    bool isRunning = false;
+    uCellPppContext_t *pContext;
+
+    if ((pInstance != NULL) && (pInstance->pPppContext != NULL)) {
+        pContext = (uCellPppContext_t *) pInstance->pPppContext;
+        isRunning = pContext->pDeviceSerial != NULL;
+    }
+
+    return isRunning;
 }
 
 /* ----------------------------------------------------------------
@@ -550,16 +565,14 @@ bool uCellPppIsOpen(uDeviceHandle_t cellHandle)
 {
     bool isRunning = false;
     uCellPrivateInstance_t *pInstance;
-    uCellPppContext_t *pContext;
 
     if (gUCellPrivateMutex != NULL) {
 
         U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
 
         pInstance = pUCellPrivateGetInstance(cellHandle);
-        if ((pInstance != NULL) && (pInstance->pPppContext != NULL)) {
-            pContext = (uCellPppContext_t *) pInstance->pPppContext;
-            isRunning = pContext->pDeviceSerial != NULL;
+        if (pInstance != NULL) {
+            isRunning = uCellPppPrivateIsOpen(pInstance);
         }
 
         U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
@@ -594,6 +607,32 @@ int32_t uCellPppClose(uDeviceHandle_t cellHandle,
     }
 
     return errorCode;
+}
+
+// Set whether CMUX is disabled on PPP closure or not.
+void uCellPppSetDoNotDisableCmuxOnClose(uDeviceHandle_t cellHandle,
+                                        bool doNotDisableCmux)
+{
+    uCellPrivateInstance_t *pInstance;
+    uCellPppContext_t *pContext;
+
+    if (gUCellPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        pInstance = pUCellPrivateGetInstance(cellHandle);
+        if (pInstance != NULL) {
+            if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                   U_CELL_PRIVATE_FEATURE_PPP)) {
+                pContext = (uCellPppContext_t *) pInstance->pPppContext;
+                if (pContext != NULL) {
+                    pContext->doNotDisableCmux = doNotDisableCmux;
+                }
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
 }
 
 // Transmit a buffer of data over the PPP interface.

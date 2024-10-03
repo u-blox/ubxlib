@@ -29,7 +29,7 @@
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
-#include "string.h"    // memset()
+#include "string.h"    // memset(), strcpy()
 
 #include "u_cfg_sw.h"
 #include "u_error_common.h"
@@ -76,6 +76,20 @@
 # define U_PORT_PPP_TX_LOOP_DELAY_MS 10
 #endif
 
+#ifndef U_PORT_PPP_USERNAME_MAX_LENGTH
+/** How long a PPP user name is allowed to be, including room
+ * for a null terminator.
+ */
+# define U_PORT_PPP_USERNAME_MAX_LENGTH 64
+#endif
+
+#ifndef U_PORT_PPP_PASSWORD_MAX_LENGTH
+/** How long a PPP password is allowed to be, including room
+ * for a null terminator.
+ */
+# define U_PORT_PPP_PASSWORD_MAX_LENGTH 64
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -91,10 +105,8 @@ struct uPortPppInterface_t;
 typedef struct {
     esp_netif_driver_base_t base;
     struct uPortPppInterface_t *pPppInterface;
-    uSockIpAddress_t *pIpAddress;
-    uSockIpAddress_t *pDnsIpAddressPrimary;
-    const char *pUsername;
-    const char *pPassword;
+    char username[U_PORT_PPP_USERNAME_MAX_LENGTH];
+    char password[U_PORT_PPP_PASSWORD_MAX_LENGTH];
     uPortPppAuthenticationMode_t authenticationMode;
 } uPortPppNetifDriver_t;
 
@@ -158,96 +170,6 @@ static uPortPppInterface_t *pFindPppInterface(void *pDevHandle)
     }
 
     return pPppInterface;
-}
-
-/** Convert an IP address of ours to ESP-IDF format.
- */
-static int32_t convertIpAddress(uSockIpAddress_t *pIn, esp_ip_addr_t *pOut)
-{
-    int32_t espError = ESP_ERR_INVALID_ARG;
-
-    memset(pOut, 0, sizeof(*pOut));
-    switch (pIn->type) {
-        case U_SOCK_ADDRESS_TYPE_V4:
-            pOut->type = ESP_IPADDR_TYPE_V4;
-            pOut->u_addr.ip4.addr = ESP_IP4TOADDR(((pIn->address.ipv4 >> 24) && 0xFF),
-                                                  ((pIn->address.ipv4 >> 16) && 0xFF),
-                                                  ((pIn->address.ipv4 >> 8) && 0xFF),
-                                                  (pIn->address.ipv4 && 0xFF));
-            espError = ESP_OK;
-            break;
-        case U_SOCK_ADDRESS_TYPE_V6:
-            pOut->type = ESP_IPADDR_TYPE_V6;
-            for (size_t x = 0; x < sizeof(pOut->u_addr.ip6.addr) / sizeof(pOut->u_addr.ip6.addr[0]); x++) {
-                pOut->u_addr.ip6.addr[x] = ESP_IP4TOADDR(((pIn->address.ipv6[x] >> 24) && 0xFF),
-                                                         ((pIn->address.ipv6[x] >> 16) && 0xFF),
-                                                         ((pIn->address.ipv6[x] >> 8) && 0xFF),
-                                                         (pIn->address.ipv6[x] && 0xFF));
-            }
-            espError = ESP_OK;
-            break;
-        default:
-            break;
-    }
-
-    return espError;
-}
-
-// Switch off DHCP and tell the IP stack what our IP address is.
-static esp_err_t setIpAddress(esp_netif_t *pEspNetif, uSockIpAddress_t *pIpAddress)
-{
-    esp_err_t espError = ESP_ERR_INVALID_ARG;
-    esp_ip_addr_t espIpAddress = {0};
-    esp_netif_ip_info_t ipInfo = {0};
-
-    switch (pIpAddress->type) {
-        case U_SOCK_ADDRESS_TYPE_V4:
-            ipInfo.netmask.addr = ESP_IP4TOADDR(0xFF, 0xFF, 0xFF, 0);
-            // TODO ipInfo.gw
-            espError = convertIpAddress(pIpAddress, &espIpAddress);
-            break;
-        case U_SOCK_ADDRESS_TYPE_V6:
-            espError = ESP_ERR_NOT_SUPPORTED;
-            break;
-        default:
-            break;
-    }
-    if (espError == ESP_OK) {
-        memcpy(&ipInfo.ip, &espIpAddress.u_addr.ip4, sizeof(ipInfo.ip));
-        espError = esp_netif_dhcpc_stop(pEspNetif);
-        if (espError == ESP_ERR_ESP_NETIF_DHCP_ALREADY_STOPPED) {
-            espError = ESP_OK;
-        }
-        if (espError == ESP_OK) {
-            espError = esp_netif_set_ip_info(pEspNetif, &ipInfo);
-        }
-    }
-
-    return espError;
-}
-
-// Set a DNS address.
-static esp_err_t setDnsAddress(esp_netif_t *pEspNetif, esp_netif_dns_type_t type,
-                               uSockIpAddress_t *pIpAddress)
-{
-    esp_err_t espError = ESP_ERR_INVALID_ARG;
-    esp_netif_dns_info_t dnsInfo = {0};
-
-    switch (pIpAddress->type) {
-        case U_SOCK_ADDRESS_TYPE_V4:
-            espError = convertIpAddress(pIpAddress, &dnsInfo.ip);
-            break;
-        case U_SOCK_ADDRESS_TYPE_V6:
-            espError = ESP_ERR_NOT_SUPPORTED;
-            break;
-        default:
-            break;
-    }
-    if (espError == ESP_OK) {
-        espError = esp_netif_set_dns_info(pEspNetif, type, &dnsInfo);
-    }
-
-    return espError;
 }
 
 // This function is provided as a callback to the NETIF layer of
@@ -323,24 +245,6 @@ static esp_err_t postAttachStart(esp_netif_t *pEspNetif, void *pArgs)
         }
     }
 
-    if ((espError == ESP_OK) && (pDriver->pIpAddress != NULL)) {
-        espError = setIpAddress(pEspNetif, pDriver->pIpAddress);
-        pDriver->pIpAddress = NULL; // NULL'ed so that we don't think it can be used again
-    }
-
-    if (espError == ESP_OK) {
-        if (pDriver->pDnsIpAddressPrimary != NULL) {
-            espError = setDnsAddress(pEspNetif, ESP_NETIF_DNS_MAIN, pDriver->pDnsIpAddressPrimary);
-            pDriver->pDnsIpAddressPrimary = NULL; // NULL'ed so that we don't think it can be used again
-        } else {
-            uSockAddress_t address;
-            if (uSockStringToAddress(U_PORT_PPP_DNS_PRIMARY_DEFAULT_STR, &address) > 0) {
-                espError = setDnsAddress(pEspNetif, ESP_NETIF_DNS_MAIN, &address.ipAddress);
-            }
-        }
-    }
-    // Note: secondary DNS address not supported by ESP-IDF for PPP
-
 #if defined(CONFIG_LWIP_PPP_PAP_SUPPORT) || defined(CONFIG_LWIP_PPP_CHAP_SUPPORT)
     if (espError == ESP_OK) {
         // Choose at least PAP since otherwise LCP negotiation will fail
@@ -349,18 +253,8 @@ static esp_err_t postAttachStart(esp_netif_t *pEspNetif, void *pArgs)
         if (authenticationType != NETIF_PPP_AUTHTYPE_CHAP) {
             authenticationType = NETIF_PPP_AUTHTYPE_PAP;
         }
-        // Set the username/password fields to at least be empty strings
-        // otherwise the authentication mode will not be accepted
-        if (pDriver->pUsername == NULL) {
-            pDriver->pUsername = "";
-        }
-        if (pDriver->pPassword == NULL) {
-            pDriver->pPassword = "";
-        }
         espError = esp_netif_ppp_set_auth(pEspNetif, authenticationType,
-                                          pDriver->pUsername, pDriver->pPassword);
-        pDriver->pUsername = NULL; // NULL'ed so that we don't think
-        pDriver->pPassword = NULL; // they can be used again
+                                          pDriver->username, pDriver->password);
     }
 #endif
 
@@ -389,6 +283,7 @@ static void eventIpChanged(void *pArgs, esp_event_base_t eventBase,
     uPortPppNetifDriver_t *pDriver = (uPortPppNetifDriver_t *) pArgs;
     struct uPortPppInterface_t *pPppInterface = pDriver->pPppInterface;
 
+    uPortLog("U_PORT_PPP: received IP event %d.\n", eventId);
     switch (eventId) {
         case IP_EVENT_PPP_GOT_IP:
             pPppInterface->ipConnected = true;
@@ -583,7 +478,10 @@ int32_t uPortPppConnect(void *pDevHandle,
     esp_netif_t *pEspNetif = NULL;
     size_t guardCount = 0;
 
-    // ESP-IDF can't use a secondary DNS address on a PPP connection
+    // ESP-IDF obtains these during LCP negotiation,
+    // we don't need to use the values passed in
+    (void) pIpAddress;
+    (void) pDnsIpAddressPrimary;
     (void) pDnsIpAddressSecondary;
 
     if (gMutex != NULL) {
@@ -594,7 +492,9 @@ int32_t uPortPppConnect(void *pDevHandle,
         if ((pUsername == NULL) && (pPassword == NULL)) {
             authenticationMode = U_PORT_PPP_AUTHENTICATION_MODE_NONE;
         }
-        if (authenticationMode < U_PORT_PPP_AUTHENTICATION_MODE_MAX_NUM) {
+        if ((authenticationMode < U_PORT_PPP_AUTHENTICATION_MODE_MAX_NUM) &&
+            ((pUsername == NULL) || (strlen(pUsername) < U_PORT_PPP_USERNAME_MAX_LENGTH)) &&
+            ((pPassword == NULL) || (strlen(pPassword) < U_PORT_PPP_PASSWORD_MAX_LENGTH))) {
             errorCode = (int32_t) U_ERROR_COMMON_NOT_FOUND;
             pPppInterface = pFindPppInterface(pDevHandle);
             if (pPppInterface != NULL) {
@@ -607,14 +507,16 @@ int32_t uPortPppConnect(void *pDevHandle,
                     // pPppInterface->netifDriver.base.netif
                     pPppInterface->netifDriver.base.post_attach = postAttachStart;
                     pPppInterface->netifDriver.pPppInterface = pPppInterface;
-                    // Note that only the pointers are stored for these parameters,
-                    // the contents are not copied: this is fine since they are
-                    // used by postAttachStart(), which is called by
-                    // esp_netif_action_start(), and that's it
-                    pPppInterface->netifDriver.pIpAddress = pIpAddress;
-                    pPppInterface->netifDriver.pDnsIpAddressPrimary = pDnsIpAddressPrimary;
-                    pPppInterface->netifDriver.pUsername = pUsername;
-                    pPppInterface->netifDriver.pPassword = pPassword;
+                    pPppInterface->netifDriver.username[0] = 0;
+                    if (pUsername != NULL) {
+                        // Length is checked above so strcpy() is fine here
+                        strcpy(pPppInterface->netifDriver.username, pUsername);
+                    }
+                    pPppInterface->netifDriver.password[0] = 0;
+                    if (pPassword != NULL) {
+                        // Length is checked above so strcpy() is fine here
+                        strcpy(pPppInterface->netifDriver.password, pPassword);
+                    }
                     pPppInterface->netifDriver.authenticationMode = authenticationMode;
                     errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
                     if ((esp_event_handler_register(NETIF_PPP_STATUS, ESP_EVENT_ANY_ID, eventPppChanged,
@@ -678,6 +580,10 @@ int32_t uPortPppReconnect(void *pDevHandle,
     uPortPppInterface_t *pPppInterface;
     esp_netif_t *pEspNetif = NULL;
 
+    // ESP-IDF obtains the IP address during LCP negotiation,
+    // we don't need to use the one passed in
+    (void) pIpAddress;
+
     if (gMutex != NULL) {
 
         U_PORT_MUTEX_LOCK(gMutex);
@@ -687,14 +593,33 @@ int32_t uPortPppReconnect(void *pDevHandle,
         if (pPppInterface != NULL) {
             errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
             pEspNetif = pPppInterface->netifDriver.base.netif;
-            if ((pEspNetif != NULL) && (setIpAddress(pEspNetif, pIpAddress) == ESP_OK)) {
+            if (pEspNetif != NULL) {
                 errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                // Perform a disconnect and then connect again,
+                // including stopping and re-starting the PPP
+                // connection up into ESP-IDF
+                if (pPppInterface->ipConnected) {
+                    esp_netif_action_disconnected(pPppInterface->netifDriver.base.netif, NULL, 0, NULL);
+                }
+                esp_netif_action_stop(pPppInterface->netifDriver.base.netif, NULL, 0, NULL);
+                // Wait for the IP stack to let us go
+                uPortLog("U_PORT_PPP: waiting to be released in order to reconnect.\n");
+                uPortSemaphoreTryTake(pPppInterface->semaphoreExit,
+                                      U_PORT_PPP_SHUTDOWN_TIMEOUT_SECONDS * 1000);
+                uPortLog("U_PORT_PPP: released.\n");
+                if (pPppInterface->pDisconnectCallback != NULL) {
+                    pPppInterface->pDisconnectCallback(pPppInterface->pDevHandle,
+                                                       pPppInterface->ipConnected);
+                }
                 if (pPppInterface->pConnectCallback != NULL) {
                     errorCode = pPppInterface->pConnectCallback(pDevHandle, receiveCallback,
                                                                 &(pPppInterface->netifDriver),
                                                                 NULL,
                                                                 U_PORT_PPP_RECEIVE_BUFFER_BYTES,
                                                                 NULL);
+                }
+                if (errorCode == 0) {
+                    esp_netif_action_start(pEspNetif, NULL, 0, NULL);
                 }
             }
         }

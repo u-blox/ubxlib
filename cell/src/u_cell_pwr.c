@@ -173,7 +173,8 @@ static const char *const gpConfigCommand[] = {"ATE0",      // Echo off
                                               "AT+UDCONF=1,0",
                                               "ATI9",      // Firmware version
                                               "AT&C1",     // DCD circuit (109) changes with the carrier
-                                              "AT&D0"      // Ignore changes to DTR
+                                              "AT&D0",     // Ignore changes to DTR
+                                              "AT+CGEREP=1" // "+CGEV" URC on context changes
                                              };
 
 /** Array to convert the RAT emited by AT+CEDRXS to one of our RATs.
