@@ -1,3 +1,15 @@
+<b>Dear ubxlib community</b>,
+
+After careful consideration, we have decided to discontinue the ubxlib project. This decision was not made lightly, and we want to thank everyone who has contributed, used, and supported this project over the years.
+
+The repository will be archived on 2024-11-08. This means it will become read-only, but you will still be able to fork and clone it. Open issues will be closed till end of 2024. Afterwards no more support for ubxlib is available.  For any questions please use our [support portal](https://www.u-blox.com/support). 
+
+Thank you for your understanding.
+
+Best regards,
+The ubxlib team
+***
+
 <img src="/readme_images/ubxlib-logo.svg" width="400">
 
 <i>Note: if you are reading this from a package-file created by a third-party \[e.g. PlatformIO\] and the links do not work, please try reading it at the original [ubxlib Github site](https://github.com/u-blox/ubxlib) instead.</i>
